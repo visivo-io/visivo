@@ -122,4 +122,41 @@ describe('TopNav', () => {
     // eslint-disable-next-line no-bitwise
     expect(def.compareDocumentPosition(starred) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  describe('user menu (cloud)', () => {
+    // The avatar trigger shows the user's initial; click it to open the menu.
+    const openMenu = props => {
+      renderNav({ tools: [], stages: [], user: { name: 'Zoe', email: 'zoe@x.io' }, ...props });
+      fireEvent.click(screen.getByText('Z'));
+    };
+
+    it('renders userMenuItems and invokes their onClick', () => {
+      const onProfile = jest.fn();
+      openMenu({
+        userMenuItems: [
+          { label: 'Profile', onClick: onProfile },
+          { label: 'Account', onClick: () => {} },
+        ],
+      });
+      expect(screen.getByText('Profile')).toBeInTheDocument();
+      expect(screen.getByText('Account')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Profile'));
+      expect(onProfile).toHaveBeenCalledTimes(1);
+    });
+
+    it('always offers Sign out and calls onSignOut', () => {
+      const onSignOut = jest.fn();
+      openMenu({ onSignOut, userMenuItems: [] });
+      fireEvent.click(screen.getByText('Sign out'));
+      expect(onSignOut).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows no menu items beyond Sign out when none are provided', () => {
+      // The old dead "Account"/"Organization" placeholders are gone.
+      openMenu({});
+      expect(screen.getByText('Sign out')).toBeInTheDocument();
+      expect(screen.queryByText('Organization')).not.toBeInTheDocument();
+      expect(screen.queryByText('Account')).not.toBeInTheDocument();
+    });
+  });
 });

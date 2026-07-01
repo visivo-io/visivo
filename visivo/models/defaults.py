@@ -10,23 +10,28 @@ class Level(BaseModel):
 
 
 class Defaults(BaseModel):
-    model_config = ConfigDict(populate_by_name=True, extra="forbid")
     """
-    Defaults enable you to set a source and alert that will be used whenever one is not explicitly passed.
+    Defaults set the source and alert that are used whenever one is not explicitly specified.
 
     Defaults will be overridden if:
 
-    1. A source / alert is passed to a command. ex: `visivo serve -t source-name`
-    2. A source is specified directly on the model via the `source_name` attribute. When this attribute is set the model will always run queries against that source.
+    1. A source / alert is passed to a command. ex: `visivo serve -s source-name`
+    2. A source is specified directly on the model via the `source` attribute. When that attribute is set the model will always run queries against that source.
 
     Here's how defaults look in the `project.visivo.yml` file:
     ``` yaml
     defaults:
       source_name: local-sqlite
-      alert_name: slack
+      alert_name: notify-slack-on-failure
 
     alerts:
-      - name: slack
+      - name: notify-slack-on-failure
+        if: ">{ anyTestFailed() }"
+        destinations:
+          - ${ref(visivo-slack)}
+
+    destinations:
+      - name: visivo-slack
         type: slack
         webhook_url: https://hooks.slack.com/services/ap8ub98ssoijbloisojbo8ys8
 
@@ -36,6 +41,8 @@ class Defaults(BaseModel):
         type: sqlite
     ```
     """
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     alert_name: Optional[str] = Field(
         None,

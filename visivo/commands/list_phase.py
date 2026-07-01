@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from visivo.models.insight import Insight
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 
@@ -19,6 +20,8 @@ def list_phase(project, object_type):
                 if isinstance(item, Source) and target_type == "sources":
                     collected.append(name)
                 elif isinstance(item, Model) and target_type == "models":
+                    collected.append(name)
+                elif isinstance(item, Insight) and target_type == "insights":
                     collected.append(name)
 
         return collected

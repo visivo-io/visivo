@@ -100,7 +100,7 @@ class Item(NamedModel, ParentModel):
 
     width: int = Field(
         1,
-        description="The width of the Item determines is evaluated relative to the other items in a row.",
+        description="The width of the item, evaluated relative to the widths of the other items in the row.",
     )
     markdown: Optional[generate_ref_field(Markdown)] = Field(
         None,

@@ -11,7 +11,11 @@ The `scattergeo` insight type is used to create scatter plots on a geographic ma
 
 You can customize the marker size, color, and geo-coordinates (longitude and latitude) to effectively represent the geographic data.
 
-!!! tip "Common Uses" - **Geospatial Data**: Visualizing points or patterns on a geographic map. - **Location-Based Analysis**: Exploring the distribution of data points across different locations. - **Mapping**: Plotting geographical points such as cities, events, or regions.
+!!! tip "Common Uses"
+
+    - **Geospatial Data**: Visualizing points or patterns on a geographic map.
+    - **Location-Based Analysis**: Exploring the distribution of data points across different locations.
+    - **Mapping**: Plotting geographical points such as cities, events, or regions.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attributes) for the full set of configuration options**_
 

@@ -11,7 +11,11 @@ The `sunburst` insight type is used to create sunburst charts, visualizing hiera
 
 You can customize labels, hierarchy, colors, and segment sizes to represent your data effectively.
 
-!!! tip "Common Uses" - **Hierarchical Data Visualization**: Showing relationships between multiple levels of data. - **Part-to-Whole Relationships**: Visualizing contributions of parts to the whole. - **Categorical Data Breakdown**: Representing nested categories.
+!!! tip "Common Uses"
+
+    - **Hierarchical Data Visualization**: Showing relationships between multiple levels of data.
+    - **Part-to-Whole Relationships**: Visualizing contributions of parts to the whole.
+    - **Categorical Data Breakdown**: Representing nested categories.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attributes) for the full set of configuration options**_
 

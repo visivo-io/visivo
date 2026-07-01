@@ -16,10 +16,15 @@ DuckdbType = Literal["duckdb"]
 
 
 class DuckdbAttachment(BaseModel):
-    schema_name: str = Field("Name of the schema to attach the source under.")
+    """
+    A DuckdbAttachment makes an additional DuckDB database available in the parent
+    source's connection so a single model query can join across both databases.
+    """
+
+    schema_name: str = Field(..., description="Name of the schema to attach the source under.")
     source: "DuckdbSource" = Field(
         None,
-        description="Local Duckdb database source to attach in the connection that will be available in the base SQL query.",
+        description="Local DuckDB database source to attach in the connection that will be available in the base SQL query.",
     )
 
 

@@ -2,10 +2,10 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
-import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiUser, FiUsers, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
+import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
-import { SiSlack } from 'react-icons/si';
+import { SiGithub } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
 import { PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
@@ -373,13 +373,13 @@ function localMenu(close) {
         <MdMenuBook size={16} color="#6b7280" /> Documentation
       </a>
       <a
-        href="https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ"
+        href="https://github.com/visivo-io/visivo/discussions"
         target="_blank"
         rel="noopener noreferrer"
         onClick={close}
         style={{ ...linkStyle, display: 'flex', alignItems: 'center', gap: 8 }}
       >
-        <SiSlack size={15} color="#6b7280" /> Join the Community
+        <SiGithub size={15} color="#6b7280" /> Join the Community
       </a>
       <a href="https://github.com/visivo-io/visivo/issues/new/choose" target="_blank" rel="noopener noreferrer" onClick={close} style={linkStyle}>
         Log an Issue
@@ -388,7 +388,7 @@ function localMenu(close) {
   );
 }
 
-function UserMenu({ user, onSignOut }) {
+function UserMenu({ user, onSignOut, items = [] }) {
   const initial = user?.name ? user.name[0].toUpperCase() : 'U';
   const trigger = (
     <span style={{ display: 'inline-flex', cursor: 'pointer' }}>
@@ -406,8 +406,15 @@ function UserMenu({ user, onSignOut }) {
               <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{user.name}</div>
               {user.email && <div style={{ fontSize: 11.5, color: '#6b7280' }}>{user.email}</div>}
             </div>
-            <Row onClick={close} style={{ borderRadius: 6 }}><FiUser size={15} color="#6b7280" /> Account</Row>
-            <Row onClick={close} style={{ borderRadius: 6 }}><FiUsers size={15} color="#6b7280" /> Organization</Row>
+            {items.map(item => (
+              <Row
+                key={item.label}
+                onClick={() => { item.onClick && item.onClick(); close(); }}
+                style={{ borderRadius: 6 }}
+              >
+                {item.icon ? <item.icon size={15} color="#6b7280" /> : null} {item.label}
+              </Row>
+            ))}
             <Row onClick={() => { onSignOut && onSignOut(); close(); }} style={{ borderRadius: 6 }}><FiLogOut size={15} color="#6b7280" /> Sign out</Row>
           </div>
         ) : (
@@ -441,12 +448,18 @@ const TopNav = ({
   commitCount = 0,
   onCommitClick,
   onDeployClick,
+  // cloud-only: Edit/Branch entry node, rendered in the action cluster at
+  // project depth. Absent locally ⇒ nothing extra renders.
+  branchControls = null,
   // Deploy is only meaningful where deploy exists (local CLI). Cloud has no
   // deploy yet, so it passes showDeploy=false to hide the button entirely.
   showDeploy = true,
   // user (cloud) — absent ⇒ local login/docs/community menu
   user,
   onSignOut,
+  // cloud: items shown above "Sign out" in the user menu ({label, icon, onClick}).
+  // The host app (core) supplies these so the shared viewer carries no app routes.
+  userMenuItems,
   // cloud unifiers: a custom logo node (the account menu) and an "All stages"
   // link in the stage dropdown. Absent locally → plain logo, no all-stages.
   renderLogo,
@@ -522,8 +535,9 @@ const TopNav = ({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
+            {showProject && branchControls}
             {showProject && action}
-            <UserMenu user={user} onSignOut={onSignOut} />
+            <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
           </div>
         </div>
         {banner}
@@ -546,9 +560,10 @@ const TopNav = ({
         {showProject && <ToolSwitch tools={tools} activeTool={resolvedActive} />}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} />}
+          {showProject && branchControls}
           {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />
-          <UserMenu user={user} onSignOut={onSignOut} />
+          <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
         </div>
       </div>
       {banner}

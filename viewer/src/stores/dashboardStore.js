@@ -63,7 +63,8 @@ const createDashboardSlice = (set, get) => ({
     get().beginSaveActivity?.();
     let ok = false;
     try {
-      const result = await dashboardsApi.saveDashboard(name, config);
+      const projectId = get().project?.id;
+      const result = await dashboardsApi.saveDashboard(name, config, projectId);
       ok = true;
       await get().fetchDashboards();
       if (get().checkCommitStatus) {
@@ -151,7 +152,8 @@ const createDashboardSlice = (set, get) => ({
   // Mark dashboard for deletion
   deleteDashboard: async name => {
     try {
-      await dashboardsApi.deleteDashboard(name);
+      const projectId = get().project?.id;
+      await dashboardsApi.deleteDashboard(name, projectId);
       await get().fetchDashboards();
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();

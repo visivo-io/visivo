@@ -4,13 +4,22 @@ from visivo.models.base.named_model import alpha_hash
 import traceback
 
 
-def dist_phase(output_dir, dist_dir, deployment_root: str = None):
+def dist_phase(
+    output_dir,
+    dist_dir,
+    working_dir: str = ".",
+    default_source: str = None,
+    dbt_profile: str = None,
+    dbt_target: str = None,
+    deployment_root: str = None,
+):
     import os
     import json
     import shutil
     from glob import glob
     import datetime
     from visivo.utils import get_dashboards_dir
+    from visivo.constants import DEFAULT_RUN_ID
 
     Logger.instance().info("Creating distribution for project in folder...")
 
@@ -19,13 +28,35 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
     deployment_root = deployment_root or ""
 
     try:
+        # `dist` packages a previously-run project. The dereferenced project.json
+        # is no longer written during compile/run, so generate it here (the only
+        # consumer) by re-parsing and dereferencing. Require the run output to
+        # exist first so we fail with a helpful message instead of shipping a
+        # data-less bundle.
+        run_dir = os.path.join(output_dir, DEFAULT_RUN_ID)
+        if not os.path.isdir(run_dir):
+            raise FileNotFoundError(
+                f"No run output found at '{run_dir}'. Run `visivo run` before `visivo dist`."
+            )
+
+        from visivo.commands.parse_project_phase import parse_project_phase
+        from visivo.parsers.serializer import Serializer
+
+        project = parse_project_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            default_source=default_source,
+            dbt_profile=dbt_profile,
+            dbt_target=dbt_target,
+        )
+        project_json = json.loads(
+            Serializer(project=project).dereference().model_dump_json(exclude_none=True)
+        )
+
         dashboards_dir = get_dashboards_dir(output_dir)
         if os.path.exists(dashboards_dir):
             dist_dashboards_dir = os.path.join(dist_dir, "data", "dashboards")
             shutil.copytree(dashboards_dir, dist_dashboards_dir, dirs_exist_ok=True)
-
-        with open(f"{output_dir}/project.json", "r") as f:
-            project_json = json.load(f)
         created_at = (datetime.datetime.now().isoformat(),)
         with open(f"{dist_dir}/data/project.json", "w") as f:
             f.write(
@@ -44,10 +75,6 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
             f.write(json.dumps({}))
         with open(f"{dist_dir}/data/project_history.json", "w") as f:
             f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
-
-        # Copy explorer.json if it exists
-        if os.path.exists(f"{output_dir}/explorer.json"):
-            shutil.copyfile(f"{output_dir}/explorer.json", f"{dist_dir}/data/explorer.json")
 
         # Generate traces.json for dist mode
 
@@ -78,9 +105,6 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
             json.dump(traces_list, f)
 
         # Copy parquet data files used by insights and inputs
-        from visivo.constants import DEFAULT_RUN_ID
-
-        run_dir = os.path.join(output_dir, DEFAULT_RUN_ID)
         files_src = os.path.join(run_dir, "files")
         if os.path.isdir(files_src):
             os.makedirs(f"{dist_dir}/data/files", exist_ok=True)

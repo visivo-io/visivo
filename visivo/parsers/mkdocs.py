@@ -2,6 +2,7 @@ from visivo.parsers.mkdocs_utils.markdown import (
     from_insightprop_model,
     from_pydantic_model,
     from_traceprop_model,
+    insight_props_index,
     find_refs,
 )
 from visivo.parsers.mkdocs_utils.nav_configuration_generator import (
@@ -9,11 +10,17 @@ from visivo.parsers.mkdocs_utils.nav_configuration_generator import (
     get_model_to_page_mapping,
     get_model_to_path_mapping,
     find_path,
-    get_using_path,
     replace_using_path,
 )
 from visivo.parsers.schema_generator import generate_schema
 import json
+
+# Synthetic "model" name for the generated Insight Props card-grid index page.
+# It is not a real Pydantic model — it stands in for the index.md that replaces
+# the ~49 per-prop nav leaves under Reference > Configuration > Insight > Props.
+INSIGHT_PROPS_INDEX_MODEL = "InsightPropsIndex"
+INSIGHT_PROPS_INDEX_NAV_PATH = "reference/configuration/Insight/Props/index.md"
+INSIGHT_PROPS_INDEX_FILE_PATH = "mkdocs/" + INSIGHT_PROPS_INDEX_NAV_PATH
 
 
 class Mkdocs:
@@ -24,6 +31,10 @@ class Mkdocs:
     nav_configuration = mkdocs_pydantic_nav(SCHEMA)
     model_to_page_map = get_model_to_page_mapping(nav_configuration)
     model_to_path_map = get_model_to_path_mapping(nav_configuration)
+    # The per-prop reference pages keep generating (so they stay reachable via
+    # the index cards + site search), but they are collapsed out of the committed
+    # nav into a single card-grid index page — register that page for writing.
+    model_to_path_map[INSIGHT_PROPS_INDEX_MODEL] = INSIGHT_PROPS_INDEX_FILE_PATH
 
     def get_model_object(self, model_name: str):
         return self.SCHEMA.get(model_name)
@@ -46,22 +57,22 @@ class Mkdocs:
             mkdocs_nav, configuration_path, self.get_nav_configuration()
         )
 
-        def add_line_area_links(updated_mkdocs_nav):
-            """Modifies the mkdocs nav object to include links to the line and area pages from the scatter page."""
-            scatter_path = find_path(updated_mkdocs_nav, "Scatter")
-            scatter_markdown_file = get_using_path(updated_mkdocs_nav, scatter_path)
-            props_path = scatter_path[:-2]
-            props_list = get_using_path(updated_mkdocs_nav, props_path)
-            props_list += [
-                {"Line": scatter_markdown_file},
-                {"Area": scatter_markdown_file},
-            ]
-            props_list = sorted(
-                props_list, key=lambda d: next(iter(d))
-            )  # sort by key alphabetically
-            replace_using_path(updated_mkdocs_nav, props_path, props_list)
+        def collapse_props_subtree(updated_mkdocs_nav):
+            """Replaces the ~49 per-prop nav leaves under Insight > Props with a
+            single entry pointing at the generated card-grid index page. The
+            individual prop pages still GENERATE and stay reachable via the index
+            cards + site search — they are just no longer individual nav lines."""
+            props_path = find_path(updated_mkdocs_nav, "Props")
+            if not props_path:
+                # No Props subtree in this nav (e.g. minimal test fixtures) — nothing to do.
+                return
+            replace_using_path(
+                updated_mkdocs_nav,
+                props_path,
+                [INSIGHT_PROPS_INDEX_NAV_PATH],
+            )
 
-        add_line_area_links(updated_mkdocs_nav)
+        collapse_props_subtree(updated_mkdocs_nav)
         mkdocs_yaml_object["nav"] = updated_mkdocs_nav
         return mkdocs_yaml_object
 
@@ -86,7 +97,26 @@ class Mkdocs:
         insight_prop_models = [i.split("/")[-1] for i in refs]
         return insight_prop_models
 
+    def _props_index_links(self) -> list:
+        """Returns (model_name, relative_link) tuples for every insight prop page,
+        plus the `Line`/`Area` aliases that the nav points at the Scatter page.
+        Links are relative to the Props index page's own directory (so a bare
+        `Bar/` resolves to .../Insight/Props/Bar/)."""
+        prop_models = sorted(self._get_insight_prop_models())
+        links = [(model, f"{model}/") for model in prop_models]
+        # Line & Area are nav aliases of Scatter (same generated page).
+        for alias in ("Area", "Line"):
+            links.append((alias, "Scatter/"))
+        return sorted(links, key=lambda pair: pair[0])
+
+    def get_props_index_content(self) -> str:
+        """Generates the Insight Props card-grid index page markdown."""
+        return insight_props_index(self._props_index_links())
+
     def get_md_content(self, model_name, content_type=""):
+        if model_name == INSIGHT_PROPS_INDEX_MODEL:
+            return self.get_props_index_content()
+
         path = self.model_to_path_map.get(model_name, {})
 
         insight_prop_models = self._get_insight_prop_models()

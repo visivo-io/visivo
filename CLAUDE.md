@@ -199,9 +199,9 @@ The CLI execution path is introspection-free to maintain performance:
 
 To visually verify frontend changes using the Playwright MCP tool:
 
-1. **Activate the venv12 virtual environment** (editable pip install of the local visivo package):
+1. **Activate the venv14 virtual environment** (editable pip install of the local visivo package):
    ```bash
-   source venv12/bin/activate
+   source venv14/bin/activate
    ```
 2. **Start the backend server** as a background task by `cd`-ing to a test project (e.g., `test-projects/integration/`) and running:
    ```bash

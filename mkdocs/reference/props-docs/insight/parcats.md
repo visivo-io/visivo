@@ -11,7 +11,11 @@ The `parcats` insight type is used to create parallel categories diagrams, which
 
 You can customize the colors, line widths, and category order to represent your data and patterns effectively.
 
-!!! tip "Common Uses" - **Categorical Data Visualization**: Visualizing relationships between different categorical variables. - **Flow Analysis**: Showing how data is distributed across multiple dimensions and comparing those paths. - **Segmentation**: Visualizing how different segments of data flow through categories.
+!!! tip "Common Uses"
+
+    - **Categorical Data Visualization**: Visualizing relationships between different categorical variables.
+    - **Flow Analysis**: Showing how data is distributed across multiple dimensions and comparing those paths.
+    - **Segmentation**: Visualizing how different segments of data flow through categories.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Parcats/#attributes) for the full set of configuration options**_
 

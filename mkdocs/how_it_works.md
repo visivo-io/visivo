@@ -2,6 +2,11 @@
 
 When you work with Visivo, you write YAML configurations and run a few CLI commands. Visivo handles everything else automatically so you and your team can focus on what matters. The walkthrough below isn't exactly what happens under the hood, but it's a solid approximation.
 
+!!! note "Looking for the diagrams?"
+    The [Architecture](concepts/architecture.md) page maps the compile → run → serve
+    phases, the object DAG, and the server-vs-browser split as diagrams. This page
+    walks the same flow with real data.
+
 Say you have a model called `widget_sales` that looks like this:
 
 | widget           | quantity | completed_at |

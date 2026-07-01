@@ -10,12 +10,12 @@ PORT="${1:-8001}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 INTEGRATION_DIR="$PROJECT_DIR/test-projects/integration"
-VENV_ACTIVATE="$PROJECT_DIR/venv12/bin/activate"
+VENV_ACTIVATE="$PROJECT_DIR/venv14/bin/activate"
 
-# Check if venv12 exists
+# Check if venv14 exists
 if [ ! -f "$VENV_ACTIVATE" ]; then
-    echo "ERROR: venv12 not found at $VENV_ACTIVATE"
-    echo "Create it with: python3.12 -m venv venv12 && source venv12/bin/activate && pip install -e ."
+    echo "ERROR: venv14 not found at $VENV_ACTIVATE"
+    echo "Create it with: python3.14 -m venv venv14 && source venv14/bin/activate && pip install -e ."
     exit 1
 fi
 

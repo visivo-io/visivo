@@ -11,7 +11,11 @@ The `mesh3d` insight type is used to create 3D mesh plots, which visualize 3D su
 
 You can customize the colors, vertex positions, and opacity to represent 3D data and geometries effectively.
 
-!!! tip "Common Uses" - **3D Geometries**: Visualizing surfaces and volumes in 3D space. - **Scientific Visualization**: Representing complex 3D data in fields like physics, engineering, and geology. - **3D Surface Rendering**: Displaying 3D surfaces from a set of points and connectivity information.
+!!! tip "Common Uses"
+
+    - **3D Geometries**: Visualizing surfaces and volumes in 3D space.
+    - **Scientific Visualization**: Representing complex 3D data in fields like physics, engineering, and geology.
+    - **3D Surface Rendering**: Displaying 3D surfaces from a set of points and connectivity information.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Mesh3d/#attributes) for the full set of configuration options**_
 

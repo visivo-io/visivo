@@ -17,8 +17,10 @@ export const fetchAllCsvScriptModels = async (projectId = null) => {
 /**
  * Save a CsvScriptModel configuration to cache (draft state)
  */
-export const saveCsvScriptModel = async (name, config) => {
-  const response = await apiFetch(getUrl('csvScriptModelDetail', { name }), {
+export const saveCsvScriptModel = async (name, config, projectId = null) => {
+  let url = getUrl('csvScriptModelDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,8 +37,10 @@ export const saveCsvScriptModel = async (name, config) => {
 /**
  * Delete a CsvScriptModel (mark for deletion)
  */
-export const deleteCsvScriptModel = async name => {
-  const response = await apiFetch(getUrl('csvScriptModelDetail', { name }), {
+export const deleteCsvScriptModel = async (name, projectId = null) => {
+  let url = getUrl('csvScriptModelDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

@@ -31,8 +31,10 @@ export const fetchSource = async name => {
 /**
  * Save a source configuration to cache (draft state)
  */
-export const saveSource = async (name, config) => {
-  const response = await apiFetch(getUrl('sourceDetail', { name }), {
+export const saveSource = async (name, config, projectId = null) => {
+  let url = getUrl('sourceDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveSource = async (name, config) => {
 /**
  * Delete a source from cache (revert to published version)
  */
-export const deleteSource = async name => {
-  const response = await apiFetch(getUrl('sourceDetail', { name }), {
+export const deleteSource = async (name, projectId = null) => {
+  let url = getUrl('sourceDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -94,4 +98,3 @@ export const testSourceConnection = async config => {
     error: errorData.error || 'Connection test failed',
   };
 };
-

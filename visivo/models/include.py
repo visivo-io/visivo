@@ -7,9 +7,23 @@ from visivo.models.base.base_model import BaseModel
 
 class Include(BaseModel):
     """
-    Include's can be used to break apart a project file with references to other files. This includes files from remote github repositories.
+    Includes break a project apart into multiple files by pulling other YAML files —
+    or whole directories — into the root project file. Paths can point at local files
+    or at files in remote GitHub repositories, which lets you share sources, models,
+    and dashboards across projects.
 
-    [Read more about includes here ](including.md)
+    !!! example
+
+        ``` yaml
+        includes:
+          - path: models/orders.yml
+          - path: dashboards/
+            depth: 1
+            exclusions:
+              - drafts/*
+        ```
+
+    [Read more about includes here](../../../topics/including.md)
     """
 
     path: str = Field(

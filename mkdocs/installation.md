@@ -6,22 +6,16 @@ Visivo offers multiple installation methods to suit different needs and environm
 
 The fastest way to get started with Visivo is using our installation script:
 
-=== "macOS/Linux/Windows (WSL)"
+```bash
+curl -fsSL https://visivo.sh | bash
+```
 
-    ```bash
-    curl -fsSL https://visivo.sh | bash
-    ```
-
-=== "Windows (PowerShell)"
-
-    ```powershell
-    irm https://visivo.sh/install.ps1 | iex
-    ```
+The script installs the `visivo` binary to `~/.visivo/bin` and adds it to your `PATH`. On Windows, run it inside [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), or use the [pip installation](#python-package-pip) instead.
 
 !!! success "What you get"
     - ✅ Single binary, no dependencies
-    - ✅ Works on Mac, Linux, and Windows
-    - ✅ Automatic updates available
+    - ✅ Works on Mac, Linux, and Windows (WSL)
+    - ✅ No `sudo` required — installs to your home directory
     - ✅ Instant hot-reload development
 
 ## Python Package (pip)
@@ -29,7 +23,7 @@ The fastest way to get started with Visivo is using our installation script:
 Best for Python developers and data scientists who want to integrate Visivo into existing workflows.
 
 ### Requirements
-- Python 3.10 or higher
+- Python 3.12 or higher
 - Virtual environment recommended
 
 ### Standard Installation
@@ -70,7 +64,7 @@ visivo --version
 For developers who want to contribute or customize Visivo:
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.12+
 - Node.js 16+ (for frontend development)
 - Git
 
@@ -106,8 +100,8 @@ visivo serve
 
 ### Windows
 - Windows 10/11 recommended
-- PowerShell 5.1+ required for install script
-- WSL2 recommended for best experience
+- WSL2 recommended for the install script
+- Native Windows users should install via [pip](#python-package-pip)
 
 ## Environment Variables
 
@@ -126,16 +120,25 @@ export VISIVO_LOG_LEVEL=DEBUG
 
 ## Troubleshooting
 
-### Permission Denied
+### Command Not Found After Install
 
-If you get a permission error during installation:
+The install script places the binary in `~/.visivo/bin` and appends that
+directory to your shell profile. If `visivo` isn't found right after
+installing, reload your shell:
 
 ```bash
-# macOS/Linux
-sudo curl -fsSL https://visivo.sh | bash
+# Restart your terminal, or:
+source ~/.bashrc   # bash
+source ~/.zshrc    # zsh
 
-# Or install to user directory
-curl -fsSL https://visivo.sh | bash -s -- --prefix=$HOME/.local
+# Or add it to your PATH manually
+export PATH="$HOME/.visivo/bin:$PATH"
+```
+
+### Installing a Specific Version
+
+```bash
+curl -fsSL https://visivo.sh | bash -s -- --version 2.0.3
 ```
 
 ### Python Version Issues
@@ -144,11 +147,11 @@ If you have multiple Python versions:
 
 ```bash
 # Specify Python version
-python3.10 -m pip install visivo
+python3.14 -m pip install visivo
 
 # Or use pyenv
-pyenv install 3.10.0
-pyenv local 3.10.0
+pyenv install 3.14.6
+pyenv local 3.14.6
 pip install visivo
 ```
 
@@ -168,11 +171,11 @@ pip install visivo
 ### Binary Installation
 
 ```bash
-# Remove binary
-rm /usr/local/bin/visivo
+# Remove the install directory
+rm -rf ~/.visivo
 
-# Or if installed with --prefix
-rm $HOME/.local/bin/visivo
+# Then remove the PATH line the installer added to your
+# shell profile (~/.bashrc, ~/.zshrc, or ~/.profile)
 ```
 
 ### Python Package

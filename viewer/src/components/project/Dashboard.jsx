@@ -251,6 +251,9 @@ const Dashboard = ({
   // Input store
   const fetchInputs = useStore(state => state.fetchInputs);
   const getInputByName = useStore(state => state.getInputByName);
+  // Bumped by the run poller when a draft run succeeds; threaded into the data
+  // hooks as a cacheKey so they refetch + force-reload the rebuilt output.
+  const runDataVersion = useStore(state => state.runDataVersion);
 
   // Viewport-based loading: Track which rows are visible
   const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
@@ -440,9 +443,9 @@ const Dashboard = ({
     [visibleInputNames, insightInputNames]
   );
 
-  useInputsData(projectId, allInputNames);
-  useInsightsData(projectId, visibleInsightNames);
-  useModelsData(projectId, visibleModelNames);
+  useInputsData(projectId, allInputNames, { cacheKey: runDataVersion });
+  useInsightsData(projectId, visibleInsightNames, undefined, { cacheKey: runDataVersion });
+  useModelsData(projectId, visibleModelNames, undefined, { cacheKey: runDataVersion });
 
   // Render a dashboard item.
   // `slotPixelHeight` is the pixel height the parent row reserved for this slot;

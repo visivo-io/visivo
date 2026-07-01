@@ -11,11 +11,11 @@ on:
 
 base:
   image: ubuntu:22.04
-  config: rwx/base 1.0.2
+  config: rwx/base 1.1.1
 
 tasks:
   - key: code
-    call: mint/git-clone 1.6.4
+    call: git/clone 1.9.5
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
@@ -32,19 +32,32 @@ tasks:
       - viewer/.nvmrc
 
   - key: python
-    call: mint/install-python 1.3.2
+    call: python/install 1.4.5
     with:
       python-version: ${{ tasks.versions.values.python }}
 
   - key: node
-    call: mint/install-node 1.1.4
+    call: nodejs/install 1.1.14
     with:
       node-version: ${{ tasks.versions.values.node }}
 
   - key: poetry
     use: python
     run: pip install poetry
-  
+
+  # dbt does not support Python 3.14 yet: dbt-core pins mashumaro<3.15, but
+  # mashumaro only gained 3.14 support in 3.15+. Run the dbt integration lane
+  # on 3.12 (the highest Python dbt supports, also a version visivo supports)
+  # while the rest of CI runs on the .python-version interpreter (3.14).
+  - key: python-dbt
+    call: python/install 1.4.5
+    with:
+      python-version: "3.12.10"
+
+  - key: poetry-dbt
+    use: python-dbt
+    run: pip install poetry
+
   - key: cli-dependencies
     use: [code, poetry]
     run: poetry install --with dev --no-root
@@ -132,9 +145,9 @@ tasks:
     env:
       STACKTRACE: true
     filter: [test-projects/complex-project]
-  
+
   - key: test-docs-examples-project
-    use: [visivo-pip-install ]
+    use: [visivo-pip-install]
     run: |
       cd test-projects/docs-examples
       visivo run -th 3 
@@ -142,7 +155,7 @@ tasks:
     env:
       STACKTRACE: true
     filter: [test-projects/docs-examples]
-  
+
   - key: test-duckdb-concurrency
     use: visivo-install
     run: |
@@ -175,8 +188,10 @@ tasks:
         echo "visivo serve failed with exit code $exit_code"
         exit 1
       fi
-      # Verify that the project compiled successfully
-      test -f target/project.json || (echo "project.json not found" && exit 1)
+      # Verify that the project compiled successfully. (project.json is no longer
+      # a compile artifact — it's generated only by `visivo dist` now — so check
+      # error.json, which compile still writes.)
+      test -f target/error.json || (echo "error.json not found" && exit 1)
       echo "visivo serve started successfully"
     env:
       STACKTRACE: true
@@ -336,14 +351,15 @@ tasks:
       DEBUG: true
       BIGQUERY_BASE64_CREDENTIALS: ${{ secrets.BIGQUERY_BASE64_CREDENTIALS }}
       BIGQUERY_PROJECT: ${{ secrets.BIGQUERY_PROJECT }}
-    filter: 
+    filter:
       - dist
       - test-projects/integration
 
   - key: dbt-dependencies
-    use: [code, poetry]
+    use: [code, poetry-dbt]
     run: |
       cd test-projects/dbt
+      poetry config virtualenvs.in-project true --local
       poetry install --no-root
     filter:
       - test-projects/dbt/poetry.lock
@@ -353,8 +369,10 @@ tasks:
     use: [dbt-dependencies, visivo-install]
     run: |
       cd test-projects/dbt
-      poetry run dbt seed --profiles-dir .
-      poetry run dbt run --profiles-dir .
+      # dbt runs from its own in-project 3.12 venv (see dbt-dependencies);
+      # visivo comes from visivo-install and runs on 3.14.
+      ./.venv/bin/dbt seed --profiles-dir .
+      ./.venv/bin/dbt run --profiles-dir .
       visivo compile
       visivo run
     filter:

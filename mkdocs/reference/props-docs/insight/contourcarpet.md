@@ -11,7 +11,11 @@ The `contourcarpet` insight type is used to create contour plots over a carpet p
 
 You can control contour levels, colors, and other properties to display data patterns over an underlying carpet plot.
 
-!!! tip "Common Uses" - **Distorted Grids**: Visualizing data over irregular grids or non-linear spaces. - **Engineering Data**: Representing data that spans across irregular dimensions. - **Multivariate Visualization**: Handling data with multiple independent variables.
+!!! tip "Common Uses"
+
+    - **Distorted Grids**: Visualizing data over irregular grids or non-linear spaces.
+    - **Engineering Data**: Representing data that spans across irregular dimensions.
+    - **Multivariate Visualization**: Handling data with multiple independent variables.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Contourcarpet/#attributes) for the full set of configuration options**_
 

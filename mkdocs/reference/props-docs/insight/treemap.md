@@ -11,7 +11,11 @@ The `treemap` insight type is used to create treemap charts, visualizing hierarc
 
 You can customize the colors, labels, hierarchy, and tiling to represent your data effectively.
 
-!!! tip "Common Uses" - **Hierarchical Data Visualization**: Displaying nested data as rectangles. - **Part-to-Whole Relationships**: Visualizing contributions of categories to the whole. - **Categorical Data**: Showing nested categorical breakdowns.
+!!! tip "Common Uses"
+
+    - **Hierarchical Data Visualization**: Displaying nested data as rectangles.
+    - **Part-to-Whole Relationships**: Visualizing contributions of categories to the whole.
+    - **Categorical Data**: Showing nested categorical breakdowns.
 
 !!! warning "Unexpected Behavior"
 The terminal values of a `treemap` must be unique. Values must be unique across all leaf nodes.

@@ -7,7 +7,6 @@
 const URL_PATTERNS = {
   server: {
     project: '/api/project/',
-    explorer: '/api/explorer/',
     error: '/api/error/',
     insightJobsQuery: '/api/insight-jobs/',
     inputJobsQuery: '/api/input-jobs/',
@@ -103,6 +102,16 @@ const URL_PATTERNS = {
     commit: '/api/commit/',
     commitDiscard: '/api/commit/discard/',
 
+    // Cloud-editing endpoints (core/Django only; 404 under local `visivo serve`)
+    projectCapabilities: '/api/projects/{projectId}/capabilities/',
+    projectDraft: '/api/projects/{projectId}/draft/',
+    projectBranch: '/api/projects/{projectId}/branch/',
+    projectChanges: '/api/projects/{projectId}/changes/',
+    projectCommit: '/api/projects/{projectId}/commit/',
+    projectDiscard: '/api/projects/{projectId}/discard/',
+    projectRun: '/api/projects/{projectId}/run/',
+    runLogs: '/api/runs/{runId}/logs/',
+
     // Source schema jobs endpoints
     sourceSchemaJobsList: '/api/source-schema-jobs/',
     sourceSchemaJobDetail: '/api/source-schema-jobs/{name}/',
@@ -138,7 +147,6 @@ const URL_PATTERNS = {
   dist: {
     // Static data endpoints only in dist mode
     project: '/data/project.json',
-    explorer: '/data/explorer.json',
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
     inputJobsQuery: '/data/inputs.json',
@@ -231,6 +239,13 @@ const URL_PATTERNS = {
     commitPending: null,
     commit: null,
     commitDiscard: null,
+
+    // Cloud-editing endpoints (not available in dist)
+    projectCapabilities: null,
+    projectDraft: null,
+    projectBranch: null,
+    projectChanges: null,
+    projectCommit: null,
 
     // Source schema jobs endpoints (not available in dist)
     sourceSchemaJobsList: null,

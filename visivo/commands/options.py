@@ -143,7 +143,7 @@ def threads(function):
     click.option(
         "-th",
         "--threads",
-        help="The max number of threads to use when running trace queries",
+        help="The max number of threads to use when running model and insight queries",
         default=None,
     )(function)
     return function
@@ -171,7 +171,7 @@ def verbose(function):
 
     click.option(
         "--verbose",
-        help="Enable verbose output. Shows full trace names and details in runtime logs.",
+        help="Enable verbose output. Shows full object names and details in runtime logs.",
         is_flag=True,
         default=False,
         callback=set_debug_env,

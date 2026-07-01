@@ -23,6 +23,7 @@ test-results/
 .sandbox/
 .sandbox-publish/
 .sandbox-onb-empty/
+.sandbox-docs/
 viewer/e2e/screenshots/
 viewer/test-results/
 

@@ -31,8 +31,10 @@ export const fetchInput = async name => {
 /**
  * Save an input configuration to cache (draft state)
  */
-export const saveInput = async (name, config) => {
-  const response = await apiFetch(getUrl('inputDetail', { name }), {
+export const saveInput = async (name, config, projectId = null) => {
+  let url = getUrl('inputDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveInput = async (name, config) => {
 /**
  * Delete an input from cache (revert to published version)
  */
-export const deleteInput = async name => {
-  const response = await apiFetch(getUrl('inputDetail', { name }), {
+export const deleteInput = async (name, projectId = null) => {
+  let url = getUrl('inputDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

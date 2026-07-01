@@ -31,8 +31,10 @@ export const fetchModel = async name => {
 /**
  * Save a model configuration to cache (draft state)
  */
-export const saveModel = async (name, config) => {
-  const response = await apiFetch(getUrl('modelDetail', { name }), {
+export const saveModel = async (name, config, projectId = null) => {
+  let url = getUrl('modelDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveModel = async (name, config) => {
 /**
  * Delete a model from cache (revert to published version)
  */
-export const deleteModel = async name => {
-  const response = await apiFetch(getUrl('modelDetail', { name }), {
+export const deleteModel = async (name, projectId = null) => {
+  let url = getUrl('modelDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

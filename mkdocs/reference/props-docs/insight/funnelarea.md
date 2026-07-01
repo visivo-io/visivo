@@ -11,7 +11,11 @@ The `funnelarea` insight type is used to create funnel area charts, which are si
 
 You can control the colors, labels, and orientation of the funnel area sections to visualize proportional data across different stages.
 
-!!! tip "Common Uses" - **Proportional Stages**: Showing the proportion of data at each stage in a circular format. - **Conversion Rates**: Visualizing the drop-off rates in different stages of a process. - **Sales and Marketing Funnels**: Representing funnels like leads-to-sales in a circular format.
+!!! tip "Common Uses"
+
+    - **Proportional Stages**: Showing the proportion of data at each stage in a circular format.
+    - **Conversion Rates**: Visualizing the drop-off rates in different stages of a process.
+    - **Sales and Marketing Funnels**: Representing funnels like leads-to-sales in a circular format.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attributes) for the full set of configuration options**_
 

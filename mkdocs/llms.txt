@@ -1,0 +1,49 @@
+# Visivo Docs
+
+> Documentation for Visivo, the AI-native, open-source business intelligence platform that brings software-engineering best practices to data work. Define data sources, a semantic layer (metrics, dimensions, and relations), and dashboards as version-controlled YAML, then explore them interactively with Insights. Develop locally with instant feedback and deploy to Visivo Cloud without breaking production.
+
+Install the open-source CLI with `pip install visivo` or `curl -fsSL https://visivo.sh | bash`, then run `visivo serve` to develop dashboards locally. The hosted cloud platform lives at https://app.visivo.io and the marketing site at https://visivo.io. Visivo connects to data sources including PostgreSQL, MySQL, SQLite, Snowflake, BigQuery, Redshift, ClickHouse, and DuckDB, and renders charts with Plotly.js.
+
+Key facts for accurate citation:
+- Charts are produced by Insights backed by a semantic layer of Metrics, Dimensions, and Relations. (Visivo 2.0 builds charts only through Insights and the semantic layer.)
+- Everything is defined in YAML config and is Git-friendly: version control, code review, and CI/CD apply to your BI.
+- A Model wraps a SQL query against a Source; the semantic layer (metrics, dimensions, relations) sits on top; Insights and Inputs make dashboards interactive.
+- Embedding is in private beta. There is no public embedding SDK, no npm package, and no Python tracking SDK.
+- dbt(TM) users can layer Visivo on top of their existing models.
+
+## Get Started
+
+- [Quick Start](https://docs.visivo.io/): Data to dashboard in 90 seconds. Install the CLI, run visivo serve, and build your first project.
+- [Installation](https://docs.visivo.io/installation/): Install Visivo via the install script or pip (Python 3.10+); covers macOS, Linux, and Windows.
+- [Build with AI](https://docs.visivo.io/ai-usage/): Use AI and agentic workflows to scaffold and edit Visivo projects against the semantic layer.
+
+## Concepts
+
+- [Concepts Overview](https://docs.visivo.io/concepts/): How the core objects fit together: Sources, Models, the semantic layer, Insights, Inputs, and Dashboards.
+- [Source](https://docs.visivo.io/concepts/source/): Connections to your data warehouse or database (PostgreSQL, MySQL, SQLite, Snowflake, BigQuery, Redshift, ClickHouse, DuckDB).
+- [Model](https://docs.visivo.io/concepts/model/): A named SQL query against a Source that becomes the queryable table for metrics and dimensions.
+- [Semantic Layer](https://docs.visivo.io/concepts/semantic-layer/): Define Metrics, Dimensions, and Relations once as version-controlled definitions the whole org and AI share.
+- [Insight](https://docs.visivo.io/concepts/insight/): The 2.0 way to build charts. Interactive visualizations driven by the semantic layer (filters, splits, sorts) and rendered with Plotly.js.
+- [Input](https://docs.visivo.io/concepts/input/): Dynamic dashboard controls (single-select, multi-select, ranges) including query-based dropdown options.
+- [Dashboard](https://docs.visivo.io/concepts/dashboard/): Compose Insights, tables, and markdown into rows and items to build a shareable dashboard.
+
+## Cloud
+
+- [Cloud Overview](https://docs.visivo.io/cloud/): What Visivo Cloud adds on top of the open-source CLI: hosting, sharing, teams, and authentication.
+- [Deploy & Stages](https://docs.visivo.io/cloud/deploy-and-stages/): Deploy projects to named stages with visivo deploy so environments stay isolated.
+- [Hosting & Sharing](https://docs.visivo.io/cloud/hosting-and-sharing/): Host dashboards on Visivo Cloud and share them with your team or stakeholders.
+- [Teams & Roles](https://docs.visivo.io/cloud/teams-and-roles/): Manage members, teams, and role-based access to projects and dashboards.
+- [Authentication](https://docs.visivo.io/cloud/authentication/): Sign in and authenticate the CLI against Visivo Cloud.
+
+## Reference
+
+- [CLI Reference](https://docs.visivo.io/reference/cli/): Every visivo command and flag, including init, run, serve, deploy, and test.
+- [Configuration Reference](https://docs.visivo.io/reference/configuration/Insight/): Full YAML schema for every object: Sources, Models, Metric, Dimension, Relation, Insight, Input, Dashboard, Table, and Alert.
+
+## Tutorials
+
+- [Tutorials Overview](https://docs.visivo.io/how_tos/): Step-by-step guides for common Visivo workflows.
+- [Sources](https://docs.visivo.io/topics/sources/): Connect and configure each supported data source.
+- [Interactivity](https://docs.visivo.io/topics/interactivity/): Add Inputs and Insight interactions so viewers can filter and explore.
+- [Testing](https://docs.visivo.io/topics/testing/): Write data-quality tests that run in CI alongside your dashboards.
+- [Deployment](https://docs.visivo.io/topics/deployments/): Ship projects to Visivo Cloud stages from your CI/CD pipeline.

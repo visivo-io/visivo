@@ -11,7 +11,11 @@ The `image` insight type is used to display raster images in a plot. This is par
 
 You can customize the image size, position, and color scaling to represent image data effectively. Images can be used in scientific visualizations, geographic data, or any scenario where image data is needed.
 
-!!! tip "Common Uses" - **Raster Images**: Displaying raster images in data visualizations. - **Geographic Maps**: Visualizing maps or satellite images. - **Image Data**: Rendering images directly as part of data exploration and analysis.
+!!! tip "Common Uses"
+
+    - **Raster Images**: Displaying raster images in data visualizations.
+    - **Geographic Maps**: Visualizing maps or satellite images.
+    - **Image Data**: Rendering images directly as part of data exploration and analysis.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Image/#attributes) for the full set of configuration options**_
 

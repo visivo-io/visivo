@@ -31,8 +31,10 @@ export const fetchChart = async name => {
 /**
  * Save a chart configuration to cache (draft state)
  */
-export const saveChart = async (name, config) => {
-  const response = await apiFetch(getUrl('chartDetail', { name }), {
+export const saveChart = async (name, config, projectId = null) => {
+  let url = getUrl('chartDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveChart = async (name, config) => {
 /**
  * Delete a chart from cache (revert to published version)
  */
-export const deleteChart = async name => {
-  const response = await apiFetch(getUrl('chartDetail', { name }), {
+export const deleteChart = async (name, projectId = null) => {
+  let url = getUrl('chartDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

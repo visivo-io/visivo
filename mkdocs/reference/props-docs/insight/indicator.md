@@ -11,7 +11,11 @@ The `indicator` insight type is used to create key performance indicator (KPI) v
 
 You can customize the gauge, delta values, colors, and text annotations to represent your data effectively. Indicator plots are widely used in dashboards and reporting.
 
-!!! tip "Common Uses" - **KPI Dashboards**: Displaying key metrics, progress, or performance indicators. - **Gauges**: Visualizing values as a gauge to track goals or targets. - **Highlighting Change**: Showing the difference between two points in time.
+!!! tip "Common Uses"
+
+    - **KPI Dashboards**: Displaying key metrics, progress, or performance indicators.
+    - **Gauges**: Visualizing values as a gauge to track goals or targets.
+    - **Highlighting Change**: Showing the difference between two points in time.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Indicator/#attributes) for the full set of configuration options**_
 

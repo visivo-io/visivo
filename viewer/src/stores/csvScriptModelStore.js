@@ -26,7 +26,8 @@ const createCsvScriptModelSlice = (set, get) => ({
   // Save csv script model to cache
   saveCsvScriptModel: async (name, config) => {
     try {
-      const result = await csvScriptModelsApi.saveCsvScriptModel(name, config);
+      const projectId = get().project?.id;
+      const result = await csvScriptModelsApi.saveCsvScriptModel(name, config, projectId);
       await get().fetchCsvScriptModels();
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();
@@ -40,7 +41,8 @@ const createCsvScriptModelSlice = (set, get) => ({
   // Mark csv script model for deletion
   deleteCsvScriptModel: async name => {
     try {
-      await csvScriptModelsApi.deleteCsvScriptModel(name);
+      const projectId = get().project?.id;
+      await csvScriptModelsApi.deleteCsvScriptModel(name, projectId);
       await get().fetchCsvScriptModels();
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();

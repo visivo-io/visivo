@@ -96,7 +96,9 @@ class TestCIDetection:
 
         # Also mock os.path.exists to return False for /.dockerenv
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         assert is_ci_environment() is False
@@ -165,7 +167,9 @@ class TestCIMachineId:
 
         # Mock os.path.exists to return False for /.dockerenv
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -209,7 +213,9 @@ class TestCIMachineId:
 
         # Mock os.path.exists to return False for /.dockerenv
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -269,7 +275,9 @@ class TestCIMachineId:
 
         # Mock os.path.exists to return False for /.dockerenv
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         cli_event2 = CLIEvent.create(command="test", command_args=[], duration_ms=100, success=True)

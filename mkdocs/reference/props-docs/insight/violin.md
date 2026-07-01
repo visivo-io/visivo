@@ -11,7 +11,11 @@ The `violin` insight type is used to create violin plots, visualizing the distri
 
 You can customize the orientation, box overlay, points, and colors to represent your distribution data effectively.
 
-!!! tip "Common Uses" - **Distribution Analysis**: Visualizing the distribution of numerical data, similar to box plots but with density information. - **Comparing Categories**: Comparing distributions across multiple categories. - **Outlier Detection**: Identifying outliers and distribution shape.
+!!! tip "Common Uses"
+
+    - **Distribution Analysis**: Visualizing the distribution of numerical data, similar to box plots but with density information.
+    - **Comparing Categories**: Comparing distributions across multiple categories.
+    - **Outlier Detection**: Identifying outliers and distribution shape.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Violin/#attributes) for the full set of configuration options**_
 

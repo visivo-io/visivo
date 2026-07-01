@@ -6,7 +6,6 @@ from visivo.logger.logger import Logger
 Logger.instance().debug("Compiling project...")
 import json
 
-from visivo.parsers.serializer import Serializer
 from visivo.commands.parse_project_phase import parse_project_phase
 
 import_duration = round(time() - compile_import_start, 2)
@@ -57,33 +56,15 @@ def compile_phase(
     # Collect project metrics for telemetry
     _collect_compile_telemetry(project)
 
-    # Track artifacts writing
-    artifacts_start = time()
-    Logger.instance().debug("    Writing artifacts...")
-
-    # Use single Serializer instance for both operations
-    serializer = Serializer(project=project)
-
-    with open(f"{output_dir}/project.json", "w") as fp:
-        fp.write(serializer.dereference().model_dump_json(exclude_none=True))
-
-    explorer_data = serializer.create_flattened_project()
-    with open(f"{output_dir}/explorer.json", "w") as fp:
-        json.dump(explorer_data, fp)
-
     with open(f"{output_dir}/error.json", "w") as fp:
         fp.write(json.dumps({}))
-
-    artifacts_duration = round(time() - artifacts_start, 2)
-    Logger.instance().debug(f"Project artifacts written in {artifacts_duration}s")
 
     total_duration = round(time() - parse_start, 2)
 
     Logger.instance().success(
         f"Compile completed in {total_duration}s "
         f"imports: {import_duration}s, "
-        f"parse: {parse_duration}s, "
-        f"artifacts: {artifacts_duration}s, "
+        f"parse: {parse_duration}s"
     )
 
     return project

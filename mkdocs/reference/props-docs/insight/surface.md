@@ -11,7 +11,11 @@ The `surface` insight type is used to create 3D surface plots, visualizing the r
 
 You can customize the colorscale, lighting, and contours to represent your 3D data effectively.
 
-!!! tip "Common Uses" - **3D Data Visualization**: Showing relationships between three variables. - **Topographical Maps**: Representing elevation or landscape contours. - **3D Heatmaps**: Visualizing intensity or magnitude variations in three dimensions.
+!!! tip "Common Uses"
+
+    - **3D Data Visualization**: Showing relationships between three variables.
+    - **Topographical Maps**: Representing elevation or landscape contours.
+    - **3D Heatmaps**: Visualizing intensity or magnitude variations in three dimensions.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attributes) for the full set of configuration options**_
 

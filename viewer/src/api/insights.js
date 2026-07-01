@@ -31,8 +31,10 @@ export const fetchInsight = async name => {
 /**
  * Save an insight configuration to cache (draft state)
  */
-export const saveInsight = async (name, config) => {
-  const response = await apiFetch(getUrl('insightDetail', { name }), {
+export const saveInsight = async (name, config, projectId = null) => {
+  let url = getUrl('insightDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveInsight = async (name, config) => {
 /**
  * Delete an insight from cache (revert to published version)
  */
-export const deleteInsight = async name => {
-  const response = await apiFetch(getUrl('insightDetail', { name }), {
+export const deleteInsight = async (name, projectId = null) => {
+  let url = getUrl('insightDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

@@ -32,6 +32,9 @@ export default defineConfig({
         '**/build-mode-publish.spec.mjs',
         '**/external-edit-banner.spec.mjs',
         '**/library-inline-create.spec.mjs',
+        // Docs specs run against the docs sandbox (:8003) via
+        // playwright.docs.config.mjs — never against the viewer sandbox.
+        '**/e2e/docs/**',
       ],
     },
     {

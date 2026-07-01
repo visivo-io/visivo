@@ -13,12 +13,12 @@ InsightRef: TypeAlias = generate_ref_field(Insight)
 class Chart(NamedModel, ParentModel):
     """
     ## Overview
-    Charts enable you to combine one or more [insights](../Insight/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_.
+    Charts enable you to combine one or more [insights](../Insight/) with [layout](./Layout/) configurations _(titles, axis labels, etc.)_.
 
     !!! tip
 
         You can add insights of **different types** to a chart. For example, you may want to display an [`indicator`](../Insight/Props/Indicator/)
-        on top of a [`bar`](../Insight/Props/Bar/) to show how what the bars add up to.
+        on top of a [`bar`](../Insight/Props/Bar/) to show what the bars add up to.
 
     You can configure interactivity in your charts by wiring up [`inputs`](../Inputs/SingleSelectInput/).
 

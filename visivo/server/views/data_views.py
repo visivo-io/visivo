@@ -8,14 +8,6 @@ from visivo.telemetry.config import is_telemetry_enabled
 
 
 def register_data_views(app, flask_app, output_dir):
-    @app.route("/api/explorer/")
-    def explorer_api():
-        if os.path.exists(f"{output_dir}/explorer.json"):
-            with open(f"{output_dir}/explorer.json", "r") as f:
-                return json.load(f)
-        else:
-            return json.dumps({})
-
     @app.route("/api/schema/")
     def schema_api():
         if os.path.exists(SCHEMA_FILE):

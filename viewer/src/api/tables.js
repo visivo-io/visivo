@@ -31,8 +31,10 @@ export const fetchTable = async name => {
 /**
  * Save a table configuration to cache (draft state)
  */
-export const saveTable = async (name, config) => {
-  const response = await apiFetch(getUrl('tableDetail', { name }), {
+export const saveTable = async (name, config, projectId = null) => {
+  let url = getUrl('tableDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveTable = async (name, config) => {
 /**
  * Delete a table from cache (revert to published version)
  */
-export const deleteTable = async name => {
-  const response = await apiFetch(getUrl('tableDetail', { name }), {
+export const deleteTable = async (name, projectId = null) => {
+  let url = getUrl('tableDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

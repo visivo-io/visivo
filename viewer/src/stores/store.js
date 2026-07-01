@@ -16,6 +16,8 @@ import createMarkdownSlice from './markdownStore';
 import createChartSlice from './chartStore';
 import createTableSlice from './tableStore';
 import createCommitSlice from './commitStore';
+import createBranchingSlice from './branchingStore';
+import createRunSlice from './runStore';
 import createDefaultsSlice from './defaultsStore';
 import createDashboardSlice from './dashboardStore';
 import createInlineCreateSlice from './inlineCreateStore';
@@ -46,6 +48,8 @@ const useStore = create(
     ...createChartSlice(...a),
     ...createTableSlice(...a),
     ...createCommitSlice(...a),
+    ...createBranchingSlice(...a),
+    ...createRunSlice(...a),
     ...createDefaultsSlice(...a),
     ...createDashboardSlice(...a),
     ...createInlineCreateSlice(...a),

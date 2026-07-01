@@ -1,13 +1,21 @@
 /**
- * publishStore tests (VIS-806 / Track H H-1).
+ * commitStore tests (VIS-806 / Track H H-1, aligned to the backend-agnostic
+ * /api/projects/<id>/changes/ + /commit/ endpoints).
  *
- * The publish slice drives the commit affordance (TopNav Commit button + CommitModal): live pending-change
- * count, the global save-activity counter, Publish (flush draft cache to
- * YAML) and Discard (drop the draft cache, Q14 rollback).
+ * The commit slice drives the commit affordance (TopNav Commit button +
+ * CommitModal): live pending-change count, the global save-activity counter,
+ * Commit (flush draft cache to YAML / publish the draft) and Discard (drop
+ * the draft cache, Q14 rollback).
  */
 import useStore from './store';
-import * as publishApi from '../api/commit';
+import * as branchingApi from '../api/branching';
+import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/new-views/workspace/telemetry';
+
+jest.mock('../api/branching', () => ({
+  fetchChanges: jest.fn(),
+  commitDraft: jest.fn(),
+}));
 
 jest.mock('../api/commit', () => ({
   getCommitStatus: jest.fn(),
@@ -23,7 +31,7 @@ jest.mock('../components/new-views/workspace/telemetry', () => ({
   setWorkspaceTelemetryListener: jest.fn(),
 }));
 
-// Every named-child fetcher the publish/discard flows refresh — stubbed so
+// Every named-child fetcher the commit/discard flows refresh — stubbed so
 // the post-flush Promise.all never hits the network from jsdom.
 const FETCHER_KEYS = [
   'fetchSources',
@@ -42,7 +50,7 @@ const FETCHER_KEYS = [
   'fetchDefaults',
 ];
 
-describe('publishStore (VIS-806)', () => {
+describe('commitStore (VIS-806)', () => {
   let fetcherStubs;
 
   beforeEach(() => {
@@ -52,6 +60,7 @@ describe('publishStore (VIS-806)', () => {
     );
     useStore.setState({
       ...fetcherStubs,
+      project: { id: 'proj-1' },
       hasUncommittedChanges: false,
       pendingChanges: [],
       pendingCount: 0,
@@ -66,17 +75,19 @@ describe('publishStore (VIS-806)', () => {
   });
 
   describe('checkCommitStatus', () => {
-    test('sets count, list, and boolean from the pending endpoint', async () => {
-      publishApi.getPendingChanges.mockResolvedValue({
-        pending: [
+    test('sets count, list, and boolean from /changes/', async () => {
+      branchingApi.fetchChanges.mockResolvedValue({
+        to_publish: [
           { name: 'a', type: 'chart', status: 'new' },
           { name: 'b', type: 'dashboard', status: 'modified' },
         ],
-        count: 2,
+        to_remove: [],
+        has_changes: true,
       });
 
       await useStore.getState().checkCommitStatus();
 
+      expect(branchingApi.fetchChanges).toHaveBeenCalledWith('proj-1');
       const state = useStore.getState();
       expect(state.pendingCount).toBe(2);
       expect(state.hasUncommittedChanges).toBe(true);
@@ -85,7 +96,7 @@ describe('publishStore (VIS-806)', () => {
 
     test('falls back to clean state when the endpoint is unavailable', async () => {
       useStore.setState({ pendingCount: 5, hasUncommittedChanges: true });
-      publishApi.getPendingChanges.mockRejectedValue(new Error('404'));
+      branchingApi.fetchChanges.mockRejectedValue(new Error('404'));
 
       await useStore.getState().checkCommitStatus();
 
@@ -95,14 +106,30 @@ describe('publishStore (VIS-806)', () => {
       expect(state.pendingChanges).toEqual([]);
     });
 
-    test('derives the count from the list when the endpoint omits it', async () => {
-      publishApi.getPendingChanges.mockResolvedValue({
-        pending: [{ name: 'a', type: 'chart', status: 'new' }],
+    test('combines to_publish and to_remove into the pending list', async () => {
+      branchingApi.fetchChanges.mockResolvedValue({
+        to_publish: [{ name: 'a', type: 'chart', status: 'new' }],
+        to_remove: [{ name: 'b', type: 'table', status: 'deleted' }],
+        has_changes: true,
       });
 
       await useStore.getState().checkCommitStatus();
 
-      expect(useStore.getState().pendingCount).toBe(1);
+      expect(useStore.getState().pendingCount).toBe(2);
+      expect(useStore.getState().pendingChanges).toEqual([
+        { name: 'a', type: 'chart', status: 'new' },
+        { name: 'b', type: 'table', status: 'deleted' },
+      ]);
+    });
+
+    test('fails closed without an active project', async () => {
+      useStore.setState({ project: null, pendingCount: 3, hasUncommittedChanges: true });
+
+      await useStore.getState().checkCommitStatus();
+
+      expect(branchingApi.fetchChanges).not.toHaveBeenCalled();
+      expect(useStore.getState().pendingCount).toBe(0);
+      expect(useStore.getState().hasUncommittedChanges).toBe(false);
     });
   });
 
@@ -139,7 +166,10 @@ describe('publishStore (VIS-806)', () => {
         hasUncommittedChanges: true,
         commitModalOpen: true,
       });
-      publishApi.commitChanges.mockResolvedValue({ published_count: 3 });
+      branchingApi.commitDraft.mockResolvedValue({
+        status: 200,
+        body: { published_count: 3 },
+      });
 
       const result = await useStore.getState().commitChanges();
 
@@ -153,18 +183,56 @@ describe('publishStore (VIS-806)', () => {
       FETCHER_KEYS.forEach(key => expect(fetcherStubs[key]).toHaveBeenCalled());
     });
 
-    test('surfaces the error and keeps pending state on failure', async () => {
+    test('a cloud 201 publish is terminal success', async () => {
+      branchingApi.commitDraft.mockResolvedValue({ status: 201, body: {} });
+
+      const result = await useStore.getState().commitChanges();
+
+      expect(result.success).toBe(true);
+      expect(useStore.getState().hasUncommittedChanges).toBe(false);
+    });
+
+    test('a 200 committed:false is a no-op, not an error', async () => {
       useStore.setState({ pendingCount: 2, hasUncommittedChanges: true });
-      publishApi.commitChanges.mockRejectedValue(new Error('YAML write failed'));
+      branchingApi.commitDraft.mockResolvedValue({
+        status: 200,
+        body: { committed: false, detail: 'Nothing to commit' },
+      });
 
       const result = await useStore.getState().commitChanges();
 
       expect(result.success).toBe(false);
+      expect(result.committed).toBe(false);
+      expect(useStore.getState().commitError).toBeNull();
+      expect(useStore.getState().pendingCount).toBe(2);
+      expect(emitFirstPublishTelemetry).not.toHaveBeenCalled();
+    });
+
+    test('surfaces the error and keeps pending state on a 4xx gate', async () => {
+      useStore.setState({ pendingCount: 2, hasUncommittedChanges: true });
+      branchingApi.commitDraft.mockResolvedValue({
+        status: 422,
+        body: { detail: 'YAML write failed', action: 'invalid' },
+      });
+
+      const result = await useStore.getState().commitChanges();
+
+      expect(result.success).toBe(false);
+      expect(result.action).toBe('invalid');
       const state = useStore.getState();
       expect(state.commitError).toBe('YAML write failed');
       expect(state.commitLoading).toBe(false);
       expect(state.pendingCount).toBe(2);
       expect(emitFirstPublishTelemetry).not.toHaveBeenCalled();
+    });
+
+    test('refuses without an active project', async () => {
+      useStore.setState({ project: null });
+
+      const result = await useStore.getState().commitChanges();
+
+      expect(result.success).toBe(false);
+      expect(branchingApi.commitDraft).not.toHaveBeenCalled();
     });
   });
 
@@ -172,7 +240,11 @@ describe('publishStore (VIS-806)', () => {
     test('shows the external-edit banner and refetches when drafts were dropped', async () => {
       const fetchProject = jest.fn().mockResolvedValue(undefined);
       useStore.setState({ fetchProject, externalEditBannerVisible: false });
-      publishApi.getPendingChanges.mockResolvedValue({ pending: [], count: 0 });
+      branchingApi.fetchChanges.mockResolvedValue({
+        to_publish: [],
+        to_remove: [],
+        has_changes: false,
+      });
 
       await useStore.getState().refreshFromProjectChange({ draftsDropped: true });
 
@@ -184,7 +256,11 @@ describe('publishStore (VIS-806)', () => {
     test('a clean recompile refetches without showing the banner', async () => {
       const fetchProject = jest.fn().mockResolvedValue(undefined);
       useStore.setState({ fetchProject, externalEditBannerVisible: false });
-      publishApi.getPendingChanges.mockResolvedValue({ pending: [], count: 0 });
+      branchingApi.fetchChanges.mockResolvedValue({
+        to_publish: [],
+        to_remove: [],
+        has_changes: false,
+      });
 
       await useStore.getState().refreshFromProjectChange({ draftsDropped: false });
 
@@ -202,7 +278,7 @@ describe('publishStore (VIS-806)', () => {
   describe('discardChanges', () => {
     test('drops pending state and refreshes every collection (canvas revert)', async () => {
       useStore.setState({ pendingCount: 4, hasUncommittedChanges: true });
-      publishApi.discardChanges.mockResolvedValue({ discarded_count: 4 });
+      commitApi.discardChanges.mockResolvedValue({ discarded_count: 4 });
 
       const result = await useStore.getState().discardChanges();
 
@@ -216,7 +292,7 @@ describe('publishStore (VIS-806)', () => {
 
     test('reports failure without clearing pending state', async () => {
       useStore.setState({ pendingCount: 4, hasUncommittedChanges: true });
-      publishApi.discardChanges.mockRejectedValue(new Error('boom'));
+      commitApi.discardChanges.mockRejectedValue(new Error('boom'));
 
       const result = await useStore.getState().discardChanges();
 

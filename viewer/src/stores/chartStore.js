@@ -29,7 +29,8 @@ const createChartSlice = (set, get) => ({
   // Save chart to cache
   saveChart: async (name, config) => {
     try {
-      const result = await chartsApi.saveChart(name, config);
+      const projectId = get().project?.id;
+      const result = await chartsApi.saveChart(name, config, projectId);
       // Refresh charts list to get updated status
       await get().fetchCharts();
       // Trigger commit status check
@@ -45,7 +46,8 @@ const createChartSlice = (set, get) => ({
   // Mark chart for deletion (will be removed from YAML on commit)
   deleteChart: async name => {
     try {
-      await chartsApi.deleteChart(name);
+      const projectId = get().project?.id;
+      await chartsApi.deleteChart(name, projectId);
       await get().fetchCharts();
       // Trigger commit status check
       if (get().checkCommitStatus) {

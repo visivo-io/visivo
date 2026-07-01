@@ -1,4 +1,10 @@
 site_name: Visivo Docs
+site_url: https://docs.visivo.io
+site_description: Documentation for Visivo, the AI-native open-source BI-as-code platform.
+  Define data sources, a semantic layer of metrics, dimensions, and relations, and
+  dashboards as version-controlled YAML, then explore them interactively with Insights.
+  Develop locally with visivo serve and deploy to Visivo Cloud.
+site_author: Visivo
 plugins:
   - mkdocs-video
   - autolinks
@@ -25,7 +31,11 @@ markdown_extensions:
   - mkdocs-click
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid-vz
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - attr_list
   - abbr
   - pymdownx.snippets
@@ -40,13 +50,25 @@ markdown_extensions:
           - mkdocs/overrides/.icons
 repo_url: https://github.com/visivo-io/visivo
 repo_name: visivo-io/visivo
+edit_uri: edit/main/mkdocs/
 theme:
   name: material
   custom_dir: mkdocs/overrides
+  font: false
   features:
     - content.tabs.link
     - navigation.indexes
     - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.prune
+    - navigation.top
+    - navigation.path
+    - navigation.tracking
+    - navigation.instant
+    - navigation.footer
+    - toc.follow
+    - content.action.edit
     - content.tooltips
     - content.code.annotate
     - content.code.copy
@@ -54,6 +76,10 @@ theme:
   favicon: assets/favicon_io/favicon-32x32.png
   icon:
     annotation: material/arrow-right-circle
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    previous: material/chevron-left
+    next: material/chevron-right
   palette:
     - media: '(prefers-color-scheme: light)'
       scheme: visivo_light
@@ -74,21 +100,46 @@ extra:
 extra_css:
   - stylesheets/brand_colors.css
   - stylesheets/icon-colors.css
+  - stylesheets/extra.css
+extra_javascript:
+  - javascripts/mermaid-init.js
 nav:
-  - Quick Start: index.md
-  - AI Usage: ai-usage.md
-  - Installation: installation.md
-  - Change Log: https://github.com/visivo-io/visivo/releases
-  - Topics:
-      - Linting: topics/linting.md
-      - Including: topics/including.md
+  - Get Started:
+      - Quick Start: index.md
+      - Installation: installation.md
+      - Build with AI: ai-usage.md
+      - Change Log: https://github.com/visivo-io/visivo/releases
+  - Tutorials:
+      - Overview: how_tos.md
+      - Use Cases: use_cases.md
       - Sources: topics/sources.md
-      - Environment Variables: topics/environment-variables.md
-      - Deployment: topics/deployments.md
-      - Testing: topics/testing.md
+      - Source Types: topics/source-types.md
+      - Semantic Layer: topics/semantic-layer.md
       - Interactivity: topics/interactivity.md
+      - Inputs: topics/inputs.md
+      - Including: topics/including.md
+      - Environment Variables: topics/environment-variables.md
+      - Linting: topics/linting.md
+      - Testing: topics/testing.md
       - Annotations & Shapes: topics/annotations.md
+      - CI/CD for BI: topics/ci-cd.md
+      - Deployment: topics/deployments.md
       - Telemetry: topics/telemetry.md
+  - Concepts:
+      - Overview: concepts/index.md
+      - Architecture: concepts/architecture.md
+      - Source: concepts/source.md
+      - Model: concepts/model.md
+      - Semantic Layer: concepts/semantic-layer.md
+      - Insight: concepts/insight.md
+      - Input: concepts/input.md
+      - Dashboard: concepts/dashboard.md
+  - Cloud:
+      - Overview: cloud/index.md
+      - Deploy & Stages: cloud/deploy-and-stages.md
+      - Hosting & Sharing: cloud/hosting-and-sharing.md
+      - Teams & Roles: cloud/teams-and-roles.md
+      - Authentication: cloud/authentication.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
@@ -144,104 +195,7 @@ nav:
               - InsightInteraction:
                   - reference/configuration/Insight/InsightInteraction/index.md
               - Props:
-                  - Area: &id001
-                      - reference/configuration/Insight/Props/Scatter/index.md
-                  - Bar:
-                      - reference/configuration/Insight/Props/Bar/index.md
-                  - Barpolar:
-                      - reference/configuration/Insight/Props/Barpolar/index.md
-                  - Box:
-                      - reference/configuration/Insight/Props/Box/index.md
-                  - Candlestick:
-                      - reference/configuration/Insight/Props/Candlestick/index.md
-                  - Carpet:
-                      - reference/configuration/Insight/Props/Carpet/index.md
-                  - Choropleth:
-                      - reference/configuration/Insight/Props/Choropleth/index.md
-                  - Choroplethmap:
-                      - reference/configuration/Insight/Props/Choroplethmap/index.md
-                  - Choroplethmapbox:
-                      - reference/configuration/Insight/Props/Choroplethmapbox/index.md
-                  - Cone:
-                      - reference/configuration/Insight/Props/Cone/index.md
-                  - Contour:
-                      - reference/configuration/Insight/Props/Contour/index.md
-                  - Contourcarpet:
-                      - reference/configuration/Insight/Props/Contourcarpet/index.md
-                  - Densitymap:
-                      - reference/configuration/Insight/Props/Densitymap/index.md
-                  - Densitymapbox:
-                      - reference/configuration/Insight/Props/Densitymapbox/index.md
-                  - Funnel:
-                      - reference/configuration/Insight/Props/Funnel/index.md
-                  - Funnelarea:
-                      - reference/configuration/Insight/Props/Funnelarea/index.md
-                  - Heatmap:
-                      - reference/configuration/Insight/Props/Heatmap/index.md
-                  - Histogram:
-                      - reference/configuration/Insight/Props/Histogram/index.md
-                  - Histogram2d:
-                      - reference/configuration/Insight/Props/Histogram2d/index.md
-                  - Histogram2dcontour:
-                      - reference/configuration/Insight/Props/Histogram2dcontour/index.md
-                  - Icicle:
-                      - reference/configuration/Insight/Props/Icicle/index.md
-                  - Image:
-                      - reference/configuration/Insight/Props/Image/index.md
-                  - Indicator:
-                      - reference/configuration/Insight/Props/Indicator/index.md
-                  - Isosurface:
-                      - reference/configuration/Insight/Props/Isosurface/index.md
-                  - Line: *id001
-                  - Mesh3d:
-                      - reference/configuration/Insight/Props/Mesh3d/index.md
-                  - Ohlc:
-                      - reference/configuration/Insight/Props/Ohlc/index.md
-                  - Parcats:
-                      - reference/configuration/Insight/Props/Parcats/index.md
-                  - Parcoords:
-                      - reference/configuration/Insight/Props/Parcoords/index.md
-                  - Pie:
-                      - reference/configuration/Insight/Props/Pie/index.md
-                  - Sankey:
-                      - reference/configuration/Insight/Props/Sankey/index.md
-                  - Scatter: *id001
-                  - Scatter3d:
-                      - reference/configuration/Insight/Props/Scatter3d/index.md
-                  - Scattercarpet:
-                      - reference/configuration/Insight/Props/Scattercarpet/index.md
-                  - Scattergeo:
-                      - reference/configuration/Insight/Props/Scattergeo/index.md
-                  - Scattergl:
-                      - reference/configuration/Insight/Props/Scattergl/index.md
-                  - Scattermap:
-                      - reference/configuration/Insight/Props/Scattermap/index.md
-                  - Scattermapbox:
-                      - reference/configuration/Insight/Props/Scattermapbox/index.md
-                  - Scatterpolar:
-                      - reference/configuration/Insight/Props/Scatterpolar/index.md
-                  - Scatterpolargl:
-                      - reference/configuration/Insight/Props/Scatterpolargl/index.md
-                  - Scattersmith:
-                      - reference/configuration/Insight/Props/Scattersmith/index.md
-                  - Scatterternary:
-                      - reference/configuration/Insight/Props/Scatterternary/index.md
-                  - Splom:
-                      - reference/configuration/Insight/Props/Splom/index.md
-                  - Streamtube:
-                      - reference/configuration/Insight/Props/Streamtube/index.md
-                  - Sunburst:
-                      - reference/configuration/Insight/Props/Sunburst/index.md
-                  - Surface:
-                      - reference/configuration/Insight/Props/Surface/index.md
-                  - Treemap:
-                      - reference/configuration/Insight/Props/Treemap/index.md
-                  - Violin:
-                      - reference/configuration/Insight/Props/Violin/index.md
-                  - Volume:
-                      - reference/configuration/Insight/Props/Volume/index.md
-                  - Waterfall:
-                      - reference/configuration/Insight/Props/Waterfall/index.md
+                  - reference/configuration/Insight/Props/index.md
           - Markdown:
               - reference/configuration/Markdown/index.md
           - Metric:
@@ -287,6 +241,10 @@ nav:
       - Functions:
           - Run Time:
               - reference/functions/runtime_functions/index.md
-  - Background:
+  - Compare:
+      - Overview: compare.md
       - Viewpoint: viewpoint.md
+  - About:
+      - background/index.md
       - How It Works: how_it_works.md
+      - Editorial Guidelines: contributing/editorial-guidelines.md

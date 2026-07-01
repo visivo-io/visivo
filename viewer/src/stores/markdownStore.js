@@ -29,7 +29,8 @@ const createMarkdownSlice = (set, get) => ({
   // Save markdown to cache
   saveMarkdown: async (name, config) => {
     try {
-      const result = await markdownsApi.saveMarkdown(name, config);
+      const projectId = get().project?.id;
+      const result = await markdownsApi.saveMarkdown(name, config, projectId);
       // Refresh markdowns list to get updated status
       await get().fetchMarkdowns();
       // Trigger commit status check
@@ -45,7 +46,8 @@ const createMarkdownSlice = (set, get) => ({
   // Mark markdown for deletion (will be removed from YAML on commit)
   deleteMarkdown: async name => {
     try {
-      await markdownsApi.deleteMarkdown(name);
+      const projectId = get().project?.id;
+      await markdownsApi.deleteMarkdown(name, projectId);
       await get().fetchMarkdowns();
       // Trigger commit status check
       if (get().checkCommitStatus) {

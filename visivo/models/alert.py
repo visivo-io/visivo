@@ -6,31 +6,39 @@ from visivo.models.destinations.fields import DestinationField
 from visivo.models.test_run import TestRun
 from visivo.models.base.named_model import NamedModel
 
-"""
-Alerts fire when their `if` expression evaluates to true after a `visivo
-test` run. They forward the result to one or more destinations (Slack,
-email, console, etc.).
-
-### Example
-``` yaml
-alerts:
-    - name: Example Alert
-      if: >{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }
-      destinations:
-        - ${ ref(Production Slack) }
-        - ${ ref(Production Email) }
-```
-"""
-
 
 class Alert(NamedModel):
+    """
+    Alerts fire when their `if` expression evaluates to true after a `visivo
+    test` run. They forward the result to one or more destinations (Slack,
+    email, console).
+
+    The `if` expression is a `>{ ... }` eval string. The `anyTestFailed()`
+    helper returns true when at least one test in the run failed, and
+    `env.VARIABLE_NAME` exposes environment variables so you can scope
+    alerts to specific environments.
+
+    ### Example
+    ``` yaml
+    alerts:
+        - name: Example Alert
+          if: >{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }
+          destinations:
+            - ${ ref(Production Slack) }
+            - ${ ref(Production Email) }
+    ```
+    """
+
     model_config = ConfigDict(populate_by_name=True)
     if_: EvalString = Field(
         None,
         alias="if",
-        description="A EvalString that must evaluate to true for the alert to fire",
+        description="An eval string (`>{ ... }`) that must evaluate to true for the alert to fire.",
     )
-    destinations: List[DestinationField] = []
+    destinations: List[DestinationField] = Field(
+        [],
+        description="Destination objects defined inline or `${ ref() }`s to destinations that the alert notifies when it fires.",
+    )
 
     _parent_test: str = PrivateAttr(default=None)
 

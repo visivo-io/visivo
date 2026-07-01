@@ -8,13 +8,13 @@ import createProjectSlice from './projectStore';
 import createSourceSlice from './sourceStore';
 import createInsightJobsSlice from './insightJobsStore';
 import createModelJobsSlice from './modelJobsStore';
-import * as commitApi from '../api/commit';
+import * as branchingApi from '../api/branching';
 import * as defaultsApi from '../api/defaults';
 import * as dashboardsApi from '../api/dashboards';
 import * as sourcesApi from '../api/sources';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 
-jest.mock('../api/commit');
+jest.mock('../api/branching');
 jest.mock('../api/defaults');
 jest.mock('../api/dashboards');
 jest.mock('../api/sources');
@@ -42,57 +42,75 @@ const makeStore = (slice, initial = {}) => {
 beforeEach(() => jest.clearAllMocks());
 
 describe('commitStore', () => {
-  const build = () => makeStore(createCommitSlice);
+  const build = () => makeStore(createCommitSlice, { project: { id: 'proj-1' } });
 
-  it('checkCommitStatus reflects the pending count and fails closed', async () => {
+  it('checkCommitStatus reflects /changes/ and fails closed', async () => {
     // The Workspace TopBar cluster needs a live count, so checkCommitStatus
-    // reads the pending endpoint (count + list + boolean in one round trip).
-    commitApi.getPendingChanges.mockResolvedValueOnce({
-      pending: [{ name: 'a' }],
-      count: 1,
+    // derives count + list + boolean from the project's /changes/ in one
+    // round trip.
+    branchingApi.fetchChanges.mockResolvedValueOnce({
+      to_publish: [{ name: 'a', type: 'chart', status: 'new' }],
+      to_remove: [],
+      has_changes: true,
     });
     const store = build();
     await store.get().checkCommitStatus();
+    expect(branchingApi.fetchChanges).toHaveBeenCalledWith('proj-1');
     expect(store.get().hasUncommittedChanges).toBe(true);
+    expect(store.get().pendingChanges).toEqual([{ name: 'a', type: 'chart', status: 'new' }]);
     expect(store.get().pendingCount).toBe(1);
 
-    commitApi.getPendingChanges.mockRejectedValueOnce(new Error('offline'));
+    branchingApi.fetchChanges.mockRejectedValueOnce(new Error('offline'));
     await store.get().checkCommitStatus();
     expect(store.get().hasUncommittedChanges).toBe(false);
     expect(store.get().pendingCount).toBe(0);
   });
 
-  it('fetchPendingChanges stores and returns the pending list', async () => {
-    commitApi.getPendingChanges.mockResolvedValueOnce({ pending: [{ name: 'a' }] });
+  it('fetchPendingChanges returns the dirty list from /changes/', async () => {
+    branchingApi.fetchChanges.mockResolvedValueOnce({
+      to_publish: [{ name: 'a' }],
+      to_remove: [{ name: 'b' }],
+      has_changes: true,
+    });
     const store = build();
-    await expect(store.get().fetchPendingChanges()).resolves.toEqual([{ name: 'a' }]);
-    expect(store.get().pendingChanges).toEqual([{ name: 'a' }]);
-
-    commitApi.getPendingChanges.mockRejectedValueOnce(new Error('x'));
-    await expect(store.get().fetchPendingChanges()).resolves.toEqual([]);
+    await expect(store.get().fetchPendingChanges()).resolves.toEqual([
+      { name: 'a' },
+      { name: 'b' },
+    ]);
   });
 
-  it('commitChanges clears state on success and reports failure on error', async () => {
-    commitApi.commitChanges.mockResolvedValueOnce({ committed: 2 });
-    const store = build();
+  it('commitChanges publishes on success (201/200) and surfaces gate actions', async () => {
+    // 201 = cloud publish (+ next_draft).
+    branchingApi.commitDraft.mockResolvedValueOnce({
+      status: 201,
+      body: { commit_id: 'c1', next_draft: { id: 'draft-2' } },
+    });
+    const store = makeStore(createCommitSlice, { project: { id: 'd1' }, setProject: jest.fn() });
     const res = await store.get().commitChanges();
     expect(res.success).toBe(true);
     expect(store.get().hasUncommittedChanges).toBe(false);
     expect(store.get().commitModalOpen).toBe(false);
-    expect(store.get().commitLoading).toBe(false);
 
-    commitApi.commitChanges.mockRejectedValueOnce(new Error('write failed'));
+    // 409 = run/role gate.
+    branchingApi.commitDraft.mockResolvedValueOnce({
+      status: 409,
+      body: { action: 'run_required', detail: 'Run the draft before committing.' },
+    });
     const fail = await store.get().commitChanges();
-    expect(fail).toEqual({ success: false, error: 'write failed' });
-    expect(store.get().commitError).toBe('write failed');
+    expect(fail).toEqual({
+      success: false,
+      action: 'run_required',
+      error: 'Run the draft before committing.',
+    });
+    expect(store.get().commitError).toBe('Run the draft before committing.');
   });
 
-  it('openCommitModal opens and loads pending changes; close/clear reset state', async () => {
-    commitApi.getPendingChanges.mockResolvedValueOnce({ pending: [] });
+  it('openCommitModal opens and loads the dirty set; close/clear reset state', async () => {
+    branchingApi.fetchChanges.mockResolvedValueOnce({ to_publish: [], to_remove: [], has_changes: false });
     const store = build();
     await store.get().openCommitModal();
     expect(store.get().commitModalOpen).toBe(true);
-    expect(commitApi.getPendingChanges).toHaveBeenCalled();
+    expect(branchingApi.fetchChanges).toHaveBeenCalled();
 
     store.get().clearCommitError();
     store.get().closeCommitModal();
@@ -117,9 +135,9 @@ describe('defaultsStore', () => {
   it('saveDefaults persists, refreshes, and reports failures', async () => {
     defaultsApi.saveDefaults.mockResolvedValueOnce({ ok: true });
     defaultsApi.fetchDefaults.mockResolvedValue({ source: 'duckdb' });
-    const store = makeStore(createDefaultsSlice);
+    const store = makeStore(createDefaultsSlice, { project: { id: 'proj-1' } });
     await expect(store.get().saveDefaults({ a: 1 })).resolves.toMatchObject({ success: true });
-    expect(defaultsApi.saveDefaults).toHaveBeenCalledWith({ a: 1 });
+    expect(defaultsApi.saveDefaults).toHaveBeenCalledWith({ a: 1 }, 'proj-1');
     expect(defaultsApi.fetchDefaults).toHaveBeenCalled(); // refresh
 
     defaultsApi.saveDefaults.mockRejectedValueOnce(new Error('nope'));

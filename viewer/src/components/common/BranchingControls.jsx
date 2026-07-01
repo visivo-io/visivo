@@ -1,0 +1,89 @@
+import React, { useState } from 'react';
+import { PiPencil } from 'react-icons/pi';
+import { FiGitBranch } from 'react-icons/fi';
+import useStore from '../../stores/store';
+
+const PRIMARY = '#713B57';
+const HAIR = 'rgba(255,255,255,.14)';
+
+const btnStyle = (bg, disabled) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 7,
+  background: bg,
+  color: '#fff',
+  border: bg === 'transparent' ? `1px solid ${HAIR}` : 'none',
+  fontSize: 13,
+  fontWeight: 600,
+  padding: '7px 13px',
+  borderRadius: 99,
+  cursor: disabled ? 'default' : 'pointer',
+  opacity: disabled ? 0.6 : 1,
+  whiteSpace: 'nowrap',
+});
+
+/**
+ * Branching entry (core/Django only). Renders an Edit and/or Branch button
+ * based on the user's capabilities for the active project's stage:
+ *   - can_edit   → Edit  (resolve-or-create a draft on the same stage)
+ *   - can_branch → Branch (branch onto a new stage)
+ * An editor on the default stage gets Branch only (edit_action === 'branch_required').
+ *
+ * Backend-agnostic: rendered purely from the `capabilities` endpoint. Both
+ * servers answer it (Flask local reports can_edit + no branch; Django cloud
+ * reports the user's stage role). Renders null until capabilities load / when
+ * the user can neither edit nor branch.
+ */
+const BranchingControls = () => {
+  const capabilities = useStore(state => state.capabilities);
+  const startEdit = useStore(state => state.startEdit);
+  const startBranch = useStore(state => state.startBranch);
+  const [busy, setBusy] = useState(false);
+
+  if (!capabilities) return null;
+  const { can_edit: canEdit, can_branch: canBranch, is_draft: isDraft } = capabilities;
+  // Already on an editable draft → you're editing; publishing is the Commit
+  // button, so no Edit/Branch entry here. Entry only appears on a published
+  // (non-draft) view.
+  if (isDraft) return null;
+  if (!canEdit && !canBranch) return null;
+
+  const onEdit = async () => {
+    setBusy(true);
+    try {
+      await startEdit();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onBranch = async () => {
+    // First-pass UX: prompt for the new stage name. A dedicated dialog is a
+    // follow-up. The project to branch is the active one (startBranch reads it).
+    const newStageName = window.prompt('Name the new branch stage:');
+    if (!newStageName) return;
+    setBusy(true);
+    try {
+      await startBranch({ newStageName });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {canEdit && (
+        <button onClick={onEdit} disabled={busy} title="Edit — create a draft" style={btnStyle(PRIMARY, busy)}>
+          <PiPencil size={15} /> Edit
+        </button>
+      )}
+      {canBranch && (
+        <button onClick={onBranch} disabled={busy} title="Branch — new stage" style={btnStyle('transparent', busy)}>
+          <FiGitBranch size={15} /> Branch
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default BranchingControls;

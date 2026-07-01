@@ -16,7 +16,11 @@ The `scatter` insight type is used to create scatter plots, which visualize data
 
 You can customize the marker size, color, and add lines to connect the points to represent the data in various forms like scatter plots, line charts, and more.
 
-!!! tip "Common Uses" - **Relationship Analysis**: Exploring the relationship between two variables. - **Trend Detection**: Identifying trends or patterns in data. - **Outlier Identification**: Spotting outliers in data distributions.
+!!! tip "Common Uses"
+
+    - **Relationship Analysis**: Exploring the relationship between two variables.
+    - **Trend Detection**: Identifying trends or patterns in data.
+    - **Outlier Identification**: Spotting outliers in data distributions.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attributes) for the full set of configuration options**_
 

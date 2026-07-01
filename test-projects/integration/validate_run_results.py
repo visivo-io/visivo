@@ -348,8 +348,12 @@ class VisivoRunValidator:
         return success
 
     def validate_core_files(self) -> bool:
-        """Validate core project files exist."""
-        required_files = ["project.json", "explorer.json", "error.json"]
+        """Validate the compile artifacts a ``visivo run`` writes to target/.
+
+        Only ``error.json`` remains here: ``explorer.json`` was removed (it had no
+        consumer), and ``project.json`` is now generated lazily by ``visivo dist``
+        (its only consumer), not by ``run``."""
+        required_files = ["error.json"]
 
         success = True
 

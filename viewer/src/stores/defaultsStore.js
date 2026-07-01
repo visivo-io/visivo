@@ -29,7 +29,8 @@ const createDefaultsSlice = (set, get) => ({
     get().beginSaveActivity?.();
     let ok = false;
     try {
-      const result = await defaultsApi.saveDefaults(config);
+      const projectId = get().project?.id;
+      const result = await defaultsApi.saveDefaults(config, projectId);
       ok = true;
       // Refresh defaults
       await get().fetchDefaults();

@@ -11,7 +11,11 @@ The `scatterpolargl` insight type is used to create scatter plots on polar coord
 
 You can customize marker size, color, and lines to connect points, similar to `scatterpolar`, but with WebGL's performance advantages.
 
-!!! tip "Common Uses" - **Large Datasets in Polar Coordinates**: Efficiently visualize many data points. - **Performance Optimization**: Use WebGL for fast rendering. - **Circular Data with Directional Components**: Ideal for cyclic data where radial distance and angle are key factors.
+!!! tip "Common Uses"
+
+    - **Large Datasets in Polar Coordinates**: Efficiently visualize many data points.
+    - **Performance Optimization**: Use WebGL for fast rendering.
+    - **Circular Data with Directional Components**: Ideal for cyclic data where radial distance and angle are key factors.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolargl/#attributes) for the full set of configuration options**_
 

@@ -1,15 +1,18 @@
+import * as branchingApi from '../api/branching';
 import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/new-views/workspace/telemetry';
 
 /**
- * Commit Store Slice
+ * Commit Store Slice — backend-agnostic.
  *
- * Manages the commit workflow for writing cached changes to YAML files
- * (Track H / VIS-806, aligned to main's Publish→Commit rename). Tracks
- * uncommitted changes across every named-child type, the live pending-changes
- * count for the Workspace TopBar cluster, and a global save-activity counter
- * so the cluster can show "Saving…" while any draft write is in flight
- * (canvas actions, right-rail forms, level CRUD).
+ * Drives the commit workflow off the project-scoped endpoints
+ * (/api/projects/<id>/changes/ and /commit/). Both servers implement them:
+ * Flask (visivo serve) and Django (cloud). No local-vs-cloud branching.
+ *
+ * On top of the commit workflow this slice tracks the live pending-changes
+ * count for the Workspace TopBar cluster (Track H / VIS-806) and a global
+ * save-activity counter so the cluster can show "Saving…" while any draft
+ * write is in flight (canvas actions, right-rail forms, level CRUD).
  */
 
 /**
@@ -39,7 +42,7 @@ const NAMED_CHILD_FETCHERS = [
 const createCommitSlice = (set, get) => ({
   // State
   hasUncommittedChanges: false,
-  pendingChanges: [], // List of objects with pending changes
+  pendingChanges: [], // [{name, type, status}]
   pendingCount: 0,
   commitLoading: false,
   commitError: null,
@@ -66,52 +69,53 @@ const createCommitSlice = (set, get) => ({
       lastSaveFailed: ok ? state.lastSaveFailed : true,
     })),
 
-  // Refresh pending-change state (count + list + boolean) in one round trip.
+  // Refresh the dirty set + the commit badge from the project's /changes/.
   // Save actions call this after every draft write, so the TopBar count
   // updates live.
   checkCommitStatus: async () => {
+    const projectId = get().project?.id;
+    if (!projectId) {
+      set({ hasUncommittedChanges: false, pendingChanges: [], pendingCount: 0 });
+      return;
+    }
     try {
-      const data = await commitApi.getPendingChanges();
-      const pending = data.pending || [];
-      const count = typeof data.count === 'number' ? data.count : pending.length;
+      const changes = await branchingApi.fetchChanges(projectId);
+      const pending = [...(changes.to_publish || []), ...(changes.to_remove || [])];
       set({
+        hasUncommittedChanges: !!changes.has_changes,
         pendingChanges: pending,
-        pendingCount: count,
-        hasUncommittedChanges: count > 0,
+        pendingCount: pending.length,
       });
+      // Called after each save — a debounced run is incoming, so open the run
+      // poll window (the poller stops on its own once it passes + no run runs).
+      if (changes.has_changes) get().noteDraftActivity?.();
     } catch (error) {
-      // Silently fail - endpoint may not be available in dist mode
+      // Endpoint may be unavailable (e.g. dist mode) — fail closed.
       set({ hasUncommittedChanges: false, pendingChanges: [], pendingCount: 0 });
     }
   },
 
-  // Fetch all pending changes
+  // Kept for callers that fetch the list directly; same source as the badge.
   fetchPendingChanges: async () => {
-    try {
-      const data = await commitApi.getPendingChanges();
-      const pending = data.pending || [];
-      const count = typeof data.count === 'number' ? data.count : pending.length;
-      set({
-        pendingChanges: pending,
-        pendingCount: count,
-        hasUncommittedChanges: count > 0,
-      });
-      return pending;
-    } catch (error) {
-      set({ pendingChanges: [], pendingCount: 0, hasUncommittedChanges: false });
-      return [];
-    }
+    await get().checkCommitStatus();
+    return get().pendingChanges;
   },
 
   _refreshNamedChildren: async () => {
     await Promise.all(NAMED_CHILD_FETCHERS.map(key => get()[key]?.()));
   },
 
-  // Commit all cached changes to YAML files
+  // Commit (publish) the project's draft.
   commitChanges: async () => {
+    const projectId = get().project?.id;
+    if (!projectId) return { success: false, error: 'No active project' };
     set({ commitLoading: true, commitError: null });
-    try {
-      const result = await commitApi.commitChanges();
+    const { status, body } = await branchingApi.commitDraft(projectId);
+    // Cloud: 201 publishes (terminal — the draft is now the live project); 200
+    // {committed:false} is a no-op. Local: 200 is success. So success = 201, or
+    // 200 unless committed===false.
+    const isSuccess = status === 201 || (status === 200 && body.committed !== false);
+    if (isSuccess) {
       set({
         commitLoading: false,
         hasUncommittedChanges: false,
@@ -123,17 +127,26 @@ const createCommitSlice = (set, get) => ({
       // The Q22 metric keeps its original event name (taxonomy events are
       // additive — never renamed once live).
       emitFirstPublishTelemetry();
-      // Refresh every named-child collection to reflect committed state
+      // Refresh every named-child collection to reflect committed state.
       await get()._refreshNamedChildren();
-      return { success: true, result };
-    } catch (error) {
-      set({ commitLoading: false, commitError: error.message });
-      return { success: false, error: error.message };
+      return { success: true, result: body };
     }
+    if (status === 200) {
+      set({ commitLoading: false });
+      return { success: false, committed: false, detail: body.detail };
+    }
+    // 4xx gates: 409 run_required/run_in_progress/run_failed, 403 branch_required,
+    // 422 invalid. Surface the action + message.
+    const error =
+      body.detail || (body.errors && JSON.stringify(body.errors)) || 'Failed to commit changes';
+    set({ commitLoading: false, commitError: error });
+    return { success: false, action: body.action, error };
   },
 
-  // Discard all cached changes without writing YAML (Q14 rollback). The
-  // named-child refetch is what makes the canvas revert to last-committed.
+  // Discard all cached changes without writing YAML (Q14 rollback) — local
+  // Flask only (/api/commit/discard/). The named-child refetch is what makes
+  // the canvas revert to last-committed. Cloud drafts are discarded through
+  // branchingApi.discardDraft (drop the draft project) instead.
   discardChanges: async () => {
     set({ discardLoading: true });
     try {
@@ -178,10 +191,10 @@ const createCommitSlice = (set, get) => ({
     ]);
   },
 
-  // Open commit modal (fetches pending changes)
+  // Open commit modal (loads the dirty set).
   openCommitModal: async () => {
     set({ commitModalOpen: true, commitError: null });
-    await get().fetchPendingChanges();
+    await get().checkCommitStatus();
   },
 
   // Close commit modal
