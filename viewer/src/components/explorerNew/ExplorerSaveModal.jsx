@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../stores/store';
-import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import Select from '../common/Select';
 
 /**

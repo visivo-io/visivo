@@ -10,7 +10,7 @@
 import useStore from './store';
 import * as branchingApi from '../api/branching';
 import * as commitApi from '../api/commit';
-import { emitFirstPublishTelemetry } from '../components/new-views/workspace/telemetry';
+import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
 jest.mock('../api/branching', () => ({
   fetchChanges: jest.fn(),
@@ -24,7 +24,7 @@ jest.mock('../api/commit', () => ({
   discardChanges: jest.fn(),
 }));
 
-jest.mock('../components/new-views/workspace/telemetry', () => ({
+jest.mock('../components/views/workspace/telemetry', () => ({
   emitFirstPublishTelemetry: jest.fn(),
   emitWorkspaceEvent: jest.fn(),
   markBuildModeEntered: jest.fn(),

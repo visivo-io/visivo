@@ -4,10 +4,10 @@ import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../stores/store';
 import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { CHART_TYPES, getSchema } from '../../schemas/schemas';
-import { getRequiredFields } from '../new-views/common/insightRequiredFields';
-import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
-import { flattenSchemaProperties } from '../new-views/common/SchemaEditor/utils/schemaUtils';
-import RefTextArea from '../new-views/common/RefTextArea';
+import { getRequiredFields } from '../views/common/insightRequiredFields';
+import { SchemaEditor } from '../views/common/SchemaEditor/SchemaEditor';
+import { flattenSchemaProperties } from '../views/common/SchemaEditor/utils/schemaUtils';
+import RefTextArea from '../views/common/RefTextArea';
 import Select from '../common/Select';
 
 const InteractionRow = ({ interaction, index, insightName, updateInsightInteraction, handleRemoveInteraction }) => {

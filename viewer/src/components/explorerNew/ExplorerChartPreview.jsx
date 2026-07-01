@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import ChartPreview from '../new-views/common/ChartPreview';
+import ChartPreview from '../views/common/ChartPreview';
 import { useChartPreviewJob } from '../../hooks/usePreviewData';
 import { useInputsData } from '../../hooks/useInputsData';
 import useStore from '../../stores/store';

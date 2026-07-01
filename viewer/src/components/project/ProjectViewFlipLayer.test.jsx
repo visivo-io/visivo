@@ -14,7 +14,7 @@
 import React, { useRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ProjectViewFlipLayer from './ProjectViewFlipLayer';
-import { setWorkspaceTelemetryListener } from '../new-views/workspace/telemetry';
+import { setWorkspaceTelemetryListener } from '../views/workspace/telemetry';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({

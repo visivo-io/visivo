@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import useStore from '../stores/store';
-import { isEmbeddedObject } from '../components/new-views/common/embeddedObjectUtils';
+import { isEmbeddedObject } from '../components/views/common/embeddedObjectUtils';
 
 /**
  * Custom hook for unified object saving logic

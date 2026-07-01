@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PiArrowLeft } from 'react-icons/pi';
-import { getTypeColors } from '../new-views/common/objectTypeConfigs';
+import { getTypeColors } from '../views/common/objectTypeConfigs';
 
 /**
  * ExplorerReturnChip — VIS-782 / J-3.

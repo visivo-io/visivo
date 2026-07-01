@@ -1,7 +1,7 @@
 import * as dashboardsApi from '../api/dashboards';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 import { getEffectiveLevels } from '../utils/effectiveLevels';
-import { insertItemAtTarget } from '../components/new-views/project/canvas/canvasReorder';
+import { insertItemAtTarget } from '../components/views/project/canvas/canvasReorder';
 
 /**
  * Translate a J-1 / J-2 `slot` descriptor into the `insertItemAtTarget` target

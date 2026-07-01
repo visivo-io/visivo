@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
-import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import useStore from '../../stores/store';
 import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { getSchema } from '../../schemas/schemas';
-import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
+import { SchemaEditor } from '../views/common/SchemaEditor/SchemaEditor';
 import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PiX } from 'react-icons/pi';
-import MiniLineageCard from '../new-views/workspace/library/MiniLineageCard';
+import MiniLineageCard from '../views/workspace/library/MiniLineageCard';
 
 /**
  * ItemFlipCard — true in-place flip-to-lineage card.

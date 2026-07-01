@@ -31,7 +31,7 @@ jest.mock('../../hooks/useInputsData', () => ({
   useInputsData: jest.fn(),
 }));
 
-jest.mock('../new-views/common/ChartPreview', () => {
+jest.mock('../views/common/ChartPreview', () => {
   return function MockChartPreview({ chartConfig, insightKeys, projectId }) {
     return (
       <div data-testid="chart-preview-component">

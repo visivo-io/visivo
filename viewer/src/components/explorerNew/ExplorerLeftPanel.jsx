@@ -8,9 +8,9 @@ import {
 } from 'react-icons/pi';
 import { useSearchParams } from 'react-router-dom';
 import { useDraggable } from '@dnd-kit/core';
-import ObjectList from '../new-views/common/ObjectList';
-import { getTypeColors, getTypeIcon } from '../new-views/common/objectTypeConfigs';
-import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import ObjectList from '../views/common/ObjectList';
+import { getTypeColors, getTypeIcon } from '../views/common/objectTypeConfigs';
+import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import SourceBrowser from './SourceBrowser';
 import useStore from '../../stores/store';
 import { selectActiveModelSourceName } from '../../stores/explorerNewStore';

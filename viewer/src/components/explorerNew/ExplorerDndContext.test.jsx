@@ -7,7 +7,7 @@ import useStore from '../../stores/store';
 
 let capturedOnDragEnd = null;
 
-jest.mock('../new-views/lineage/EmbeddedPill', () => {
+jest.mock('../views/lineage/EmbeddedPill', () => {
   return function MockEmbeddedPill({ objectType, label, size, as }) {
     const Tag = as === 'div' ? 'div' : 'button';
     return (

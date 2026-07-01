@@ -4,7 +4,7 @@ import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 import { Button, ButtonOutline } from '../styled/Button';
 import SourceTypeSelector from './SourceTypeSelector';
 import SourceFormGenerator, { getSourceSchema } from './SourceFormGenerator';
-import { validateName } from '../new-views/common/namedModel';
+import { validateName } from '../views/common/namedModel';
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';

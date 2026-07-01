@@ -10,7 +10,7 @@ import useStore from '../../stores/store';
 // an act() scope before assertions, eliminating "not wrapped in act" warnings.
 const renderInDnd = (ui) => render(<DndContext>{ui}</DndContext>);
 
-jest.mock('../new-views/lineage/EmbeddedPill', () => {
+jest.mock('../views/lineage/EmbeddedPill', () => {
   return function MockEmbeddedPill({
     objectType,
     label,
@@ -43,7 +43,7 @@ jest.mock('../new-views/lineage/EmbeddedPill', () => {
   };
 });
 
-jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
+jest.mock('../views/common/SchemaEditor/SchemaEditor', () => {
   const MockSchemaEditor = ({ schema, value, onChange }) => {
     return (
       <div data-testid="chart-schema-editor">

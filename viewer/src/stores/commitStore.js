@@ -1,6 +1,6 @@
 import * as branchingApi from '../api/branching';
 import * as commitApi from '../api/commit';
-import { emitFirstPublishTelemetry } from '../components/new-views/workspace/telemetry';
+import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
 /**
  * Commit Store Slice — backend-agnostic.

@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
 import { useNavigate } from 'react-router-dom';
 import { parseRefValue } from '../../utils/refString';
-import { parseCanvasPath } from '../new-views/project/canvas/canvasReorder';
+import { parseCanvasPath } from '../views/project/canvas/canvasReorder';
 import ItemFlipCard from './ItemFlipCard';
 import ItemActionMenu from './ItemActionMenu';
 import copyItemLink from './copyItemLink';
-import { emitWorkspaceEvent } from '../new-views/workspace/telemetry';
+import { emitWorkspaceEvent } from '../views/workspace/telemetry';
 
 /**
  * ProjectViewFlipLayer — VIS-788 / I-1 (View-mode flip gesture).

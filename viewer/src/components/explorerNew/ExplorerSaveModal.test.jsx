@@ -21,7 +21,7 @@ const renderModal = (props) =>
     </MemoryRouter>
   );
 
-jest.mock('../new-views/lineage/EmbeddedPill', () => {
+jest.mock('../views/lineage/EmbeddedPill', () => {
   return function MockEmbeddedPill({ objectType, label, statusDot }) {
     return (
       <span

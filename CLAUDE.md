@@ -239,7 +239,7 @@ Use Playwright MCP or `npx playwright test` against `http://localhost:3001` — 
 
 ## Object Type Colors + Icons (single source of truth)
 
-ALWAYS use `viewer/src/components/new-views/common/objectTypeConfigs.js` for any
+ALWAYS use `viewer/src/components/views/common/objectTypeConfigs.js` for any
 type-driven colour or icon. NEVER hand-roll Tailwind classes (`bg-pink-100`,
 `text-purple-800`, custom hex codes, etc.) for source / model / insight /
 chart / table / markdown / input / dimension / metric / relation / dashboard

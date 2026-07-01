@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import ReactSelect, { components as RSComponents } from 'react-select';
-import FieldPill from '../new-views/common/FieldPill';
+import FieldPill from '../views/common/FieldPill';
 
 /**
  * Select — the single, brand-skinned dropdown for the whole viewer.

@@ -29,12 +29,12 @@
  *       → surfaces `error_details` from the run-status payload.
  *   - viewer/src/hooks/usePreviewData.test.js
  *       → passes `errorDetails` through the preview-data chain.
- *   - viewer/src/components/new-views/common/InsightPreview.test.jsx
+ *   - viewer/src/components/views/common/InsightPreview.test.jsx
  *       → renders `missing-relation-card` (with the popover) for
  *         `error_type: 'missing_relation'`, `ambiguous-relation-card` for
  *         `ambiguous_relation`, and the plain error otherwise; a save calls
  *         `resetPreview` (the re-run trigger).
- *   - viewer/src/components/new-views/common/InsightPreviewRelationCards.test.jsx
+ *   - viewer/src/components/views/common/InsightPreviewRelationCards.test.jsx
  *       → mounts the REAL JoinOperatorPopover: the card seeds it with the model
  *         pair and a save calls `saveRelation` + the re-run callback.
  *   - backend: tests/jobs/test_run_insight_job_join_errors.py (real two-model

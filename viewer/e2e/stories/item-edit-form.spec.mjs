@@ -40,10 +40,10 @@ const mountItemEditForm = async (page, { item, leafDropZoneId }) => {
       const ReactDOM = Dmod.default || Dmod;
       const dnd = dndMod;
       const { default: ItemEditForm } = await import(
-        '/src/components/new-views/common/ItemEditForm.jsx'
+        '/src/components/views/common/ItemEditForm.jsx'
       );
       const { default: RowEditForm } = await import(
-        '/src/components/new-views/common/RowEditForm.jsx'
+        '/src/components/views/common/RowEditForm.jsx'
       );
 
       // Tear down any previous mount.

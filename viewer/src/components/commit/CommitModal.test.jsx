@@ -10,7 +10,7 @@ jest.mock('../../stores/store', () => ({
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
   default: selector => selector(mockState),
 }));
-jest.mock('../new-views/common/objectTypeConfigs', () => ({
+jest.mock('../views/common/objectTypeConfigs', () => ({
   getTypeByValue: type => ({
     singularLabel: type,
     colors: { bg: 'bg-x', text: 'text-x' },

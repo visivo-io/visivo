@@ -39,7 +39,7 @@
  * O3 — this slice only carries the state the shell needs in Phase 0.
  */
 
-import { emitWorkspaceEvent } from '../components/new-views/workspace/telemetry';
+import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 
 const createWorkspaceSlice = (set, get) => ({

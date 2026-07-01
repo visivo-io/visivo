@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import useStore from '../../stores/store';
-import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import { formatRefExpression } from '../../utils/refString';
 
 const DragOverlayContent = ({ data }) => {

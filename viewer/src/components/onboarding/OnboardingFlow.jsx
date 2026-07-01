@@ -11,7 +11,7 @@ import Cloud from './screens/Cloud';
 import Handoff from './screens/Handoff';
 import { fireEvent } from './telemetry';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
-import SourceEditForm from '../new-views/common/SourceEditForm';
+import SourceEditForm from '../views/common/SourceEditForm';
 import useStore from '../../stores/store';
 import logo from '../../images/logo.png';
 

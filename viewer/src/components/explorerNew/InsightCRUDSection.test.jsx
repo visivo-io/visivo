@@ -23,7 +23,7 @@ function openSelectMenu(testId) {
   fireEvent.mouseDown(within(screen.getByTestId(testId)).getByRole('combobox'));
 }
 
-jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
+jest.mock('../views/common/SchemaEditor/SchemaEditor', () => {
   const MockSchemaEditor = ({ schema, value, onChange, droppable }) => {
     return (
       <div data-testid="schema-editor" data-droppable={droppable}>
@@ -43,7 +43,7 @@ jest.mock('../../schemas/schemas', () => ({
   getSchema: jest.fn().mockResolvedValue({ properties: { x: {}, y: {} } }),
 }));
 
-jest.mock('../new-views/common/insightRequiredFields', () => ({
+jest.mock('../views/common/insightRequiredFields', () => ({
   getRequiredFields: jest.fn((type) => {
     if (type === 'scatter') return [{ name: 'x' }, { name: 'y' }];
     if (type === 'bar') return [{ name: 'x' }, { name: 'y' }];

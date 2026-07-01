@@ -5,7 +5,7 @@ import DataSectionToolbar from './DataSectionToolbar';
 import useStore from '../../stores/store';
 
 // Mock EmbeddedPill
-jest.mock('../new-views/lineage/EmbeddedPill', () => {
+jest.mock('../views/lineage/EmbeddedPill', () => {
   return function MockEmbeddedPill({ objectType, label, onRemove, onClick, className, tooltip }) {
     return (
       <span

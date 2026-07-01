@@ -10,7 +10,7 @@ import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
 import ExplorerNewPage from './components/explorerNew/ExplorerNewPage';
 import ExplorerOverlay from './components/explorerNew/ExplorerOverlay';
-import Workspace from './components/new-views/workspace/Workspace';
+import Workspace from './components/views/workspace/Workspace';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
 // VIS-778 / J-2: Build-mode → Explorer round-trip. The overlay composes OVER

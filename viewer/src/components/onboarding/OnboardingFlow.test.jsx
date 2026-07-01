@@ -8,7 +8,7 @@ import { clearOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
 
 jest.mock('../../stores/store');
-jest.mock('../new-views/common/SourceEditForm', () => ({ onSave }) => (
+jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => (
   <div data-testid="source-edit-form">
     <button
       onClick={() => onSave('postgres', 'demo', { type: 'postgres', name: 'demo' })}

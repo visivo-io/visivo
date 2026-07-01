@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PiX, PiArrowsClockwise } from 'react-icons/pi';
 import useStore from '../../stores/store';
-import { getTypeColors } from '../new-views/common/objectTypeConfigs';
-import { emitWorkspaceEvent } from '../new-views/workspace/telemetry';
+import { getTypeColors } from '../views/common/objectTypeConfigs';
+import { emitWorkspaceEvent } from '../views/workspace/telemetry';
 import { ExplorerRoundTripProvider } from './ExplorerRoundTripContext';
 import ExplorerNewPage from './ExplorerNewPage';
 

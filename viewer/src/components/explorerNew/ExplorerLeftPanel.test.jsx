@@ -25,7 +25,7 @@ jest.mock('@dnd-kit/core', () => ({
   }),
 }));
 
-jest.mock('../new-views/lineage/EmbeddedPill', () => {
+jest.mock('../views/lineage/EmbeddedPill', () => {
   return function MockEmbeddedPill({ objectType, label, as }) {
     const Tag = as === 'div' ? 'div' : 'button';
     return (
@@ -42,7 +42,7 @@ jest.mock('./SourceBrowser', () => {
   };
 });
 
-jest.mock('../new-views/common/ObjectList', () => {
+jest.mock('../views/common/ObjectList', () => {
   return function MockObjectList({ objects, selectedName, onSelect, title, objectType }) {
     return (
       <div data-testid={`object-list-${objectType}`} data-title={title}>

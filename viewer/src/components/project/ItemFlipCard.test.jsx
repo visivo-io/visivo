@@ -17,7 +17,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import ItemFlipCard, { MIN_WIDTH, MIN_HEIGHT } from './ItemFlipCard';
 
 // Mock the shared lineage body to a marker echoing its props + an Expand button.
-jest.mock('../new-views/workspace/library/MiniLineageCard', () => ({
+jest.mock('../views/workspace/library/MiniLineageCard', () => ({
   __esModule: true,
   default: ({ obj, onClose, onExpand, testIdPrefix }) => (
     <div data-testid={`${testIdPrefix}-mini`} data-subject={`${obj.type}:${obj.name}`}>

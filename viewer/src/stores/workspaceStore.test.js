@@ -8,7 +8,7 @@
  */
 import { act } from '@testing-library/react';
 import useStore from './store';
-import { setWorkspaceTelemetryListener } from '../components/new-views/workspace/telemetry';
+import { setWorkspaceTelemetryListener } from '../components/views/workspace/telemetry';
 
 const reset = () => {
   act(() => {

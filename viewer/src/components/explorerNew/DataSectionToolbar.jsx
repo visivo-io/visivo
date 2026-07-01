@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import AddComputedColumnPopover from './AddComputedColumnPopover';
-import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import useStore from '../../stores/store';
 import {
   selectActiveModelComputedColumns,
