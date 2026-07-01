@@ -571,7 +571,7 @@ const RightRailEditPanel = () => {
  * item selects → an inline ChartEditForm), per VIS-802 GAP-1/GAP-2.
  *
  * Saves go through the shared `useObjectSave` handler (the same one EditorNew /
- * LineageNew use), so editing a chart/table/insight/etc. here persists to the
+ * Lineage use), so editing a chart/table/insight/etc. here persists to the
  * backend exactly as it does elsewhere. There is no modal to close in the rail,
  * so `onClose`/`onCancel`/embedded-nav are no-ops; the forms keep their own Save
  * footer. A handful of compound data-layer types (dashboard, csv/local-merge

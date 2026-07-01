@@ -21,7 +21,7 @@ import { getTypeByValue } from '../common/objectTypeConfigs';
 import { formatRefExpression } from '../../../utils/refString';
 
 /**
- * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
+ * Lineage - Lineage view for sources, models, dimensions, metrics, relations, and insights
  * Supports drag-to-connect edges between sources and models
  *
  * Props (all optional — every live mount is via `<LineageCanvas>` in the
@@ -44,7 +44,7 @@ import { formatRefExpression } from '../../../utils/refString';
  *                        When provided, the browser's default menu is
  *                        suppressed for node right-clicks only.
  */
-const LineageNew = ({
+const Lineage = ({
   scopeSelector = null,
   onNodeSelect = null,
   headerSlot = null,
@@ -80,7 +80,7 @@ const LineageNew = ({
   const dashboards = useStore(state => state.dashboards);
   const defaults = useStore(state => state.defaults);
 
-  // `*` is the unscoped sentinel from the Workspace scope hook — LineageNew's
+  // `*` is the unscoped sentinel from the Workspace scope hook — Lineage's
   // own grammar treats an empty selector as "show everything", so we normalise
   // `*` to `''` before it ever reaches `parseSelector`.
   const normaliseSelector = useCallback(
@@ -554,4 +554,4 @@ const LineageNew = ({
   );
 };
 
-export default LineageNew;
+export default Lineage;

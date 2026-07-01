@@ -1,15 +1,15 @@
 /**
  * LineageCanvas behaviour (VIS-E1 / VIS-779 / Track E).
  *
- * LineageCanvas is the thin wrapper that mounts the existing <LineageNew> DAG
+ * LineageCanvas is the thin wrapper that mounts the existing <Lineage> DAG
  * in the Workspace middle pane's lineage lens. These tests pin:
  *   - selector derivation from the workspace scope (`*`, `+dashboard`, `+item`),
  *   - the "Show full project" reset widening scope back to `*`,
  *   - selection round-trip (node click → openWorkspaceTab),
  *   - the `middle_pane_toggled` telemetry event firing on lineage entry,
- *   - the manual selector input inside LineageNew remaining functional.
+ *   - the manual selector input inside Lineage remaining functional.
  *
- * <LineageNew> is mocked to a lightweight stub that surfaces the props the
+ * <Lineage> is mocked to a lightweight stub that surfaces the props the
  * wrapper passes (scopeSelector / onNodeSelect / headerSlot) so we can assert
  * the contract without standing up React Flow.
  */
@@ -25,17 +25,17 @@ jest.mock('../workspace/useWorkspaceScope', () => ({
   useWorkspaceScope: jest.fn(),
 }));
 
-// Mock LineageNew with a stub that echoes the props we care about and lets us
+// Mock Lineage with a stub that echoes the props we care about and lets us
 // drive the node-select round-trip + the manual selector input.
-jest.mock('./LineageNew', () => {
-  const MockLineageNew = ({ scopeSelector, onNodeSelect, onNodeContextMenu, headerSlot }) => {
+jest.mock('./Lineage', () => {
+  const MockLineage = ({ scopeSelector, onNodeSelect, onNodeContextMenu, headerSlot }) => {
     const React = require('react');
     const [manual, setManual] = React.useState(scopeSelector || '');
     React.useEffect(() => {
       setManual(scopeSelector || '');
     }, [scopeSelector]);
     return (
-      <div data-testid="lineage-new">
+      <div data-testid="lineage">
         {headerSlot}
         <div data-testid="scope-selector-prop">{scopeSelector}</div>
         <input
@@ -60,8 +60,8 @@ jest.mock('./LineageNew', () => {
       </div>
     );
   };
-  MockLineageNew.displayName = 'MockLineageNew';
-  return { __esModule: true, default: MockLineageNew };
+  MockLineage.displayName = 'MockLineage';
+  return { __esModule: true, default: MockLineage };
 });
 
 const ROOT = { scope: 'root', selector: '*', dashboardName: null, selectedItem: null };
@@ -223,7 +223,7 @@ describe('LineageCanvas', () => {
     expect(useStore.getState().workspaceTabs).toHaveLength(0);
   });
 
-  test('manual selector input inside LineageNew still works as an override', () => {
+  test('manual selector input inside Lineage still works as an override', () => {
     setScope(DASHBOARD);
     render(<LineageCanvas />);
 

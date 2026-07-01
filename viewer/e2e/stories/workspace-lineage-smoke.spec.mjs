@@ -1,5 +1,5 @@
 /**
- * Story: Lineage New Smoke
+ * Story: Lineage Smoke
  *
  * Safety-net smoke for the lineage view. Confirms the lens loads, React
  * Flow renders with at least one node, and there are no console errors.
@@ -18,7 +18,7 @@ import { test, expect } from '@playwright/test';
 
 const WAIT_FOR_PAGE = 15000;
 
-test.describe('Lineage New Smoke', () => {
+test.describe('Lineage Smoke', () => {
   test.describe.configure({ mode: 'serial' });
   test.setTimeout(60000);
 

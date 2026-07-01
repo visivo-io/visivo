@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiTreeStructure, PiArrowCounterClockwise } from 'react-icons/pi';
-import LineageNew from './LineageNew';
+import Lineage from './Lineage';
 import OpenObjectContextMenu from '../workspace/OpenObjectContextMenu';
 import useStore from '../../../stores/store';
 import { useWorkspaceScope } from '../workspace/useWorkspaceScope';
@@ -9,7 +9,7 @@ import { emitWorkspaceEvent } from '../workspace/telemetry';
 /**
  * LineageCanvas — VIS-E1 (VIS-779 / Track E).
  *
- * A thin wrapper around the existing `<LineageNew>` React Flow DAG. It mounts
+ * A thin wrapper around the existing `<Lineage>` React Flow DAG. It mounts
  * in the Workspace middle pane when the dashboard lens is set to "lineage"
  * (replacing the Track-E placeholder).
  *
@@ -176,7 +176,7 @@ const LineageCanvas = () => {
 
   return (
     <div data-testid="lineage-canvas" className="flex h-full w-full flex-col">
-      <LineageNew
+      <Lineage
         scopeSelector={effectiveSelector}
         onNodeSelect={handleNodeSelect}
         onNodeContextMenu={handleNodeContextMenu}

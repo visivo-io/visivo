@@ -5,7 +5,7 @@ import { parseRefValue } from '../../../utils/refString';
 
 /**
  * Compute layout using dagre (left-to-right)
- * Exported for use in LineageNew component to recompute layout after filtering
+ * Exported for use in Lineage component to recompute layout after filtering
  *
  * @param {Array} nodes - Array of nodes to layout
  * @param {Array} edges - Array of edges

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import LineageNew from './LineageNew';
+import Lineage from './Lineage';
 import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
 
@@ -67,7 +67,7 @@ jest.mock('@mui/icons-material/TableChart', () => () => <span data-testid="table
 jest.mock('@mui/icons-material/Add', () => () => <span data-testid="add-icon" />);
 jest.mock('@mui/icons-material/Close', () => () => <span data-testid="close-icon" />);
 
-describe('LineageNew', () => {
+describe('Lineage', () => {
   const mockFetchSources = jest.fn();
   const mockFetchModels = jest.fn();
   const mockFetchDimensions = jest.fn();
@@ -151,7 +151,7 @@ describe('LineageNew', () => {
   });
 
   it('renders empty state when no sources or models exist', async () => {
-    render(<LineageNew />);
+    render(<Lineage />);
 
     expect(await screen.findByText('No sources or models yet')).toBeInTheDocument();
     expect(
@@ -160,7 +160,7 @@ describe('LineageNew', () => {
   });
 
   it('fetches all object types on mount', async () => {
-    render(<LineageNew />);
+    render(<Lineage />);
 
     // Wait for initial load to complete to avoid act warnings
     await waitFor(() => {
@@ -174,7 +174,7 @@ describe('LineageNew', () => {
   });
 
   it('displays loading state before initial load completes', async () => {
-    render(<LineageNew />);
+    render(<Lineage />);
 
     // Loading shows immediately because initialLoadDone starts as false
     expect(screen.getByText('Loading...')).toBeInTheDocument();
@@ -191,7 +191,7 @@ describe('LineageNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<LineageNew />);
+    render(<Lineage />);
 
     expect(screen.getByText(/Failed to fetch sources/)).toBeInTheDocument();
 
@@ -210,7 +210,7 @@ describe('LineageNew', () => {
       edges: [{ id: 'edge-1', source: 'source-db', target: 'model-users' }],
     });
 
-    render(<LineageNew />);
+    render(<Lineage />);
 
     expect(await screen.findByTestId('node-source-db')).toBeInTheDocument();
     expect(screen.getByTestId('node-model-users')).toBeInTheDocument();
@@ -226,7 +226,7 @@ describe('LineageNew', () => {
       edges: [],
     });
 
-    render(<LineageNew />);
+    render(<Lineage />);
 
     const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
     expect(input).toBeInTheDocument();
@@ -245,7 +245,7 @@ describe('LineageNew', () => {
     });
 
     const user = userEvent.setup();
-    render(<LineageNew />);
+    render(<Lineage />);
 
     const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
 
@@ -266,7 +266,7 @@ describe('LineageNew', () => {
     });
 
     const user = userEvent.setup();
-    render(<LineageNew />);
+    render(<Lineage />);
 
     // Wait for initial load to complete
     await screen.findByTestId('node-source-db');
@@ -290,7 +290,7 @@ describe('LineageNew', () => {
     });
 
     const user = userEvent.setup();
-    render(<LineageNew />);
+    render(<Lineage />);
 
     // Wait for initial load, then both nodes should be visible
     expect(await screen.findByTestId('node-source-db')).toBeInTheDocument();
@@ -318,7 +318,7 @@ describe('LineageNew', () => {
       edges: [],
     });
 
-    render(<LineageNew />);
+    render(<Lineage />);
 
     // Wait for initial load
     await screen.findByTestId('node-source-db');
@@ -343,7 +343,7 @@ describe('LineageNew', () => {
     });
     const onNodeSelect = jest.fn();
 
-    render(<LineageNew scopeSelector="*" onNodeSelect={onNodeSelect} />);
+    render(<Lineage scopeSelector="*" onNodeSelect={onNodeSelect} />);
     fireEvent.click(await screen.findByTestId('node-source-db'));
 
     await waitFor(() =>
@@ -360,7 +360,7 @@ describe('LineageNew', () => {
       edges: [],
     });
 
-    render(<LineageNew />);
+    render(<Lineage />);
 
     expect(screen.getByTestId('react-flow')).toBeInTheDocument();
     expect(screen.getByTestId('background')).toBeInTheDocument();
@@ -380,7 +380,7 @@ describe('LineageNew', () => {
         edges: [],
       });
 
-      render(<LineageNew scopeSelector="*" />);
+      render(<Lineage scopeSelector="*" />);
 
       // The DAG renders immediately from the host-populated store.
       expect(await screen.findByTestId('node-source-db')).toBeInTheDocument();
@@ -393,7 +393,7 @@ describe('LineageNew', () => {
     });
 
     it('lazily fills dashboards + defaults (slices the route does not preload) only when empty', async () => {
-      render(<LineageNew scopeSelector="*" />);
+      render(<Lineage scopeSelector="*" />);
 
       await waitFor(() => {
         expect(mockFetchDashboards).toHaveBeenCalledTimes(1);
@@ -411,7 +411,7 @@ describe('LineageNew', () => {
         return typeof selector === 'function' ? selector(state) : state;
       });
 
-      render(<LineageNew scopeSelector="*" />);
+      render(<Lineage scopeSelector="*" />);
 
       await waitFor(() => {
         expect(screen.getByTestId('react-flow')).toBeInTheDocument();
