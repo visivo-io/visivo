@@ -427,9 +427,9 @@ export const selectDerivedInputNames = (s) => {
 };
 
 /**
- * ExplorerNew Store Slice
+ * Explorer Store Slice
  *
- * Multi-model, multi-insight architecture for the ExplorerNew composition layer.
+ * Multi-model, multi-insight architecture for the Explorer composition layer.
  * All state keys prefixed with 'explorer' to avoid namespace collisions.
  *
  * Key concepts:
@@ -438,7 +438,7 @@ export const selectDerivedInputNames = (s) => {
  * - explorerChartInsightNames: Ordered list of insights on the active chart
  * - Active tracking via explorerActiveModelName / explorerActiveInsightName
  */
-const createExplorerNewSlice = (set, get) => ({
+const createExplorerSlice = (set, get) => ({
   // --- Model Tab Management ---
   explorerModelTabs: [],
   explorerActiveModelName: null,
@@ -1566,4 +1566,4 @@ const createExplorerNewSlice = (set, get) => ({
 
 });
 
-export default createExplorerNewSlice;
+export default createExplorerSlice;

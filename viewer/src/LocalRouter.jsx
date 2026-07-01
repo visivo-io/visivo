@@ -8,8 +8,8 @@ import Project from './components/project/Project';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
-import ExplorerNewPage from './components/explorerNew/ExplorerNewPage';
-import ExplorerOverlay from './components/explorerNew/ExplorerOverlay';
+import ExplorerPage from './components/explorer/ExplorerPage';
+import ExplorerOverlay from './components/explorer/ExplorerOverlay';
 import Workspace from './components/views/workspace/Workspace';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
@@ -120,7 +120,7 @@ const LocalRouter = createBrowserRouter(
         <Route
           id="explorer"
           path="/explorer"
-          element={<ExplorerNewPage />}
+          element={<ExplorerPage />}
           handle={{
             crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
           }}

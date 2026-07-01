@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { PiPlus, PiFloppyDisk, PiPushPin } from 'react-icons/pi';
 import useStore from '../../stores/store';
-import { selectHasModifications } from '../../stores/explorerNewStore';
+import { selectHasModifications } from '../../stores/explorerStore';
 import InsightCRUDSection from './InsightCRUDSection';
 import ChartCRUDSection from './ChartCRUDSection';
 import ExplorerSaveModal from './ExplorerSaveModal';

@@ -3,7 +3,7 @@ import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import useStore from '../../stores/store';
-import { selectInsightStatus } from '../../stores/explorerNewStore';
+import { selectInsightStatus } from '../../stores/explorerStore';
 import { getSchema } from '../../schemas/schemas';
 import { SchemaEditor } from '../views/common/SchemaEditor/SchemaEditor';
 import { recordOnboardingAction } from '../onboarding/onboardingState';

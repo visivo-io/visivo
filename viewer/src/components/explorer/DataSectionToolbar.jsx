@@ -7,7 +7,7 @@ import {
   selectActiveModelQueryResult,
   selectActiveModelEnrichedResult,
   selectActiveModelSourceName,
-} from '../../stores/explorerNewStore';
+} from '../../stores/explorerStore';
 
 const DataSectionToolbar = () => {
   const queryResult = useStore(selectActiveModelQueryResult);

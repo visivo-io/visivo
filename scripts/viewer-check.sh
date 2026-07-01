@@ -2,7 +2,7 @@
 # Run viewer unit tests and lint. Use from the visivo/ directory:
 #   bash scripts/viewer-check.sh
 # Or with a test pattern:
-#   bash scripts/viewer-check.sh explorerNewStore
+#   bash scripts/viewer-check.sh explorerStore
 
 cd "$(dirname "$0")/../viewer" || exit 1
 

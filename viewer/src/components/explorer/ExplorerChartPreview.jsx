@@ -7,7 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 import {
   expandDotNotationProps,
   selectDerivedInputNames,
-} from '../../stores/explorerNewStore';
+} from '../../stores/explorerStore';
 
 const ExplorerChartPreview = () => {
   const insightStates = useStore(s => s.explorerInsightStates);

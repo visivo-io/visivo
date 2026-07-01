@@ -14,11 +14,11 @@ jest.mock('react-router-dom', () => ({
 
 // The real Explorer surface is heavy; stub it. The "Save and place" button it
 // would render comes from the round-trip context, which we exercise via the
-// overlay's own handler in these tests through a stubbed ExplorerNewPage that
+// overlay's own handler in these tests through a stubbed ExplorerPage that
 // reads the context.
-jest.mock('./ExplorerNewPage', () => {
+jest.mock('./ExplorerPage', () => {
   const { useExplorerRoundTrip } = jest.requireActual('./ExplorerRoundTripContext');
-  return function MockExplorerNewPage() {
+  return function MockExplorerPage() {
     const rt = useExplorerRoundTrip();
     return (
       <div data-testid="explorer-surface">

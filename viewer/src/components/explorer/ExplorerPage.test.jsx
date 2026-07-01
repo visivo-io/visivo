@@ -2,11 +2,11 @@ import React from 'react';
 import { render as rtlRender, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
-import ExplorerNewPage from './ExplorerNewPage';
+import ExplorerPage from './ExplorerPage';
 import useStore from '../../stores/store';
 import { futureFlags } from '../../router-config';
 
-// Renders through a Router (J-3: ExplorerNewPage now reads search params).
+// Renders through a Router (J-3: ExplorerPage now reads search params).
 let currentEntry = '/explorer';
 const render = (ui) =>
   rtlRender(
@@ -63,7 +63,7 @@ jest.mock('../../hooks/usePanelResize', () => ({
   }),
 }));
 
-describe('ExplorerNewPage', () => {
+describe('ExplorerPage', () => {
   beforeEach(() => {
     currentEntry = '/explorer';
     useStore.setState({
@@ -78,51 +78,51 @@ describe('ExplorerNewPage', () => {
   });
 
   it('renders LeftPanel, CenterPanel, and RightPanel', () => {
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
 
-    expect(screen.getByTestId('explorer-new-page')).toBeInTheDocument();
+    expect(screen.getByTestId('explorer-page')).toBeInTheDocument();
     expect(screen.getByTestId('left-panel')).toBeInTheDocument();
     expect(screen.getByTestId('center-panel')).toBeInTheDocument();
     expect(screen.getByTestId('right-panel')).toBeInTheDocument();
   });
 
   it('right panel is always rendered (never conditional)', () => {
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
     expect(screen.getByTestId('right-panel')).toBeInTheDocument();
   });
 
   // J-3 / VIS-782 — return bar visibility.
   it('does not render the return bar on a normal Explorer entry', () => {
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
     expect(screen.queryByTestId('explorer-return-bar')).not.toBeInTheDocument();
   });
 
   it('renders the return bar when entered from Workspace', () => {
     currentEntry = '/explorer?return_to=workspace&dashboard=sales';
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
     expect(screen.getByTestId('explorer-return-bar')).toBeInTheDocument();
     expect(screen.getByTestId('return-chip')).toBeInTheDocument();
   });
 
   it('does not render the return bar without a dashboard param', () => {
     currentEntry = '/explorer?return_to=workspace';
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
     expect(screen.queryByTestId('explorer-return-bar')).not.toBeInTheDocument();
   });
 
   it('renders VerticalDivider when left nav is expanded', () => {
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
     expect(screen.getByTestId('vertical-divider')).toBeInTheDocument();
   });
 
   it('hides VerticalDivider when left nav is collapsed', () => {
     useStore.setState({ explorerLeftNavCollapsed: true });
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
     expect(screen.queryByTestId('vertical-divider')).not.toBeInTheDocument();
   });
 
   it('does not render EditPanel or edit-panel-empty', () => {
-    render(<ExplorerNewPage />);
+    render(<ExplorerPage />);
     expect(screen.queryByTestId('edit-panel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edit-panel-empty')).not.toBeInTheDocument();
   });

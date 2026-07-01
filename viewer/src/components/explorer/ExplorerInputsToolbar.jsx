@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { PiCaretDown, PiCaretUp, PiSliders } from 'react-icons/pi';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
-import { selectDerivedInputNames } from '../../stores/explorerNewStore';
+import { selectDerivedInputNames } from '../../stores/explorerStore';
 import Input from '../items/Input';
 
 const ExplorerInputsToolbar = ({ projectId }) => {

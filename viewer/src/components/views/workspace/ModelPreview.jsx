@@ -151,7 +151,7 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
     // A source-less model uses the PROJECT DEFAULT source (defaults.source_name),
     // exactly as the run/compile path resolves it — NOT just the first source in
     // the list (which may be an unusable / uninstalled dialect). Mirrors the
-    // explorerNewStore `defaults.source_name || firstAvailableSource` convention.
+    // explorerStore `defaults.source_name || firstAvailableSource` convention.
     const list = Array.isArray(sources) ? sources : [];
     return defaults?.source_name || list[0]?.name || null;
   }, [config, sources, defaults]);

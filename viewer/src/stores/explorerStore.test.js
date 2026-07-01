@@ -22,7 +22,7 @@ import {
   assertNameUnique,
   getAllKnownNames,
   NameCollisionError,
-} from './explorerNewStore';
+} from './explorerStore';
 
 // Mock API modules so saveExplorerObjects + post-save fetches don't hit the network.
 // Without this, the post-save Promise.all (fetchInsights/Models/Charts/Metrics/Dimensions)
@@ -108,7 +108,7 @@ const resetState = () => {
   });
 };
 
-describe('explorerNewStore', () => {
+describe('explorerStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetState();

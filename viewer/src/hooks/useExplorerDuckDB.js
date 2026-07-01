@@ -6,7 +6,7 @@ import useStore from '../stores/store';
 import {
   selectActiveModelQueryResult,
   selectActiveModelComputedColumns,
-} from '../stores/explorerNewStore';
+} from '../stores/explorerStore';
 import { translateExpressions } from '../api/expressions';
 
 const EXPLORER_TABLE_PREFIX = 'explorer_';

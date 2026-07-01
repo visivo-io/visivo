@@ -23,7 +23,7 @@ import createDashboardSlice from './dashboardStore';
 import createInlineCreateSlice from './inlineCreateStore';
 import createCsvScriptModelSlice from './csvScriptModelStore';
 import createLocalMergeModelSlice from './localMergeModelStore';
-import createExplorerNewSlice from './explorerNewStore';
+import createExplorerSlice from './explorerStore';
 import createModelJobsSlice from './modelJobsStore';
 import createWorkspaceSlice from './workspaceStore';
 import createWorkspaceErdLayoutSlice from './workspaceErdLayoutStore';
@@ -55,7 +55,7 @@ const useStore = create(
     ...createInlineCreateSlice(...a),
     ...createCsvScriptModelSlice(...a),
     ...createLocalMergeModelSlice(...a),
-    ...createExplorerNewSlice(...a),
+    ...createExplorerSlice(...a),
     ...createModelJobsSlice(...a),
     ...createWorkspaceSlice(...a),
     // Session-only ERD layout (dragged node positions + pill waypoints), kept

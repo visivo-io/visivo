@@ -9,7 +9,7 @@ import VerticalDivider from '../common/VerticalDivider';
 import useStore from '../../stores/store';
 import { usePanelResize } from '../../hooks/usePanelResize';
 
-const ExplorerNewPage = () => {
+const ExplorerPage = () => {
   const leftNavCollapsed = useStore((s) => s.explorerLeftNavCollapsed);
   const modelTabs = useStore((s) => s.explorerModelTabs);
   const explorerSources = useStore((s) => s.explorerSources);
@@ -81,7 +81,7 @@ const ExplorerNewPage = () => {
     <ExplorerDndContext>
       <div
         className="flex flex-col h-[calc(100vh-3rem)] bg-gray-50 overflow-hidden"
-        data-testid="explorer-new-page"
+        data-testid="explorer-page"
       >
         {showReturnBar && (
           <div
@@ -109,4 +109,4 @@ const ExplorerNewPage = () => {
   );
 };
 
-export default ExplorerNewPage;
+export default ExplorerPage;

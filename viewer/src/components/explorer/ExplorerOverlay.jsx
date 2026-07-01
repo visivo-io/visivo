@@ -5,7 +5,7 @@ import useStore from '../../stores/store';
 import { getTypeColors } from '../views/common/objectTypeConfigs';
 import { emitWorkspaceEvent } from '../views/workspace/telemetry';
 import { ExplorerRoundTripProvider } from './ExplorerRoundTripContext';
-import ExplorerNewPage from './ExplorerNewPage';
+import ExplorerPage from './ExplorerPage';
 
 /**
  * ExplorerOverlay — VIS-778 / J-2.
@@ -174,7 +174,7 @@ const ExplorerOverlay = () => {
           <ExplorerRoundTripProvider
             value={{ dashboardName, slot, saving, onSaveAndPlace: handleSaveAndPlace }}
           >
-            <ExplorerNewPage />
+            <ExplorerPage />
           </ExplorerRoundTripProvider>
           {saving && (
             <div

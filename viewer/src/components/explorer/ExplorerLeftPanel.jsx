@@ -13,7 +13,7 @@ import { getTypeColors, getTypeIcon } from '../views/common/objectTypeConfigs';
 import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import SourceBrowser from './SourceBrowser';
 import useStore from '../../stores/store';
-import { selectActiveModelSourceName } from '../../stores/explorerNewStore';
+import { selectActiveModelSourceName } from '../../stores/explorerStore';
 
 const SECTION_DEFS = [
   { id: 'source', label: 'Sources', storeKey: null },

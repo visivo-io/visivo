@@ -20,7 +20,7 @@ import {
   selectActiveModelQueryError,
   selectActiveModelComputedColumns,
   selectActiveModelEnrichedResult,
-} from '../../stores/explorerNewStore';
+} from '../../stores/explorerStore';
 import { inferColumnTypes } from '../../utils/inferColumnTypes';
 import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import { usePanelResize } from '../../hooks/usePanelResize';

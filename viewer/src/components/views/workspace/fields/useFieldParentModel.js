@@ -10,7 +10,7 @@ import { parseRefValue } from '../../../../utils/refString';
  * `models[].metrics`). The backend serialises that ownership onto the record as
  * `parentModel`; an explicitly-scoped field may instead carry `config.model`
  * (a `${ref(model)}` string). This mirrors the resolution the Explorer store
- * already uses: `item.parentModel || item.config?.model` (explorerNewStore).
+ * already uses: `item.parentModel || item.config?.model` (explorerStore).
  *
  * Given the field record (a dimension/metric collection entry with `config`),
  * this hook resolves the parent model NAME and the full model RECORD from the

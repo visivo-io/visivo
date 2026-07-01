@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../stores/store';
-import { selectInsightStatus } from '../../stores/explorerNewStore';
+import { selectInsightStatus } from '../../stores/explorerStore';
 import { CHART_TYPES, getSchema } from '../../schemas/schemas';
 import { getRequiredFields } from '../views/common/insightRequiredFields';
 import { SchemaEditor } from '../views/common/SchemaEditor/SchemaEditor';

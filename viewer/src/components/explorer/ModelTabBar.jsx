@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PiPlus, PiX } from 'react-icons/pi';
 import useStore from '../../stores/store';
-import { selectModelStatus } from '../../stores/explorerNewStore';
+import { selectModelStatus } from '../../stores/explorerStore';
 import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 /**
