@@ -378,9 +378,12 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       if (d.kind === 'height' || d.kind === 'corner') {
         const rowPath =
           selection.isItem && rowPathForItem ? rowPathForItem : selectedKey;
-        const nextHeight = fluid
-          ? Math.round(d.livePx)
-          : pixelsToNearestHeightEnum(d.livePx);
+        // Fluid px ints are TOP-LEVEL-row only: a NESTED sub-row's height is a
+        // relative weight, and Dashboard.heightToWeight maps any number to the
+        // max weight — so nested rows always snap to an enum stop.
+        const nested = parseCanvasPath(rowPath).length > 1;
+        const nextHeight =
+          fluid && !nested ? Math.round(d.livePx) : pixelsToNearestHeightEnum(d.livePx);
         nextConfig = setRowHeight(nextConfig, rowPath, nextHeight);
       }
 

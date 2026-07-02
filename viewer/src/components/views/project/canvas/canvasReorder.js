@@ -557,15 +557,38 @@ export const removeItemAtPath = (config, itemPath) => {
 };
 
 /**
+ * Re-base a drop-target path for the removal of the item at
+ * `fromRowPath`/`fromIndex`. Removing the source shifts the sibling item
+ * indices in the source row, so a target path that passes THROUGH that row —
+ * the same row, or a nested row/slot inside a sibling container at a later
+ * index — must have its item index at that depth decremented. Returns `null`
+ * when the target lies inside the dragged item's own subtree (a self-drop:
+ * the target vanishes with the item); paths that don't pass through the
+ * source row are returned unchanged.
+ */
+const adjustTargetPathForRemoval = (targetPath, fromRowPath, fromIndex) => {
+  const prefix = `${fromRowPath}.item.`;
+  if (!targetPath || !targetPath.startsWith(prefix)) return targetPath;
+  const rest = targetPath.slice(prefix.length);
+  const dot = rest.indexOf('.');
+  const index = Number(dot === -1 ? rest : rest.slice(0, dot));
+  if (Number.isNaN(index) || index < fromIndex) return targetPath;
+  if (index === fromIndex) return null; // self-drop
+  return `${prefix}${index - 1}${dot === -1 ? '' : rest.slice(dot)}`;
+};
+
+/**
  * Move an EXISTING item from `fromRowPath`/`fromIndex` into another row, at the
  * `between-items`/`end-of-row` `target` (VIS-973). Unlike a Library insert this
  * preserves the moved item exactly (its leaf ref AND its width — a move, not a
  * fresh slot), so it does NOT apply the smart-width default. Cross-row only:
  * same-row reorder stays on `reorderItemsInRow` (removing then re-inserting in
- * one row would shift the target index). Removing the item from the source row
- * never shifts the (different) target row's indices, so the target descriptor
- * stays valid after the removal. Returns config unchanged for an invalid path,
- * a missing item, or a same-row target.
+ * one row would shift the target index). A target row whose path passes
+ * THROUGH the source row (nested inside a later sibling container) is re-based
+ * for the removal shift before the insert. Returns config unchanged for an
+ * invalid path, a missing item, a same-row target, a self-drop (target inside
+ * the dragged item's own subtree), or a target that fails to resolve after the
+ * removal — never the bare removal.
  */
 export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
   if (!config || !target) return config;
@@ -574,15 +597,21 @@ export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
   const item = itemsAtRowPath(config, fromRowPath)[fromIndex];
   if (!item || typeof item !== 'object') return config;
 
+  const targetRowPath = adjustTargetPathForRemoval(target.rowPath, fromRowPath, fromIndex);
+  if (targetRowPath === null) return config; // self-drop
+
+  const segments = parseCanvasPath(targetRowPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
+
   const removed = removeItemAtPath(config, `${fromRowPath}.item.${fromIndex}`);
   if (removed === config) return config;
 
-  const segments = parseCanvasPath(target.rowPath);
-  if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
-  return withRowsAtRowPath(removed, segments, rows => {
+  let inserted = false;
+  const next = withRowsAtRowPath(removed, segments, rows => {
     const lastRowIndex = segments[segments.length - 1].index;
     return rows.map((row, ri) => {
       if (ri !== lastRowIndex) return row;
+      inserted = true;
       const items = Array.isArray(row.items) ? [...row.items] : [];
       const insertAt =
         target.kind === 'end-of-row'
@@ -592,6 +621,7 @@ export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
       return { ...row, items };
     });
   });
+  return inserted ? next : config;
 };
 
 /**
@@ -599,7 +629,8 @@ export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
  * `targetItemPath` (VIS-989): the dragged item fills the slot — its leaf ref and
  * width are preserved (a move), and the empty placeholder it lands on is
  * discarded. Returns config unchanged unless the target is a genuine empty slot
- * and the source/target differ. The source row may be left empty; the shell's
+ * and the source/target differ (a self-drop — a slot inside the dragged item's
+ * own subtree — is also a no-op). The source row may be left empty; the shell's
  * sanitize step re-seeds it with an empty slot so it stays a valid, droppable row.
  */
 export const moveItemIntoSlot = (config, fromRowPath, fromIndex, targetItemPath) => {
@@ -620,16 +651,16 @@ export const moveItemIntoSlot = (config, fromRowPath, fromIndex, targetItemPath)
   if (!isEmptySlot(targetItem)) return config;
   if (targetRowPath === fromRowPath && targetIndex === fromIndex) return config;
 
+  const adjustedTargetPath = adjustTargetPathForRemoval(targetItemPath, fromRowPath, fromIndex);
+  if (adjustedTargetPath === null) return config; // self-drop
+
   const removed = removeItemAtPath(config, `${fromRowPath}.item.${fromIndex}`);
   if (removed === config) return config;
 
-  // Removing the source shifts the target index left by one only when both live
-  // in the SAME row and the source sat before the target.
-  let adjustedTargetPath = targetItemPath;
-  if (targetRowPath === fromRowPath && fromIndex < targetIndex) {
-    adjustedTargetPath = `${targetRowPath}.item.${targetIndex - 1}`;
-  }
-  return withItemAtPath(removed, adjustedTargetPath, () => item);
+  const next = withItemAtPath(removed, adjustedTargetPath, () => item);
+  // A target that fails to resolve after the removal returns the ORIGINAL
+  // config — never the bare removal.
+  return next === removed ? config : next;
 };
 
 // ── Resize helpers (VIS-777 / Track D D-4) ──────────────────────────────────

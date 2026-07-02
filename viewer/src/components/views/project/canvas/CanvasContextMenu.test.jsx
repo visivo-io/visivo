@@ -169,6 +169,35 @@ describe('CanvasContextMenu (VIS-781)', () => {
     expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
   });
 
+  test('scroll dismisses the menu', () => {
+    renderHost({ commit: jest.fn() });
+    rightClick('r0i0');
+    expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+    fireEvent.scroll(window);
+    expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+  });
+
+  test('every window scroll listener added on open is removed on dismiss (no leak)', () => {
+    const addSpy = jest.spyOn(window, 'addEventListener');
+    const removeSpy = jest.spyOn(window, 'removeEventListener');
+    try {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      const added = addSpy.mock.calls.filter(([type]) => type === 'scroll').map(([, fn]) => fn);
+      const removed = removeSpy.mock.calls
+        .filter(([type]) => type === 'scroll')
+        .map(([, fn]) => fn);
+      expect(added.length).toBeGreaterThan(0);
+      // A menu open must never register a scroll listener it can't remove.
+      added.forEach(fn => expect(removed).toContain(fn));
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
+  });
+
   // ------------------------------------------------------------------
   // J-3 / VIS-782 — "Open in Explorer"
   // ------------------------------------------------------------------

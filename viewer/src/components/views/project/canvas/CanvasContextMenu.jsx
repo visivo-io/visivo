@@ -198,12 +198,14 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
     const onKey = e => {
       if (e.key === 'Escape') setMenu(null);
     };
+    const onScroll = () => setMenu(null);
     document.addEventListener('pointerdown', onDocPointer, true);
     document.addEventListener('keydown', onKey);
-    window.addEventListener('scroll', () => setMenu(null), true);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', onDocPointer, true);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [menu]);
 

@@ -149,6 +149,81 @@ describe('moveItemBetweenRows (VIS-973 cross-row move)', () => {
     expect(moveItemBetweenRows(c, 'row.0', 9, { kind: 'end-of-row', rowPath: 'row.1' })).toBe(c);
     expect(moveItemBetweenRows(c, 'row.0', 0, { kind: 'between-rows', index: 0 })).toBe(c);
   });
+
+  // Removing the source shifts the sibling indices in the source row, so a
+  // target row nested inside a LATER sibling container must be re-based — the
+  // stale pre-removal path either dead-ends (the dragged item silently deleted)
+  // or resolves into the wrong container.
+  describe('target row nested inside a sibling of the dragged item', () => {
+    // row 0: [chart A, container-with-subrow]
+    const siblingConfig = () => ({
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            { width: 1, chart: 'ref(A)' },
+            { width: 1, rows: [{ height: 'medium', items: [{ width: 1, table: 'ref(T)' }] }] },
+          ],
+        },
+      ],
+    });
+
+    test('moves the item into a sub-row of a LATER sibling container (not deleted)', () => {
+      const after = moveItemBetweenRows(siblingConfig(), 'row.0', 0, {
+        kind: 'end-of-row',
+        rowPath: 'row.0.item.1.row.0',
+      });
+      // After the removal the container sits at index 0 — the item lands inside it.
+      expect(after.rows[0].items).toHaveLength(1); // just the container
+      expect(names(after.rows[0].items[0].rows[0].items)).toEqual(['ref(T)', 'ref(A)']);
+    });
+
+    test('with two sibling containers the item lands in the RIGHT one', () => {
+      const twoContainers = {
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              { width: 1, chart: 'ref(A)' },
+              { width: 1, rows: [{ height: 'medium', items: [{ width: 1, table: 'ref(X)' }] }] },
+              { width: 1, rows: [{ height: 'medium', items: [{ width: 1, table: 'ref(Y)' }] }] },
+            ],
+          },
+        ],
+      };
+      // Target the FIRST container's sub-row; the stale path would resolve to
+      // the second container after the removal shift.
+      const after = moveItemBetweenRows(twoContainers, 'row.0', 0, {
+        kind: 'end-of-row',
+        rowPath: 'row.0.item.1.row.0',
+      });
+      expect(names(after.rows[0].items[0].rows[0].items)).toEqual(['ref(X)', 'ref(A)']);
+      expect(names(after.rows[0].items[1].rows[0].items)).toEqual(['ref(Y)']);
+    });
+
+    test('a self-drop (container dragged into its own nested gap) is a no-op', () => {
+      const c = {
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              { width: 1, rows: [{ height: 'medium', items: [{ width: 1, table: 'ref(T)' }] }] },
+            ],
+          },
+        ],
+      };
+      expect(
+        moveItemBetweenRows(c, 'row.0', 0, { kind: 'end-of-row', rowPath: 'row.0.item.0.row.0' })
+      ).toBe(c);
+    });
+
+    test('a target that fails to resolve returns the ORIGINAL config, never the bare removal', () => {
+      const c = siblingConfig();
+      expect(
+        moveItemBetweenRows(c, 'row.0', 0, { kind: 'end-of-row', rowPath: 'row.5' })
+      ).toBe(c);
+    });
+  });
 });
 
 describe('moveItemIntoSlot (VIS-989 fill an empty slot)', () => {
@@ -194,6 +269,61 @@ describe('moveItemIntoSlot (VIS-989 fill an empty slot)', () => {
     expect(moveItemIntoSlot(c, 'row.1', 9, 'row.0.item.1')).toBe(c);
     // Dragging the empty slot onto itself.
     expect(moveItemIntoSlot(c, 'row.0', 1, 'row.0.item.1')).toBe(c);
+  });
+
+  // Same removal-shift hazard as moveItemBetweenRows: an empty slot nested
+  // inside a sibling container at a later index needs the target path re-based
+  // after the source removal.
+  describe('empty slot nested inside a sibling of the dragged item', () => {
+    // row 0: [chart A, container-with-empty-slot]
+    const siblingSlotConfig = () => ({
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            { width: 1, chart: 'ref(A)' },
+            { width: 1, rows: [{ height: 'medium', items: [{ width: 3 }] }] },
+          ],
+        },
+      ],
+    });
+
+    test('fills a slot inside a LATER sibling container (item not deleted)', () => {
+      const after = moveItemIntoSlot(siblingSlotConfig(), 'row.0', 0, 'row.0.item.1.row.0.item.0');
+      expect(after.rows[0].items).toHaveLength(1); // just the container
+      expect(names(after.rows[0].items[0].rows[0].items)).toEqual(['ref(A)']);
+    });
+
+    test('with two sibling containers the slot in the RIGHT one is filled', () => {
+      const twoContainers = {
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              { width: 1, chart: 'ref(A)' },
+              { width: 1, rows: [{ height: 'medium', items: [{ width: 3 }] }] },
+              { width: 1, rows: [{ height: 'medium', items: [{ width: 3 }] }] },
+            ],
+          },
+        ],
+      };
+      const after = moveItemIntoSlot(twoContainers, 'row.0', 0, 'row.0.item.1.row.0.item.0');
+      expect(names(after.rows[0].items[0].rows[0].items)).toEqual(['ref(A)']);
+      // The second container's slot stays empty.
+      expect(names(after.rows[0].items[1].rows[0].items)).toEqual([undefined]);
+    });
+
+    test('a self-drop (container dragged onto its own inner empty slot) is a no-op', () => {
+      const c = {
+        rows: [
+          {
+            height: 'medium',
+            items: [{ width: 1, rows: [{ height: 'medium', items: [{ width: 3 }] }] }],
+          },
+        ],
+      };
+      expect(moveItemIntoSlot(c, 'row.0', 0, 'row.0.item.0.row.0.item.0')).toBe(c);
+    });
   });
 });
 

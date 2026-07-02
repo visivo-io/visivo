@@ -83,6 +83,8 @@ const BOXES = {
   r0i1: { top: 0, left: 410, width: 390, height: 200, bottom: 200, right: 800 },
   r1: { top: 210, left: 0, width: 800, height: 150, bottom: 360, right: 800 },
   r1i0: { top: 210, left: 0, width: 800, height: 150, bottom: 360, right: 800 },
+  n0: { top: 20, left: 10, width: 780, height: 160, bottom: 180, right: 790 },
+  n0i0: { top: 20, left: 10, width: 780, height: 160, bottom: 180, right: 790 },
   root: { top: 0, left: 0, width: 800, height: 360, bottom: 360, right: 800 },
 };
 
@@ -287,6 +289,60 @@ describe('CanvasResizeLayer (VIS-777)', () => {
       'canvas_action',
       expect.objectContaining({ kind: 'resize_item', fluid: true })
     );
+  });
+
+  test('Shift-fluid height drag on a NESTED sub-row snaps to an enum, never a px int', () => {
+    useStore.setState({
+      dashboards: [
+        {
+          name: 'dash',
+          config: {
+            rows: [
+              {
+                height: 'medium',
+                items: [
+                  {
+                    width: 12,
+                    rows: [{ height: 'small', items: [{ width: 1, chart: 'ref(x)' }] }],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      workspaceOutlineSelectedKey: 'row.0.item.0.row.0.item.0',
+    });
+    const NestedHost = () => {
+      const rootRef = useRef(null);
+      return (
+        <div ref={rootRef} style={{ position: 'relative' }}>
+          <div data-canvas-path="row.0" data-testid="r0">
+            <div data-canvas-path="row.0.item.0" data-testid="r0i0">
+              <div data-canvas-path="row.0.item.0.row.0" data-testid="n0">
+                <div data-canvas-path="row.0.item.0.row.0.item.0" data-testid="n0i0" />
+              </div>
+            </div>
+          </div>
+          <CanvasResizeLayer rootRef={rootRef} dashboardName="dash" />
+        </div>
+      );
+    };
+    render(<NestedHost />);
+    const handle = screen.getByTestId('canvas-resize-height-row.0.item.0.row.0.item.0');
+
+    // Sub-row is "small" (256px); Shift-drag +150px → 406px → nearest stop
+    // "medium". A nested sub-row's height is a relative WEIGHT — the renderer
+    // maps any px int to the max weight — so the fluid int must never commit here.
+    firePointerDown(handle, { clientX: 400, clientY: 175, pointerId: 1, shiftKey: true });
+    firePointer('pointermove', { clientX: 400, clientY: 175 + 150, shiftKey: true });
+    firePointer('pointerup', { clientX: 400, clientY: 175 + 150, shiftKey: true });
+
+    expect(mockCommit).toHaveBeenCalledTimes(1);
+    const [, nextConfig] = mockCommit.mock.calls[0];
+    expect(nextConfig.rows[0].items[0].rows[0].height).toBe('medium');
+    // The top-level row is untouched — only the nested sub-row changed.
+    expect(nextConfig.rows[0].height).toBe('medium');
   });
 
   test('a drag with no net change does not commit (no-op)', () => {
