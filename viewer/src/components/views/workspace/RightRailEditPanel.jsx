@@ -115,6 +115,22 @@ const parseOutlineKey = key => {
   };
 };
 
+/**
+ * ReadOnlyNotice — VIS-1025. Compact muted band shown when the cloud stage is
+ * read-only (capabilities.can_edit === false): names the state and surfaces the
+ * server's `edit_action` hint (e.g. "Create a draft to edit"). Local serve
+ * (capabilities null) never renders this.
+ */
+const ReadOnlyNotice = ({ editAction }) => (
+  <div
+    data-testid="right-rail-readonly"
+    className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600"
+  >
+    <span className="font-semibold">Read-only</span>
+    {editAction ? ` — ${editAction}` : ''}
+  </div>
+);
+
 const Placeholder = ({ title, body, testId }) => (
   <div
     data-testid={testId}
@@ -158,6 +174,10 @@ const RightRailEditPanel = () => {
   const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  // VIS-1025: null = local serve (always editable); a cloud capability object
+  // with can_edit:false makes every rail write a no-op.
+  const capabilities = useStore(s => s.capabilities);
+  const readOnly = !!(capabilities && capabilities.can_edit === false);
   const { dashboardName } = useWorkspaceScope();
 
   const type = activeObject?.type || null;
@@ -206,6 +226,10 @@ const RightRailEditPanel = () => {
    */
   const persistConfig = useCallback(
     (nextConfig, meta) => {
+      // VIS-1025 read-only hold — BEFORE the optimistic write and BEFORE the
+      // validation gate (not-allowed is not 'invalid'): structure edits under
+      // a read-only stage neither write into the store nor persist.
+      if (readOnly) return;
       if (updateDashboardConfigOptimistic) {
         updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
@@ -246,8 +270,12 @@ const RightRailEditPanel = () => {
         finish(result.valid ? null : result)
       );
     },
-    [updateDashboardConfigOptimistic, scheduleSave, dashboardName]
+    [updateDashboardConfigOptimistic, scheduleSave, dashboardName, readOnly]
   );
+
+  // VIS-1025: the compact read-only band rendered above every structure form
+  // (LeafObjectForm renders its own — see below).
+  const readOnlyNotice = readOnly ? <ReadOnlyNotice editAction={capabilities?.edit_action} /> : null;
 
   const writeRows = useCallback(
     (nextRows, meta) => {
@@ -381,6 +409,7 @@ const RightRailEditPanel = () => {
             subtitle={`${rows.length} row${rows.length === 1 ? '' : 's'}`}
             saveStatus={effectiveSaveStatus}
           />
+          {readOnlyNotice}
           {validationBanner}
           <div
             data-testid="right-rail-edit-dashboard"
@@ -481,6 +510,7 @@ const RightRailEditPanel = () => {
             subtitle={`${row.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
             saveStatus={effectiveSaveStatus}
           />
+          {readOnlyNotice}
           {validationBanner}
           <div data-testid="right-rail-edit-row" className="flex-1 overflow-y-auto p-3">
             <RowEditForm
@@ -585,6 +615,7 @@ const RightRailEditPanel = () => {
             }
             saveStatus={effectiveSaveStatus}
           />
+          {readOnlyNotice}
           {validationBanner}
           <div data-testid="right-rail-edit-item" className="flex-1 overflow-y-auto p-3">
             <ItemEditForm
@@ -669,6 +700,11 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   const collectionKey = COLLECTION_KEY[type];
   const collection = useStore(s => (collectionKey ? s[collectionKey] : null));
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  // VIS-1025: cloud read-only — render the form for inspection, but disabled
+  // behind the Read-only notice. The write path is independently held by
+  // useRecordSave's short-circuit; this is the UX affordance layer.
+  const capabilities = useStore(s => s.capabilities);
+  const readOnly = !!(capabilities && capabilities.can_edit === false);
   const record = useMemo(
     () => (Array.isArray(collection) ? collection.find(o => o.name === name) || null : null),
     [collection, name]
@@ -723,6 +759,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
     return (
       <>
         <SelectionChip type={type} name={name} subtitle={singular} saveStatus={saveStatus} />
+        {readOnly && <ReadOnlyNotice editAction={capabilities?.edit_action} />}
         {/* VIS-993 §2 — the save-status block: the validation gate's 'invalid'
             errors (rail-level `path: message` list; per-field mapping comes
             with VIS-996) + the run-failure loop-back banner for THIS record,
@@ -745,7 +782,21 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
         )}
         <RecordRunStatus name={name} />
         <div data-testid="right-rail-edit-leaf-form" className="flex-1 overflow-y-auto">
-          {renderForm(record, common)}
+          {/* None of the leaf forms take a disabled prop, so read-only uses the
+              one mechanism that covers them all: a disabled <fieldset> (native
+              controls + keyboard) with pointer-events held (react-select /
+              contenteditable / editor surfaces). */}
+          {readOnly ? (
+            <fieldset
+              disabled
+              data-testid="right-rail-readonly-fieldset"
+              className="pointer-events-none opacity-60"
+            >
+              {renderForm(record, common)}
+            </fieldset>
+          ) : (
+            renderForm(record, common)
+          )}
         </div>
       </>
     );

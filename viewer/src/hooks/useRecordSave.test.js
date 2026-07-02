@@ -11,6 +11,12 @@
 import { renderHook, act } from '@testing-library/react';
 import useRecordSave from './useRecordSave';
 import useStore from '../stores/store';
+// The mocked gate fns (jest.mock below is hoisted above imports) — used by the
+// read-only ordering test to prove the short-circuit lands BEFORE validation.
+import {
+  validateRecordConfig,
+  validateRecordConfigSync,
+} from '../components/views/workspace/validateAgainstSchema';
 
 // The validation gate has its own suite (useRecordSave.validation.test.js,
 // real schema). Here it is stubbed permissive so the backbone mechanics —
@@ -32,6 +38,8 @@ const setupCollection = (collectionKey, name, config, saveActionName) => {
     [saveActionName]: saveFn,
     saveActivityCount: 0,
     lastSaveFailed: false,
+    // Local serve default — the cloud read-only suite below overrides this.
+    capabilities: null,
   });
   return saveFn;
 };
@@ -277,6 +285,161 @@ describe('useRecordSave (VIS-1018)', () => {
       jest.advanceTimersByTime(300);
     });
     expect(saveFn).toHaveBeenLastCalledWith('md1', { name: 'md1', content: 'C' });
+  });
+
+  // ── VIS-1025: cloud read-only short-circuit ────────────────────────────────
+  // capabilities (branchingStore): null = local serve (always editable); an
+  // object = cloud, where can_edit:false means the stage is read-only. The
+  // check is mechanics (not validation): a not-allowed edit is not 'invalid'.
+  describe('cloud read-only short-circuit (VIS-1025)', () => {
+    const READONLY_CAPS = {
+      can_view: true,
+      can_edit: false,
+      can_branch: true,
+      is_default_stage: true,
+      edit_action: 'Create a draft to edit',
+    };
+
+    afterEach(() => {
+      act(() => useStore.setState({ capabilities: null }));
+      validateRecordConfigSync.mockImplementation(() => null);
+    });
+
+    test('scheduleSave: no optimistic write, no timer, status readonly, errors null', async () => {
+      const saveFn = setupCollection('charts', 'c1', { name: 'c1', v: 0 }, 'saveChart');
+      act(() => useStore.setState({ capabilities: READONLY_CAPS }));
+      const { result } = renderHook(() => useRecordSave('chart', 'c1', { delay: 500 }));
+
+      act(() => result.current.scheduleSave({ name: 'c1', v: 1 }));
+
+      expect(result.current.status).toBe('readonly');
+      expect(result.current.errors).toBeNull();
+      // NO optimistic write — the store still holds the server value.
+      expect(useStore.getState().charts.find(c => c.name === 'c1').config).toEqual({
+        name: 'c1',
+        v: 0,
+      });
+      // NO doomed persist was armed.
+      expect(jest.getTimerCount()).toBe(0);
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(saveFn).not.toHaveBeenCalled();
+    });
+
+    test('saveNow: no write, no persist, resolves { success:false, readonly:true }', async () => {
+      const saveFn = setupCollection('tables', 't1', { name: 't1', v: 0 }, 'saveTable');
+      act(() => useStore.setState({ capabilities: READONLY_CAPS }));
+      const { result } = renderHook(() => useRecordSave('table', 't1', { delay: 500 }));
+
+      let outcome;
+      await act(async () => {
+        outcome = await result.current.saveNow({ name: 't1', v: 9 });
+      });
+
+      expect(outcome).toEqual({ success: false, readonly: true });
+      expect(saveFn).not.toHaveBeenCalled();
+      expect(useStore.getState().tables.find(t => t.name === 't1').config).toEqual({
+        name: 't1',
+        v: 0,
+      });
+      expect(result.current.status).toBe('readonly');
+      expect(result.current.errors).toBeNull();
+    });
+
+    test('the short-circuit lands BEFORE validation — an invalid config still reads readonly, never invalid', () => {
+      setupCollection('markdowns', 'md1', { name: 'md1', content: 'hi' }, 'saveMarkdown');
+      act(() => useStore.setState({ capabilities: READONLY_CAPS }));
+      // Were validation consulted first, this would flip the hook to 'invalid'.
+      validateRecordConfigSync.mockImplementation(() => ({
+        valid: false,
+        errors: [{ path: 'align', message: 'bad', keyword: 'enum' }],
+      }));
+      validateRecordConfig.mockClear();
+      validateRecordConfigSync.mockClear();
+      const { result } = renderHook(() => useRecordSave('markdown', 'md1', { delay: 500 }));
+
+      act(() => result.current.scheduleSave({ name: 'md1', content: 'hi', align: 'diagonal' }));
+
+      expect(result.current.status).toBe('readonly');
+      expect(result.current.errors).toBeNull();
+      // The gate was never even consulted for the blocked edit.
+      expect(validateRecordConfigSync).not.toHaveBeenCalled();
+      expect(validateRecordConfig).not.toHaveBeenCalled();
+    });
+
+    test('saveNow under read-only also cancels a previously-armed debounce timer', async () => {
+      const saveFn = setupCollection('charts', 'c1', { name: 'c1', v: 0 }, 'saveChart');
+      const { result } = renderHook(() => useRecordSave('chart', 'c1', { delay: 500 }));
+
+      // Armed while editable…
+      act(() => result.current.scheduleSave({ name: 'c1', v: 1 }));
+      expect(jest.getTimerCount()).toBeGreaterThan(0);
+
+      // …then the stage flips read-only and a flush is attempted.
+      act(() => useStore.setState({ capabilities: READONLY_CAPS }));
+      let outcome;
+      await act(async () => {
+        outcome = await result.current.saveNow();
+      });
+
+      expect(outcome).toEqual({ success: false, readonly: true });
+      // The doomed timer was cancelled — nothing fires later either.
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(saveFn).not.toHaveBeenCalled();
+      expect(result.current.status).toBe('readonly');
+    });
+
+    test('a save armed BEFORE capabilities flip read-only is held at fire time', async () => {
+      const saveFn = setupCollection('charts', 'c1', { name: 'c1', v: 0 }, 'saveChart');
+      const { result } = renderHook(() => useRecordSave('chart', 'c1', { delay: 500 }));
+
+      act(() => result.current.scheduleSave({ name: 'c1', v: 1 }));
+      expect(result.current.status).toBe('pending');
+
+      // The stage flips read-only while the debounce is running (e.g. the
+      // draft was published under the user).
+      act(() => useStore.setState({ capabilities: READONLY_CAPS }));
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(saveFn).not.toHaveBeenCalled();
+      expect(result.current.status).toBe('readonly');
+    });
+
+    test('cloud EDITABLE capabilities ({can_edit:true}) persist exactly like local serve', async () => {
+      const saveFn = setupCollection('charts', 'c1', { name: 'c1', v: 0 }, 'saveChart');
+      act(() =>
+        useStore.setState({
+          capabilities: { ...READONLY_CAPS, can_edit: true, edit_action: null },
+        })
+      );
+      const { result } = renderHook(() => useRecordSave('chart', 'c1', { delay: 500 }));
+
+      act(() => result.current.scheduleSave({ name: 'c1', v: 2 }));
+      expect(useStore.getState().charts.find(c => c.name === 'c1').config.v).toBe(2);
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+      expect(saveFn).toHaveBeenCalledWith('c1', { name: 'c1', v: 2 });
+      expect(result.current.status).toBe('saved');
+    });
+
+    test('capabilities null (local serve) stays fully editable — pin', async () => {
+      const saveFn = setupCollection('charts', 'c1', { name: 'c1', v: 0 }, 'saveChart');
+      act(() => useStore.setState({ capabilities: null }));
+      const { result } = renderHook(() => useRecordSave('chart', 'c1', { delay: 500 }));
+
+      act(() => result.current.scheduleSave({ name: 'c1', v: 3 }));
+      expect(result.current.status).toBe('pending');
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+      expect(saveFn).toHaveBeenCalledWith('c1', { name: 'c1', v: 3 });
+    });
   });
 
   test('reports into the global save-activity counter while a save is in flight', async () => {

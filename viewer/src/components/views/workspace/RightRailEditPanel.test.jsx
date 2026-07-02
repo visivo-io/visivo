@@ -182,6 +182,9 @@ const resetStore = (overrides = {}) => {
       inputs: [],
       saveDashboard: jest.fn(() => Promise.resolve({ success: true })),
       openWorkspaceTab: jest.fn(),
+      // Local serve default (always editable) — the VIS-1025 read-only suite
+      // overrides this with a cloud capability object.
+      capabilities: null,
       ...overrides,
     });
   });
@@ -1099,5 +1102,154 @@ describe('RightRailEditPanel run-failure loop-back + invalid errors (VIS-993 §2
     fireEvent.click(screen.getByTestId('chart-stub-save'));
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
     expect(screen.queryByTestId('record-save-errors')).not.toBeInTheDocument();
+  });
+});
+
+// ── VIS-1025: the rail respects cloud read-only ─────────────────────────────
+// capabilities (branchingStore): null = local serve (always editable); a cloud
+// capability object with can_edit:false makes the stage read-only — the rail
+// renders forms disabled behind a "Read-only — <edit_action>" notice and holds
+// EVERY write (leaf saves via useRecordSave, structure writes via persistConfig).
+describe('RightRailEditPanel cloud read-only (VIS-1025)', () => {
+  const READONLY_CAPS = {
+    can_view: true,
+    can_edit: false,
+    can_branch: true,
+    is_default_stage: true,
+    edit_action: 'Create a draft to edit',
+  };
+
+  afterEach(() => {
+    act(() => useStore.setState({ capabilities: null }));
+  });
+
+  test('leaf form: renders the Read-only notice with the edit_action hint + a disabled fieldset', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: { title: 'Old' } }],
+      capabilities: READONLY_CAPS,
+    });
+    renderPanel();
+
+    const notice = screen.getByTestId('right-rail-readonly');
+    expect(notice).toHaveTextContent('Read-only');
+    expect(notice).toHaveTextContent('Create a draft to edit');
+    // The form still renders (viewers can inspect the config)…
+    expect(screen.getByTestId('chart-edit-form-stub')).toBeInTheDocument();
+    // …but its fields sit inside a disabled fieldset (native controls disabled,
+    // pointer events held for non-native editors).
+    expect(screen.getByTestId('right-rail-readonly-fieldset')).toBeDisabled();
+  });
+
+  test('leaf form: an edit attempt produces ZERO optimistic store writes and ZERO saves', async () => {
+    const saveChart = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: { title: 'Old' } }],
+      saveChart,
+      capabilities: READONLY_CAPS,
+    });
+    renderPanel();
+
+    // The stub's save button routes onSave('chart', name, config) → saveNow.
+    fireEvent.click(screen.getByTestId('chart-stub-save'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(saveChart).not.toHaveBeenCalled();
+    const entry = useStore.getState().charts.find(c => c.name === 'rev_chart');
+    expect(entry.config).toEqual({ title: 'Old' });
+    // And it never masquerades as a validation failure.
+    expect(screen.queryByTestId('record-save-errors')).not.toBeInTheDocument();
+  });
+
+  test('structure form (persistConfig path): edits neither write optimistically nor persist', async () => {
+    jest.useFakeTimers();
+    try {
+      const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+      resetStore({
+        workspaceOutlineSelectedKey: 'row.0',
+        saveDashboard,
+        capabilities: READONLY_CAPS,
+      });
+      renderPanel();
+
+      expect(screen.getByTestId('right-rail-readonly')).toBeInTheDocument();
+
+      // Attempt a row-height edit through the live form.
+      selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+      fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+
+      expect(saveDashboard).not.toHaveBeenCalled();
+      // The store dashboard was NOT optimistically rewritten.
+      const dash = useStore.getState().dashboards.find(d => d.name === 'simple-dashboard');
+      expect(dash.config.rows[0].height).toBe('medium');
+      // No 'invalid' churn either — the edit is not-allowed, not invalid.
+      expect(screen.queryByTestId('right-rail-validation-errors')).not.toBeInTheDocument();
+    } finally {
+      act(() => jest.runOnlyPendingTimers());
+      jest.useRealTimers();
+    }
+  });
+
+  test('dashboard-chrome view: the notice renders and "Add row" is held', async () => {
+    jest.useFakeTimers();
+    try {
+      const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+      resetStore({
+        workspaceOutlineSelectedKey: 'dashboard',
+        saveDashboard,
+        capabilities: READONLY_CAPS,
+      });
+      renderPanel();
+
+      expect(screen.getByTestId('right-rail-readonly')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('right-rail-edit-add-row'));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+
+      expect(saveDashboard).not.toHaveBeenCalled();
+      const dash = useStore.getState().dashboards.find(d => d.name === 'simple-dashboard');
+      expect(dash.config.rows).toHaveLength(2);
+    } finally {
+      act(() => jest.runOnlyPendingTimers());
+      jest.useRealTimers();
+    }
+  });
+
+  test('capabilities null (local serve) → no notice, no fieldset, saves flow — pin', async () => {
+    const saveChart = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: { title: 'Old' } }],
+      saveChart,
+      capabilities: null,
+    });
+    renderPanel();
+
+    expect(screen.queryByTestId('right-rail-readonly')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('right-rail-readonly-fieldset')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('chart-stub-save'));
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+  });
+
+  test('cloud EDITABLE capabilities ({can_edit:true}) behave exactly like local serve — pin', async () => {
+    const saveChart = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: { title: 'Old' } }],
+      saveChart,
+      capabilities: { ...READONLY_CAPS, can_edit: true, edit_action: null },
+    });
+    renderPanel();
+
+    expect(screen.queryByTestId('right-rail-readonly')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('chart-stub-save'));
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
   });
 });

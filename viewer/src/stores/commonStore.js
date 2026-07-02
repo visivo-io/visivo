@@ -1,6 +1,8 @@
 import { fetchProjectBlob } from '../api/project';
 import { fetchProjectFilePath } from '../api/projectFilePath';
 import { hasCompletedOnboarding } from '../components/onboarding/onboardingState';
+import { resetProjectSchemaCache } from '../schemas/projectSchema';
+import { clearValidationCache } from '../components/views/workspace/validateAgainstSchema';
 
 // `visivo init` opens the viewer at `?onboarding=1` to explicitly request
 // the onboarding flow. This is needed because the new-project heuristic
@@ -29,6 +31,22 @@ const createCommonSlice = (set, get) => {
     set({ isNewProject: isNew });
   };
 
+  // VIS-1025: the schema caches (projectSchema's loader caches + the compiled
+  // AJV validators layered on top) carry no project identity. Every project
+  // write lands here (setProject, fetchProject — and the commitStore
+  // project_changed soft refresh routes through fetchProject), so this is the
+  // seam that keys them by project: drop BOTH layers when the id CHANGES.
+  // A same-id refetch, the first project landing, and id-less local blobs all
+  // keep a warm cache intact.
+  const invalidateSchemaCachesOnProjectSwitch = nextProject => {
+    const prevId = get().project?.id;
+    const nextId = nextProject?.id;
+    if (prevId != null && nextId != null && prevId !== nextId) {
+      resetProjectSchemaCache();
+      clearValidationCache();
+    }
+  };
+
   return {
     project: null,
     projectFilePath: null,
@@ -41,6 +59,7 @@ const createCommonSlice = (set, get) => {
       }));
     },
     setProject: project => {
+      invalidateSchemaCachesOnProjectSwitch(project);
       set({ project });
       evaluateIsNewProject();
     },
@@ -56,6 +75,7 @@ const createCommonSlice = (set, get) => {
       // those consumers. Switch to `fetchProject` from api/project.js
       // when the loader + Onboarding are migrated.
       const project = await fetchProjectBlob();
+      invalidateSchemaCachesOnProjectSwitch(project);
       set({ project });
       evaluateIsNewProject();
     },
