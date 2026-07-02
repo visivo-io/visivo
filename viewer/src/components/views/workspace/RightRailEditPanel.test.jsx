@@ -60,6 +60,21 @@ jest.mock('../common/DefaultsEditForm', () => ({
   __esModule: true,
   default: ({ name }) => <div data-testid="defaults-edit-form-stub">{`defaults:${name || 'none'}`}</div>,
 }));
+// Wrap the REAL RowEditForm to capture the props each render receives. Used to
+// pin that the panel passes `onItemChange` as the SOLE item-update channel —
+// RowEditForm unconditionally prefers `onItemChange`, so passing the legacy
+// onItemWidthChange/onItemRefChange alongside it would be dead props. All
+// behavior stays real (the wrapper just records and delegates).
+let mockRowEditFormProps = [];
+jest.mock('../common/RowEditForm', () => {
+  const React = require('react');
+  const actual = jest.requireActual('../common/RowEditForm');
+  const CapturingRowEditForm = props => {
+    mockRowEditFormProps.push(props);
+    return React.createElement(actual.default, props);
+  };
+  return { ...actual, __esModule: true, default: CapturingRowEditForm };
+});
 
 const SIMPLE_DASHBOARD = {
   name: 'simple-dashboard',
@@ -615,6 +630,29 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     fireEvent.click(within(dropzone).getByTitle('chart: rev_chart — click to open'));
     expect(openWorkspaceTab).toHaveBeenCalledWith({ type: 'chart', name: 'rev_chart' });
   });
+});
+
+// ── RowEditForm prop contract (post-#422 dead-prop removal) ──────────────────
+describe('RightRailEditPanel → RowEditForm prop contract', () => {
+  beforeEach(() => {
+    mockRowEditFormProps = [];
+  });
+
+  test.each([['dashboard'], ['row.0']])(
+    'the %s view passes onItemChange as the SOLE item-update channel (no dead legacy handlers)',
+    key => {
+      resetStore({ workspaceOutlineSelectedKey: key });
+      renderPanel();
+      expect(mockRowEditFormProps.length).toBeGreaterThan(0);
+      mockRowEditFormProps.forEach(props => {
+        expect(typeof props.onItemChange).toBe('function');
+        // RowEditForm prefers onItemChange unconditionally, so these legacy
+        // callbacks could never run here — they must not be passed.
+        expect('onItemWidthChange' in props).toBe(false);
+        expect('onItemRefChange' in props).toBe(false);
+      });
+    }
+  );
 });
 
 // ── Breadcrumb keyboard nav wired to the live config (G-2) ──────────────────

@@ -93,6 +93,15 @@ describe('EmbeddedTypesIndicator', () => {
     expect(within(stack).getAllByTestId(/Icon$/)).toHaveLength(2);
   });
 
+  it('names the first RESOLVABLE type in the single-icon tooltip (unknown entries first)', () => {
+    // Regression: the tooltip used `types[0]`, so ['bogus', 'source'] rendered
+    // the source icon but titled it "Contains embedded bogus".
+    render(<EmbeddedTypesIndicator types={['bogus', 'source']} />);
+    const badge = screen.getByTitle('Contains embedded source');
+    expect(within(badge).getAllByTestId(/Icon$/)).toHaveLength(1);
+    expect(screen.queryByTitle('Contains embedded bogus')).not.toBeInTheDocument();
+  });
+
   it('drops unknown types but keeps known ones', () => {
     render(<EmbeddedTypesIndicator types={['bogus', 'dimension', 'metric']} />);
     // Title reflects the full list; only resolvable icons render.

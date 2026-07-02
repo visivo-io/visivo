@@ -13,14 +13,10 @@ jest.mock('./PivotableTable', () => ({ table, sourceData }) => (
   </div>
 ));
 
-// The legacy MRT path exports whatever tableData holds (always empty on that
-// path — data-backed tables render PivotableTable); the real generateCsv
-// throws on an empty dataset, so stub the CSV builder and assert the download
-// wiring behaviorally instead.
-jest.mock('export-to-csv', () => ({
-  mkConfig: jest.fn(cfg => cfg),
-  generateCsv: jest.fn(() => () => 'csv-content'),
-}));
+// export-to-csv is intentionally NOT mocked: the legacy MRT path always has an
+// empty tableData (data-backed tables render PivotableTable), and the REAL
+// generateCsv throws on an empty dataset with useKeysAsHeaders — the export
+// guard below must prevent that from ever running.
 
 let table;
 
@@ -111,18 +107,22 @@ test('reads model-backed data from modelJobs when table.data is a model object',
 describe('legacy MRT path (no data ref)', () => {
   const legacyTable = { name: 'legacy-table', rows_per_page: 5 };
 
-  test('renders the MRT toolbar with a CSV export named after the table', () => {
+  test('renders the MRT toolbar with the CSV export guarded when there are no rows', () => {
     render(<Table table={legacyTable} shouldLoad={true} />, { wrapper: withProviders });
 
     const exportButton = screen.getByRole('button', { name: 'DownloadCsv' });
     expect(exportButton).toBeInTheDocument();
     expect(screen.queryByTestId('pivotable-table')).not.toBeInTheDocument();
 
+    // This path always has zero rows, and the REAL export-to-csv generateCsv
+    // (unmocked here) THROWS on an empty dataset with useKeysAsHeaders. The
+    // button must be disabled and the click a no-op — no crash, no download.
+    expect(exportButton).toBeDisabled();
+
     const appendSpy = jest.spyOn(document.body, 'appendChild');
-    fireEvent.click(exportButton);
+    expect(() => fireEvent.click(exportButton)).not.toThrow();
     const link = appendSpy.mock.calls.map(c => c[0]).find(n => n.tagName === 'A');
-    expect(link).toBeDefined();
-    expect(link.getAttribute('download')).toBe('legacy-table.csv');
+    expect(link).toBeUndefined();
     appendSpy.mockRestore();
   });
 

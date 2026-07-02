@@ -128,6 +128,22 @@ describe('ExplorerInputsToolbar', () => {
     dispatchSpy.mockRestore();
   });
 
+  it('renders a referenced input even when its store record has no config (names always resolve)', () => {
+    // Covers the unguarded resolve path: selectDerivedInputNames only returns
+    // names present in s.inputs (candidates are filtered through inputNameSet),
+    // so every derived name resolves — a config-less record still renders with
+    // its bare name (spreading an undefined config is a no-op).
+    useStore.setState({
+      inputs: [{ name: 'region' }, { name: 'threshold', config: { type: 'single-select' } }],
+    });
+
+    render(<ExplorerInputsToolbar projectId="proj_1" />);
+
+    expect(screen.getByTestId('mock-input-region')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-input-threshold')).toBeInTheDocument();
+    expect(screen.getByText('Inputs (2)')).toBeInTheDocument();
+  });
+
   it('only shows inputs referenced by insights attached to the chart', () => {
     useStore.setState({
       explorerChartInsightNames: [],

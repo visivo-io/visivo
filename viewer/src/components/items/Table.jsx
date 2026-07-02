@@ -33,10 +33,6 @@ import {
 /* eslint-enable react/jsx-pascal-case */
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { mkConfig, generateCsv } from 'export-to-csv';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
@@ -146,6 +142,11 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
 
 
   const handleExportData = () => {
+    // export-to-csv's generateCsv THROWS on an empty dataset with
+    // useKeysAsHeaders (it reads Object.keys(data[0])). On the legacy MRT path
+    // tableData is always empty, so exporting must be a no-op (the button is
+    // also disabled below).
+    if (tableData.length === 0) return;
     const csv = generateCsv(csvConfig)(tableData);
     const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(csvBlob);
@@ -172,29 +173,14 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   // PivotableTable will render. This removes the churn entirely with no visible change.
   const usesPivotableRenderer = isPivotableTable;
 
-  // Memoize the columns passed to MRT. `columns.map(...)` builds a brand-new array
-  // (with fresh Cell closures) each render; a new ref every render would itself
-  // re-trigger MRT's columnOrder effect, so this is keyed on the (stable) `columns`.
+  // Memoize the columns passed to MRT (a new ref every render would itself
+  // re-trigger MRT's columnOrder effect). Note: on the MRT path (no dataName)
+  // `computed.columns` is provably always [] — any table with a resolvable
+  // dataName renders PivotableTable instead — so the legacy per-cell renderers
+  // (markdown / number formatting) that used to be mapped on here were
+  // unreachable and have been removed.
   const mrtColumns = useMemo(
-    () =>
-      usesPivotableRenderer
-        ? []
-        : columns.map(column => ({
-            ...column,
-            Cell: ({ cell }) => {
-              const value = cell.getValue();
-              if (column.markdown) {
-                return (
-                  <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-                    {value}
-                  </Markdown>
-                );
-              } else if (typeof value === 'number' && `${value}`.length < 18) {
-                return new Intl.NumberFormat(navigator.language).format(value);
-              }
-              return value;
-            },
-          })),
+    () => (usesPivotableRenderer ? [] : columns),
     [columns, usesPivotableRenderer]
   );
 
@@ -350,6 +336,7 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
               <Button
                 aria-label="DownloadCsv"
                 onClick={handleExportData}
+                disabled={tableData.length === 0}
                 size="small"
                 sx={{ minWidth: '40px' }}
               >
