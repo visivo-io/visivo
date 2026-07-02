@@ -14,14 +14,17 @@ import { AGGREGATIONS } from './PivotShelf';
  * These helpers convert between the two representations and seed the chip draft
  * from an existing table record's ref-string config so the build lens opens
  * pre-populated with whatever the table already pivots on.
+ *
+ * A value expression the builder can't represent (unsupported aggregation,
+ * DISTINCT, compound expressions, …) becomes an OPAQUE chip
+ * (`{ raw, field, source: null, label, agg: null }`) that serialises back
+ * verbatim, so Save never rewrites it.
  */
 
 const DEFAULT_AGG = 'sum';
 
 // Capture `${ref(name).field}` → [name, field]. Anchored single-ref form.
 const SINGLE_REF = /^\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\.\s*([^}\s]+)\s*\}$/;
-// Capture the FIRST `${ref(name).field}` anywhere (used inside value expressions).
-const EMBEDDED_REF = /\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\.\s*([^}\s]+)\s*\}/;
 // Capture a leading aggregation function: `sum(...)` → ['sum', ...].
 const AGG_WRAP = /^\s*(\w+)\s*\(([\s\S]*)\)\s*$/;
 
@@ -42,27 +45,39 @@ export const parseFieldRefToChip = refString => {
 };
 
 /**
+ * An OPAQUE value chip for an expression the builder can't represent (an
+ * unsupported aggregation like `median(...)`, `count(distinct …)`, a compound
+ * expression, …). It carries the expression verbatim in `raw` so serialisation
+ * round-trips it untouched — Save must never rewrite what it can't parse. The
+ * shelf disables the aggregation picker for these chips.
+ */
+export const makeRawValueChip = valueExpr => ({
+  raw: valueExpr,
+  field: valueExpr,
+  source: null,
+  label: valueExpr,
+  agg: null,
+});
+
+/**
  * Parse a value expression (`sum(${ref(name).field})`) into a value chip with a
- * recognised aggregation, or null. Falls back to the default aggregation when
- * the function isn't one of the supported aggregations.
+ * recognised aggregation, or null for a non-string. Anything that isn't exactly
+ * a supported aggregation wrapping a single field ref is preserved as an opaque
+ * raw chip (see `makeRawValueChip`) rather than being coerced.
  */
 export const parseValueExprToChip = valueExpr => {
   if (typeof valueExpr !== 'string') return null;
   const aggMatch = valueExpr.match(AGG_WRAP);
-  let agg = DEFAULT_AGG;
-  let inner = valueExpr;
   if (aggMatch) {
     const fn = aggMatch[1].toLowerCase();
-    if (AGGREGATIONS.includes(fn)) {
-      agg = fn;
-      inner = aggMatch[2];
+    const refMatch = AGGREGATIONS.includes(fn) ? aggMatch[2].trim().match(SINGLE_REF) : null;
+    if (refMatch) {
+      const source = refMatch[1].trim();
+      const field = refMatch[2].trim();
+      return { field, source, label: humanise(field), agg: fn };
     }
   }
-  const refMatch = inner.match(EMBEDDED_REF);
-  if (!refMatch) return null;
-  const source = refMatch[1].trim();
-  const field = refMatch[2].trim();
-  return { field, source, label: humanise(field), agg };
+  return makeRawValueChip(valueExpr);
 };
 
 /** Seed a structured chip draft from a table record's ref-string pivot config. */
@@ -81,8 +96,10 @@ export const serializeDraft = draft => {
   return {
     columns: (d.columns || []).map(c => formatRefExpression(c.source, c.field)),
     rows: (d.rows || []).map(c => formatRefExpression(c.source, c.field)),
-    values: (d.values || []).map(
-      c => `${c.agg || DEFAULT_AGG}(${formatRefExpression(c.source, c.field)})`
+    // Raw chips serialise back VERBATIM — never rewrite an expression the
+    // builder couldn't parse into an agg + single-ref chip.
+    values: (d.values || []).map(c =>
+      c.raw != null ? c.raw : `${c.agg || DEFAULT_AGG}(${formatRefExpression(c.source, c.field)})`
     ),
   };
 };

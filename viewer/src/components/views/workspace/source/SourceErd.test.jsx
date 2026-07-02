@@ -30,6 +30,7 @@ const {
 jest.mock('../../lineage/useLineageDag', () => ({
   computeLayout: jest.fn(nodes => nodes.map((n, i) => ({ ...n, position: { x: i * 200, y: 0 } }))),
 }));
+const { computeLayout } = require('../../lineage/useLineageDag');
 
 // Mock reactflow — render each node through its registered node-type component
 // so TableErdNode's `source-erd-node-<table>` testids appear.
@@ -85,6 +86,34 @@ describe('SourceErd (VIS-1005)', () => {
     expect(screen.getByTestId('source-erd-node-users')).toBeInTheDocument();
     // It reads the cached feed, never the live introspect.
     expect(fetchSourceTables).toHaveBeenCalledWith(SRC);
+  });
+
+  test('passes column-aware layoutSize heights to computeLayout so tall tables do not overlap', async () => {
+    render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
+    await screen.findByTestId('source-erd');
+
+    // computeLayout honours node.layoutSize — each table node must carry its
+    // measured height (44 header + 2 columns × 24), not a dead `__height` prop.
+    const [nodes] = computeLayout.mock.calls.at(-1);
+    expect(nodes).toHaveLength(2);
+    nodes.forEach(node => {
+      expect(node.layoutSize).toEqual({ height: 44 + 2 * 24 });
+      expect(node.__height).toBeUndefined();
+    });
+  });
+
+  test('clears the previous source ERD while the next source loads (no stale nodes)', async () => {
+    const { rerender } = render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
+    expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
+
+    // Switch to another source whose load never resolves — the OLD source's
+    // ERD must NOT keep rendering through the load window (its nodes would be
+    // stamped with the new sourceName, mis-targeting the context menu).
+    fetchSourceSchemaJobs.mockImplementation(() => new Promise(() => {}));
+    rerender(<SourceErd activeObject={{ type: 'source', name: 'other-source' }} />);
+
+    expect(await screen.findByTestId('source-erd-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('source-erd-node-orders')).not.toBeInTheDocument();
   });
 
   test('shows the empty state for a cached source with no tables', async () => {

@@ -69,6 +69,25 @@ describe('PivotSaveModal', () => {
     expect(onCancel).toHaveBeenCalledTimes(3);
   });
 
+  test('renders a failed save error when the error prop is set', () => {
+    const { rerender } = render(
+      <PivotSaveModal open tableName="t" onReplace={noop} onAddNew={noop} onCancel={noop} />
+    );
+    expect(screen.queryByTestId('pivot-save-error')).not.toBeInTheDocument();
+
+    rerender(
+      <PivotSaveModal
+        open
+        tableName="t"
+        error="boom"
+        onReplace={noop}
+        onAddNew={noop}
+        onCancel={noop}
+      />
+    );
+    expect(screen.getByTestId('pivot-save-error')).toHaveTextContent('boom');
+  });
+
   test('disables the action buttons while saving', () => {
     render(
       <PivotSaveModal

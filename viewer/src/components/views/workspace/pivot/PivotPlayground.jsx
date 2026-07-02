@@ -61,6 +61,7 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
   const [draft, setDraft] = useState(() => seedDraftFromRecord(record));
   const [saving, setSaving] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const seededNameRef = useRef(null);
   useEffect(() => {
@@ -121,6 +122,7 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
   // Save opens a "replace or add new" choice rather than silently committing.
   const handleSaveClick = useCallback(() => {
     if (!isDirty) return;
+    setSaveError(null);
     setSaveModalOpen(true);
   }, [isDirty]);
 
@@ -132,13 +134,21 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
     }
   }, [setWorkspacePivotDraft, name, draft]);
 
+  // Both commit paths resolve to `{ success, error? }` — saveTable never
+  // throws — so a failed save must be read off the result: keep the modal open
+  // and surface the error instead of silently closing over a failure.
   const handleReplace = useCallback(async () => {
     if (typeof commitWorkspacePivotDraft !== 'function') return;
     setSaving(true);
+    setSaveError(null);
     try {
       syncDraftToStore();
-      await commitWorkspacePivotDraft();
-      setSaveModalOpen(false);
+      const result = await commitWorkspacePivotDraft();
+      if (result?.success) {
+        setSaveModalOpen(false);
+      } else {
+        setSaveError(result?.error || 'Failed to save the pivot.');
+      }
     } finally {
       setSaving(false);
     }
@@ -147,10 +157,15 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
   const handleAddNew = useCallback(async () => {
     if (typeof commitWorkspacePivotDraftAsNew !== 'function') return;
     setSaving(true);
+    setSaveError(null);
     try {
       syncDraftToStore();
-      await commitWorkspacePivotDraftAsNew();
-      setSaveModalOpen(false);
+      const result = await commitWorkspacePivotDraftAsNew();
+      if (result?.success) {
+        setSaveModalOpen(false);
+      } else {
+        setSaveError(result?.error || 'Failed to save the pivot.');
+      }
     } finally {
       setSaving(false);
     }
@@ -201,6 +216,7 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
         open={saveModalOpen}
         tableName={name}
         saving={saving}
+        error={saveError}
         onReplace={handleReplace}
         onAddNew={handleAddNew}
         onCancel={() => setSaveModalOpen(false)}

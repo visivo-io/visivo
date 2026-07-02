@@ -133,6 +133,24 @@ describe('JoinOperatorPopover', () => {
     expect(config.condition).toMatch(/\$\{ref\(/);
   });
 
+  it('uniquifies the relation name when one already exists for the model pair', async () => {
+    // The backend upserts by name — a second relation between the same models
+    // must get a fresh name instead of silently overwriting the first.
+    useStore.mockImplementation(selector =>
+      selector({
+        saveRelation: mockSaveRelation,
+        relations: [{ name: 'orders_to_users' }, { name: 'orders_to_users_2' }],
+      })
+    );
+    renderPopover();
+    fireEvent.click(screen.getByTestId('join-popover-save'));
+
+    await waitFor(() => expect(mockSaveRelation).toHaveBeenCalledTimes(1));
+    const [name, config] = mockSaveRelation.mock.calls[0];
+    expect(name).toBe('orders_to_users_3');
+    expect(config.name).toBe('orders_to_users_3');
+  });
+
   it('surfaces a save error from the store', async () => {
     mockSaveRelation.mockResolvedValue({ success: false, error: 'boom' });
     renderPopover();

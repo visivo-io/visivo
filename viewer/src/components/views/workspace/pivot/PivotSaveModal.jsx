@@ -15,11 +15,21 @@ import { PiFloppyDisk } from 'react-icons/pi';
  *   - open        — whether the modal is mounted.
  *   - tableName   — the table being edited (shown in the copy).
  *   - saving      — disables the action buttons while a save is in flight.
+ *   - error       — a failed save's error message (the modal stays open so the
+ *                   user can retry or cancel).
  *   - onReplace   — chose "Replace the current table".
  *   - onAddNew    — chose "Add as a new table".
  *   - onCancel    — dismissed (backdrop / Escape / Cancel button).
  */
-const PivotSaveModal = ({ open, tableName, saving = false, onReplace, onAddNew, onCancel }) => {
+const PivotSaveModal = ({
+  open,
+  tableName,
+  saving = false,
+  error = null,
+  onReplace,
+  onAddNew,
+  onCancel,
+}) => {
   const cancelRef = useRef(null);
 
   useEffect(() => {
@@ -87,6 +97,14 @@ const PivotSaveModal = ({ open, tableName, saving = false, onReplace, onAddNew, 
             Add as a new table
           </button>
         </div>
+        {error && (
+          <p
+            data-testid="pivot-save-error"
+            className="mt-3 rounded-md bg-highlight-50 px-3 py-2 text-[12px] leading-relaxed text-highlight-700"
+          >
+            {error}
+          </p>
+        )}
         <div className="mt-3 flex justify-end">
           <button
             type="button"

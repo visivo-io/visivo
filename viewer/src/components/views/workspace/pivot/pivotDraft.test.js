@@ -44,10 +44,43 @@ describe('pivotDraft', () => {
     });
   });
 
-  test('parseValueExprToChip falls back to the default aggregation for an unknown function', () => {
+  test('parseValueExprToChip preserves an unsupported aggregation as an opaque raw chip', () => {
+    // median is not in AGGREGATIONS — coercing it to sum would silently rewrite
+    // the saved config; it must survive as a raw chip instead.
     const chip = parseValueExprToChip('median(${ref(s).revenue})');
-    expect(chip.agg).toBe(DEFAULT_AGG);
-    expect(chip.field).toBe('revenue');
+    expect(chip).toEqual({
+      raw: 'median(${ref(s).revenue})',
+      field: 'median(${ref(s).revenue})',
+      source: null,
+      label: 'median(${ref(s).revenue})',
+      agg: null,
+    });
+  });
+
+  test('parseValueExprToChip preserves DISTINCT and compound expressions as raw chips', () => {
+    // count(distinct x) — a structured `count` chip would drop the DISTINCT.
+    expect(parseValueExprToChip('count(distinct ${ref(s).user_id})').raw).toBe(
+      'count(distinct ${ref(s).user_id})'
+    );
+    // Compound expression — a structured chip would keep only the first ref.
+    expect(parseValueExprToChip('sum(${ref(s).a} + ${ref(s).b})').raw).toBe(
+      'sum(${ref(s).a} + ${ref(s).b})'
+    );
+    // A bare (un-aggregated) ref would otherwise be rewritten to sum(...).
+    expect(parseValueExprToChip('${ref(s).revenue}').raw).toBe('${ref(s).revenue}');
+  });
+
+  test('raw value chips serialize back verbatim (seed → serialize identity)', () => {
+    const config = {
+      columns: ['${ref(s).region}'],
+      rows: [],
+      values: [
+        'median(${ref(s).revenue})',
+        'count(distinct ${ref(s).user_id})',
+        'sum(${ref(s).a} + ${ref(s).b})',
+      ],
+    };
+    expect(serializeDraft(seedDraftFromRecord(config))).toEqual(config);
   });
 
   test('seedDraftFromRecord builds chip shelves from a table record config', () => {

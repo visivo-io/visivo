@@ -206,6 +206,51 @@ describe('PivotPlayground (VIS-1008)', () => {
     );
   });
 
+  test('a failed Replace keeps the modal open and surfaces the error', async () => {
+    // saveTable never throws — failures resolve as { success: false, error }.
+    const saveTable = jest.fn(() =>
+      Promise.resolve({ success: false, error: 'data conflicts with pivot config' })
+    );
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [{ name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } }],
+      });
+    });
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    fireEvent.click(screen.getByTestId('pivot-playground-save'));
+    fireEvent.click(screen.getByTestId('pivot-save-replace'));
+
+    await waitFor(() => expect(saveTable).toHaveBeenCalledTimes(1));
+    // The modal stays open with the error visible instead of silently closing.
+    expect(await screen.findByTestId('pivot-save-error')).toHaveTextContent(
+      'data conflicts with pivot config'
+    );
+    expect(screen.getByTestId('pivot-save-modal')).toBeInTheDocument();
+  });
+
+  test('a failed Add-as-new keeps the modal open and surfaces the error', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: false, error: 'nope' }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab: jest.fn(),
+        tables: [{ name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } }],
+      });
+    });
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    fireEvent.click(screen.getByTestId('pivot-playground-save'));
+    fireEvent.click(screen.getByTestId('pivot-save-add-new'));
+
+    await waitFor(() => expect(saveTable).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('pivot-save-error')).toHaveTextContent('nope');
+    expect(screen.getByTestId('pivot-save-modal')).toBeInTheDocument();
+  });
+
   test('renders the empty state when no table is selected', () => {
     renderPlayground({ activeObject: { type: 'table', name: null }, record: null });
     expect(screen.getByTestId('pivot-playground-empty')).toBeInTheDocument();

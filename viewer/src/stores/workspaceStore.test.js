@@ -777,6 +777,40 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
     });
   });
 
+  test('commitWorkspacePivotDraft strips `data` from a data-backed table (data + pivot shelves cannot coexist)', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [
+          {
+            name: 'sales-pivot-table',
+            config: {
+              name: 'sales-pivot-table',
+              data: '${ref(sales_data)}',
+              rows_per_page: 25,
+            },
+          },
+        ],
+        workspacePivotDraft: {
+          tableName: 'sales-pivot-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: ['sum(${ref(s).revenue})'],
+        },
+      });
+    });
+    await act(async () => {
+      await useStore.getState().commitWorkspacePivotDraft();
+    });
+    const [, config] = saveTable.mock.calls[0];
+    // The backend rejects `data` coexisting with columns/rows/values — the
+    // committed pivot config must be columns-based only.
+    expect(config).not.toHaveProperty('data');
+    expect(config.rows_per_page).toBe(25);
+    expect(config.columns).toEqual(['${ref(s).region}']);
+  });
+
   test('commitWorkspacePivotDraft returns failure when there is no draft', async () => {
     let result;
     await act(async () => {
@@ -820,16 +854,17 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
     expect(saveTable).toHaveBeenCalledTimes(1);
     const [name, config] = saveTable.mock.calls[0];
     expect(name).toBe('sales-pivot-table_pivot');
-    // New table carries forward the source `data` ref + display config + the
-    // draft shelves under the fresh name.
+    // New table carries forward the display config + the draft shelves under
+    // the fresh name — but NOT `data` (the backend rejects `data` coexisting
+    // with columns/rows/values; the shelves' refs bind the parent instead).
     expect(config).toEqual({
-      data: '${ref(sales_data)}',
       format_cells: { foo: 1 },
       name: 'sales-pivot-table_pivot',
       columns: ['${ref(s).region}'],
       rows: ['${ref(s).category}'],
       values: ['sum(${ref(s).revenue})'],
     });
+    expect(config).not.toHaveProperty('data');
     // The new table is opened as a workspace tab.
     const tabs = useStore.getState().workspaceTabs;
     expect(tabs.some(t => t.type === 'table' && t.name === 'sales-pivot-table_pivot')).toBe(

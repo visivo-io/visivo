@@ -572,9 +572,11 @@ const createWorkspaceSlice = (set, get) => ({
    * Commit the current pivot build draft back to its table through the table
    * store's `saveTable(name, config)` action. Merges the draft's three pivot
    * shelves onto the table's existing config so non-pivot fields (rows_per_page,
-   * format_cells, …) are preserved. Returns the `saveTable` result (a promise
-   * resolving to `{ success, … }`), or `{ success: false }` when there's no
-   * draft / no save action.
+   * format_cells, …) are preserved — EXCEPT `data`: the table model rejects a
+   * `data` ref coexisting with columns/rows/values, so committing a pivot draft
+   * converts a data-backed table to columns-based. Returns the `saveTable`
+   * result (a promise resolving to `{ success, … }`), or `{ success: false }`
+   * when there's no draft / no save action.
    */
   commitWorkspacePivotDraft: async () => {
     const draft = get().workspacePivotDraft;
@@ -592,6 +594,9 @@ const createWorkspaceSlice = (set, get) => ({
       rows: draft.rows,
       values: draft.values,
     };
+    // The draft's ${ref(...)} shelves already bind the table to its parent;
+    // keeping `data` alongside them makes the backend reject the save.
+    delete nextConfig.data;
     return saveTable(draft.tableName, nextConfig);
   },
 
@@ -616,11 +621,12 @@ const createWorkspaceSlice = (set, get) => ({
 
     const sourceRecord = tables.find((t) => t.name === draft.tableName) || null;
     const sourceConfig = sourceRecord ? sourceRecord.config || sourceRecord : {};
-    // Carry forward the source table's `data` ref (and non-pivot display config)
-    // so the new table resolves against the same parent; override name + shelves.
-    const { data, format_cells, rows_per_page } = sourceConfig;
+    // Carry forward the source table's non-pivot display config. `data` is
+    // deliberately NOT carried: the table model rejects a `data` ref coexisting
+    // with columns/rows/values, and the draft's ${ref(...)} shelves already
+    // bind the new table to the same parent.
+    const { format_cells, rows_per_page } = sourceConfig;
     const nextConfig = {
-      ...(data !== undefined ? { data } : {}),
       ...(format_cells !== undefined ? { format_cells } : {}),
       ...(rows_per_page !== undefined ? { rows_per_page } : {}),
       name: newName,

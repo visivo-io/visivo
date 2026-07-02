@@ -56,6 +56,9 @@ const Chip = ({ shelf, chip, index, type, onRemove, onAggChange }) => (
             size="sm"
             className="min-w-[110px]"
             value={chip.agg}
+            // Raw chips carry an expression the builder can't represent — the
+            // picker is disabled so it serialises back verbatim.
+            disabled={Boolean(chip.raw)}
             options={AGGREGATIONS.map(agg => ({ value: agg, label: AGG_LABELS[agg] }))}
             onChange={agg => onAggChange(index, agg)}
           />

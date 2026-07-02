@@ -4,6 +4,7 @@ import { PiLinkSimple } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import { formatRefExpression } from '../../../../utils/refString';
+import { generateUniqueName } from '../../../../utils/uniqueName';
 import { useModelColumns } from './useModelColumns';
 import Select from '../../../common/Select';
 
@@ -141,6 +142,7 @@ const JoinOperatorPopover = ({
 }) => {
   const ref = useRef(null);
   const saveRelation = useStore(s => s.saveRelation);
+  const relations = useStore(s => s.relations);
 
   const [a, setA] = useState(initialA || { model: '', column: '' });
   const [b, setB] = useState(initialB || { model: '', column: '' });
@@ -205,7 +207,12 @@ const JoinOperatorPopover = ({
     }
     setSaving(true);
     setError(null);
-    const name = defaultRelationName(a.model, b.model);
+    // The backend upserts relations by name — uniquify against the existing
+    // relations so authoring a SECOND relation between the same model pair
+    // (legitimate: `is_default` exists for multi-relation pairs) never silently
+    // overwrites the first.
+    const existingNames = (relations || []).map(r => r?.name).filter(Boolean);
+    const name = generateUniqueName(defaultRelationName(a.model, b.model), existingNames);
     const config = {
       name,
       join_type: joinType,

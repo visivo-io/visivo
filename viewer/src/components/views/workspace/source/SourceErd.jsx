@@ -80,8 +80,12 @@ const SourceErdCanvas = ({ activeObject }) => {
   useEffect(() => {
     cancelledRef.current = false;
     setCtxMenu(null);
+    // Drop the previous source's entry IMMEDIATELY — the frame reuses this body
+    // across sibling selections, and a stale entry would render the OLD
+    // source's ERD (with the NEW sourceName stamped onto its nodes, so the
+    // table context menu targets the wrong source) through the load window.
+    setEntry(null);
     if (!sourceName || !available) {
-      setEntry(null);
       setStatus(available ? 'missing' : 'idle');
       return () => {
         cancelledRef.current = true;
@@ -144,21 +148,18 @@ const SourceErdCanvas = ({ activeObject }) => {
 
   const { nodes: rawNodes, edges } = useSourceErdDag(sourceName, entry);
 
-  // Lay the table nodes out left-to-right with dagre, retuning each node's
+  // Lay the table nodes out left-to-right with dagre, sizing each node's
   // height by its (capped) column count so the layout spaces tall tables apart.
+  // computeLayout honours an explicit `layoutSize` per node (the same contract
+  // useRelationErdDag uses); width falls back to its data.name estimate.
   const nodes = useMemo(() => {
     if (!rawNodes.length) return [];
     const sized = rawNodes.map(n => {
       const colCount = Math.min((n.data?.columns || []).length, MAX_LAYOUT_ROWS);
-      return { ...n, __height: NODE_BASE_HEIGHT + colCount * NODE_ROW_HEIGHT };
+      return { ...n, layoutSize: { height: NODE_BASE_HEIGHT + colCount * NODE_ROW_HEIGHT } };
     });
     try {
-      // computeLayout estimates a fixed height; pre-seed our column-aware height
-      // by stashing it on the node, then override the laid-out position spacing
-      // via the node count. computeLayout reads data.name for width — fine here.
-      const laid = computeLayout(sized, edges, null);
-      // Re-apply our taller heights for visual breathing room (dagre used 50).
-      return laid.map((n, i) => ({ ...n, ...sized[i], position: n.position }));
+      return computeLayout(sized, edges, null);
     } catch {
       // Fall back to a simple grid if dagre throws.
       return sized.map((n, i) => ({

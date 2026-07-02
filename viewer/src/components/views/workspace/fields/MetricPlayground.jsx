@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PiFunnel } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
-import { formatRefExpression } from '../../../../utils/refString';
+import { formatRefExpression, parseRefValue } from '../../../../utils/refString';
 import { getTypeColors } from '../../common/objectTypeConfigs';
 import ExplorerInsightPreview from '../../common/InsightPreview';
 import { useFieldParentModel } from './useFieldParentModel';
@@ -73,16 +73,28 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
 
   const { parentModelName, status: parentStatus } = useFieldParentModel(fieldRecord);
 
-  // Sibling dimensions of the same parent model are the split candidates.
+  // Sibling dimensions of the same parent model are the split candidates. A
+  // dimension's model binding may be a raw `${ref(model)}` string — unwrap it
+  // before comparing against the resolved bare model name.
   const splitCandidates = useMemo(() => {
     if (!parentModelName || !Array.isArray(dimensions)) return [];
     return dimensions
-      .filter(d => (d.parentModel || d.config?.model) === parentModelName)
+      .filter(d => parseRefValue(d.parentModel || d.config?.model) === parentModelName)
       .map(d => ({ name: d.name, isDate: DATE_HINT.test(d.name) }));
   }, [dimensions, parentModelName]);
 
   const [splitField, setSplitField] = useState('');
   const [grain, setGrain] = useState('month');
+
+  // The frame reuses this body across sibling selections — drop a split field
+  // that isn't one of THIS metric's candidates (e.g. it survived a switch onto
+  // a metric with a different parent model) so it can re-default cleanly
+  // instead of building a broken `${ref(newModel).old_field}` query.
+  useEffect(() => {
+    if (splitField && !splitCandidates.some(c => c.name === splitField)) {
+      setSplitField('');
+    }
+  }, [splitCandidates, splitField]);
 
   // Always default the split to the first candidate so a chart renders without
   // the user touching the controls.
@@ -134,7 +146,10 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
         x: `?{ ${xExpr} }`,
         y: `?{ ${metricRef} }`,
       },
-      interactions: [{ split: `?{ ${dimRef} }` }],
+      // Split on the SAME expression as x — when a grain is active, splitting
+      // on the raw dimension would drag the raw date into the GROUP BY and
+      // nullify the bucketing (per-raw-date groups, one series per date).
+      interactions: [{ split: `?{ ${xExpr} }` }],
     };
   }, [parentModelName, name, splitField, showGrain, grain]);
 

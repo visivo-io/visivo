@@ -67,7 +67,7 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
   const modelSql = modelConfig?.sql || null;
 
   const db = useDuckDB();
-  const { status: jobStatus, progressMessage, result, error, isRunning, executeQuery } =
+  const { status: jobStatus, progressMessage, result, error, isRunning, executeQuery, reset } =
     useModelQueryJob();
 
   const [hasRun, setHasRun] = useState(false);
@@ -75,22 +75,48 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
   const [profiling, setProfiling] = useState(false);
   const [profileError, setProfileError] = useState(null);
   const tableRef = useRef(null);
+  // Which dimension the current job run belongs to — the profiling effect only
+  // consumes a completed result stamped for THIS dimension.
+  const runForNameRef = useRef(null);
 
   const colors = getTypeColors('dimension');
 
   const handleRun = useCallback(() => {
     if (!sourceName || !modelSql) return;
+    runForNameRef.current = name;
     setHasRun(true);
     setProfile(null);
     setProfileError(null);
     executeQuery(sourceName, modelSql).catch(() => {});
-  }, [sourceName, modelSql, executeQuery]);
+  }, [sourceName, modelSql, executeQuery, name]);
+
+  // The frame reuses this body across sibling selections — when the selected
+  // dimension changes, clear the previous run's job state + profile so the new
+  // expression is never profiled against the old model's rows.
+  const lastNameRef = useRef(name);
+  useEffect(() => {
+    if (lastNameRef.current === name) return;
+    lastNameRef.current = name;
+    runForNameRef.current = null;
+    reset();
+    setHasRun(false);
+    setProfile(null);
+    setProfileError(null);
+    setProfiling(false);
+  }, [name, reset]);
 
   // When the model run completes, load its rows into DuckDB with the dimension
   // expression as a derived column, then profile that derived column.
   useEffect(() => {
     const rows = result?.rows || result?.data || null;
-    if (jobStatus !== 'completed' || !db || !expression || !Array.isArray(rows) || rows.length === 0) {
+    if (
+      jobStatus !== 'completed' ||
+      runForNameRef.current !== name ||
+      !db ||
+      !expression ||
+      !Array.isArray(rows) ||
+      rows.length === 0
+    ) {
       return;
     }
     let cancelled = false;
@@ -100,6 +126,14 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
       setProfile(null);
       try {
         const conn = await getConnection(db);
+        // Drop the PREVIOUS run's derived table before creating this run's —
+        // otherwise every profile run leaks one DuckDB-WASM table (the unmount
+        // cleanup only drops the last).
+        if (tableRef.current) {
+          const staleTable = tableRef.current;
+          tableRef.current = null;
+          await conn.query(`DROP TABLE IF EXISTS "${staleTable}"`).catch(() => {});
+        }
         const baseTable = `dim_base_${Date.now()}`;
         const derivedTable = `dim_derived_${Date.now()}`;
         const tempFile = `dim_data_${Date.now()}.json`;
