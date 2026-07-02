@@ -23,13 +23,18 @@ jest.mock('react-router-dom', () => ({
 let mockDimensionWidth = 1200;
 jest.mock('react-cool-dimensions', () => ({
   __esModule: true,
-  default: () => ({
-    observe: jest.fn(),
-    // eslint-disable-next-line no-undef
-    get width() {
-      return mockDimensionWidth;
-    },
-  }),
+  default: (options = {}) => {
+    // Invoke the onResize callback the way the real ResizeObserver hook would,
+    // so Dashboard's re-observe wiring is exercised.
+    if (options.onResize) options.onResize({ observe: jest.fn() });
+    return {
+      observe: jest.fn(),
+      // eslint-disable-next-line no-undef
+      get width() {
+        return mockDimensionWidth;
+      },
+    };
+  },
 }));
 
 // Mock the hooks
@@ -1115,6 +1120,296 @@ describe('Dashboard', () => {
       renderWithModels([]); // empty model registry
       expect(lastInsightNames()).toContain('wide-columns-table');
       expect(lastModelNames()).not.toContain('wide-columns-table');
+    });
+  });
+  /* eslint-enable no-template-curly-in-string */
+
+  // ---------- shared mount helper for item-type / data-collection tests ----------
+
+  const mountDashboard = (
+    dashboard,
+    {
+      charts = {},
+      tables = {},
+      markdowns = {},
+      inputs = {},
+      models = [],
+      insightJobs = {},
+      props = {},
+    } = {}
+  ) => {
+    useStore.mockImplementation(selector => {
+      const state = {
+        project: mockProject,
+        dashboards: [dashboard],
+        fetchDashboards: jest.fn(),
+        fetchCharts: jest.fn(),
+        fetchTables: jest.fn(),
+        fetchMarkdowns: jest.fn(),
+        fetchInputs: jest.fn(),
+        fetchModels: jest.fn(),
+        models,
+        insightJobs,
+        getChartByName: jest.fn(name => charts[name] ?? null),
+        getTableByName: jest.fn(name => tables[name] ?? null),
+        getMarkdownByName: jest.fn(name => markdowns[name] ?? null),
+        getInputByName: jest.fn(name => inputs[name] ?? null),
+      };
+      return selector(state);
+    });
+    return render(
+      <BrowserRouter future={futureFlags}>
+        <Dashboard project={mockProject} dashboardName={dashboard.name} {...props} />
+      </BrowserRouter>
+    );
+  };
+
+  // ---------- non-chart leaf items + broken-ref fallbacks ----------
+
+  describe('leaf item rendering fallbacks', () => {
+    it('renders a markdown item resolved from the store', () => {
+      mountDashboard(
+        {
+          name: 'md-dash',
+          rows: [{ height: 'medium', items: [{ markdown: 'notes', width: 1 }] }],
+        },
+        { markdowns: { notes: { config: { name: 'notes' } } } }
+      );
+      expect(screen.getByTestId('markdown')).toHaveTextContent('notes');
+    });
+
+    it('shows the legacy placeholder for an unresolvable markdown ref', () => {
+      mountDashboard({
+        name: 'md-missing',
+        rows: [{ height: 'medium', items: [{ markdown: 'ghost-md', width: 1 }] }],
+      });
+      expect(screen.getByText(/Markdown not found: ghost-md/)).toBeInTheDocument();
+    });
+
+    it('renders an input item resolved from the store', () => {
+      mountDashboard(
+        {
+          name: 'input-dash',
+          rows: [{ height: 'compact', items: [{ input: 'region-picker', width: 1 }] }],
+        },
+        { inputs: { 'region-picker': { config: { name: 'region-picker' } } } }
+      );
+      expect(screen.getByTestId('input')).toHaveTextContent('region-picker');
+    });
+
+    it('shows the legacy placeholder for an unresolvable input ref', () => {
+      mountDashboard({
+        name: 'input-missing',
+        rows: [{ height: 'compact', items: [{ input: 'ghost-input', width: 1 }] }],
+      });
+      expect(screen.getByText(/Input not found: ghost-input/)).toBeInTheDocument();
+    });
+
+    it('shows the legacy placeholder for an unresolvable table ref', () => {
+      mountDashboard({
+        name: 'table-missing',
+        rows: [{ height: 'medium', items: [{ table: 'ghost-table', width: 1 }] }],
+      });
+      expect(screen.getByText(/Table not found: ghost-table/)).toBeInTheDocument();
+    });
+
+    it('delegates broken refs to renderBrokenRef with type, name, and item path (VIS-792)', () => {
+      const renderBrokenRef = jest.fn(({ type, name, itemPath }) => (
+        <div data-testid="broken-ref-card">{`${type}:${name}:${itemPath}`}</div>
+      ));
+      mountDashboard(
+        {
+          name: 'broken-canvas',
+          rows: [{ height: 'medium', items: [{ chart: 'ghost-chart', width: 1 }] }],
+        },
+        { props: { renderBrokenRef } }
+      );
+      expect(screen.getByTestId('broken-ref-card')).toHaveTextContent(
+        'chart:ghost-chart:row.0.item.0'
+      );
+      // The legacy inline text must NOT render when the canvas owns the card.
+      expect(screen.queryByText(/Chart not found/)).not.toBeInTheDocument();
+    });
+  });
+
+  // ---------- empty dashboard, canvas overlay variant ----------
+
+  it('mounts a bare measurable root for an empty dashboard when hideEmptyPlaceholder is set', () => {
+    const { container } = mountDashboard(
+      { name: 'empty-dash', rows: [] },
+      { props: { hideEmptyPlaceholder: true } }
+    );
+    expect(screen.queryByText('This dashboard is empty')).not.toBeInTheDocument();
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    const root = container.querySelector('[data-dashboard-empty="true"]');
+    expect(root).not.toBeNull();
+    expect(root).toHaveAttribute('data-testid', 'dashboard_empty-dash');
+  });
+
+  // ---------- height mapping (enum → px) and nested weights ----------
+
+  describe('height mapping', () => {
+    it.each([
+      ['large', '512px'],
+      ['xlarge', '768px'],
+      ['xxlarge', '1024px'],
+    ])('maps row height %s to %s', (height, px) => {
+      mountDashboard(
+        {
+          name: 'height-map',
+          rows: [{ height, items: [{ chart: 'c', width: 1 }] }],
+        },
+        { charts: { c: { config: { name: 'c', insights: [] } } } }
+      );
+      expect(screen.getByTestId('dashboard-row-0').style.height).toBe(px);
+    });
+
+    it('maps every nested sub-row height token to its relative weight', () => {
+      mountDashboard(
+        {
+          name: 'weights',
+          rows: [
+            {
+              height: 'xxlarge',
+              items: [
+                {
+                  width: 1,
+                  rows: [
+                    { height: 'compact', items: [{ chart: 'c' }] },
+                    { height: 'xsmall', items: [{ chart: 'c' }] },
+                    { height: 'medium', items: [{ chart: 'c' }] },
+                    { height: 'xlarge', items: [{ chart: 'c' }] },
+                    { height: 'xxlarge', items: [{ chart: 'c' }] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        { charts: { c: { config: { name: 'c', insights: [] } } } }
+      );
+      const grows = screen
+        .getAllByTestId('dashboard-nested-subrow')
+        .map(el => parseFloat(el.style.flex.split(' ')[0]));
+      expect(grows).toEqual([1, 1, 3, 6, 8]);
+    });
+  });
+
+  // ---------- data collection: inputs, embedded table data, pivot refs ----------
+
+  /* eslint-disable no-template-curly-in-string */
+  describe('data-name collection', () => {
+    const { useInputsData } = jest.requireMock('../../hooks/useInputsData');
+    const lastModelNames = () => {
+      const calls = useModelsData.mock.calls;
+      return calls.length ? calls[calls.length - 1][1] : [];
+    };
+    const lastInsightNames = () => {
+      const calls = useInsightsData.mock.calls;
+      return calls.length ? calls[calls.length - 1][1] : [];
+    };
+    const lastInputNames = () => {
+      const calls = useInputsData.mock.calls;
+      return calls.length ? calls[calls.length - 1][1] : [];
+    };
+
+    it('prefetches input widgets found anywhere in the rows', () => {
+      mountDashboard(
+        {
+          name: 'inputs-collect',
+          rows: [
+            {
+              height: 'compact',
+              items: [{ input: '${ref(region-picker)}' }, { input: { name: 'embedded-input' } }],
+            },
+          ],
+        },
+        { inputs: { 'region-picker': { config: { name: 'region-picker' } } } }
+      );
+      expect(lastInputNames()).toEqual(
+        expect.arrayContaining(['region-picker', 'embedded-input'])
+      );
+    });
+
+    it('unions insight input dependencies (and pending inputs) into the input prefetch', () => {
+      mountDashboard(
+        {
+          name: 'insight-deps',
+          rows: [{ height: 'medium', items: [{ chart: 'test-chart', width: 1 }] }],
+        },
+        {
+          charts: { 'test-chart': mockChart },
+          insightJobs: {
+            'test-insight': {
+              inputDependencies: ['dep-input'],
+              pendingInputs: ['pending-input'],
+            },
+          },
+        }
+      );
+      expect(lastInputNames()).toEqual(
+        expect.arrayContaining(['dep-input', 'pending-input'])
+      );
+    });
+
+    it('classifies an embedded table-data object by its model signature', () => {
+      mountDashboard(
+        {
+          name: 'embedded-data',
+          rows: [
+            { height: 'medium', items: [{ table: 'model-table' }, { table: 'insight-table' }] },
+          ],
+        },
+        {
+          tables: {
+            'model-table': {
+              config: { name: 'model-table', data: { name: 'embedded-model', sql: 'select 1' } },
+            },
+            'insight-table': {
+              config: { name: 'insight-table', data: { name: 'embedded-insight-data' } },
+            },
+          },
+        }
+      );
+      expect(lastModelNames()).toContain('embedded-model');
+      expect(lastModelNames()).not.toContain('embedded-insight-data');
+      expect(lastInsightNames()).toContain('embedded-insight-data');
+    });
+
+    it('routes pivot refs to insights when known, models otherwise', () => {
+      mountDashboard(
+        {
+          name: 'pivot-refs',
+          rows: [
+            {
+              height: 'medium',
+              items: [
+                // The chart makes `test-insight` a KNOWN insight name.
+                { chart: 'test-chart', width: 1 },
+                { table: 'pivot-table', width: 1 },
+              ],
+            },
+          ],
+        },
+        {
+          charts: { 'test-chart': mockChart },
+          tables: {
+            'pivot-table': {
+              config: {
+                name: 'pivot-table',
+                columns: ['${ref(colref-model)}'],
+                rows: ['${ref(rowref-model)}'],
+                values: ['${ref(test-insight)}'],
+              },
+            },
+          },
+        }
+      );
+      expect(lastModelNames()).toEqual(
+        expect.arrayContaining(['colref-model', 'rowref-model'])
+      );
+      expect(lastModelNames()).not.toContain('test-insight');
+      expect(lastInsightNames()).toContain('test-insight');
     });
   });
   /* eslint-enable no-template-curly-in-string */

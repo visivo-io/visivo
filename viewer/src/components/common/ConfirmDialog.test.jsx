@@ -38,6 +38,47 @@ describe('ConfirmDialog', () => {
     fireEvent.click(screen.getByTestId('confirm-dialog-cancel'));
     expect(onCancel).toHaveBeenCalled();
   });
+
+  test('Escape cancels and Enter confirms via the document keyboard listener', () => {
+    const onConfirm = jest.fn();
+    const onCancel = jest.fn();
+    render(<ConfirmDialog open title="x" onConfirm={onConfirm} onCancel={onCancel} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    // Unrelated keys do nothing.
+    fireEvent.keyDown(document, { key: 'a' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  test('keyboard listener is detached while closed', () => {
+    const onConfirm = jest.fn();
+    const onCancel = jest.fn();
+    render(<ConfirmDialog open={false} title="x" onConfirm={onConfirm} onCancel={onCancel} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  test('clicking the overlay backdrop cancels; clicking the dialog body does not', () => {
+    const onCancel = jest.fn();
+    render(<ConfirmDialog open title="Reset?" body="body text" onCancel={onCancel} />);
+    // A click inside the dialog surface must not dismiss.
+    fireEvent.click(screen.getByText('body text'));
+    expect(onCancel).not.toHaveBeenCalled();
+    // A click on the overlay itself (target === currentTarget) dismisses.
+    fireEvent.click(screen.getByTestId('confirm-dialog'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  test('focuses the confirm button when opened', () => {
+    render(<ConfirmDialog open title="x" />);
+    expect(screen.getByTestId('confirm-dialog-confirm')).toHaveFocus();
+  });
 });
 
 // Harness exercising the imperative hook end-to-end.

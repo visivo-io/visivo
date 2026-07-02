@@ -1,19 +1,26 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import DataTable from './DataTable';
 
-// Mock @tanstack/react-virtual
+// Mock @tanstack/react-virtual. The option callbacks (getScrollElement /
+// estimateSize) are invoked exactly like the real virtualizer would use them,
+// so the row-height estimate drives the mocked layout.
 jest.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: ({ count }) => ({
-    getTotalSize: () => count * 36,
-    getVirtualItems: () =>
-      Array.from({ length: count }, (_, i) => ({
-        index: i,
-        start: i * 36,
-        size: 36,
-        key: i,
-      })),
-  }),
+  useVirtualizer: options => {
+    options.getScrollElement();
+    const size = options.estimateSize();
+    const { count } = options;
+    return {
+      getTotalSize: () => count * size,
+      getVirtualItems: () =>
+        Array.from({ length: count }, (_, i) => ({
+          index: i,
+          start: i * size,
+          size,
+          key: i,
+        })),
+    };
+  },
 }));
 
 const defaultColumns = [
@@ -187,6 +194,156 @@ describe('DataTable', () => {
       expect(scroller).not.toBeNull();
       expect(scroller.className).toMatch(/\bmin-w-0\b/);
       expect(scroller.className).toMatch(/\bflex-1\b/);
+    });
+  });
+
+  it('calls onPageSizeChange with a numeric page size from the footer selector', () => {
+    const onPageSizeChange = jest.fn();
+    render(<DataTable {...defaultProps} onPageSizeChange={onPageSizeChange} />);
+
+    const combo = within(screen.getByTestId('datatable-page-size')).getByRole('combobox');
+    fireEvent.mouseDown(combo);
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === '500'));
+
+    expect(onPageSizeChange).toHaveBeenCalledWith(500);
+  });
+
+  it('clamps page navigation at the first and last page', () => {
+    const onPageChange = jest.fn();
+    const { unmount } = render(
+      <DataTable {...defaultProps} pageCount={3} page={0} onPageChange={onPageChange} />
+    );
+    // On the first page, Previous is disabled and must not fire.
+    expect(screen.getByLabelText('Previous page')).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('Previous page'));
+    expect(onPageChange).not.toHaveBeenCalled();
+    unmount();
+
+    render(<DataTable {...defaultProps} pageCount={3} page={2} onPageChange={onPageChange} />);
+    expect(screen.getByLabelText('Next page')).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('Next page'));
+    expect(onPageChange).not.toHaveBeenCalled();
+  });
+
+  it('hides page navigation entirely for a single page', () => {
+    render(<DataTable {...defaultProps} pageCount={1} />);
+    expect(screen.queryByLabelText('Next page')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Previous page')).not.toBeInTheDocument();
+  });
+
+  it('shows the querying progress bar only while a query is in flight', () => {
+    const { container, rerender } = render(<DataTable {...defaultProps} isQuerying />);
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    expect(container.querySelector('.animate-pulse')).not.toBeNull();
+    rerender(<DataTable {...defaultProps} isQuerying={false} />);
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    expect(container.querySelector('.animate-pulse')).toBeNull();
+  });
+
+  it('applies getCellStyle results to body cells', () => {
+    const getCellStyle = jest.fn((rowIndex, columnId) =>
+      columnId === 'name' ? { backgroundColor: 'rgb(1, 2, 3)' } : undefined
+    );
+    render(<DataTable {...defaultProps} getCellStyle={getCellStyle} />);
+    expect(getCellStyle).toHaveBeenCalledWith(0, 'name');
+    // eslint-disable-next-line testing-library/no-node-access
+    const styledCell = screen.getByText('Item 1').closest('div[style]');
+    expect(styledCell).toBeTruthy();
+  });
+
+  // Visual row merging: consecutive rows sharing the same value in a merge
+  // column render the value once — later duplicates are blanked.
+  describe('mergeRowColumns', () => {
+    const mergeColumns = [
+      { name: 'category', normalizedType: 'string' },
+      { name: 'amount', normalizedType: 'number' },
+    ];
+    const mergeRows = [
+      { category: 'Alpha', amount: 1 },
+      { category: 'Alpha', amount: 2 },
+      { category: 'Beta', amount: 3 },
+    ];
+
+    it('renders a repeated merge-column value only once per run', () => {
+      render(
+        <DataTable
+          columns={mergeColumns}
+          rows={mergeRows}
+          totalRowCount={3}
+          mergeRowColumns={['category']}
+        />
+      );
+      // "Alpha" appears in rows 0 and 1 but the row-1 cell is merged away.
+      expect(screen.getAllByText('Alpha')).toHaveLength(1);
+      // The run breaks at "Beta", which still renders.
+      expect(screen.getByText('Beta')).toBeInTheDocument();
+      // Non-merged columns keep every value.
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+
+    it('renders every value when no merge columns are configured', () => {
+      render(<DataTable columns={mergeColumns} rows={mergeRows} totalRowCount={3} />);
+      expect(screen.getAllByText('Alpha')).toHaveLength(2);
+    });
+  });
+
+  // Sticky left columns: pinned columns carry inline sticky positioning on the
+  // header cell and every body cell so they survive horizontal scrolling.
+  describe('stickyLeftColumns', () => {
+    it('pins the configured column with position:sticky and a left offset', () => {
+      const { container } = render(<DataTable {...defaultProps} stickyLeftColumns={['id']} />);
+      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+      const stickyEls = Array.from(container.querySelectorAll('div')).filter(
+        el => el.style.position === 'sticky' && el.style.left === '0px'
+      );
+      // 1 header cell + 2 body rows' cells.
+      expect(stickyEls.length).toBe(3);
+    });
+
+    it('adds no inline sticky styles when not configured', () => {
+      const { container } = render(<DataTable {...defaultProps} />);
+      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+      const stickyEls = Array.from(container.querySelectorAll('div')).filter(
+        el => el.style.position === 'sticky'
+      );
+      expect(stickyEls.length).toBe(0);
+    });
+  });
+
+  // Multi-level headers: a group definition renders a spanning group header row
+  // above its leaf columns, and flat columns get placeholder cells in the leaf row.
+  describe('nested group headers', () => {
+    const nestedColumns = [
+      { id: 'id', accessorKey: 'id', header: 'id' },
+      {
+        id: 'measures',
+        header: 'Measures',
+        columns: [
+          { id: 'name', accessorKey: 'name', header: 'name' },
+          { id: 'value', accessorKey: 'value', header: 'value' },
+        ],
+      },
+    ];
+
+    it('renders the group band plus all leaf headers and data', () => {
+      render(<DataTable {...defaultProps} nestedColumns={nestedColumns} />);
+      expect(screen.getByText('Measures')).toBeInTheDocument();
+      expect(screen.getByText('name')).toBeInTheDocument();
+      expect(screen.getByText('value')).toBeInTheDocument();
+      expect(screen.getByText('Item 1')).toBeInTheDocument();
+    });
+
+    it('keeps a sticky flat column pinned across placeholder header rows', () => {
+      const { container } = render(
+        <DataTable {...defaultProps} nestedColumns={nestedColumns} stickyLeftColumns={['id']} />
+      );
+      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+      const stickyEls = Array.from(container.querySelectorAll('div')).filter(
+        el => el.style.position === 'sticky' && el.style.left === '0px'
+      );
+      // The id column occupies one header row (real or placeholder, depending on
+      // where tanstack places the flat column) + 2 body cells — all pinned.
+      expect(stickyEls.length).toBeGreaterThanOrEqual(3);
     });
   });
 
