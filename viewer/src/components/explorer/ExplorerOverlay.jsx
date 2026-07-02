@@ -41,6 +41,8 @@ const ExplorerOverlay = () => {
   const saveExplorerObjects = useStore(s => s.saveExplorerObjects);
   const placeChartInDashboardSlot = useStore(s => s.placeChartInDashboardSlot);
   const chartName = useStore(s => s.explorerChartName);
+  const chartInsightNames = useStore(s => s.explorerChartInsightNames);
+  const ensureExplorerChartName = useStore(s => s.ensureExplorerChartName);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -49,10 +51,22 @@ const ExplorerOverlay = () => {
     navigate(`/workspace/dashboard/${encodeURIComponent(dashboardName)}`);
   }, [navigate, dashboardName]);
 
-  // Esc dismisses (same as Cancel).
+  // Esc dismisses (same as Cancel) — unless it was meant for something inside
+  // the Explorer surface (cancelling an inline rename in an input, a Monaco
+  // editor action, etc.), in which case the overlay stays put.
   useEffect(() => {
     const onKey = e => {
-      if (e.key === 'Escape' && !saving) close();
+      if (e.key !== 'Escape' || saving) return;
+      const target = e.target;
+      if (
+        e.defaultPrevented ||
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      close();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -62,6 +76,18 @@ const ExplorerOverlay = () => {
     setSaving(true);
     setError(null);
     try {
+      // Resolve the chart name BEFORE saving. An unnamed chart used to cause
+      // a partial save (insights persisted, chart skipped) followed by a
+      // misleading error with the button left permanently disabled.
+      let placeName = chartName;
+      if (!placeName) {
+        if ((chartInsightNames || []).length === 0) {
+          setError('No chart to place — build an insight first.');
+          setSaving(false);
+          return;
+        }
+        placeName = ensureExplorerChartName();
+      }
       const result = await saveExplorerObjects();
       if (!result.success) {
         const messages = result.errors.map(e => `${e.type} "${e.name}": ${e.error}`);
@@ -69,21 +95,20 @@ const ExplorerOverlay = () => {
         setSaving(false);
         return;
       }
-      if (!chartName) {
-        setError('No chart to place — build an insight first.');
-        setSaving(false);
-        return;
-      }
-      const placed = await placeChartInDashboardSlot(dashboardName, chartName, slot);
+      const placed = await placeChartInDashboardSlot(dashboardName, placeName, slot);
       if (!placed.success) {
         setError(placed.error || 'Could not place the chart on the dashboard.');
         setSaving(false);
         return;
       }
-      emitWorkspaceEvent('explorer_roundtrip_placed', { dashboardName, chartName, slot });
+      emitWorkspaceEvent('explorer_roundtrip_placed', {
+        dashboardName,
+        chartName: placeName,
+        slot,
+      });
       navigate(
         `/workspace/dashboard/${encodeURIComponent(dashboardName)}?newItem=${encodeURIComponent(
-          chartName
+          placeName
         )}`
       );
     } catch (err) {
@@ -94,6 +119,8 @@ const ExplorerOverlay = () => {
     saveExplorerObjects,
     placeChartInDashboardSlot,
     chartName,
+    chartInsightNames,
+    ensureExplorerChartName,
     dashboardName,
     slot,
     navigate,

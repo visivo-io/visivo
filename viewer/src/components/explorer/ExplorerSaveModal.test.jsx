@@ -379,5 +379,49 @@ describe('ExplorerSaveModal', () => {
       renderModal({ onClose: mockOnClose });
       expect(screen.getByTestId('after-save-workspace')).toBeChecked();
     });
+
+    it('auto-names an unnamed chart on option 3 so the placement actually happens', async () => {
+      withDashboards({
+        explorerChartName: null,
+        explorerChartInsightNames: ['insight'],
+        explorerDiffResult: { insights: { insight: 'new' } },
+        charts: [],
+        models: [],
+        insights: [],
+      });
+      renderModal({ onClose: mockOnClose });
+      fireEvent.click(screen.getByTestId('after-save-dashboard'));
+      fireEvent.click(screen.getByTestId('save-modal-confirm'));
+
+      await waitFor(() => {
+        expect(mockPlaceChart).toHaveBeenCalledWith('sales', 'chart', 'new');
+      });
+      expect(useStore.getState().explorerChartName).toBe('chart');
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/workspace/dashboard/sales?slot=new&newItem=chart'
+        );
+      });
+    });
+
+    it('errors BEFORE saving on option 3 when there is nothing to place', async () => {
+      withDashboards({
+        explorerChartName: null,
+        explorerChartInsightNames: [],
+        explorerDiffResult: { models: { m: 'modified' } },
+      });
+      renderModal({ onClose: mockOnClose });
+      fireEvent.click(screen.getByTestId('after-save-dashboard'));
+      fireEvent.click(screen.getByTestId('save-modal-confirm'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('save-error')).toHaveTextContent(/Build an insight first/i);
+      });
+      // No partial commit, no silent navigation-with-nothing-placed.
+      expect(mockSaveExplorerObjects).not.toHaveBeenCalled();
+      expect(mockPlaceChart).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
   });
 });

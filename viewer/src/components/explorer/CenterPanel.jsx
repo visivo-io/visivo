@@ -29,6 +29,7 @@ import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
 const NARROW_THRESHOLD = 600;
 
 const CenterPanel = () => {
+  const activeModelName = useStore((s) => s.explorerActiveModelName);
   const sourceName = useStore(selectActiveModelSourceName);
   const setSourceName = useStore((s) => s.setActiveModelSource);
   const explorerSources = useStore((s) => s.explorerSources);
@@ -36,8 +37,8 @@ const CenterPanel = () => {
   const setSql = useStore((s) => s.setActiveModelSql);
   const queryResult = useStore(selectActiveModelQueryResult);
   const queryError = useStore(selectActiveModelQueryError);
-  const setQueryResult = useStore((s) => s.setActiveModelQueryResult);
-  const setQueryError = useStore((s) => s.setActiveModelQueryError);
+  const setModelQueryResult = useStore((s) => s.setModelQueryResult);
+  const setModelQueryError = useStore((s) => s.setModelQueryError);
   const isEditorCollapsed = useStore((s) => s.explorerIsEditorCollapsed);
   const toggleEditorCollapsed = useStore((s) => s.toggleExplorerEditorCollapsed);
   const profileColumn = useStore((s) => s.explorerProfileColumn);
@@ -49,8 +50,9 @@ const CenterPanel = () => {
   const failedComputedColumns = useStore((s) => s.explorerFailedComputedColumns);
   const projectId = useStore((s) => s.project?.id);
 
-  // Initialize DuckDB integration for computed columns
-  useExplorerDuckDB();
+  // Initialize DuckDB integration for computed columns. The db handle and the
+  // loaded explorer table feed the column-profile histogram.
+  const { db: duckDb, currentTable: duckDbTable } = useExplorerDuckDB();
 
   const containerRef = useRef(null);
   const topRowRef = useRef(null);
@@ -114,15 +116,18 @@ const CenterPanel = () => {
   }, [queryResult]);
 
   const handleQueryComplete = useCallback(
-    ({ result, error }) => {
+    ({ result, error, context }) => {
+      // Deliver to the model tab that started the run (captured by SQLEditor
+      // at execute time) — the user may have switched tabs mid-flight.
+      const targetModel = context || activeModelName;
       if (result) {
-        setQueryResult(result);
+        setModelQueryResult(targetModel, result);
       }
       if (error) {
-        setQueryError(error);
+        setModelQueryError(targetModel, error);
       }
     },
-    [setQueryResult, setQueryError]
+    [setModelQueryResult, setModelQueryError, activeModelName]
   );
 
 
@@ -210,6 +215,7 @@ const CenterPanel = () => {
             onSave={setSql}
             height="100%"
             hideResults
+            queryContext={activeModelName}
             onQueryComplete={handleQueryComplete}
             toolbarExtra={sourceSelector}
             toolbarRight={editorToggleButton}
@@ -325,6 +331,8 @@ const CenterPanel = () => {
               <ColumnProfilePanel
                 column={profileColumn}
                 profile={selectedColumnProfile}
+                db={duckDb}
+                tableName={duckDbTable}
                 rowCount={totalRowCount}
                 onClose={() => setProfileColumn(null)}
                 isOpen={!!profileColumn && !!selectedColumnProfile}

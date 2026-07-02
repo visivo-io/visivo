@@ -50,6 +50,7 @@ const ModelTab = ({
   renameInputRef,
   renameValue,
   setRenameValue,
+  renameError,
   handleKeyDown,
   commitRename,
   handleDoubleClick,
@@ -90,17 +91,28 @@ const ModelTab = ({
       )}
 
       {isRenaming ? (
-        <input
-          ref={renameInputRef}
-          type="text"
-          value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={commitRename}
-          className="text-xs font-medium bg-white border border-amber-300 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-amber-400 w-24"
-          data-testid="rename-input"
-          onClick={(e) => e.stopPropagation()}
-        />
+        <span className="flex flex-col">
+          <input
+            ref={renameInputRef}
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={commitRename}
+            className={`text-xs font-medium bg-white border rounded px-1 py-0 outline-none focus:ring-1 w-24 ${
+              renameError
+                ? 'border-red-400 focus:ring-red-400'
+                : 'border-amber-300 focus:ring-amber-400'
+            }`}
+            data-testid="rename-input"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {renameError && (
+            <span data-testid="rename-error" className="text-xs text-red-600 mt-0.5">
+              {renameError}
+            </span>
+          )}
+        </span>
       ) : (
         <span
           className="text-amber-800 truncate max-w-[120px]"
@@ -142,6 +154,7 @@ const ModelTabBar = () => {
 
   const [renamingTab, setRenamingTab] = useState(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState(null);
   const renameInputRef = useRef(null);
 
   const referencedModels = useMemo(
@@ -163,22 +176,39 @@ const ModelTabBar = () => {
       if (!modelState || !modelState.isNew) return;
       setRenamingTab(tabName);
       setRenameValue(tabName);
+      setRenameError(null);
     },
     [activeModelName, modelStates]
   );
 
+  const handleRenameChange = useCallback((value) => {
+    setRenameValue(value);
+    setRenameError(null);
+  }, []);
+
   const commitRename = useCallback(() => {
     const trimmed = renameValue.trim();
-    if (trimmed && trimmed !== renamingTab && !tabs.includes(trimmed)) {
-      renameModelTab(renamingTab, trimmed);
+    if (trimmed && trimmed !== renamingTab) {
+      try {
+        renameModelTab(renamingTab, trimmed);
+      } catch (err) {
+        if (err?.code === 'NAME_COLLISION') {
+          // Keep the input open with inline feedback so the user can correct.
+          setRenameError(err.message);
+          return;
+        }
+        throw err;
+      }
     }
     setRenamingTab(null);
     setRenameValue('');
-  }, [renameValue, renamingTab, tabs, renameModelTab]);
+    setRenameError(null);
+  }, [renameValue, renamingTab, renameModelTab]);
 
   const cancelRename = useCallback(() => {
     setRenamingTab(null);
     setRenameValue('');
+    setRenameError(null);
   }, []);
 
   const handleKeyDown = useCallback(
@@ -235,7 +265,8 @@ const ModelTabBar = () => {
           isRenaming={renamingTab === tabName}
           renameInputRef={renameInputRef}
           renameValue={renameValue}
-          setRenameValue={setRenameValue}
+          setRenameValue={handleRenameChange}
+          renameError={renameError}
           handleKeyDown={handleKeyDown}
           commitRename={commitRename}
           handleDoubleClick={handleDoubleClick}

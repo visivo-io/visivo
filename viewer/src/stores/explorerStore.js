@@ -218,14 +218,7 @@ const buildModelStateFromObject = (modelObject, globalState) => {
     return rawModel && stripRef(rawModel) === modelObject.name;
   };
 
-  const sourceDialect = (() => {
-    const source = (globalState.explorerSources || []).find(
-      (src) => src.source_name === resolvedSourceName || src.name === resolvedSourceName
-    );
-    if (!source?.type) return null;
-    const d = source.type.toLowerCase();
-    return d === 'postgresql' ? 'postgres' : d;
-  })();
+  const sourceDialect = getSourceDialect(resolvedSourceName, globalState.explorerSources);
 
   const computedCols = [];
   allMetrics.filter(belongsToModel).forEach((m) => {
@@ -311,6 +304,20 @@ const matchSourceName = (extractedName, sources) => {
   return null;
 };
 
+/**
+ * Resolve a source NAME to its SQL dialect (e.g. 'my-postgres' -> 'postgres').
+ * Expression validation/translation endpoints expect a dialect string, not a
+ * source name — passing the name silently falls back to DuckDB parsing.
+ */
+export const getSourceDialect = (sourceName, sources) => {
+  const source = (sources || []).find(
+    (src) => src.source_name === sourceName || src.name === sourceName
+  );
+  if (!source?.type) return null;
+  const d = source.type.toLowerCase();
+  return d === 'postgresql' ? 'postgres' : d;
+};
+
 
 // ====================================================================
 // Selectors — derive values from the multi-model / multi-insight state
@@ -328,6 +335,8 @@ export const selectActiveModelState = (s) => {
 };
 export const selectActiveModelSql = (s) => selectActiveModelState(s)?.sql || '';
 export const selectActiveModelSourceName = (s) => selectActiveModelState(s)?.sourceName || null;
+export const selectActiveModelSourceDialect = (s) =>
+  getSourceDialect(selectActiveModelSourceName(s), s.explorerSources);
 export const selectActiveModelQueryResult = (s) => selectActiveModelState(s)?.queryResult || null;
 export const selectActiveModelQueryError = (s) => selectActiveModelState(s)?.queryError || null;
 export const selectActiveModelComputedColumns = (s) =>
@@ -602,45 +611,63 @@ const createExplorerSlice = (set, get) => ({
     const name = state.explorerActiveModelName;
     if (!name || !state.explorerModelStates[name]) return;
 
-    set({
-      explorerModelStates: {
-        ...state.explorerModelStates,
-        [name]: { ...state.explorerModelStates[name], sourceName },
-      },
-    });
-  },
-
-  setActiveModelQueryResult: (result) => {
-    const state = get();
-    const name = state.explorerActiveModelName;
-    if (!name || !state.explorerModelStates[name]) return;
-
+    const modelState = state.explorerModelStates[name];
     set({
       explorerModelStates: {
         ...state.explorerModelStates,
         [name]: {
-          ...state.explorerModelStates[name],
+          ...modelState,
+          sourceName,
+          // Explicit user edit — include the source in the diff/save payloads.
+          // (The resolved default from loadModel is NOT an edit; flagging it
+          // would mark every loaded model as modified.)
+          sourceEdited: modelState.sourceEdited || sourceName !== modelState.sourceName,
+        },
+      },
+    });
+  },
+
+  // Query results are delivered by name so an in-flight run started on one
+  // tab cannot land on whichever tab is active when it completes.
+  setModelQueryResult: (modelName, result) => {
+    const state = get();
+    if (!modelName || !state.explorerModelStates[modelName]) return;
+
+    set({
+      explorerModelStates: {
+        ...state.explorerModelStates,
+        [modelName]: {
+          ...state.explorerModelStates[modelName],
           queryResult: result,
           queryError: null,
           enrichedResult: null,
         },
       },
-      explorerDuckDBError: null,
-      explorerProfileColumn: null,
+      // Global UI bits only apply when the result lands on the visible tab.
+      ...(modelName === state.explorerActiveModelName
+        ? { explorerDuckDBError: null, explorerProfileColumn: null }
+        : {}),
     });
   },
 
-  setActiveModelQueryError: (error) => {
+  setModelQueryError: (modelName, error) => {
     const state = get();
-    const name = state.explorerActiveModelName;
-    if (!name || !state.explorerModelStates[name]) return;
+    if (!modelName || !state.explorerModelStates[modelName]) return;
 
     set({
       explorerModelStates: {
         ...state.explorerModelStates,
-        [name]: { ...state.explorerModelStates[name], queryError: error },
+        [modelName]: { ...state.explorerModelStates[modelName], queryError: error },
       },
     });
+  },
+
+  setActiveModelQueryResult: (result) => {
+    get().setModelQueryResult(get().explorerActiveModelName, result);
+  },
+
+  setActiveModelQueryError: (error) => {
+    get().setModelQueryError(get().explorerActiveModelName, error);
   },
 
   addActiveModelComputedColumn: (col) => {
@@ -878,21 +905,21 @@ const createExplorerSlice = (set, get) => ({
     const cachedModel = (state.models || []).find((m) => m.name === modelName);
     if (!cachedModel) return;
 
-    const config = cachedModel.config;
-    const extractSourceName = (rawSource) => {
-      if (typeof rawSource !== 'string') return null;
-      const refMatch = rawSource.match(/ref\(([^)]+)\)/);
-      return refMatch ? refMatch[1].trim() : rawSource;
-    };
+    // Rebuild from the cache the same way loadModel/loadChart do — including
+    // computedColumns from the cached metrics/dimensions collections, so edits
+    // to metric/dimension expressions are actually reverted (cloning the
+    // current working copy would be a no-op).
+    const rebuilt = buildModelStateFromObject(cachedModel, state);
 
     set({
       explorerModelStates: {
         ...state.explorerModelStates,
         [modelName]: {
           ...ms,
-          sql: config?.sql || ms.sql,
-          sourceName: extractSourceName(config?.source) || ms.sourceName,
-          computedColumns: JSON.parse(JSON.stringify(ms.computedColumns || [])),
+          sql: rebuilt.sql || ms.sql,
+          sourceName: rebuilt.sourceName || ms.sourceName,
+          sourceEdited: false,
+          computedColumns: rebuilt.computedColumns,
           queryResult: null,
           enrichedResult: null,
           queryError: null,
@@ -1125,6 +1152,20 @@ const createExplorerSlice = (set, get) => ({
     set({ explorerChartName: name });
   },
 
+  /**
+   * Return the current chart name, generating (and setting) a unique one when
+   * the chart is still unnamed. Used by save-and-place flows so an unnamed
+   * chart can be saved and placed in a single pass instead of partially
+   * committing insights and then erroring.
+   */
+  ensureExplorerChartName: () => {
+    const state = get();
+    if (state.explorerChartName) return state.explorerChartName;
+    const name = generateUniqueName('chart', Array.from(getAllKnownNames(state).keys()));
+    set({ explorerChartName: name });
+    return name;
+  },
+
   setChartLayout: (updates) => {
     set((state) => ({
       explorerChartLayout: { ...state.explorerChartLayout, ...updates },
@@ -1298,6 +1339,8 @@ const createExplorerSlice = (set, get) => ({
           ...modelState,
           sql,
           sourceName: sourceName || modelState.sourceName,
+          sourceEdited:
+            modelState.sourceEdited || (!!sourceName && sourceName !== modelState.sourceName),
         },
       },
       explorerIsEditorCollapsed: false,
@@ -1352,11 +1395,16 @@ const createExplorerSlice = (set, get) => ({
     const state = get();
     const payload = {};
 
-    // Build models payload — only send sql (source is project-level, not user-edited)
+    // Build models payload — send sql, plus the source when the user explicitly
+    // changed it (setActiveModelSource / source-zone drop). The resolved default
+    // is omitted: including it would mark every loaded model as modified.
     const modelConfigs = {};
     for (const [name, ms] of Object.entries(state.explorerModelStates)) {
       if (!ms.sql) continue;
-      modelConfigs[name] = { sql: ms.sql };
+      modelConfigs[name] = {
+        sql: ms.sql,
+        ...(ms.sourceEdited && ms.sourceName ? { source: `ref(${ms.sourceName})` } : {}),
+      };
     }
     if (Object.keys(modelConfigs).length > 0) payload.models = modelConfigs;
 
@@ -1426,7 +1474,14 @@ const createExplorerSlice = (set, get) => ({
     // commit step nests it under the existing model in YAML. We therefore
     // check the diff for each computed column individually rather than
     // short-circuiting the whole model's iteration.
-    const diff = state.explorerDiffResult || {};
+    //
+    // Re-fetch the diff instead of trusting the cached explorerDiffResult:
+    // the cache is refreshed on a 300ms debounce, so edits made just before
+    // Save (or while a fetch was in flight) would otherwise be skipped as
+    // "unchanged". A failed fetch falls back to {} — save everything rather
+    // than risk dropping an edit.
+    const diff = (await get().fetchExplorerDiff()) || {};
+    const savedModelNames = new Set();
     for (const [name, ms] of Object.entries(state.explorerModelStates)) {
       const modelChanged = !(diff.models && diff.models[name] === null);
       if (modelChanged && ms.sql) {
@@ -1436,6 +1491,7 @@ const createExplorerSlice = (set, get) => ({
             sql: ms.sql,
             source: ms.sourceName ? `ref(${ms.sourceName})` : undefined,
           });
+          savedModelNames.add(name);
         } catch (err) {
           errors.push({ name, type: 'model', error: err.message });
         }
@@ -1471,6 +1527,7 @@ const createExplorerSlice = (set, get) => ({
     }
 
     // Save insights
+    const savedInsightNames = new Set();
     for (const [name, is] of Object.entries(state.explorerInsightStates)) {
       // Skip unchanged insights (diff result is null)
       if (diff.insights && diff.insights[name] === null) continue;
@@ -1484,6 +1541,7 @@ const createExplorerSlice = (set, get) => ({
           props: { type: is.type, ...expandedProps },
           ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
         });
+        savedInsightNames.add(name);
       } catch (err) {
         errors.push({ name, type: 'insight', error: err.message });
       }
@@ -1504,14 +1562,16 @@ const createExplorerSlice = (set, get) => ({
 
     // Post-save: refresh cached API stores so diff resolves to "unchanged"
     if (errors.length === 0) {
-      // Mark all context objects as not new
+      // Mark objects that were actually persisted in this pass as not new.
+      // Objects the save loop skipped (e.g. auto-created empty model tabs
+      // with no SQL) must keep isNew so they stay renameable and save later.
       const updatedModelStates = {};
       for (const [name, ms] of Object.entries(state.explorerModelStates)) {
-        updatedModelStates[name] = { ...ms, isNew: false };
+        updatedModelStates[name] = savedModelNames.has(name) ? { ...ms, isNew: false } : ms;
       }
       const updatedInsightStates = {};
       for (const [name, is] of Object.entries(state.explorerInsightStates)) {
-        updatedInsightStates[name] = { ...is, isNew: false };
+        updatedInsightStates[name] = savedInsightNames.has(name) ? { ...is, isNew: false } : is;
       }
       set({
         explorerModelStates: updatedModelStates,

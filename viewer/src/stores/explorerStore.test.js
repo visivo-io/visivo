@@ -5,11 +5,14 @@ import { saveInsight } from '../api/insights';
 import { saveChart } from '../api/charts';
 import { saveMetric } from '../api/metrics';
 import { saveDimension } from '../api/dimensions';
+import { fetchDiff } from '../api/explorer';
 import {
   expandDotNotationProps,
+  getSourceDialect,
   selectActiveModelState,
   selectActiveModelSql,
   selectActiveModelSourceName,
+  selectActiveModelSourceDialect,
   selectActiveModelQueryResult,
   selectActiveModelQueryError,
   selectActiveModelComputedColumns,
@@ -111,6 +114,9 @@ const resetState = () => {
 describe('explorerStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-pin the default diff response — individual tests override it with
+    // mockResolvedValue and clearAllMocks does not restore implementations.
+    fetchDiff.mockResolvedValue({});
     resetState();
   });
 
@@ -422,6 +428,27 @@ describe('explorerStore', () => {
 
       expect(useStore.getState().explorerModelStates.my_model.sourceName).toBe('postgres_db');
     });
+
+    it('flags sourceEdited when the source actually changes', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSource('postgres_db');
+
+      expect(useStore.getState().explorerModelStates.my_model.sourceEdited).toBe(true);
+    });
+
+    it('does not flag sourceEdited when re-selecting the current source', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.setState({
+        explorerModelStates: {
+          ...useStore.getState().explorerModelStates,
+          my_model: { ...useStore.getState().explorerModelStates.my_model, sourceName: 'pg' },
+        },
+      });
+
+      useStore.getState().setActiveModelSource('pg');
+
+      expect(useStore.getState().explorerModelStates.my_model.sourceEdited).toBeFalsy();
+    });
   });
 
   describe('setActiveModelQueryResult', () => {
@@ -456,6 +483,81 @@ describe('explorerStore', () => {
       useStore.getState().setActiveModelQueryError('SQL syntax error');
 
       expect(useStore.getState().explorerModelStates.my_model.queryError).toBe('SQL syntax error');
+    });
+  });
+
+  describe('setModelQueryResult / setModelQueryError (per-model routing)', () => {
+    it('writes the result to the named model even when another tab is active', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+      useStore.getState().switchModelTab('model_b');
+
+      const mockResult = { columns: ['id'], rows: [{ id: 1 }], row_count: 1 };
+      useStore.getState().setModelQueryResult('model_a', mockResult);
+
+      const state = useStore.getState();
+      expect(state.explorerModelStates.model_a.queryResult).toEqual(mockResult);
+      expect(state.explorerModelStates.model_b.queryResult).toBeNull();
+    });
+
+    it('does not clear the active tab enrichedResult when the result lands elsewhere', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+      useStore.getState().switchModelTab('model_b');
+      useStore.setState({
+        explorerProfileColumn: 'kept_column',
+        explorerModelStates: {
+          ...useStore.getState().explorerModelStates,
+          model_b: {
+            ...useStore.getState().explorerModelStates.model_b,
+            enrichedResult: { columns: ['x'], rows: [] },
+          },
+        },
+      });
+
+      useStore
+        .getState()
+        .setModelQueryResult('model_a', { columns: ['id'], rows: [{ id: 1 }], row_count: 1 });
+
+      const state = useStore.getState();
+      expect(state.explorerModelStates.model_b.enrichedResult).toEqual({
+        columns: ['x'],
+        rows: [],
+      });
+      // Profile column belongs to the visible (active) tab — untouched.
+      expect(state.explorerProfileColumn).toBe('kept_column');
+    });
+
+    it('clears profile column and DuckDB error when the result lands on the active model', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.setState({ explorerProfileColumn: 'col', explorerDuckDBError: 'old' });
+
+      useStore
+        .getState()
+        .setModelQueryResult('model_a', { columns: ['id'], rows: [{ id: 1 }], row_count: 1 });
+
+      expect(useStore.getState().explorerProfileColumn).toBeNull();
+      expect(useStore.getState().explorerDuckDBError).toBeNull();
+    });
+
+    it('routes errors to the named model, not the active one', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+      useStore.getState().switchModelTab('model_b');
+
+      useStore.getState().setModelQueryError('model_a', 'boom');
+
+      const state = useStore.getState();
+      expect(state.explorerModelStates.model_a.queryError).toBe('boom');
+      expect(state.explorerModelStates.model_b.queryError).toBeNull();
+    });
+
+    it('ignores results for unknown models', () => {
+      useStore.getState().createModelTab('model_a');
+
+      useStore.getState().setModelQueryResult('ghost_model', { columns: [], rows: [] });
+
+      expect(useStore.getState().explorerModelStates.ghost_model).toBeUndefined();
     });
   });
 
@@ -977,6 +1079,38 @@ describe('explorerStore', () => {
     });
   });
 
+  describe('ensureExplorerChartName', () => {
+    it('returns the existing chart name unchanged', () => {
+      useStore.setState({ explorerChartName: 'revenue_chart' });
+
+      expect(useStore.getState().ensureExplorerChartName()).toBe('revenue_chart');
+      expect(useStore.getState().explorerChartName).toBe('revenue_chart');
+    });
+
+    it('generates, sets and returns a unique name when the chart is unnamed', () => {
+      useStore.setState({ explorerChartName: null, charts: [], models: [], insights: [] });
+
+      const name = useStore.getState().ensureExplorerChartName();
+
+      expect(name).toBe('chart');
+      expect(useStore.getState().explorerChartName).toBe('chart');
+    });
+
+    it('avoids collisions with known object names', () => {
+      useStore.setState({
+        explorerChartName: null,
+        models: [],
+        insights: [],
+        charts: [{ name: 'chart' }, { name: 'chart_2' }],
+      });
+
+      const name = useStore.getState().ensureExplorerChartName();
+
+      expect(name).toBe('chart_3');
+      expect(useStore.getState().explorerChartName).toBe('chart_3');
+    });
+  });
+
   describe('setChartLayout', () => {
     it('merges layout updates with existing layout', () => {
       useStore.setState({ explorerChartLayout: { 'title.text': 'Old' } });
@@ -995,6 +1129,121 @@ describe('explorerStore', () => {
       useStore.getState().setChartLayout({ 'title.text': 'New' });
 
       expect(useStore.getState().explorerChartLayout).toEqual({ 'title.text': 'New' });
+    });
+  });
+
+  describe('resetModel', () => {
+    const seedModifiedModel = () => {
+      useStore.setState({
+        explorerSources: [{ source_name: 'pg', type: 'postgresql' }],
+        models: [{ name: 'orders', config: { sql: 'SELECT * FROM orders', source: 'ref(pg)' } }],
+        metrics: [{ name: 'total', config: { expression: 'SUM(amount)', model: 'ref(orders)' } }],
+        dimensions: [
+          { name: 'month', config: { expression: "DATE_TRUNC('month', d)", model: 'ref(orders)' } },
+        ],
+        explorerModelTabs: ['orders'],
+        explorerActiveModelName: 'orders',
+        explorerModelStates: {
+          orders: {
+            sql: 'SELECT * FROM orders WHERE edited = true',
+            sourceName: 'pg',
+            sourceEdited: true,
+            queryResult: { columns: ['x'], rows: [] },
+            queryError: null,
+            computedColumns: [
+              // Edited expression + a user-added extra column
+              { name: 'total', expression: 'SUM(amount) * 2', type: 'metric' },
+              { name: 'extra', expression: 'UPPER(name)', type: 'dimension' },
+            ],
+            enrichedResult: { columns: ['x'], rows: [] },
+            isNew: false,
+          },
+        },
+      });
+    };
+
+    it('restores sql and source from the cached model', () => {
+      seedModifiedModel();
+
+      useStore.getState().resetModel('orders');
+
+      const ms = useStore.getState().explorerModelStates.orders;
+      expect(ms.sql).toBe('SELECT * FROM orders');
+      expect(ms.sourceName).toBe('pg');
+      expect(ms.sourceEdited).toBe(false);
+      expect(ms.queryResult).toBeNull();
+      expect(ms.enrichedResult).toBeNull();
+    });
+
+    it('rebuilds computedColumns from the cached metrics/dimensions, discarding edits', () => {
+      seedModifiedModel();
+
+      useStore.getState().resetModel('orders');
+
+      const cols = useStore.getState().explorerModelStates.orders.computedColumns;
+      expect(cols).toHaveLength(2);
+      expect(cols.find((c) => c.name === 'total')).toMatchObject({
+        expression: 'SUM(amount)',
+        type: 'metric',
+        sourceDialect: 'postgres',
+      });
+      expect(cols.find((c) => c.name === 'month')).toMatchObject({
+        expression: "DATE_TRUNC('month', d)",
+        type: 'dimension',
+      });
+      // The user-added column is gone — reset restores the cached state.
+      expect(cols.find((c) => c.name === 'extra')).toBeUndefined();
+    });
+
+    it('does nothing for new (never-saved) models', () => {
+      seedModifiedModel();
+      useStore.setState({
+        explorerModelStates: {
+          orders: { ...useStore.getState().explorerModelStates.orders, isNew: true },
+        },
+      });
+
+      useStore.getState().resetModel('orders');
+
+      expect(useStore.getState().explorerModelStates.orders.sql).toBe(
+        'SELECT * FROM orders WHERE edited = true'
+      );
+    });
+  });
+
+  describe('fetchExplorerDiff payload', () => {
+    it('includes the model source only when the user edited it', async () => {
+      useStore.setState({
+        explorerModelStates: {
+          edited_source: {
+            sql: 'SELECT 1',
+            sourceName: 'new_pg',
+            sourceEdited: true,
+            computedColumns: [],
+            isNew: false,
+          },
+          untouched: {
+            sql: 'SELECT 2',
+            sourceName: 'resolved_default',
+            computedColumns: [],
+            isNew: false,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+      });
+
+      await useStore.getState().fetchExplorerDiff();
+
+      expect(fetchDiff).toHaveBeenCalledTimes(1);
+      const payload = fetchDiff.mock.calls[0][0];
+      expect(payload.models.edited_source).toEqual({
+        sql: 'SELECT 1',
+        source: 'ref(new_pg)',
+      });
+      // The resolved default is NOT an edit — omitting it keeps loaded models
+      // from spuriously diffing as modified.
+      expect(payload.models.untouched).toEqual({ sql: 'SELECT 2' });
     });
   });
 
@@ -1504,6 +1753,27 @@ describe('explorerStore', () => {
       expect(selectActiveModelSourceName(useStore.getState())).toBe('pg');
     });
 
+    it('selectActiveModelSourceDialect resolves the source NAME to a dialect', () => {
+      useStore.setState({
+        explorerSources: [
+          { source_name: 'my-postgres', type: 'postgresql' },
+          { source_name: 'wh', type: 'snowflake' },
+        ],
+      });
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSource('my-postgres');
+
+      expect(selectActiveModelSourceDialect(useStore.getState())).toBe('postgres');
+
+      useStore.getState().setActiveModelSource('wh');
+      expect(selectActiveModelSourceDialect(useStore.getState())).toBe('snowflake');
+    });
+
+    it('getSourceDialect returns null for unknown sources', () => {
+      expect(getSourceDialect('ghost', [{ source_name: 'pg', type: 'postgresql' }])).toBeNull();
+      expect(getSourceDialect(null, [])).toBeNull();
+    });
+
     it('selectActiveModelQueryResult returns active model query result', () => {
       useStore.getState().createModelTab('my_model');
       const result = { columns: ['id'], rows: [{ id: 1 }], row_count: 1 };
@@ -1818,6 +2088,7 @@ describe('explorerStore', () => {
     });
 
     it('skips unchanged models', async () => {
+      fetchDiff.mockResolvedValue({ models: { stable_model: null } });
       useStore.setState({
         explorerModelStates: {
           stable_model: {
@@ -1831,12 +2102,101 @@ describe('explorerStore', () => {
         explorerChartName: null,
         explorerChartLayout: {},
         explorerChartInsightNames: [],
-        explorerDiffResult: { models: { stable_model: null } },
       });
 
       await useStore.getState().saveExplorerObjects();
 
       expect(mockSaveModel).not.toHaveBeenCalled();
+    });
+
+    it('uses a fresh diff at save time — a stale cached diff cannot skip recent edits', async () => {
+      // The cached diff (from the 300ms-debounced watcher) still says
+      // "unchanged", but the backend — asked again at save time — reports the
+      // edit made inside the debounce window.
+      fetchDiff.mockResolvedValue({ models: { my_model: 'modified' } });
+      useStore.setState({
+        explorerModelStates: {
+          my_model: {
+            sql: 'SELECT 1 -- just edited',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: false,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+        explorerDiffResult: { models: { my_model: null } },
+      });
+
+      await useStore.getState().saveExplorerObjects();
+
+      expect(mockSaveModel).toHaveBeenCalledWith('my_model', {
+        sql: 'SELECT 1 -- just edited',
+        source: 'ref(pg)',
+      });
+    });
+
+    it('saves a model whose only change is the source', async () => {
+      // Source-only edit: the diff (fed the edited source) reports modified,
+      // and the save POST carries the new source ref.
+      fetchDiff.mockResolvedValue({ models: { orders: 'modified' } });
+      useStore.setState({
+        explorerModelStates: {
+          orders: {
+            sql: 'SELECT * FROM orders',
+            sourceName: 'new_source',
+            sourceEdited: true,
+            computedColumns: [],
+            isNew: false,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(true);
+      expect(mockSaveModel).toHaveBeenCalledWith('orders', {
+        sql: 'SELECT * FROM orders',
+        source: 'ref(new_source)',
+      });
+    });
+
+    it('keeps isNew on empty model tabs the save loop skipped', async () => {
+      useStore.setState({
+        explorerModelStates: {
+          placeholder: {
+            sql: '',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+          real_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(true);
+      const states = useStore.getState().explorerModelStates;
+      // The saved model flips; the never-saved placeholder stays new so it
+      // remains renameable and saveable later.
+      expect(states.real_model.isNew).toBe(false);
+      expect(states.placeholder.isNew).toBe(true);
     });
 
     it('saves modified insights and resets originals on success', async () => {

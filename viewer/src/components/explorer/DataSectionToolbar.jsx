@@ -6,7 +6,7 @@ import {
   selectActiveModelComputedColumns,
   selectActiveModelQueryResult,
   selectActiveModelEnrichedResult,
-  selectActiveModelSourceName,
+  selectActiveModelSourceDialect,
 } from '../../stores/explorerStore';
 
 const DataSectionToolbar = () => {
@@ -20,7 +20,7 @@ const DataSectionToolbar = () => {
   const updateComputedColumn = useStore((s) => s.updateActiveModelComputedColumn);
   const removeComputedColumn = useStore((s) => s.removeActiveModelComputedColumn);
   const validateExpression = useStore((s) => s.validateExplorerExpression);
-  const sourceName = useStore(selectActiveModelSourceName);
+  const sourceDialect = useStore(selectActiveModelSourceDialect);
 
   const displayResult = enrichedResult || queryResult;
   const totalRowCount = displayResult?.row_count || displayResult?.rows?.length || 0;
@@ -33,9 +33,20 @@ const DataSectionToolbar = () => {
     return names;
   }, [displayResult, computedColumns]);
 
+  // Validation and DuckDB translation expect a SQL dialect ('postgres',
+  // 'snowflake', …), not the source NAME. DuckDB itself needs no translation,
+  // so columns on duckdb sources carry no sourceDialect (matching
+  // buildModelStateFromObject's convention for hydrated columns).
+  const columnDialect = sourceDialect && sourceDialect !== 'duckdb' ? sourceDialect : undefined;
+
   const handleValidateExpression = useCallback(
-    (expression) => validateExpression(expression, sourceName),
-    [validateExpression, sourceName]
+    (expression) => validateExpression(expression, sourceDialect),
+    [validateExpression, sourceDialect]
+  );
+
+  const handleAddColumn = useCallback(
+    (col) => addComputedColumn({ ...col, sourceDialect: columnDialect }),
+    [addComputedColumn, columnDialect]
   );
 
   const [editingColumn, setEditingColumn] = useState(null);
@@ -89,11 +100,12 @@ const DataSectionToolbar = () => {
           );
         })}
         <AddComputedColumnPopover
-          onAdd={addComputedColumn}
+          onAdd={handleAddColumn}
           onUpdate={(updated) => {
             updateComputedColumn(updated.name, {
               expression: updated.expression,
               type: updated.type,
+              sourceDialect: columnDialect,
             });
           }}
           onValidate={handleValidateExpression}

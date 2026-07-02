@@ -137,6 +137,61 @@ describe('ModelTabBar', () => {
     expect(state.explorerModelTabs).toContain('model_b');
   });
 
+  it('rename collision shows inline feedback and keeps the input open', () => {
+    // Cross-type collision: an insight already owns the name.
+    useStore.setState({
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+      },
+    });
+    render(<ModelTabBar />);
+
+    fireEvent.doubleClick(screen.getByTestId('tab-label-model_a'));
+
+    const input = screen.getByTestId('rename-input');
+    fireEvent.change(input, { target: { value: 'insight' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    // Input stays open with an inline error, nothing renamed, nothing thrown.
+    expect(screen.getByTestId('rename-input')).toBeInTheDocument();
+    expect(screen.getByTestId('rename-error')).toHaveTextContent(/already in use/i);
+    const state = useStore.getState();
+    expect(state.explorerModelTabs).toContain('model_a');
+    expect(state.explorerModelTabs).not.toContain('insight');
+  });
+
+  it('rename collision error clears when the user edits the name', () => {
+    render(<ModelTabBar />);
+
+    fireEvent.doubleClick(screen.getByTestId('tab-label-model_a'));
+
+    const input = screen.getByTestId('rename-input');
+    fireEvent.change(input, { target: { value: 'model_b' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByTestId('rename-error')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'model_c' } });
+    expect(screen.queryByTestId('rename-error')).not.toBeInTheDocument();
+
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(useStore.getState().explorerModelTabs).toContain('model_c');
+  });
+
+  it('rename collision then Escape recovers cleanly', () => {
+    render(<ModelTabBar />);
+
+    fireEvent.doubleClick(screen.getByTestId('tab-label-model_a'));
+
+    const input = screen.getByTestId('rename-input');
+    fireEvent.change(input, { target: { value: 'model_b' } });
+    fireEvent.blur(input);
+    expect(screen.getByTestId('rename-error')).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByTestId('rename-input'), { key: 'Escape' });
+    expect(screen.queryByTestId('rename-input')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rename-error')).not.toBeInTheDocument();
+  });
+
   it('rename rejects empty names', () => {
     render(<ModelTabBar />);
 

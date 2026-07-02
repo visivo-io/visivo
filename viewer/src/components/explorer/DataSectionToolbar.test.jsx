@@ -34,10 +34,19 @@ jest.mock('../views/lineage/EmbeddedPill', () => {
 
 // Mock AddComputedColumnPopover
 jest.mock('./AddComputedColumnPopover', () => {
-  return function MockAddComputedColumnPopover({ editColumn, onUpdate, onEditClose }) {
+  return function MockAddComputedColumnPopover({ editColumn, onAdd, onUpdate, onValidate, onEditClose }) {
     return (
       <div data-testid="add-computed-column-btn">
         +
+        <button
+          data-testid="mock-add-column"
+          onClick={() => onAdd?.({ name: 'new_col', expression: 'SUM(x)', type: 'metric' })}
+        >
+          Add
+        </button>
+        <button data-testid="mock-validate" onClick={() => onValidate?.('SUM(x)')}>
+          Validate
+        </button>
         {editColumn && (
           <div data-testid="edit-popover">
             <span data-testid="edit-column-name">{editColumn.name}</span>
@@ -65,6 +74,7 @@ jest.mock('./AddComputedColumnPopover', () => {
 });
 
 const defaultStoreState = {
+  explorerSources: [{ source_name: 'pg', type: 'postgresql' }],
   explorerModelTabs: ['model_a'],
   explorerActiveModelName: 'model_a',
   explorerModelStates: {
@@ -293,6 +303,77 @@ describe('DataSectionToolbar', () => {
     fireEvent.click(screen.getByTestId('pill-remove-total'));
 
     expect(screen.queryByTestId('edit-popover')).not.toBeInTheDocument();
+  });
+
+  describe('source dialect handling', () => {
+    it('validates expressions with the source DIALECT, not the source name', () => {
+      const validate = jest.fn().mockResolvedValue({ valid: true });
+      setupStore({ validateExplorerExpression: validate });
+      render(<DataSectionToolbar />);
+
+      fireEvent.click(screen.getByTestId('mock-validate'));
+
+      expect(validate).toHaveBeenCalledWith('SUM(x)', 'postgres');
+    });
+
+    it('adds user columns with sourceDialect so they get translated for DuckDB', () => {
+      const addColumn = jest.fn();
+      setupStore({ addActiveModelComputedColumn: addColumn });
+      render(<DataSectionToolbar />);
+
+      fireEvent.click(screen.getByTestId('mock-add-column'));
+
+      expect(addColumn).toHaveBeenCalledWith({
+        name: 'new_col',
+        expression: 'SUM(x)',
+        type: 'metric',
+        sourceDialect: 'postgres',
+      });
+    });
+
+    it('omits sourceDialect for duckdb sources (no translation needed)', () => {
+      const addColumn = jest.fn();
+      setupStore({
+        explorerSources: [{ source_name: 'local', type: 'duckdb' }],
+        explorerModelStates: {
+          model_a: { ...defaultStoreState.explorerModelStates.model_a, sourceName: 'local' },
+        },
+        addActiveModelComputedColumn: addColumn,
+      });
+      render(<DataSectionToolbar />);
+
+      fireEvent.click(screen.getByTestId('mock-add-column'));
+
+      expect(addColumn).toHaveBeenCalledWith({
+        name: 'new_col',
+        expression: 'SUM(x)',
+        type: 'metric',
+        sourceDialect: undefined,
+      });
+    });
+
+    it('updates edited columns with the current sourceDialect', () => {
+      const updateColumn = jest.fn();
+      setupStore({
+        explorerModelStates: {
+          model_a: {
+            ...defaultStoreState.explorerModelStates.model_a,
+            computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+          },
+        },
+        updateActiveModelComputedColumn: updateColumn,
+      });
+      render(<DataSectionToolbar />);
+
+      fireEvent.click(screen.getByTestId('pill-metric-total'));
+      fireEvent.click(screen.getByTestId('save-edit-btn'));
+
+      expect(updateColumn).toHaveBeenCalledWith('total', {
+        expression: 'NEW_EXPR',
+        type: 'metric',
+        sourceDialect: 'postgres',
+      });
+    });
   });
 
   it('uses enrichedResult for row count when available', () => {

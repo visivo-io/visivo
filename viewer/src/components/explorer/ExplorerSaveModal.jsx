@@ -71,6 +71,8 @@ const ExplorerSaveModal = ({ onClose }) => {
   const modelStates = useStore((s) => s.explorerModelStates);
   const insightStates = useStore((s) => s.explorerInsightStates);
   const chartName = useStore((s) => s.explorerChartName);
+  const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
+  const ensureExplorerChartName = useStore((s) => s.ensureExplorerChartName);
   const saveExplorerObjects = useStore((s) => s.saveExplorerObjects);
   const dashboards = useStore((s) => s.dashboards);
   const fetchDashboards = useStore((s) => s.fetchDashboards);
@@ -180,31 +182,44 @@ const ExplorerSaveModal = ({ onClose }) => {
     setSaving(true);
     setError(null);
     try {
+      const placingOnDashboard = afterSave === AFTER_SAVE_DASHBOARD && targetDashboard;
+
+      // Resolve the chart name BEFORE saving when the user chose "Add to
+      // dashboard … in slot …" — an unnamed chart used to save only the
+      // insights and then navigate to Build mode with nothing placed.
+      let placeName = chartName;
+      if (placingOnDashboard && !placeName) {
+        if ((chartInsightNames || []).length === 0) {
+          setError('Build an insight first — there is no chart to add to the dashboard.');
+          setSaving(false);
+          return;
+        }
+        placeName = ensureExplorerChartName();
+      }
+
       const result = await saveExplorerObjects();
       if (result.success) {
         // After-save navigation (J-1). The new chart is the wrapping object the
         // user places on a dashboard.
         if (afterSave === AFTER_SAVE_WORKSPACE) {
           navigate('/workspace');
-        } else if (afterSave === AFTER_SAVE_DASHBOARD && targetDashboard) {
+        } else if (placingOnDashboard) {
           // Actually place the freshly-saved chart in the chosen slot before
           // navigating — without this the "Add to dashboard … in slot …" choice
           // only moved the user to Build mode and silently dropped the chart.
-          if (chartName) {
-            const placed = await placeChartInDashboardSlot(
-              targetDashboard,
-              chartName,
-              targetSlot
-            );
-            if (!placed.success) {
-              setError(placed.error || 'Could not place the chart on the dashboard.');
-              setSaving(false);
-              return;
-            }
+          const placed = await placeChartInDashboardSlot(
+            targetDashboard,
+            placeName,
+            targetSlot
+          );
+          if (!placed.success) {
+            setError(placed.error || 'Could not place the chart on the dashboard.');
+            setSaving(false);
+            return;
           }
           const params = new URLSearchParams();
           params.set('slot', targetSlot);
-          if (chartName) params.set('newItem', chartName);
+          params.set('newItem', placeName);
           navigate(
             `/workspace/dashboard/${encodeURIComponent(targetDashboard)}?${params.toString()}`
           );
@@ -226,6 +241,8 @@ const ExplorerSaveModal = ({ onClose }) => {
     targetDashboard,
     targetSlot,
     chartName,
+    chartInsightNames,
+    ensureExplorerChartName,
     navigate,
     placeChartInDashboardSlot,
   ]);

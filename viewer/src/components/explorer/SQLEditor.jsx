@@ -18,6 +18,7 @@ const SQLEditor = ({
   height = '300px',
   resultsHeight = '400px',
   hideResults = false,
+  queryContext,
   onQueryComplete,
   toolbarExtra,
   toolbarRight,
@@ -28,6 +29,10 @@ const SQLEditor = ({
   const handleRunRef = useRef(null);
   const handleCancelRef = useRef(null);
   const isRunningRef = useRef(false);
+  // Snapshot of queryContext at execute time — passed back through
+  // onQueryComplete so the caller can route results to the tab/model that
+  // started the run even if the context changed while the job was in flight.
+  const runContextRef = useRef(null);
 
   const [sql, setSql] = useState(initialValue);
   const [showError, setShowError] = useState(true);
@@ -57,13 +62,13 @@ const SQLEditor = ({
   // Notify parent when query completes
   useEffect(() => {
     if (onQueryComplete && result) {
-      onQueryComplete({ result, error: null });
+      onQueryComplete({ result, error: null, context: runContextRef.current });
     }
   }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (onQueryComplete && error) {
-      onQueryComplete({ result: null, error });
+      onQueryComplete({ result: null, error, context: runContextRef.current });
     }
   }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -106,9 +111,10 @@ const SQLEditor = ({
     }
 
     setShowError(true);
+    runContextRef.current = queryContext ?? null;
     executeQuery(sourceName, queryText.trim());
     recordOnboardingAction('query_run');
-  }, [sourceName, sql, executeQuery]);
+  }, [sourceName, sql, executeQuery, queryContext]);
 
   // Handle cancel
   const handleCancel = useCallback(() => {

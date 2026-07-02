@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CenterPanel from './CenterPanel';
 import useStore from '../../stores/store';
@@ -11,22 +11,35 @@ jest.mock('./DraggableColumnHeader', () => {
   };
 });
 
-// Mock SQLEditor
+// Mock SQLEditor — mirrors the real editor's run-context snapshot: the
+// "capture" button records queryContext (as handleRun does at execute time)
+// and the completion buttons deliver results with that captured context.
 jest.mock('./SQLEditor', () => {
-  return function MockSQLEditor({ sourceName, initialValue, onSave, onQueryComplete, hideResults, toolbarExtra, toolbarRight }) {
+  let capturedContext;
+  return function MockSQLEditor({ sourceName, initialValue, onSave, onQueryComplete, hideResults, queryContext, toolbarExtra, toolbarRight }) {
     return (
       <div data-testid="sql-editor">
         <span data-testid="editor-source">{sourceName || 'no-source'}</span>
         <span data-testid="editor-value">{initialValue}</span>
         <span data-testid="editor-hide-results">{String(hideResults)}</span>
+        <span data-testid="editor-query-context">{queryContext || 'no-context'}</span>
         {toolbarExtra}
         {toolbarRight}
+        <button
+          data-testid="trigger-run-capture"
+          onClick={() => {
+            capturedContext = queryContext;
+          }}
+        >
+          Run (capture context)
+        </button>
         <button
           data-testid="trigger-query-complete"
           onClick={() =>
             onQueryComplete?.({
               result: { columns: ['id'], rows: [{ id: 1 }], row_count: 1 },
               error: null,
+              context: capturedContext,
             })
           }
         >
@@ -38,6 +51,7 @@ jest.mock('./SQLEditor', () => {
             onQueryComplete?.({
               result: null,
               error: 'SQL error',
+              context: capturedContext,
             })
           }
         >
@@ -108,7 +122,7 @@ jest.mock('../../hooks/usePanelResize', () => ({
 // Mock useExplorerDuckDB
 jest.mock('../../hooks/useExplorerDuckDB', () => ({
   __esModule: true,
-  default: () => {},
+  default: () => ({ addComputedFromDefinition: jest.fn(), db: null, currentTable: null }),
 }));
 
 // Mock DataSectionToolbar — reads from store internally, no props from CenterPanel
@@ -286,6 +300,51 @@ describe('CenterPanel', () => {
     fireEvent.click(screen.getByTestId('trigger-query-error'));
 
     expect(useStore.getState().explorerModelStates.test_model.queryError).toBe('SQL error');
+  });
+
+  describe('results routing when switching tabs mid-run', () => {
+    beforeEach(() => {
+      useStore.setState({
+        explorerModelTabs: ['test_model', 'other_model'],
+        explorerModelStates: {
+          test_model: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+          other_model: makeModelState({ sql: 'SELECT 2', sourceName: 'test_source' }),
+        },
+      });
+    });
+
+    it('delivers the result to the tab that started the run, not the active tab', () => {
+      render(<CenterPanel />);
+
+      // Start the run on test_model, then switch to other_model mid-flight.
+      fireEvent.click(screen.getByTestId('trigger-run-capture'));
+      act(() => {
+        useStore.setState({ explorerActiveModelName: 'other_model' });
+      });
+      fireEvent.click(screen.getByTestId('trigger-query-complete'));
+
+      const state = useStore.getState();
+      expect(state.explorerModelStates.test_model.queryResult).toEqual({
+        columns: ['id'],
+        rows: [{ id: 1 }],
+        row_count: 1,
+      });
+      expect(state.explorerModelStates.other_model.queryResult).toBeNull();
+    });
+
+    it('delivers a failure to the tab that started the run, not the active tab', () => {
+      render(<CenterPanel />);
+
+      fireEvent.click(screen.getByTestId('trigger-run-capture'));
+      act(() => {
+        useStore.setState({ explorerActiveModelName: 'other_model' });
+      });
+      fireEvent.click(screen.getByTestId('trigger-query-error'));
+
+      const state = useStore.getState();
+      expect(state.explorerModelStates.test_model.queryError).toBe('SQL error');
+      expect(state.explorerModelStates.other_model.queryError).toBeNull();
+    });
   });
 
   it('renders DataSectionToolbar when query result exists', () => {

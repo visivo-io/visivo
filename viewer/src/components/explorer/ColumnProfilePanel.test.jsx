@@ -137,6 +137,17 @@ describe('ColumnProfilePanel', () => {
     expect(screen.getByText('Show Top Values')).toBeInTheDocument();
   });
 
+  it('hides the histogram button when no DuckDB handle is provided', () => {
+    render(<ColumnProfilePanel {...defaultProps} db={null} />);
+    expect(screen.queryByText('Show Distribution')).not.toBeInTheDocument();
+    expect(screen.queryByText('Show Top Values')).not.toBeInTheDocument();
+  });
+
+  it('hides the histogram button when no table name is provided', () => {
+    render(<ColumnProfilePanel {...defaultProps} tableName={null} />);
+    expect(screen.queryByText('Show Distribution')).not.toBeInTheDocument();
+  });
+
   it('shows error state when histogram fetch fails', async () => {
     histogramTableLocally.mockRejectedValue(new Error('Network error'));
 

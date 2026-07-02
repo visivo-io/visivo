@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import { runDuckDBQuery } from '../duckdb/queries';
 import { getConnection } from '../duckdb/duckdb';
@@ -32,6 +32,9 @@ const useExplorerDuckDB = () => {
   const versionRef = useRef(0);
   const tableCounterRef = useRef(0);
   const currentTableRef = useRef(null);
+  // Reactive mirror of currentTableRef so consumers (column-profile
+  // histogram) re-render when the loaded explorer table changes.
+  const [currentTable, setCurrentTable] = useState(null);
 
   useEffect(() => {
     if (!db || !queryResult?.rows?.length || !queryResult?.columns?.length) {
@@ -70,6 +73,7 @@ const useExplorerDuckDB = () => {
         `);
         await db.dropFile(tempFile);
         currentTableRef.current = tableName;
+        setCurrentTable(tableName);
 
         // Discard if a newer pipeline run started
         if (thisVersion !== versionRef.current) return;
@@ -218,7 +222,7 @@ const useExplorerDuckDB = () => {
     []
   );
 
-  return { addComputedFromDefinition };
+  return { addComputedFromDefinition, db, currentTable };
 };
 
 export default useExplorerDuckDB;

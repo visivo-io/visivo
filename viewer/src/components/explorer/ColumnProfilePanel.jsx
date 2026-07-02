@@ -84,6 +84,9 @@ const ColumnProfilePanel = ({ column, profile, db, tableName, rowCount, onClose,
 
   const numeric = isNumericType(profile.type);
   const buttonLabel = numeric ? 'Show Distribution' : 'Show Top Values';
+  // The histogram needs a DuckDB handle + loaded table; without them the
+  // button would be a silent no-op, so don't render it at all.
+  const canLoadHistogram = !!db && !!tableName;
 
   return (
     <div className="w-80 flex-shrink-0 border-l border-secondary-200 bg-white flex flex-col h-full overflow-hidden">
@@ -116,13 +119,15 @@ const ColumnProfilePanel = ({ column, profile, db, tableName, rowCount, onClose,
         {/* Histogram section */}
         <div>
           {!showHistogram ? (
-            <button
-              onClick={handleLoadHistogram}
-              className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              <PiChartBar size={14} />
-              {buttonLabel}
-            </button>
+            canLoadHistogram && (
+              <button
+                onClick={handleLoadHistogram}
+                className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 transition-colors"
+              >
+                <PiChartBar size={14} />
+                {buttonLabel}
+              </button>
+            )
           ) : histogramLoading ? (
             <div className="flex items-center gap-2 py-2">
               <PiSpinner className="animate-spin text-secondary-400" size={14} />
