@@ -337,9 +337,67 @@ describe('VIS-775 Workspace shell', () => {
     expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
   });
 
-  test('?lens=lineage sets the workspace lens to lineage', () => {
-    renderAt('/workspace?edit=chart:revenue_chart&lens=lineage');
+  test('?edit=dashboard:<name>&lens=lineage sets the GLOBAL dashboard lens to lineage', () => {
+    renderAt('/workspace?edit=dashboard:simple-dashboard&lens=lineage');
     expect(useStore.getState().workspaceLens).toBe('lineage');
+  });
+
+  test('?edit=<per-object type>&lens=lineage does NOT set the global dashboard lens', () => {
+    // ObjectCanvasFrame consumes the deep link locally for per-object types
+    // (asserted above via workspace-middle-chart-lineage); leaking it into the
+    // GLOBAL workspaceLens made every dashboard opened later land on lineage.
+    renderAt('/workspace?edit=chart:revenue_chart&lens=lineage');
+    expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
+    expect(useStore.getState().workspaceLens).toBe('preview');
+  });
+
+  test('/workspace?view=lineage (the /lineage redirect target) shows the global lineage lens', () => {
+    // LocalRouter redirects the legacy /lineage route to /workspace?view=lineage;
+    // the Workspace must consume `view` or the deep link is a silent no-op.
+    renderAt('/workspace?view=lineage');
+    expect(useStore.getState().workspaceLens).toBe('lineage');
+  });
+
+  test('a project refetch does not re-focus or resurrect the route dashboard tab (route-hydration is value-keyed)', () => {
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(
+      screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
+    ).toHaveAttribute('data-active', 'true');
+
+    // User switches to the project tab (tab switches don't navigate).
+    act(() => {
+      useStore.getState().switchWorkspaceTab('project:analytics-platform');
+    });
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toHaveAttribute('data-active', 'true');
+
+    // A backend recompile refetches the project (fresh object identity). The
+    // hydration effect re-runs, but must NOT re-assert the URL dashboard tab.
+    act(() => {
+      useStore.setState({
+        project: { id: 'p1', project_json: { name: 'analytics-platform' } },
+      });
+    });
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toHaveAttribute('data-active', 'true');
+
+    // Closing the dashboard tab must also stick across a refetch.
+    act(() => {
+      useStore.getState().closeWorkspaceTab('dashboard:simple-dashboard');
+    });
+    expect(
+      screen.queryByTestId('workspace-tab-dashboard:simple-dashboard')
+    ).not.toBeInTheDocument();
+    act(() => {
+      useStore.setState({
+        project: { id: 'p1', project_json: { name: 'analytics-platform' } },
+      });
+    });
+    expect(
+      screen.queryByTestId('workspace-tab-dashboard:simple-dashboard')
+    ).not.toBeInTheDocument();
   });
 
   test('fires workspace_mode_entered telemetry with null dashboardName when unscoped', () => {

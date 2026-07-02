@@ -105,6 +105,40 @@ describe('RightRail (VIS-793)', () => {
       unsubscribe();
     }
   });
+
+  test('a collapsed-strip tab click expands the rail AND applies the tab selection (dead-affordance regression)', () => {
+    resetStore({
+      workspaceRightCollapsed: true,
+      workspaceRightTab: 'edit',
+      workspaceTabs: [],
+      workspaceActiveTabId: null,
+    });
+    renderRail();
+    fireEvent.click(screen.getByTestId('workspace-right-rail-collapsed-outline'));
+    // The rail expands…
+    expect(useStore.getState().workspaceRightCollapsed).toBe(false);
+    // …with the clicked tab selected (not just expanded on the old tab).
+    expect(useStore.getState().workspaceRightTab).toBe('outline');
+    expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+    expect(screen.getByTestId('workspace-right-rail-outline')).toBeInTheDocument();
+  });
+
+  test('a collapsed-strip click on the ALREADY-active tab still expands the rail', () => {
+    resetStore({
+      workspaceRightCollapsed: true,
+      workspaceRightTab: 'edit',
+      workspaceTabs: [],
+      workspaceActiveTabId: null,
+    });
+    renderRail();
+    fireEvent.click(screen.getByTestId('workspace-right-rail-collapsed-edit'));
+    expect(useStore.getState().workspaceRightCollapsed).toBe(false);
+    expect(useStore.getState().workspaceRightTab).toBe('edit');
+    expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
+  });
 });
 
 describe('RightRail Outline body branch (VIS-1004)', () => {

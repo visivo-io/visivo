@@ -188,12 +188,14 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
     available,
     loading,
     nodes,
+    status,
     error,
     isCold,
     generating,
     generateSchema,
     loadFlatColumns,
     flatColumns,
+    reload,
   } = useSourceOutline(sourceName);
 
   const selectedKey = useStore(s => s.workspaceSourceOutlineSelectedKey);
@@ -380,6 +382,26 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
           title="Loading schema…"
           body="Reading the source's cached tables."
         />
+      ) : status === 'error' ? (
+        // A transient load failure (e.g. the schema-jobs listing errored) is
+        // RETRYABLE — the hook never caches it, so Retry (or re-selecting the
+        // source) re-fetches instead of dead-ending on a bare "0 dbs" root.
+        <EmptyState
+          icon={PiWarningCircle}
+          testId="source-outline-error"
+          title="Couldn't load the schema"
+          body={error}
+        >
+          <button
+            type="button"
+            onClick={reload}
+            data-testid="source-outline-retry"
+            className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-[#713b57] px-2.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45]"
+          >
+            <PiArrowsClockwise aria-hidden="true" className="h-3.5 w-3.5" />
+            Retry
+          </button>
+        </EmptyState>
       ) : isCold ? (
         <EmptyState
           icon={SourceIcon}

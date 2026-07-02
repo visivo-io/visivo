@@ -200,6 +200,27 @@ describe('useWorkspaceScope', () => {
     expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('B');
   });
 
+  test('an active PROJECT tab wins over a stale dashboard URL param (tab switches do not navigate)', () => {
+    // After visiting /workspace/dashboard/A the URL param lingers; clicking
+    // back to the project tab must scope to the project — mirroring the
+    // VIS-835 dashboard-tab rule — instead of the stale URL dashboard.
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [
+          { id: 'project:analytics-platform', type: 'project', name: 'analytics-platform', dirty: false },
+          { id: 'dashboard:A', type: 'dashboard', name: 'A', dirty: false },
+        ],
+        workspaceActiveTabId: 'project:analytics-platform',
+      });
+    });
+    renderAt('/workspace/dashboard/A');
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('project');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent('*');
+    expect(screen.getByTestId('probe-dashboard')).toHaveTextContent('null');
+    expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('project');
+    expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('analytics-platform');
+  });
+
   test('an active dashboard tab on a dashboard URL keeps dashboard scope', () => {
     // The dashboard route opens a matching dashboard tab; the tab and the URL
     // agree, so the scope is the dashboard either way.

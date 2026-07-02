@@ -17,7 +17,13 @@ import useStore from '../../../../stores/store';
  *
  * `model` is the union of `models` (sql), `csvScriptModels` and
  * `localMergeModels` since end users think of them as a single category;
- * the `subtype` field records which underlying store the row came from.
+ * the `subtype` field records which underlying store the row came from and
+ * `canonicalType` carries the REAL object type (`model` / `csvScriptModel` /
+ * `localMergeModel`). Presentation keys off `type` ('model' — one icon, one
+ * subsection), but tab opens / edit routing MUST use `canonicalType`:
+ * routing a csv-script or local-merge model as a plain 'model' resolves a
+ * null record in the `models` collection and drops the user into a blank
+ * create-SQL-model form that saves into the wrong collection.
  *
  * Returns:
  *
@@ -78,6 +84,7 @@ export function useLibraryData() {
       ...safeArray(models).map(m => ({
         id: `model:${m.name}`,
         type: 'model',
+        canonicalType: 'model',
         name: m.name,
         subtype: 'sql_model',
         status: m.status || null,
@@ -85,6 +92,7 @@ export function useLibraryData() {
       ...safeArray(csvScriptModels).map(m => ({
         id: `csvScriptModel:${m.name}`,
         type: 'model',
+        canonicalType: 'csvScriptModel',
         name: m.name,
         subtype: 'csv_script_model',
         status: m.status || null,
@@ -92,6 +100,7 @@ export function useLibraryData() {
       ...safeArray(localMergeModels).map(m => ({
         id: `localMergeModel:${m.name}`,
         type: 'model',
+        canonicalType: 'localMergeModel',
         name: m.name,
         subtype: 'local_merge_model',
         status: m.status || null,

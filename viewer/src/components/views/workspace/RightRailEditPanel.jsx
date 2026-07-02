@@ -5,7 +5,12 @@ import useWorkspaceScope from './useWorkspaceScope';
 import useDebouncedSave from './useDebouncedSave';
 import SelectionChip from './SelectionChip';
 import EditPanelBreadcrumb from './EditPanelBreadcrumb';
-import { applyReorder } from './breadcrumbNav';
+import {
+  applyReorder,
+  getNodeAtKey,
+  tokenizeOutlineKey,
+  updateSiblingsAtKey,
+} from './breadcrumbNav';
 import RowEditForm from '../common/RowEditForm';
 import ItemEditForm, { getItemLeafRef } from '../common/ItemEditForm';
 import MarkdownEditForm from '../common/MarkdownEditForm';
@@ -82,17 +87,27 @@ const LIBRARY_EDITABLE_TYPES = [
 
 const emptyLeafFields = () => ({ chart: '', table: '', markdown: '', selector: '', input: '' });
 
-/** Parse `'row.N'` / `'row.N.item.M'` → `{ rowIndex, itemIndex }` (null when n/a). */
+/**
+ * Parse a selection key at ANY depth (nested container keys like
+ * `row.0.item.1.row.0.item.0` included — OutlineTreePanel + breadcrumbNav both
+ * emit them) via the shared `tokenizeOutlineKey` grammar. Returns:
+ *   - `{ kind: 'dashboard' }` for the root / a malformed key;
+ *   - `{ kind: 'row'|'item', index, rowIndex, itemIndex }` otherwise, where
+ *     `index` is the node's position among its SIBLINGS, and `rowIndex` /
+ *     `itemIndex` are the label-facing indexes (the nearest row token and the
+ *     item token). The node itself resolves via `getNodeAtKey`.
+ */
 const parseOutlineKey = key => {
-  if (!key || typeof key !== 'string') return { kind: 'dashboard' };
-  if (key === 'dashboard') return { kind: 'dashboard' };
-  const itemMatch = key.match(/^row\.(\d+)\.item\.(\d+)$/);
-  if (itemMatch) {
-    return { kind: 'item', rowIndex: Number(itemMatch[1]), itemIndex: Number(itemMatch[2]) };
-  }
-  const rowMatch = key.match(/^row\.(\d+)$/);
-  if (rowMatch) return { kind: 'row', rowIndex: Number(rowMatch[1]) };
-  return { kind: 'dashboard' };
+  const tokens = tokenizeOutlineKey(key);
+  if (tokens.length === 0) return { kind: 'dashboard' };
+  const last = tokens[tokens.length - 1];
+  const lastRowToken = [...tokens].reverse().find(t => t.axis === 'row');
+  return {
+    kind: last.axis === 'item' ? 'item' : 'row',
+    index: last.index,
+    rowIndex: last.axis === 'row' ? last.index : lastRowToken ? lastRowToken.index : 0,
+    itemIndex: last.axis === 'item' ? last.index : null,
+  };
 };
 
 const Placeholder = ({ title, body, testId }) => (
@@ -380,9 +395,12 @@ const RightRailEditPanel = () => {
       );
     }
 
-    // row.N → single RowEditForm (auto-saved).
+    // row.N (any depth — nested container rows included) → single RowEditForm
+    // (auto-saved). The node resolves via the shared breadcrumbNav walk and
+    // writes go through `updateSiblingsAtKey`, so a nested row edits ITSELF —
+    // not the whole dashboard.
     if (sel.kind === 'row') {
-      const row = rows[sel.rowIndex];
+      const row = getNodeAtKey(rows, outlineKey)?.node;
       if (!row) {
         return (
           <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
@@ -397,7 +415,12 @@ const RightRailEditPanel = () => {
       }
       const items = Array.isArray(row.items) ? row.items : [];
       const updateRow = nextRow =>
-        writeRows(rows.map((r, i) => (i === sel.rowIndex ? nextRow : r)), { kind: 'update_row' });
+        writeRows(
+          updateSiblingsAtKey(rows, outlineKey, sibs =>
+            sibs.map((r, i) => (i === sel.index ? nextRow : r))
+          ),
+          { kind: 'update_row' }
+        );
 
       return (
         <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
@@ -414,7 +437,12 @@ const RightRailEditPanel = () => {
               rowId={sel.rowIndex}
               rowIndex={sel.rowIndex}
               onRemoveRow={() =>
-                writeRows(rows.filter((_, i) => i !== sel.rowIndex), { kind: 'remove_row' })
+                writeRows(
+                  updateSiblingsAtKey(rows, outlineKey, sibs =>
+                    sibs.filter((_, i) => i !== sel.index)
+                  ),
+                  { kind: 'remove_row' }
+                )
               }
               onHeightChange={height => updateRow({ ...row, height })}
               onAddItem={() =>
@@ -456,10 +484,10 @@ const RightRailEditPanel = () => {
       );
     }
 
-    // row.N.item.M → leaf form when it references an object, else ItemEditForm.
+    // row.N.item.M (any depth — items in nested container rows included) →
+    // leaf form when it references an object, else ItemEditForm.
     if (sel.kind === 'item') {
-      const row = rows[sel.rowIndex];
-      const item = row?.items?.[sel.itemIndex];
+      const item = getNodeAtKey(rows, outlineKey)?.node;
       if (!item) {
         return (
           <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
@@ -490,24 +518,15 @@ const RightRailEditPanel = () => {
       // Otherwise edit the item layout slot itself.
       const updateItem = nextItem =>
         writeRows(
-          rows.map((r, ri) =>
-            ri === sel.rowIndex
-              ? {
-                  ...r,
-                  items: (r.items || []).map((it, ii) =>
-                    ii === sel.itemIndex ? nextItem : it
-                  ),
-                }
-              : r
+          updateSiblingsAtKey(rows, outlineKey, sibs =>
+            sibs.map((it, i) => (i === sel.index ? nextItem : it))
           ),
           { kind: 'update_item' }
         );
       const removeItem = () =>
         writeRows(
-          rows.map((r, ri) =>
-            ri === sel.rowIndex
-              ? { ...r, items: (r.items || []).filter((_, ii) => ii !== sel.itemIndex) }
-              : r
+          updateSiblingsAtKey(rows, outlineKey, sibs =>
+            sibs.filter((_, i) => i !== sel.index)
           ),
           { kind: 'remove_item' }
         );

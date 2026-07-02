@@ -80,7 +80,7 @@ export const tokensToKey = tokens => {
  * touched (each `{ node, axis, index, kind }`) so labels can be derived. Stops
  * early (returns what it resolved) when the path points past the live config.
  */
-const walkTokens = (rows, tokens) => {
+export const walkTokens = (rows, tokens) => {
   const nodes = [];
   let currentRows = Array.isArray(rows) ? rows : [];
   for (let t = 0; t < tokens.length; t += 1) {
@@ -144,6 +144,62 @@ export const buildBreadcrumbSegments = (outlineKey, dashboardName, rows) => {
   // If the live config no longer contains the full path (walk stopped early),
   // the segments we DID resolve are still a valid, clickable ancestry.
   return segments;
+};
+
+/**
+ * Resolve the node a selection key addresses, at ANY depth (nested container
+ * rows/items included). Returns the walked entry `{ node, axis, index, kind }`
+ * or `null` when the key is the dashboard root or points past the live config.
+ */
+export const getNodeAtKey = (rows, key) => {
+  const tokens = tokenizeOutlineKey(key);
+  if (tokens.length === 0) return null;
+  const walked = walkTokens(rows, tokens);
+  if (walked.length !== tokens.length) return null;
+  return walked[walked.length - 1];
+};
+
+/**
+ * Immutably replace the SIBLING ARRAY containing the node a selection key
+ * addresses, at any depth. `updater(siblings)` receives the sibling array —
+ * the parent's `rows` for a `row` key, the parent row's `items` for an `item`
+ * key — and returns the next array. Returns the next top-level rows array
+ * (the unchanged input when the key can't be resolved). Pure.
+ */
+export const updateSiblingsAtKey = (rows, key, updater) => {
+  const tokens = tokenizeOutlineKey(key);
+  const safeRows = Array.isArray(rows) ? rows : [];
+  if (tokens.length === 0) return safeRows;
+  const last = tokens[tokens.length - 1];
+  const parentTokens = tokens.slice(0, -1);
+  const siblingsProp = last.axis === 'item' ? 'items' : 'rows';
+
+  // Top-level row key — the siblings ARE the dashboard's rows array.
+  if (parentTokens.length === 0) return updater(safeRows);
+
+  // Otherwise transform the parent node in place (immutably) along the path.
+  const descend = (node, rest) => {
+    if (rest.length === 0) {
+      const siblings = Array.isArray(node[siblingsProp]) ? node[siblingsProp] : [];
+      return { ...node, [siblingsProp]: updater(siblings) };
+    }
+    const { axis, index } = rest[0];
+    const childProp = axis === 'item' ? 'items' : 'rows';
+    const children = Array.isArray(node[childProp]) ? node[childProp] : [];
+    const child = children[index];
+    if (!child) return node;
+    const nextChildren = [...children];
+    nextChildren[index] = descend(child, rest.slice(1));
+    return { ...node, [childProp]: nextChildren };
+  };
+
+  const { axis, index } = parentTokens[0];
+  if (axis !== 'row') return safeRows; // top-level paths always start at a row
+  const row = safeRows[index];
+  if (!row) return safeRows;
+  const next = [...safeRows];
+  next[index] = descend(row, parentTokens.slice(1));
+  return next;
 };
 
 /**

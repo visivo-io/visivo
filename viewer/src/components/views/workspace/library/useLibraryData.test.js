@@ -133,6 +133,14 @@ describe('useLibraryData', () => {
       'daily_join',
     ]);
     expect(result.current.dataLayer.model.every(m => m.type === 'model')).toBe(true);
+    // Rows carry the REAL type for tab opens / edit routing — presenting a
+    // csv-script or local-merge model as a plain 'model' resolved a null
+    // record in `models` and dropped the rail into create-SQL-model mode.
+    expect(result.current.dataLayer.model.map(m => m.canonicalType)).toEqual([
+      'model',
+      'csvScriptModel',
+      'localMergeModel',
+    ]);
   });
 
   test('sources expose the underlying source subtype + status passthrough', () => {

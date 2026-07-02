@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import CircularProgress from '@mui/material/CircularProgress';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -22,7 +22,14 @@ const SemanticFieldsStrip = ({ modelName }) => {
   const fetchDimensions = useStore(s => s.fetchDimensions);
   const fetchMetrics = useStore(s => s.fetchMetrics);
 
+  // Fetch AT MOST ONCE per mount (ref-guarded, NOT length-guarded): every
+  // fetch action writes a FRESH array even when the backend returns nothing,
+  // so an empty-collection guard keyed on array identity refires forever
+  // (fetch → new [] → effect → fetch …).
+  const didFetchRef = useRef(false);
   useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
     if ((!dimensions || dimensions.length === 0) && typeof fetchDimensions === 'function') {
       fetchDimensions();
     }
@@ -108,7 +115,13 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
   const { status, progress, progressMessage, result, error, isRunning, executeQuery } =
     useModelQueryJob();
 
+  // Same ref-guarded fetch-once as SemanticFieldsStrip: the effect is keyed on
+  // collection identity, and an empty backend response still produces a fresh
+  // [] — gating on length alone loops forever.
+  const didFetchRef = useRef(false);
   useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
     if ((!models || models.length === 0) && typeof fetchModels === 'function') fetchModels();
     if ((!csvScriptModels || csvScriptModels.length === 0) && typeof fetchCsvScriptModels === 'function')
       fetchCsvScriptModels();

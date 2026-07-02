@@ -42,6 +42,14 @@ import { emitWorkspaceEvent } from '../telemetry';
  * The drag-preview pill itself is rendered by the workspace `<DragOverlay>`
  * via `<LibraryDragPreview>` — see Track D for the `<DndContext>` wiring.
  */
+
+// Tab opens route by the row's REAL type. Model rows present as `type:
+// 'model'` (one icon, one subsection) but carry `canonicalType`
+// ('csvScriptModel' / 'localMergeModel') so the right rail's per-type
+// routing (and record resolution) engages instead of resolving a null
+// record in `models` and falling into create-SQL-model mode.
+const routeType = obj => obj.canonicalType || obj.type;
+
 const Library = () => {
   const data = useLibraryData();
   const navigate = useNavigate();
@@ -89,10 +97,11 @@ const Library = () => {
 
   const handleRowClick = useCallback(
     obj => {
+      const type = routeType(obj);
       if (openWorkspaceTab) {
         openWorkspaceTab({
-          id: `${obj.type}:${obj.name}`,
-          type: obj.type,
+          id: `${type}:${obj.name}`,
+          type,
           name: obj.name,
         });
       }
@@ -113,12 +122,13 @@ const Library = () => {
       });
       // VIS-811 / O-2: the open actions are live; the rest (wrapInChart,
       // showLineage, delete) stay telemetry-only until their tracks wire them.
+      const type = routeType(obj);
       if (action === 'edit' && openWorkspaceTab) {
-        openWorkspaceTab({ id: `${obj.type}:${obj.name}`, type: obj.type, name: obj.name });
+        openWorkspaceTab({ id: `${type}:${obj.name}`, type, name: obj.name });
       } else if (action === 'openInNewTab' && openWorkspaceTabBackground) {
         openWorkspaceTabBackground({
-          id: `${obj.type}:${obj.name}`,
-          type: obj.type,
+          id: `${type}:${obj.name}`,
+          type,
           name: obj.name,
         });
       }

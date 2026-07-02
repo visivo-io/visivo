@@ -120,7 +120,7 @@ const RightRailExpanded = ({
   );
 };
 
-const RightRailCollapsed = ({ activeTab, tabs, onExpand }) => {
+const RightRailCollapsed = ({ activeTab, tabs, onExpand, onSelectTab }) => {
   return (
     <aside
       data-testid="workspace-right-rail"
@@ -147,6 +147,9 @@ const RightRailCollapsed = ({ activeTab, tabs, onExpand }) => {
               key={tab.key}
               title={tab.label}
               aria-label={tab.label}
+              // A collapsed tab icon must not be a dead affordance: clicking
+              // it expands the rail AND applies the selection.
+              onClick={() => onSelectTab && onSelectTab(tab.key)}
               data-testid={`workspace-right-rail-collapsed-${tab.key}`}
               className={[
                 'inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors',
@@ -194,8 +197,24 @@ const RightRail = () => {
     [activeTab, setRightTab]
   );
 
+  // Collapsed-strip tab click: expand the rail AND apply the tab selection so
+  // the icon buttons aren't dead affordances (they already render hover/title
+  // states that promise interactivity).
+  const onCollapsedSelectTab = React.useCallback(
+    tab => {
+      toggleCollapsed();
+      onSelectTab(tab);
+    },
+    [toggleCollapsed, onSelectTab]
+  );
+
   return collapsed ? (
-    <RightRailCollapsed activeTab={effectiveTab} tabs={tabs} onExpand={toggleCollapsed} />
+    <RightRailCollapsed
+      activeTab={effectiveTab}
+      tabs={tabs}
+      onExpand={toggleCollapsed}
+      onSelectTab={onCollapsedSelectTab}
+    />
   ) : (
     <RightRailExpanded
       activeTab={effectiveTab}

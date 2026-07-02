@@ -94,7 +94,17 @@ const Workspace = () => {
   // Auto-hydrate the project tab once, after `project` resolves (so the tab
   // doesn't carry a stale name from the pre-load default). After that, the
   // project tab is user-managed — closing it should stick across navigation.
+  //
+  // Every OTHER hydration below is keyed on its route VALUE (a ref of the
+  // last-hydrated dashboardName / edit param / …), NOT on `project` identity:
+  // the effect re-runs on every project refetch (e.g. refreshFromProjectChange
+  // after a backend recompile), and value-keying stops a refetch from
+  // re-focusing / resurrecting the route's tabs or re-asserting the deep link.
   const projectTabHydrated = useRef(false);
+  const hydratedDashboardRef = useRef(null);
+  const hydratedSemanticLayerRef = useRef(false);
+  const hydratedEditParamRef = useRef(null);
+  const hydratedViewParamRef = useRef(null);
   useEffect(() => {
     if (project && !projectTabHydrated.current) {
       projectTabHydrated.current = true;
@@ -103,37 +113,64 @@ const Workspace = () => {
         type: 'project',
         name: projectName,
       });
+      // Opening the project tab focuses it. When `project` resolves AFTER the
+      // route targets hydrated (slow first load), re-arm them so the blocks
+      // below re-assert focus on the route's tab — identical to initial-load
+      // ordering (project tab first, route target focused last).
+      hydratedDashboardRef.current = null;
+      hydratedSemanticLayerRef.current = false;
+      hydratedEditParamRef.current = null;
     }
-    if (dashboardName) {
+    if (dashboardName && hydratedDashboardRef.current !== dashboardName) {
       openWorkspaceTab({
         id: `dashboard:${dashboardName}`,
         type: 'dashboard',
         name: dashboardName,
       });
     }
-    if (isSemanticLayerRoute) {
+    // Leaving the dashboard route re-arms the hydration, so returning to the
+    // same dashboard URL re-focuses its tab.
+    hydratedDashboardRef.current = dashboardName || null;
+    if (isSemanticLayerRoute && !hydratedSemanticLayerRef.current) {
       openWorkspaceTab({
         id: 'semantic-layer:semantic-layer',
         type: 'semantic-layer',
         name: 'semantic-layer',
       });
     }
+    // Re-arm the semantic-layer hydration when the route is left, so returning
+    // to /workspace/semantic-layer re-focuses the tab (per route VALUE).
+    hydratedSemanticLayerRef.current = isSemanticLayerRoute;
     // Deep-link from the flip card's "Expand / Open full lineage" gesture:
     // `?edit=<type>:<name>` opens a real tab for the subject (so the tab strip
     // gains it and it becomes active), and `?lens=lineage` shows the full
     // lineage in the middle pane. Without opening the tab the Workspace would
     // land on the unscoped Project Editor (only the project tab visible).
     const editParam = searchParams.get('edit');
-    if (editParam && editParam.includes(':')) {
+    if (editParam && editParam.includes(':') && hydratedEditParamRef.current !== editParam) {
       const [type, ...rest] = editParam.split(':');
       const name = rest.join(':');
       if (type && name) {
         openWorkspaceTab({ type, name });
-        if (searchParams.get('lens') === 'lineage') {
+        // `workspaceLens` is the GLOBAL dashboard-pane lens; per-object types
+        // handle `?lens=lineage` locally in ObjectCanvasFrame. Setting the
+        // global lens for them would make every dashboard opened later land
+        // on lineage.
+        if (searchParams.get('lens') === 'lineage' && type === 'dashboard') {
           setWorkspaceLens('lineage');
         }
       }
     }
+    hydratedEditParamRef.current = editParam || null;
+    // `/lineage` redirects to `/workspace?view=lineage` (LocalRouter): show the
+    // global dashboard-pane lineage lens — the same full-project DAG the old
+    // /lineage page rendered. `view=project` is the default and needs no
+    // handling.
+    const viewParam = searchParams.get('view');
+    if (viewParam === 'lineage' && hydratedViewParamRef.current !== viewParam) {
+      setWorkspaceLens('lineage');
+    }
+    hydratedViewParamRef.current = viewParam || null;
   }, [
     project,
     projectName,

@@ -27,6 +27,8 @@ import useStore from '../../../stores/store';
  *   2. Active `dashboard` tab whose name differs from the `:dashboardName` URL
  *      param → `dashboard` scope for the TAB's dashboard (VIS-835). The tab is
  *      the user's most recent explicit selection, so it wins over a stale URL.
+ *      An active `project` tab wins over a stale URL param the same way
+ *      (tab switches don't navigate) → `project` scope.
  *   3. `:dashboardName` URL param → `dashboard` scope (the URL-open path; when
  *      a matching tab is active they agree and resolve identically).
  *   4. `?edit=<type>:<name>` query (Q19 redirect target) → `item` scope.
@@ -92,6 +94,19 @@ export function useWorkspaceScope() {
         selector: `+${activeTab.name}`,
         dashboardName: activeTab.name,
         selectedItem: { type: 'dashboard', name: activeTab.name },
+      };
+    }
+
+    // An explicitly-active PROJECT tab also beats a stale `:dashboardName` URL
+    // param, mirroring the VIS-835 dashboard-tab rule above: tab switches don't
+    // navigate, so after visiting /workspace/dashboard/A, clicking back to the
+    // project tab must scope to the project — not the lingering URL dashboard.
+    if (activeTab && activeTab.type === 'project' && dashboardName) {
+      return {
+        scope: 'project',
+        selector: '*',
+        dashboardName: null,
+        selectedItem: { type: 'project', name: activeTab.name },
       };
     }
 

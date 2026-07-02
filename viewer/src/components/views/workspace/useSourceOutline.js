@@ -100,7 +100,12 @@ export default function useSourceOutline(sourceName) {
   // (from the schema-jobs list, the same one SourceBrowser uses). null = unknown.
   // This — NOT a live-introspect result — decides whether to offer "Generate".
   const [hasCachedSchema, setHasCachedSchema] = useState(null);
-  const cancelledRef = useRef(false);
+  // Per-invocation cancellation epoch. Every source switch (and unmount) bumps
+  // it, and each async closure captures the epoch it started under — so an
+  // in-flight load / generate-poll for source A can never write A's tables
+  // into source B's panel state. (A single shared boolean ref was reset by the
+  // NEXT source's effect, which is exactly how that cross-write happened.)
+  const epochRef = useRef(0);
 
   const available = useMemo(() => isAvailable('sourceSchemaJobsList'), []);
 
@@ -125,16 +130,32 @@ export default function useSourceOutline(sourceName) {
    */
   const loadCached = useCallback(async () => {
     if (!sourceName || !available) return;
+    const epoch = epochRef.current;
+    const stale = () => epochRef.current !== epoch;
     setStatus('loading');
     setError(null);
     try {
       const cachedFlag = await readHasCachedSchema();
-      if (cancelledRef.current) return;
+      if (stale()) return;
       setHasCachedSchema(cachedFlag);
 
-      // Only fetch tables when the API confirms a cached schema exists; a cold
-      // source resolves to the Generate prompt without a wasted 404 round-trip.
-      if (cachedFlag !== true) {
+      // UNKNOWN (the schema-jobs listing failed / returned no row for this
+      // source): a transient failure must stay RETRYABLE — never write it to
+      // the session cache. Caching `{ hasCachedSchema: null }` as a 'ready'
+      // entry poisoned every re-select for the rest of the session: no tree,
+      // and no Generate prompt either (isCold requires an authoritative
+      // `false`). Surface an error status instead so the panel can offer a
+      // retry and a re-select misses the cache and re-fetches.
+      if (cachedFlag === null) {
+        setNodes(null);
+        setStatus('error');
+        setError('Could not read the schema listing for this source.');
+        return;
+      }
+
+      // COLD (authoritative `false`): resolve to the Generate prompt without a
+      // wasted 404 round-trip, and cache the flag so re-select is instant.
+      if (cachedFlag === false) {
         setNodes(null);
         setStatus('ready');
         useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
@@ -146,7 +167,7 @@ export default function useSourceOutline(sourceName) {
       }
 
       const tables = await fetchSourceTables(sourceName);
-      if (cancelledRef.current) return;
+      if (stale()) return;
       const tree = buildCachedTree(sourceName, tables);
       setNodes(tree);
       setStatus('ready');
@@ -158,7 +179,7 @@ export default function useSourceOutline(sourceName) {
         hasCachedSchema: cachedFlag,
       });
     } catch (e) {
-      if (cancelledRef.current) return;
+      if (stale()) return;
       setStatus('error');
       setError(e.message);
       setNodes([]);
@@ -166,7 +187,6 @@ export default function useSourceOutline(sourceName) {
   }, [sourceName, available, readHasCachedSchema]);
 
   useEffect(() => {
-    cancelledRef.current = false;
     // Reset transient per-source state (switching never bleeds it).
     setFlatColumns({});
     setGenerating(null);
@@ -185,7 +205,9 @@ export default function useSourceOutline(sourceName) {
       loadCached();
     }
     return () => {
-      cancelledRef.current = true;
+      // Bump the epoch so every in-flight closure started for THIS source
+      // self-cancels; the next source's work captures the new epoch.
+      epochRef.current += 1;
     };
   }, [sourceName, loadCached]);
 
@@ -196,6 +218,8 @@ export default function useSourceOutline(sourceName) {
    */
   const generateSchema = useCallback(async () => {
     if (!sourceName || !isAvailable('sourceSchemaJobCreate')) return;
+    const epoch = epochRef.current;
+    const stale = () => epochRef.current !== epoch;
     setGenerating({ status: 'starting', progress: 0, message: '' });
     setError(null);
     try {
@@ -205,8 +229,9 @@ export default function useSourceOutline(sourceName) {
       const startTime = Date.now();
 
       while (Date.now() - startTime < maxWaitTime) {
-        if (cancelledRef.current) return;
+        if (stale()) return;
         const st = await fetchSchemaGenerationStatus(runId);
+        if (stale()) return;
         setGenerating({
           status: st.status,
           progress: st.progress || 0,
@@ -215,7 +240,7 @@ export default function useSourceOutline(sourceName) {
 
         if (st.status === 'completed') {
           const tables = await fetchSourceTables(sourceName);
-          if (cancelledRef.current) return;
+          if (stale()) return;
           const tree = buildCachedTree(sourceName, tables);
           setNodes(tree);
           setHasCachedSchema(true);
@@ -235,7 +260,7 @@ export default function useSourceOutline(sourceName) {
       }
       throw new Error('Schema generation timed out');
     } catch (e) {
-      if (cancelledRef.current) return;
+      if (stale()) return;
       setGenerating(null);
       setError(e.message);
     }
@@ -248,13 +273,15 @@ export default function useSourceOutline(sourceName) {
   const loadFlatColumns = useCallback(
     async tKey => {
       if (!sourceName || flatColumns[tKey]) return;
+      const epoch = epochRef.current;
+      const stale = () => epochRef.current !== epoch;
       // tableKey grammar: …::table::<name>
       const match = tKey.match(/::table::(.+)$/);
       const tableName = match ? match[1] : null;
       if (!tableName) return;
       try {
         const cols = await fetchTableColumns(sourceName, tableName);
-        if (cancelledRef.current) return;
+        if (stale()) return;
         setFlatColumns(prev => ({
           ...prev,
           [tKey]: (cols || []).map(c => {
@@ -268,7 +295,7 @@ export default function useSourceOutline(sourceName) {
           }),
         }));
       } catch (e) {
-        if (cancelledRef.current) return;
+        if (stale()) return;
         setFlatColumns(prev => ({ ...prev, [tKey]: { error: e.message } }));
       }
     },

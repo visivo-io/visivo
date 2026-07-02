@@ -152,4 +152,65 @@ describe('ModelPreview (VIS-801)', () => {
     render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
     expect(screen.queryByTestId('model-semantic-fields')).not.toBeInTheDocument();
   });
+
+  // Every real fetch action writes a FRESH array even when the backend
+  // returns nothing, so a fetch guard keyed on `length === 0` with the effect
+  // keyed on array identity refires forever (fetch → new [] → effect → fetch
+  // …). These mocks mimic that store behaviour, capped so a regression fails
+  // on a call-count assertion instead of hanging the runner.
+  const emptyRefetcher = key => {
+    const fn = jest.fn(() => {
+      if (fn.mock.calls.length <= 20) useStore.setState({ [key]: [] });
+    });
+    return fn;
+  };
+
+  test('fetches each collection at most once when it legitimately resolves EMPTY (unbounded-loop regression)', () => {
+    const fetchModels = emptyRefetcher('models');
+    const fetchCsvScriptModels = emptyRefetcher('csvScriptModels');
+    const fetchLocalMergeModels = emptyRefetcher('localMergeModels');
+    const fetchSources = emptyRefetcher('sources');
+    act(() => {
+      useStore.setState({
+        models: [],
+        csvScriptModels: [],
+        localMergeModels: [],
+        sources: [],
+        defaults: { source_name: 'db' },
+        dimensions: [],
+        metrics: [],
+        fetchModels,
+        fetchCsvScriptModels,
+        fetchLocalMergeModels,
+        fetchSources,
+        fetchDefaults: jest.fn(),
+        fetchDimensions: jest.fn(),
+        fetchMetrics: jest.fn(),
+      });
+    });
+    render(<ModelPreview activeObject={{ type: 'model', name: 'missing' }} />);
+    expect(fetchModels).toHaveBeenCalledTimes(1);
+    expect(fetchCsvScriptModels).toHaveBeenCalledTimes(1);
+    expect(fetchLocalMergeModels).toHaveBeenCalledTimes(1);
+    expect(fetchSources).toHaveBeenCalledTimes(1);
+  });
+
+  test('SemanticFieldsStrip fetches dimensions/metrics at most once when they resolve EMPTY (unbounded-loop regression)', () => {
+    const fetchDimensions = emptyRefetcher('dimensions');
+    const fetchMetrics = emptyRefetcher('metrics');
+    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    act(() => {
+      useStore.setState({
+        csvScriptModels: [],
+        localMergeModels: [],
+        fetchCsvScriptModels: jest.fn(),
+        fetchLocalMergeModels: jest.fn(),
+        fetchDimensions,
+        fetchMetrics,
+      });
+    });
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    expect(fetchDimensions).toHaveBeenCalledTimes(1);
+    expect(fetchMetrics).toHaveBeenCalledTimes(1);
+  });
 });

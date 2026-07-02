@@ -174,6 +174,32 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     ).toBeInTheDocument();
   });
 
+  test('a transient schema-jobs failure shows a Retry affordance and recovers (no cache poisoning)', async () => {
+    // The listing fails once, then succeeds. The failed read must NOT be
+    // cached as a 'ready' entry (which dead-ended the panel on a bare "0 dbs"
+    // root with no Generate prompt for the rest of the session) — it renders
+    // a retryable error state instead.
+    fetchSourceSchemaJobs
+      .mockRejectedValueOnce(new Error('network blip'))
+      .mockResolvedValue([{ source_name: SRC, has_cached_schema: true }]);
+
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+
+    expect(await screen.findByTestId('source-outline-error')).toBeInTheDocument();
+    // No poisoned session-cache entry was written.
+    expect(useStore.getState().workspaceSourceOutlineDataCache[SRC]).toBeUndefined();
+    // No dead-end: neither the bare tree nor the cold prompt renders.
+    expect(screen.queryByTestId('source-outline-tree')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('source-outline-cold')).not.toBeInTheDocument();
+
+    // Retry re-fetches and the real tree renders.
+    fireEvent.click(screen.getByTestId('source-outline-retry'));
+    expect(await screen.findByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
+    expect(useStore.getState().workspaceSourceOutlineDataCache[SRC]).toMatchObject({
+      hasCachedSchema: true,
+    });
+  });
+
   test('degrades to the visivo serve empty state when endpoints are null (dist)', async () => {
     setDistEnv();
     render(<SourceOutlineTreePanel sourceName={SRC} />);

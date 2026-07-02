@@ -17,7 +17,7 @@ import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './library/LibraryRow';
  *     the same Library.
  */
 
-const TypeBtn = ({ typeKey, active }) => {
+const TypeBtn = ({ typeKey, active, onClick }) => {
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
   return (
@@ -25,6 +25,7 @@ const TypeBtn = ({ typeKey, active }) => {
       type="button"
       title={def.plural}
       aria-label={def.plural}
+      onClick={onClick}
       data-testid={`workspace-left-rail-collapsed-${typeKey}`}
       data-active={active ? 'true' : 'false'}
       className={[
@@ -45,6 +46,30 @@ const LeftRailCollapsed = ({ onExpand }) => {
   // mulberry pill on the active section.
   const activeObject = useStore(s => s.workspaceActiveObject);
   const activeType = activeObject?.type || null;
+  const setLibrarySectionCollapsed = useStore(s => s.setLibrarySectionCollapsed);
+  const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
+
+  // Collapsed buttons must not be dead affordances (they render hover/title
+  // states that promise interactivity): clicking one expands the rail AND
+  // applies the selection — a type button lands on that type's subsection
+  // (section + subsection expanded), the search button focuses the search.
+  const handleTypeClick = typeKey => {
+    const sectionKey = LAYOUT_TYPES.includes(typeKey) ? 'layout' : 'data';
+    setLibrarySectionCollapsed(sectionKey, false);
+    setLibrarySubsectionCollapsed(typeKey, false);
+    onExpand();
+  };
+  const handleSearchClick = () => {
+    setLibrarySectionCollapsed('layout', false);
+    onExpand();
+    // The Library mounts on the re-render after expand — focus its first
+    // search input on the next tick (same document-query pattern the Edit
+    // panel's breadcrumb focus uses).
+    setTimeout(() => {
+      const input = document.querySelector('[data-testid="library-search-layout"]');
+      if (input && typeof input.focus === 'function') input.focus();
+    }, 0);
+  };
   return (
     <aside
       data-testid="workspace-left-rail"
@@ -66,6 +91,8 @@ const LeftRailCollapsed = ({ onExpand }) => {
           type="button"
           title="Search"
           aria-label="Search"
+          onClick={handleSearchClick}
+          data-testid="workspace-left-rail-collapsed-search"
           className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
         >
           <PiMagnifyingGlass className="h-[18px] w-[18px]" />
@@ -73,12 +100,12 @@ const LeftRailCollapsed = ({ onExpand }) => {
         {/* Layout Items group — droppable types. */}
         <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
         {LAYOUT_TYPES.map(t => (
-          <TypeBtn key={t} typeKey={t} active={t === activeType} />
+          <TypeBtn key={t} typeKey={t} active={t === activeType} onClick={() => handleTypeClick(t)} />
         ))}
         {/* Data Layer group — click-to-edit types. */}
         <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
         {DATA_TYPES.map(t => (
-          <TypeBtn key={t} typeKey={t} active={t === activeType} />
+          <TypeBtn key={t} typeKey={t} active={t === activeType} onClick={() => handleTypeClick(t)} />
         ))}
       </div>
     </aside>

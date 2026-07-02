@@ -215,6 +215,76 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
   });
 });
 
+// Nested container keys (row.N.item.M.row.P[.item.Q]) come from
+// OutlineTreePanel + breadcrumbNav; the router must resolve them at ANY depth
+// instead of falling through to the whole-dashboard form.
+const NESTED_DASHBOARD = {
+  name: 'simple-dashboard',
+  config: {
+    name: 'simple-dashboard',
+    rows: [
+      {
+        height: 'medium',
+        items: [
+          { width: 1, chart: formatRefExpression('rev_chart') },
+          {
+            width: 1,
+            rows: [
+              {
+                height: 'small',
+                items: [
+                  { width: 1, chart: formatRefExpression('nested_chart') },
+                  { width: 1 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+describe('RightRailEditPanel nested container keys (arbitrary depth)', () => {
+  const resetNested = overrides =>
+    resetStore({
+      dashboards: [NESTED_DASHBOARD],
+      charts: [
+        { name: 'rev_chart', config: {} },
+        { name: 'nested_chart', config: {} },
+      ],
+      ...overrides,
+    });
+
+  test('nested row key (row.0.item.1.row.0) → that row form, NOT the whole-dashboard form', () => {
+    resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.0' });
+    renderPanel();
+    expect(screen.getByTestId('right-rail-edit-row')).toBeInTheDocument();
+    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
+    expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('Row 1');
+  });
+
+  test('nested chart item key (row.0.item.1.row.0.item.0) → the leaf chart form', () => {
+    resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.0.item.0' });
+    renderPanel();
+    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('nested_chart');
+    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
+  });
+
+  test('nested EMPTY item key (row.0.item.1.row.0.item.1) → ItemEditForm for that slot', () => {
+    resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.0.item.1' });
+    renderPanel();
+    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
+    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
+  });
+
+  test('a nested key pointing past the live config → not-found placeholder (not the dashboard form)', () => {
+    resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.5' });
+    renderPanel();
+    expect(screen.getByTestId('right-rail-edit-missing')).toBeInTheDocument();
+  });
+});
+
 describe('RightRailEditPanel auto-save (VIS-802)', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => {
@@ -288,5 +358,33 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
     ['chart', 'table', 'markdown', 'input', 'selector'].forEach(k =>
       expect(k in item).toBe(false)
     );
+  });
+
+  test('editing a NESTED container row writes the change at its nested path', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceOutlineSelectedKey: 'row.0.item.1.row.0',
+      saveDashboard,
+      dashboards: [NESTED_DASHBOARD],
+      charts: [
+        { name: 'rev_chart', config: {} },
+        { name: 'nested_chart', config: {} },
+      ],
+    });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const [, config] = saveDashboard.mock.calls[0];
+    // The NESTED row changed…
+    expect(config.rows[0].items[1].rows[0].height).toBe('large');
+    // …and the outer structure is untouched.
+    expect(config.rows[0].height).toBe('medium');
+    expect(config.rows).toHaveLength(1);
   });
 });
