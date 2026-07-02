@@ -28,8 +28,8 @@ import {
  *   - Add row inside       (container item) → addRowInsideContainer
  *   - Unwrap container     (trivial 1×1)    → unwrapTrivialContainer
  *
- * Each action commits through the shell's shared `commitCanvasConfig` (sanitize
- * → optimistic → save) — the SAME path the DnD router + Add-Row menu use — and
+ * Each action commits through the shell's shared `commitCanvasConfig`
+ * (optimistic → validate → save) — the SAME path the DnD router + Add-Row menu use — and
  * fires a `canvas_action` telemetry event. There is NO depth limit (Q12): a leaf
  * can be wrapped arbitrarily deep with no warning.
  *

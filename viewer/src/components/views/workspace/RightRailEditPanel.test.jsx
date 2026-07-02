@@ -3,7 +3,8 @@
  *
  * The selection-driven Edit-tab router. Verifies Q25 routing from
  * (workspaceActiveObject + workspaceOutlineSelectedKey) and the debounced
- * auto-save (no Save button) through saveDashboard.
+ * auto-save (no Save button) through saveDashboard — now gated by the VIS-993
+ * validation-as-save contract (invalid structure configs never persist).
  */
 import React from 'react';
 import { render, screen, act, fireEvent, waitFor, within } from '@testing-library/react';
@@ -18,6 +19,33 @@ import { futureFlags } from '../../../router-config';
 import RightRailEditPanel from './RightRailEditPanel';
 import useStore from '../../../stores/store';
 import { formatRefExpression } from '../../../utils/refString';
+import {
+  preloadValidationSchema,
+  validateRecordConfigSync,
+  clearValidationCache,
+} from './validateAgainstSchema';
+
+// Render the REAL RefDropZone but capture each slot's `onChange` by id. The
+// shell DndContext (G-1) performs a drop write by invoking exactly this
+// callback, so tests call it to simulate a Library drop landing in a slot
+// (jsdom cannot run a real dnd-kit pointer drag).
+const mockRefDropZoneOnChange = {};
+jest.mock('../common/RefDropZone', () => {
+  const ReactActual = jest.requireActual('react');
+  const ActualRefDropZone = jest.requireActual('../common/RefDropZone').default;
+  const CapturingRefDropZone = props => {
+    mockRefDropZoneOnChange[props.id] = props.onChange;
+    return ReactActual.createElement(ActualRefDropZone, props);
+  };
+  return { __esModule: true, default: CapturingRefDropZone };
+});
+
+// Warm the bundled project schema so the VIS-993 gate takes its SYNC path in
+// these tests — persistence decisions stay synchronous under fake timers,
+// exactly like the production workspace after preload.
+beforeAll(async () => {
+  await preloadValidationSchema();
+});
 
 // Stub the heavy leaf forms so routing assertions stay focused.
 jest.mock('../common/MarkdownEditForm', () => ({
@@ -380,12 +408,13 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
     expect(config.rows[0].height).toBe('large');
   });
 
-  test('GAP-3: auto-save sanitizes empty-string scaffold items so the payload is backend-valid', async () => {
+  test('VIS-993: a legacy empty-string scaffold config is BLOCKED from persisting (gate, not sanitize)', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-    // A row whose item is the invalid scaffold the forms produce
-    // ({ chart:'', table:'', markdown:'', input:'', selector:'' }). The backend
-    // counts every empty string as "set" and 400s; the persisted payload must
-    // be sanitized to a clean empty slot before it leaves the client.
+    // A row whose item is the legacy invalid scaffold the old forms produced
+    // ({ chart:'', table:'', markdown:'', input:'', selector:'' }). The
+    // mutation module can no longer CREATE this shape; if it reaches the store
+    // anyway, the validation gate must hold persistence — sanitize is retired,
+    // nothing repairs the payload, and nothing invalid may POST.
     const scaffoldDash = {
       name: 'simple-dashboard',
       config: {
@@ -405,22 +434,17 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
     });
     renderPanel();
 
-    // Any edit (row height) triggers a save of the full config.
+    // Any edit (row height) routes the full config through the gate.
     selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
 
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const [, config] = saveDashboard.mock.calls[0];
-    const item = config.rows[0].items[0];
-    // Empty leaf fields + the non-model `selector` key are stripped → exactly
-    // zero leaf types set (a valid empty slot), so no >1 / extra-field 400.
-    expect(item).toEqual({ width: 1 });
-    ['chart', 'table', 'markdown', 'input', 'selector'].forEach(k =>
-      expect(k in item).toBe(false)
-    );
+    // Nothing persisted; the rail surfaces the invalid status + the errors.
+    expect(saveDashboard).not.toHaveBeenCalled();
+    expect(screen.getByTestId('right-rail-save-state')).toHaveAttribute('data-status', 'invalid');
+    expect(screen.getByTestId('right-rail-validation-errors')).toBeInTheDocument();
   });
 
   test('editing a NESTED container row writes the change at its nested path', async () => {
@@ -552,9 +576,9 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     });
     const config = lastSavedConfig(saveDashboard);
     expect(config.rows).toHaveLength(3);
-    // Sanitize re-seeds an empty row with ONE empty slot so it stays a visible
-    // drop target (VIS-989) and satisfies the backend's non-empty-items rule.
-    expect(config.rows[2]).toEqual({ height: 'medium', items: [{}] });
+    // VIS-993: rows are BORN with one empty slot (itemMutations.createRow) so
+    // they stay visible drop targets (VIS-989) — no sanitize re-seeding.
+    expect(config.rows[2]).toEqual({ height: 'medium', items: [{ width: 1 }] });
   });
 
   test('dashboard view: removing a row drops exactly that row', async () => {
@@ -571,7 +595,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     expect(config.rows[0].height).toBe('small');
   });
 
-  test('dashboard view: "Add Item" appends a sanitized empty slot to that row', async () => {
+  test('dashboard view: "Add Item" appends a born-valid empty slot to that row', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     resetStore({ workspaceOutlineSelectedKey: 'dashboard', saveDashboard });
     renderPanel();
@@ -583,7 +607,8 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     });
     const config = lastSavedConfig(saveDashboard);
     expect(config.rows[0].items).toHaveLength(3);
-    // GAP-3: the empty-string scaffold is sanitized to a clean empty slot.
+    // VIS-993: the slot is BORN a bare { width } — never an empty-string
+    // scaffold that needed sanitizing.
     expect(config.rows[0].items[2]).toEqual({ width: 1 });
   });
 
@@ -759,6 +784,176 @@ describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {
     // And the store collection was updated OPTIMISTICALLY before the round-trip.
     const entry = useStore.getState().charts.find(c => c.name === 'rev_chart');
     expect((entry.config || entry).layout.title.text).toBe('Edited');
+  });
+});
+
+// ── VIS-993 §3: structure configs born valid + the validation gate ──────────
+describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => {
+    act(() => jest.runOnlyPendingTimers());
+    jest.useRealTimers();
+  });
+
+  const lastSavedConfig = saveDashboard => {
+    expect(saveDashboard).toHaveBeenCalled();
+    return saveDashboard.mock.calls[saveDashboard.mock.calls.length - 1][1];
+  };
+
+  test('a leaf drop through the form persists exactly ONE leaf key (born valid, schema-verified)', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceOutlineSelectedKey: 'row.0',
+      saveDashboard,
+      tables: [{ name: 'sales_table', config: {} }],
+    });
+    renderPanel();
+
+    // Slot 0 currently holds the rev_chart leaf. Dropping a TABLE on it must
+    // clear the chart and write the single table ref — producing two leaf
+    // types through the forms is impossible by construction.
+    act(() => {
+      mockRefDropZoneOnChange['row-0-item-0']({ type: 'table', name: 'sales_table' });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+
+    const config = lastSavedConfig(saveDashboard);
+    expect(config.rows[0].items[0]).toEqual({
+      width: 1,
+      table: formatRefExpression('sales_table'),
+    });
+    // Defense-in-depth agreement: the persisted config passes the same gate.
+    expect(validateRecordConfigSync('dashboard', config)).toEqual(
+      expect.objectContaining({ valid: true })
+    );
+  });
+
+  test('clearing a leaf through the form persists a bare empty slot (no empty-string keys)', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
+    renderPanel();
+
+    fireEvent.click(screen.getByTestId('pill-remove'));
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+
+    const config = lastSavedConfig(saveDashboard);
+    // An empty-string leaf through the forms is impossible: cleared = GONE.
+    expect(config.rows[0].items[0]).toEqual({ width: 1 });
+    expect(validateRecordConfigSync('dashboard', config)).toEqual(
+      expect.objectContaining({ valid: true })
+    );
+  });
+
+  test('defense-in-depth: a config with TWO leaf types set is blocked by the gate', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    // Schema-valid but backend-invalid: the mutual exclusion is a Pydantic
+    // model_validator, so the exclusivity half of the gate must catch it.
+    const twoLeafDash = {
+      name: 'simple-dashboard',
+      config: {
+        name: 'simple-dashboard',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                chart: formatRefExpression('rev_chart'),
+                table: formatRefExpression('sales_table'),
+              },
+            ],
+          },
+        ],
+      },
+    };
+    resetStore({
+      workspaceOutlineSelectedKey: 'row.0',
+      saveDashboard,
+      dashboards: [twoLeafDash],
+    });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(saveDashboard).not.toHaveBeenCalled();
+    expect(screen.getByTestId('right-rail-save-state')).toHaveAttribute('data-status', 'invalid');
+    expect(screen.getByTestId('right-rail-validation-errors')).toHaveTextContent(/only one of/i);
+  });
+
+  test('a subsequent VALID edit clears the invalid state and persists again', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    const scaffoldDash = {
+      name: 'simple-dashboard',
+      config: {
+        name: 'simple-dashboard',
+        rows: [{ height: 'medium', items: [{ width: 1, chart: '', table: '' }] }],
+      },
+    };
+    resetStore({
+      workspaceOutlineSelectedKey: 'row.0',
+      saveDashboard,
+      dashboards: [scaffoldDash],
+    });
+    renderPanel();
+
+    // First edit: blocked (the stored item is invalid).
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(saveDashboard).not.toHaveBeenCalled();
+    expect(screen.getByTestId('right-rail-save-state')).toHaveAttribute('data-status', 'invalid');
+
+    // Dropping a real ref on the broken slot REPAIRS the config — the
+    // born-valid mutation (applyLeafRef) strips the blank scaffold keys and
+    // writes the single leaf → the gate opens and the save flows.
+    act(() => {
+      mockRefDropZoneOnChange['row-0-item-0']({ type: 'chart', name: 'rev_chart' });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('right-rail-validation-errors')).not.toBeInTheDocument();
+    const [, config] = saveDashboard.mock.calls[0];
+    expect(config.rows[0].items[0]).toEqual({
+      width: 1,
+      chart: formatRefExpression('rev_chart'),
+    });
+  });
+
+  test('async fallback: when the schema is not yet loaded the gate still persists a valid edit', async () => {
+    // Drop the compiled validators — the sync path returns null and the gate
+    // must defer to the async validateRecordConfig before persisting.
+    clearValidationCache();
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+    // Flush the async validation (microtasks), then the debounce window.
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const [, config] = saveDashboard.mock.calls[0];
+    expect(config.rows[0].height).toBe('large');
+    // Restore the warm cache for any following test.
+    await preloadValidationSchema();
   });
 });
 

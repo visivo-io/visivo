@@ -25,7 +25,7 @@ import RowTemplateMenu from './RowTemplateMenu';
  * Each trigger opens <RowTemplateMenu>; selecting a template builds a row of
  * empty slots (canvasReorder.buildTemplateRow) and inserts it at the trigger's
  * target index (insertRowAtIndex), committing through the shell's shared
- * `commitCanvasConfig` (sanitize → optimistic → save) — the SAME path the DnD
+ * `commitCanvasConfig` (optimistic → validate → save) — the SAME path the DnD
  * router uses. It also exposes the inline-create entry points (+ New Chart /
  * Table / Markdown) that route to the Explorer (the full round-trip is VIS-J2;
  * here we fire `inline_create_used` + navigate).

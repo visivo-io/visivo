@@ -11,7 +11,7 @@
  *      the real drag is exercised by the Playwright stories.
  */
 import React from 'react';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import { useDraggable } from '@dnd-kit/core';
 import WorkspaceDndContext, {
   useWorkspaceDrag,
@@ -23,6 +23,7 @@ import WorkspaceDndContext, {
   WorkspaceCommitProvider,
 } from './WorkspaceDndContext';
 import useStore from '../../../stores/store';
+import { preloadValidationSchema, clearValidationCache } from './validateAgainstSchema';
 
 const DASHBOARDS = [
   { name: 'd0', config: { level: 'Organization' } },
@@ -522,7 +523,7 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     );
     expect(result).toBe('canvas_fill_slot');
     const [, nextConfig] = commitCanvasConfig.mock.calls[0];
-    // The empty slot is now chart c; the source row emptied (sanitize re-seeds it).
+    // The empty slot is now chart c; the source row is left empty (valid as-is).
     expect(nextConfig.rows[0].items.map(it => it.chart)).toEqual(['ref(a)', 'ref(c)']);
     expect(nextConfig.rows[1].items).toEqual([]);
     expect(emit).toHaveBeenCalledWith(
@@ -881,7 +882,14 @@ describe('WorkspaceDndContext drag overlay previews (VIS-901 #5 / VIS-1008)', ()
   });
 });
 
-describe('WorkspaceDndContext commit path (D-3 / D-4)', () => {
+describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () => {
+  // Warm the bundled project schema so the gate takes its SYNC path (matching
+  // the production workspace after preload); the async-fallback test below
+  // clears the cache explicitly.
+  beforeAll(async () => {
+    await preloadValidationSchema();
+  });
+
   const CommitProbe = ({ name, config }) => {
     const commit = useWorkspaceCommit();
     return (
@@ -895,7 +903,39 @@ describe('WorkspaceDndContext commit path (D-3 / D-4)', () => {
     );
   };
 
-  test('useWorkspaceCommit inside the shell sanitizes, optimistically applies, then saves', () => {
+  const VALID_CONFIG = {
+    name: 'dash',
+    rows: [
+      {
+        height: 'medium',
+        items: [{ width: 6, chart: '${ref(rev_chart)}' }, { width: 6 }], // eslint-disable-line no-template-curly-in-string
+      },
+    ],
+  };
+
+  test('useWorkspaceCommit optimistically applies, validates, then saves the SAME config', () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    const updateDashboardConfigOptimistic = jest.fn();
+    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic });
+
+    render(
+      <WorkspaceDndContext>
+        <CommitProbe name="dash" config={VALID_CONFIG} />
+      </WorkspaceDndContext>
+    );
+    fireEvent.click(screen.getByTestId('commit-probe'));
+
+    expect(updateDashboardConfigOptimistic).toHaveBeenCalledTimes(1);
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const [name, persisted] = saveDashboard.mock.calls[0];
+    expect(name).toBe('dash');
+    // VIS-993: canvas mutations are BORN valid — nothing sanitizes/repairs the
+    // payload; optimistic + save receive the config byte-identical.
+    expect(persisted).toBe(VALID_CONFIG);
+    expect(updateDashboardConfigOptimistic.mock.calls[0][1]).toBe(VALID_CONFIG);
+  });
+
+  test('an INVALID config is optimistically applied but NEVER persisted (gate blocks)', () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     const updateDashboardConfigOptimistic = jest.fn();
     useStore.setState({ saveDashboard, updateDashboardConfigOptimistic });
@@ -908,7 +948,9 @@ describe('WorkspaceDndContext commit path (D-3 / D-4)', () => {
             rows: [
               {
                 height: 'medium',
-                // The invalid empty-string scaffold the forms produce (GAP-3).
+                // The legacy empty-string scaffold (schema-invalid + selector
+                // extra-forbidden). Sanitize is retired: nothing repairs this —
+                // the gate must hold persistence entirely.
                 items: [{ width: 1, chart: '', table: '', markdown: '', input: '', selector: '' }],
               },
             ],
@@ -918,15 +960,52 @@ describe('WorkspaceDndContext commit path (D-3 / D-4)', () => {
     );
     fireEvent.click(screen.getByTestId('commit-probe'));
 
+    // Bound surfaces stay live (useRecordSave contract)…
     expect(updateDashboardConfigOptimistic).toHaveBeenCalledTimes(1);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const [name, clean] = saveDashboard.mock.calls[0];
-    expect(name).toBe('dash');
-    // The scaffold was sanitized to a valid empty slot before persisting.
-    expect(clean.rows[0].items[0]).toEqual({ width: 1 });
-    // Optimistic + save receive the SAME clean config.
-    expect(updateDashboardConfigOptimistic.mock.calls[0][1]).toEqual(clean);
+    // …but nothing invalid may POST.
+    expect(saveDashboard).not.toHaveBeenCalled();
   });
+
+  test('a TWO-LEAF item is blocked too (mutual exclusion is not in the JSON schema)', () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic: jest.fn() });
+
+    render(
+      <WorkspaceDndContext>
+        <CommitProbe
+          name="dash"
+          config={{
+            rows: [
+              {
+                items: [{ width: 1, chart: '${ref(a)}', table: '${ref(b)}' }], // eslint-disable-line no-template-curly-in-string
+              },
+            ],
+          }}
+        />
+      </WorkspaceDndContext>
+    );
+    fireEvent.click(screen.getByTestId('commit-probe'));
+    expect(saveDashboard).not.toHaveBeenCalled();
+  });
+
+  test('async fallback: with no schema loaded a valid commit still persists after validation', async () => {
+    clearValidationCache();
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic: jest.fn() });
+
+    render(
+      <WorkspaceDndContext>
+        <CommitProbe name="dash" config={VALID_CONFIG} />
+      </WorkspaceDndContext>
+    );
+    fireEvent.click(screen.getByTestId('commit-probe'));
+
+    // Generous timeout: the fallback compiles the full Dashboard $defs graph.
+    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1), { timeout: 8000 });
+    expect(saveDashboard.mock.calls[0][1]).toBe(VALID_CONFIG);
+    // Restore the warm cache for any following test.
+    await preloadValidationSchema();
+  }, 15000);
 
   test('the commit is a safe no-op without a dashboard name', () => {
     const saveDashboard = jest.fn();

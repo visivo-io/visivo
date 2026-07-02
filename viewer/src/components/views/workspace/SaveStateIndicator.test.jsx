@@ -21,6 +21,9 @@ describe('SaveStateIndicator (VIS-802)', () => {
     ['saving', 'Saving'],
     ['saved', 'Saved'],
     ['error', 'Save failed'],
+    // VIS-993: the validation gate holds persistence of an invalid config —
+    // the indicator must say so (same status the useRecordSave backbone reports).
+    ['invalid', 'Invalid'],
   ])('renders the %s state label', (status, label) => {
     render(<SaveStateIndicator status={status} />);
     const badge = screen.getByTestId('right-rail-save-state');
@@ -28,11 +31,14 @@ describe('SaveStateIndicator (VIS-802)', () => {
     expect(badge).toHaveTextContent(label);
   });
 
-  test('error uses the highlight tone (never the primary/mulberry palette)', () => {
-    render(<SaveStateIndicator status="error" />);
-    const badge = screen.getByTestId('right-rail-save-state');
-    // Highlight orange-red, not mulberry/primary.
-    expect(badge.className).toContain('text-[#d25946]');
-    expect(badge.className).not.toContain('713b57');
-  });
+  test.each([['error'], ['invalid']])(
+    '%s uses the highlight tone (never the primary/mulberry palette)',
+    status => {
+      render(<SaveStateIndicator status={status} />);
+      const badge = screen.getByTestId('right-rail-save-state');
+      // Highlight orange-red, not mulberry/primary.
+      expect(badge.className).toContain('text-[#d25946]');
+      expect(badge.className).not.toContain('713b57');
+    }
+  );
 });

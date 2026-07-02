@@ -51,7 +51,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
   // The Dashboard renderer mounts an interactive <BrokenRefCard> for any leaf
   // whose chart/table/markdown/input ref doesn't resolve; the card's Fix… /
   // Delete this slot actions commit through the shared commitCanvasConfig (the
-  // SAME sanitize → optimistic → save path the other canvas mutations use).
+  // SAME optimistic → validate → save path the other canvas mutations use).
   const dashboards = useStore(s => s.dashboards);
   const commitCanvasConfig = useWorkspaceCommit();
   const openCreateChartModal = useStore(s => s.openCreateChartModal);
@@ -148,11 +148,11 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
       <CanvasResizeLayer rootRef={rootRef} dashboardName={dashboardName} />
       {/* VIS-794 / D-7 + D-8: "+ Add Row" template menu (end-of-canvas +
           between-rows) and the empty-canvas CTA. Commits a templated row via the
-          shell's shared commitCanvasConfig (sanitize → optimistic → save). */}
+          shell's shared commitCanvasConfig (optimistic → validate → save). */}
       <CanvasAddRow rootRef={rootRef} dashboardName={dashboardName} />
       {/* VIS-781 / D-5: right-click context menu — wrap-in-container, add row
           inside / add item to row, unwrap. Commits via the shared
-          commitCanvasConfig (sanitize → optimistic → save). */}
+          commitCanvasConfig (optimistic → validate → save). */}
       <CanvasContextMenu rootRef={rootRef} dashboardName={dashboardName} />
       {/* VIS-790 / D-7: canvas-direct keyboard navigation + a11y. A focusable
           application region + ARIA live announcements; routes arrow / Tab /
