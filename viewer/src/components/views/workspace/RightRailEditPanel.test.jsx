@@ -6,7 +6,7 @@
  * auto-save (no Save button) through saveDashboard.
  */
 import React from 'react';
-import { render, screen, act, fireEvent, within } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor, within } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import {
   createMemoryRouter,
@@ -22,8 +22,19 @@ import { formatRefExpression } from '../../../utils/refString';
 // Stub the heavy leaf forms so routing assertions stay focused.
 jest.mock('../common/MarkdownEditForm', () => ({
   __esModule: true,
-  default: ({ markdown }) => (
-    <div data-testid="markdown-edit-form-stub">md:{markdown?.name || 'none'}</div>
+  // MarkdownEditForm self-persists via its own useRecordSave, then calls
+  // onSave(config) only as a notification — model that single-arg convention.
+  default: ({ markdown, onSave }) => (
+    <div data-testid="markdown-edit-form-stub">
+      md:{markdown?.name || 'none'}
+      <button
+        type="button"
+        data-testid="markdown-edit-form-stub-self-save"
+        onClick={() => onSave?.({ name: markdown?.name, content: 'Edited' })}
+      >
+        self-save
+      </button>
+    </div>
   ),
 }));
 jest.mock('../common/InputEditForm', () => ({
@@ -38,10 +49,39 @@ jest.mock('../common/InputEditForm', () => ({
 const stubForm = (testid, prop) => ({
   __esModule: true,
   default: props => (
-    <div data-testid={testid}>{`${testid}:${props?.[prop]?.name || 'none'}`}</div>
+    <div data-testid={testid}>
+      {`${testid}:${props?.[prop]?.name || 'none'}`}
+      {/* relation/dimension/metric forms self-persist then call onSave(config)
+          as a single-arg notification — model that convention so the rail's
+          no-double-save guard is exercised (VIS-1018 review). */}
+      <button
+        type="button"
+        data-testid={`${testid}-self-save`}
+        onClick={() => props.onSave?.({ name: props?.[prop]?.name, edited: true })}
+      >
+        self-save
+      </button>
+    </div>
   ),
 });
-jest.mock('../common/ChartEditForm', () => stubForm('chart-edit-form-stub', 'chart'));
+// The chart stub also exposes a button that flushes its config through the
+// `onSave(type, name, config)` callback so we can assert the rail's standalone
+// save routes through the unified `useRecordSave` backbone (VIS-1018 step 3).
+jest.mock('../common/ChartEditForm', () => ({
+  __esModule: true,
+  default: ({ chart, onSave }) => (
+    <div data-testid="chart-edit-form-stub">
+      {`chart-edit-form-stub:${chart?.name || 'none'}`}
+      <button
+        type="button"
+        data-testid="chart-stub-save"
+        onClick={() => onSave?.('chart', chart?.name, { name: chart?.name, title: 'Edited' })}
+      >
+        save
+      </button>
+    </div>
+  ),
+}));
 jest.mock('../common/TableEditForm', () => stubForm('table-edit-form-stub', 'table'));
 jest.mock('../common/SourceEditForm', () => stubForm('source-edit-form-stub', 'source'));
 jest.mock('../common/InsightEditForm', () => stubForm('insight-edit-form-stub', 'insight'));
@@ -670,4 +710,65 @@ describe('RightRailEditPanel breadcrumb keyboard nav (VIS-804)', () => {
     // The form's first focusable field is the row-height combobox input.
     expect(screen.getByLabelText('Row 1 height')).toHaveFocus();
   });
+});
+
+describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {
+  test('a Library-row leaf save routes through the unified useRecordSave backbone', async () => {
+    const saveChart = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: { title: 'Old' } }],
+      saveChart,
+    });
+    renderPanel();
+
+    // The chart leaf form renders inline; trigger its onSave.
+    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('rev_chart');
+    fireEvent.click(screen.getByTestId('chart-stub-save'));
+
+    // Persisted via the chart store action (the same saveX action the retired
+    // useObjectSave switch dispatched to), keyed by the open record name.
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+    const [name, config] = saveChart.mock.calls[0];
+    expect(name).toBe('rev_chart');
+    expect(config.title).toBe('Edited');
+
+    // And the store collection was updated OPTIMISTICALLY before the round-trip.
+    const entry = useStore.getState().charts.find(c => c.name === 'rev_chart');
+    expect((entry.config || entry).title).toBe('Edited');
+  });
+});
+
+describe('RightRailEditPanel self-saving leaf forms do not double-persist (VIS-1018 review)', () => {
+  // relation/dimension/metric/markdown forms persist via their own store action /
+  // useRecordSave FIRST, then call onSave(config) purely as a notification. The
+  // rail's handleObjectSave must NOT re-persist that single-arg call (which had
+  // double-fired saveX before the fix).
+  const cases = [
+    ['relation', 'relations', 'saveRelation', 'relation-edit-form-stub-self-save'],
+    ['dimension', 'dimensions', 'saveDimension', 'dimension-edit-form-stub-self-save'],
+    ['metric', 'metrics', 'saveMetric', 'metric-edit-form-stub-self-save'],
+    ['markdown', 'markdowns', 'saveMarkdown', 'markdown-edit-form-stub-self-save'],
+  ];
+
+  test.each(cases)(
+    '%s: a single-arg onSave(config) notification does NOT re-fire %s through the rail',
+    async (type, collectionKey, saveActionName, saveButtonTestId) => {
+      const saveFn = jest.fn(() => Promise.resolve({ success: true }));
+      resetStore({
+        workspaceActiveObject: { type, name: 'obj1' },
+        [collectionKey]: [{ name: 'obj1', config: { name: 'obj1' } }],
+        [saveActionName]: saveFn,
+      });
+      renderPanel();
+
+      fireEvent.click(screen.getByTestId(saveButtonTestId));
+
+      // Let any erroneous async re-persist flush, then assert it never happened.
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(saveFn).not.toHaveBeenCalled();
+    }
+  );
 });

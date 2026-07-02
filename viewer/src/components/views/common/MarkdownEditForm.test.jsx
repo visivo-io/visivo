@@ -9,6 +9,13 @@ const mockActions = {
   deleteMarkdown: jest.fn(),
   checkCommitStatus: jest.fn(),
 };
+// Edit mode persists through the useRecordSave backbone (VIS-1018) — mock it
+// (the backbone has its own suite) and assert the component's contract.
+const mockSaveNow = jest.fn();
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => ({ saveNow: mockSaveNow, status: 'idle' }),
+}));
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
@@ -18,6 +25,7 @@ jest.mock('../../../stores/store', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
+  mockSaveNow.mockResolvedValue({ success: true });
 });
 
 const renderForm = (props = {}) =>
@@ -139,14 +147,17 @@ describe('MarkdownEditForm — edit mode', () => {
     expect(screen.getByLabelText(/Content/)).toHaveValue('Hi there');
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    // Edit mode flushes through the useRecordSave backbone (VIS-1018), not a
+    // direct saveMarkdown call — create mode keeps the direct call.
     await waitFor(() =>
-      expect(mockActions.saveMarkdown).toHaveBeenCalledWith('md1', {
+      expect(mockSaveNow).toHaveBeenCalledWith({
         name: 'md1',
         content: 'Hi there',
         align: 'right',
         justify: 'center',
       })
     );
+    expect(mockActions.saveMarkdown).not.toHaveBeenCalled();
   });
 
   test('falls back to flat fields when the markdown has no config', () => {
