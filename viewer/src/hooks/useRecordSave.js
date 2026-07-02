@@ -9,6 +9,16 @@ import {
 import { checkRefTargets } from '../components/views/workspace/refPreflight';
 
 /**
+ * Cloud read-only probe (VIS-1025). `capabilities` is null/undefined under
+ * local serve (always editable); in cloud it's the stage's capability object
+ * and `can_edit === false` holds every write.
+ */
+const isReadOnly = state => {
+  const caps = state.capabilities;
+  return !!(caps && caps.can_edit === false);
+};
+
+/**
  * useRecordSave(type, name, opts) — the unified optimistic + debounced save
  * backbone for editing surfaces (VIS-1018 step 1).
  *
@@ -40,10 +50,17 @@ import { checkRefTargets } from '../components/views/workspace/refPreflight';
  * fast path inside `scheduleSave` marks errors the moment the user stops
  * typing; the async fire-time check remains the authoritative gate.
  *
+ * READ-ONLY SHORT-CIRCUIT (VIS-1025): `capabilities` (branchingStore) is null
+ * under local serve (always editable) and an object in cloud, where
+ * `can_edit: false` marks the stage read-only. The check runs BEFORE the
+ * optimistic write AND before the validation gate — a not-allowed edit is not
+ * 'invalid' (no error churn for a viewer-only user): nothing writes, nothing
+ * persists, and the hook reports `status: 'readonly'` with `errors: null`.
+ *
  * The status model ('idle' | 'pending' | 'saving' | 'saved' | 'error' |
- * 'invalid') and the `{ status, errors, scheduleSave, saveNow, reset }`
- * surface extend `useDebouncedSave` so existing indicators map straight
- * across.
+ * 'invalid' | 'readonly') and the `{ status, errors, scheduleSave, saveNow,
+ * reset }` surface extend `useDebouncedSave` so existing indicators map
+ * straight across.
  *
  * @param {string} type  one of the canonical object types (see COLLECTION_KEY).
  * @param {string} name  the record name (the collection key + persist arg).
@@ -108,6 +125,17 @@ export default function useRecordSave(type, name, opts = {}) {
     const seqAtFire = seqRef.current;
     const saveActionName = SAVE_ACTION[t];
     const state = useStore.getState();
+
+    // VIS-1025 fire-time hold — BEFORE validation (not-allowed is not
+    // 'invalid'). Catches timers armed before capabilities flipped read-only.
+    if (isReadOnly(state)) {
+      if (mountedRef.current) {
+        setStatus('readonly');
+        setErrors(null);
+      }
+      return { success: false, readonly: true };
+    }
+
     const saveFn = saveActionName ? state[saveActionName] : null;
 
     // Read the CURRENT optimistic value at FIRE time (clobber-safety).
@@ -179,6 +207,15 @@ export default function useRecordSave(type, name, opts = {}) {
 
   const scheduleSave = useCallback(
     nextConfig => {
+      // VIS-1025 read-only short-circuit — BEFORE the optimistic write and
+      // BEFORE validation: nothing writes, nothing arms, no 'invalid' churn.
+      if (isReadOnly(useStore.getState())) {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = null;
+        setStatus('readonly');
+        setErrors(null);
+        return;
+      }
       // Record this as the latest edit (used by runSave's refetch-revert guard).
       latestConfigRef.current = nextConfig;
       seqRef.current += 1;
@@ -220,6 +257,18 @@ export default function useRecordSave(type, name, opts = {}) {
 
   const saveNow = useCallback(
     async nextConfig => {
+      // VIS-1025 read-only short-circuit — mirror scheduleSave: no optimistic
+      // write, no persist, status 'readonly' (runSave would also hold, but the
+      // early return keeps the blocked config out of latestConfigRef too).
+      if (isReadOnly(useStore.getState())) {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+        setStatus('readonly');
+        setErrors(null);
+        return { success: false, readonly: true };
+      }
       // When called with a config, apply it optimistically first so the persist
       // reads it; called bare, it just flushes the current optimistic value.
       if (nextConfig !== undefined) {

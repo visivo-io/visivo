@@ -104,6 +104,21 @@ export async function preloadProjectSchema() {
 }
 
 /**
+ * Drop every module-level cache (VIS-1025). The caches carry no project
+ * identity, so the store layer calls this when the active `project.id`
+ * CHANGES (commonStore) — the next load re-binds against the new project.
+ * validateAgainstSchema keeps its own compiled-validator cache on top; its
+ * `clearValidationCache` is cleared alongside this at the same seam.
+ */
+export function resetProjectSchemaCache() {
+  rootSchemaCache = null;
+  loadingPromise = null;
+  Object.keys(objectSchemaCache).forEach(key => {
+    delete objectSchemaCache[key];
+  });
+}
+
+/**
  * Whether the project schema has finished loading (and is cached).
  * @returns {boolean}
  */
