@@ -28,6 +28,10 @@ import { formatRefExpression } from '../../../utils/refString';
  * - rows: Number of rows (approximate height)
  * - helperText: Helper text shown below the editor
  * - hideAddButton: Whether to hide add-ref affordances
+ * - restrictBrackets: Block typing/pasting `[` and `]`. Only for chip-body
+ *   editors where slices are authored separately (SchemaEditor PropertyRow +
+ *   SliceBadge); free-form SQL fields must keep brackets (array indexing,
+ *   quoted identifiers, json access).
  */
 const RefTextArea = ({
   value = '',
@@ -40,6 +44,7 @@ const RefTextArea = ({
   rows = 4,
   helperText,
   hideAddButton = false,
+  restrictBrackets = false,
 }) => {
   const editableRef = useRef(null);
   const containerRef = useRef(null);
@@ -133,20 +138,6 @@ const RefTextArea = ({
     if (inputType === 'multi-select') return ['values', 'first', 'last', 'min', 'max'];
     return ['value'];
   }, [inputs]);
-
-  const handleAccessorChange = useCallback((refName, oldAccessor, newAccessor) => {
-    if (oldAccessor === newAccessor) {
-      setAccessorDropdown(null);
-      return;
-    }
-    const oldRef = formatRefExpression(refName, oldAccessor);
-    const newRef = formatRefExpression(refName, newAccessor);
-    const updated = (value || '').replace(oldRef, newRef);
-    // Force DOM rebuild since clicking the accessor may have focused the contentEditable
-    isFocusedRef.current = false;
-    onChange(updated);
-    setAccessorDropdown(null);
-  }, [value, onChange]);
 
   // @ mention state
   const [mentionState, setMentionState] = useState({ active: false, query: '', rect: null, selectedIndex: 0 });
@@ -280,6 +271,29 @@ const RefTextArea = ({
     const serialized = serializeContentEditableToRefString(el);
     onChange(serialized);
   }, [onChange]);
+
+  const handleAccessorChange = useCallback((refName, oldAccessor, newAccessor) => {
+    if (oldAccessor === newAccessor) {
+      setAccessorDropdown(null);
+      return;
+    }
+    // Force DOM rebuild since clicking the accessor may have focused the contentEditable
+    isFocusedRef.current = false;
+    // Update the CLICKED pill in place — a string replace would rewrite the
+    // FIRST matching occurrence, which is the wrong pill when the same ref +
+    // accessor appears more than once in the expression.
+    const pill = accessorAnchorRef.current?.closest?.('[data-ref-name]');
+    if (pill && editableRef.current?.contains(pill)) {
+      pill.setAttribute('data-ref-property', newAccessor);
+      serializeAndUpdate();
+    } else {
+      // Fallback (no anchored pill): first-occurrence string replace.
+      const oldRef = formatRefExpression(refName, oldAccessor);
+      const newRef = formatRefExpression(refName, newAccessor);
+      onChange((value || '').replace(oldRef, newRef));
+    }
+    setAccessorDropdown(null);
+  }, [value, onChange, serializeAndUpdate]);
 
   // --- Event Handlers ---
 
@@ -472,12 +486,12 @@ const RefTextArea = ({
     const raw = e.clipboardData.getData('text/plain');
     if (!raw) return;
 
-    // RefTextArea owns the chip-body only. Slicing is authored
-    // separately via the SliceBadge component (see PropertyRow). Strip
-    // `[` and `]` from pasted content so a stray `[0]` in clipboard
-    // text never lands inside the chip body — that was the failure
-    // mode B13 fixed.
-    const text = raw.replace(/[[\]]/g, '');
+    // In chip-body editors (restrictBrackets) slicing is authored separately
+    // via the SliceBadge component (see PropertyRow), so strip `[` and `]`
+    // from pasted content so a stray `[0]` in clipboard text never lands
+    // inside the chip body — that was the failure mode B13 fixed. Free-form
+    // SQL fields keep brackets (array indexing, quoted identifiers, …).
+    const text = restrictBrackets ? raw.replace(/[[\]]/g, '') : raw;
     if (!text) return;
 
     const sel = window.getSelection();
@@ -505,21 +519,23 @@ const RefTextArea = ({
     sel.addRange(range);
 
     serializeAndUpdate();
-  }, [createPillElement, serializeAndUpdate]);
+  }, [createPillElement, serializeAndUpdate, restrictBrackets]);
 
-  // RefTextArea is body-only — bracket characters are reserved for the
-  // SliceBadge's authored slice suffix. Block typed `[` and `]` at the
-  // input layer so the user has exactly one path to author a slice
-  // (the badge popover), matching the design call in
-  // ~/.claude/plans/warm-tickling-quail.md.
+  // In restrictBrackets mode the editor is chip-body-only — bracket
+  // characters are reserved for the SliceBadge's authored slice suffix.
+  // Block typed `[` and `]` at the input layer so the user has exactly one
+  // path to author a slice (the badge popover), matching the design call in
+  // ~/.claude/plans/warm-tickling-quail.md. Everywhere else (free-form SQL
+  // expressions) brackets are legitimate input and pass through.
   const handleBeforeInput = useCallback((e) => {
+    if (!restrictBrackets) return;
     const inputType = e.nativeEvent?.inputType || e.inputType;
     if (inputType !== 'insertText') return;
     const data = e.nativeEvent?.data ?? e.data;
     if (typeof data === 'string' && (data === '[' || data === ']')) {
       e.preventDefault();
     }
-  }, []);
+  }, [restrictBrackets]);
 
   // Handle copy - serialize pills as ref strings
   const handleCopy = useCallback((e) => {

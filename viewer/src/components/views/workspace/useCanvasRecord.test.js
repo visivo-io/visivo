@@ -52,4 +52,26 @@ describe('useCanvasRecord', () => {
     const { result } = renderHook(() => useCanvasRecord('mystery', 'x'));
     expect(result.current.status).toBe('not-found');
   });
+
+  test('an empty fetch result is terminal (not-found) — no refetch loop', () => {
+    const fetchCharts = jest.fn(() => useStore.setState({ chartsLoading: true }));
+    seed({ charts: [], chartsLoading: false, fetchCharts });
+    const { result } = renderHook(() => useCanvasRecord('chart', 'ghost'));
+
+    expect(result.current.status).toBe('loading');
+    expect(fetchCharts).toHaveBeenCalledTimes(1);
+
+    // The fetch completes: the slice writes a FRESH empty array (a project
+    // with zero charts). The new identity re-runs the effect, which must NOT
+    // fetch again, and the status must settle on not-found (not eternal
+    // loading).
+    seed({ charts: [], chartsLoading: false });
+
+    expect(fetchCharts).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('not-found');
+
+    // Any further identity churn on the empty collection stays quiet too.
+    seed({ charts: [] });
+    expect(fetchCharts).toHaveBeenCalledTimes(1);
+  });
 });

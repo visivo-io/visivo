@@ -45,7 +45,12 @@ export function validateInputDraft(draft, validateNameFn) {
   const nameError = validateNameFn ? validateNameFn(name) : null;
   if (nameError) errors.name = nameError;
 
-  if (optionsMode === 'range') {
+  if (optionsMode === 'range' && inputType === 'single-select') {
+    // Range options are multi-select only (SingleSelectInput has no `range`
+    // field and requires `options`). This state is transient — the form exits
+    // range mode on the type switch — but it must never be round-tripped.
+    errors.options = 'Range options are only available for multi-select inputs';
+  } else if (optionsMode === 'range') {
     if (rangeStart === '' || rangeStart == null) errors.rangeStart = 'Start is required';
     if (rangeEnd === '' || rangeEnd == null) errors.rangeEnd = 'End is required';
     if (rangeStep === '' || rangeStep == null) errors.rangeStep = 'Step is required';

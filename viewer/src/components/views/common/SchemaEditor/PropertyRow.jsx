@@ -256,6 +256,7 @@ export function PropertyRow({
                 helperText={description}
                 disabled={disabled}
                 allowedTypes={['model', 'dimension', 'metric', 'input']}
+                restrictBrackets
               />
             </div>
             {showSliceBadge && (

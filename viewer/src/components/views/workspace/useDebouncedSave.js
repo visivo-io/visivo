@@ -24,6 +24,11 @@ import useStore from '../../../stores/store';
  *        - scheduleSave(payload): debounce a save with the given payload.
  *        - saveNow(payload): flush immediately (cancels the pending timer).
  *        - reset(): clear the timer + return to 'idle' (call on selection change).
+ *
+ * A save still pending when the hook unmounts is FLUSHED (fire-and-forget),
+ * not dropped — otherwise the user's last edits inside the debounce window
+ * would be silently lost when switching selection / closing the rail. Use
+ * `reset()` to intentionally discard a pending save.
  */
 export default function useDebouncedSave(saveFn, opts = {}) {
   const { delay = 500 } = opts;
@@ -31,6 +36,9 @@ export default function useDebouncedSave(saveFn, opts = {}) {
   const timerRef = useRef(null);
   const savedTimerRef = useRef(null);
   const saveFnRef = useRef(saveFn);
+  // The payload of the currently pending (debounced, not yet fired) save, so
+  // it can be FLUSHED — not dropped — if the hook unmounts inside the window.
+  const pendingPayloadRef = useRef(null);
   // Track the latest mounted-ness so a resolved save after unmount doesn't
   // setState into a torn-down component.
   const mountedRef = useRef(true);
@@ -38,15 +46,6 @@ export default function useDebouncedSave(saveFn, opts = {}) {
   useEffect(() => {
     saveFnRef.current = saveFn;
   }, [saveFn]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    };
-  }, []);
 
   const runSave = useCallback(async payload => {
     if (mountedRef.current) setStatus('saving');
@@ -79,13 +78,35 @@ export default function useDebouncedSave(saveFn, opts = {}) {
     }
   }, []);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+        // Flush (fire-and-forget) rather than drop the pending payload so the
+        // user's last edits aren't lost when the form unmounts inside the
+        // debounce window (e.g. switching selection in the right rail).
+        if (pendingPayloadRef.current) {
+          const { payload } = pendingPayloadRef.current;
+          pendingPayloadRef.current = null;
+          runSave(payload);
+        }
+      }
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, [runSave]);
+
   const scheduleSave = useCallback(
     payload => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       setStatus('pending');
+      pendingPayloadRef.current = { payload };
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
+        pendingPayloadRef.current = null;
         runSave(payload);
       }, delay);
     },
@@ -98,6 +119,7 @@ export default function useDebouncedSave(saveFn, opts = {}) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
+      pendingPayloadRef.current = null;
       await runSave(payload);
     },
     [runSave]
@@ -112,6 +134,7 @@ export default function useDebouncedSave(saveFn, opts = {}) {
       clearTimeout(savedTimerRef.current);
       savedTimerRef.current = null;
     }
+    pendingPayloadRef.current = null;
     setStatus('idle');
   }, []);
 

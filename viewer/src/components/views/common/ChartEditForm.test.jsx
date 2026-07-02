@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import ChartEditForm from './ChartEditForm';
 import useStore from '../../../stores/store';
@@ -14,6 +14,17 @@ jest.mock('../../../stores/store', () => {
 jest.mock('../../../schemas/schemas', () => ({
   getSchema: jest.fn().mockResolvedValue(null),
   isSchemaLoaded: jest.fn().mockReturnValue(true),
+}));
+
+// Stand-in SchemaEditor exposing the "remove the last layout property" path:
+// the real editor emits `undefined` (cleanEmptyObjects) when it empties out.
+jest.mock('./SchemaEditor', () => ({
+  __esModule: true,
+  SchemaEditor: ({ onChange }) => (
+    <button type="button" data-testid="mock-schema-clear" onClick={() => onChange(undefined)}>
+      clear layout
+    </button>
+  ),
 }));
 
 const mockFetchInsights = jest.fn();
@@ -109,5 +120,108 @@ describe('ChartEditForm — ref insight pills', () => {
     });
     const row = screen.getByTestId('ref-insight-row-0');
     expect(getPillLabel(row, 'cost_insight')).toBeInTheDocument();
+  });
+});
+
+describe('ChartEditForm — insight fetch guard', () => {
+  test('fetches insights only once when the project has zero insights', async () => {
+    // Mirror the store slice: every render hands back a FRESH empty array
+    // (fetchInsights always does `set({ insights: data.insights || [] })`).
+    useStore.mockImplementation(selector => {
+      const state = {
+        deleteChart: mockDeleteChart,
+        checkCommitStatus: mockCheckPublishStatus,
+        fetchInsights: mockFetchInsights,
+        insights: [],
+      };
+      return typeof selector === 'function' ? selector(state) : state;
+    });
+    const props = {
+      chart: null,
+      isCreate: true,
+      onClose: jest.fn(),
+      onSave: jest.fn(),
+      onNavigateToEmbedded: jest.fn(),
+    };
+    const { rerender } = render(<ChartEditForm {...props} />);
+    await screen.findByText(/No insights available/i);
+    expect(mockFetchInsights).toHaveBeenCalledTimes(1);
+
+    // Each re-render delivers a new empty-array identity (an empty fetch
+    // result) — the fetch must NOT re-fire (request loop).
+    rerender(<ChartEditForm {...props} />);
+    rerender(<ChartEditForm {...props} />);
+    expect(mockFetchInsights).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ChartEditForm — embedded insights on save', () => {
+  const embeddedInsight = { name: 'inline_insight', props: { type: 'scatter' } };
+
+  test('a chart whose insights are ALL embedded objects can still be saved', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(
+      <ChartEditForm
+        chart={{ name: 'embed_chart', status: 'published', config: { insights: [embeddedInsight] } }}
+        isCreate={false}
+        onClose={jest.fn()}
+        onSave={onSave}
+        onNavigateToEmbedded={jest.fn()}
+      />
+    );
+    await screen.findByText('Embedded Insights');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('At least one insight is required')).not.toBeInTheDocument();
+    const [, , config] = onSave.mock.calls[0];
+    expect(config.insights).toEqual([embeddedInsight]);
+  });
+
+  test('saving preserves the original ref/embedded insight order', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(
+      <ChartEditForm
+        chart={{
+          name: 'mixed_chart',
+          status: 'published',
+          config: { insights: [embeddedInsight, 'ref(revenue_insight)'] },
+        }}
+        isCreate={false}
+        onClose={jest.fn()}
+        onSave={onSave}
+        onNavigateToEmbedded={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ref-insight-row-0');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [, , config] = onSave.mock.calls[0];
+    // Order drives trace layering/legend order — an untouched save must not
+    // rewrite [embedded, ref] as [ref, embedded].
+    expect(config.insights).toEqual([embeddedInsight, 'ref(revenue_insight)']);
+  });
+});
+
+describe('ChartEditForm — layout emptied to undefined', () => {
+  test('Save still completes after the layout editor empties to undefined', async () => {
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    getSchema.mockResolvedValueOnce({ type: 'object' });
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+
+    // Remove the last layout property — the SchemaEditor emits `undefined`.
+    fireEvent.click(await screen.findByTestId('mock-schema-clear'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [, , config] = onSave.mock.calls[0];
+    expect(config.layout).toBeUndefined();
+    // The button recovered to its idle label (not stuck on 'Saving...').
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
 });

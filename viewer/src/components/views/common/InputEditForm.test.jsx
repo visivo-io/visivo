@@ -157,3 +157,58 @@ describe('InputEditForm — legacy modal mode', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 });
+
+describe('InputEditForm — switching a range multi-select to single-select', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    seed();
+  });
+  afterEach(() => {
+    if (jest.isMockFunction(setTimeout)) {
+      act(() => jest.runOnlyPendingTimers());
+    }
+    jest.useRealTimers();
+  });
+
+  const rangeInput = {
+    name: 'price_range',
+    status: 'PUBLISHED',
+    config: {
+      name: 'price_range',
+      type: 'multi-select',
+      range: { start: 0, end: 100, step: 10 },
+      display: { type: 'range-slider' },
+    },
+  };
+
+  test('never auto-saves a single-select config carrying `range`, and exits range mode', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(<InputEditForm input={rangeInput} onSave={onSave} autoSave />);
+
+    // Allow hydration (setTimeout(...,0)) to complete; range fields present.
+    act(() => jest.advanceTimersByTime(1));
+    expect(screen.getByLabelText('Start')).toHaveValue('0');
+
+    // Drive the (portaled) brand Select synchronously — selectEvent's async
+    // waits don't advance fake timers here.
+    const typeInput = screen.getByLabelText('Type');
+    fireEvent.focus(typeInput);
+    fireEvent.keyDown(typeInput, { key: 'ArrowDown', keyCode: 40 });
+    fireEvent.click(screen.getByText('Single Select'));
+
+    // Flush past the auto-save debounce window.
+    act(() => jest.advanceTimersByTime(600));
+
+    // `range` is multi-select only (SingleSelectInput has no range field and
+    // requires options) — no save may round-trip it on a single-select.
+    const badCalls = onSave.mock.calls.filter(
+      ([, , config]) => config.type === 'single-select' && config.range
+    );
+    expect(badCalls).toHaveLength(0);
+
+    // The stranded 'range' mode exits to the static list editor instead of
+    // lingering with no toggle selected.
+    expect(screen.queryByLabelText('Start')).not.toBeInTheDocument();
+    expect(screen.getByText('No options added')).toBeInTheDocument();
+  });
+});

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -62,12 +62,17 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
   // Rows per page options
   const ROWS_PER_PAGE_OPTIONS = [3, 5, 15, 25, 50, 100, 500, 1000];
 
-  // Fetch insights and models on mount if needed
+  // Fetch insights and models on mount if needed. Guarded by a ref: the store
+  // writes a FRESH array on every fetch (even an empty one), so gating on
+  // emptiness alone re-fires the effect forever in a project with zero objects.
+  const fetchedRef = useRef({ insights: false, models: false });
   useEffect(() => {
-    if (!storeInsights || storeInsights.length === 0) {
+    if (!fetchedRef.current.insights && (!storeInsights || storeInsights.length === 0)) {
+      fetchedRef.current.insights = true;
       fetchInsights();
     }
-    if (!storeModels || storeModels.length === 0) {
+    if (!fetchedRef.current.models && (!storeModels || storeModels.length === 0)) {
+      fetchedRef.current.models = true;
       fetchModels();
     }
   }, [storeInsights, fetchInsights, storeModels, fetchModels]);
@@ -243,8 +248,11 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
             </div>
           </div>
 
-          {/* Data Source Section */}
-          {!hasPivotFields && (
+          {/* Data Source Section — hidden when pivot fields are configured,
+              EXCEPT when a data source is ALSO set (an invalid combination,
+              e.g. from YAML): both sections stay visible so the user can see
+              the validation error and remove one of the two. */}
+          {(!hasPivotFields || !!dataRef || isEmbeddedData) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                 <h3 className="text-sm font-medium text-gray-700">Data Source</h3>
@@ -329,8 +337,9 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
             </div>
           )}
 
-          {/* Pivot Configuration Section */}
-          {!dataRef && !isEmbeddedData && (
+          {/* Pivot Configuration Section — hidden when a data source is set,
+              EXCEPT when pivot fields ALSO exist (see Data Source note). */}
+          {((!dataRef && !isEmbeddedData) || hasPivotFields) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                 <h3 className="text-sm font-medium text-gray-700">Pivot Configuration</h3>

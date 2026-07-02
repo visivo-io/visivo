@@ -166,10 +166,15 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, a
   }, [input?.name, isCreate]);
 
   // Reset display type to a valid value when the input type changes (after the
-  // initial hydration so we don't clobber a hydrated display type).
+  // initial hydration so we don't clobber a hydrated display type). Range
+  // options are multi-select only, so switching to single-select also exits a
+  // now-unreachable 'range' mode (its toggle disappears from the group).
   useEffect(() => {
     if (!hydratedRef.current) return;
     setDisplayType('dropdown');
+    if (inputType === 'single-select') {
+      setOptionsMode(prev => (prev === 'range' ? 'list' : prev));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputType]);
 

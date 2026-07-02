@@ -149,4 +149,54 @@ describe('useDebouncedSave (VIS-802)', () => {
     expect(useStore.getState().saveActivityCount).toBe(0);
     expect(useStore.getState().lastSaveFailed).toBe(true);
   });
+
+  test('flushes (not drops) a pending save on unmount so the last edits persist', () => {
+    const saveFn = jest.fn(() => Promise.resolve({ success: true }));
+    const { result, unmount } = renderHook(() => useDebouncedSave(saveFn, { delay: 500 }));
+
+    act(() => result.current.scheduleSave({ v: 'last-edit' }));
+    expect(saveFn).not.toHaveBeenCalled();
+
+    // Unmount inside the debounce window (switching selection / closing the
+    // rail): the queued payload must be flushed, not silently discarded.
+    unmount();
+    expect(saveFn).toHaveBeenCalledTimes(1);
+    expect(saveFn).toHaveBeenCalledWith({ v: 'last-edit' });
+  });
+
+  test('an unmount flush still balances the global save-activity counter (H-1)', async () => {
+    useStore.setState({ saveActivityCount: 0, lastSaveFailed: false });
+    let resolveSave;
+    const saveFn = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveSave = resolve;
+        })
+    );
+    const { result, unmount } = renderHook(() => useDebouncedSave(saveFn, { delay: 500 }));
+
+    act(() => result.current.scheduleSave({ a: 1 }));
+    unmount();
+    expect(useStore.getState().saveActivityCount).toBe(1);
+
+    await act(async () => {
+      resolveSave({ success: true });
+    });
+    expect(useStore.getState().saveActivityCount).toBe(0);
+    expect(useStore.getState().lastSaveFailed).toBe(false);
+  });
+
+  test('unmount after the debounce fired does not save twice', async () => {
+    const saveFn = jest.fn(() => Promise.resolve({ success: true }));
+    const { result, unmount } = renderHook(() => useDebouncedSave(saveFn, { delay: 500 }));
+
+    act(() => result.current.scheduleSave({ a: 1 }));
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(saveFn).toHaveBeenCalledTimes(1);
+
+    unmount();
+    expect(saveFn).toHaveBeenCalledTimes(1);
+  });
 });

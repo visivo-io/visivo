@@ -152,4 +152,32 @@ describe('Select', () => {
     // eslint-disable-next-line testing-library/no-node-access
     expect(document.querySelector('select')).toBeNull();
   });
+
+  test('parent re-renders do not remount the select (open menu survives)', () => {
+    const { rerender } = render(
+      <Select value="a" options={OPTIONS} onChange={() => {}} aria-label="fruit" data-testid="fruit" />
+    );
+    const containerBefore = screen.getByTestId('fruit');
+    selectEvent.openMenu(screen.getByLabelText('fruit'));
+    expect(screen.getByText('Cherry')).toBeInTheDocument();
+
+    // A parent re-render (e.g. a store update) with any prop change.
+    rerender(
+      <Select
+        value="a"
+        options={OPTIONS}
+        onChange={() => {}}
+        aria-label="fruit"
+        data-testid="fruit"
+        placeholder="changed"
+      />
+    );
+
+    // Same container DOM node — an inline per-render `components` override
+    // gives react-select a new component identity each render, remounting the
+    // whole select (react-select's documented pitfall), which closes the open
+    // menu and drops search focus/state.
+    expect(screen.getByTestId('fruit')).toBe(containerBefore);
+    expect(screen.getByText('Cherry')).toBeInTheDocument();
+  });
 });

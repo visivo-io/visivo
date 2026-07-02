@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -81,9 +81,14 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     loadLayoutSchema();
   }, []);
 
-  // Fetch insights on mount if needed
+  // Fetch insights on mount if needed. Guarded by a ref: the store writes a
+  // FRESH array on every fetch (even an empty one), so gating on emptiness
+  // alone re-fires the effect forever in a project with zero insights.
+  const insightsFetchedRef = useRef(false);
   useEffect(() => {
+    if (insightsFetchedRef.current) return;
     if (!storeInsights || storeInsights.length === 0) {
+      insightsFetchedRef.current = true;
       fetchInsights();
     }
   }, [storeInsights, fetchInsights]);
@@ -129,7 +134,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
       newErrors.name = nameError;
     }
 
-    if (insights.length === 0) {
+    if (insights.length === 0 && embeddedInsights.length === 0) {
       newErrors.data = 'At least one insight is required';
     }
 
@@ -148,16 +153,32 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
       name,
     };
 
-    // Combine ref insights with embedded insights (preserve embedded)
+    // Combine ref insights with embedded insights, preserving the original
+    // interleaving (insight order drives trace layering / legend order).
+    // Embedded objects stay at their original slots; the (possibly edited)
+    // refs fill the string slots in order; any newly added refs go at the end.
     const refInsights = insights.map(i => formatRef(i));
-    const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
-
-    if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {
-      config.insights = [...refInsights, ...embeddedInsightObjects];
+    const rebuiltInsights = [];
+    let refIdx = 0;
+    rawInsights.forEach(item => {
+      if (typeof item === 'object' && item !== null) {
+        rebuiltInsights.push(item);
+      } else if (refIdx < refInsights.length) {
+        rebuiltInsights.push(refInsights[refIdx]);
+        refIdx += 1;
+      }
+    });
+    for (; refIdx < refInsights.length; refIdx += 1) {
+      rebuiltInsights.push(refInsights[refIdx]);
     }
 
-    // Add layout if there are values
-    if (Object.keys(layoutValues).length > 0) {
+    if (rebuiltInsights.length > 0) {
+      config.insights = rebuiltInsights;
+    }
+
+    // Add layout if there are values (the SchemaEditor emits undefined when
+    // its last property is removed).
+    if (layoutValues && Object.keys(layoutValues).length > 0) {
       config.layout = layoutValues;
     }
 

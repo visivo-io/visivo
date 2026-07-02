@@ -54,6 +54,20 @@ const SIZE = {
   md: { minHeight: 38, fontSize: 14, padX: 12, padY: 6 },
 };
 
+// Applies `data-testid` to the react-select container so getByTestId works and
+// the (portaled) menu/options are queryable when open. Hoisted to module scope
+// (reading the testid from selectProps) because react-select remounts — closing
+// any open menu and dropping focus — whenever the `components` prop receives a
+// new component identity (the documented "don't define components inline"
+// react-select pitfall).
+const TestIdSelectContainer = props => (
+  <RSComponents.SelectContainer
+    {...props}
+    innerProps={{ ...props.innerProps, 'data-testid': props.selectProps['data-testid'] }}
+  />
+);
+const TESTID_COMPONENTS = { SelectContainer: TestIdSelectContainer };
+
 /** Parse `<option>` / `<optgroup>` children into a react-select options array. */
 function childrenToOptions(children) {
   const out = [];
@@ -227,12 +241,6 @@ const Select = ({
     return opt ? opt.label : '';
   };
 
-  // Apply the data-testid to the react-select container so getByTestId works and
-  // the (portaled) menu/options are queryable when open.
-  const SelectContainer = props => (
-    <RSComponents.SelectContainer {...props} innerProps={{ ...props.innerProps, 'data-testid': dataTestId }} />
-  );
-
   return (
     <ReactSelect
       inputId={id}
@@ -252,7 +260,8 @@ const Select = ({
       menuPosition={menuPosition}
       formatOptionLabel={formatOptionLabel}
       styles={styles}
-      components={dataTestId ? { SelectContainer } : undefined}
+      components={dataTestId ? TESTID_COMPONENTS : undefined}
+      data-testid={dataTestId}
       {...rest}
     />
   );
