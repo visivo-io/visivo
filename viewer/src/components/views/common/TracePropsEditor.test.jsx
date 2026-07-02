@@ -204,6 +204,36 @@ describe('TracePropsEditor', () => {
     expect(screen.getByTestId('trace-props-invalid-indicator')).toBeInTheDocument();
   });
 
+  test('shows the loading state until an uncached schema resolves', async () => {
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    let resolveSchema;
+    getSchema.mockImplementationOnce(() => new Promise(r => (resolveSchema = r)));
+
+    render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
+    );
+    expect(await screen.findByTestId('trace-props-loading')).toBeInTheDocument();
+
+    await act(async () => resolveSchema(SCATTER_SCHEMA));
+    await screen.findByTestId('field-group-essentials');
+    expect(screen.queryByTestId('trace-props-loading')).not.toBeInTheDocument();
+  });
+
+  test('a schema load failure surfaces the inline error instead of the fields', async () => {
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    getSchema.mockImplementationOnce(() => Promise.reject(new Error('network down')));
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(
+        <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
+      );
+      expect(await screen.findByText('Failed to load schema for scatter')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-group-essentials')).not.toBeInTheDocument();
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+
   test('collapse persists per {ownerName}.{groupId}', async () => {
     render(
       <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />

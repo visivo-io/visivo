@@ -27,6 +27,38 @@ jest.mock('./SchemaEditor', () => ({
   ),
 }));
 
+// TracePropsEditor stub: echo ownerName + props.type, and expose a button that
+// drives onChange so we can assert the parent persists the edited props.
+jest.mock('./TracePropsEditor', () => ({
+  __esModule: true,
+  default: ({ ownerName, props, onChange }) => (
+    <div data-testid="trace-props-editor" data-owner={ownerName}>
+      <span data-testid="tpe-type">{props?.type}</span>
+      <button
+        type="button"
+        data-testid="tpe-add-prop"
+        onClick={() => onChange({ ...props, marker: { color: 'red' } })}
+      >
+        add prop
+      </button>
+    </div>
+  ),
+}));
+
+// useRecordSave stub: capture (type, name) per instance + expose scheduleSave so
+// we can assert the selected insight record is persisted through the backbone.
+const mockScheduleSave = jest.fn();
+const mockUseRecordSave = jest.fn(() => ({
+  status: 'idle',
+  scheduleSave: mockScheduleSave,
+  saveNow: jest.fn(),
+  reset: jest.fn(),
+}));
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: (...args) => mockUseRecordSave(...args),
+}));
+
 const mockFetchInsights = jest.fn();
 const mockDeleteChart = jest.fn();
 const mockCheckPublishStatus = jest.fn();
@@ -38,7 +70,10 @@ beforeEach(() => {
       deleteChart: mockDeleteChart,
       checkCommitStatus: mockCheckPublishStatus,
       fetchInsights: mockFetchInsights,
-      insights: [{ name: 'revenue_insight' }, { name: 'cost_insight' }],
+      insights: [
+        { name: 'revenue_insight', config: { props: { type: 'bar', x: ['q1'] } } },
+        { name: 'cost_insight', config: { props: { type: 'scatter' } } },
+      ],
     };
     return typeof selector === 'function' ? selector(state) : state;
   });
@@ -374,6 +409,84 @@ describe('ChartEditForm — embedded insight navigation', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Insight: 1/ }));
 
     expect(onNavigateToEmbedded.mock.calls[0][1].name).toBe('(embedded insight 1)');
+  });
+});
+
+describe('ChartEditForm — insight props editor (TracePropsEditor)', () => {
+  test("default-selects the chart's only insight and renders TracePropsEditor for it", async () => {
+    await renderForm();
+
+    // The lone ref insight (revenue_insight) is auto-selected → editor mounts.
+    const editor = screen.getByTestId('trace-props-editor');
+    expect(editor).toBeInTheDocument();
+    expect(editor).toHaveAttribute('data-owner', 'revenue_insight');
+    // Props are seeded from that insight record's config.props.
+    expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
+  });
+
+  test('selecting a different insight renders TracePropsEditor for that insight', async () => {
+    await renderForm();
+    // Add a second insight ref so the picker has a choice.
+    fireEvent.click(screen.getByText('Add Insight'));
+    expect(screen.getByTestId('ref-insight-row-1')).toBeInTheDocument();
+
+    const select = screen.getByTestId('insight-props-select');
+    await selectEvent.select(within(select).getByRole('combobox'), 'cost_insight', {
+      container: document.body,
+    });
+
+    const editor = screen.getByTestId('trace-props-editor');
+    expect(editor).toHaveAttribute('data-owner', 'cost_insight');
+    expect(screen.getByTestId('tpe-type')).toHaveTextContent('scatter');
+  });
+
+  test("editing props persists via useRecordSave('insight', selectedName)", async () => {
+    await renderForm();
+
+    // The hook is instantiated for the selected ref insight.
+    expect(mockUseRecordSave).toHaveBeenCalledWith('insight', 'revenue_insight');
+
+    fireEvent.click(screen.getByTestId('tpe-add-prop'));
+
+    // The whole insight record config is written back with the edited props,
+    // through the unified backbone — not the chart save path.
+    expect(mockScheduleSave).toHaveBeenCalledWith({
+      props: { type: 'bar', x: ['q1'], marker: { color: 'red' } },
+    });
+  });
+
+  test('an embedded insight edits inline and persists the CHART via onSave', async () => {
+    const onSave = jest.fn(() => Promise.resolve({ success: true }));
+    const chartWithEmbedded = {
+      name: 'rev_chart',
+      status: 'published',
+      config: {
+        insights: [{ name: 'inline_one', props: { type: 'bar' } }],
+        layout: {},
+      },
+    };
+    render(
+      <ChartEditForm
+        chart={chartWithEmbedded}
+        isCreate={false}
+        onClose={jest.fn()}
+        onSave={onSave}
+        onNavigateToEmbedded={jest.fn()}
+      />
+    );
+    await screen.findByTestId('trace-props-editor');
+
+    // The lone embedded insight is auto-selected; the editor seeds from its props.
+    expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
+
+    fireEvent.click(screen.getByTestId('tpe-add-prop'));
+
+    // Embedded insight is edited inline; the CHART (not an insight record) saves.
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledWith('chart', 'rev_chart', {
+      name: 'rev_chart',
+      insights: [{ name: 'inline_one', props: { type: 'bar', marker: { color: 'red' } } }],
+    });
   });
 });
 

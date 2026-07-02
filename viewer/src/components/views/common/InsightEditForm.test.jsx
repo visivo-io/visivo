@@ -1,14 +1,24 @@
 /**
- * InsightEditForm tests — interaction-depth coverage of the real branches:
+ * InsightEditForm tests — interaction-depth coverage of the real branches, wired
+ * to the controlled <TracePropsEditor> (VIS-1020):
  *  - create vs edit initialization from the insight prop (props/interactions parsing);
- *  - validation failures (name required / name pattern) blocking onSave;
+ *  - the props-state contract: the form owns a single `props` object (carrying
+ *    `.type`), hands it to TracePropsEditor, and persists it verbatim on save;
+ *  - validation failures (name required / name pattern / missing props.type)
+ *    blocking onSave;
  *  - save success payload shape (props + description + non-empty interactions only)
  *    and save failure surfacing;
  *  - interactions add / retype / edit / remove;
  *  - embedded insights (no name field, nameless config, back navigation, no delete);
  *  - delete confirm flow (published vs NEW copy, cancel, failure);
- *  - schema loading / cached / error / empty states;
  *  - the live preview payload (debounce mocked to identity).
+ *
+ * TracePropsEditor is mocked to a tiny stub that (a) echoes `props.type` +
+ * `ownerName` so we can assert the controlled value flows in, and (b) exposes
+ * buttons that call `onChange` with mutated props objects so we can assert edits
+ * flow back out into the saved config. The editor's own rendering (grouped
+ * fields, AJV errors, schema loading/error states) is covered by
+ * TracePropsEditor.test.jsx.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
@@ -16,8 +26,35 @@ import selectEvent from 'react-select-event';
 import InsightEditForm from './InsightEditForm';
 import useStore, { ObjectStatus } from '../../../stores/store';
 
-// Leaf editors are exercised by their own tests — stub them per the editForms
-// convention. RequiredFieldsSection renders through this same RefTextArea mock.
+// TracePropsEditor stub: echo ownerName + props.type, and expose buttons that
+// drive onChange so we can assert the parent persists the edited props.
+jest.mock('./TracePropsEditor', () => ({
+  __esModule: true,
+  default: ({ ownerName, props, onChange }) => (
+    <div data-testid="trace-props-editor" data-owner={ownerName}>
+      <span data-testid="tpe-type">{props?.type}</span>
+      <button
+        type="button"
+        data-testid="tpe-set-bar"
+        onClick={() => onChange({ type: 'bar', x: ['a', 'b'] })}
+      >
+        set bar
+      </button>
+      <button
+        type="button"
+        data-testid="tpe-add-prop"
+        onClick={() => onChange({ ...props, marker: { color: 'red' } })}
+      >
+        add prop
+      </button>
+      <button type="button" data-testid="tpe-clear-type" onClick={() => onChange({})}>
+        clear type
+      </button>
+    </div>
+  ),
+}));
+
+// Interactions editor leaf — keep it a plain textarea.
 jest.mock('./RefTextArea', () => ({
   __esModule: true,
   default: ({ label, value, onChange, error }) => (
@@ -32,40 +69,12 @@ jest.mock('./RefTextArea', () => ({
   ),
 }));
 
-// The SchemaEditor stub exposes the two contract points the form relies on:
-// merging extra props into propsValues via onChange, and excluding type +
-// required-field names from the "Additional Properties" editor.
-jest.mock('./SchemaEditor', () => ({
-  __esModule: true,
-  SchemaEditor: ({ value, onChange, excludeProperties }) => (
-    <div data-testid="schema-editor" data-exclude={JSON.stringify(excludeProperties)}>
-      <button type="button" onClick={() => onChange({ ...value, hovertemplate: 'HT' })}>
-        set-extra-prop
-      </button>
-    </div>
-  ),
-}));
-
-jest.mock('../../../schemas/schemas', () => ({
-  __esModule: true,
-  CHART_TYPES: [
-    { value: 'scatter', label: 'Scatter / Line' },
-    { value: 'bar', label: 'Bar' },
-    { value: 'heatmap', label: 'Heatmap' },
-  ],
-  getSchema: jest.fn(),
-  isSchemaLoaded: jest.fn(),
-  preloadSchemas: jest.fn(),
-}));
-
 // Identity debounce so the preview effect emits synchronously in tests.
 jest.mock('../../../hooks/useDebounce', () => ({
   __esModule: true,
   useDebounce: v => v,
   default: v => v,
 }));
-
-const schemas = jest.requireMock('../../../schemas/schemas');
 
 const seed = (overrides = {}) => {
   act(() => {
@@ -80,18 +89,14 @@ const seed = (overrides = {}) => {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  schemas.getSchema.mockResolvedValue({ type: 'object', properties: {} });
-  schemas.isSchemaLoaded.mockReturnValue(true);
-  schemas.preloadSchemas.mockResolvedValue(undefined);
   seed();
 });
 
-// Renders and flushes the async schema-load effect so no act() warnings leak.
 const renderForm = async (props = {}) => {
   const utils = render(
     <InsightEditForm insight={null} isCreate onClose={jest.fn()} onSave={jest.fn()} {...props} />
   );
-  await screen.findByTestId('schema-editor');
+  await screen.findByTestId('trace-props-editor');
   return utils;
 };
 
@@ -110,28 +115,29 @@ const setName = value =>
   fireEvent.change(screen.getByLabelText(/Insight Name/), { target: { value } });
 
 describe('InsightEditForm — create mode', () => {
-  test('renders empty defaults: scatter fields, additional props, no interactions', async () => {
+  test('renders empty defaults: scatter TracePropsEditor, no interactions, no delete', async () => {
     const onClose = jest.fn();
     await renderForm({ onClose });
 
     expect(screen.getByLabelText(/Insight Name/)).toHaveValue('');
     expect(screen.getByLabelText(/Insight Name/)).not.toBeDisabled();
-    // Scatter's required fields render as explicit inputs...
-    expect(screen.getByLabelText('X Axis')).toBeInTheDocument();
-    expect(screen.getByLabelText('Y Axis')).toBeInTheDocument();
-    // ...and are excluded (with `type`) from the Additional Properties editor.
-    expect(JSON.parse(screen.getByTestId('schema-editor').dataset.exclude)).toEqual([
-      'type',
-      'x',
-      'y',
-    ]);
-    expect(screen.getByText('Additional Properties')).toBeInTheDocument();
+    // The controlled props editor mounts with the default scatter props.
+    expect(screen.getByTestId('trace-props-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('tpe-type')).toHaveTextContent('scatter');
     expect(screen.getByText(/No interactions defined/)).toBeInTheDocument();
     // No delete affordance in create mode.
     expect(screen.queryByTitle('Delete insight')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('passes ownerName from the name field (falls back to "insight")', async () => {
+    await renderForm();
+    // No name typed yet → fallback.
+    expect(screen.getByTestId('trace-props-editor')).toHaveAttribute('data-owner', 'insight');
+    setName('revenue');
+    expect(screen.getByTestId('trace-props-editor')).toHaveAttribute('data-owner', 'revenue');
   });
 
   test('blocks save with a required-name error, then a pattern error', async () => {
@@ -152,7 +158,20 @@ describe('InsightEditForm — create mode', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  test('saves the full config payload: name, typed props, extra props, description', async () => {
+  test('blocks save when the props carry no type', async () => {
+    const onSave = jest.fn();
+    await renderForm({ onSave });
+    setName('typeless');
+
+    // The editor empties the props object (no `.type` discriminator).
+    fireEvent.click(screen.getByTestId('tpe-clear-type'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Chart type is required')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('saves the full config payload: name, description, and props edited via TracePropsEditor', async () => {
     const onSave = jest.fn(async () => ({ success: true }));
     await renderForm({ onSave });
 
@@ -160,10 +179,9 @@ describe('InsightEditForm — create mode', () => {
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Revenue by day' },
     });
-    fireEvent.change(screen.getByLabelText('X Axis'), { target: { value: 'ref(m).x' } });
-    fireEvent.change(screen.getByLabelText('Y Axis'), { target: { value: 'ref(m).y' } });
-    // SchemaEditor merges an optional prop into propsValues.
-    fireEvent.click(screen.getByRole('button', { name: 'set-extra-prop' }));
+    // Editor flips type to bar (and supplies x) — flows into the controlled props.
+    fireEvent.click(screen.getByTestId('tpe-set-bar'));
+    expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -174,10 +192,23 @@ describe('InsightEditForm — create mode', () => {
     expect(config).toEqual({
       name: 'my_insight',
       description: 'Revenue by day',
-      props: { type: 'scatter', x: 'ref(m).x', y: 'ref(m).y', hovertemplate: 'HT' },
+      props: { type: 'bar', x: ['a', 'b'] },
     });
     // Empty interactions/description must not pollute the YAML config.
     expect(config).not.toHaveProperty('interactions');
+  });
+
+  test('adding a prop via onChange is persisted under config.props (type preserved)', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('styled');
+
+    fireEvent.click(screen.getByTestId('tpe-add-prop'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const config = onSave.mock.calls[0][2];
+    expect(config.props).toEqual({ type: 'scatter', marker: { color: 'red' } });
   });
 
   test('surfaces a save failure message and recovers', async () => {
@@ -209,24 +240,6 @@ describe('InsightEditForm — create mode', () => {
 
     await act(async () => resolveSave({ success: true }));
     expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled();
-  });
-
-  test('switching chart type swaps the required fields and loads the new schema', async () => {
-    await renderForm();
-    // Gate the reloaded schema so its setState can be flushed inside act
-    // (otherwise it resolves between selectEvent's internal awaits).
-    let resolveHeatmapSchema;
-    schemas.getSchema.mockImplementation(() => new Promise(r => (resolveHeatmapSchema = r)));
-
-    await selectEvent.select(screen.getByLabelText('Chart Type'), 'Heatmap', {
-      container: document.body,
-    });
-
-    expect(await screen.findByLabelText('Z Values')).toBeInTheDocument();
-    expect(screen.queryByLabelText('X Axis')).not.toBeInTheDocument();
-    expect(schemas.getSchema).toHaveBeenCalledWith('heatmap');
-    await act(async () => resolveHeatmapSchema({ type: 'object', properties: {} }));
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
   });
 });
 
@@ -269,7 +282,7 @@ describe('InsightEditForm — interactions', () => {
         onSave={onSave}
       />
     );
-    await screen.findByTestId('schema-editor');
+    await screen.findByTestId('trace-props-editor');
 
     // Remove the first (filter 'a > 1') interaction.
     fireEvent.click(screen.getAllByTitle('Remove interaction')[0]);
@@ -293,14 +306,14 @@ describe('InsightEditForm — edit mode', () => {
         onSave={onSave}
       />
     );
-    await screen.findByTestId('schema-editor');
+    await screen.findByTestId('trace-props-editor');
 
     const nameInput = screen.getByLabelText(/Insight Name/);
     expect(nameInput).toHaveValue('rev');
     expect(nameInput).toBeDisabled();
     expect(screen.getByLabelText('Description')).toHaveValue('revenue insight');
-    // Chart type parsed out of props.
-    expect(screen.getByText('Bar')).toBeInTheDocument();
+    // The stored props (with their type) seed the controlled editor.
+    expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
     // Each stored interaction kind maps to its editor; the unknown `{}` entry
     // falls back to an empty filter.
     expect(screen.getAllByLabelText('Filter').map(t => t.value)).toEqual(['a > 1', '']);
@@ -331,7 +344,7 @@ describe('InsightEditForm — edit mode', () => {
         onSave={jest.fn()}
       />
     );
-    await screen.findByTestId('schema-editor');
+    await screen.findByTestId('trace-props-editor');
 
     fireEvent.click(screen.getByTitle('Delete insight'));
     // Published objects get the mark-for-deletion copy.
@@ -355,7 +368,7 @@ describe('InsightEditForm — edit mode', () => {
         onSave={jest.fn()}
       />
     );
-    await screen.findByTestId('schema-editor');
+    await screen.findByTestId('trace-props-editor');
 
     fireEvent.click(screen.getByTitle('Delete insight'));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
@@ -376,7 +389,7 @@ describe('InsightEditForm — edit mode', () => {
         onSave={jest.fn()}
       />
     );
-    await screen.findByTestId('schema-editor');
+    await screen.findByTestId('trace-props-editor');
 
     fireEvent.click(screen.getByTitle('Delete insight'));
     expect(screen.getByText(/discard your unsaved changes/)).toBeInTheDocument();
@@ -409,7 +422,7 @@ describe('InsightEditForm — embedded insights', () => {
         onGoBack={onGoBack}
       />
     );
-    await screen.findByTestId('schema-editor');
+    await screen.findByTestId('trace-props-editor');
 
     // Embedded insights have no name of their own and can't be deleted here.
     expect(screen.queryByLabelText(/Insight Name/)).not.toBeInTheDocument();
@@ -428,44 +441,6 @@ describe('InsightEditForm — embedded insights', () => {
     expect(name).toBe('inline');
     expect(config).toEqual({ props: { type: 'scatter', x: 'ref(m).x' } });
     expect(config).not.toHaveProperty('name');
-  });
-});
-
-describe('InsightEditForm — schema states', () => {
-  test('shows the loading spinner until an uncached schema resolves', async () => {
-    schemas.isSchemaLoaded.mockReturnValue(false);
-    let resolveSchema;
-    schemas.getSchema.mockReturnValue(new Promise(r => (resolveSchema = r)));
-
-    render(<InsightEditForm insight={null} isCreate onClose={jest.fn()} onSave={jest.fn()} />);
-    expect(screen.getByText('Loading schema...')).toBeInTheDocument();
-
-    await act(async () => resolveSchema({ type: 'object' }));
-    expect(await screen.findByTestId('schema-editor')).toBeInTheDocument();
-    expect(screen.queryByText('Loading schema...')).not.toBeInTheDocument();
-  });
-
-  test('shows a schema error (and survives a preload failure) when loading fails', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-    schemas.isSchemaLoaded.mockReturnValue(false);
-    schemas.getSchema.mockRejectedValue(new Error('network down'));
-    schemas.preloadSchemas.mockRejectedValue(new Error('preload down'));
-
-    render(<InsightEditForm insight={null} isCreate onClose={jest.fn()} onSave={jest.fn()} />);
-
-    expect(await screen.findByText('Failed to load schema for scatter')).toBeInTheDocument();
-    expect(screen.queryByTestId('schema-editor')).not.toBeInTheDocument();
-    // The form is still usable despite both failures.
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
-    consoleError.mockRestore();
-  });
-
-  test('shows the empty state when no schema exists for the type', async () => {
-    schemas.getSchema.mockResolvedValue(null);
-    render(<InsightEditForm insight={null} isCreate onClose={jest.fn()} onSave={jest.fn()} />);
-    expect(
-      await screen.findByText('Select a chart type to configure properties')
-    ).toBeInTheDocument();
   });
 });
 
@@ -496,7 +471,7 @@ describe('InsightEditForm — live preview', () => {
         setPreviewConfig={setPreviewConfig}
       />
     );
-    await screen.findByTestId('schema-editor');
+    await screen.findByTestId('trace-props-editor');
 
     const { insightConfig } = setPreviewConfig.mock.calls.at(-1)[0];
     expect(insightConfig.name).toBe('rev');
@@ -509,5 +484,18 @@ describe('InsightEditForm — live preview', () => {
       { sort: 'c DESC' },
       { filter: '' },
     ]);
+  });
+
+  test('props edits flow into the preview payload', async () => {
+    const setPreviewConfig = jest.fn();
+    await renderForm({ setPreviewConfig });
+
+    fireEvent.click(screen.getByTestId('tpe-set-bar'));
+    await waitFor(() =>
+      expect(setPreviewConfig.mock.calls.at(-1)[0].insightConfig.props).toEqual({
+        type: 'bar',
+        x: ['a', 'b'],
+      })
+    );
   });
 });
