@@ -1,8 +1,8 @@
 /**
  * preserveTraceProps — type-switch prop preservation for the Chart edit form (VIS-1020 §2).
  *
- * Mirrors the explorerNew `typePropsCache` semantics (`setInsightType` in
- * `src/stores/explorerNewStore.js`): when the user changes a chart's Plotly trace
+ * Mirrors the explorer `typePropsCache` semantics (`setInsightType` in
+ * `src/stores/explorerStore.js`): when the user changes a chart's Plotly trace
  * `type`, we stash the full props under the OLD type key so an exact restoration is
  * possible if they switch back, then carry forward only the props that remain valid
  * for the NEW type's schema.
@@ -26,7 +26,7 @@ export function preserveTraceProps({ oldProps, oldType, newType, newSchema, type
   const cache = typePropsCache && typeof typePropsCache === 'object' ? typePropsCache : {};
 
   // Strip `type` from the props we stash so the cache holds props-without-type,
-  // matching the explorerNew convention where `type` lives outside `props`.
+  // matching the explorer-store convention where `type` lives outside `props`.
   const { type: _omitType, ...oldPropsWithoutType } = safeOldProps;
 
   // Stash the full old props under the old type key (for exact restoration on switch-back).

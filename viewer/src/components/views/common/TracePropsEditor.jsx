@@ -51,8 +51,8 @@ const TracePropsEditor = ({
 }) => {
   const type = traceProps?.type || '';
 
-  // Per-type prop snapshots stashed across type switches (mirrors explorerNew's
-  // typePropsCache). Kept in a ref so it survives re-renders without re-triggering
+  // Per-type prop snapshots stashed across type switches (mirrors the explorer
+  // store's typePropsCache). Kept in a ref so it survives re-renders without re-triggering
   // effects, and so a switch-back restores the exact prior snapshot.
   const typePropsCacheRef = useRef({});
 
