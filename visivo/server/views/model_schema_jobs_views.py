@@ -17,14 +17,17 @@ from flask import jsonify, request
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.query.model_schema_aggregator import ModelSchemaAggregator
+from visivo.server.views.schema_path_safety import is_safe_path_segment
 
 
 def _load_model_schema_with_fallback(model_name: str, output_dir: str, run_id: str = None):
-    """Load a model schema artifact with optional explicit run_id or fallback.
+    """Load a model schema artifact by explicit run_id or the default (``main``) run.
 
-    Mirrors ``_load_schema_with_fallback`` in source_schema_jobs_views: an
-    explicit ``run_id`` is honored as-is; otherwise try ``main`` first, then the
-    ``preview-<model_name>`` run.
+    An explicit ``run_id`` is honored as-is; otherwise the ``main`` run is used.
+    There is deliberately no ``preview-<model_name>`` fallback: preview model
+    runs are keyed ``preview-<uuid>`` (see ``preview_job_executor``), and the
+    ``preview-<name>`` artifact shape exists only for sources — reusing it here
+    would surface a source-shaped artifact for a model that shares the name.
 
     Returns:
         Tuple of (schema_data, run_id) or (None, None) if not found.
@@ -41,14 +44,23 @@ def _load_model_schema_with_fallback(model_name: str, output_dir: str, run_id: s
     if schema_data is not None:
         return schema_data, DEFAULT_RUN_ID
 
-    preview_run_id = f"preview-{model_name}"
-    schema_data = ModelSchemaAggregator.load_model_schema(
-        model_name, output_dir, run_id=preview_run_id
-    )
-    if schema_data is not None:
-        return schema_data, preview_run_id
-
     return None, None
+
+
+def _columns_from_schema(schema_data: dict) -> dict:
+    """Return the ``{col: {type, nullable}}`` map for a model schema artifact.
+
+    Enveloped artifacts carry an explicit ``columns`` map. Legacy pre-envelope
+    artifacts are the thin ``{name_hash: {col: type_string}}`` block with no
+    ``columns`` key — fall back to that first hash block (type from the block,
+    nullable unknown) so real columns are not hidden after upgrade until the next
+    successful model run rewrites the enveloped shape.
+    """
+    if "columns" in schema_data:
+        return schema_data["columns"]
+
+    legacy_block = next((v for v in schema_data.values() if isinstance(v, dict)), {})
+    return {col: {"type": type_str, "nullable": None} for col, type_str in legacy_block.items()}
 
 
 def register_model_schema_jobs_views(app, flask_app, output_dir):
@@ -66,6 +78,11 @@ def register_model_schema_jobs_views(app, flask_app, output_dir):
         """
         try:
             run_id_param = request.args.get("run_id")
+            if not is_safe_path_segment(model_name) or (
+                run_id_param is not None and not is_safe_path_segment(run_id_param)
+            ):
+                return jsonify({"message": "Invalid model_name or run_id"}), 400
+
             schema_data, _ = _load_model_schema_with_fallback(
                 model_name, output_dir, run_id=run_id_param
             )
@@ -104,6 +121,11 @@ def register_model_schema_jobs_views(app, flask_app, output_dir):
         """
         try:
             run_id_param = request.args.get("run_id")
+            if not is_safe_path_segment(model_name) or (
+                run_id_param is not None and not is_safe_path_segment(run_id_param)
+            ):
+                return jsonify({"message": "Invalid model_name or run_id"}), 400
+
             schema_data, _ = _load_model_schema_with_fallback(
                 model_name, output_dir, run_id=run_id_param
             )
@@ -117,7 +139,7 @@ def register_model_schema_jobs_views(app, flask_app, output_dir):
             search = request.args.get("search", "").lower()
             columns = []
 
-            for col_name, col_info in schema_data.get("columns", {}).items():
+            for col_name, col_info in _columns_from_schema(schema_data).items():
                 if search and search not in col_name.lower():
                     continue
 

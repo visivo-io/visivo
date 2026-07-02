@@ -26,6 +26,13 @@ from visivo.telemetry.events import WorkspaceEvent
 # specs/dashboard-building/03-architecture-proposal.md §3.4).
 EVENT_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
+# Canonical CLI/API event names are reserved: the relay is reachable by any LAN
+# client, and `name` flows verbatim to `posthog.capture` via
+# `WorkspaceEvent.create` (events.py). Rejecting these prevents a client from
+# forging canonical telemetry. Taxonomy is additive-only — do NOT rename any of
+# these; extend the blocklist instead if new reserved names are introduced.
+RESERVED_EVENT_NAMES = frozenset({"cli_command", "api_request", "new_installation"})
+
 # Workspace payloads are small property bags; anything larger is malformed
 # (or abusive) input rather than a legitimate gesture event.
 MAX_PAYLOAD_BYTES = 8192
@@ -44,6 +51,9 @@ def register_telemetry_views(app, flask_app, output_dir):
         name = body.get("name")
         if not isinstance(name, str) or not EVENT_NAME_PATTERN.match(name):
             return jsonify({"error": "Invalid event name"}), 400
+
+        if name in RESERVED_EVENT_NAMES:
+            return jsonify({"error": "Reserved event name"}), 400
 
         payload = body.get("payload", {})
         if payload is None:

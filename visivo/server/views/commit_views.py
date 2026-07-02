@@ -526,7 +526,24 @@ def register_commit_views(app, flask_app, output_dir):
                 # Use ProjectWriter to write changes
                 writer = ProjectWriter(named_children)
                 writer.update_file_contents()
-                writer.write()
+                try:
+                    writer.write()
+                except Exception:
+                    # A write that fails mid-loop leaves partial YAML on disk.
+                    # The watcher is paused here, and paused events are DROPPED
+                    # (not queued), so without an explicit resync the served
+                    # project silently diverges from disk until an unrelated
+                    # edit. Recompile from disk (the same on_project_change path
+                    # the success branch uses) so served state matches whatever
+                    # actually landed, then re-raise for the 500 response.
+                    if hot_reload_server:
+                        try:
+                            hot_reload_server.on_project_change(one_shot=False)
+                        except Exception as resync_error:
+                            Logger.instance().error(
+                                f"Error resyncing after failed commit write: {resync_error}"
+                            )
+                    raise
 
                 # Clear caches after successful write
                 flask_app.source_manager.clear_cache()

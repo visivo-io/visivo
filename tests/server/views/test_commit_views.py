@@ -273,6 +273,39 @@ class TestCommitViews:
         assert response.status_code == 500
         hot_reload.resume_file_watcher.assert_called_once()
 
+    @patch("visivo.server.views.commit_views.ProjectWriter")
+    def test_commit_resyncs_served_state_when_write_fails(self, mock_writer_class, client, app):
+        """A ProjectWriter.write() that fails mid-loop leaves partial YAML on
+        disk. The watcher is paused and paused events are DROPPED (not queued),
+        so served state would silently diverge from disk. The endpoint must
+        trigger the recompile path (on_project_change) before returning 500 so
+        served state resyncs to whatever landed (finding #5). Before the fix, no
+        resync happened on the write-failure path."""
+        mock_source = Mock()
+        mock_source.model_dump.return_value = {"name": "new_source", "type": "sqlite"}
+        app.flask_app.source_manager.cached_objects = {"new_source": mock_source}
+        app.flask_app.source_manager.published_objects = {}
+        app.flask_app.source_manager.get_status.return_value = ObjectStatus.NEW
+        app.flask_app.model_manager.cached_objects = {}
+        app.flask_app.model_manager.get_status.return_value = ObjectStatus.PUBLISHED
+
+        writer = Mock()
+        writer.write.side_effect = RuntimeError("disk full mid-write")
+        mock_writer_class.return_value = writer
+
+        hot_reload = Mock()
+        app.flask_app.hot_reload_server = hot_reload
+
+        response = client.post("/api/commit/")
+
+        assert response.status_code == 500
+        # Served state resynced from disk despite the failure...
+        hot_reload.on_project_change.assert_called_once_with(one_shot=False)
+        # ...the watcher is un-paused...
+        hot_reload.resume_file_watcher.assert_called_once()
+        # ...and the failed write did not clear the draft caches.
+        app.flask_app.source_manager.clear_cache.assert_not_called()
+
     def test_discard_no_changes(self, client, app):
         """Discard with an empty draft cache reports zero discards."""
         response = client.post("/api/commit/discard/")

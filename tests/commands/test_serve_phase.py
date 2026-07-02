@@ -129,8 +129,8 @@ def test_on_project_change_layout_only_edit_refreshes_served_project(
 def test_on_project_change_drops_drafts_and_emits_project_changed(
     test_project, output_dir, server_url, mocker
 ):
-    """Q15 last-write-wins (VIS-808): an external YAML change during a dirty
-    Build session drops every draft and notifies the SPA via the
+    """Q15 last-write-wins (VIS-808): a *genuine* external YAML change during a
+    dirty Build session drops every draft and notifies the SPA via the
     `project_changed` socket event with drafts_dropped=True."""
     os.makedirs(output_dir, exist_ok=True)
 
@@ -154,12 +154,58 @@ def test_on_project_change_drops_drafts_and_emits_project_changed(
     assert client.post(f"/api/dashboards/{dashboard_name}/", json=config).status_code == 200
     assert client.get("/api/commit/pending/").get_json()["count"] == 1
 
-    mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=ProjectFactory())
+    # The recompiled project genuinely differs from the served one (an extra
+    # row on disk) — this is the real external-edit case, so drafts drop.
+    externally_edited = ProjectFactory()
+    externally_edited.dashboards[0].rows = list(externally_edited.dashboards[0].rows) + [
+        RowFactory(name=None, items=[ItemFactory(name=None, chart=None)])
+    ]
+    mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=externally_edited)
 
     on_project_change()
 
     assert client.get("/api/commit/pending/").get_json()["count"] == 0
     emit_spy.assert_called_with("project_changed", {"drafts_dropped": True})
+
+
+def test_on_project_change_noop_recompile_preserves_drafts(
+    test_project, output_dir, server_url, mocker
+):
+    """A watcher event from a no-op save (touch / whitespace-only edit)
+    recompiles to a project identical to the one being served. Drafts MUST be
+    preserved — only a genuine external edit triggers last-write-wins. Before
+    the fix, ANY recompile during a dirty session destroyed the drafts."""
+    os.makedirs(output_dir, exist_ok=True)
+
+    server, on_project_change, _ = serve_phase(
+        output_dir=output_dir,
+        working_dir=".",
+        default_source=None,
+        dag_filter=None,
+        threads=1,
+        skip_compile=True,
+        project=test_project,
+        server_url=server_url,
+    )
+    emit_spy = mocker.patch.object(server.socketio, "emit")
+    client = server.app.test_client()
+
+    # Dirty the session through the real save endpoint (draft cache only).
+    dashboard_name = test_project.dashboards[0].name
+    config = client.get(f"/api/dashboards/{dashboard_name}/").get_json()["config"]
+    config["rows"] = list(config["rows"]) + [{"height": "medium", "items": [{"width": 4}]}]
+    assert client.post(f"/api/dashboards/{dashboard_name}/", json=config).status_code == 200
+    assert client.get("/api/commit/pending/").get_json()["count"] == 1
+
+    # A fresh ProjectFactory serializes identically to the served project — the
+    # exact shape of a no-op recompile.
+    mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=ProjectFactory())
+
+    on_project_change()
+
+    # Draft survives, and the SPA is told nothing was dropped (no banner).
+    assert client.get("/api/commit/pending/").get_json()["count"] == 1
+    emit_spy.assert_called_with("project_changed", {"drafts_dropped": False})
 
 
 def test_on_project_change_clean_session_emits_without_dropping(

@@ -118,6 +118,19 @@ class FlaskApp:
             manager.clear_cache()
         self._cached_defaults = None
 
+    def matches_served_project(self, project: Project) -> bool:
+        """True when ``project`` serializes identically to the currently served project.
+
+        Used by the watcher recompile to tell a genuine external YAML edit
+        (which drops drafts, last-write-wins) apart from a no-op save/touch that
+        recompiles to the same project (drafts must be preserved). Compares the
+        dereferenced serialized form, matching how ``_project_json`` is built.
+        """
+        candidate_json = (
+            Serializer(project=project).dereference().model_dump_json(exclude_none=True)
+        )
+        return candidate_json == self._project_json
+
     @property
     def project(self):
         return self._project

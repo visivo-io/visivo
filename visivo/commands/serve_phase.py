@@ -50,12 +50,16 @@ def serve_phase(
                 no_deprecation_warnings=no_deprecation_warnings,
             )
 
-            # Q15 last-write-wins: the YAML on disk just changed, so any
-            # in-flight draft edits are stale — drop them BEFORE serving the
-            # recompiled project. A publish clears the caches before calling
-            # this, so drafts_dropped is only True for genuinely external
-            # edits during a dirty Build session.
-            drafts_dropped = app.has_draft_changes()
+            # Q15 last-write-wins: a genuine external YAML edit makes any
+            # in-flight draft edits stale, so drop them BEFORE serving the
+            # recompiled project. But the watcher fires on ANY .yml write —
+            # including a touch / no-op save that recompiles to the exact
+            # project already being served. Those must PRESERVE drafts, so only
+            # drop when the newly compiled project actually differs from the
+            # served one. A publish clears the caches before calling this, so
+            # drafts_dropped is only True for genuinely external edits during a
+            # dirty Build session.
+            drafts_dropped = app.has_draft_changes() and not app.matches_served_project(project)
             if drafts_dropped:
                 app.clear_draft_caches()
                 Logger.instance().info(

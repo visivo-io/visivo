@@ -4,7 +4,11 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask
 
-from visivo.server.views.telemetry_views import MAX_PAYLOAD_BYTES, register_telemetry_views
+from visivo.server.views.telemetry_views import (
+    MAX_PAYLOAD_BYTES,
+    RESERVED_EVENT_NAMES,
+    register_telemetry_views,
+)
 
 
 class TestTelemetryViews:
@@ -118,3 +122,26 @@ class TestTelemetryViews:
     def test_telemetry_client_errors_never_surface(self, _enabled, _get_client, client):
         response = self.post_event(client, {"name": "canvas_action", "payload": {}})
         assert response.status_code == 204
+
+    @pytest.mark.parametrize("reserved", sorted(RESERVED_EVENT_NAMES))
+    def test_rejects_reserved_cli_event_names(self, reserved, client):
+        """The relay is reachable by any LAN client and `name` flows verbatim to
+        posthog.capture — reserved CLI/API event names must be rejected so a
+        client cannot forge canonical telemetry (finding #6). Before the fix
+        these snake_case names passed validation and were forwarded."""
+        response = self.post_event(client, {"name": reserved, "payload": {"forged": True}})
+        assert response.status_code == 400
+
+    def test_reserved_names_blocklist_is_the_canonical_set(self):
+        """Guardrail: the blocklist must cover exactly the three canonical CLI/API
+        event names (taxonomy is additive-only — do not rename these)."""
+        assert RESERVED_EVENT_NAMES == {"cli_command", "api_request", "new_installation"}
+
+    @patch("visivo.telemetry.client.get_telemetry_client")
+    @patch("visivo.server.views.telemetry_views.is_telemetry_enabled", return_value=True)
+    def test_reserved_names_never_reach_telemetry_client(self, _enabled, get_client, client):
+        """A reserved name is rejected before any telemetry dispatch."""
+        get_client.return_value = Mock()
+        response = self.post_event(client, {"name": "cli_command"})
+        assert response.status_code == 400
+        get_client.assert_not_called()

@@ -81,13 +81,16 @@ class TestGetModelSchema(TestModelSchemaViews):
         assert hit.status_code == 200
         assert hit.get_json()["model_name"] == "orders"
 
-    def test_fallback_main_then_preview(self, client, output_dir):
-        # No main artifact; only a preview-<name> one exists.
+    def test_no_preview_name_fallback(self, client, output_dir):
+        """A ``preview-<model_name>`` artifact must NOT be served by the default
+        fallback (finding #3): preview model runs are keyed ``preview-<uuid>``,
+        and the ``preview-<name>`` shape belongs to sources — falling back to it
+        could surface a source-shaped artifact for a same-named model. Before the
+        fix this returned 200 with the preview artifact."""
         _write_model_schema(output_dir, "orders", {"id": "INT"}, run_id="preview-orders")
 
         response = client.get("/api/model-schema-jobs/orders/")
-        assert response.status_code == 200
-        assert response.get_json()["model_name"] == "orders"
+        assert response.status_code == 404
 
 
 class TestListModelSchemaColumns(TestModelSchemaViews):
@@ -137,3 +140,54 @@ class TestListModelSchemaColumns(TestModelSchemaViews):
         rows = {c["name"]: c for c in response.get_json()}
         assert rows["id"]["nullable"] is False
         assert rows["label"]["nullable"] is True
+
+    def test_columns_falls_back_to_legacy_hash_block(self, client, output_dir):
+        """A legacy pre-envelope artifact — ``{name_hash: {col: type}}`` with no
+        ``columns`` key — must still surface its columns (finding #4). Before the
+        fix this returned an empty 200, hiding real columns after upgrade until
+        the next successful run rewrote the enveloped shape."""
+        schema_dir = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", "legacy_model")
+        os.makedirs(schema_dir, exist_ok=True)
+        with open(os.path.join(schema_dir, "schema.json"), "w") as fp:
+            json.dump({"abc123hash": {"id": "INT", "name": "VARCHAR"}}, fp)
+
+        response = client.get("/api/model-schema-jobs/legacy_model/columns/")
+        assert response.status_code == 200
+        rows = response.get_json()
+        assert [r["name"] for r in rows] == ["id", "name"]
+        assert {r["name"]: r["type"] for r in rows} == {"id": "INT", "name": "VARCHAR"}
+        # Legacy artifacts carry no nullability info — reported as unknown (null).
+        assert all(r["nullable"] is None for r in rows)
+
+    def test_legacy_columns_respect_search(self, client, output_dir):
+        """The legacy fallback path honors ?search= like the enveloped path."""
+        schema_dir = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", "legacy_model")
+        os.makedirs(schema_dir, exist_ok=True)
+        with open(os.path.join(schema_dir, "schema.json"), "w") as fp:
+            json.dump({"hash": {"id": "INT", "user_id": "INT", "name": "VARCHAR"}}, fp)
+
+        response = client.get("/api/model-schema-jobs/legacy_model/columns/?search=id")
+        assert response.status_code == 200
+        assert [c["name"] for c in response.get_json()] == ["id", "user_id"]
+
+
+class TestModelSchemaPathTraversal(TestModelSchemaViews):
+    """Path-traversal guard on the run_id query param (finding #2)."""
+
+    @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
+    def test_schema_rejects_unsafe_run_id(self, client, output_dir, bad_run_id):
+        _write_model_schema(output_dir, "orders", {"id": "INT"})
+        response = client.get(f"/api/model-schema-jobs/orders/?run_id={bad_run_id}")
+        assert response.status_code == 400
+
+    @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
+    def test_columns_rejects_unsafe_run_id(self, client, output_dir, bad_run_id):
+        _write_model_schema(output_dir, "orders", {"id": "INT"})
+        response = client.get(f"/api/model-schema-jobs/orders/columns/?run_id={bad_run_id}")
+        assert response.status_code == 400
+
+    def test_safe_run_id_still_served(self, client, output_dir):
+        """The guard must not reject legitimate run_ids (main / preview-<uuid>)."""
+        _write_model_schema(output_dir, "orders", {"id": "INT"}, run_id="preview-abc-123")
+        response = client.get("/api/model-schema-jobs/orders/?run_id=preview-abc-123")
+        assert response.status_code == 200
