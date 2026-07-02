@@ -13,6 +13,11 @@ const mockActions = {
   deleteMetric: jest.fn(),
   checkCommitStatus: jest.fn(),
 };
+const mockSaveNow = jest.fn();
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => ({ saveNow: mockSaveNow, status: 'idle', errors: null }),
+}));
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
@@ -52,6 +57,7 @@ const CASES = [
 beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
+  mockSaveNow.mockResolvedValue({ success: true });
 });
 
 describe.each(CASES)('$label EditForm', ({ Form, prop, word, nameLabel, save, del }) => {
@@ -222,5 +228,36 @@ describe.each(CASES)('$label EditForm', ({ Form, prop, word, nameLabel, save, de
       fireEvent.click(backBtn);
       expect(onGoBack).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe.each(CASES)('$label edit-mode save routes through the gated backbone (VIS-993)', ({ Form, prop, word, save }) => {
+  test('edit mode persists via useRecordSave.saveNow, never the raw store action', async () => {
+    const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(x, 2)' } };
+    render(<Form {...{ [prop]: record }} onClose={jest.fn()} onSave={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalledTimes(1));
+    expect(mockSaveNow).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'existing', expression: 'ROUND(x, 2)' })
+    );
+    expect(save()).not.toHaveBeenCalled();
+  });
+
+  test('a gate-blocked save maps the expression error onto the field', async () => {
+    mockSaveNow.mockResolvedValue({
+      success: false,
+      validation: {
+        errors: [{ path: 'expression', message: "ref 'ghost' does not match any existing object", keyword: 'ref' }],
+      },
+    });
+    const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(x, 2)' } };
+    render(<Form {...{ [prop]: record }} onClose={jest.fn()} onSave={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(/ghost/)).toBeInTheDocument();
+    expect(save()).not.toHaveBeenCalled();
   });
 });

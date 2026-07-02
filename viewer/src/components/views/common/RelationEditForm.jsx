@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
+import useRecordSave from '../../../hooks/useRecordSave';
 import RefTextArea from './RefTextArea';
 import Select from '../../common/Select';
 import {
@@ -25,6 +26,12 @@ import { validateName } from './namedModel';
  */
 const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
   const { saveRelation, deleteRelation, checkCommitStatus } = useStore();
+
+  // VIS-993: edit-mode saves flush through the gated optimistic backbone so
+  // schema/ref-invalid configs are blocked BEFORE they persist (no POST, no
+  // doomed run). Create mode keeps the direct saveRelation call: the record
+  // isn't in the collection yet.
+  const { saveNow } = useRecordSave('relation', relation?.name || null);
 
   // Form state
   const [name, setName] = useState('');
@@ -88,13 +95,27 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
       is_default: isDefault || undefined,
     };
 
-    const result = await saveRelation(name, config);
+    const result = isEditMode ? await saveNow(config) : await saveRelation(name, config);
 
     setSaving(false);
 
-    if (result?.success) {
+    if (result?.success !== false) {
       onSave && onSave(config);
       onClose();
+    } else if (result?.validation) {
+      // Gate-blocked (VIS-993): the condition field owns anything under its
+      // path; everything else lands in the form-level alert.
+      const condError = result.validation.errors?.find(
+        e => e.path === 'condition' || e.path?.startsWith('condition')
+      );
+      if (condError) {
+        setErrors(prev => ({ ...prev, condition: condError.message }));
+      } else {
+        setSaveError(
+          result.validation.errors?.map(e => `${e.path}: ${e.message}`).join('; ') ||
+            'Configuration is invalid'
+        );
+      }
     } else {
       setSaveError(result?.error || 'Failed to save relation');
     }

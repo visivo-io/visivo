@@ -8,6 +8,11 @@ const mockActions = {
   deleteRelation: jest.fn(),
   checkCommitStatus: jest.fn(),
 };
+const mockSaveNow = jest.fn();
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => ({ saveNow: mockSaveNow, status: 'idle', errors: null }),
+}));
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
@@ -27,6 +32,7 @@ jest.mock('./RefTextArea', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockActions.saveRelation.mockResolvedValue({ success: true });
+  mockSaveNow.mockResolvedValue({ success: true });
   mockActions.deleteRelation.mockResolvedValue({ success: true });
   mockActions.checkCommitStatus.mockResolvedValue();
 });
@@ -96,5 +102,41 @@ describe('RelationEditForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
     await waitFor(() => expect(mockActions.deleteRelation).toHaveBeenCalledWith('rel1'));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+});
+
+describe('edit-mode save routes through the gated backbone (VIS-993)', () => {
+  const record = {
+    name: 'orders_to_users',
+    config: { name: 'orders_to_users', join_type: 'inner', condition: 'a.id = b.a_id' },
+  };
+
+  test('edit mode persists via useRecordSave.saveNow, never the raw store action', async () => {
+    render(<RelationEditForm relation={record} onClose={jest.fn()} onSave={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalledTimes(1));
+    expect(mockSaveNow).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'orders_to_users', condition: 'a.id = b.a_id' })
+    );
+    expect(mockActions.saveRelation).not.toHaveBeenCalled();
+  });
+
+  test('a gate-blocked save maps the condition error onto the field', async () => {
+    mockSaveNow.mockResolvedValue({
+      success: false,
+      validation: {
+        errors: [
+          { path: 'condition', message: "ref 'ghost_model' does not match any existing object", keyword: 'ref' },
+        ],
+      },
+    });
+    render(<RelationEditForm relation={record} onClose={jest.fn()} onSave={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(/ghost_model/)).toBeInTheDocument();
+    expect(mockActions.saveRelation).not.toHaveBeenCalled();
   });
 });
