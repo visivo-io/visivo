@@ -129,12 +129,15 @@ describe('setInputJobValue refresh gating', () => {
     expect(store.get().inputJobsInitialized.a).toBe(true);
   });
 
-  it('schedules a refresh once initialized but short-circuits when db is absent', () => {
+  it('subsequent value changes only write the store — refetch is owned by useInsightsData (VIS-831)', () => {
+    // The imperative rAF/DuckDB refresh path was removed: writing the new
+    // accessor object re-keys useInsightsData's react-query query, which
+    // re-runs the insight exactly once. A second imperative re-query here is
+    // the VIS-831 feedback-loop class.
     const store = build({ insightJobs: {}, db: null });
     store.get().setInputJobValue('a', 'x'); // initialize
-    store.get().setInputJobValue('a', 'y'); // now triggers rAF
-    expect(global.requestAnimationFrame).toHaveBeenCalledTimes(1);
-    // db is null → the scheduled callback returns before touching duckdb
+    store.get().setInputJobValue('a', 'y');
+    expect(global.requestAnimationFrame).not.toHaveBeenCalled();
     expect(prepPostQuery).not.toHaveBeenCalled();
     expect(runDuckDBQuery).not.toHaveBeenCalled();
     expect(store.get().inputSelectedValues.a).toBe('y');

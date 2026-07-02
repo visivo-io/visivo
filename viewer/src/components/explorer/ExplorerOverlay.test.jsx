@@ -1,0 +1,188 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import '@testing-library/jest-dom';
+import ExplorerOverlay from './ExplorerOverlay';
+import useStore from '../../stores/store';
+import { futureFlags } from '../../router-config';
+
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
+// The real Explorer surface is heavy; stub it. The "Save and place" button it
+// would render comes from the round-trip context, which we exercise via the
+// overlay's own handler in these tests through a stubbed ExplorerPage that
+// reads the context.
+jest.mock('./ExplorerPage', () => {
+  const { useExplorerRoundTrip } = jest.requireActual('./ExplorerRoundTripContext');
+  return function MockExplorerPage() {
+    const rt = useExplorerRoundTrip();
+    return (
+      <div data-testid="explorer-surface">
+        <input data-testid="mock-rename-input" defaultValue="untitled" />
+        {rt && (
+          <button
+            data-testid="mock-save-and-place"
+            disabled={rt.saving}
+            onClick={() => rt.onSaveAndPlace()}
+          >
+            save-and-place
+          </button>
+        )}
+      </div>
+    );
+  };
+});
+
+const renderOverlay = (entry = '/workspace/dashboard/sales/explorer?return_to=workspace&slot=0:end') =>
+  render(
+    <MemoryRouter initialEntries={[entry]} future={futureFlags}>
+      <Routes>
+        <Route path="/workspace/dashboard/:dashboardName/explorer" element={<ExplorerOverlay />} />
+      </Routes>
+    </MemoryRouter>
+  );
+
+describe('ExplorerOverlay (J-2 / VIS-778)', () => {
+  let saveExplorerObjects;
+  let placeChartInDashboardSlot;
+
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    saveExplorerObjects = jest.fn().mockResolvedValue({ success: true, errors: [] });
+    placeChartInDashboardSlot = jest.fn().mockResolvedValue({ success: true });
+    useStore.setState({
+      saveExplorerObjects,
+      placeChartInDashboardSlot,
+      explorerChartName: 'revenue_chart',
+      explorerChartInsightNames: ['insight'],
+    });
+  });
+
+  it('renders the framed overlay with the origin breadcrumb', () => {
+    renderOverlay();
+    expect(screen.getByTestId('explorer-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('explorer-overlay-card')).toBeInTheDocument();
+    expect(screen.getByTestId('explorer-overlay-dashboard')).toHaveTextContent('sales');
+    expect(screen.getByTestId('explorer-overlay-slot')).toHaveTextContent('end of row 1');
+  });
+
+  it('renders the Explorer surface inside the overlay', () => {
+    renderOverlay();
+    expect(screen.getByTestId('explorer-surface')).toBeInTheDocument();
+  });
+
+  it('Save and place: saves, wraps+places the chart, then closes to the dashboard', async () => {
+    renderOverlay();
+    fireEvent.click(screen.getByTestId('mock-save-and-place'));
+    await waitFor(() => {
+      expect(saveExplorerObjects).toHaveBeenCalledTimes(1);
+    });
+    expect(placeChartInDashboardSlot).toHaveBeenCalledWith('sales', 'revenue_chart', '0:end');
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/workspace/dashboard/sales?newItem=revenue_chart'
+      );
+    });
+  });
+
+  it('surfaces a save error and does not place', async () => {
+    saveExplorerObjects.mockResolvedValue({
+      success: false,
+      errors: [{ name: 'm', type: 'model', error: 'boom' }],
+    });
+    renderOverlay();
+    fireEvent.click(screen.getByTestId('mock-save-and-place'));
+    await waitFor(() => {
+      expect(screen.getByTestId('explorer-overlay-error')).toHaveTextContent('boom');
+    });
+    expect(placeChartInDashboardSlot).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a placement error', async () => {
+    placeChartInDashboardSlot.mockResolvedValue({ success: false, error: 'no slot' });
+    renderOverlay();
+    fireEvent.click(screen.getByTestId('mock-save-and-place'));
+    await waitFor(() => {
+      expect(screen.getByTestId('explorer-overlay-error')).toHaveTextContent('no slot');
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('close button returns to the dashboard without saving', () => {
+    renderOverlay();
+    fireEvent.click(screen.getByTestId('explorer-overlay-close'));
+    expect(mockNavigate).toHaveBeenCalledWith('/workspace/dashboard/sales');
+    expect(saveExplorerObjects).not.toHaveBeenCalled();
+  });
+
+  it('Esc returns to the dashboard', () => {
+    renderOverlay();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(mockNavigate).toHaveBeenCalledWith('/workspace/dashboard/sales');
+  });
+
+  it('Esc inside an input (inline rename) does NOT close the overlay', () => {
+    renderOverlay();
+    fireEvent.keyDown(screen.getByTestId('mock-rename-input'), { key: 'Escape' });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('Esc whose default was prevented does NOT close the overlay', () => {
+    renderOverlay();
+    const surface = screen.getByTestId('explorer-surface');
+    surface.addEventListener('keydown', e => e.preventDefault());
+    fireEvent.keyDown(surface, { key: 'Escape' });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('backdrop click returns to the dashboard', () => {
+    renderOverlay();
+    fireEvent.click(screen.getByTestId('explorer-overlay-backdrop'));
+    expect(mockNavigate).toHaveBeenCalledWith('/workspace/dashboard/sales');
+  });
+
+  it('errors BEFORE saving when there is nothing to place (no insights, no chart)', async () => {
+    useStore.setState({ explorerChartName: null, explorerChartInsightNames: [] });
+    renderOverlay();
+    fireEvent.click(screen.getByTestId('mock-save-and-place'));
+    await waitFor(() => {
+      expect(screen.getByTestId('explorer-overlay-error')).toHaveTextContent(
+        /No chart to place/i
+      );
+    });
+    // No partial commit: nothing was saved and nothing placed.
+    expect(saveExplorerObjects).not.toHaveBeenCalled();
+    expect(placeChartInDashboardSlot).not.toHaveBeenCalled();
+  });
+
+  it('auto-names an unnamed chart so save + place succeed in one pass', async () => {
+    useStore.setState({
+      explorerChartName: null,
+      explorerChartInsightNames: ['insight'],
+      charts: [],
+      models: [],
+      insights: [],
+    });
+    renderOverlay();
+    fireEvent.click(screen.getByTestId('mock-save-and-place'));
+    await waitFor(() => {
+      expect(saveExplorerObjects).toHaveBeenCalledTimes(1);
+    });
+    // The generated name was set before the save (so the chart is persisted)
+    // and used for placement + navigation.
+    expect(useStore.getState().explorerChartName).toBe('chart');
+    expect(placeChartInDashboardSlot).toHaveBeenCalledWith('sales', 'chart', '0:end');
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/workspace/dashboard/sales?newItem=chart');
+    });
+  });
+
+  it('defaults the slot label to a new row when slot=new', () => {
+    renderOverlay('/workspace/dashboard/sales/explorer?return_to=workspace&slot=new');
+    expect(screen.getByTestId('explorer-overlay-slot')).toHaveTextContent('a new row');
+  });
+});

@@ -156,8 +156,46 @@ describe('usePreviewJob', () => {
       });
 
       expect(result.current.error).toBe('Query syntax error');
+      expect(result.current.errorDetails).toBeNull();
       expect(result.current.isRunning).toBe(false);
       expect(result.current.isCompleted).toBe(false);
+
+      unmount();
+    });
+
+    test('surfaces structured error_details on a typed relation failure', async () => {
+      fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ run_id: 'run-rel' }),
+        })
+        .mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              status: 'failed',
+              error: 'No relation connects orders and users.',
+              error_details: {
+                error_type: 'missing_relation',
+                error_models: ['orders', 'users'],
+              },
+            }),
+        });
+
+      const { result, unmount } = renderHook(() => usePreviewJob());
+
+      await act(async () => {
+        await result.current.startRun({ insight_names: ['x'] });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isFailed).toBe(true);
+      });
+
+      expect(result.current.errorDetails).toEqual({
+        error_type: 'missing_relation',
+        error_models: ['orders', 'users'],
+      });
 
       unmount();
     });

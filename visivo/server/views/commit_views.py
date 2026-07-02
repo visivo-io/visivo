@@ -510,33 +510,66 @@ def register_commit_views(app, flask_app, output_dir):
             if not named_children:
                 return jsonify({"message": "No changes to commit", "published_count": 0})
 
-            # Use ProjectWriter to write changes
-            writer = ProjectWriter(named_children)
-            writer.update_file_contents()
-            writer.write()
+            # Serialize with the file watcher for the whole write→refresh
+            # window. Without this, the YAML writes below fire a debounced
+            # watcher recompile that races the synchronous one — both clone
+            # git includes into the same cache, one dies on the git lock,
+            # `on_project_change` swallows the error, and this endpoint then
+            # returns success while the served project is still stale (the
+            # canvas silently "loses" the just-published edit). Pausing
+            # blocks until any in-flight watcher compile finishes and drops
+            # the watcher events our own writes would otherwise queue.
+            hot_reload_server = flask_app.hot_reload_server
+            if hot_reload_server:
+                hot_reload_server.pause_file_watcher()
+            try:
+                # Use ProjectWriter to write changes
+                writer = ProjectWriter(named_children)
+                writer.update_file_contents()
+                try:
+                    writer.write()
+                except Exception:
+                    # A write that fails mid-loop leaves partial YAML on disk.
+                    # The watcher is paused here, and paused events are DROPPED
+                    # (not queued), so without an explicit resync the served
+                    # project silently diverges from disk until an unrelated
+                    # edit. Recompile from disk (the same on_project_change path
+                    # the success branch uses) so served state matches whatever
+                    # actually landed, then re-raise for the 500 response.
+                    if hot_reload_server:
+                        try:
+                            hot_reload_server.on_project_change(one_shot=False)
+                        except Exception as resync_error:
+                            Logger.instance().error(
+                                f"Error resyncing after failed commit write: {resync_error}"
+                            )
+                    raise
 
-            # Clear caches after successful write
-            flask_app.source_manager.clear_cache()
-            flask_app.model_manager.clear_cache()
-            flask_app.dimension_manager.clear_cache()
-            flask_app.metric_manager.clear_cache()
-            flask_app.relation_manager.clear_cache()
-            flask_app.insight_manager.clear_cache()
-            flask_app.markdown_manager.clear_cache()
-            flask_app.chart_manager.clear_cache()
-            flask_app.table_manager.clear_cache()
-            flask_app.dashboard_manager.clear_cache()
-            flask_app.csv_script_model_manager.clear_cache()
-            flask_app.local_merge_model_manager.clear_cache()
-            flask_app.input_manager.clear_cache()
-            flask_app._cached_defaults = None
+                # Clear caches after successful write
+                flask_app.source_manager.clear_cache()
+                flask_app.model_manager.clear_cache()
+                flask_app.dimension_manager.clear_cache()
+                flask_app.metric_manager.clear_cache()
+                flask_app.relation_manager.clear_cache()
+                flask_app.insight_manager.clear_cache()
+                flask_app.markdown_manager.clear_cache()
+                flask_app.chart_manager.clear_cache()
+                flask_app.table_manager.clear_cache()
+                flask_app.dashboard_manager.clear_cache()
+                flask_app.csv_script_model_manager.clear_cache()
+                flask_app.local_merge_model_manager.clear_cache()
+                flask_app.input_manager.clear_cache()
+                flask_app._cached_defaults = None
 
-            # Trigger project reload via hot reload server if available
-            if flask_app.hot_reload_server:
-                # Reload the project
-                flask_app.hot_reload_server.on_project_change(one_shot=False)
-                # Notify clients to refresh
-                flask_app.hot_reload_server.socketio.emit("reload")
+                # Trigger project reload via hot reload server if available
+                if hot_reload_server:
+                    # Reload the project
+                    hot_reload_server.on_project_change(one_shot=False)
+                    # Notify clients to refresh
+                    hot_reload_server.socketio.emit("reload")
+            finally:
+                if hot_reload_server:
+                    hot_reload_server.resume_file_watcher()
 
             return jsonify(
                 {
@@ -546,6 +579,46 @@ def register_commit_views(app, flask_app, output_dir):
             )
         except Exception as e:
             Logger.instance().error(f"Error committing changes: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/commit/discard/", methods=["POST"])
+    def discard_changes():
+        """Drop every cached draft without writing YAML (the Discard rollback, Q14)."""
+        try:
+            managers = [
+                flask_app.source_manager,
+                flask_app.model_manager,
+                flask_app.dimension_manager,
+                flask_app.metric_manager,
+                flask_app.relation_manager,
+                flask_app.insight_manager,
+                flask_app.markdown_manager,
+                flask_app.chart_manager,
+                flask_app.table_manager,
+                flask_app.dashboard_manager,
+                flask_app.csv_script_model_manager,
+                flask_app.local_merge_model_manager,
+                flask_app.input_manager,
+            ]
+            discarded_count = 0
+            for manager in managers:
+                for name in list(manager.cached_objects.keys()):
+                    status = manager.get_status(name)
+                    if status and status != ObjectStatus.PUBLISHED:
+                        discarded_count += 1
+                manager.clear_cache()
+            if flask_app._cached_defaults is not None:
+                discarded_count += 1
+                flask_app._cached_defaults = None
+
+            return jsonify(
+                {
+                    "message": "Changes discarded",
+                    "discarded_count": discarded_count,
+                }
+            )
+        except Exception as e:
+            Logger.instance().error(f"Error discarding changes: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
 

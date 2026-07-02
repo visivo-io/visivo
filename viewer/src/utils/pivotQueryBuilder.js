@@ -13,8 +13,10 @@ import { resolveFieldRef, resolveValueExpression, extractAggAndColumn, parseColu
  */
 export function buildPivotQuery({ columns, rows, values }, propsMapping, tableName) {
   const resolvedCols = columns.map(col => resolveFieldRef(col, propsMapping));
-  const resolvedRows = rows.map(row => resolveFieldRef(row, propsMapping));
+  const resolvedRows = (rows || []).map(row => resolveFieldRef(row, propsMapping));
 
+  // `extractAggAndColumn` returns the column ALREADY quoted (e.g. `"revenue_hash"`).
+  const valueColumns = [];
   const usingParts = values.map(value => {
     const resolvedValue = resolveValueExpression(value, propsMapping);
     const aggParts = extractAggAndColumn(resolvedValue);
@@ -25,13 +27,27 @@ export function buildPivotQuery({ columns, rows, values }, propsMapping, tableNa
       );
     }
 
+    // Track the underlying value column (excluding `count(*)`) for the no-rows
+    // inner SELECT below.
+    if (aggParts.column && aggParts.column !== '*') valueColumns.push(aggParts.column);
     return `${aggParts.aggFunc}(${aggParts.column})`;
   });
 
-  const onClause = resolvedCols.map(c => `"${c}"`).join(', ');
-  const groupByClause = resolvedRows.map(r => `"${r}"`).join(', ');
+  const quotedCols = resolvedCols.map(c => `"${c}"`);
+  const onClause = quotedCols.join(', ');
   const usingClause = usingParts.join(', ');
 
+  if (resolvedRows.length === 0) {
+    // No row grouping: restrict the inner SELECT to just the pivot columns + the
+    // aggregated value columns so DuckDB's implicit grouping collapses to a
+    // SINGLE aggregated row (a `SELECT *` would implicitly group by every other
+    // column, producing one row per distinct combination instead). No GROUP BY.
+    // `quotedCols` are quoted here; `valueColumns` are already quoted.
+    const innerCols = [...new Set([...quotedCols, ...valueColumns])].join(', ');
+    return `PIVOT (SELECT ${innerCols} FROM "${tableName}") ON ${onClause} USING ${usingClause}`;
+  }
+
+  const groupByClause = resolvedRows.map(r => `"${r}"`).join(', ');
   return `PIVOT (SELECT * FROM "${tableName}") ON ${onClause} USING ${usingClause} GROUP BY ${groupByClause}`;
 }
 

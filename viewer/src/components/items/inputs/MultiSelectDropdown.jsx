@@ -1,11 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaChevronDown, FaTimes, FaCheck } from 'react-icons/fa';
-import {
-  DropdownButton,
-  DropdownLabel,
-  DropdownMenu,
-  SearchInput,
-} from '../../styled/DropdownButton';
+import PortalDropdownMenu from './PortalDropdownMenu';
+import { DropdownButton, DropdownLabel, SearchInput } from '../../styled/DropdownButton';
 
 /**
  * MultiSelectDropdown - Multi-select input displayed as a dropdown with checkboxes.
@@ -29,6 +25,7 @@ const MultiSelectDropdown = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
   const searchInputRef = useRef(null);
 
   // Convert propSelectedValues to internal format for display
@@ -55,7 +52,11 @@ const MultiSelectDropdown = ({
 
   useEffect(() => {
     const handleClickOutside = event => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      // The menu is portalled to <body> (outside dropdownRef's subtree), so a
+      // click inside it must NOT close the dropdown — check the menu node too.
+      const inAnchor = dropdownRef.current && dropdownRef.current.contains(event.target);
+      const inMenu = menuRef.current && menuRef.current.contains(event.target);
+      if (!inAnchor && !inMenu) {
         setIsOpen(false);
         setHighlightedIndex(-1);
       }
@@ -198,7 +199,7 @@ const MultiSelectDropdown = ({
         </DropdownButton>
 
         {isOpen && (
-          <DropdownMenu>
+          <PortalDropdownMenu anchorRef={dropdownRef} menuRef={menuRef}>
             <div className="p-3 border-b border-gray-200">
               <SearchInput
                 ref={searchInputRef}
@@ -270,7 +271,7 @@ const MultiSelectDropdown = ({
             <div className="p-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 text-center">
               {selectedItems.length} of {options.length} selected
             </div>
-          </DropdownMenu>
+          </PortalDropdownMenu>
         )}
       </div>
     </div>

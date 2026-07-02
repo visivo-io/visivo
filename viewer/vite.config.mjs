@@ -15,6 +15,12 @@ export default defineConfig({
     proxy: {
       '/data': `http://127.0.0.1:${backendPort}`,
       '/api': `http://127.0.0.1:${backendPort}`,
+      // Socket.IO (hot-reload `project_changed` events, VIS-808) — websocket
+      // upgrade enabled so the dev server behaves like the Flask-served app.
+      '/socket.io': {
+        target: `http://127.0.0.1:${backendPort}`,
+        ws: true,
+      },
     },
   },
   build: {

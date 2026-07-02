@@ -50,3 +50,6 @@ visivo.spec
 
 .claude/worktrees/
 test-resulsts/
+
+# Playwright story QA screenshots (regenerated locally; not snapshot baselines)
+**/__screens__/

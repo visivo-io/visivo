@@ -20,10 +20,14 @@ import createBranchingSlice from './branchingStore';
 import createRunSlice from './runStore';
 import createDefaultsSlice from './defaultsStore';
 import createDashboardSlice from './dashboardStore';
+import createInlineCreateSlice from './inlineCreateStore';
 import createCsvScriptModelSlice from './csvScriptModelStore';
 import createLocalMergeModelSlice from './localMergeModelStore';
-import createExplorerNewSlice from './explorerNewStore';
+import createExplorerSlice from './explorerStore';
 import createModelJobsSlice from './modelJobsStore';
+import createWorkspaceSlice from './workspaceStore';
+import createWorkspaceErdLayoutSlice from './workspaceErdLayoutStore';
+import createLibraryPrefsSlice from './libraryPrefsStore';
 
 // Re-export ObjectStatus for convenience
 export { ObjectStatus };
@@ -48,15 +52,47 @@ const useStore = create(
     ...createRunSlice(...a),
     ...createDefaultsSlice(...a),
     ...createDashboardSlice(...a),
+    ...createInlineCreateSlice(...a),
     ...createCsvScriptModelSlice(...a),
     ...createLocalMergeModelSlice(...a),
-    ...createExplorerNewSlice(...a),
+    ...createExplorerSlice(...a),
     ...createModelJobsSlice(...a),
-    ...persist(createCommonSlice, {
-      name: 'common-storage',
-      partialize: state => ({ scrollPositions: state.scrollPositions }),
-    })(...a),
+    ...createWorkspaceSlice(...a),
+    // Session-only ERD layout (dragged node positions + pill waypoints), kept
+    // OUTSIDE persist() — ephemeral view state, not config.
+    ...createWorkspaceErdLayoutSlice(...a),
+    // Persisted slices — Zustand 5's `persist` middleware can only be applied
+    // once per store API (calling it twice at the same level silently breaks
+    // the second). We compose every persisted slice into a single `persist`
+    // call and partialize-select the keys each slice owns. The storage key
+    // stays `common-storage` so existing users' persisted `scrollPositions`
+    // entries continue to hydrate cleanly.
+    ...persist(
+      (set, get, api) => ({
+        ...createCommonSlice(set, get, api),
+        ...createLibraryPrefsSlice(set, get, api),
+      }),
+      {
+        name: 'common-storage',
+        partialize: state => ({
+          scrollPositions: state.scrollPositions,
+          libraryCollapsedSections: state.libraryCollapsedSections,
+          libraryCollapsedSubsections: state.libraryCollapsedSubsections,
+        }),
+      }
+    )(...a),
   }))
 );
+
+// Expose the store on `window` outside production so end-to-end tests
+// (Playwright) can read live state — e.g. the workspace selection and draft
+// dashboard levels — without coupling assertions to DOM internals. Guarded so
+// production builds never attach a debug handle.
+if (
+  typeof window !== 'undefined' &&
+  !(typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production')
+) {
+  window.useStore = useStore;
+}
 
 export default useStore;

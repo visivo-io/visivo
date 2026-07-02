@@ -7,6 +7,7 @@ from visivo.models.insight import Insight
 from visivo.jobs.filtered_runner import FilteredRunner
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
+from visivo.query.relation_graph import JoinPathError, join_error_to_structured_fields
 from visivo.server.managers.preview_run_manager import RunStatus
 
 MANAGER_TO_PROJECT_FIELD = [
@@ -66,7 +67,10 @@ def _inject_cached_objects(flask_app, preview_project):
         setattr(preview_project, project_field, _merge_objects_into_list(obj_list, new_objects))
 
 
-CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "relations", "insights"}
+# Relations are deliberately NOT a context-object type: they are never
+# previewed unsaved — the inline join builder (VIS-1007) saves the relation to
+# the draft cache and the preview re-runs against it like any other DAG run.
+CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "insights"}
 
 
 def _get_type_adapter(field_name):
@@ -89,10 +93,6 @@ def _get_type_adapter(field_name):
         from visivo.models.inputs.fields import InputField
 
         return TypeAdapter(InputField)
-    elif field_name == "relations":
-        from visivo.models.relation import Relation
-
-        return TypeAdapter(Relation)
     elif field_name == "insights":
         return TypeAdapter(Insight)
     return None
@@ -140,6 +140,38 @@ def _assert_insights_present(project, insight_names):
             f"Preview requested for insights not present in project: {missing}. "
             f"Available: {sorted(project_insight_names)}"
         )
+
+
+def _join_error_message(error_details):
+    """Human-readable error string for a typed join failure.
+
+    The viewer renders the inline card from ``error_details``; this string is
+    the fallback ``error`` (shown if the card can't render, and logged) so a
+    plain-text reader still understands what failed.
+    """
+    models = error_details.get("error_models") or []
+    pair = " and ".join(models) if models else "the selected models"
+    if error_details.get("error_type") == "ambiguous_relation":
+        return f"Multiple join paths exist between {pair}. Pick which relation to use."
+    return f"No relation connects {pair}. Define a relation between them to continue."
+
+
+def _find_join_error_details(runner):
+    """Return the structured ``error_details`` (``error_type`` +
+    ``error_models``) from the first failed job result that carries them.
+
+    ``run_insight_job`` attaches these for ``JoinPathError`` failures (missing /
+    ambiguous relations). When present we surface them on the run status so the
+    viewer can render the inline join-fix card instead of a dead-end error
+    block (VIS-1007). Returns ``None`` when no failed job carried structured
+    join metadata.
+    """
+    failed_results = getattr(runner, "failed_job_results", None) or []
+    for result in failed_results:
+        details = getattr(result, "error_details", None)
+        if details and details.get("error_type"):
+            return details
+    return None
 
 
 def _find_runner_error_for_insight(runner, insight_name):
@@ -220,8 +252,10 @@ def execute_preview_job(
         output_dir: Output directory for files
         run_manager: PreviewRunManager instance
         context_objects: Optional dict of {type: [configs]} overrides (models, insights,
-            sources, inputs, metrics, dimensions, relations). Bodies for any insights
-            in insight_names that are not already published should be sent here.
+            inputs, metrics, dimensions). Bodies for any insights in insight_names
+            that are not already published should be sent here. Relations are not
+            accepted — they save to the draft cache and flow in via the cached
+            overlay like any other DAG run.
 
     Returns:
         None (updates run status via run_manager)
@@ -280,6 +314,21 @@ def execute_preview_job(
 
         runner.run()
 
+        # A missing/ambiguous relation surfaces as a soft-failed job carrying
+        # structured ``error_details``. Fail the run with those typed fields so
+        # the viewer can pop the inline join builder (VIS-1007) instead of
+        # falling through to the generic "insight file not found" error.
+        join_error_details = _find_join_error_details(runner)
+        if join_error_details:
+            run_manager.update_status(
+                job_id,
+                RunStatus.FAILED,
+                error=_join_error_message(join_error_details),
+                error_details=join_error_details,
+                progress_message="Missing relation",
+            )
+            return
+
         run_manager.update_status(
             job_id,
             RunStatus.RUNNING,
@@ -305,6 +354,26 @@ def execute_preview_job(
         run_manager.update_status(
             job_id, RunStatus.FAILED, error=error_msg, progress_message="Validation failed"
         )
+    except JoinPathError as e:
+        # Some build paths raise the join error synchronously (no soft-failure
+        # capture). Type it the same way as the soft-failed path so the viewer
+        # gets one consistent contract.
+        details = join_error_to_structured_fields(e)
+        if details:
+            run_manager.update_status(
+                job_id,
+                RunStatus.FAILED,
+                error=_join_error_message(details),
+                error_details=details,
+                progress_message="Missing relation",
+            )
+        else:
+            run_manager.update_status(
+                job_id,
+                RunStatus.FAILED,
+                error=f"Preview execution failed: {str(e)}",
+                progress_message="Execution failed",
+            )
     except Exception as e:
         error_msg = f"Preview execution failed: {str(e)}"
         run_manager.update_status(

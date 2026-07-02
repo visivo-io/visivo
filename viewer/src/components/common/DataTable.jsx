@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDataTableColumns } from '../../hooks/useDataTableColumns.jsx';
 import { useAdaptiveColumnSizing } from '../../hooks/useAdaptiveColumnSizing';
 import ColumnVisibilityPicker from './ColumnVisibilityPicker';
+import Select from './Select';
 import { PiCaretLeft, PiCaretRight, PiSpinner } from 'react-icons/pi';
 
 const ROW_HEIGHT = 36;
@@ -149,10 +150,10 @@ const DataTable = ({
   if (isLoading) {
     return (
       <div
-        className="flex flex-col items-center justify-center h-full w-full max-w-full border border-secondary-200 rounded overflow-hidden bg-white"
+        className="flex flex-col items-center justify-center h-full w-full max-w-full border border-secondary-200 rounded-lg overflow-hidden bg-white shadow-sm"
         style={{ height }}
       >
-        <PiSpinner className="animate-spin text-secondary-400 mb-2" size={24} />
+        <PiSpinner className="animate-spin text-primary-400 mb-2" size={24} />
         <span className="text-sm text-secondary-500">Loading data...</span>
       </div>
     );
@@ -162,7 +163,7 @@ const DataTable = ({
   if (!columns.length || !rows.length) {
     return (
       <div
-        className="flex flex-col items-center justify-center h-full w-full max-w-full border border-secondary-200 rounded overflow-hidden bg-white"
+        className="flex flex-col items-center justify-center h-full w-full max-w-full border border-secondary-200 rounded-lg overflow-hidden bg-white shadow-sm"
         style={{ height }}
       >
         <span className="text-sm text-secondary-400">No data available</span>
@@ -181,7 +182,7 @@ const DataTable = ({
     // horizontally inside this container instead of being clipped by the
     // parent item div's overflow:hidden. See B15.
     <div
-      className="flex flex-col w-full max-w-full border border-secondary-200 rounded overflow-hidden bg-white"
+      className="flex flex-col w-full max-w-full border border-secondary-200 rounded-lg overflow-hidden bg-white shadow-sm"
       style={{ height }}
     >
       {/* Query progress indicator */}
@@ -198,9 +199,9 @@ const DataTable = ({
       <div ref={parentRef} className="flex-1 min-w-0 overflow-auto">
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-secondary-100 border-b border-secondary-200">
+          <div className="sticky top-0 z-10 bg-secondary-100 border-b border-secondary-200 shadow-sm">
             {headerBanner && (
-              <div className="border-b border-secondary-200 bg-secondary-50 px-3 py-1.5">
+              <div className="border-b border-primary-100 bg-primary-50 px-3 py-2">
                 {headerBanner}
               </div>
             )}
@@ -220,7 +221,7 @@ const DataTable = ({
                       return (
                         <div
                           key={header.id}
-                          className={`border-r border-secondary-200 last:border-r-0 ${isPivotRow ? 'bg-secondary-200' : 'bg-secondary-100'}`}
+                          className={`border-r border-secondary-200 last:border-r-0 ${isPivotRow ? 'bg-primary-50' : 'bg-secondary-100'}`}
                           style={{ width: header.getSize(), ...stickyStyle }}
                         />
                       );
@@ -235,7 +236,7 @@ const DataTable = ({
 
                     let headerClass = 'border-r border-secondary-200 last:border-r-0 relative';
                     if (isPivotRow) {
-                      headerClass += ' bg-secondary-200 font-semibold';
+                      headerClass += ' bg-primary-50 font-semibold text-primary-700';
                     } else if (isGroupHeader) {
                       headerClass += ' bg-secondary-100 border-b border-secondary-200';
                     }
@@ -254,8 +255,8 @@ const DataTable = ({
                             aria-orientation="vertical"
                             onMouseDown={header.getResizeHandler()}
                             onTouchStart={header.getResizeHandler()}
-                            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none
-                              ${header.column.getIsResizing() ? 'bg-primary-400' : 'hover:bg-secondary-300'}`}
+                            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none transition-colors
+                              ${header.column.getIsResizing() ? 'bg-primary-500' : 'hover:bg-primary-300'}`}
                           />
                         )}
                       </div>
@@ -275,10 +276,13 @@ const DataTable = ({
           >
             {virtualRows.map(virtualRow => {
               const row = tableRows[virtualRow.index];
+              const isOddRow = virtualRow.index % 2 === 1;
               return (
                 <div
                   key={row.id}
-                  className="flex border-b border-secondary-100 hover:bg-secondary-50 transition-colors"
+                  className={`flex border-b border-secondary-100 transition-colors hover:bg-primary-50 ${
+                    isOddRow ? 'bg-secondary-50' : 'bg-white'
+                  }`}
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -307,7 +311,7 @@ const DataTable = ({
 
                     let cellClass = 'border-r border-secondary-100 last:border-r-0 overflow-hidden';
                     if (isPivotRow) {
-                      cellClass += ' bg-secondary-100 font-semibold';
+                      cellClass += ' bg-primary-50 font-semibold text-primary-800';
                     }
                     if (isMerged) {
                       cellClass += ' border-t-0';
@@ -343,24 +347,25 @@ const DataTable = ({
           {/* Page size selector */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-secondary-500">Rows:</span>
-            <select
-              className="text-xs border border-secondary-200 rounded px-1.5 py-0.5 bg-white text-secondary-700"
+            <Select
+              data-testid="datatable-page-size"
+              aria-label="Rows per page"
+              size="sm"
+              className="min-w-[90px]"
               value={pageSize}
-              onChange={e => onPageSizeChange?.(Number(e.target.value))}
-            >
-              {pageSizeOptions.map(opt => (
-                <option key={opt} value={opt}>
-                  {opt.toLocaleString()}
-                </option>
-              ))}
-            </select>
+              options={pageSizeOptions.map(opt => ({
+                value: opt,
+                label: opt.toLocaleString(),
+              }))}
+              onChange={v => onPageSizeChange?.(Number(v))}
+            />
           </div>
 
           {/* Page navigation */}
           {pageCount > 1 && (
             <div className="flex items-center gap-1">
               <button
-                className="p-1 rounded text-secondary-500 hover:text-secondary-700 hover:bg-secondary-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md text-secondary-500 hover:text-primary-600 hover:bg-primary-50 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-secondary-500 disabled:hover:bg-transparent transition-colors"
                 onClick={handlePrevPage}
                 disabled={page === 0}
                 aria-label="Previous page"
@@ -371,7 +376,7 @@ const DataTable = ({
                 {page + 1} / {pageCount}
               </span>
               <button
-                className="p-1 rounded text-secondary-500 hover:text-secondary-700 hover:bg-secondary-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md text-secondary-500 hover:text-primary-600 hover:bg-primary-50 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-secondary-500 disabled:hover:bg-transparent transition-colors"
                 onClick={handleNextPage}
                 disabled={page >= pageCount - 1}
                 aria-label="Next page"

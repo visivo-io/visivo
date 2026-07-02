@@ -204,8 +204,9 @@ class MultiSelectInput(Input):
             and isinstance(self.display.default.values, list)
             and isinstance(self.options, list)
         ):
+            option_strings = [str(opt) for opt in self.options]
             for value in self.display.default.values:
-                if value not in self.options:
+                if str(value) not in option_strings:
                     raise ValueError(
                         f"Input '{self.name}' default value '{value}' not found in options.\n"
                         f"Available options: {', '.join(str(opt) for opt in self.options)}"

@@ -18,6 +18,11 @@ export const usePreviewJob = () => {
   const [progressMessage, setProgressMessage] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  // Structured error metadata from the run-status payload (VIS-1007). For a
+  // missing/ambiguous relation failure the backend attaches
+  // { error_type, error_models } so the viewer can render the inline join-fix
+  // card instead of a dead-end error block. Null for ordinary failures.
+  const [errorDetails, setErrorDetails] = useState(null);
   const pollingIntervalRef = useRef(null);
   const currentRunIdRef = useRef(null);
 
@@ -30,6 +35,7 @@ export const usePreviewJob = () => {
   const startRun = useCallback(async (body = {}) => {
     try {
       setError(null);
+      setErrorDetails(null);
       setStatus(null);
       setProgress(0);
       setProgressMessage('');
@@ -91,12 +97,16 @@ export const usePreviewJob = () => {
 
       if (runData.status === 'failed') {
         setError(runData.error || 'Run failed');
+        // error_details carries { error_type, error_models } for typed
+        // join failures (VIS-1007); null/undefined for ordinary errors.
+        setErrorDetails(runData.error_details || null);
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
         }
       } else if (runData.status === 'completed') {
         setError(null);
+        setErrorDetails(null);
         if (runData.result) {
           setResult(runData.result);
         }
@@ -155,6 +165,7 @@ export const usePreviewJob = () => {
     setProgressMessage('');
     setResult(null);
     setError(null);
+    setErrorDetails(null);
   }, []);
 
   return {
@@ -165,6 +176,7 @@ export const usePreviewJob = () => {
     progressMessage,
     result,
     error,
+    errorDetails,
     // Computed
     isRunning: status === 'queued' || status === 'running',
     isCompleted: status === 'completed',

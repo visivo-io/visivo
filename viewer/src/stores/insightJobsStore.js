@@ -3,11 +3,8 @@
  *
  * Manages insight job runtime data for visualization.
  */
-const createInsightJobsSlice = (set, get) => ({
+const createInsightJobsSlice = set => ({
   insightJobs: {},
-  db: null,
-
-  setDB: db => set({ db }),
 
   setInsightJobs: newInsightJobs => {
     set(state => {

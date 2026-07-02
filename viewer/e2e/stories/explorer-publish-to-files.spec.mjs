@@ -105,19 +105,19 @@ test.afterAll(async () => {
  *  pass { allowReload: false } to disable the workaround (that's what
  *  US-PUBLISH-6 does). Returns true if a publish actually ran. */
 async function runPublishFlow(page, { allowReload = true } = {}) {
-  const topNavPublish = page.getByRole('button', { name: /^Publish$/ });
-  let visible = await topNavPublish.isVisible({ timeout: 3000 }).catch(() => false);
+  const topNavCommit = page.getByRole('button', { name: /^Commit$/ });
+  let visible = await topNavCommit.isVisible({ timeout: 3000 }).catch(() => false);
   if (!visible && allowReload) {
     // Fallback workaround for the Phase 3 bug: force a re-check of
     // publish status by reloading the page.
     await page.reload();
     await page.waitForLoadState('networkidle');
-    visible = await topNavPublish.isVisible({ timeout: 5000 }).catch(() => false);
+    visible = await topNavCommit.isVisible({ timeout: 5000 }).catch(() => false);
   }
   if (!visible) return false;
 
-  await topNavPublish.click();
-  const confirm = page.getByRole('button', { name: /^Publish Changes$/ });
+  await topNavCommit.click();
+  const confirm = page.getByRole('button', { name: /^Commit Changes$/ });
   await expect(confirm).toBeVisible({ timeout: 5000 });
   await expect(confirm).not.toBeDisabled({ timeout: 5000 });
   await confirm.click();
@@ -429,9 +429,9 @@ test.describe('Explorer publish-to-files', () => {
     // the interesting assertion is the transition triggered by the save.
     await saveToProject(page);
 
-    const topNavPublish = page.getByRole('button', { name: /^Publish$/ });
+    const topNavCommit = page.getByRole('button', { name: /^Commit$/ });
     await expect(
-      topNavPublish,
+      topNavCommit,
       'Publish button must become visible immediately after save — no reload'
     ).toBeVisible({ timeout: 5000 });
 

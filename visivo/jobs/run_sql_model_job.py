@@ -18,6 +18,7 @@ from visivo.models.insight import Insight
 from visivo.models.models.model import Model
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.schema_aggregator import SchemaAggregator
+from visivo.query.model_schema_aggregator import ModelSchemaAggregator
 from visivo.query.source_schema_cache import SourceSchemaCache
 from visivo.query.sql_table_extractor import (
     extract_table_references,
@@ -169,8 +170,19 @@ def _build_and_write_schema(
     schema_directory = f"{run_output_dir}/schemas/{sql_model.name}/"
     os.makedirs(schema_directory, exist_ok=True)
     schema_file = f"{schema_directory}schema.json"
+
+    # Persist the richer envelope (legacy {name_hash: {col: type}} block preserved
+    # first, for the field resolver) while serializing the resolved output schema.
+    column_map = query_result_schema.get(model_hash, {})
+    payload = ModelSchemaAggregator.build_envelope(
+        name_hash=model_hash,
+        model_name=sql_model.name,
+        model_type="sql",
+        columns=column_map,
+        source_dialect=sqlglot_dialect,
+    )
     with open(schema_file, "w") as fp:
-        json.dump(query_result_schema, fp, indent=2, default=str)
+        json.dump(payload, fp, indent=2, default=str)
 
     return query_result_schema
 

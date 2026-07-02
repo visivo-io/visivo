@@ -39,3 +39,20 @@ export const commitChanges = async () => {
   const errorData = await response.json().catch(() => ({}));
   throw new Error(errorData.error || 'Failed to commit changes');
 };
+
+/**
+ * Discard all cached changes without writing YAML (the v1 rollback, Q14)
+ */
+export const discardChanges = async () => {
+  const response = await apiFetch(getUrl('commitDiscard'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  if (response.status === 200) {
+    return await response.json();
+  }
+  const errorData = await response.json().catch(() => ({}));
+  throw new Error(errorData.error || 'Failed to discard changes');
+};

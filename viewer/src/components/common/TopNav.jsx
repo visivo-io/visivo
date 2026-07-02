@@ -7,7 +7,7 @@ import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
-import { PiMagnifyingGlass, PiTreeStructure, PiPencil } from 'react-icons/pi';
+import { PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
 import { useMediaQuery, useTheme } from '@mui/material';
 
@@ -29,11 +29,13 @@ const LOCAL_STAGE = {
   isDefault: true,
 };
 
-// Intra-project tools — identical icons/order to the historic local viewer.
+// Intra-project tools. The Workspace subsumes the legacy Editor and Lineage
+// surfaces (both `/editor` and `/lineage` now redirect into `/workspace`), so
+// the switcher is three: build (Workspace), explore (Explorer), view
+// (Dashboards).
 const DEFAULT_TOOLS = [
   { id: 'explorer', label: 'Explorer', to: '/explorer', icon: PiMagnifyingGlass },
-  { id: 'lineage', label: 'Lineage', to: '/lineage', icon: PiTreeStructure },
-  { id: 'editor', label: 'Editor', to: '/editor', icon: PiPencil },
+  { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate },
 ];
 
@@ -311,7 +313,7 @@ function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
 }
 
 /* ------------------------------------------------------- commit / deploy */
-function CommitButton({ onClick, compact }) {
+function CommitButton({ onClick, compact, count = 0 }) {
   const [h, setH] = React.useState(false);
   return (
     <button
@@ -326,6 +328,16 @@ function CommitButton({ onClick, compact }) {
       }}
     >
       <VscGitCommit size={16} /> {!compact && 'Commit'}
+      {count > 0 && (
+        <span
+          style={{
+            background: 'rgba(255,255,255,.22)', borderRadius: 99, padding: '0 6px',
+            fontSize: 11, fontWeight: 700, lineHeight: '17px', fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -429,8 +441,11 @@ const TopNav = ({
   versions,
   currentVersion,
   onVersionChange = () => {},
-  // commit / deploy state machine — only one shows at a time
+  // commit / deploy — both surface only when there are uncommitted changes
+  // (nothing to commit or deploy on a clean project, so the slot is empty).
   hasUncommittedChanges,
+  // count of pending (uncommitted) changes — shown as a badge on Commit.
+  commitCount = 0,
   onCommitClick,
   onDeployClick,
   // cloud-only: Edit/Branch entry node, rendered in the action cluster at
@@ -473,10 +488,14 @@ const TopNav = ({
   const showVersions = showProject && Array.isArray(versions) && versions.length > 0 && currentVersion;
   const inHistory = showVersions && !currentVersion.live;
 
+  // Both Commit and Deploy only make sense when there's something to act on,
+  // so the action slot is empty on a clean project and shows Commit (+ Deploy
+  // where deploy exists) once there are uncommitted changes.
   const action = hasUncommittedChanges ? (
-    <CommitButton onClick={onCommitClick} compact={narrow} />
-  ) : showDeploy ? (
-    <DeployButton onClick={onDeployClick} compact={narrow} />
+    <>
+      <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
+      {showDeploy && <DeployButton onClick={onDeployClick} compact={narrow} />}
+    </>
   ) : null;
 
   const banner = inHistory && (

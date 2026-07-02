@@ -120,6 +120,18 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
         else:
             message = repr(e)
 
+        # Preserve structured fields for join-path failures so the preview
+        # run-status payload can drive the inline "draw the join" card
+        # (VIS-1007) instead of dead-ending on a generic red error block.
+        from visivo.query.relation_graph import (
+            JoinPathError,
+            join_error_to_structured_fields,
+        )
+
+        error_details = None
+        if isinstance(e, JoinPathError):
+            error_details = join_error_to_structured_fields(e)
+
         # Log failed query to file for debugging
         query_file = None
         if insight_query_info and insight_query_info.pre_query:
@@ -147,7 +159,12 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             full_path=None,
             error_msg=error_display,
         )
-        return JobResult(item=insight, success=False, message=failure_message)
+        return JobResult(
+            item=insight,
+            success=False,
+            message=failure_message,
+            error_details=error_details,
+        )
 
 
 def _get_source(insight, dag, output_dir):

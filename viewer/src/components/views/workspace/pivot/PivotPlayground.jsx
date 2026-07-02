@@ -1,0 +1,264 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useStore from '../../../../stores/store';
+import { getTypeColors } from '../../common/objectTypeConfigs';
+import { useObjectCanvasDirty } from '../ObjectCanvasFrame';
+import PivotFieldList from './PivotFieldList';
+import PivotShelf from './PivotShelf';
+import PivotResultPanel from './PivotResultPanel';
+import PivotSaveModal from './PivotSaveModal';
+import usePivotPlaygroundFields from './usePivotPlaygroundFields';
+import {
+  seedDraftFromRecord,
+  serializeDraft,
+  draftToPivotConfig,
+  makeValueChip,
+} from './pivotDraft';
+
+/**
+ * PivotPlayground — VIS-1008, the editable `build` lens of the table object
+ * canvas.
+ *
+ * A 3-pane drag-to-shelf pivot builder:
+ *   - LEFT:   PivotFieldList — the table's source fields as draggable pills.
+ *   - MIDDLE: three PivotShelves (Columns / Rows / Values) — the drop targets.
+ *   - RIGHT:  PivotResultPanel — the live result, re-run on every draft change.
+ *
+ * It owns a LOCAL structured draft seeded from the table record's existing pivot
+ * config, mirrors it into the workspace store (`setWorkspacePivotDraft`) so the
+ * shared dnd-kit router + a Save can reach it, re-runs the result on every
+ * change, reports dirtiness to the frame, and commits the draft back through the
+ * table store's `saveTable` (via `commitWorkspacePivotDraft`) on an explicit
+ * Save.
+ *
+ * The field pills + shelves register with the shell's SINGLE shared dnd-kit
+ * context (WorkspaceDndContext); dnd-kit contexts don't compose, so the
+ * playground can't host its own. The shelves' droppable data carries an
+ * `onDropField` callback the router invokes — the playground appends the dropped
+ * field to that shelf's local draft.
+ */
+
+const PivotPlayground = ({ activeObject, projectId, record }) => {
+  const name = activeObject?.name || record?.name || null;
+  const colors = getTypeColors('table');
+
+  const { setDirty } = useObjectCanvasDirty();
+  const setWorkspacePivotDraft = useStore(s => s.setWorkspacePivotDraft);
+  const resetWorkspacePivotDraft = useStore(s => s.resetWorkspacePivotDraft);
+  const commitWorkspacePivotDraft = useStore(s => s.commitWorkspacePivotDraft);
+  const commitWorkspacePivotDraftAsNew = useStore(s => s.commitWorkspacePivotDraftAsNew);
+
+  const { fields, sourceName, isLoading: fieldsLoading } = usePivotPlaygroundFields(
+    projectId,
+    record
+  );
+
+  // The SAVED ref-string config (for the dirty comparison) — what's on disk.
+  const savedSerialized = useMemo(() => serializeDraft(seedDraftFromRecord(record)), [record]);
+
+  // Local structured chip draft. Seeded from the record; re-seeded when the
+  // selected table changes (the frame reuses this body across sibling
+  // selections, so without this the previous table's draft would leak).
+  const [draft, setDraft] = useState(() => seedDraftFromRecord(record));
+  const [saving, setSaving] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  const seededNameRef = useRef(null);
+  useEffect(() => {
+    if (seededNameRef.current !== name) {
+      seededNameRef.current = name;
+      setDraft(seedDraftFromRecord(record));
+    }
+  }, [name, record]);
+
+  // Mirror the draft into the workspace store so the dnd router + Save can reach
+  // it, and clear it when this lens unmounts.
+  useEffect(() => {
+    if (typeof setWorkspacePivotDraft === 'function') {
+      setWorkspacePivotDraft({ tableName: name, ...serializeDraft(draft) });
+    }
+    return () => {
+      if (typeof resetWorkspacePivotDraft === 'function') resetWorkspacePivotDraft();
+    };
+    // Re-run when the draft or table changes; serializeDraft is pure.
+  }, [draft, name, setWorkspacePivotDraft, resetWorkspacePivotDraft]);
+
+  // Dirty === the draft's serialised refs differ from the saved config.
+  const currentSerialized = useMemo(() => serializeDraft(draft), [draft]);
+  const isDirty = useMemo(
+    () => JSON.stringify(currentSerialized) !== JSON.stringify(savedSerialized),
+    [currentSerialized, savedSerialized]
+  );
+  useEffect(() => {
+    setDirty(isDirty);
+  }, [isDirty, setDirty]);
+
+  // ── Draft mutators (invoked by the shelf droppables' onDropField + chip UI) ──
+  const handleDropField = useCallback((shelf, field) => {
+    if (!field) return;
+    setDraft(prev => {
+      const chip =
+        shelf === 'values'
+          ? makeValueChip({ field: field.name, source: field.source, label: field.label })
+          : { field: field.name, source: field.source, label: field.label };
+      return { ...prev, [shelf]: [...(prev[shelf] || []), chip] };
+    });
+  }, []);
+
+  const handleRemoveChip = useCallback((shelf, index) => {
+    setDraft(prev => ({
+      ...prev,
+      [shelf]: (prev[shelf] || []).filter((_, i) => i !== index),
+    }));
+  }, []);
+
+  const handleAggChange = useCallback((index, agg) => {
+    setDraft(prev => ({
+      ...prev,
+      values: (prev.values || []).map((c, i) => (i === index ? { ...c, agg } : c)),
+    }));
+  }, []);
+
+  // Save opens a "replace or add new" choice rather than silently committing.
+  const handleSaveClick = useCallback(() => {
+    if (!isDirty) return;
+    setSaveError(null);
+    setSaveModalOpen(true);
+  }, [isDirty]);
+
+  // Push the latest local draft into the store mirror so whichever commit action
+  // the modal picks operates on exactly what's on screen.
+  const syncDraftToStore = useCallback(() => {
+    if (typeof setWorkspacePivotDraft === 'function') {
+      setWorkspacePivotDraft({ tableName: name, ...serializeDraft(draft) });
+    }
+  }, [setWorkspacePivotDraft, name, draft]);
+
+  // Both commit paths resolve to `{ success, error? }` — saveTable never
+  // throws — so a failed save must be read off the result: keep the modal open
+  // and surface the error instead of silently closing over a failure.
+  const handleReplace = useCallback(async () => {
+    if (typeof commitWorkspacePivotDraft !== 'function') return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      syncDraftToStore();
+      const result = await commitWorkspacePivotDraft();
+      if (result?.success) {
+        setSaveModalOpen(false);
+      } else {
+        setSaveError(result?.error || 'Failed to save the pivot.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [commitWorkspacePivotDraft, syncDraftToStore]);
+
+  const handleAddNew = useCallback(async () => {
+    if (typeof commitWorkspacePivotDraftAsNew !== 'function') return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      syncDraftToStore();
+      const result = await commitWorkspacePivotDraftAsNew();
+      if (result?.success) {
+        setSaveModalOpen(false);
+      } else {
+        setSaveError(result?.error || 'Failed to save the pivot.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [commitWorkspacePivotDraftAsNew, syncDraftToStore]);
+
+  const pivotConfig = useMemo(() => draftToPivotConfig(draft), [draft]);
+
+  if (!name) {
+    return (
+      <div
+        data-testid="pivot-playground-empty"
+        className="flex flex-1 items-center justify-center bg-gray-50 p-8 text-center"
+      >
+        <span className="text-sm text-gray-500">No table selected.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-testid="pivot-playground"
+      className="flex flex-1 min-h-0 min-w-0 flex-col bg-white"
+    >
+      {/* Toolbar */}
+      <div
+        className={`flex items-center justify-between gap-2 border-b ${colors.border} ${colors.bg} px-4 py-2`}
+      >
+        <span className={`text-[11px] font-semibold uppercase tracking-wide ${colors.text}`}>
+          Pivot Builder
+        </span>
+        <button
+          type="button"
+          data-testid="pivot-playground-save"
+          disabled={!isDirty || saving}
+          onClick={handleSaveClick}
+          className={[
+            'rounded-md px-3 py-1 text-[12px] font-semibold transition-colors',
+            isDirty && !saving
+              ? 'bg-primary text-white hover:bg-primary-700'
+              : 'cursor-not-allowed bg-gray-100 text-gray-400',
+          ].join(' ')}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+
+      <PivotSaveModal
+        open={saveModalOpen}
+        tableName={name}
+        saving={saving}
+        error={saveError}
+        onReplace={handleReplace}
+        onAddNew={handleAddNew}
+        onCancel={() => setSaveModalOpen(false)}
+      />
+
+      {/* TOP — the three shelves in a single row, so the result below gets the
+          full width (more room to explore the table on laptop screens). */}
+      <div
+        data-testid="pivot-shelves"
+        className="flex shrink-0 gap-3 border-b border-gray-200 bg-gray-50 px-3 py-2"
+      >
+        <PivotShelf
+          shelf="columns"
+          chips={draft.columns}
+          onDropField={field => handleDropField('columns', field)}
+          onRemoveChip={index => handleRemoveChip('columns', index)}
+          className="flex-1 min-w-0"
+        />
+        <PivotShelf
+          shelf="rows"
+          chips={draft.rows}
+          onDropField={field => handleDropField('rows', field)}
+          onRemoveChip={index => handleRemoveChip('rows', index)}
+          className="flex-1 min-w-0"
+        />
+        <PivotShelf
+          shelf="values"
+          chips={draft.values}
+          onDropField={field => handleDropField('values', field)}
+          onRemoveChip={index => handleRemoveChip('values', index)}
+          onAggChange={handleAggChange}
+          className="flex-1 min-w-0"
+        />
+      </div>
+
+      {/* BELOW — field list (left) + the full-width live result. */}
+      <div className="flex flex-1 min-h-0 min-w-0">
+        <PivotFieldList fields={fields} isLoading={fieldsLoading} />
+        <PivotResultPanel config={pivotConfig} sourceName={sourceName} />
+      </div>
+    </div>
+  );
+};
+
+export default PivotPlayground;

@@ -1,5 +1,10 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePreviewData, useInsightPreviewData, useChartPreviewJob } from './usePreviewData';
+import {
+  usePreviewData,
+  useInsightPreviewData,
+  usePreviewInsightData,
+  useChartPreviewJob,
+} from './usePreviewData';
 import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
 import {
@@ -192,6 +197,23 @@ describe('usePreviewData', () => {
     expect(result.current.error).toBe('Query failed');
   });
 
+  test('passes through structured errorDetails from previewJob (VIS-1007)', () => {
+    usePreviewJob.mockReturnValue({
+      ...mockPreviewJobBase,
+      status: 'failed',
+      isFailed: true,
+      error: 'No relation connects orders and users.',
+      errorDetails: { error_type: 'missing_relation', error_models: ['orders', 'users'] },
+    });
+
+    const { result } = renderHook(() => usePreviewData('insights', { name: 'test' }));
+
+    expect(result.current.errorDetails).toEqual({
+      error_type: 'missing_relation',
+      error_models: ['orders', 'users'],
+    });
+  });
+
   test('resetPreview calls previewJob.resetRun', () => {
     const { result } = renderHook(() =>
       usePreviewData('insights', { name: 'test' })
@@ -202,6 +224,92 @@ describe('usePreviewData', () => {
     });
 
     expect(mockResetRun).toHaveBeenCalled();
+  });
+
+  test('after a successful run, an identical config does not re-trigger (hash gate)', async () => {
+    mockStartRun.mockResolvedValueOnce('run-1');
+    const config = { name: 'test', props: { x: '?{col1}' } };
+
+    const { result, rerender } = renderHook(
+      ({ cfg }) => usePreviewData('insights', cfg, { needsInitialPreview: true }),
+      { initialProps: { cfg: config } }
+    );
+
+    // Once startRun resolves, the last-preview hash is recorded and the same
+    // config hashes equal → no further run needed.
+    await waitFor(() => expect(result.current.needsPreviewRun).toBe(false));
+
+    rerender({ cfg: { ...config } });
+    expect(result.current.needsPreviewRun).toBe(false);
+    expect(mockStartRun).toHaveBeenCalledTimes(1);
+  });
+
+  test('re-runs when query props change relative to the LAST PREVIEWED config', async () => {
+    mockStartRun.mockResolvedValue('run');
+    const config1 = { name: 'test', props: { x: '?{col1}' } };
+    const config2 = { name: 'test', props: { x: '?{col2}' } };
+
+    const { result, rerender } = renderHook(
+      ({ cfg }) => usePreviewData('insights', cfg, { needsInitialPreview: true }),
+      { initialProps: { cfg: config1 } }
+    );
+    await waitFor(() => expect(result.current.needsPreviewRun).toBe(false));
+
+    // The second config diffs against the cached previewed config, not savedConfig.
+    queryPropsHaveChanged.mockReturnValue(true);
+    rerender({ cfg: config2 });
+
+    expect(queryPropsHaveChanged).toHaveBeenCalledWith(config2, config1);
+    await waitFor(() => expect(mockStartRun).toHaveBeenCalledTimes(2));
+    expect(mockStartRun).toHaveBeenLastCalledWith({
+      insight_names: ['test'],
+      context_objects: { insights: [config2] },
+    });
+  });
+
+  test('surfaces a startRun failure as error and stops loading', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    mockStartRun.mockRejectedValueOnce(new Error('server down'));
+
+    const { result } = renderHook(() =>
+      usePreviewData('insights', { name: 'test' }, { needsInitialPreview: true })
+    );
+
+    await waitFor(() => expect(result.current.error).toBe('server down'));
+    expect(result.current.isLoading).toBe(false);
+    // The failed hash is recorded so the same config doesn't retry in a loop.
+    expect(result.current.needsPreviewRun).toBe(false);
+    consoleSpy.mockRestore();
+  });
+
+  test('falls back to a generic message when the startRun failure has no message', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    mockStartRun.mockRejectedValueOnce({});
+
+    const { result } = renderHook(() =>
+      usePreviewData('insights', { name: 'test' }, { needsInitialPreview: true })
+    );
+
+    await waitFor(() => expect(result.current.error).toBe('Failed to start preview'));
+    consoleSpy.mockRestore();
+  });
+
+  test('resetPreview clears a previous error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    mockStartRun.mockRejectedValueOnce(new Error('boom'));
+
+    const { result } = renderHook(() =>
+      usePreviewData('insights', { name: 'test' }, { needsInitialPreview: true })
+    );
+    await waitFor(() => expect(result.current.error).toBe('boom'));
+
+    act(() => {
+      result.current.resetPreview();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(mockResetRun).toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 });
 
@@ -412,6 +520,97 @@ describe('useInsightPreviewData', () => {
 
     expect(mockStartRun).not.toHaveBeenCalled();
   });
+
+  describe('static-only patch path (no preview re-run)', () => {
+    const seedStores = (previewEntry = {}) => {
+      useStore.mockStoreState.insightJobs = {
+        // Present in main → no initial preview run fires.
+        'my-insight': { data: [{ x: 1 }] },
+        '__preview__my-insight': {
+          data: [{ x: 1 }],
+          type: 'scatter',
+          static_props: { mode: 'lines' },
+          ...previewEntry,
+        },
+      };
+    };
+
+    test('patches changed type AND static_props into the preview store entry', () => {
+      seedStores();
+      extractNonQueryProps.mockReturnValue({ mode: 'markers' });
+
+      renderHook(() =>
+        useInsightPreviewData(
+          { name: 'my-insight', props: { type: 'bar', mode: 'markers' } },
+          { projectId: 'proj' }
+        )
+      );
+
+      expect(mockStartRun).not.toHaveBeenCalled();
+      expect(useStore.mockStoreState.updateInsightJob).toHaveBeenCalledWith(
+        '__preview__my-insight',
+        { type: 'bar', static_props: { mode: 'markers' } }
+      );
+    });
+
+    test('patches only static_props when the type is unchanged', () => {
+      seedStores();
+      extractNonQueryProps.mockReturnValue({ mode: 'markers' });
+
+      renderHook(() =>
+        useInsightPreviewData(
+          { name: 'my-insight', props: { type: 'scatter', mode: 'markers' } },
+          { projectId: 'proj' }
+        )
+      );
+
+      expect(useStore.mockStoreState.updateInsightJob).toHaveBeenCalledWith(
+        '__preview__my-insight',
+        { static_props: { mode: 'markers' } }
+      );
+    });
+
+    test('does NOT patch when neither type nor static props changed', () => {
+      seedStores();
+      extractNonQueryProps.mockReturnValue({ mode: 'lines' });
+
+      renderHook(() =>
+        useInsightPreviewData(
+          { name: 'my-insight', props: { type: 'scatter', mode: 'lines' } },
+          { projectId: 'proj' }
+        )
+      );
+
+      expect(useStore.mockStoreState.updateInsightJob).not.toHaveBeenCalled();
+    });
+
+    test('does NOT patch when the preview entry has no data yet', () => {
+      useStore.mockStoreState.insightJobs = {
+        'my-insight': { data: [{ x: 1 }] },
+        '__preview__my-insight': { type: 'scatter', static_props: {} },
+      };
+      extractNonQueryProps.mockReturnValue({ mode: 'markers' });
+
+      renderHook(() =>
+        useInsightPreviewData(
+          { name: 'my-insight', props: { type: 'bar', mode: 'markers' } },
+          { projectId: 'proj' }
+        )
+      );
+
+      expect(useStore.mockStoreState.updateInsightJob).not.toHaveBeenCalled();
+    });
+
+    test('does NOT patch when the config has no props', () => {
+      seedStores();
+
+      renderHook(() =>
+        useInsightPreviewData({ name: 'my-insight' }, { projectId: 'proj' })
+      );
+
+      expect(useStore.mockStoreState.updateInsightJob).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('useChartPreviewJob — runHash gating', () => {
@@ -618,5 +817,221 @@ describe('useChartPreviewJob — runHash gating', () => {
 
     rerender({ req: buildRequest({ type: 'indicator', value: '?{MAX(x)}', mode: 'delta' }) });
     expect(useStore.mockStoreState.updateInsightJob).not.toHaveBeenCalled();
+  });
+
+  test('does not fire for a null request or an empty insight_names list', () => {
+    const { rerender } = renderHook(({ req }) => useChartPreviewJob(req, { projectId: 'p' }), {
+      initialProps: { req: null },
+    });
+    expect(mockStartRun).not.toHaveBeenCalled();
+
+    rerender({ req: { insight_names: [], context_objects: { insights: [] } } });
+    expect(mockStartRun).not.toHaveBeenCalled();
+  });
+
+  test('surfaces a failed startRun as error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    mockStartRun.mockRejectedValueOnce(new Error('kaboom'));
+
+    // A stable request object: a fresh object per render would re-trigger the
+    // fire effect (which clears the local error) on every render.
+    const req = buildRequest();
+    const { result } = renderHook(() => useChartPreviewJob(req, { projectId: 'p' }));
+
+    await waitFor(() => expect(result.current.error).toBe('kaboom'));
+    consoleSpy.mockRestore();
+  });
+
+  test('falls back to a generic message when the failure has no message', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    mockStartRun.mockRejectedValueOnce({});
+
+    const req = buildRequest();
+    const { result } = renderHook(() => useChartPreviewJob(req, { projectId: 'p' }));
+
+    await waitFor(() => expect(result.current.error).toBe('Failed to start preview'));
+    consoleSpy.mockRestore();
+  });
+
+  test('on completion, exposes the filesystem run_id and loads data under __preview__ keys', () => {
+    usePreviewJob.mockReturnValue(
+      makePreviewJob({
+        runId: 'job-1',
+        status: 'completed',
+        isCompleted: true,
+        result: { run_id: 'preview-42' },
+      })
+    );
+
+    const { result } = renderHook(() => useChartPreviewJob(buildRequest(), { projectId: 'p' }));
+
+    expect(result.current.previewRunId).toBe('preview-42');
+    expect(result.current.previewInsightKeys).toEqual(['__preview__ind']);
+    expect(useInsightsData).toHaveBeenCalledWith('p', ['ind'], 'preview-42', {
+      storeKeyPrefix: '__preview__',
+      cacheKey: 'job-1',
+    });
+  });
+
+  test('loads no insight names until the run completes', () => {
+    const { result } = renderHook(() => useChartPreviewJob(buildRequest(), { projectId: 'p' }));
+
+    expect(result.current.previewRunId).toBeNull();
+    expect(result.current.previewInsightKeys).toEqual([]);
+    expect(useInsightsData).toHaveBeenCalledWith('p', [], null, {
+      storeKeyPrefix: '__preview__',
+      cacheKey: null,
+    });
+  });
+
+  test('resetPreview resets the underlying job and clears the local error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    mockStartRun.mockRejectedValueOnce(new Error('kaboom'));
+
+    const req = buildRequest();
+    const { result } = renderHook(() => useChartPreviewJob(req, { projectId: 'p' }));
+    await waitFor(() => expect(result.current.error).toBe('kaboom'));
+
+    act(() => {
+      result.current.resetPreview();
+    });
+
+    expect(mockResetRun).toHaveBeenCalled();
+    expect(result.current.error).toBeNull();
+    consoleSpy.mockRestore();
+  });
+
+  test('surfaces an insights-data load error', () => {
+    useInsightsData.mockReturnValue({
+      insights: {},
+      insightsData: {},
+      isInsightsLoading: false,
+      hasAllInsightData: false,
+      error: 'parquet fetch failed',
+    });
+
+    const { result } = renderHook(() => useChartPreviewJob(buildRequest(), { projectId: 'p' }));
+
+    expect(result.current.error).toBe('parquet fetch failed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// usePreviewInsightData — the two-mode resolver (VIS-1002 / design §2 + §8.3).
+//
+// MODE A (published/saved, insight present in the main run): point the chart at
+//   the UN-prefixed key and load via useInsightsData(projectId, [name], 'main').
+// MODE B (unsaved/never-run, insight ABSENT from the main run): keep the
+//   __preview__-prefixed preview-run path (must not regress).
+// ---------------------------------------------------------------------------
+describe('usePreviewInsightData — MODE-A / MODE-B selection', () => {
+  let mockStartRun;
+  let mockResetRun;
+
+  const makePreviewJob = (overrides = {}) => ({
+    runId: null,
+    status: null,
+    progress: 0,
+    progressMessage: '',
+    result: null,
+    error: null,
+    isRunning: false,
+    isCompleted: false,
+    isFailed: false,
+    startRun: mockStartRun,
+    resetRun: mockResetRun,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockStartRun = jest.fn().mockReturnValue(pendingPromise());
+    mockResetRun = jest.fn();
+
+    usePreviewJob.mockReturnValue(makePreviewJob());
+
+    useInsightsData.mockReturnValue({
+      insights: {},
+      insightsData: {},
+      isInsightsLoading: false,
+      hasAllInsightData: false,
+      error: null,
+    });
+
+    hashQueryProps.mockImplementation(() => 'hash');
+    queryPropsHaveChanged.mockReturnValue(false);
+    extractNonQueryProps.mockReturnValue({});
+
+    useStore.mockStoreState = { insightJobs: {}, updateInsightJob: jest.fn() };
+    useStore.mockImplementation(selector => {
+      if (typeof selector === 'function') {
+        return selector(useStore.mockStoreState);
+      }
+      return undefined;
+    });
+    useStore.getState = jest.fn(() => useStore.mockStoreState);
+  });
+
+  test('MODE A: published insight (present in main run) points chart at the un-prefixed key', () => {
+    // Insight IS in the main run → insightNotInMain=false → MODE A.
+    useStore.mockStoreState.insightJobs = {
+      sales: { data: [{ x: 1 }], query: 'SELECT 1' },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewInsightData({ name: 'sales' }, { projectId: 'proj-1' })
+    );
+
+    // The synthetic chart targets the UN-prefixed key (= the dashboard key).
+    expect(result.current.chartInsightKey).toBe('sales');
+    expect(result.current.insightNotInMain).toBe(false);
+  });
+
+  test('MODE A: loads main-run data via useInsightsData at runId=main, no prefix', () => {
+    useStore.mockStoreState.insightJobs = {
+      sales: { data: [{ x: 1 }], query: 'SELECT 1' },
+    };
+
+    renderHook(() => usePreviewInsightData({ name: 'sales' }, { projectId: 'proj-1' }));
+
+    // The MODE-A load is the exact ChartPreview/dashboard call: default runId,
+    // no storeKeyPrefix.
+    expect(useInsightsData).toHaveBeenCalledWith('proj-1', ['sales'], 'main');
+  });
+
+  test('MODE A: does NOT fire a preview run for a published insight', () => {
+    useStore.mockStoreState.insightJobs = {
+      sales: { data: [{ x: 1 }], query: 'SELECT 1' },
+    };
+
+    renderHook(() => usePreviewInsightData({ name: 'sales' }, { projectId: 'proj-1' }));
+
+    expect(mockStartRun).not.toHaveBeenCalled();
+  });
+
+  test('MODE B: unsaved/never-run insight (absent from main) uses the __preview__ key', () => {
+    // Insight is NOT in the main run → insightNotInMain=true → MODE B.
+    const { result } = renderHook(() =>
+      usePreviewInsightData({ name: 'draft' }, { projectId: 'proj-1' })
+    );
+
+    expect(result.current.chartInsightKey).toBe('__preview__draft');
+    expect(result.current.insightNotInMain).toBe(true);
+  });
+
+  test('MODE B: fires a preview run for an absent insight (regression guard)', () => {
+    renderHook(() => usePreviewInsightData({ name: 'draft' }, { projectId: 'proj-1' }));
+
+    // The existing preview-run path (useInsightPreviewData → startRun) still
+    // fires for the never-run case — ExplorerChartPreview depends on this.
+    expect(mockStartRun).toHaveBeenCalled();
+  });
+
+  test('returns null chartInsightKey when config has no name', () => {
+    const { result } = renderHook(() => usePreviewInsightData({}, { projectId: 'proj-1' }));
+
+    // No name → insightNotInMain=false → MODE A returns the (null) name as key.
+    expect(result.current.chartInsightKey).toBeNull();
   });
 });

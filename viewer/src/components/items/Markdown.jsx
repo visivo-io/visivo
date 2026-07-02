@@ -1,19 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import MarkdownRenderer from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
-import MenuContainer from './MenuContainer';
-import Menu from './Menu';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
-import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 const Markdown = ({ markdown, row, height }) => {
-  const [hovering, setHovering] = useState(false);
-  const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
-
   const alignmentClass =
     markdown.align === 'right'
       ? 'text-right'
@@ -30,30 +22,7 @@ const Markdown = ({ markdown, row, height }) => {
       data-testid={itemNameToSlug(markdownPath)}
       className={`relative w-full h-full flex flex-col ${alignmentClass}`}
       style={row.height !== 'compact' ? { height: height } : {}}
-      onMouseOver={() => setHovering(true)}
-      onMouseOut={() => setHovering(false)}
     >
-      <MenuContainer>
-        <Menu
-          hovering={hovering}
-          withDropDown={false}
-          buttonChildren={<FontAwesomeIcon icon={faShareAlt} />}
-          buttonProps={{
-            style: {
-              cursor: 'pointer',
-              visibility: hovering ? 'visible' : 'hidden',
-            },
-            onClick: () => {
-              const url = new URL(window.location.href);
-              url.searchParams.set('element_id', window.scrollY);
-              copyText(url.toString());
-            },
-            onMouseLeave: resetToolTip,
-          }}
-          showToolTip
-          toolTip={toolTip}
-        ></Menu>
-      </MenuContainer>
       <div
         className={`w-full h-full overflow-auto flex flex-col items-stretch ${markdown.justify}`}
       >

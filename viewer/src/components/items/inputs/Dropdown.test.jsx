@@ -130,4 +130,74 @@ describe('Dropdown Component', () => {
       expect(screen.getByText('Option B')).toBeInTheDocument();
     });
   });
+
+  describe('portal + outside-click behavior', () => {
+    it('closes on an outside mousedown but stays open for clicks inside the portalled menu', () => {
+      render(<Dropdown options={options} name="test" />);
+      fireEvent.click(screen.getByRole('button'));
+
+      // The menu is portalled to <body>; clicking inside it must NOT close it.
+      fireEvent.mouseDown(screen.getByPlaceholderText('Search options...'));
+      expect(screen.getByPlaceholderText('Search options...')).toBeInTheDocument();
+
+      // A genuine outside press closes it.
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('keyboard interaction', () => {
+    it('opens with Enter and with Space', () => {
+      const { unmount } = render(<Dropdown options={options} name="test" />);
+      fireEvent.keyDown(screen.getByRole('button'), { key: 'Enter' });
+      expect(screen.getByPlaceholderText('Search options...')).toBeInTheDocument();
+      unmount();
+
+      render(<Dropdown options={options} name="test" />);
+      fireEvent.keyDown(screen.getByRole('button'), { key: ' ' });
+      expect(screen.getByPlaceholderText('Search options...')).toBeInTheDocument();
+    });
+
+    it('does not open on unrelated keys while closed', () => {
+      render(<Dropdown options={options} name="test" />);
+      fireEvent.keyDown(screen.getByRole('button'), { key: 'a' });
+      expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument();
+    });
+
+    it('Escape closes the open menu', () => {
+      render(<Dropdown options={options} name="test" />);
+      fireEvent.click(screen.getByRole('button'));
+      const search = screen.getByPlaceholderText('Search options...');
+      fireEvent.keyDown(search, { key: 'Escape' });
+      expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument();
+    });
+
+    it('ArrowUp from no highlight wraps to the LAST option; Enter selects it', () => {
+      const setInputJobValue = jest.fn();
+      render(<Dropdown options={options} name="test" setInputJobValue={setInputJobValue} />);
+      fireEvent.click(screen.getByRole('button'));
+
+      const search = screen.getByPlaceholderText('Search options...');
+      fireEvent.keyDown(search, { key: 'ArrowUp' });
+      fireEvent.keyDown(search, { key: 'Enter' });
+      expect(setInputJobValue).toHaveBeenCalledWith('test', 'Option C');
+    });
+
+    it('Enter with nothing highlighted selects nothing', () => {
+      const setInputJobValue = jest.fn();
+      render(<Dropdown options={options} name="test" setInputJobValue={setInputJobValue} />);
+      fireEvent.click(screen.getByRole('button'));
+      fireEvent.keyDown(screen.getByPlaceholderText('Search options...'), { key: 'Enter' });
+      expect(setInputJobValue).not.toHaveBeenCalled();
+    });
+
+    it('ignores unrelated keys while open (menu stays open, no selection)', () => {
+      const setInputJobValue = jest.fn();
+      render(<Dropdown options={options} name="test" setInputJobValue={setInputJobValue} />);
+      fireEvent.click(screen.getByRole('button'));
+      fireEvent.keyDown(screen.getByPlaceholderText('Search options...'), { key: 'Home' });
+      expect(screen.getByPlaceholderText('Search options...')).toBeInTheDocument();
+      expect(setInputJobValue).not.toHaveBeenCalled();
+    });
+  });
 });

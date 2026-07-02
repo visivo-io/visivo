@@ -630,3 +630,33 @@ class TestSourceSchemaInvalidation(TestSourceSchemaJobsViews):
 
         assert response.status_code == 202
         mock_run_manager.invalidate_completed_runs_for_source.assert_not_called()
+
+
+class TestSourceSchemaPathTraversal(TestSourceSchemaJobsViews):
+    """Path-traversal guard on the run_id query param (finding #2).
+
+    The same guard as the sibling model schema views — before the fix the
+    run_id flowed verbatim into ``{output_dir}/{run_id}/schemas/...`` (this
+    pattern pre-existed on main here)."""
+
+    @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
+    def test_get_schema_rejects_unsafe_run_id(self, client, sample_schema, bad_run_id):
+        response = client.get(f"/api/source-schema-jobs/test_source/?run_id={bad_run_id}")
+        assert response.status_code == 400
+
+    @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
+    def test_list_tables_rejects_unsafe_run_id(self, client, sample_schema, bad_run_id):
+        response = client.get(f"/api/source-schema-jobs/test_source/tables/?run_id={bad_run_id}")
+        assert response.status_code == 400
+
+    @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
+    def test_list_columns_rejects_unsafe_run_id(self, client, sample_schema, bad_run_id):
+        response = client.get(
+            f"/api/source-schema-jobs/test_source/tables/users/columns/?run_id={bad_run_id}"
+        )
+        assert response.status_code == 400
+
+    def test_safe_run_id_still_served(self, client, sample_schema):
+        """The guard must not reject legitimate run_ids."""
+        response = client.get("/api/source-schema-jobs/test_source/?run_id=main")
+        assert response.status_code == 200

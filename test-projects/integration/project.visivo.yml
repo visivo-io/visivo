@@ -180,6 +180,16 @@ alerts:
       - type: slack
         webhook_url: https://hooks.slack.com/services/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
 
+markdowns:
+  - name: welcome-note
+    content: |
+      # Welcome
+
+      This is a named markdown object that the **markdown editor canvas**
+      (VIS-1010) edits in place. Edit it on the left, see it render on the right.
+    align: left
+    justify: start
+
 sources:
   - name: local-sqlite
     database: local.db

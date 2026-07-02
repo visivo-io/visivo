@@ -10,7 +10,7 @@ jest.mock('../../stores/store', () => ({
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
   default: selector => selector(mockState),
 }));
-jest.mock('../new-views/common/objectTypeConfigs', () => ({
+jest.mock('../views/common/objectTypeConfigs', () => ({
   getTypeByValue: type => ({
     singularLabel: type,
     colors: { bg: 'bg-x', text: 'text-x' },
@@ -25,6 +25,10 @@ const baseState = () => ({
   commitLoading: false,
   commitError: null,
   commitChanges: jest.fn().mockResolvedValue({ success: true }),
+  discardChanges: jest.fn().mockResolvedValue({ success: true }),
+  discardLoading: false,
+  // null = local serve (capabilities probe 404s); an object = cloud.
+  capabilities: null,
 });
 
 beforeEach(() => {
@@ -79,5 +83,43 @@ describe('CommitModal', () => {
     render(<CommitModal />);
     const button = screen.getByRole('button', { name: 'Committing...' });
     expect(button).toBeDisabled();
+  });
+
+  it('Discard is disabled when there are no pending changes', () => {
+    render(<CommitModal />);
+    expect(screen.getByTestId('commit-modal-discard')).toBeDisabled();
+  });
+
+  it('hides Discard on cloud (capabilities present) — no cloud discard endpoint exists', () => {
+    mockState.capabilities = { can_edit: true, can_branch: true };
+    mockState.pendingChanges = [{ name: 'a', type: 'chart', status: 'NEW' }];
+    render(<CommitModal />);
+    expect(screen.queryByTestId('commit-modal-discard')).not.toBeInTheDocument();
+  });
+
+  it('Discard confirms inline, then drops the draft cache and closes (Q14)', async () => {
+    mockState.pendingChanges = [
+      { type: 'model', name: 'orders', status: 'NEW' },
+      { type: 'chart', name: 'rev', status: 'MODIFIED' },
+    ];
+    render(<CommitModal />);
+
+    // First click reveals the inline confirm — no discard yet.
+    fireEvent.click(screen.getByTestId('commit-modal-discard'));
+    expect(screen.getByTestId('commit-modal-discard-confirm')).toHaveTextContent(
+      'Discard all 2 changes?'
+    );
+    expect(mockState.discardChanges).not.toHaveBeenCalled();
+
+    // Keep backs out without discarding.
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }));
+    expect(screen.queryByTestId('commit-modal-discard-confirm')).not.toBeInTheDocument();
+    expect(mockState.discardChanges).not.toHaveBeenCalled();
+
+    // Re-open and confirm → discardChanges fires and the modal closes.
+    fireEvent.click(screen.getByTestId('commit-modal-discard'));
+    fireEvent.click(screen.getByTestId('commit-modal-discard-confirm-button'));
+    await waitFor(() => expect(mockState.discardChanges).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockState.closeCommitModal).toHaveBeenCalled());
   });
 });

@@ -78,6 +78,79 @@ def test_Item_child_items_with_markdown_model():
     assert isinstance(children[0], Markdown)
 
 
+# ---------- Empty items (VIS-900) ----------
+
+
+def test_Item_empty_validates_with_only_width():
+    """A truly empty item (no leaf/rows fields) validates and reserves whitespace."""
+    item = Item(width=2)
+    assert item.width == 2
+    assert item.chart is None
+    assert item.table is None
+    assert item.markdown is None
+    assert item.input is None
+    assert item.rows is None
+
+
+def test_Item_empty_child_items_is_empty():
+    """An empty item exposes no children, so DAG traversal yields nothing for it."""
+    item = Item(width=2)
+    assert item.child_items() == []
+
+
+def test_Item_empty_round_trips_through_parse_serialize_parse():
+    """An empty item survives parse -> serialize -> parse with no content fields."""
+    item = Item(width=3)
+    dumped = item.model_dump(exclude_none=True)
+    assert "chart" not in dumped
+    assert "table" not in dumped
+    assert "markdown" not in dumped
+    assert "input" not in dumped
+    assert "rows" not in dumped
+
+    reparsed = Item(**dumped)
+    assert reparsed.width == 3
+    assert reparsed.child_items() == []
+
+
+def test_Item_empty_in_dashboard_builds_dag_without_content():
+    """An empty item inside a dashboard row is a DAG node with no leaf descendants."""
+    from visivo.models.dashboard import Dashboard
+    from visivo.models.row import Row
+
+    leaf_chart = _make_test_chart("filled")
+    dashboard = Dashboard(
+        name="with_empty_slot",
+        rows=[
+            Row(
+                height="medium",
+                items=[
+                    Item(width=1, chart=leaf_chart),
+                    Item(width=1),  # intentional empty slot
+                ],
+            )
+        ],
+    )
+
+    dag = dashboard.dag()
+    item_nodes = [n for n in dag.nodes if isinstance(n, Item)]
+    assert len(item_nodes) == 2, "both the filled and empty items are DAG nodes"
+
+    from visivo.models.chart import Chart
+
+    charts = dashboard.descendants_of_type(type=Chart)
+    assert [c.name for c in charts] == ["chart_filled"]
+
+
+def test_Item_two_leaf_fields_still_rejected():
+    """Relaxing to allow zero must NOT allow more than one leaf field."""
+    with pytest.raises(ValidationError) as exc_info:
+        Item(chart="ref(c)", table="ref(t)")
+    error = exc_info.value.errors()[0]
+    assert error["msg"] == EXPECTED_MUTUAL_EXCLUSION_MSG
+    assert error["type"] == "value_error"
+
+
 # ---------- Item.rows: nested-rows mode ----------
 
 

@@ -12,13 +12,20 @@ from visivo.jobs.job import (
 from time import time
 from visivo.logger.logger import Logger
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.query.model_schema_aggregator import ModelSchemaAggregator
 
 
 def _write_schema(local_merge_model: LocalMergeModel, run_output_dir: str, dag):
     """Persist a schema.json so the field resolver can resolve
     `${ref(model).<col>}` references against an implicit dimension. The merged
     model writes its data into a DuckDB table called `model` (see
-    LocalMergeModel.insert_duckdb_data); query its column types after the run."""
+    LocalMergeModel.insert_duckdb_data); query its column types after the run.
+
+    The artifact preserves the legacy `{ name_hash: { col_name: type } }` block
+    (the field resolver depends on it) and adds the model schema envelope
+    (`model_name` / `model_type` / `columns` / `metadata`) via
+    `ModelSchemaAggregator.build_envelope`. `nullable` is taken from DuckDB's
+    `information_schema.columns.is_nullable`."""
     source = local_merge_model.get_duckdb_source(output_dir=run_output_dir, dag=dag)
     db_path = source.database
     if not os.path.exists(db_path):
@@ -27,7 +34,8 @@ def _write_schema(local_merge_model: LocalMergeModel, run_output_dir: str, dag):
     conn = duckdb.connect(db_path, read_only=True)
     try:
         rows = conn.execute(
-            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'model'"
+            "SELECT column_name, data_type, is_nullable FROM information_schema.columns "
+            "WHERE table_name = 'model'"
         ).fetchall()
     finally:
         conn.close()
@@ -35,12 +43,22 @@ def _write_schema(local_merge_model: LocalMergeModel, run_output_dir: str, dag):
     if not rows:
         return
 
-    columns = {col_name: data_type for col_name, data_type in rows}
+    columns = {
+        col_name: {"type": data_type, "nullable": str(is_nullable).upper() != "NO"}
+        for col_name, data_type, is_nullable in rows
+    }
+    payload = ModelSchemaAggregator.build_envelope(
+        name_hash=local_merge_model.name_hash(),
+        model_name=local_merge_model.name,
+        model_type="local_merge",
+        columns=columns,
+        source_dialect="duckdb",
+    )
     schema_directory = f"{run_output_dir}/schemas/{local_merge_model.name}/"
     os.makedirs(schema_directory, exist_ok=True)
     schema_file = f"{schema_directory}schema.json"
     with open(schema_file, "w") as fp:
-        json.dump({local_merge_model.name_hash(): columns}, fp, indent=2)
+        json.dump(payload, fp, indent=2, default=str)
 
 
 def action(local_merge_model: LocalMergeModel, output_dir, dag, run_id=DEFAULT_RUN_ID):

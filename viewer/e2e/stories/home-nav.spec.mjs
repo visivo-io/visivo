@@ -5,7 +5,7 @@
  * the expected label, and clicking each must change the URL away from the
  * root. Phase-agnostic: does not assert landing-page content (which shifts
  * as Phase 1 rewires and Phase 6 renames). Dedicated smoke specs
- * (lineage-new-smoke, editor-new-smoke, explorer-*) cover landing content.
+ * (workspace-lineage-smoke, workspace-editor-smoke, explorer-*) cover landing content.
  *
  * Precondition: Sandbox running on :3001/:8001
  */
