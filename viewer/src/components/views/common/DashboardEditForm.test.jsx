@@ -279,9 +279,14 @@ describe('DashboardEditForm — row & item editing', () => {
     expect(screen.getByText('sales_table')).toBeInTheDocument();
 
     const config = await saveAndGetConfig(onSave);
+    // VIS-993: refs are written through itemMutations in the serialized
+    // ${ref()} context form, and no scaffold keys (selector / empty-string
+    // leaves) ever reach the saved config.
     expect(config.rows[0].items).toEqual([
       { width: 2, chart: 'ref(rev_chart)' },
-      { table: 'ref(sales_table)' },
+      // eslint-disable-next-line no-template-curly-in-string
+      { table: '${ref(sales_table)}' },
     ]);
+    expect(JSON.stringify(config)).not.toContain('selector');
   });
 });

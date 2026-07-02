@@ -21,7 +21,7 @@ import {
  * `data-canvas-path` markers the other overlays read, then paints edge handles
  * on the CURRENTLY SELECTED item / row and turns a drag on them into a config
  * mutation persisted through the shell's shared `commitCanvasConfig`
- * (sanitize → optimistic → save).
+ * (optimistic → validate → save).
  *
  * Handle types (D-3 contract):
  *   - Item RIGHT-EDGE (↔ width): drag changes the item's integer col-span

@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- assertions use literal Visivo `${ref(...)}` strings */
 import React from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import selectEvent from 'react-select-event';
@@ -93,20 +94,25 @@ describe('ItemEditForm — leaf variant (standalone)', () => {
     expect(screen.getByTestId('ref-dropzone-row-0-item-0')).toBeInTheDocument();
   });
 
-  test('width change reports nextItem via onChange', () => {
+  test('width change reports a born-valid nextItem (integer width, no blank leaf keys)', () => {
     const onChange = jest.fn();
     renderItem({ onChange });
     fireEvent.change(screen.getByLabelText('Item 1 width'), { target: { value: '4' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ width: '4', chart: 'ref(rev_chart)' }));
+    // VIS-993: the emitted item is backend-valid as-is — the width is an
+    // INTEGER (never the raw input string) and the legacy blank leaf keys +
+    // the non-model `selector` scaffold are gone.
+    expect(onChange).toHaveBeenCalledWith({ width: 4, chart: 'ref(rev_chart)' });
   });
 
-  test('removing the pill clears the leaf ref', () => {
+  test('removing the pill clears the leaf ref to a bare empty slot', () => {
     const onChange = jest.fn();
     renderItem({ onChange });
     fireEvent.click(screen.getByTestId('pill-remove'));
     const next = onChange.mock.calls[0][0];
     expect(getItemLeafRef(next)).toBeNull();
     expect(next.rows).toBeUndefined();
+    // VIS-993: cleared means the keys are GONE — not reset to empty strings.
+    expect(next).toEqual({ width: 2 });
   });
 
   test('clicking the pill calls onSelectRef with the referenced object', () => {
@@ -153,11 +159,13 @@ describe('ItemEditForm — mutual exclusion (validate_unique_item_types)', () =>
       );
       capturedOnChange({ type: 'table', name: 'sales_table' });
       const next = onChange.mock.calls[0][0];
-      expect(next.chart).toBe('');
-      expect(next.table).toBe('ref(sales_table)');
-      expect(next.markdown).toBe('');
-      expect(next.input).toBe('');
-      expect(next.rows).toBeUndefined();
+      // VIS-993: the item is born valid — exactly ONE leaf key remains (the
+      // new table ref, in the serialized ${ref()} form); the competing chart
+      // key and the legacy empty-string/selector scaffold keys are GONE.
+      expect(next).toEqual({ width: 2, table: '${ref(sales_table)}' });
+      ['chart', 'markdown', 'input', 'selector', 'rows'].forEach(k =>
+        expect(k in next).toBe(false)
+      );
     });
   });
 
@@ -168,6 +176,12 @@ describe('ItemEditForm — mutual exclusion (validate_unique_item_types)', () =>
     const asContainer = onChange.mock.calls[0][0];
     expect(Array.isArray(asContainer.rows)).toBe(true);
     expect(getItemLeafRef(asContainer)).toBeNull();
+    // VIS-993: the seeded container is born valid — one nested row holding one
+    // bare empty slot (never an empty items array / empty-string leaves).
+    expect(asContainer).toEqual({
+      width: 2,
+      rows: [{ height: 'medium', items: [{ width: 1 }] }],
+    });
 
     cleanup();
     onChange.mockClear();
@@ -176,6 +190,7 @@ describe('ItemEditForm — mutual exclusion (validate_unique_item_types)', () =>
     const asLeaf = onChange.mock.calls[0][0];
     expect(asLeaf.rows).toBeUndefined();
     expect(getItemLeafRef(asLeaf)).toBeNull();
+    expect(asLeaf).toEqual({ width: 1 });
   });
 });
 
@@ -206,12 +221,14 @@ describe('ItemEditForm — container variant (Item.rows)', () => {
     expect(screen.getByText('small_b')).toBeInTheDocument();
   });
 
-  test('Add Nested Row appends a sub-row', () => {
+  test('Add Nested Row appends a born-valid sub-row (one bare empty slot)', () => {
     const onChange = jest.fn();
     renderContainer({ onChange });
     fireEvent.click(screen.getByText('+ Add Nested Row'));
     const next = onChange.mock.calls[0][0];
     expect(next.rows).toHaveLength(3);
+    // VIS-993: the new sub-row holds ONE empty slot with no scaffold keys.
+    expect(next.rows[2]).toEqual({ height: 'medium', items: [{ width: 1 }] });
   });
 
   test('removing a nested row drops it from rows', () => {
@@ -254,6 +271,8 @@ describe('ItemEditForm — container variant (Item.rows)', () => {
     const next = onChange.mock.calls[0][0];
     expect(next.rows[0].items).toHaveLength(2);
     expect(getItemLeafRef(next.rows[0].items[1])).toBeNull();
+    // VIS-993: the appended slot is a bare { width } — no scaffold keys.
+    expect(next.rows[0].items[1]).toEqual({ width: 1 });
     expect(next.rows[1].items).toHaveLength(1);
   });
 
@@ -274,18 +293,20 @@ describe('ItemEditForm — container variant (Item.rows)', () => {
     // [0] is the container item's own width input; [1] is nested row 1's item.
     fireEvent.change(screen.getAllByLabelText('Item 1 width')[1], { target: { value: '4' } });
     const next = onChange.mock.calls[0][0];
-    expect(next.rows[0].items[0]).toEqual(expect.objectContaining({ width: '4', chart: 'ref(small_a)' }));
+    // VIS-993: the width is written as an INTEGER (born valid), leaf preserved.
+    expect(next.rows[0].items[0]).toEqual({ width: 4, chart: 'ref(small_a)' });
     expect(next.rows[1].items[0].width).toBe(1);
   });
 
-  test('clearing a nested item ref empties its leaf fields (other rows untouched)', () => {
+  test('clearing a nested item ref removes its leaf fields (other rows untouched)', () => {
     const onChange = jest.fn();
     renderContainer({ onChange });
     // Remove the pill on the first nested row's item (small_a).
     fireEvent.click(screen.getAllByTestId('pill-remove')[0]);
     const next = onChange.mock.calls[0][0];
     expect(getItemLeafRef(next.rows[0].items[0])).toBeNull();
-    expect(next.rows[0].items[0].chart).toBe('');
+    // VIS-993: cleared means the key is GONE — never an empty string.
+    expect(next.rows[0].items[0]).toEqual({ width: 1 });
     expect(next.rows[1].items[0].chart).toBe('ref(small_b)');
   });
 

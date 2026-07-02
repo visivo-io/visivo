@@ -27,10 +27,16 @@ import LevelEditForm from '../common/LevelEditForm';
 import DefaultsEditForm from '../common/DefaultsEditForm';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { COLLECTION_KEY } from './collectionKeys';
-import { formatRef } from '../../../utils/refString';
 import useRecordSave from '../../../hooks/useRecordSave';
 import RecordRunStatus from './RecordRunStatus';
-import sanitizeDashboardConfig from './sanitizeDashboardConfig';
+import {
+  applyLeafRef,
+  appendEmptyItem,
+  createRow,
+  setItemWidth,
+  checkLeafExclusivity,
+} from './itemMutations';
+import { validateRecordConfig, validateRecordConfigSync } from './validateAgainstSchema';
 import { emitWorkspaceEvent } from './telemetry';
 
 /**
@@ -85,8 +91,6 @@ const LIBRARY_EDITABLE_TYPES = [
   'insight',
   'dashboard',
 ];
-
-const emptyLeafFields = () => ({ chart: '', table: '', markdown: '', selector: '', input: '' });
 
 /**
  * Parse a selection key at ANY depth (nested container keys like
@@ -186,30 +190,61 @@ const RightRailEditPanel = () => {
   const { status: saveStatus, scheduleSave } = useDebouncedSave(dashSaveFn, {
     delay: 500,
   });
+  // VIS-993: validation errors ({path, message, keyword}[]) when the gate is
+  // holding persistence — the same status/errors contract useRecordSave uses.
+  const [validationErrors, setValidationErrors] = useState(null);
 
   /**
    * Commit a next-config: optimistically update the store (so the form, the
    * Outline tree, and the canvas reflect the edit immediately — independent of
-   * the backend round-trip), schedule the debounced save, and emit telemetry.
+   * the backend round-trip), then GATE persistence (VIS-993 §3): structure
+   * configs are BORN valid (itemMutations), so this gate is defense-in-depth —
+   * schema ($defs AJV) + leaf mutual-exclusion checks run before the debounced
+   * save is armed, and an invalid config is never handed to saveDashboard. The
+   * optimistic write still happens so bound surfaces stay live; only
+   * PERSISTENCE is held, with `validationErrors` surfaced at the indicator.
    */
   const persistConfig = useCallback(
     (nextConfig, meta) => {
-      // GAP-3: never optimistic-update OR POST an invalid intermediate scaffold.
-      // The forms scaffold items with empty-string leaf fields (+ a spurious
-      // `selector`), which the backend Item validator rejects with a 400.
-      // Normalising here keeps the store, canvas, Outline, AND the persisted
-      // YAML always backend-valid — the empty slot stays an empty slot until a
-      // real ref is dropped in.
-      const cleanConfig = sanitizeDashboardConfig(nextConfig);
       if (updateDashboardConfigOptimistic) {
-        updateDashboardConfigOptimistic(dashboardName, cleanConfig);
+        updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
-      scheduleSave(cleanConfig);
-      emitWorkspaceEvent('right_rail_autosave_scheduled', {
-        object: 'dashboard',
-        name: dashboardName,
-        ...meta,
-      });
+      const finish = blocked => {
+        if (blocked) {
+          setValidationErrors(blocked.errors);
+          emitWorkspaceEvent('right_rail_autosave_blocked', {
+            object: 'dashboard',
+            name: dashboardName,
+            errors: blocked.errors.length,
+            ...meta,
+          });
+          return;
+        }
+        setValidationErrors(null);
+        scheduleSave(nextConfig);
+        emitWorkspaceEvent('right_rail_autosave_scheduled', {
+          object: 'dashboard',
+          name: dashboardName,
+          ...meta,
+        });
+      };
+      // The mutual-exclusion rule is a backend model_validator with no
+      // JSON-schema encoding — check it first (cheap, schema-free).
+      const exclusivity = checkLeafExclusivity(nextConfig);
+      if (!exclusivity.valid) {
+        finish(exclusivity);
+        return;
+      }
+      // Sync schema fast path; when the schema isn't loaded yet (null), defer
+      // to the async authoritative check before arming the save.
+      const sync = validateRecordConfigSync('dashboard', nextConfig);
+      if (sync) {
+        finish(sync.valid ? null : sync);
+        return;
+      }
+      validateRecordConfig('dashboard', nextConfig).then(result =>
+        finish(result.valid ? null : result)
+      );
     },
     [updateDashboardConfigOptimistic, scheduleSave, dashboardName]
   );
@@ -221,6 +256,26 @@ const RightRailEditPanel = () => {
     },
     [dashboardConfig, persistConfig]
   );
+
+  // VIS-993: while the gate holds persistence the indicator reads 'invalid'
+  // (the useRecordSave status vocabulary) and the rail lists the errors.
+  const effectiveSaveStatus = validationErrors ? 'invalid' : saveStatus;
+  const validationBanner = validationErrors ? (
+    <div
+      data-testid="right-rail-validation-errors"
+      className="border-b border-[#f3ded9] bg-[#fdf5f3] px-3 py-2 text-[11px] leading-relaxed text-[#a2432f]"
+    >
+      <p className="font-semibold">Invalid configuration — changes are not being saved:</p>
+      <ul className="mt-0.5 list-disc pl-4">
+        {validationErrors.map((err, i) => (
+          <li key={`${err.path}-${i}`}>
+            {err.path ? `${err.path}: ` : ''}
+            {err.message}
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
 
   const handleSelectRef = useCallback(
     ref => {
@@ -309,8 +364,9 @@ const RightRailEditPanel = () => {
 
     // dashboard-chrome → bundled rows editor (auto-saved, no Save button).
     if (sel.kind === 'dashboard') {
-      const addRow = () =>
-        writeRows([...rows, { height: 'medium', items: [] }], { kind: 'add_row' });
+      // VIS-993: a new row is BORN with one empty slot (itemMutations) so it
+      // stays a visible drop target (VIS-989) — no sanitize re-seeding.
+      const addRow = () => writeRows([...rows, createRow()], { kind: 'add_row' });
       const updateRow = (rowIndex, nextRow) =>
         writeRows(rows.map((r, i) => (i === rowIndex ? nextRow : r)), { kind: 'update_row' });
       const removeRow = rowIndex =>
@@ -323,8 +379,9 @@ const RightRailEditPanel = () => {
             type="dashboard"
             name={dashboardName}
             subtitle={`${rows.length} row${rows.length === 1 ? '' : 's'}`}
-            saveStatus={saveStatus}
+            saveStatus={effectiveSaveStatus}
           />
+          {validationBanner}
           <div
             data-testid="right-rail-edit-dashboard"
             className="flex-1 overflow-y-auto p-3 space-y-3"
@@ -342,12 +399,7 @@ const RightRailEditPanel = () => {
                   rowIndex={rowIndex}
                   onRemoveRow={() => removeRow(rowIndex)}
                   onHeightChange={height => updateRow(rowIndex, { ...row, height })}
-                  onAddItem={() =>
-                    updateRow(rowIndex, {
-                      ...row,
-                      items: [...(row.items || []), { width: 1, ...emptyLeafFields() }],
-                    })
-                  }
+                  onAddItem={() => updateRow(rowIndex, appendEmptyItem(row))}
                   onRemoveItem={itemIndex =>
                     updateRow(rowIndex, {
                       ...row,
@@ -358,19 +410,16 @@ const RightRailEditPanel = () => {
                     updateRow(rowIndex, {
                       ...row,
                       items: (row.items || []).map((it, i) =>
-                        i === itemIndex ? { ...it, width } : it
+                        i === itemIndex ? setItemWidth(it, width) : it
                       ),
                     })
                   }
                   onItemRefChange={(itemIndex, ref) =>
                     updateRow(rowIndex, {
                       ...row,
-                      items: (row.items || []).map((it, i) => {
-                        if (i !== itemIndex) return it;
-                        const reset = { ...it, ...emptyLeafFields() };
-                        if (ref && ref.type && ref.name) reset[ref.type] = formatRef(ref.name);
-                        return reset;
-                      }),
+                      items: (row.items || []).map((it, i) =>
+                        i === itemIndex ? applyLeafRef(it, ref) : it
+                      ),
                     })
                   }
                   onItemChange={(itemIndex, nextItem) =>
@@ -430,8 +479,9 @@ const RightRailEditPanel = () => {
             type="dashboard"
             name={`Row ${sel.rowIndex + 1}`}
             subtitle={`${row.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
-            saveStatus={saveStatus}
+            saveStatus={effectiveSaveStatus}
           />
+          {validationBanner}
           <div data-testid="right-rail-edit-row" className="flex-1 overflow-y-auto p-3">
             <RowEditForm
               row={row}
@@ -446,30 +496,20 @@ const RightRailEditPanel = () => {
                 )
               }
               onHeightChange={height => updateRow({ ...row, height })}
-              onAddItem={() =>
-                updateRow({
-                  ...row,
-                  items: [...items, { width: 1, ...emptyLeafFields() }],
-                })
-              }
+              onAddItem={() => updateRow(appendEmptyItem(row))}
               onRemoveItem={itemIndex =>
                 updateRow({ ...row, items: items.filter((_, i) => i !== itemIndex) })
               }
               onItemWidthChange={(itemIndex, width) =>
                 updateRow({
                   ...row,
-                  items: items.map((it, i) => (i === itemIndex ? { ...it, width } : it)),
+                  items: items.map((it, i) => (i === itemIndex ? setItemWidth(it, width) : it)),
                 })
               }
               onItemRefChange={(itemIndex, ref) =>
                 updateRow({
                   ...row,
-                  items: items.map((it, i) => {
-                    if (i !== itemIndex) return it;
-                    const reset = { ...it, ...emptyLeafFields() };
-                    if (ref && ref.type && ref.name) reset[ref.type] = formatRef(ref.name);
-                    return reset;
-                  }),
+                  items: items.map((it, i) => (i === itemIndex ? applyLeafRef(it, ref) : it)),
                 })
               }
               onItemChange={(itemIndex, nextItem) =>
@@ -543,8 +583,9 @@ const RightRailEditPanel = () => {
                 ? `Row ${sel.rowIndex + 1} · inline ${leafRef.type}`
                 : `Row ${sel.rowIndex + 1} · empty slot`
             }
-            saveStatus={saveStatus}
+            saveStatus={effectiveSaveStatus}
           />
+          {validationBanner}
           <div data-testid="right-rail-edit-item" className="flex-1 overflow-y-auto p-3">
             <ItemEditForm
               item={item}

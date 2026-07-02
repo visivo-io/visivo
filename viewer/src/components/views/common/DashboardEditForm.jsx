@@ -6,6 +6,11 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { formatRef } from '../../../utils/refString';
+import {
+  applyLeafRef,
+  appendEmptyItem,
+  createRow,
+} from '../workspace/itemMutations';
 import RowEditForm from './RowEditForm';
 
 /**
@@ -45,7 +50,6 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
             chart: normalizeRef(item.chart),
             table: normalizeRef(item.table),
             markdown: normalizeRef(item.markdown),
-            selector: normalizeRef(item.selector),
             input: normalizeRef(item.input),
           })),
         }))
@@ -78,7 +82,6 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
           if (item.chart) itemConfig.chart = item.chart;
           else if (item.table) itemConfig.table = item.table;
           else if (item.markdown) itemConfig.markdown = item.markdown;
-          else if (item.selector) itemConfig.selector = item.selector;
           else if (item.input) itemConfig.input = item.input;
           else return null;
           return itemConfig;
@@ -117,7 +120,9 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   };
 
   const addRow = () => {
-    setRows([...rows, { height: 'medium', items: [{ width: 1, chart: '', table: '', markdown: '', selector: '', input: '' }] }]);
+    // VIS-993: rows/items are scaffolded through itemMutations, born valid —
+    // no empty-string leaf keys, no non-model `selector`.
+    setRows([...rows, createRow()]);
   };
 
   const removeRow = index => {
@@ -132,10 +137,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
   const addItem = rowIndex => {
     const updated = [...rows];
-    updated[rowIndex] = {
-      ...updated[rowIndex],
-      items: [...updated[rowIndex].items, { width: 1, chart: '', table: '', markdown: '', selector: '', input: '' }],
-    };
+    updated[rowIndex] = appendEmptyItem(updated[rowIndex]);
     setRows(updated);
   };
 
@@ -160,25 +162,15 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
   /**
    * Set or clear the object reference held by an item. `ref` is `{ type, name }`
-   * to set, or `null` to clear. Mutually-exclusive ref fields are reset so only
-   * one type is ever populated (matching the dashboard item model).
+   * to set, or `null` to clear. itemMutations enforces the mutual exclusion so
+   * only one type is ever populated (matching the dashboard item model) and the
+   * result is born backend-valid (VIS-993).
    */
   const handleItemRefChange = (rowIndex, itemIndex, ref) => {
     const updated = [...rows];
-    const item = {
-      ...updated[rowIndex].items[itemIndex],
-      chart: '',
-      table: '',
-      markdown: '',
-      selector: '',
-      input: '',
-    };
-    if (ref && ref.type && ref.name) {
-      item[ref.type] = formatRef(ref.name);
-    }
     updated[rowIndex] = {
       ...updated[rowIndex],
-      items: updated[rowIndex].items.map((it, i) => (i === itemIndex ? item : it)),
+      items: updated[rowIndex].items.map((it, i) => (i === itemIndex ? applyLeafRef(it, ref) : it)),
     };
     setRows(updated);
   };

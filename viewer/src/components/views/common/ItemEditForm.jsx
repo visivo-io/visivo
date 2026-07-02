@@ -1,9 +1,17 @@
 import React from 'react';
 import RefDropZone from './RefDropZone';
-import { parseRefValue, formatRef } from '../../../utils/refString';
+import { parseRefValue } from '../../../utils/refString';
+import {
+  LEAF_REF_FIELDS,
+  applyLeafRef,
+  appendEmptyItem,
+  convertItemToContainer,
+  convertItemToLeaf,
+  createRow,
+  setItemWidth,
+} from '../workspace/itemMutations';
 
-const LEAF_REF_FIELDS = ['chart', 'table', 'markdown', 'input'];
-export const ALLOWED_LEAF_TYPES = ['chart', 'table', 'markdown', 'input'];
+export const ALLOWED_LEAF_TYPES = [...LEAF_REF_FIELDS];
 
 /**
  * Resolve the `{ type, name }` leaf reference currently held by an item,
@@ -43,13 +51,6 @@ export const getItemLeafRef = item => {
 
 /** True when the item is acting as a row-container (`Item.rows` is set). */
 export const isContainerItem = item => Array.isArray(item?.rows);
-
-const emptyLeafFields = () => ({ chart: '', table: '', markdown: '', selector: '', input: '' });
-
-const emptyNestedRow = () => ({
-  height: 'medium',
-  items: [{ width: 1, ...emptyLeafFields() }],
-});
 
 /**
  * ItemEditForm — VIS-787 / Track F F-2.
@@ -105,31 +106,29 @@ const ItemEditForm = ({
   const leafRef = getItemLeafRef(item);
   const resolvedLeafDropZoneId = leafDropZoneId || `item-${itemId}-leaf`;
 
+  // Every structural mutation flows through itemMutations (VIS-993 §3) so the
+  // emitted item is BORN backend-valid: integer widths, at most one leaf key
+  // (mutual exclusion), never empty-string leaves or the non-model `selector`.
   const handleWidthChange = width => {
-    onChange({ ...item, width });
+    onChange(setItemWidth(item, width));
   };
 
   /**
    * Set or clear the leaf ref. `ref` is `{ type, name }` to set, or `null` to
-   * clear. All leaf ref fields are reset first so only one type is ever
-   * populated — this enforces the mutual exclusion: dropping a second-type ref
-   * clears the existing leaf before writing the new one.
+   * clear. itemMutations enforces the mutual exclusion: dropping a second-type
+   * ref clears the existing leaf (and any container rows) before writing the
+   * new one, so only one type is ever populated.
    */
   const handleLeafRefChange = ref => {
-    const next = { ...item, ...emptyLeafFields() };
-    delete next.rows;
-    if (ref && ref.type && ref.name) {
-      next[ref.type] = formatRef(ref.name);
-    }
-    onChange(next);
+    onChange(applyLeafRef(item, ref));
   };
 
   const switchToContainer = () => {
-    onChange({ width: item?.width ?? 1, rows: [emptyNestedRow()] });
+    onChange(convertItemToContainer(item));
   };
 
   const switchToLeaf = () => {
-    onChange({ width: item?.width ?? 1, ...emptyLeafFields() });
+    onChange(convertItemToLeaf(item));
   };
 
   const rows = item?.rows || [];
@@ -139,7 +138,7 @@ const ItemEditForm = ({
   };
 
   const addRow = () => {
-    onChange({ ...item, rows: [...rows, emptyNestedRow()] });
+    onChange({ ...item, rows: [...rows, createRow()] });
   };
 
   const removeRow = rowIndex => {
@@ -251,12 +250,7 @@ const ItemEditForm = ({
                   rowIndex={rowIndex}
                   onRemoveRow={() => removeRow(rowIndex)}
                   onHeightChange={height => updateRow(rowIndex, { ...row, height })}
-                  onAddItem={() =>
-                    updateRow(rowIndex, {
-                      ...row,
-                      items: [...(row.items || []), { width: 1, ...emptyLeafFields() }],
-                    })
-                  }
+                  onAddItem={() => updateRow(rowIndex, appendEmptyItem(row))}
                   onRemoveItem={subItemIndex =>
                     updateRow(rowIndex, {
                       ...row,
@@ -267,19 +261,16 @@ const ItemEditForm = ({
                     updateRow(rowIndex, {
                       ...row,
                       items: (row.items || []).map((it, i) =>
-                        i === subItemIndex ? { ...it, width } : it
+                        i === subItemIndex ? setItemWidth(it, width) : it
                       ),
                     })
                   }
                   onItemRefChange={(subItemIndex, ref) =>
                     updateRow(rowIndex, {
                       ...row,
-                      items: (row.items || []).map((it, i) => {
-                        if (i !== subItemIndex) return it;
-                        const reset = { ...it, ...emptyLeafFields() };
-                        if (ref && ref.type && ref.name) reset[ref.type] = formatRef(ref.name);
-                        return reset;
-                      }),
+                      items: (row.items || []).map((it, i) =>
+                        i === subItemIndex ? applyLeafRef(it, ref) : it
+                      ),
                     })
                   }
                   onSelectRef={onSelectRef}

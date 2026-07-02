@@ -12,9 +12,11 @@
  *
  * Every function here returns a NEW config (never mutates) so the store's
  * optimistic-update path can swap the reference and React re-renders cleanly.
- * The shell sanitises the result with `sanitizeDashboardConfig` before it is
- * persisted, so these helpers only restructure the rows/items tree — they never
- * have to worry about backend-validity of the leaf fields.
+ * Outputs are BORN backend-valid (VIS-993 — sanitizeDashboardConfig is
+ * retired): these helpers only restructure the rows/items tree, and every
+ * shape they emit already satisfies the backend Item/Row validators. The
+ * shell's commit path (commitCanvasConfig) VERIFIES with the validation gate
+ * before persisting — it never repairs.
  *
  * Three gestures, four drop intents (matching the D-2 mockup):
  *   - reorderItemsInRow   → reorder items WITHIN one row (between-items / end-of-row).
@@ -358,9 +360,10 @@ export const insertItemAtTarget = (config, target, newItem) => {
 
 /**
  * Build the dashboard-item leaf field for a Library-dropped object. A chart /
- * table / markdown / input becomes `{ width: 1, <type>: '${ref(name)}' }`. The
- * shell sanitises the ref string, so we store the bare `ref(name)` form the
- * other right-rail writers use.
+ * table / markdown / input becomes `{ width: 1, <type>: 'ref(name)' }` — the
+ * bare `ref(name)` form, which the backend's RefStringType accepts directly
+ * (it serializes to the `${ref(name)}` context form on write-back), so the
+ * item is born valid with exactly one leaf key.
  */
 export const buildLibraryItem = (type, name) => {
   const item = { width: 1 };
@@ -513,10 +516,11 @@ const LEAF_REF_FIELDS = ['chart', 'table', 'markdown', 'input'];
 /**
  * Re-point the leaf item at `itemPath` to `name` of `type` (one of
  * chart/table/markdown/input). Clears any sibling leaf fields so the item
- * carries exactly one leaf ref, then writes `<type>: ref(name)` (the same bare
- * `ref(name)` form buildLibraryItem + the right-rail writers use — the shell
- * sanitises it on commit). Preserves the item's `width`. Returns the config
- * unchanged for an invalid path / type or a missing name.
+ * carries exactly one leaf ref (the backend's mutual exclusion, enforced at
+ * construction), then writes `<type>: ref(name)` — the same bare `ref(name)`
+ * form buildLibraryItem uses, accepted by the backend as-is. Preserves the
+ * item's `width`. Returns the config unchanged for an invalid path / type or
+ * a missing name.
  */
 export const setItemRef = (config, itemPath, type, name) => {
   if (!LEAF_REF_FIELDS.includes(type) || !name) return config;
@@ -630,8 +634,9 @@ export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
  * width are preserved (a move), and the empty placeholder it lands on is
  * discarded. Returns config unchanged unless the target is a genuine empty slot
  * and the source/target differ (a self-drop — a slot inside the dragged item's
- * own subtree — is also a no-op). The source row may be left empty; the shell's
- * sanitize step re-seeds it with an empty slot so it stays a valid, droppable row.
+ * own subtree — is also a no-op). The source row may be left with an empty
+ * `items` array — a valid (if visually empty) row the backend accepts; the
+ * canvas still renders it as a drop target via its row-level zones.
  */
 export const moveItemIntoSlot = (config, fromRowPath, fromIndex, targetItemPath) => {
   if (!config || !targetItemPath) return config;
@@ -667,8 +672,8 @@ export const moveItemIntoSlot = (config, fromRowPath, fromIndex, targetItemPath)
 // The canvas resize overlay (CanvasResizeLayer) turns the selection's edge
 // handles into real gestures. These are the pure, immutable config transforms
 // behind them — they mirror the reorder helpers above: walk the composite
-// `data-canvas-path` spine, clone only the path to the target, return a NEW
-// config. The shell sanitises the result before persisting.
+// `data-canvas-path` spine, clone only the path to the target, return a NEW,
+// born-valid config the shell's commit gate verifies before persisting.
 
 /**
  * Row.height accepts `Union[HeightEnum, int]` (VIS-770). The enum tick stops,
@@ -833,9 +838,9 @@ export const setRowHeight = (config, rowPath, nextHeight) => {
  * pure layout SHAPE — a row of empty item slots (`{ width }`), NOT a content
  * thumbnail. The user picks the column layout, then drags / inline-creates
  * items into the slots. `widths` is the per-slot `width` (the 12-col grid is
- * derived from their sum by <Dashboard>'s grid layout). The shell's
- * `sanitizeDashboardConfig` accepts an empty `{ width }` slot as backend-valid,
- * so a freshly-inserted template row persists cleanly with no leaf refs.
+ * derived from their sum by <Dashboard>'s grid layout). An empty `{ width }`
+ * slot is backend-valid as-is (VIS-900), so a freshly-inserted template row
+ * persists cleanly with no leaf refs — born valid, nothing to sanitize.
  *
  *   blank  → 1 full-width slot.
  *   kpi    → 4 equal narrow slots (a headline-metrics strip).

@@ -15,7 +15,8 @@ import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import LibraryDragPreview from './library/LibraryDragPreview';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
-import sanitizeDashboardConfig from './sanitizeDashboardConfig';
+import { checkLeafExclusivity } from './itemMutations';
+import { validateRecordConfig, validateRecordConfigSync } from './validateAgainstSchema';
 import {
   reorderItemsInRow,
   moveItemBetweenRows,
@@ -146,14 +147,15 @@ export const useWorkspaceDrag = () => useContext(WorkspaceDragContext)?.activeDr
 
 /**
  * Read the shared `commitCanvasConfig(dashboardName, nextConfig, meta)` —
- * sanitize → optimistic → save. Surfaced for the canvas resize overlay
- * (VIS-777 / D-4), which persists width/height/weight gestures through the SAME
- * dashboard save path the DnD router uses. Returns a no-op outside the provider.
+ * optimistic → validate → save (VIS-993). Surfaced for the canvas resize
+ * overlay (VIS-777 / D-4), which persists width/height/weight gestures through
+ * the SAME dashboard save path the DnD router uses. Returns a no-op outside
+ * the provider.
  */
 export const useCommitCanvasConfig = () =>
   useContext(WorkspaceDragContext)?.commitCanvasConfig ?? (() => {});
 
-// Exposes the shell's `commitCanvasConfig` (sanitize → optimistic → save) to
+// Exposes the shell's `commitCanvasConfig` (optimistic → validate → save) to
 // non-DnD canvas affordances — the "+ Add Row" template menu + empty-canvas CTA
 // (VIS-794 / D-7, D-8) — so they reuse the SAME persistence path the DnD router
 // uses, rather than re-implementing the save flow.
@@ -186,7 +188,7 @@ export const WorkspaceCommitProvider = ({ value, children }) => (
  * @param {Function} deps.moveLevel  store action `(fromIndex, toIndex) => void`
  *                   for canvas level reorder (VIS-901 #5).
  * @param {Function} deps.commitCanvasConfig  applies a next dashboard config
- *                   (sanitize → optimistic → save) for canvas D-3 mutations:
+ *                   (optimistic → validate → save) for canvas D-3 mutations:
  *                   `(dashboardName, nextConfig, meta) => void`.
  * @param {Function} deps.emit        telemetry emitter.
  * @returns {string} a short tag describing the routed action (for tests):
@@ -596,21 +598,47 @@ const WorkspaceDndContext = ({ children }) => {
   // and consumers (ProjectEditor) can read: `{ kind, name, level, type }`.
   const [activeDrag, setActiveDrag] = useState(null);
 
-  // Commit a canvas-driven config mutation (D-3): sanitize so the payload is
-  // always backend-valid (GAP-3 — see sanitizeDashboardConfig), optimistically
-  // swap the store config so the canvas + Outline reflect it immediately, then
-  // persist through the shared dashboard save path (the SAME path the right-rail
-  // forms use via RightRailEditPanel.persistConfig).
+  // Commit a canvas-driven config mutation (D-3): optimistically swap the
+  // store config so the canvas + Outline reflect it immediately, then GATE
+  // persistence (VIS-993 §3). The canvas transforms (canvasReorder) produce
+  // BORN-valid configs, so the gate — $defs schema (validateAgainstSchema)
+  // plus the leaf mutual-exclusion check the JSON schema cannot express — is
+  // defense-in-depth: an invalid config is never handed to saveDashboard
+  // (sanitizeDashboardConfig is retired; nothing repairs the payload). This is
+  // the SAME contract RightRailEditPanel.persistConfig applies on the
+  // structure-form path.
   const commitCanvasConfig = useCallback(
     (dashboardName, nextConfig) => {
       if (!dashboardName) return;
-      const clean = sanitizeDashboardConfig(nextConfig);
       if (updateDashboardConfigOptimistic) {
-        updateDashboardConfigOptimistic(dashboardName, clean);
+        updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
-      if (typeof saveDashboard === 'function') {
-        saveDashboard(dashboardName, clean);
+      const persist = blocked => {
+        if (blocked) {
+          emitWorkspaceEvent('canvas_commit_blocked', {
+            name: dashboardName,
+            errors: blocked.errors.length,
+          });
+          return;
+        }
+        if (typeof saveDashboard === 'function') {
+          saveDashboard(dashboardName, nextConfig);
+        }
+      };
+      const exclusivity = checkLeafExclusivity(nextConfig);
+      if (!exclusivity.valid) {
+        persist(exclusivity);
+        return;
       }
+      // Sync schema fast path; pre-load (null) defers to the async check.
+      const sync = validateRecordConfigSync('dashboard', nextConfig);
+      if (sync) {
+        persist(sync.valid ? null : sync);
+        return;
+      }
+      validateRecordConfig('dashboard', nextConfig).then(result =>
+        persist(result.valid ? null : result)
+      );
     },
     [updateDashboardConfigOptimistic, saveDashboard]
   );

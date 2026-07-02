@@ -31,7 +31,7 @@ import {
  * an `announce(key)` that renders the SR string ("Row 2, item 1 selected").
  *
  * Reorder commits through the shell's shared `commitCanvasConfig`
- * (sanitize → optimistic → save) — the SAME path the DnD router + context menu
+ * (optimistic → validate → save) — the SAME path the DnD router + context menu
  * use — so a keyboard reorder is indistinguishable from a pointer one.
  */
 

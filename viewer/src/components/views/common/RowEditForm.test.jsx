@@ -98,7 +98,8 @@ describe('RowEditForm — standalone render', () => {
     expect(onHeightChange).toHaveBeenCalledWith('large');
 
     fireEvent.change(screen.getByLabelText('Item 1 width'), { target: { value: '3' } });
-    expect(onItemWidthChange).toHaveBeenCalledWith(0, '3');
+    // VIS-993: widths flow through itemMutations and arrive as INTEGERS.
+    expect(onItemWidthChange).toHaveBeenCalledWith(0, 3);
 
     fireEvent.click(screen.getByText('Add Item'));
     expect(onAddItem).toHaveBeenCalled();
