@@ -12,6 +12,19 @@ import { renderHook, act } from '@testing-library/react';
 import useRecordSave from './useRecordSave';
 import useStore from '../stores/store';
 
+// The validation gate has its own suite (useRecordSave.validation.test.js,
+// real schema). Here it is stubbed permissive so the backbone mechanics —
+// debounce, dispatch, optimistic writes, clobber-safety — stay in focus with
+// minimal fixtures.
+jest.mock('../components/views/workspace/validateAgainstSchema', () => ({
+  validateRecordConfig: jest.fn(async () => ({ valid: true, errors: [] })),
+  validateRecordConfigSync: jest.fn(() => null),
+  preloadValidationSchema: jest.fn(async () => {}),
+}));
+jest.mock('../components/views/workspace/refPreflight', () => ({
+  checkRefTargets: jest.fn(() => ({ valid: true, errors: [] })),
+}));
+
 const setupCollection = (collectionKey, name, config, saveActionName) => {
   const saveFn = jest.fn(() => Promise.resolve({ success: true }));
   useStore.setState({

@@ -2,6 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import useStore from '../stores/store';
 import { COLLECTION_KEY, SAVE_ACTION } from '../components/views/workspace/collectionKeys';
 import { unwrapConfig } from '../components/views/workspace/unwrapRecordConfig';
+import {
+  validateRecordConfig,
+  validateRecordConfigSync,
+} from '../components/views/workspace/validateAgainstSchema';
+import { checkRefTargets } from '../components/views/workspace/refPreflight';
 
 /**
  * useRecordSave(type, name, opts) — the unified optimistic + debounced save
@@ -25,9 +30,20 @@ import { unwrapConfig } from '../components/views/workspace/unwrapRecordConfig';
  *        record therefore converge on the last write rather than racing stale
  *        closures back over each other.
  *
- * The status model ('idle' | 'pending' | 'saving' | 'saved' | 'error') and the
- * `{ status, scheduleSave, saveNow, reset }` surface mirror `useDebouncedSave`
- * so existing indicators map straight across.
+ * VALIDATION GATE (VIS-993): persistence is gated by the $defs schema
+ * (validateAgainstSchema) plus the dangling-ref pre-flight (refPreflight).
+ * Under runs-on-changes every persisted data-resource save fires a real DAG
+ * run — and in cloud a failed run 409-blocks Commit — so an invalid config is
+ * never handed to `saveX`: the optimistic store write still happens (bound
+ * surfaces stay live while the user types), but nothing POSTs, no run fires,
+ * and the hook reports `status: 'invalid'` with per-field `errors`. A sync
+ * fast path inside `scheduleSave` marks errors the moment the user stops
+ * typing; the async fire-time check remains the authoritative gate.
+ *
+ * The status model ('idle' | 'pending' | 'saving' | 'saved' | 'error' |
+ * 'invalid') and the `{ status, errors, scheduleSave, saveNow, reset }`
+ * surface extend `useDebouncedSave` so existing indicators map straight
+ * across.
  *
  * @param {string} type  one of the canonical object types (see COLLECTION_KEY).
  * @param {string} name  the record name (the collection key + persist arg).
@@ -38,6 +54,8 @@ import { unwrapConfig } from '../components/views/workspace/unwrapRecordConfig';
 export default function useRecordSave(type, name, opts = {}) {
   const { delay = 500 } = opts;
   const [status, setStatus] = useState('idle');
+  // Validation errors ({path, message, keyword}[]) when status === 'invalid'.
+  const [errors, setErrors] = useState(null);
   const timerRef = useRef(null);
   const savedTimerRef = useRef(null);
   // Mirror the latest type/name in refs so the fire-time persist always targets
@@ -100,6 +118,24 @@ export default function useRecordSave(type, name, opts = {}) {
       return { success: false };
     }
 
+    // VIS-993 gate — authoritative fire-time check. Runs BEFORE the global
+    // save-activity tick: a blocked edit is not a save in flight.
+    const validation = await validateRecordConfig(t, config);
+    const blocked = !validation.valid
+      ? validation
+      : (() => {
+          const refCheck = checkRefTargets(config, useStore.getState());
+          return refCheck.valid ? null : refCheck;
+        })();
+    if (blocked) {
+      if (mountedRef.current) {
+        setStatus('invalid');
+        setErrors(blocked.errors);
+      }
+      return { success: false, validation: blocked };
+    }
+    if (mountedRef.current) setErrors(null);
+
     if (mountedRef.current) setStatus('saving');
     // Report into the global save-activity counter (H-1) so the TopBar shows
     // "Saving…" while this write is in flight. The counter must balance even
@@ -146,11 +182,33 @@ export default function useRecordSave(type, name, opts = {}) {
       // Record this as the latest edit (used by runSave's refetch-revert guard).
       latestConfigRef.current = nextConfig;
       seqRef.current += 1;
-      // Optimistic write first so every bound surface reflects the edit now.
+      // Optimistic write first so every bound surface reflects the edit now —
+      // even a blocked edit stays visible while the user finishes typing; only
+      // PERSISTENCE is gated.
       useStore.getState().updateRecordConfigOptimistic?.(typeRef.current, nameRef.current, nextConfig);
 
       if (timerRef.current) clearTimeout(timerRef.current);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+
+      // VIS-993 sync fast path: when the schema is already loaded, mark the
+      // edit invalid immediately and HOLD the timer — no doomed persist gets
+      // armed. Returns null pre-load, in which case the async fire-time gate
+      // in runSave stays authoritative.
+      const syncCheck = validateRecordConfigSync(typeRef.current, nextConfig);
+      const syncBlocked =
+        syncCheck && !syncCheck.valid
+          ? syncCheck
+          : (() => {
+              const refCheck = checkRefTargets(nextConfig, useStore.getState());
+              return refCheck.valid ? null : refCheck;
+            })();
+      if (syncBlocked) {
+        setStatus('invalid');
+        setErrors(syncBlocked.errors);
+        return;
+      }
+      setErrors(null);
+
       setStatus('pending');
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
@@ -190,7 +248,8 @@ export default function useRecordSave(type, name, opts = {}) {
       savedTimerRef.current = null;
     }
     setStatus('idle');
+    setErrors(null);
   }, []);
 
-  return { status, scheduleSave, saveNow, reset };
+  return { status, errors, scheduleSave, saveNow, reset };
 }
