@@ -24,6 +24,10 @@ import {
   validateRecordConfigSync,
   clearValidationCache,
 } from './validateAgainstSchema';
+// The real $defs validators compile heavyweight unions; under full-suite
+// CPU contention the first compile can exceed jest's 5s default.
+jest.setTimeout(30000);
+
 
 // Render the REAL RefDropZone but capture each slot's `onChange` by id. The
 // shell DndContext (G-1) performs a drop write by invoking exactly this
