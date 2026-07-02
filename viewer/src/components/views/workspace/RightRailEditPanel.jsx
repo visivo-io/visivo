@@ -29,6 +29,7 @@ import { getTypeByValue } from '../common/objectTypeConfigs';
 import { COLLECTION_KEY } from './collectionKeys';
 import { formatRef } from '../../../utils/refString';
 import useRecordSave from '../../../hooks/useRecordSave';
+import RecordRunStatus from './RecordRunStatus';
 import sanitizeDashboardConfig from './sanitizeDashboardConfig';
 import { emitWorkspaceEvent } from './telemetry';
 
@@ -657,7 +658,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   //     as a post-save NOTIFICATION. Re-persisting that here double-fired `saveX`
   //     (VIS-1018 adversarial-review fix), so the single-arg notification is a
   //     no-op — the form already wrote the record.
-  const { status: recordSaveStatus, saveNow } = useRecordSave(type, name);
+  const { status: recordSaveStatus, errors: recordSaveErrors, saveNow } = useRecordSave(type, name);
   const handleObjectSave = useCallback(
     (typeOrConfig, _name, config) =>
       typeof typeOrConfig === 'string' && config !== undefined ? saveNow(config) : undefined,
@@ -681,6 +682,27 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
     return (
       <>
         <SelectionChip type={type} name={name} subtitle={singular} saveStatus={saveStatus} />
+        {/* VIS-993 §2 — the save-status block: the validation gate's 'invalid'
+            errors (rail-level `path: message` list; per-field mapping comes
+            with VIS-996) + the run-failure loop-back banner for THIS record,
+            reading as one block with the chip's save indicator above. */}
+        {recordSaveStatus === 'invalid' && recordSaveErrors?.length > 0 && (
+          <div
+            data-testid="record-save-errors"
+            className="border-b border-[#d25946]/30 bg-[#fdf5f3] px-3 py-2"
+          >
+            <p className="text-[11.5px] font-semibold text-[#d25946]">Not saved — fix to save</p>
+            <ul className="mt-0.5 space-y-0.5">
+              {recordSaveErrors.map((err, i) => (
+                <li key={`${err.path || 'root'}-${i}`} className="text-[11px] text-[#a03c2d]">
+                  {err.path ? <span className="font-medium">{err.path}: </span> : null}
+                  {err.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <RecordRunStatus name={name} />
         <div data-testid="right-rail-edit-leaf-form" className="flex-1 overflow-y-auto">
           {renderForm(record, common)}
         </div>
@@ -693,6 +715,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   return (
     <>
       <SelectionChip type={type} name={name} subtitle={singular} />
+      <RecordRunStatus name={name} />
       <div
         data-testid="right-rail-edit-leaf-open"
         className="flex flex-1 flex-col items-center justify-start gap-3 px-6 py-8 text-center"

@@ -72,12 +72,35 @@ jest.mock('../common/ChartEditForm', () => ({
   default: ({ chart, onSave }) => (
     <div data-testid="chart-edit-form-stub">
       {`chart-edit-form-stub:${chart?.name || 'none'}`}
+      {/* The config must be SCHEMA-VALID (Chart forbids unknown properties) or
+          the VIS-993 validation gate blocks the save this test asserts. */}
       <button
         type="button"
         data-testid="chart-stub-save"
-        onClick={() => onSave?.('chart', chart?.name, { name: chart?.name, title: 'Edited' })}
+        onClick={() =>
+          onSave?.('chart', chart?.name, {
+            name: chart?.name,
+            layout: { title: { text: 'Edited' } },
+          })
+        }
       >
         save
+      </button>
+      {/* VIS-993 §2: a config with a dangling ref — the gate must block it and
+          the rail must surface the 'invalid' errors inline. (The ref context
+          string is assembled so its ${...} form doesn't trip
+          no-template-curly-in-string.) */}
+      <button
+        type="button"
+        data-testid="chart-stub-save-invalid"
+        onClick={() =>
+          onSave?.('chart', chart?.name, {
+            name: chart?.name,
+            insights: [['$', '{ref(ghost_insight)}'].join('')],
+          })
+        }
+      >
+        save-invalid
       </button>
     </div>
   ),
@@ -731,11 +754,11 @@ describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
     const [name, config] = saveChart.mock.calls[0];
     expect(name).toBe('rev_chart');
-    expect(config.title).toBe('Edited');
+    expect(config.layout.title.text).toBe('Edited');
 
     // And the store collection was updated OPTIMISTICALLY before the round-trip.
     const entry = useStore.getState().charts.find(c => c.name === 'rev_chart');
-    expect((entry.config || entry).title).toBe('Edited');
+    expect((entry.config || entry).layout.title.text).toBe('Edited');
   });
 });
 
@@ -771,4 +794,111 @@ describe('RightRailEditPanel self-saving leaf forms do not double-persist (VIS-1
       expect(saveFn).not.toHaveBeenCalled();
     }
   );
+});
+
+// ── Run-failure loop-back + invalid-status surfacing (VIS-993 §2 / VIS-981) ──
+// When the run triggered by a just-saved record fails, the failure must land
+// ON that record's editing surface — not only as a global indicator. And when
+// the validation gate blocks a save ('invalid'), the rail renders the
+// path: message error list inline (per-field mapping comes with VIS-996).
+describe('RightRailEditPanel run-failure loop-back + invalid errors (VIS-993 §2)', () => {
+  const FAILED_RUN_FOR = (dagFilter, over = {}) => ({
+    id: 'run-9',
+    state: 'failed',
+    dag_filter: dagFilter,
+    error_json: '{"message":"query exploded"}',
+    is_superseded: false,
+    created_at: '2026-07-01T12:00:00Z',
+    ...over,
+  });
+
+  afterEach(() => {
+    act(() => useStore.setState({ runs: [] }));
+  });
+
+  test('a failed run whose dag_filter includes the open record surfaces on its editing surface', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: {} }],
+      runs: [FAILED_RUN_FOR('+rev_chart+,+orders_model+')],
+    });
+    renderPanel();
+    const banner = screen.getByTestId('record-run-status');
+    expect(banner).toHaveTextContent('Last run failed');
+    expect(banner).toHaveTextContent('query exploded');
+    // The edit form still renders — the banner sits with the save-status block.
+    expect(screen.getByTestId('chart-edit-form-stub')).toBeInTheDocument();
+  });
+
+  test('a failure for a DIFFERENT record must NOT surface on the open record', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: {} }],
+      runs: [FAILED_RUN_FOR('+other_chart+')],
+    });
+    renderPanel();
+    expect(screen.queryByTestId('record-run-status')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart-edit-form-stub')).toBeInTheDocument();
+  });
+
+  test('the banner clears when a newer succeeded run mentions the record', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: {} }],
+      runs: [FAILED_RUN_FOR('+rev_chart+')],
+    });
+    renderPanel();
+    expect(screen.getByTestId('record-run-status')).toBeInTheDocument();
+
+    act(() =>
+      useStore.setState({
+        runs: [
+          {
+            id: 'run-10',
+            state: 'succeeded',
+            dag_filter: '+rev_chart+',
+            error_json: null,
+            is_superseded: false,
+            created_at: '2026-07-01T13:00:00Z',
+          },
+          FAILED_RUN_FOR('+rev_chart+'),
+        ],
+      })
+    );
+    expect(screen.queryByTestId('record-run-status')).not.toBeInTheDocument();
+  });
+
+  test("an 'invalid' save (dangling ref) renders the rail-level path: message error list and blocks persistence", async () => {
+    const saveChart = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: {} }],
+      saveChart,
+      runs: [],
+    });
+    renderPanel();
+
+    fireEvent.click(screen.getByTestId('chart-stub-save-invalid'));
+
+    const errorList = await screen.findByTestId('record-save-errors');
+    expect(errorList).toHaveTextContent('insights.0');
+    expect(errorList).toHaveTextContent("ref 'ghost_insight' does not match any existing object");
+    // The gate blocked the save — nothing persisted, no run fires.
+    expect(saveChart).not.toHaveBeenCalled();
+  });
+
+  test('a VALID save renders no error list', async () => {
+    const saveChart = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: {} }],
+      saveChart,
+      runs: [],
+    });
+    renderPanel();
+
+    fireEvent.click(screen.getByTestId('chart-stub-save'));
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId('record-save-errors')).not.toBeInTheDocument();
+  });
 });
