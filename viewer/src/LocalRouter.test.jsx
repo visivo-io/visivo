@@ -8,7 +8,7 @@ import {
   useLocation,
   useParams,
 } from 'react-router-dom';
-import LocalRouter from './LocalRouter';
+import LocalRouter, { EditorTypeNameRedirect } from './LocalRouter';
 import { futureFlags } from './router-config';
 
 // Smoke test: the production router boots without crashing.
@@ -37,18 +37,13 @@ describe('VIS-772 Workspace routes + redirects', () => {
     );
   };
 
-  const TypedRedirect = () => {
-    const { type, name } = useParams();
-    return <Navigate to={`/workspace?edit=${type}:${name}`} replace />;
-  };
-
   const makeRouter = initialEntry =>
     createMemoryRouter(
       createRoutesFromElements(
         <>
           <Route path="/lineage" element={<Navigate to="/workspace?view=lineage" replace />} />
           <Route path="/editor" element={<Navigate to="/workspace?view=project" replace />} />
-          <Route path="/editor/:type/:name" element={<TypedRedirect />} />
+          <Route path="/editor/:type/:name" element={<EditorTypeNameRedirect />} />
           <Route path="/workspace" element={<RouteProbe label="workspace" />} />
           <Route
             path="/workspace/dashboard/:dashboardName"
@@ -91,8 +86,22 @@ describe('VIS-772 Workspace routes + redirects', () => {
       expect(screen.getByTestId('probe-workspace-pathname')).toHaveTextContent('/workspace');
     });
     expect(screen.getByTestId('probe-workspace-search')).toHaveTextContent(
-      '?edit=chart:revenue_chart'
+      '?edit=chart%3Arevenue_chart'
     );
+  });
+
+  test.each([
+    ['P&L', 'chart%3AP%26L'],
+    ['A+B', 'chart%3AA%2BB'],
+    ['100% Done', 'chart%3A100%25%20Done'],
+  ])('URL-encodes the ?edit= selector for object name %j', async (name, encoded) => {
+    renderAt(`/editor/chart/${encodeURIComponent(name)}`);
+    await waitFor(() => {
+      expect(screen.getByTestId('probe-workspace-pathname')).toHaveTextContent('/workspace');
+    });
+    // location.search keeps the encoded form; searchParams.get('edit') on the
+    // consumer side decodes it back to `chart:<name>`.
+    expect(screen.getByTestId('probe-workspace-search')).toHaveTextContent(`?edit=${encoded}`);
   });
 
   test('redirects /lineage → /workspace?view=lineage', async () => {

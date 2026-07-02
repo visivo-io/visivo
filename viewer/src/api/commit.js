@@ -44,7 +44,7 @@ export const commitChanges = async () => {
  * Discard all cached changes without writing YAML (the v1 rollback, Q14)
  */
 export const discardChanges = async () => {
-  const response = await fetch(getUrl('commitDiscard'), {
+  const response = await apiFetch(getUrl('commitDiscard'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

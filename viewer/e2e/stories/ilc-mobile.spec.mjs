@@ -103,22 +103,28 @@ test.describe('ILC on mobile (VIS-788 / VIS-792)', () => {
     const slot = page.locator('[data-canvas-path="row.0.item.0"]').first();
     await expect(slot).toBeVisible({ timeout: WAIT });
     await slot.scrollIntoViewIfNeeded();
-    const button = page.getByTestId('view-flip-button-row.0.item.0');
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      try {
-        await slot.hover({ position: { x: 40, y: 20 }, timeout: 4000 });
-      } catch {
-        await slot.hover({ timeout: 4000 }).catch(() => {});
-      }
-      try {
-        await expect(button).toBeVisible({ timeout: 3000 });
-        break;
-      } catch (e) {
-        if (attempt === 9) throw e;
-        await page.waitForTimeout(500);
-      }
+    // Flip via the consolidated kebab (the standalone flip button was removed
+    // when item actions consolidated into ItemActionMenu). Select-then-click
+    // with real cursor coordinates; force-clicks bypass the false-positive
+    // "intercepted by Plotly svg-container" actionability check.
+    const itemPath = 'row.0.item.0';
+    const kebab = page.getByTestId(`view-item-menu-${itemPath}`);
+    if (!(await kebab.isVisible().catch(() => false))) {
+      const box = await slot.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + 24);
+      await page.mouse.down();
+      await page.mouse.up();
+      await expect(kebab).toBeVisible({ timeout: WAIT });
     }
-    await button.evaluate(el => el.click());
+    await kebab.hover({ force: true });
+    await kebab.click({ force: true });
+    await expect(page.getByTestId(`view-item-menu-list-${itemPath}`)).toBeVisible({
+      timeout: WAIT,
+    });
+    const flipRow = page.getByTestId(`view-item-action-flip-${itemPath}`);
+    await expect(flipRow).toBeVisible({ timeout: WAIT });
+    await flipRow.hover({ force: true });
+    await flipRow.click({ force: true });
     const prefix = 'view-flip-card-row.0.item.0';
     await expect(page.getByTestId(prefix)).toBeVisible({ timeout: WAIT });
     await expect(page.getByTestId(`${prefix}-body`)).toBeVisible();

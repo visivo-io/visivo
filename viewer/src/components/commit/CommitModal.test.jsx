@@ -27,6 +27,8 @@ const baseState = () => ({
   commitChanges: jest.fn().mockResolvedValue({ success: true }),
   discardChanges: jest.fn().mockResolvedValue({ success: true }),
   discardLoading: false,
+  // null = local serve (capabilities probe 404s); an object = cloud.
+  capabilities: null,
 });
 
 beforeEach(() => {
@@ -86,6 +88,13 @@ describe('CommitModal', () => {
   it('Discard is disabled when there are no pending changes', () => {
     render(<CommitModal />);
     expect(screen.getByTestId('commit-modal-discard')).toBeDisabled();
+  });
+
+  it('hides Discard on cloud (capabilities present) — no cloud discard endpoint exists', () => {
+    mockState.capabilities = { can_edit: true, can_branch: true };
+    mockState.pendingChanges = [{ name: 'a', type: 'chart', status: 'NEW' }];
+    render(<CommitModal />);
+    expect(screen.queryByTestId('commit-modal-discard')).not.toBeInTheDocument();
   });
 
   it('Discard confirms inline, then drops the draft cache and closes (Q14)', async () => {

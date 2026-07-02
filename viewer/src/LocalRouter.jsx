@@ -24,9 +24,11 @@ const WorkspaceWithExplorerOverlay = () => (
 
 // VIS-772: /editor/<type>/<name> redirects into Workspace with the edit selector encoded
 // as a query param. Wrapping <Navigate /> so we can pull params out of the URL.
-const EditorTypeNameRedirect = () => {
+export const EditorTypeNameRedirect = () => {
   const { type, name } = useParams();
-  return <Navigate to={`/workspace?edit=${type}:${name}`} replace />;
+  // useParams returns the DECODED name; re-encode so names with &, +, %, #
+  // survive the query string (searchParams.get('edit') decodes on the way in).
+  return <Navigate to={`/workspace?edit=${encodeURIComponent(`${type}:${name}`)}`} replace />;
 };
 
 // Set global URL config early for router loaders

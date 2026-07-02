@@ -110,7 +110,16 @@ const createCommitSlice = (set, get) => ({
     const projectId = get().project?.id;
     if (!projectId) return { success: false, error: 'No active project' };
     set({ commitLoading: true, commitError: null });
-    const { status, body } = await branchingApi.commitDraft(projectId);
+    let status, body;
+    try {
+      ({ status, body } = await branchingApi.commitDraft(projectId));
+    } catch (error) {
+      // Network-level failure (server restart, offline) — commitDraft only
+      // guards JSON parsing. Without this, commitLoading sticks true and the
+      // modal soft-locks.
+      set({ commitLoading: false, commitError: error.message });
+      return { success: false, error: error.message };
+    }
     // Cloud: 201 publishes (terminal — the draft is now the live project); 200
     // {committed:false} is a no-op. Local: 200 is success. So success = 201, or
     // 200 unless committed===false.
@@ -161,7 +170,9 @@ const createCommitSlice = (set, get) => ({
       await get()._refreshNamedChildren();
       return { success: true, result };
     } catch (error) {
-      set({ discardLoading: false });
+      // Surface through commitError so CommitModal shows feedback instead of
+      // silently keeping the confirm state open.
+      set({ discardLoading: false, commitError: error.message });
       return { success: false, error: error.message };
     }
   },

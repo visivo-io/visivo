@@ -234,6 +234,20 @@ describe('commitStore (VIS-806)', () => {
       expect(result.success).toBe(false);
       expect(branchingApi.commitDraft).not.toHaveBeenCalled();
     });
+
+    test('a network-level failure resets commitLoading and surfaces commitError', async () => {
+      useStore.setState({ pendingCount: 2, hasUncommittedChanges: true });
+      branchingApi.commitDraft.mockRejectedValue(new Error('Failed to fetch'));
+
+      const result = await useStore.getState().commitChanges();
+
+      expect(result.success).toBe(false);
+      const state = useStore.getState();
+      expect(state.commitLoading).toBe(false);
+      expect(state.commitError).toBe('Failed to fetch');
+      expect(state.pendingCount).toBe(2);
+      expect(emitFirstPublishTelemetry).not.toHaveBeenCalled();
+    });
   });
 
   describe('refreshFromProjectChange (VIS-808)', () => {
@@ -290,7 +304,7 @@ describe('commitStore (VIS-806)', () => {
       FETCHER_KEYS.forEach(key => expect(fetcherStubs[key]).toHaveBeenCalled());
     });
 
-    test('reports failure without clearing pending state', async () => {
+    test('reports failure without clearing pending state and surfaces commitError', async () => {
       useStore.setState({ pendingCount: 4, hasUncommittedChanges: true });
       commitApi.discardChanges.mockRejectedValue(new Error('boom'));
 
@@ -300,6 +314,7 @@ describe('commitStore (VIS-806)', () => {
       const state = useStore.getState();
       expect(state.pendingCount).toBe(4);
       expect(state.discardLoading).toBe(false);
+      expect(state.commitError).toBe('boom');
       expect(fetcherStubs.fetchDashboards).not.toHaveBeenCalled();
     });
   });
