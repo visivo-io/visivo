@@ -9,12 +9,17 @@
  * stubbed permissive.
  */
 import { renderHook, act } from '@testing-library/react';
+
 import useRecordSave from './useRecordSave';
 import useStore from '../stores/store';
 import {
   preloadValidationSchema,
   clearValidationCache,
 } from '../components/views/workspace/validateAgainstSchema';
+// The real $defs validators compile heavyweight unions; under full-suite
+// CPU contention the first compile can exceed jest's 5s default.
+jest.setTimeout(30000);
+
 
 const setupCollection = (collectionKey, name, config, saveActionName) => {
   const saveFn = jest.fn(() => Promise.resolve({ success: true }));

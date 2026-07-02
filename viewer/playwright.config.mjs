@@ -32,6 +32,7 @@ export default defineConfig({
         '**/build-mode-publish.spec.mjs',
         '**/external-edit-banner.spec.mjs',
         '**/library-inline-create.spec.mjs',
+        '**/validation-as-save.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -45,6 +46,8 @@ export default defineConfig({
         '**/explorer-library-reactivity.spec.mjs',
         // Drafts objects into the backend cache via the Library create flow.
         '**/library-inline-create.spec.mjs',
+        // VIS-993: the valid-save step drafts a dimension into the cache.
+        '**/validation-as-save.spec.mjs',
       ],
       dependencies: ['parallel'],
     },
