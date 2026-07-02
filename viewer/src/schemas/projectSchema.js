@@ -50,6 +50,11 @@ export const OBJECT_TYPE_TO_DEF = {
   csvscriptmodel: 'CsvScriptModel',
   localmergemodel: 'LocalMergeModel',
   defaults: 'Defaults',
+  // Dashboard structure children — not Library object types, but the
+  // validation-as-save gate (VIS-993) validates Item/Row mutations against
+  // their defs so structure configs are born backend-valid.
+  item: 'Item',
+  row: 'Row',
 };
 
 /**
