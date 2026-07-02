@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import Table from './Table';
 import { withProviders } from '../../utils/test-utils';

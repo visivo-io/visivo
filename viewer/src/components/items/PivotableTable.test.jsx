@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import { render, screen, fireEvent } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import PivotableTable from './PivotableTable';
