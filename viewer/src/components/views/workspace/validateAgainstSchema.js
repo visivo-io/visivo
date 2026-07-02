@@ -22,6 +22,7 @@
 import Ajv2020 from 'ajv/dist/2020';
 import addFormats from 'ajv-formats';
 import { getDefNameForType, preloadProjectSchema, getObjectSchema } from '../../../schemas/projectSchema';
+import { validateProps } from '../../../schemas/plotlyValidator';
 
 let ajv = null;
 
@@ -108,6 +109,16 @@ const registerRoot = defs => {
   const stripped = JSON.parse(
     JSON.stringify(defs, (key, value) => (key === '$id' ? undefined : value))
   );
+  // PERFORMANCE: Insight.props is a 51-arm union of the full Plotly trace
+  // defs. Validating an INVALID props object against it explores every arm
+  // (allErrors) — hundreds of ms on the UI thread per gate check, and it
+  // cascades into Chart via embedded insights. The union is relaxed to a
+  // plain object here; props precision comes from the per-type
+  // plotlyValidator (validateRecordConfig runs it for insights when
+  // props.type is present), which compiles ONE trace schema instead.
+  if (stripped.Insight?.properties?.props) {
+    stripped.Insight.properties.props = { type: 'object' };
+  }
   ajv.addSchema({ $defs: stripped, $id: ROOT_ID });
   rootReady = true;
 };
@@ -157,7 +168,27 @@ export async function validateRecordConfig(type, config) {
       return SKIP;
     }
   }
-  return runValidator(validate, config);
+  const structural = runValidator(validate, config);
+
+  // Insight props precision: the registered graph relaxes props to a plain
+  // object (see registerRoot), so run the per-type Plotly validator here and
+  // merge its dot-path errors under 'props.'.
+  if (defName === 'Insight' && config?.props?.type) {
+    try {
+      const propsResult = await validateProps(config.props.type, config.props);
+      if (propsResult && propsResult.valid === false) {
+        const propErrors = (propsResult.errors || []).map(e => ({
+          path: e.path ? `props.${e.path}` : 'props',
+          message: e.message || 'invalid value',
+          keyword: e.keyword || 'props',
+        }));
+        return { valid: false, errors: [...structural.errors, ...propErrors] };
+      }
+    } catch (err) {
+      // Plotly schema unavailable for the type — structural result stands.
+    }
+  }
+  return structural;
 }
 
 /**

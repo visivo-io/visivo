@@ -52,6 +52,10 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   // UI state
   const [errors, setErrors] = useState({});
+  // VIS-993: TracePropsEditor reports AJV validity; Save is held while false so
+  // a plotly-invalid props object is never handed to the save path (which the
+  // useRecordSave gate would block anyway — this surfaces the reason here).
+  const [propsValid, setPropsValid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -133,6 +137,10 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
     if (!props.type) {
       newErrors.propsType = 'Chart type is required';
+    }
+
+    if (props.type && !propsValid) {
+      newErrors.props = 'Fix the invalid trace properties before saving.';
     }
 
     setErrors(newErrors);
@@ -305,7 +313,13 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
               ownerName={name || 'insight'}
               props={props}
               onChange={setProps}
+              onValidityChange={(ok) => setPropsValid(ok)}
             />
+            {errors.props && (
+              <p className="mt-1 text-xs text-red-500" data-testid="insight-props-invalid">
+                {errors.props}
+              </p>
+            )}
             {errors.propsType && <p className="mt-1 text-xs text-red-500">{errors.propsType}</p>}
           </SectionContainer>
 

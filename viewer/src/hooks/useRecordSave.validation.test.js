@@ -41,7 +41,16 @@ describe('useRecordSave validation gate (VIS-993)', () => {
   beforeAll(async () => {
     jest.useRealTimers();
     await preloadValidationSchema();
-  });
+    // Warm the heavyweight union validators (Insight/Chart pull the 51-arm
+    // trace union) so per-test sync validation stays fast — the first compile
+    // is hundreds of ms even outside jest. Production mirrors this via
+    // preloadValidationSchema on workspace mount + lazy per-type compile.
+    const { validateRecordConfig } = jest.requireActual(
+      '../components/views/workspace/validateAgainstSchema'
+    );
+    await validateRecordConfig('insight', { name: 'warm', props: { type: 'scatter' } });
+    await validateRecordConfig('chart', { name: 'warm' });
+  }, 60000);
   beforeEach(() => {
     jest.useFakeTimers();
   });
@@ -155,6 +164,33 @@ describe('useRecordSave validation gate (VIS-993)', () => {
     expect(outcome.success).toBe(false);
     expect(outcome.validation).toBeDefined();
     expect(result.current.status).toBe('invalid');
+  });
+
+  test('a plotly-invalid props object inside an insight is blocked by the $defs union', async () => {
+    // TracePropsEditor gives per-field detail; the backbone's union check is the
+    // structural guarantee that a doomed insight config never persists — even
+    // from consumers that bypass the editor.
+    const saveFn = setupCollection(
+      'insights',
+      'i1',
+      { name: 'i1', props: { type: 'scatter', mode: 'lines' } },
+      'saveInsight'
+    );
+    const { result } = renderHook(() => useRecordSave('insight', 'i1', { delay: 500 }));
+
+    act(() =>
+      result.current.scheduleSave({
+        name: 'i1',
+        props: { type: 'scatter', mode: 'not-a-real-mode' },
+      })
+    );
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(saveFn).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('invalid');
+    expect(result.current.errors.some(e => e.path === 'props.mode')).toBe(true);
   });
 
   test('types without a schema mapping still save (fail-open)', async () => {

@@ -41,6 +41,9 @@ import { validateProps } from '../../../schemas/plotlyValidator';
  * @param {(nextProps: object) => void} props.onChange - controlled change handler.
  * @param {boolean} [props.disabled]
  * @param {() => void} [props.onOpenFieldFinder] - optional ⌘K field-finder opener.
+ * @param {(isValid: boolean, errorMap: Object<string,string>) => void} [props.onValidityChange]
+ *   - VIS-993 gate wiring: reports every validation outcome so the composing
+ *     form can hold its save while the props are invalid.
  */
 const TracePropsEditor = ({
   ownerName,
@@ -48,6 +51,7 @@ const TracePropsEditor = ({
   onChange,
   disabled = false,
   onOpenFieldFinder,
+  onValidityChange,
 }) => {
   const type = traceProps?.type || '';
 
@@ -108,12 +112,20 @@ const TracePropsEditor = ({
     };
   }, [type]);
 
+  // Report validity to the composing form (VIS-993) without retriggering the
+  // validation effect on parent re-renders — the callback lives in a ref.
+  const onValidityChangeRef = useRef(onValidityChange);
+  useEffect(() => {
+    onValidityChangeRef.current = onValidityChange;
+  }, [onValidityChange]);
+
   // Re-run AJV validation on every props change (and once the validator can resolve
   // a schema for the type). Errors are mapped to a dot-path → message lookup.
   useEffect(() => {
     if (!type) {
       setErrorMap({});
       setIsValid(true);
+      onValidityChangeRef.current?.(true, {});
       return;
     }
 
@@ -129,6 +141,7 @@ const TracePropsEditor = ({
         });
         setErrorMap(map);
         setIsValid(!!result.valid);
+        onValidityChangeRef.current?.(!!result.valid, map);
       })
       .catch(err => {
         if (cancelled) return;
@@ -139,6 +152,7 @@ const TracePropsEditor = ({
         console.warn(`TracePropsEditor: prop validation failed for type "${type}":`, err);
         setErrorMap({});
         setIsValid(true);
+        onValidityChangeRef.current?.(true, {});
       });
 
     return () => {
