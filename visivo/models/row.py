@@ -11,7 +11,7 @@ class HeightEnum(str, Enum):
     Named row heights, from `compact` (wraps to content) through `xxlarge` (1024px).
 
     Each value maps to a fixed pixel height: `xsmall` 128, `small` 256, `medium` 396,
-    `large` 512, `xlarge` 768, `xxlarge` 1024. A [Row](./Row/)'s `height` also accepts a
+    `large` 512, `xlarge` 768, `xxlarge` 1024. A [Row](../)'s `height` also accepts a
     positive integer to set an exact pixel height instead.
     """
 
