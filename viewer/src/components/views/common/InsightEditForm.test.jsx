@@ -30,7 +30,7 @@ import useStore, { ObjectStatus } from '../../../stores/store';
 // drive onChange so we can assert the parent persists the edited props.
 jest.mock('./TracePropsEditor', () => ({
   __esModule: true,
-  default: ({ ownerName, props, onChange }) => (
+  default: ({ ownerName, props, onChange, onValidityChange }) => (
     <div data-testid="trace-props-editor" data-owner={ownerName}>
       <span data-testid="tpe-type">{props?.type}</span>
       <button
@@ -39,6 +39,20 @@ jest.mock('./TracePropsEditor', () => ({
         onClick={() => onChange({ type: 'bar', x: ['a', 'b'] })}
       >
         set bar
+      </button>
+      <button
+        type="button"
+        data-testid="tpe-report-invalid"
+        onClick={() => onValidityChange?.(false, { mode: 'must be a valid mode' })}
+      >
+        report invalid
+      </button>
+      <button
+        type="button"
+        data-testid="tpe-report-valid"
+        onClick={() => onValidityChange?.(true, {})}
+      >
+        report valid
       </button>
       <button
         type="button"
@@ -497,5 +511,23 @@ describe('InsightEditForm — live preview', () => {
         x: ['a', 'b'],
       })
     );
+  });
+});
+
+describe('InsightEditForm blocks Save on invalid trace props (VIS-993)', () => {
+  test('Save is held with an inline reason while TracePropsEditor reports invalid, and unblocks on valid', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('my_insight');
+
+    fireEvent.click(screen.getByTestId('tpe-report-invalid'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(/invalid trace propert/i)).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('tpe-report-valid'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
   });
 });

@@ -245,3 +245,33 @@ describe('TracePropsEditor', () => {
     expect(state['my_insight.key']).toBe(true);
   });
 });
+
+describe('onValidityChange (VIS-993 gate wiring)', () => {
+  test('reports invalid with the per-field error map, then valid after the fix', async () => {
+    const onValidityChange = jest.fn();
+    const { rerender } = render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'scatter', x: [1], y: [2], mode: 'bogus' }}
+        onChange={() => {}}
+        onValidityChange={onValidityChange}
+      />
+    );
+    await waitFor(() =>
+      expect(onValidityChange).toHaveBeenLastCalledWith(
+        false,
+        expect.objectContaining({ mode: expect.any(String) })
+      )
+    );
+
+    rerender(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'scatter', x: [1], y: [2], mode: 'lines' }}
+        onChange={() => {}}
+        onValidityChange={onValidityChange}
+      />
+    );
+    await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(true, {}));
+  });
+});
