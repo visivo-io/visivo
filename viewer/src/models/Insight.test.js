@@ -3,6 +3,8 @@ import {
   processInputRefsInProps,
   extractInputDependenciesFromProps,
   applySliceExpression,
+  mapQueryResultsToProps,
+  tableDataFromQueryResults,
 } from './Insight';
 
 const sampleInsightsData = {
@@ -625,5 +627,317 @@ describe('chartDataFromInsightData with props_slices', () => {
     };
     const traces = chartDataFromInsightData(insights);
     expect(traces[0].x).toEqual([1, 2]);
+  });
+
+  it('skips a slice whose target path does not exist in the bound props (no throw)', () => {
+    const insights = {
+      a: {
+        type: 'bar',
+        data: [{ x: 1 }, { x: 2 }],
+        props_mapping: { 'props.x': 'x' },
+        props_slices: { 'props.marker.size': '[0]' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].x).toEqual([1, 2]);
+    expect(traces[0].marker).toBeUndefined();
+  });
+
+  it('skips empty slice expressions', () => {
+    const insights = {
+      a: {
+        type: 'bar',
+        data: [{ x: 1 }, { x: 2 }],
+        props_mapping: { 'props.x': 'x' },
+        props_slices: { 'props.x': '' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].x).toEqual([1, 2]);
+  });
+
+  it('applies a slice to a NESTED prop path (props.marker.size)', () => {
+    const insights = {
+      a: {
+        type: 'bar',
+        data: [{ x: 1, s: 10 }, { x: 2, s: 20 }],
+        props_mapping: { 'props.x': 'x', 'props.marker.size': 's' },
+        props_slices: { 'props.marker.size': '[0]' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].marker.size).toBe(10);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// chartDataFromInsightData — skip guards and static-prop merging
+// ---------------------------------------------------------------------------
+
+describe('chartDataFromInsightData — guards and static-prop merge', () => {
+  it('skips null insight entries', () => {
+    expect(chartDataFromInsightData({ ghost: null })).toEqual([]);
+  });
+
+  it('skips insights with empty data arrays', () => {
+    const insights = { empty: { data: [], props_mapping: { 'props.x': 'x' } } };
+    expect(chartDataFromInsightData(insights)).toEqual([]);
+  });
+
+  it('skips insights with an empty props_mapping', () => {
+    const insights = { unmapped: { data: [{ x: 1 }], props_mapping: {} } };
+    expect(chartDataFromInsightData(insights)).toEqual([]);
+  });
+
+  it('deep-merges nested static props under dynamic props (dynamic wins on conflict)', () => {
+    const insights = {
+      styled: {
+        type: 'bar',
+        data: [{ x: 1, c: 'red' }, { x: 2, c: 'blue' }],
+        props_mapping: { 'props.x': 'x', 'props.marker.color': 'c' },
+        static_props: {
+          marker: { color: 'green', line: { width: 2 } },
+          opacity: 0.5,
+        },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+
+    // Dynamic marker.color (from the query) beats the static value...
+    expect(traces[0].marker.color).toEqual(['red', 'blue']);
+    // ...while non-conflicting static keys are merged in, nested and flat.
+    expect(traces[0].marker.line.width).toBe(2);
+    expect(traces[0].opacity).toBe(0.5);
+  });
+
+  it('copies static array props directly', () => {
+    const insights = {
+      arr: {
+        type: 'bar',
+        data: [{ x: 1 }],
+        props_mapping: { 'props.x': 'x' },
+        static_props: { text: ['a', 'b'] },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].text).toEqual(['a', 'b']);
+  });
+
+  it('leaves traces unchanged when static_props is not an object', () => {
+    const insights = {
+      weird: {
+        type: 'bar',
+        data: [{ x: 1 }],
+        props_mapping: { 'props.x': 'x' },
+        static_props: 'not-an-object',
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].x).toEqual([1]);
+  });
+
+  it('merges static props into every split trace', () => {
+    const insights = {
+      split: {
+        type: 'scatter',
+        data: [
+          { x: 1, grp: 'A' },
+          { x: 2, grp: 'B' },
+        ],
+        props_mapping: { 'props.x': 'x' },
+        split_key: 'grp',
+        static_props: { mode: 'lines+markers' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces).toHaveLength(2);
+    traces.forEach(trace => expect(trace.mode).toBe('lines+markers'));
+  });
+
+  it('applies props_slices per split group', () => {
+    const insights = {
+      split: {
+        type: 'bar',
+        data: [
+          { x: 1, grp: 'A' },
+          { x: 2, grp: 'A' },
+          { x: 9, grp: 'B' },
+        ],
+        props_mapping: { 'props.x': 'x' },
+        props_slices: { 'props.x': '[0]' },
+        split_key: 'grp',
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    const a = traces.find(t => t.name === 'A');
+    const b = traces.find(t => t.name === 'B');
+    expect(a.x).toBe(1);
+    expect(b.x).toBe(9);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// processInputRefsInProps — embedded templates and type coercion
+// ---------------------------------------------------------------------------
+
+/* eslint-disable no-template-curly-in-string */
+describe('processInputRefsInProps — embedded templates', () => {
+  it('replaces refs embedded inside a longer string', () => {
+    const props = { title: 'Sales for ${region.value} only' };
+    const inputs = { region: { value: 'EMEA' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ title: 'Sales for EMEA only' });
+  });
+
+  it('coerces a fully-numeric embedded result to a number', () => {
+    const props = { size: '1${digit.value}' };
+    const inputs = { digit: { value: 2 } };
+    const result = processInputRefsInProps(props, inputs);
+    expect(result.size).toBe(12);
+  });
+
+  it('keeps unresolved embedded refs verbatim', () => {
+    const props = { title: 'Sales for ${missing.value} only' };
+    const inputs = { other: { value: 'x' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({
+      title: 'Sales for ${missing.value} only',
+    });
+  });
+
+  it('replaces multiple embedded refs in one string', () => {
+    const props = { title: '${start.value} to ${end.value}' };
+    const inputs = { start: { value: 'Jan' }, end: { value: 'Mar' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ title: 'Jan to Mar' });
+  });
+
+  it('leaves ${...} strings that are not input refs untouched', () => {
+    const props = { expr: '${not an input ref}' };
+    const inputs = { a: { value: 1 } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ expr: '${not an input ref}' });
+  });
+
+  it('keeps the exact-match ref when the accessor is missing on the input', () => {
+    const props = { mode: '${sel.value}' };
+    const inputs = { sel: { values: ['a'] } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ mode: '${sel.value}' });
+  });
+});
+
+describe('extractInputDependenciesFromProps — interactions and dedupe', () => {
+  it('extracts inputs referenced only from interactions', () => {
+    const config = {
+      props: { type: 'scatter' },
+      interactions: [{ filter: 'x > ${min_value.value}' }, null],
+    };
+    expect(extractInputDependenciesFromProps(config)).toEqual(['min_value']);
+  });
+
+  it('does not double-count a name matched by the ref() pattern', () => {
+    const config = { props: { title: '${ref(region).value}' } };
+    expect(extractInputDependenciesFromProps(config)).toEqual(['region']);
+  });
+
+  it('dedupes a name referenced via BOTH ref() and simple forms in one string', () => {
+    const config = { props: { title: '${ref(region).value} vs ${region.label}' } };
+    expect(extractInputDependenciesFromProps(config)).toEqual(['region']);
+  });
+});
+/* eslint-enable no-template-curly-in-string */
+
+// ---------------------------------------------------------------------------
+// mapQueryResultsToProps — direct edge cases
+// ---------------------------------------------------------------------------
+
+describe('mapQueryResultsToProps', () => {
+  it('returns {} for empty or missing results', () => {
+    expect(mapQueryResultsToProps([], { 'props.x': 'x' })).toEqual({});
+    expect(mapQueryResultsToProps(null, { 'props.x': 'x' })).toEqual({});
+  });
+
+  it('returns {} for an empty or missing props_mapping', () => {
+    expect(mapQueryResultsToProps([{ x: 1 }], {})).toEqual({});
+    expect(mapQueryResultsToProps([{ x: 1 }], null)).toEqual({});
+  });
+
+  it('converts BigInt values to strings', () => {
+    const results = [{ n: 9007199254740993n }];
+    expect(mapQueryResultsToProps(results, { 'props.y': 'n' })).toEqual({
+      y: ['9007199254740993'],
+    });
+  });
+
+  it('skips mapping entries whose column is absent from the results', () => {
+    const results = [{ x: 1 }];
+    expect(mapQueryResultsToProps(results, { 'props.x': 'x', 'props.y': 'missing_col' })).toEqual({
+      x: [1],
+    });
+  });
+
+  it('builds nested structures from array-indexed paths', () => {
+    const results = [{ lo: 0, hi: 100 }];
+    const props = mapQueryResultsToProps(results, {
+      'props.gauge.axis.range[0]': 'lo',
+      'props.gauge.axis.range[1]': 'hi',
+    });
+    expect(props.gauge.axis.range[0]).toEqual([0]);
+    expect(props.gauge.axis.range[1]).toEqual([100]);
+  });
+
+  it('accepts paths without the props. prefix', () => {
+    expect(mapQueryResultsToProps([{ a: 1 }], { x: 'a' })).toEqual({ x: [1] });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applySliceExpression — remaining grammar corners
+// ---------------------------------------------------------------------------
+
+describe('applySliceExpression — additional corners', () => {
+  it('handles a negative-step slice [3:0:-1]', () => {
+    expect(applySliceExpression([0, 1, 2, 3, 4], '[3:0:-1]')).toEqual([3, 2, 1]);
+  });
+
+  it('returns [] for a reversed slice that never iterates', () => {
+    expect(applySliceExpression([0, 1, 2], '[::-1]')).toEqual([]);
+  });
+
+  it('returns the array unchanged for a non-numeric index', () => {
+    expect(applySliceExpression([1, 2, 3], '[abc]')).toEqual([1, 2, 3]);
+  });
+
+  it('returns the array unchanged for empty brackets', () => {
+    expect(applySliceExpression([1, 2, 3], '[]')).toEqual([1, 2, 3]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tableDataFromQueryResults
+// ---------------------------------------------------------------------------
+
+describe('tableDataFromQueryResults', () => {
+  it('returns empty headers/rows for empty or missing results', () => {
+    expect(tableDataFromQueryResults([])).toEqual({ headers: [], rows: [] });
+    expect(tableDataFromQueryResults(null)).toEqual({ headers: [], rows: [] });
+  });
+
+  it('derives headers from the first row and rows in header order', () => {
+    const results = [
+      { region: 'EMEA', revenue: 100 },
+      { region: 'APAC', revenue: 200 },
+    ];
+    expect(tableDataFromQueryResults(results)).toEqual({
+      headers: ['region', 'revenue'],
+      rows: [
+        ['EMEA', 100],
+        ['APAC', 200],
+      ],
+    });
+  });
+
+  it('converts BigInt cells to strings', () => {
+    const results = [{ id: 1n, name: 'a' }];
+    expect(tableDataFromQueryResults(results)).toEqual({
+      headers: ['id', 'name'],
+      rows: [['1', 'a']],
+    });
   });
 });

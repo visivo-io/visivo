@@ -1,12 +1,39 @@
 /**
- * objectCanvasRegistry (VIS-1001) — descriptor shape + the previewRegistry shim.
+ * objectCanvasRegistry (VIS-1001) — descriptor shape + the previewRegistry shim,
+ * plus a lazy-load smoke test: every registered canvas body must resolve its
+ * code-split chunk and render (a broken import path would otherwise only fail
+ * the first time a user opens that canvas).
  */
+import React from 'react';
+import { render, screen } from '@testing-library/react';
 import {
   OBJECT_CANVAS_REGISTRY,
   getCanvasDescriptor,
   hasCanvas,
 } from './objectCanvasRegistry';
 import { getPreviewComponent, hasPreview } from './previewRegistry';
+
+// Stub every heavy canvas body so React.lazy resolves instantly without pulling
+// Monaco / React-Flow / DuckDB-WASM / Plotly into this suite. Each stub renders
+// a marker naming its module. (jest.mock factories must be inline functions.)
+const mockCanvasBody = label => ({
+  __esModule: true,
+  default: () =>
+    // eslint-disable-next-line no-undef
+    require('react').createElement('div', { 'data-testid': `canvas-body-${label}` }),
+});
+jest.mock('./ChartPreview', () => mockCanvasBody('chart'));
+jest.mock('./TablePreview', () => mockCanvasBody('table'));
+jest.mock('./MarkdownPreview', () => mockCanvasBody('markdown'));
+jest.mock('./MarkdownEditorCanvas', () => mockCanvasBody('markdown-editor'));
+jest.mock('./pivot/PivotPlayground', () => mockCanvasBody('pivot-playground'));
+jest.mock('./InputPreview', () => mockCanvasBody('input'));
+jest.mock('./InsightPreview', () => mockCanvasBody('insight'));
+jest.mock('./source/SourceErd', () => mockCanvasBody('source-erd'));
+jest.mock('./ModelPreview', () => mockCanvasBody('model'));
+jest.mock('./relations/RelationErdCanvas', () => mockCanvasBody('relation-erd'));
+jest.mock('./fields/DimensionInspector', () => mockCanvasBody('dimension-inspector'));
+jest.mock('./fields/MetricPlayground', () => mockCanvasBody('metric-playground'));
 
 describe('objectCanvasRegistry', () => {
   const types = Object.keys(OBJECT_CANVAS_REGISTRY);
@@ -156,5 +183,38 @@ describe('objectCanvasRegistry', () => {
     expect(getPreviewComponent('mystery')).toBeNull();
     expect(hasPreview('table')).toBe(true);
     expect(hasPreview('mystery')).toBe(false);
+  });
+
+  test('every lazy canvas body (default + editable lens) resolves and renders', async () => {
+    const bodies = [
+      ['chart', OBJECT_CANVAS_REGISTRY.chart.Component],
+      ['table', OBJECT_CANVAS_REGISTRY.table.Component],
+      ['markdown', OBJECT_CANVAS_REGISTRY.markdown.Component],
+      ['input', OBJECT_CANVAS_REGISTRY.input.Component],
+      ['insight', OBJECT_CANVAS_REGISTRY.insight.Component],
+      ['source-erd', OBJECT_CANVAS_REGISTRY.source.Component],
+      // model + csvScriptModel + localMergeModel share ONE body.
+      ['model', OBJECT_CANVAS_REGISTRY.model.Component],
+      ['relation-erd', OBJECT_CANVAS_REGISTRY.relation.Component],
+      ['dimension-inspector', OBJECT_CANVAS_REGISTRY.dimension.Component],
+      ['metric-playground', OBJECT_CANVAS_REGISTRY.metric.Component],
+      // The second, editable lens bodies (VIS-1008 / VIS-1010).
+      ['pivot-playground', OBJECT_CANVAS_REGISTRY.table.lenses.find(l => l.key === 'build').Component],
+      ['markdown-editor', OBJECT_CANVAS_REGISTRY.markdown.lenses.find(l => l.key === 'edit').Component],
+    ];
+
+    for (const [label, Component] of bodies) {
+      const { unmount } = render(
+        React.createElement(
+          React.Suspense,
+          { fallback: React.createElement('div', { 'data-testid': 'canvas-fallback' }) },
+          React.createElement(Component)
+        )
+      );
+      // The chunk resolves and the body mounts — a broken import path (the
+      // regression this guards) would leave the Suspense fallback forever.
+      expect(await screen.findByTestId(`canvas-body-${label}`)).toBeInTheDocument();
+      unmount();
+    }
   });
 });

@@ -209,4 +209,106 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
     expect(fetchSourceTables).not.toHaveBeenCalled();
   });
+
+  test('search filters tables and keeps ancestor groups whose CHILDREN match', async () => {
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    fireEvent.click(await screen.findByTestId(`source-outline-node-${DB_KEY}-toggle`));
+    await screen.findByTestId(`source-outline-node-${DB_KEY}::table::orders`);
+
+    // 'users' matches one table only; the db group node (named after the source,
+    // which does NOT match) stays visible because a descendant matches.
+    fireEvent.change(screen.getByTestId('source-outline-search'), {
+      target: { value: 'users' },
+    });
+    expect(screen.getByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`source-outline-node-${DB_KEY}::table::users`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`source-outline-node-${DB_KEY}::table::orders`)
+    ).not.toBeInTheDocument();
+
+    // No match anywhere → the whole group disappears.
+    fireEvent.change(screen.getByTestId('source-outline-search'), {
+      target: { value: 'zzz-no-match' },
+    });
+    expect(screen.queryByTestId(`source-outline-node-${DB_KEY}`)).not.toBeInTheDocument();
+
+    // Clearing the query restores the full tree.
+    fireEvent.change(screen.getByTestId('source-outline-search'), { target: { value: '' } });
+    expect(
+      screen.getByTestId(`source-outline-node-${DB_KEY}::table::orders`)
+    ).toBeInTheDocument();
+  });
+
+  test('search also filters COLUMNS within an expanded, matching table', async () => {
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    const tableKey = `${DB_KEY}::table::orders`;
+    fireEvent.click(await screen.findByTestId(`source-outline-node-${DB_KEY}-toggle`));
+    fireEvent.click(await screen.findByTestId(`source-outline-node-${tableKey}-toggle`));
+    await screen.findByTestId(`source-outline-node-${tableKey}::col::id`);
+
+    // 'd' matches the orders table AND its `id` column, but not `amount` (nor
+    // the users table) — the visible columns are filtered by the query too.
+    fireEvent.change(screen.getByTestId('source-outline-search'), {
+      target: { value: 'd' },
+    });
+    expect(screen.getByTestId(`source-outline-node-${tableKey}`)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`source-outline-node-${tableKey}::col::id`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`source-outline-node-${tableKey}::col::amount`)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`source-outline-node-${DB_KEY}::table::users`)
+    ).not.toBeInTheDocument();
+  });
+
+  test('Enter / Space on a focused node selects it (keyboard parity with click)', async () => {
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    const dbNode = await screen.findByTestId(`source-outline-node-${DB_KEY}`);
+
+    fireEvent.keyDown(dbNode, { key: 'Enter' });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe(DB_KEY);
+
+    const root = screen.getByTestId('source-outline-node-root');
+    fireEvent.keyDown(root, { key: ' ' });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe(
+      `source-outline::${SRC}`
+    );
+    // Any other key leaves the selection alone.
+    fireEvent.keyDown(dbNode, { key: 'x' });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe(
+      `source-outline::${SRC}`
+    );
+  });
+
+  test('collapsing the source root hides the tree below it (and re-expands)', async () => {
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    await screen.findByTestId(`source-outline-node-${DB_KEY}`);
+
+    fireEvent.click(screen.getByTestId('source-outline-node-root-toggle'));
+    expect(screen.queryByTestId(`source-outline-node-${DB_KEY}`)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('source-outline-node-root-toggle'));
+    expect(screen.getByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
+  });
+
+  test('generation progress is surfaced on the cold state while a run is in flight', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: false }]);
+    generateSourceSchema.mockResolvedValue({ run_id: 'run-1' });
+    // A run that never completes → the panel stays on the progress copy.
+    fetchSchemaGenerationStatus.mockImplementation(() => new Promise(() => {}));
+
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    fireEvent.click(await screen.findByTestId('source-outline-generate'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('source-outline-cold')).toHaveTextContent(/Generating schema…/)
+    );
+    // The button is disabled + relabelled while the run is in flight.
+    expect(screen.getByTestId('source-outline-generate')).toBeDisabled();
+    expect(screen.getByTestId('source-outline-generate')).toHaveTextContent('Generating…');
+  });
 });

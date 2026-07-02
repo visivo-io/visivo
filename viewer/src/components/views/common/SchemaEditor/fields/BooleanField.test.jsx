@@ -67,6 +67,24 @@ describe('BooleanField', () => {
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
+  it('calls onChange with undefined when the selected button is clicked again (deselect)', () => {
+    const onChange = jest.fn();
+    render(<BooleanField {...defaultProps} value={true} onChange={onChange} />);
+
+    // Clicking the already-selected True button deselects it — the field
+    // reports undefined so the property is removed from the config.
+    fireEvent.click(screen.getByRole('button', { name: /set to true/i }));
+    expect(onChange).toHaveBeenCalledWith(undefined);
+  });
+
+  it('deselecting False also reports undefined', () => {
+    const onChange = jest.fn();
+    render(<BooleanField {...defaultProps} value={false} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /set to false/i }));
+    expect(onChange).toHaveBeenCalledWith(undefined);
+  });
+
   it('can be disabled', () => {
     render(<BooleanField {...defaultProps} disabled={true} />);
     expect(screen.getByRole('button', { name: /set to true/i })).toBeDisabled();

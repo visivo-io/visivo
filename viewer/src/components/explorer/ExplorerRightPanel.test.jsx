@@ -2,26 +2,33 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorerRightPanel from './ExplorerRightPanel';
+import { ExplorerRoundTripProvider } from './ExplorerRoundTripContext';
 import useStore from '../../stores/store';
 
 jest.mock('./InsightCRUDSection', () => {
-  return function MockInsightCRUDSection({ insightName, isExpanded }) {
+  return function MockInsightCRUDSection({ insightName, isExpanded, onToggleExpand }) {
     return (
       <div
         data-testid={`insight-crud-${insightName}`}
         data-expanded={isExpanded}
       >
         InsightCRUD: {insightName}
+        <button data-testid={`mock-insight-toggle-${insightName}`} onClick={onToggleExpand}>
+          toggle
+        </button>
       </div>
     );
   };
 });
 
 jest.mock('./ChartCRUDSection', () => {
-  return function MockChartCRUDSection({ isExpanded }) {
+  return function MockChartCRUDSection({ isExpanded, onToggleExpand }) {
     return (
       <div data-testid="chart-crud-section" data-expanded={isExpanded}>
         ChartCRUDSection
+        <button data-testid="mock-chart-toggle" onClick={onToggleExpand}>
+          toggle
+        </button>
       </div>
     );
   };
@@ -58,8 +65,18 @@ const defaultState = {
 };
 
 describe('ExplorerRightPanel', () => {
+  let originalActions;
+
+  beforeAll(() => {
+    const s = useStore.getState();
+    originalActions = {
+      setActiveInsight: s.setActiveInsight,
+      createInsight: s.createInsight,
+    };
+  });
+
   beforeEach(() => {
-    useStore.setState(defaultState);
+    useStore.setState({ ...originalActions, ...defaultState });
   });
 
   it('renders InsightCRUDSection for each insight', () => {
@@ -182,5 +199,112 @@ describe('ExplorerRightPanel', () => {
 
     fireEvent.click(screen.getByTestId('mock-save-close'));
     expect(screen.queryByTestId('explorer-save-modal')).not.toBeInTheDocument();
+  });
+
+  it('add insight button calls createInsight', () => {
+    const createInsight = jest.fn();
+    useStore.setState({ createInsight });
+
+    render(<ExplorerRightPanel />);
+    fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+
+    expect(createInsight).toHaveBeenCalled();
+  });
+
+  it('toggling the active insight deactivates it', () => {
+    const setActiveInsight = jest.fn();
+    useStore.setState({ setActiveInsight });
+
+    render(<ExplorerRightPanel />);
+    fireEvent.click(screen.getByTestId('mock-insight-toggle-insight_a'));
+
+    expect(setActiveInsight).toHaveBeenCalledWith(null);
+  });
+
+  it('toggling an inactive insight activates it', () => {
+    const setActiveInsight = jest.fn();
+    useStore.setState({ setActiveInsight });
+
+    render(<ExplorerRightPanel />);
+    fireEvent.click(screen.getByTestId('mock-insight-toggle-insight_b'));
+
+    expect(setActiveInsight).toHaveBeenCalledWith('insight_b');
+  });
+
+  it('toggling the chart section collapses and re-expands it', () => {
+    render(<ExplorerRightPanel />);
+
+    const chartSection = screen.getByTestId('chart-crud-section');
+    expect(chartSection).toHaveAttribute('data-expanded', 'true');
+
+    fireEvent.click(screen.getByTestId('mock-chart-toggle'));
+    expect(chartSection).toHaveAttribute('data-expanded', 'false');
+
+    fireEvent.click(screen.getByTestId('mock-chart-toggle'));
+    expect(chartSection).toHaveAttribute('data-expanded', 'true');
+  });
+
+  describe('round-trip mode', () => {
+    const renderWithRoundTrip = (roundTrip) =>
+      render(
+        <ExplorerRoundTripProvider value={roundTrip}>
+          <ExplorerRightPanel />
+        </ExplorerRoundTripProvider>
+      );
+
+    it('replaces the save button with "Save and place in slot"', () => {
+      renderWithRoundTrip({ saving: false, onSaveAndPlace: jest.fn() });
+
+      expect(screen.getByTestId('explorer-save-and-place-button')).toBeInTheDocument();
+      expect(screen.queryByTestId('explorer-save-button')).not.toBeInTheDocument();
+      expect(screen.getByText('Save and place in slot')).toBeInTheDocument();
+    });
+
+    it('clicking save-and-place routes to the round-trip handler, not the modal', () => {
+      const onSaveAndPlace = jest.fn();
+      renderWithRoundTrip({ saving: false, onSaveAndPlace });
+
+      fireEvent.click(screen.getByTestId('explorer-save-and-place-button'));
+
+      expect(onSaveAndPlace).toHaveBeenCalled();
+      expect(screen.queryByTestId('explorer-save-modal')).not.toBeInTheDocument();
+    });
+
+    it('shows "Placing…" and disables the button while saving', () => {
+      renderWithRoundTrip({ saving: true, onSaveAndPlace: jest.fn() });
+
+      const btn = screen.getByTestId('explorer-save-and-place-button');
+      expect(btn).toBeDisabled();
+      expect(btn).toHaveTextContent('Placing…');
+    });
+
+    it('disables save-and-place when there are no modifications', () => {
+      useStore.setState({
+        explorerInsightStates: {
+          insight_a: {
+            type: 'scatter',
+            props: {},
+            interactions: [],
+            typePropsCache: {},
+            isNew: false,
+          },
+        },
+        explorerChartInsightNames: ['insight_a'],
+        explorerModelStates: {},
+        explorerDiffResult: null,
+      });
+
+      renderWithRoundTrip({ saving: false, onSaveAndPlace: jest.fn() });
+
+      expect(screen.getByTestId('explorer-save-and-place-button')).toBeDisabled();
+    });
+
+    it('does not crash when onSaveAndPlace is missing', () => {
+      renderWithRoundTrip({ saving: false });
+
+      fireEvent.click(screen.getByTestId('explorer-save-and-place-button'));
+
+      expect(screen.getByTestId('explorer-save-and-place-button')).toBeInTheDocument();
+    });
   });
 });

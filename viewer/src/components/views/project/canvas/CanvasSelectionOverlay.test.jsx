@@ -233,6 +233,69 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1.item.0');
   });
 
+  test('a selected key with no matching DOM node paints no ring (stale key)', () => {
+    render(<Harness />);
+    measureFakeDom();
+    act(() => {
+      useStore.setState({ workspaceOutlineSelectedKey: 'row.9.item.9' });
+    });
+    expect(screen.queryByTestId('canvas-overlay-selected-item')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-overlay-selected-row')).not.toBeInTheDocument();
+  });
+
+  test('a window resize reflow drops the hover ring until the pointer re-arms it', () => {
+    render(<Harness />);
+    measureFakeDom();
+    act(() => {
+      useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
+    });
+    dispatch(fireEvent.mouseMove, screen.getByTestId('slot-0-0'));
+    expect(screen.getByTestId('canvas-overlay-hover-item')).toBeInTheDocument();
+
+    // Reflow: the measured boxes may have moved, so the hover ring is dropped.
+    act(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    expect(screen.queryByTestId('canvas-overlay-hover-item')).not.toBeInTheDocument();
+
+    // The selection ring survives the reflow (recomputed, not dropped).
+    expect(screen.getByTestId('canvas-overlay-selected-row')).toBeInTheDocument();
+
+    // The next pointer move re-arms the hover ring.
+    dispatch(fireEvent.mouseMove, screen.getByTestId('slot-0-0'));
+    expect(screen.getByTestId('canvas-overlay-hover-item')).toBeInTheDocument();
+  });
+
+  test('moving the pointer onto canvas chrome clears an active hover ring', () => {
+    render(<Harness />);
+    measureFakeDom();
+    act(() => {
+      useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
+    });
+    dispatch(fireEvent.mouseMove, screen.getByTestId('slot-0-0'));
+    expect(screen.getByTestId('canvas-overlay-hover-item')).toBeInTheDocument();
+
+    // Chrome (the root, outside any row/item) is a click affordance only — the
+    // hover hint must clear.
+    dispatch(fireEvent.mouseMove, screen.getByTestId('root'));
+    expect(screen.queryByTestId('canvas-overlay-hover-item')).not.toBeInTheDocument();
+
+    // Further chrome moves are a no-op (no ring reappears, nothing crashes).
+    dispatch(fireEvent.mouseMove, screen.getByTestId('root'));
+    expect(screen.queryByTestId('canvas-overlay-hover-item')).not.toBeInTheDocument();
+  });
+
+  test('re-hovering the same node does not duplicate or move the ring', () => {
+    render(<Harness />);
+    measureFakeDom();
+    act(() => {
+      useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
+    });
+    dispatch(fireEvent.mouseMove, screen.getByTestId('slot-0-0'));
+    dispatch(fireEvent.mouseMove, screen.getByTestId('slot-0-0'));
+    expect(screen.getAllByTestId('canvas-overlay-hover-item')).toHaveLength(1);
+  });
+
   // --- Nested-layout selection (the VIS-768 hold) --------------------------
   describe('nested layouts (composite keys)', () => {
     test('clicking a nested leaf writes its FULL composite path, not the container', () => {

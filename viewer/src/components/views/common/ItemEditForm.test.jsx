@@ -238,6 +238,57 @@ describe('ItemEditForm — container variant (Item.rows)', () => {
     expect(screen.getByLabelText('Move nested row 2 down')).toBeDisabled();
   });
 
+  test('reorder: move row 2 up swaps the two nested rows', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    fireEvent.click(screen.getByLabelText('Move nested row 2 up'));
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows[0].items[0].chart).toBe('ref(small_b)');
+    expect(next.rows[1].items[0].chart).toBe('ref(small_a)');
+  });
+
+  test('Add Item inside a nested sub-row appends an empty item to that row only', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    fireEvent.click(screen.getAllByRole('button', { name: /Add Item/ })[0]);
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows[0].items).toHaveLength(2);
+    expect(getItemLeafRef(next.rows[0].items[1])).toBeNull();
+    expect(next.rows[1].items).toHaveLength(1);
+  });
+
+  test('removing a nested sub-row item drops it from that sub-row', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    // The container item itself has no onRemove here, so the only
+    // "Remove item 1" buttons belong to the nested rows' items.
+    fireEvent.click(screen.getAllByLabelText('Remove item 1')[0]);
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows[0].items).toHaveLength(0);
+    expect(next.rows[1].items[0].chart).toBe('ref(small_b)');
+  });
+
+  test('changing a nested item width routes into the container item update', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    // [0] is the container item's own width input; [1] is nested row 1's item.
+    fireEvent.change(screen.getAllByLabelText('Item 1 width')[1], { target: { value: '4' } });
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows[0].items[0]).toEqual(expect.objectContaining({ width: '4', chart: 'ref(small_a)' }));
+    expect(next.rows[1].items[0].width).toBe(1);
+  });
+
+  test('clearing a nested item ref empties its leaf fields (other rows untouched)', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    // Remove the pill on the first nested row's item (small_a).
+    fireEvent.click(screen.getAllByTestId('pill-remove')[0]);
+    const next = onChange.mock.calls[0][0];
+    expect(getItemLeafRef(next.rows[0].items[0])).toBeNull();
+    expect(next.rows[0].items[0].chart).toBe('');
+    expect(next.rows[1].items[0].chart).toBe('ref(small_b)');
+  });
+
   test('editing a nested row height reports the updated container item', async () => {
     const onChange = jest.fn();
     renderContainer({ onChange });
@@ -247,6 +298,44 @@ describe('ItemEditForm — container variant (Item.rows)', () => {
     });
     const next = onChange.mock.calls[0][0];
     expect(next.rows[0].height).toBe('large');
+  });
+});
+
+describe('ItemEditForm — width defaults and RowComponent guard', () => {
+  test('an item with no width defaults to 1, and mode switches preserve that default', () => {
+    const onChange = jest.fn();
+    renderItem({ onChange, item: { chart: '', table: '', markdown: '', selector: '', input: '' } });
+    expect(screen.getByLabelText('Item 1 width')).toHaveValue(1);
+
+    fireEvent.click(screen.getByTestId('item-row-0-item-0-mode-container'));
+    expect(onChange.mock.calls[0][0].width).toBe(1);
+
+    cleanup();
+    onChange.mockClear();
+    // Container without an explicit width switches back to a width-1 leaf.
+    renderItem({ onChange, item: { rows: [] } });
+    fireEvent.click(screen.getByTestId('item-row-0-item-0-mode-leaf'));
+    expect(onChange.mock.calls[0][0].width).toBe(1);
+  });
+
+  test('a container renders safely without an injected RowComponent and can still add rows', () => {
+    const onChange = jest.fn();
+    render(
+      <DndContext>
+        <ItemEditForm
+          item={containerItem}
+          itemId="row-0-item-0"
+          itemIndex={0}
+          onChange={onChange}
+          onSelectRef={() => {}}
+        />
+      </DndContext>
+    );
+    // No nested RowEditForms are rendered without the injected component…
+    expect(screen.queryByTestId('row-edit-form-row-0-item-0-0')).not.toBeInTheDocument();
+    // …but the container chrome still works.
+    fireEvent.click(screen.getByText('+ Add Nested Row'));
+    expect(onChange.mock.calls[0][0].rows).toHaveLength(3);
   });
 });
 

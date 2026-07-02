@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { DndContext } from '@dnd-kit/core';
 import ChartCRUDSection from './ChartCRUDSection';
@@ -43,8 +43,11 @@ jest.mock('../views/lineage/EmbeddedPill', () => {
   };
 });
 
+let capturedLayoutOnChange = null;
+
 jest.mock('../views/common/SchemaEditor/SchemaEditor', () => {
   const MockSchemaEditor = ({ schema, value, onChange }) => {
+    capturedLayoutOnChange = onChange;
     return (
       <div data-testid="chart-schema-editor">
         ChartSchemaEditor: {JSON.stringify(value)}
@@ -83,8 +86,23 @@ const defaultState = {
 };
 
 describe('ChartCRUDSection', () => {
+  let originalActions;
+
+  beforeAll(() => {
+    const s = useStore.getState();
+    originalActions = {
+      setChartName: s.setChartName,
+      replaceChartLayout: s.replaceChartLayout,
+      createInsight: s.createInsight,
+      removeInsightFromChart: s.removeInsightFromChart,
+      setActiveInsight: s.setActiveInsight,
+      closeChart: s.closeChart,
+    };
+  });
+
   beforeEach(() => {
-    useStore.setState(defaultState);
+    capturedLayoutOnChange = null;
+    useStore.setState({ ...originalActions, ...defaultState });
   });
 
   it('renders chart name in header', async () => {
@@ -207,6 +225,167 @@ describe('ChartCRUDSection', () => {
       useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
       renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
       expect(await screen.findByText(/drag from left nav/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('layout changes', () => {
+    it('forwards layout object changes to replaceChartLayout', async () => {
+      const replaceChartLayout = jest.fn();
+      useStore.setState({ replaceChartLayout });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      await screen.findByTestId('chart-schema-editor');
+
+      capturedLayoutOnChange({ title: { text: 'Updated' } });
+
+      expect(replaceChartLayout).toHaveBeenCalledWith({ title: { text: 'Updated' } });
+    });
+
+    it('ignores non-object layout values', async () => {
+      const replaceChartLayout = jest.fn();
+      useStore.setState({ replaceChartLayout });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      await screen.findByTestId('chart-schema-editor');
+
+      capturedLayoutOnChange(null);
+      capturedLayoutOnChange('a string');
+
+      expect(replaceChartLayout).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('rename flow', () => {
+    it('commits a trimmed rename on blur', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: '  renamed_chart  ' } });
+      fireEvent.blur(input);
+
+      expect(setChartName).toHaveBeenCalledWith('renamed_chart');
+    });
+
+    it('does not commit when the name is unchanged', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.blur(input);
+
+      expect(setChartName).not.toHaveBeenCalled();
+    });
+
+    it('resets to the current name when cleared and blurred', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.blur(input);
+
+      expect(setChartName).not.toHaveBeenCalled();
+      expect(input).toHaveValue('test_chart');
+    });
+
+    it('does not commit the placeholder name "Untitled"', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'Untitled' } });
+      fireEvent.blur(input);
+
+      expect(setChartName).not.toHaveBeenCalled();
+      expect(input).toHaveValue('test_chart');
+    });
+
+    it('commits rename on Enter via blur', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      act(() => input.focus());
+      fireEvent.change(input, { target: { value: 'enter_chart' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(setChartName).toHaveBeenCalledWith('enter_chart');
+    });
+
+    it('Escape cancels the rename and restores the previous name', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      act(() => input.focus());
+      fireEvent.change(input, { target: { value: 'abandoned_name' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(setChartName).not.toHaveBeenCalled();
+      expect(input).toHaveValue('test_chart');
+      expect(screen.queryByTestId('chart-rename-error')).not.toBeInTheDocument();
+    });
+
+    it('shows collision error inline and keeps editing when the name is taken', async () => {
+      const setChartName = jest.fn(() => {
+        const err = new Error('Name "dupe" is already in use by a model. Choose a different name.');
+        err.code = 'NAME_COLLISION';
+        throw err;
+      });
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'dupe' } });
+      fireEvent.blur(input);
+
+      const error = screen.getByTestId('chart-rename-error');
+      expect(error).toHaveTextContent('already in use by a model');
+      // Editing continues so the user can correct the name
+      expect(input).toHaveValue('dupe');
+    });
+
+    it('typing after a collision clears the error', async () => {
+      const setChartName = jest.fn(() => {
+        const err = new Error('Name "dupe" is already in use. Choose a different name.');
+        err.code = 'NAME_COLLISION';
+        throw err;
+      });
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'dupe' } });
+      fireEvent.blur(input);
+      expect(screen.getByTestId('chart-rename-error')).toBeInTheDocument();
+
+      fireEvent.change(input, { target: { value: 'dupe_2' } });
+      expect(screen.queryByTestId('chart-rename-error')).not.toBeInTheDocument();
+    });
+
+    it('successful rename clears any previous error', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'clean_name' } });
+      fireEvent.blur(input);
+
+      expect(setChartName).toHaveBeenCalledWith('clean_name');
+      expect(screen.queryByTestId('chart-rename-error')).not.toBeInTheDocument();
     });
   });
 });

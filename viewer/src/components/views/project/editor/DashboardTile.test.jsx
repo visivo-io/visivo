@@ -100,4 +100,44 @@ describe('DashboardTile', () => {
     );
     expect(screen.getByText('dashboard')).toBeInTheDocument();
   });
+
+  test('renders the updated timestamp when provided', () => {
+    render(
+      <DndContext>
+        <DashboardTile
+          tile={{ name: 'd', tags: [], itemCount: 2, updatedAt: '2 days ago' }}
+        />
+      </DndContext>
+    );
+    expect(screen.getByText('2 days ago')).toBeInTheDocument();
+  });
+
+  // Keyboard activation (role="button" + tabIndex=0) -------------------------
+
+  test('pressing Enter on the focused tile dispatches onSelect', () => {
+    const onSelect = jest.fn();
+    renderTile({ onSelect });
+    fireEvent.keyDown(screen.getByTestId('project-tile-revenue-overview'), { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith(tile);
+  });
+
+  test('pressing Space on the focused tile dispatches onSelect', () => {
+    const onSelect = jest.fn();
+    renderTile({ onSelect });
+    fireEvent.keyDown(screen.getByTestId('project-tile-revenue-overview'), { key: ' ' });
+    expect(onSelect).toHaveBeenCalledWith(tile);
+  });
+
+  test('other keys do NOT activate the tile', () => {
+    const onSelect = jest.fn();
+    renderTile({ onSelect });
+    fireEvent.keyDown(screen.getByTestId('project-tile-revenue-overview'), { key: 'a' });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  test('keyboard activation works without an onSelect handler (no crash)', () => {
+    renderTile();
+    fireEvent.keyDown(screen.getByTestId('project-tile-revenue-overview'), { key: 'Enter' });
+    expect(screen.getByTestId('project-tile-revenue-overview')).toBeInTheDocument();
+  });
 });

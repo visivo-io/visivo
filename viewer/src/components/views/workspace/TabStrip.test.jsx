@@ -141,4 +141,130 @@ describe('TabStrip', () => {
       name: 'analytics-platform',
     });
   });
+
+  test('keeps the active tab scrolled into view when it changes', () => {
+    const scrollIntoView = jest.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      seedStore({ workspaceActiveTabId: 'chart:revenue_chart' });
+      render(<TabStrip />);
+      expect(scrollIntoView).toHaveBeenCalledWith({ inline: 'nearest', block: 'nearest' });
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+});
+
+// ── Pointer drag-to-reorder (VIS-812 / O-3) ─────────────────────────────────
+// dnd-kit's PointerSensor activates in jsdom when the native event carries
+// `isPrimary` + button 0; droppable rects are stubbed per tab so closestCenter
+// resolves a real target.
+const pointerEvent = (type, coords = {}) => {
+  const evt = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: coords.clientX ?? 0,
+    clientY: coords.clientY ?? 0,
+    button: 0,
+  });
+  Object.defineProperty(evt, 'isPrimary', { value: true });
+  Object.defineProperty(evt, 'pointerId', { value: 1 });
+  return evt;
+};
+
+const stubTabRects = () => {
+  sampleTabs.forEach((tab, i) => {
+    const wrapper = screen.getByTestId(`workspace-tab-wrapper-${tab.id}`);
+    wrapper.getBoundingClientRect = () => ({
+      x: i * 100,
+      y: 0,
+      left: i * 100,
+      right: i * 100 + 100,
+      top: 0,
+      bottom: 36,
+      width: 100,
+      height: 36,
+      toJSON: () => ({}),
+    });
+  });
+};
+
+const dragTab = async (tabId, from, to) => {
+  const wrapper = screen.getByTestId(`workspace-tab-wrapper-${tabId}`);
+  await act(async () => {
+    wrapper.dispatchEvent(pointerEvent('pointerdown', { clientX: from, clientY: 18 }));
+  });
+  // First move activates the sensor (distance constraint); the second drives
+  // the collision pass that resolves the hovered drop target.
+  await act(async () => {
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: from - 20, clientY: 18 }));
+  });
+  await act(async () => {
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: to, clientY: 18 }));
+  });
+};
+
+describe('TabStrip pointer drag-to-reorder', () => {
+  test('a pulled tab ghosts, paints the drop slot on its target, and reorders on drop', async () => {
+    const reorderWorkspaceTabs = jest.fn();
+    seedStore({ reorderWorkspaceTabs });
+    render(<TabStrip />);
+    stubTabRects();
+
+    // Pull the chart tab (at x≈250) over the project tab (x 0-100).
+    await dragTab('chart:revenue_chart', 250, 40);
+
+    // The dragged tab ghosts in place…
+    expect(screen.getByTestId('workspace-tab-chart:revenue_chart')).toHaveAttribute(
+      'data-dragging',
+      'true'
+    );
+    // …and the hovered target paints the slot indicator.
+    expect(
+      screen.getByTestId('workspace-tab-drop-slot-project:analytics-platform')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      document.dispatchEvent(pointerEvent('pointerup', { clientX: 40, clientY: 18 }));
+    });
+
+    // The drop resolves to a store reorder and the drag state clears.
+    expect(reorderWorkspaceTabs).toHaveBeenCalledWith(
+      'chart:revenue_chart',
+      'project:analytics-platform'
+    );
+    expect(screen.getByTestId('workspace-tab-chart:revenue_chart')).toHaveAttribute(
+      'data-dragging',
+      'false'
+    );
+    expect(
+      screen.queryByTestId('workspace-tab-drop-slot-project:analytics-platform')
+    ).not.toBeInTheDocument();
+  });
+
+  test('Escape cancels the drag: no reorder, ghost + slot cleared', async () => {
+    const reorderWorkspaceTabs = jest.fn();
+    seedStore({ reorderWorkspaceTabs });
+    render(<TabStrip />);
+    stubTabRects();
+
+    await dragTab('chart:revenue_chart', 250, 40);
+    expect(screen.getByTestId('workspace-tab-chart:revenue_chart')).toHaveAttribute(
+      'data-dragging',
+      'true'
+    );
+
+    // The sensor listens on the document — dispatch the cancel key there.
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+
+    expect(reorderWorkspaceTabs).not.toHaveBeenCalled();
+    expect(screen.getByTestId('workspace-tab-chart:revenue_chart')).toHaveAttribute(
+      'data-dragging',
+      'false'
+    );
+    expect(
+      screen.queryByTestId('workspace-tab-drop-slot-project:analytics-platform')
+    ).not.toBeInTheDocument();
+  });
 });

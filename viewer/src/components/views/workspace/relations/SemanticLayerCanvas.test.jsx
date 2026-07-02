@@ -13,6 +13,22 @@ jest.mock('./useRelationErdDag', () => ({
 }));
 jest.mock('./useModelColumns');
 
+// The authoring popover has its own suite; stub it so the connect-gesture tests
+// assert the wiring (endpoints + saved/closed round-trip) only.
+jest.mock('./JoinOperatorPopover', () => ({
+  __esModule: true,
+  default: ({ initialA, initialB, onSaved, onClose }) => (
+    <div
+      data-testid="join-popover-stub"
+      data-a={`${initialA.model}:${initialA.column}`}
+      data-b={`${initialB.model}:${initialB.column}`}
+    >
+      <button type="button" data-testid="join-popover-stub-saved" onClick={() => onSaved({})} />
+      <button type="button" data-testid="join-popover-stub-close" onClick={onClose} />
+    </div>
+  ),
+}));
+
 const rfProps = { current: null };
 const mockFitView = jest.fn();
 
@@ -50,7 +66,13 @@ jest.mock('reactflow', () => {
     Position: { Left: 'left', Right: 'right', Top: 'top', Bottom: 'bottom' },
     MarkerType: { ArrowClosed: 'arrowclosed', Arrow: 'arrow' },
     ReactFlowProvider: ({ children }) => <div data-testid="rf-provider">{children}</div>,
-    applyNodeChanges: (changes, nodes) => nodes,
+    // Apply position changes for real so the controlled-drag round-trip is
+    // observable (a change flows back into the `nodes` prop).
+    applyNodeChanges: (changes, nodes) =>
+      nodes.map(node => {
+        const change = changes.find(c => c.id === node.id && c.position);
+        return change ? { ...node, position: change.position } : node;
+      }),
     useReactFlow: () => ({ fitView: mockFitView, screenToFlowPosition: p => p }),
     useNodesInitialized: () => true,
     // RelationLinkEdge module-level imports (it's required transitively).
@@ -285,5 +307,158 @@ describe('SemanticLayerCanvas', () => {
     act(() => jest.runOnlyPendingTimers());
     expect(mockFitView).toHaveBeenCalled();
     jest.useRealTimers();
+  });
+
+  // ---- Controlled drag round-trip + the author-a-relation connect gesture ----
+
+  const twoModels = (extra = {}) => {
+    mockStore({ models: [{ name: 'orders' }, { name: 'users' }], ...extra });
+    useRelationErdDag.mockReturnValue({
+      nodes: [
+        {
+          id: 'erd-model-orders',
+          type: 'erdModelNode',
+          position: { x: 0, y: 0 },
+          data: { name: 'orders', columns: ['user_id'] },
+        },
+        {
+          id: 'erd-model-users',
+          type: 'erdModelNode',
+          position: { x: 260, y: 0 },
+          data: { name: 'users', columns: ['id'] },
+        },
+      ],
+      edges: [],
+    });
+  };
+
+  it('onNodesChange applies node changes back into the controlled nodes prop', () => {
+    oneModel();
+    render(<SemanticLayerCanvas />);
+    act(() => {
+      rfProps.current.onNodesChange([
+        { id: 'erd-model-orders', type: 'position', position: { x: 31, y: 62 } },
+      ]);
+    });
+    const moved = rfProps.current.nodes.find(n => n.id === 'erd-model-orders');
+    expect(moved.position).toEqual({ x: 31, y: 62 });
+  });
+
+  it('a column→column connect opens the authoring popover pre-filled with both endpoints', () => {
+    twoModels();
+    render(<SemanticLayerCanvas />);
+    act(() => {
+      rfProps.current.onConnect({
+        source: 'erd-model-orders',
+        target: 'erd-model-users',
+        sourceHandle: 'user_id',
+        targetHandle: 'id',
+      });
+    });
+    const popover = screen.getByTestId('join-popover-stub');
+    expect(popover).toHaveAttribute('data-a', 'orders:user_id');
+    expect(popover).toHaveAttribute('data-b', 'users:id');
+  });
+
+  it('a same-model (or unresolvable) connect never opens the popover', () => {
+    twoModels();
+    render(<SemanticLayerCanvas />);
+    act(() => {
+      rfProps.current.onConnect({
+        source: 'erd-model-orders',
+        target: 'erd-model-orders',
+        sourceHandle: 'user_id',
+        targetHandle: 'user_id',
+      });
+    });
+    act(() => {
+      rfProps.current.onConnect({
+        source: 'erd-model-ghost',
+        target: 'erd-model-users',
+        sourceHandle: 'x',
+        targetHandle: 'id',
+      });
+    });
+    expect(screen.queryByTestId('join-popover-stub')).not.toBeInTheDocument();
+    expect(rfProps.current.isValidConnection({ source: 'a', target: 'a' })).toBe(false);
+    expect(rfProps.current.isValidConnection({ source: 'a', target: 'b' })).toBe(true);
+  });
+
+  it('dropping a connect on the empty pane opens the popover with only side A filled', () => {
+    twoModels();
+    render(<SemanticLayerCanvas />);
+    const pane = document.createElement('div');
+    pane.classList.add('react-flow__pane');
+    act(() => {
+      rfProps.current.onConnectStart({}, { nodeId: 'erd-model-orders', handleId: 'user_id' });
+    });
+    act(() => {
+      rfProps.current.onConnectEnd({ target: pane, clientX: 180, clientY: 90 });
+    });
+    const popover = screen.getByTestId('join-popover-stub');
+    expect(popover).toHaveAttribute('data-a', 'orders:user_id');
+    expect(popover).toHaveAttribute('data-b', ':');
+  });
+
+  it('a connect ending on a non-pane target is a no-op', () => {
+    twoModels();
+    render(<SemanticLayerCanvas />);
+    act(() => {
+      rfProps.current.onConnectStart({}, { nodeId: 'erd-model-orders', handleId: 'user_id' });
+    });
+    act(() => {
+      rfProps.current.onConnectEnd({ target: document.createElement('div') });
+    });
+    expect(screen.queryByTestId('join-popover-stub')).not.toBeInTheDocument();
+  });
+
+  it('a pane drop never replaces a popover that is already open', () => {
+    twoModels();
+    render(<SemanticLayerCanvas />);
+    // A full column→column connect opens the popover with both sides…
+    act(() => {
+      rfProps.current.onConnect({
+        source: 'erd-model-orders',
+        target: 'erd-model-users',
+        sourceHandle: 'user_id',
+        targetHandle: 'id',
+      });
+    });
+    // …then the trailing pane drop (no clientX/Y) must keep it, not reset side B.
+    const pane = document.createElement('div');
+    pane.classList.add('react-flow__pane');
+    act(() => {
+      rfProps.current.onConnectStart({}, { nodeId: 'erd-model-users', handleId: 'id' });
+    });
+    act(() => {
+      rfProps.current.onConnectEnd({ target: pane });
+    });
+    const popover = screen.getByTestId('join-popover-stub');
+    expect(popover).toHaveAttribute('data-a', 'orders:user_id');
+    expect(popover).toHaveAttribute('data-b', 'users:id');
+  });
+
+  it('saving from the popover refreshes the relations; closing dismisses it', () => {
+    const fetchRelations = jest.fn();
+    twoModels({ fetchRelations });
+    render(<SemanticLayerCanvas />);
+    act(() => {
+      rfProps.current.onConnect({
+        source: 'erd-model-orders',
+        target: 'erd-model-users',
+        sourceHandle: 'user_id',
+        targetHandle: 'id',
+      });
+    });
+    const callsBefore = fetchRelations.mock.calls.length;
+    act(() => {
+      screen.getByTestId('join-popover-stub-saved').click();
+    });
+    expect(fetchRelations.mock.calls.length).toBe(callsBefore + 1);
+
+    act(() => {
+      screen.getByTestId('join-popover-stub-close').click();
+    });
+    expect(screen.queryByTestId('join-popover-stub')).not.toBeInTheDocument();
   });
 });

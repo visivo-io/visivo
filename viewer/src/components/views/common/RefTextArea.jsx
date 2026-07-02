@@ -529,8 +529,11 @@ const RefTextArea = ({
   // expressions) brackets are legitimate input and pass through.
   const handleBeforeInput = useCallback((e) => {
     if (!restrictBrackets) return;
-    const inputType = e.nativeEvent?.inputType || e.inputType;
-    if (inputType !== 'insertText') return;
+    // Gate on the inserted data alone: React 18 synthesizes onBeforeInput from
+    // keypress/textInput, so nativeEvent.inputType is absent in real browsers —
+    // an inputType === 'insertText' requirement never matches and the gate
+    // goes inert. Multi-character insertions (paste) are stripped in
+    // handlePaste, which strips brackets from the pasted string itself.
     const data = e.nativeEvent?.data ?? e.data;
     if (typeof data === 'string' && (data === '[' || data === ']')) {
       e.preventDefault();

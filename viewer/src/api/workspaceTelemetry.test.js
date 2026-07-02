@@ -74,3 +74,74 @@ describe('postWorkspaceEvent', () => {
     }
   });
 });
+
+describe('postWorkspaceEvent outside jest (JEST_WORKER_ID cleared)', () => {
+  // The jest guard keys off process.env.JEST_WORKER_ID; removing it exercises
+  // the real fire-and-forget dispatch path.
+  const originalWorkerId = process.env.JEST_WORKER_ID;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.JEST_WORKER_ID;
+    isAvailable.mockReturnValue(true);
+    getUrl.mockReturnValue('/api/telemetry/workspace-event/');
+  });
+
+  afterEach(() => {
+    process.env.JEST_WORKER_ID = originalWorkerId;
+    delete global.fetch;
+  });
+
+  test('dispatches fetch with the built request (keepalive POST)', () => {
+    const fetchSpy = jest.fn().mockResolvedValue({ ok: true });
+    global.fetch = fetchSpy;
+
+    postWorkspaceEvent({ eventName: 'canvas_action', payload: { kind: 'add_row' }, ts: 123 });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toBe('/api/telemetry/workspace-event/');
+    expect(options.method).toBe('POST');
+    expect(options.keepalive).toBe(true);
+    expect(JSON.parse(options.body)).toEqual({
+      name: 'canvas_action',
+      payload: { kind: 'add_row' },
+      ts: 123,
+    });
+  });
+
+  test('swallows fetch rejections (telemetry never throws into the render path)', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+
+    expect(() => postWorkspaceEvent({ eventName: 'canvas_action' })).not.toThrow();
+    // Flush the rejected promise; an unhandled rejection here would fail the test
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+
+  test('does not fetch when the sink is unavailable (request builds to null)', () => {
+    isAvailable.mockReturnValue(false);
+    const fetchSpy = jest.fn();
+    global.fetch = fetchSpy;
+
+    postWorkspaceEvent({ eventName: 'canvas_action' });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test('is safe when fetch is not a function', () => {
+    global.fetch = undefined;
+
+    expect(() => postWorkspaceEvent({ eventName: 'canvas_action' })).not.toThrow();
+  });
+
+  test('swallows synchronous errors thrown while building the request', () => {
+    getUrl.mockImplementation(() => {
+      throw new Error('URLConfig not initialized');
+    });
+    const fetchSpy = jest.fn();
+    global.fetch = fetchSpy;
+
+    expect(() => postWorkspaceEvent({ eventName: 'canvas_action' })).not.toThrow();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});

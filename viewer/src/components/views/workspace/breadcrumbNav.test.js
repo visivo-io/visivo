@@ -159,3 +159,94 @@ describe('computeReorder + applyReorder (⌘↑/↓)', () => {
     expect(next.rows[0].items[1].chart).toBe(ref('great_fib'));
   });
 });
+
+// A container with MULTIPLE nested sub-rows — the shape the nested keyboard nav
+// (sibling step + ⌘-reorder inside a container) operates on.
+const MULTI_NESTED_ROWS = [
+  { height: 'medium', items: [{ chart: ref('top_chart'), width: 1 }] },
+  {
+    height: 'small',
+    items: [
+      {
+        width: 1,
+        rows: [
+          { height: 'small', items: [{ markdown: 'm1' }, { markdown: 'm2' }] },
+          { height: 'medium', items: [{ table: 't1' }] },
+        ],
+      },
+    ],
+  },
+];
+
+describe('nested container rows (multi-sub-row keyboard nav)', () => {
+  test('↑/↓ steps among a container’s sub-rows and wraps', () => {
+    expect(computeSiblingKey('row.1.item.0.row.0', MULTI_NESTED_ROWS, 1)).toBe(
+      'row.1.item.0.row.1'
+    );
+    // wrap from the last sub-row back to the first
+    expect(computeSiblingKey('row.1.item.0.row.1', MULTI_NESTED_ROWS, 1)).toBe(
+      'row.1.item.0.row.0'
+    );
+  });
+
+  test('→ on an empty dashboard stays on the root (nothing to descend into)', () => {
+    expect(computeHierarchyKey('dashboard', [], 'down')).toBe('dashboard');
+  });
+
+  test('⌘↓ reorders a container’s sub-rows in place, leaving the rest untouched', () => {
+    const op = computeReorder('row.1.item.0.row.0', MULTI_NESTED_ROWS, 1);
+    expect(op).toMatchObject({
+      axis: 'row',
+      parentKey: 'row.1.item.0',
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    const next = applyReorder({ rows: MULTI_NESTED_ROWS }, op);
+    const subRows = next.rows[1].items[0].rows;
+    // Sub-rows swapped…
+    expect(subRows[0].items[0].table).toBe('t1');
+    expect(subRows[1].items[0].markdown).toBe('m1');
+    // …the outer structure and the original config are untouched (pure).
+    expect(next.rows[0]).toBe(MULTI_NESTED_ROWS[0]);
+    expect(MULTI_NESTED_ROWS[1].items[0].rows[0].items[0].markdown).toBe('m1');
+  });
+
+  test('⌘↑ reorders items INSIDE a nested sub-row at full depth', () => {
+    const key = 'row.1.item.0.row.0.item.1';
+    const op = computeReorder(key, MULTI_NESTED_ROWS, -1);
+    expect(op).toMatchObject({
+      axis: 'item',
+      parentKey: 'row.1.item.0.row.0',
+      fromIndex: 1,
+      toIndex: 0,
+    });
+    const next = applyReorder({ rows: MULTI_NESTED_ROWS }, op);
+    const items = next.rows[1].items[0].rows[0].items;
+    expect(items.map(it => it.markdown)).toEqual(['m2', 'm1']);
+    // Sibling sub-row untouched.
+    expect(next.rows[1].items[0].rows[1].items[0].table).toBe('t1');
+  });
+
+  test('applyReorder is a safe no-op when the path no longer resolves', () => {
+    const config = { rows: MULTI_NESTED_ROWS };
+    // Parent row past the live config.
+    const stale = applyReorder(config, {
+      axis: 'item',
+      parentKey: 'row.9',
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    expect(stale.rows).toEqual(MULTI_NESTED_ROWS);
+    // Nested parent item past the live config.
+    const staleDeep = applyReorder(config, {
+      axis: 'row',
+      parentKey: 'row.1.item.9',
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    expect(staleDeep.rows).toEqual(MULTI_NESTED_ROWS);
+    // No config / no op → unchanged input.
+    expect(applyReorder(null, { axis: 'row' })).toBeNull();
+    expect(applyReorder(config, null)).toBe(config);
+  });
+});

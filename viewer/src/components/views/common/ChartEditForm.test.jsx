@@ -206,6 +206,192 @@ describe('ChartEditForm — embedded insights on save', () => {
   });
 });
 
+describe('ChartEditForm — validation & save paths', () => {
+  test('create mode blocks save without a name or any insight', async () => {
+    const onSave = jest.fn();
+    render(
+      <ChartEditForm chart={null} isCreate onClose={jest.fn()} onSave={onSave} onNavigateToEmbedded={jest.fn()} />
+    );
+    await screen.findByText(/No insights added/i);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(screen.getByText('Name is required')).toBeInTheDocument();
+    expect(screen.getByText('At least one insight is required')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('create mode: typed name and newly added ref insight land in the save call', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(
+      <ChartEditForm chart={null} isCreate onClose={jest.fn()} onSave={onSave} onNavigateToEmbedded={jest.fn()} />
+    );
+    await screen.findByText(/No insights added/i);
+
+    fireEvent.change(screen.getByLabelText(/Chart Name/), { target: { value: 'new_chart' } });
+    fireEvent.click(screen.getByText('Add Insight'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [objType, objName, config] = onSave.mock.calls[0];
+    expect(objType).toBe('chart');
+    expect(objName).toBe('new_chart');
+    // A newly added ref (no original slot) is appended in ref(...) form.
+    expect(config.insights).toEqual(['ref(revenue_insight)']);
+  });
+
+  test('non-empty layout values are carried into the saved config', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(
+      <ChartEditForm
+        chart={{
+          name: 'rev_chart',
+          status: 'published',
+          config: { insights: ['ref(revenue_insight)'], layout: { title: { text: 'Revenue' } } },
+        }}
+        isCreate={false}
+        onClose={jest.fn()}
+        onSave={onSave}
+        onNavigateToEmbedded={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ref-insight-row-0');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][2].layout).toEqual({ title: { text: 'Revenue' } });
+  });
+
+  test('a failed save surfaces the backend error and keeps the form open', async () => {
+    const onSave = jest.fn(async () => ({ success: false, error: 'chart save exploded' }));
+    await renderForm({ onSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('chart save exploded')).toBeInTheDocument();
+    // Save recovered to its idle label so the user can retry.
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+  });
+});
+
+describe('ChartEditForm — delete flows', () => {
+  test('confirm delete removes the chart, refreshes commit status, and closes', async () => {
+    mockDeleteChart.mockResolvedValueOnce({ success: true });
+    const onClose = jest.fn();
+    await renderForm({ onClose });
+
+    fireEvent.click(screen.getByTitle('Delete chart'));
+    expect(screen.getByText(/mark it for deletion/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+
+    await waitFor(() => expect(mockDeleteChart).toHaveBeenCalledWith('rev_chart'));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(mockCheckPublishStatus).toHaveBeenCalled();
+  });
+
+  test('a NEW chart warns about discarding unsaved changes instead', async () => {
+    await renderForm({ chart: { ...chartWithRefInsight, status: 'new' } });
+    fireEvent.click(screen.getByTitle('Delete chart'));
+    expect(screen.getByText(/discard your unsaved changes/i)).toBeInTheDocument();
+  });
+
+  test('a failed delete surfaces the error and dismisses the confirm without closing', async () => {
+    mockDeleteChart.mockResolvedValueOnce({ success: false, error: 'chart is referenced' });
+    const onClose = jest.fn();
+    await renderForm({ onClose });
+
+    fireEvent.click(screen.getByTitle('Delete chart'));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+
+    expect(await screen.findByText('chart is referenced')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm Delete' })).not.toBeInTheDocument();
+    expect(mockCheckPublishStatus).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('cancel dismisses the confirmation without deleting', async () => {
+    await renderForm();
+    fireEvent.click(screen.getByTitle('Delete chart'));
+    expect(screen.getByText(/mark it for deletion/i)).toBeInTheDocument();
+    // The confirm box renders above the footer actions, so its Cancel comes first.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0]);
+
+    expect(screen.queryByText(/mark it for deletion/i)).not.toBeInTheDocument();
+    expect(mockDeleteChart).not.toHaveBeenCalled();
+    // The delete affordance returns once the confirm is dismissed.
+    expect(screen.getByTitle('Delete chart')).toBeInTheDocument();
+  });
+});
+
+describe('ChartEditForm — embedded insight navigation', () => {
+  const embeddedInsight = { name: 'inline_insight', props: { type: 'scatter' } };
+
+  test('clicking an embedded insight navigates with a synthetic insight and applyToParent', async () => {
+    const onNavigateToEmbedded = jest.fn();
+    render(
+      <ChartEditForm
+        chart={{ name: 'embed_chart', status: 'published', config: { insights: [embeddedInsight] } }}
+        isCreate={false}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        onNavigateToEmbedded={onNavigateToEmbedded}
+      />
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /Insight: inline_insight/ }));
+
+    expect(onNavigateToEmbedded).toHaveBeenCalledTimes(1);
+    const [type, synthetic, opts] = onNavigateToEmbedded.mock.calls[0];
+    expect(type).toBe('insight');
+    expect(synthetic.name).toBe('inline_insight');
+    expect(synthetic.config).toEqual(embeddedInsight);
+    expect(synthetic._embedded).toEqual({
+      parentType: 'chart',
+      parentName: 'embed_chart',
+      path: 'insights[0]',
+    });
+    // applyToParent writes the edited insight back into the chart's insights slot.
+    const edited = { name: 'inline_insight', props: { type: 'bar' } };
+    const updated = opts.applyToParent(
+      { name: 'embed_chart', insights: [embeddedInsight] },
+      edited
+    );
+    expect(updated.insights).toEqual([edited]);
+  });
+
+  test('an unnamed embedded insight gets a synthetic placeholder name', async () => {
+    const onNavigateToEmbedded = jest.fn();
+    render(
+      <ChartEditForm
+        chart={{ name: 'embed_chart', status: 'published', config: { insights: [{ props: { type: 'scatter' } }] } }}
+        isCreate={false}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        onNavigateToEmbedded={onNavigateToEmbedded}
+      />
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /Insight: 1/ }));
+
+    expect(onNavigateToEmbedded.mock.calls[0][1].name).toBe('(embedded insight 1)');
+  });
+});
+
+describe('ChartEditForm — layout schema load failure', () => {
+  test('shows the schema error when the layout schema cannot load', async () => {
+    const { getSchema, isSchemaLoaded } = jest.requireMock('../../../schemas/schemas');
+    isSchemaLoaded.mockReturnValueOnce(false);
+    getSchema.mockRejectedValueOnce(new Error('schema fetch boom'));
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await renderForm();
+      expect(await screen.findByText('Failed to load layout schema')).toBeInTheDocument();
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+});
+
 describe('ChartEditForm — layout emptied to undefined', () => {
   test('Save still completes after the layout editor empties to undefined', async () => {
     const { getSchema } = jest.requireMock('../../../schemas/schemas');

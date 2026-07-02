@@ -69,6 +69,36 @@ describe('EmbeddedPill', () => {
     expect(handleClick).not.toHaveBeenCalled();
   });
 
+  it('keyboard-activating the x (Enter or Space) calls onRemove without triggering onClick', () => {
+    const handleRemove = jest.fn();
+    const handleClick = jest.fn();
+    render(
+      <EmbeddedPill
+        objectType="source"
+        label="duckdb"
+        onClick={handleClick}
+        onRemove={handleRemove}
+      />
+    );
+
+    const removeButton = screen.getByTestId('pill-remove');
+    fireEvent.keyDown(removeButton, { key: 'Enter' });
+    expect(handleRemove).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(removeButton, { key: ' ' });
+    expect(handleRemove).toHaveBeenCalledTimes(2);
+
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it('ignores other keys on the x affordance', () => {
+    const handleRemove = jest.fn();
+    render(<EmbeddedPill objectType="source" label="duckdb" onRemove={handleRemove} />);
+
+    fireEvent.keyDown(screen.getByTestId('pill-remove'), { key: 'Tab' });
+    expect(handleRemove).not.toHaveBeenCalled();
+  });
+
   it("renders green dot when statusDot='new'", () => {
     render(<EmbeddedPill objectType="source" label="duckdb" statusDot="new" />);
 

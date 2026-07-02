@@ -11,12 +11,16 @@
  *      the real drag is exercised by the Playwright stories.
  */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
+import { useDraggable } from '@dnd-kit/core';
 import WorkspaceDndContext, {
   useWorkspaceDrag,
   routeWorkspaceDragEnd,
   mapDragStartData,
   workspaceCollisionDetection,
+  useCommitCanvasConfig,
+  useWorkspaceCommit,
+  WorkspaceCommitProvider,
 } from './WorkspaceDndContext';
 import useStore from '../../../stores/store';
 
@@ -708,5 +712,256 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     const subRows = commitCanvasConfig.mock.calls[0][1].rows[0].items[1].rows;
     expect(subRows).toHaveLength(3);
     expect(subRows[1].items[0].chart).toBe('ref(fresh)');
+  });
+});
+
+describe('mapDragStartData — level + unknown payloads', () => {
+  test('level-header drag → level preview with the level title', () => {
+    expect(mapDragStartData({ source: 'level', title: 'Tier 2', levelIndex: 1 })).toEqual({
+      kind: 'level',
+      name: 'Tier 2',
+    });
+    // Untitled level falls back to the generic label.
+    expect(mapDragStartData({ source: 'level' })).toEqual({ kind: 'level', name: 'Level' });
+  });
+
+  test('an unrecognised payload maps to null (no overlay)', () => {
+    expect(mapDragStartData({ source: 'mystery', name: 'x' })).toBeNull();
+  });
+});
+
+describe('routeWorkspaceDragEnd — level reorder branch (VIS-901 #5)', () => {
+  test('dropping a level header on another level group reorders the levels', () => {
+    const moveLevel = jest.fn();
+    const emit = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'level', levelIndex: 0 } } },
+        over: { data: { current: { levelKey: 'level:2', levelIndex: 2 } } },
+      },
+      { moveLevel, emit }
+    );
+    expect(result).toBe('level_reorder');
+    expect(moveLevel).toHaveBeenCalledWith(0, 2);
+    expect(emit).toHaveBeenCalledWith(
+      'project_editor_action',
+      expect.objectContaining({ kind: 'level_reorder_dnd', from: 0, to: 2 })
+    );
+  });
+
+  test('dropping a level on its own group (or a malformed index) is a noop', () => {
+    const moveLevel = jest.fn();
+    expect(
+      routeWorkspaceDragEnd(
+        {
+          active: { data: { current: { source: 'level', levelIndex: 1 } } },
+          over: { data: { current: { levelKey: 'level:1', levelIndex: 1 } } },
+        },
+        { moveLevel }
+      )
+    ).toBe('noop');
+    expect(
+      routeWorkspaceDragEnd(
+        {
+          active: { data: { current: { source: 'level', levelIndex: 1 } } },
+          over: { data: { current: { levelKey: 'level:x' } } },
+        },
+        { moveLevel }
+      )
+    ).toBe('noop');
+    expect(moveLevel).not.toHaveBeenCalled();
+  });
+});
+
+// ── Provider drag lifecycle: a REAL pointer drag through the shared context ──
+// dnd-kit's PointerSensor activates in jsdom when the native event carries
+// `isPrimary` + button 0 (distance constraint 5 → one activating move).
+const pointerEvent = (type, coords = {}) => {
+  const evt = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: coords.clientX ?? 0,
+    clientY: coords.clientY ?? 0,
+    button: 0,
+  });
+  Object.defineProperty(evt, 'isPrimary', { value: true });
+  Object.defineProperty(evt, 'pointerId', { value: 1 });
+  return evt;
+};
+
+const TestDraggable = ({ id, data }) => {
+  const { setNodeRef, listeners, attributes } = useDraggable({ id, data });
+  return (
+    <div ref={setNodeRef} {...listeners} {...attributes} data-testid={`test-drag-${id}`}>
+      {id}
+    </div>
+  );
+};
+
+const startDrag = async id => {
+  const el = screen.getByTestId(`test-drag-${id}`);
+  await act(async () => {
+    el.dispatchEvent(pointerEvent('pointerdown', { clientX: 10, clientY: 10 }));
+  });
+  await act(async () => {
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: 40, clientY: 10 }));
+  });
+};
+
+const dropDrag = async () => {
+  await act(async () => {
+    document.dispatchEvent(pointerEvent('pointerup', { clientX: 40, clientY: 10 }));
+  });
+};
+
+describe('WorkspaceDndContext drag overlay previews (VIS-901 #5 / VIS-1008)', () => {
+  // Each dnd-kit drag arms a document-capture click-suppression listener that
+  // the sensor only detaches on a REAL 50ms timeout (see AbstractPointerSensor
+  // .detach). Wait it out so a later test's fireEvent.click is not swallowed.
+  afterEach(async () => {
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 60));
+    });
+  });
+
+  const renderWith = drag => {
+    render(
+      <WorkspaceDndContext>
+        <TestDraggable id="probe" data={drag} />
+        <DragProbe />
+      </WorkspaceDndContext>
+    );
+  };
+
+  test('a pivot-field drag shows the pivot pill overlay and clears on drop', async () => {
+    renderWith({ source: 'pivot-field', field: { name: 'revenue', label: 'Revenue' } });
+    await startDrag('probe');
+
+    expect(screen.getByTestId('pivot-field-drag-preview')).toHaveTextContent('Revenue');
+    expect(screen.getByTestId('drag-probe')).toHaveTextContent('pivot-field');
+
+    await dropDrag();
+    expect(screen.queryByTestId('pivot-field-drag-preview')).not.toBeInTheDocument();
+    expect(screen.getByTestId('drag-probe')).toHaveTextContent('null');
+  });
+
+  test('a canvas ROW drag shows the dedicated Row pill (never the chart pill)', async () => {
+    renderWith({ source: 'canvas', kind: 'row', rowPath: 'row.1', label: 'Row 2' });
+    await startDrag('probe');
+
+    const pill = screen.getByTestId('canvas-row-drag-preview');
+    expect(pill).toHaveTextContent('Row 2');
+    await dropDrag();
+    expect(screen.queryByTestId('canvas-row-drag-preview')).not.toBeInTheDocument();
+  });
+
+  test('a level-header drag shows the Level pill overlay', async () => {
+    renderWith({ source: 'level', title: 'Org', levelIndex: 0 });
+    await startDrag('probe');
+    expect(screen.getByTestId('level-drag-preview')).toHaveTextContent('Org');
+    await dropDrag();
+  });
+
+  test('a dashboard tile drag shows the tile preview and cancels on Escape', async () => {
+    renderWith({ type: 'dashboard', name: 'd0', level: 'Organization' });
+    await startDrag('probe');
+
+    expect(screen.getByTestId('drag-probe')).toHaveTextContent('dashboard');
+    // The tile preview renders the dashboard name inside the overlay (the
+    // source node renders its id, so this text can only come from the overlay).
+    expect(screen.getByText('d0')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+    // The cancel kicks off the DragOverlay's async unmount animation — flush it
+    // inside act so the state update is accounted for.
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(screen.getByTestId('drag-probe')).toHaveTextContent('null');
+  });
+});
+
+describe('WorkspaceDndContext commit path (D-3 / D-4)', () => {
+  const CommitProbe = ({ name, config }) => {
+    const commit = useWorkspaceCommit();
+    return (
+      <button
+        type="button"
+        data-testid="commit-probe"
+        onClick={() => commit && commit(name, config)}
+      >
+        commit
+      </button>
+    );
+  };
+
+  test('useWorkspaceCommit inside the shell sanitizes, optimistically applies, then saves', () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    const updateDashboardConfigOptimistic = jest.fn();
+    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic });
+
+    render(
+      <WorkspaceDndContext>
+        <CommitProbe
+          name="dash"
+          config={{
+            rows: [
+              {
+                height: 'medium',
+                // The invalid empty-string scaffold the forms produce (GAP-3).
+                items: [{ width: 1, chart: '', table: '', markdown: '', input: '', selector: '' }],
+              },
+            ],
+          }}
+        />
+      </WorkspaceDndContext>
+    );
+    fireEvent.click(screen.getByTestId('commit-probe'));
+
+    expect(updateDashboardConfigOptimistic).toHaveBeenCalledTimes(1);
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const [name, clean] = saveDashboard.mock.calls[0];
+    expect(name).toBe('dash');
+    // The scaffold was sanitized to a valid empty slot before persisting.
+    expect(clean.rows[0].items[0]).toEqual({ width: 1 });
+    // Optimistic + save receive the SAME clean config.
+    expect(updateDashboardConfigOptimistic.mock.calls[0][1]).toEqual(clean);
+  });
+
+  test('the commit is a safe no-op without a dashboard name', () => {
+    const saveDashboard = jest.fn();
+    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic: jest.fn() });
+    render(
+      <WorkspaceDndContext>
+        <CommitProbe name={null} config={{ rows: [] }} />
+      </WorkspaceDndContext>
+    );
+    fireEvent.click(screen.getByTestId('commit-probe'));
+    expect(saveDashboard).not.toHaveBeenCalled();
+  });
+
+  test('WorkspaceCommitProvider supplies a committer without the dnd shell', () => {
+    const committer = jest.fn();
+    render(
+      <WorkspaceCommitProvider value={committer}>
+        <CommitProbe name="dash" config={{ rows: [] }} />
+      </WorkspaceCommitProvider>
+    );
+    fireEvent.click(screen.getByTestId('commit-probe'));
+    expect(committer).toHaveBeenCalledWith('dash', { rows: [] });
+  });
+
+  test('useCommitCanvasConfig outside any provider degrades to a no-op', () => {
+    const OrphanProbe = () => {
+      const commit = useCommitCanvasConfig();
+      return (
+        <button type="button" data-testid="orphan-probe" onClick={() => commit('dash', {})}>
+          go
+        </button>
+      );
+    };
+    render(<OrphanProbe />);
+    // Invoking the fallback never throws and touches nothing.
+    expect(() => fireEvent.click(screen.getByTestId('orphan-probe'))).not.toThrow();
   });
 });

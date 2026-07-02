@@ -6,6 +6,7 @@ import {
   getValueAtPath,
   setValueAtPath,
   cleanEmptyObjects,
+  groupPropertiesByParent,
   filterProperties,
 } from './schemaUtils';
 
@@ -31,6 +32,29 @@ describe('schemaUtils', () => {
     it('returns false for null/undefined', () => {
       expect(supportsQueryString(null)).toBe(false);
       expect(supportsQueryString(undefined)).toBe(false);
+    });
+
+    it('returns true for anyOf with query-string', () => {
+      const schema = {
+        anyOf: [{ $ref: '#/$defs/query-string' }, { type: 'string' }],
+      };
+      expect(supportsQueryString(schema)).toBe(true);
+    });
+
+    it('returns false for anyOf without query-string', () => {
+      expect(supportsQueryString({ anyOf: [{ type: 'string' }, { type: 'number' }] })).toBe(false);
+    });
+
+    it('recurses into nested anyOf/oneOf combinations', () => {
+      const nestedAnyOf = {
+        anyOf: [{ anyOf: [{ $ref: '#/$defs/query-string' }] }, { type: 'string' }],
+      };
+      expect(supportsQueryString(nestedAnyOf)).toBe(true);
+
+      const nestedOneOf = {
+        oneOf: [{ oneOf: [{ $ref: '#/$defs/query-string' }] }, { type: 'array' }],
+      };
+      expect(supportsQueryString(nestedOneOf)).toBe(true);
     });
   });
 
@@ -338,6 +362,76 @@ describe('schemaUtils', () => {
       expect(cleanEmptyObjects('string')).toBe('string');
       expect(cleanEmptyObjects(123)).toBe(123);
       expect(cleanEmptyObjects(null)).toBeNull();
+    });
+  });
+
+  describe('getStaticSchema — additional shapes', () => {
+    const defs = {
+      color: { type: 'string', description: 'A color value' },
+      'query-string': { type: 'string' },
+    };
+
+    it('returns null for null/undefined schema', () => {
+      expect(getStaticSchema(null, defs)).toBeNull();
+      expect(getStaticSchema(undefined, defs)).toBeNull();
+    });
+
+    it('returns null when every oneOf option is query-string', () => {
+      const schema = { oneOf: [{ $ref: '#/$defs/query-string' }] };
+      expect(getStaticSchema(schema, defs)).toBeNull();
+    });
+
+    it('returns the array option when only an array schema remains', () => {
+      const schema = {
+        oneOf: [
+          { $ref: '#/$defs/query-string' },
+          { type: 'array', items: { type: 'number' } },
+        ],
+      };
+      expect(getStaticSchema(schema, defs)).toEqual({ type: 'array', items: { type: 'number' } });
+    });
+
+    it('returns the schema itself when the $ref cannot be resolved', () => {
+      const schema = { $ref: '#/$defs/unknown' };
+      expect(getStaticSchema(schema, defs)).toEqual(schema);
+    });
+
+    it('supports anyOf the same as oneOf', () => {
+      const schema = {
+        anyOf: [{ $ref: '#/$defs/query-string' }, { $ref: '#/$defs/color' }],
+      };
+      expect(getStaticSchema(schema, defs)).toEqual(defs.color);
+    });
+  });
+
+  describe('groupPropertiesByParent', () => {
+    it('puts top-level properties under the root group', () => {
+      const props = [{ path: 'x' }, { path: 'y' }];
+      const groups = groupPropertiesByParent(props);
+      expect(groups[''].map(p => p.path)).toEqual(['x', 'y']);
+    });
+
+    it('groups nested properties by their parent path', () => {
+      const props = [
+        { path: 'x' },
+        { path: 'marker.color' },
+        { path: 'marker.size' },
+        { path: 'line.width' },
+      ];
+      const groups = groupPropertiesByParent(props);
+      expect(groups[''].map(p => p.path)).toEqual(['x']);
+      expect(groups['marker'].map(p => p.path)).toEqual(['marker.color', 'marker.size']);
+      expect(groups['line'].map(p => p.path)).toEqual(['line.width']);
+    });
+
+    it('uses the full parent path for deeply nested properties', () => {
+      const props = [{ path: 'marker.colorbar.title' }];
+      const groups = groupPropertiesByParent(props);
+      expect(groups['marker.colorbar'].map(p => p.path)).toEqual(['marker.colorbar.title']);
+    });
+
+    it('returns only the empty root group for no properties', () => {
+      expect(groupPropertiesByParent([])).toEqual({ '': [] });
     });
   });
 

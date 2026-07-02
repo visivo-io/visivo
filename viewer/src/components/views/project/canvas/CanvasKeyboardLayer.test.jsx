@@ -8,7 +8,7 @@
  * the wiring + a11y surface.
  */
 import React, { useRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import CanvasKeyboardLayer from './CanvasKeyboardLayer';
 import useStore from '../../../../stores/store';
 import { WorkspaceCommitProvider } from '../../workspace/WorkspaceDndContext';
@@ -158,6 +158,96 @@ describe('CanvasKeyboardLayer (VIS-790)', () => {
     press('ArrowRight');
     expect(screen.getByTestId('canvas-keyboard-announce')).toHaveTextContent(
       'Row 1, item 2 selected'
+    );
+  });
+
+  test('focusing the region with nothing selected primes the dashboard root + announces', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: null });
+    render(<Host />);
+    fireEvent.focus(region());
+    expect(selectedKey()).toBe('dashboard');
+    expect(screen.getByTestId('canvas-keyboard-announce')).toHaveTextContent(
+      'Dashboard selected'
+    );
+  });
+
+  test('focusing the region with an existing selection announces it without resetting', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
+    render(<Host />);
+    fireEvent.focus(region());
+    expect(selectedKey()).toBe('row.1');
+    expect(screen.getByTestId('canvas-keyboard-announce')).toHaveTextContent('Row 2 selected');
+  });
+
+  test('a selection change from another surface refreshes the announcement WHILE focused', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0' });
+    render(<Host />);
+    // Real focus so document.activeElement === region for the effect's check.
+    act(() => {
+      region().focus();
+    });
+    // Outline / breadcrumb / pointer moves the selection while the canvas holds focus.
+    act(() => {
+      useStore.setState({ workspaceOutlineSelectedKey: 'row.1.item.0' });
+    });
+    expect(screen.getByTestId('canvas-keyboard-announce')).toHaveTextContent(
+      'Row 2, item 1 selected'
+    );
+  });
+
+  test('renders nothing when the scoped dashboard is missing', () => {
+    useStore.setState({ dashboards: [] });
+    render(<Host />);
+    expect(screen.queryByTestId('canvas-keyboard-region')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-keyboard-announce')).not.toBeInTheDocument();
+  });
+
+  test('renders nothing when the dashboards list has not loaded yet', () => {
+    useStore.setState({ dashboards: null });
+    render(<Host />);
+    expect(screen.queryByTestId('canvas-keyboard-region')).not.toBeInTheDocument();
+  });
+
+  test('accepts a raw-config dashboard entry (no nested `config`)', () => {
+    useStore.setState({
+      dashboards: [{ name: 'dash', rows: DASH.config.rows }],
+      workspaceOutlineSelectedKey: 'dashboard',
+    });
+    render(<Host />);
+    press('ArrowDown');
+    expect(selectedKey()).toBe('row.0');
+  });
+
+  test('a config without rows still mounts and navigation is inert', () => {
+    useStore.setState({
+      dashboards: [{ name: 'dash', config: {} }],
+      workspaceOutlineSelectedKey: 'dashboard',
+    });
+    render(<Host />);
+    press('ArrowDown');
+    expect(selectedKey()).toBe('dashboard');
+  });
+
+  test('⌘ArrowDown without a commit provider reorders nothing (no crash)', () => {
+    const { emitWorkspaceEvent } = require('../../workspace/telemetry');
+    emitWorkspaceEvent.mockClear();
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0' });
+    const rowsBefore = useStore.getState().dashboards[0].config.rows;
+    // No WorkspaceCommitProvider — the context value is not a function.
+    const BareHost = () => {
+      const rootRef = useRef(null);
+      return (
+        <div ref={rootRef} style={{ position: 'relative' }}>
+          <CanvasKeyboardLayer rootRef={rootRef} dashboardName="dash" />
+        </div>
+      );
+    };
+    render(<BareHost />);
+    press('ArrowDown', { metaKey: true });
+    expect(useStore.getState().dashboards[0].config.rows).toBe(rowsBefore);
+    expect(emitWorkspaceEvent).not.toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ via: 'keyboard' })
     );
   });
 });

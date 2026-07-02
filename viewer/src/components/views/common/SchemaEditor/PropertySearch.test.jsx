@@ -130,4 +130,51 @@ describe('PropertySearch', () => {
     // Check that DataObjectIcon is rendered somewhere in the document
     expect(screen.getByTestId('DataObjectIcon')).toBeInTheDocument();
   });
+
+  it('expands and collapses a group when its header is clicked', () => {
+    render(<PropertySearch {...defaultProps} />);
+
+    // The marker group starts collapsed — its header shows the expand-more icon.
+    expect(screen.getByTestId('ExpandMoreIcon')).toBeInTheDocument();
+    expect(screen.queryByTestId('ExpandLessIcon')).not.toBeInTheDocument();
+
+    // Click the header — group expands and the icon flips.
+    fireEvent.click(screen.getByTestId('ExpandMoreIcon'));
+    expect(screen.getByTestId('ExpandLessIcon')).toBeInTheDocument();
+    expect(screen.queryByTestId('ExpandMoreIcon')).not.toBeInTheDocument();
+
+    // Click again — group collapses back.
+    fireEvent.click(screen.getByTestId('ExpandLessIcon'));
+    expect(screen.getByTestId('ExpandMoreIcon')).toBeInTheDocument();
+  });
+
+  it('shows the selected count chip on a group header', () => {
+    render(
+      <PropertySearch {...defaultProps} selectedPaths={new Set(['marker.color', 'marker.size'])} />
+    );
+    // Group header for marker carries a chip with the count of selected children.
+    expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  it('renders group headers sorted alphabetically after the root group', () => {
+    const props = [
+      { path: 'x', description: 'top level', supportsQueryString: false, isObject: false },
+      { path: 'zeta.one', description: '', supportsQueryString: false, isObject: false },
+      { path: 'alpha.two', description: '', supportsQueryString: false, isObject: false },
+    ];
+    render(<PropertySearch {...defaultProps} properties={props} />);
+
+    const alpha = screen.getByText('alpha');
+    const zeta = screen.getByText('zeta');
+    // alpha must precede zeta in document order despite zeta being inserted first
+    expect(alpha.compareDocumentPosition(zeta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('does not toggle a property when disabled', () => {
+    const onToggle = jest.fn();
+    render(<PropertySearch {...defaultProps} onToggle={onToggle} disabled={true} />);
+
+    fireEvent.click(screen.getByText('x'));
+    expect(onToggle).not.toHaveBeenCalled();
+  });
 });

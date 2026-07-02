@@ -23,8 +23,11 @@ function openSelectMenu(testId) {
   fireEvent.mouseDown(within(screen.getByTestId(testId)).getByRole('combobox'));
 }
 
+let capturedSchemaOnChange = null;
+
 jest.mock('../views/common/SchemaEditor/SchemaEditor', () => {
   const MockSchemaEditor = ({ schema, value, onChange, droppable }) => {
+    capturedSchemaOnChange = onChange;
     return (
       <div data-testid="schema-editor" data-droppable={droppable}>
         SchemaEditor: {JSON.stringify(value)}
@@ -32,6 +35,18 @@ jest.mock('../views/common/SchemaEditor/SchemaEditor', () => {
     );
   };
   return { SchemaEditor: MockSchemaEditor, __esModule: true, default: MockSchemaEditor };
+});
+
+jest.mock('../views/common/RefTextArea', () => {
+  return function MockRefTextArea({ value, onChange }) {
+    return (
+      <textarea
+        data-testid="mock-ref-textarea"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  };
 });
 
 jest.mock('../../schemas/schemas', () => ({
@@ -71,7 +86,27 @@ const setupStore = (overrides = {}) => {
 };
 
 describe('InsightCRUDSection', () => {
+  let originalActions;
+
+  beforeAll(() => {
+    const s = useStore.getState();
+    originalActions = {
+      setInsightType: s.setInsightType,
+      setInsightProp: s.setInsightProp,
+      removeInsightProp: s.removeInsightProp,
+      removeInsightFromChart: s.removeInsightFromChart,
+      addInsightInteraction: s.addInsightInteraction,
+      removeInsightInteraction: s.removeInsightInteraction,
+      updateInsightInteraction: s.updateInsightInteraction,
+      setActiveInsight: s.setActiveInsight,
+      renameInsight: s.renameInsight,
+      restorePropsFromCache: s.restorePropsFromCache,
+    };
+  });
+
   beforeEach(() => {
+    capturedSchemaOnChange = null;
+    useStore.setState({ ...originalActions });
     setupStore();
   });
 
@@ -328,6 +363,338 @@ describe('InsightCRUDSection', () => {
     // the assertion in act() and lets the schema-fetch effect settle.
     await waitFor(() => {
       expect(screen.queryByTestId('insight-crud-section-nonexistent')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('schema property changes', () => {
+    it('sets changed and added props, and removes missing props', async () => {
+      const setInsightProp = jest.fn();
+      const removeInsightProp = jest.fn();
+      setupStore({
+        setInsightProp,
+        removeInsightProp,
+        explorerInsightStates: {
+          test_insight: {
+            ...defaultInsightState,
+            props: { x: 'old_x', y: 'old_y' },
+          },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      capturedSchemaOnChange({ x: 'old_x', y: 'new_y', z: 'brand_new' });
+
+      expect(setInsightProp).toHaveBeenCalledWith('test_insight', 'y', 'new_y');
+      expect(setInsightProp).toHaveBeenCalledWith('test_insight', 'z', 'brand_new');
+      expect(setInsightProp).not.toHaveBeenCalledWith('test_insight', 'x', expect.anything());
+      expect(removeInsightProp).not.toHaveBeenCalled();
+    });
+
+    it('removes props omitted from the new value', async () => {
+      const setInsightProp = jest.fn();
+      const removeInsightProp = jest.fn();
+      setupStore({
+        setInsightProp,
+        removeInsightProp,
+        explorerInsightStates: {
+          test_insight: {
+            ...defaultInsightState,
+            props: { x: 'keep', y: 'drop' },
+          },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      capturedSchemaOnChange({ x: 'keep' });
+
+      expect(removeInsightProp).toHaveBeenCalledWith('test_insight', 'y');
+      expect(setInsightProp).not.toHaveBeenCalled();
+    });
+
+    it('ignores null and non-object schema values', async () => {
+      const setInsightProp = jest.fn();
+      const removeInsightProp = jest.fn();
+      setupStore({ setInsightProp, removeInsightProp });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      capturedSchemaOnChange(null);
+      capturedSchemaOnChange('not-an-object');
+
+      expect(setInsightProp).not.toHaveBeenCalled();
+      expect(removeInsightProp).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('interaction rows', () => {
+    it('changing the interaction type calls updateInsightInteraction', async () => {
+      const updateInsightInteraction = jest.fn();
+      setupStore({
+        updateInsightInteraction,
+        explorerInsightStates: {
+          test_insight: {
+            ...defaultInsightState,
+            interactions: [{ type: 'filter', value: '' }],
+          },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      openSelectMenu('interaction-type-select-0');
+      fireEvent.click(screen.getAllByRole('option').find((o) => o.textContent === 'Sort'));
+
+      expect(updateInsightInteraction).toHaveBeenCalledWith('test_insight', 0, { type: 'sort' });
+    });
+
+    it('unwraps ?{...} interaction values for editing', async () => {
+      setupStore({
+        explorerInsightStates: {
+          test_insight: {
+            ...defaultInsightState,
+            interactions: [{ type: 'filter', value: '?{${ref(model).x} > 5}' }],
+          },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      expect(screen.getByTestId('mock-ref-textarea')).toHaveValue('${ref(model).x} > 5');
+    });
+
+    it('shows non-wrapped interaction values as-is', async () => {
+      setupStore({
+        explorerInsightStates: {
+          test_insight: {
+            ...defaultInsightState,
+            interactions: [{ type: 'filter', value: 'raw_value' }],
+          },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      expect(screen.getByTestId('mock-ref-textarea')).toHaveValue('raw_value');
+    });
+
+    it('wraps edited interaction values in ?{} on change', async () => {
+      const updateInsightInteraction = jest.fn();
+      setupStore({
+        updateInsightInteraction,
+        explorerInsightStates: {
+          test_insight: {
+            ...defaultInsightState,
+            interactions: [{ type: 'filter', value: '' }],
+          },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.change(screen.getByTestId('mock-ref-textarea'), {
+        target: { value: '${ref(m).col} = 1' },
+      });
+
+      expect(updateInsightInteraction).toHaveBeenCalledWith('test_insight', 0, {
+        value: '?{${ref(m).col} = 1}',
+      });
+    });
+
+    it('clearing an interaction value stores an empty string, not ?{}', async () => {
+      const updateInsightInteraction = jest.fn();
+      setupStore({
+        updateInsightInteraction,
+        explorerInsightStates: {
+          test_insight: {
+            ...defaultInsightState,
+            interactions: [{ type: 'filter', value: '?{something}' }],
+          },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.change(screen.getByTestId('mock-ref-textarea'), { target: { value: '' } });
+
+      expect(updateInsightInteraction).toHaveBeenCalledWith('test_insight', 0, { value: '' });
+    });
+  });
+
+  describe('rename flow', () => {
+    it('clicking the name of a new insight opens the rename input', async () => {
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+
+      expect(screen.getByTestId('insight-rename-input-test_insight')).toHaveValue('test_insight');
+    });
+
+    it('clicking the name of a loaded (non-new) insight does not open rename', async () => {
+      setupStore({
+        explorerInsightStates: {
+          test_insight: { ...defaultInsightState, isNew: false },
+        },
+      });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+
+      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
+    });
+
+    it('commits rename on Enter', async () => {
+      const renameInsight = jest.fn();
+      setupStore({ renameInsight });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+      const input = screen.getByTestId('insight-rename-input-test_insight');
+      fireEvent.change(input, { target: { value: '  renamed_insight  ' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(renameInsight).toHaveBeenCalledWith('test_insight', 'renamed_insight');
+      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
+    });
+
+    it('commits rename on blur', async () => {
+      const renameInsight = jest.fn();
+      setupStore({ renameInsight });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+      const input = screen.getByTestId('insight-rename-input-test_insight');
+      fireEvent.change(input, { target: { value: 'blurred_name' } });
+      fireEvent.blur(input);
+
+      expect(renameInsight).toHaveBeenCalledWith('test_insight', 'blurred_name');
+    });
+
+    it('closes without renaming when the name is unchanged', async () => {
+      const renameInsight = jest.fn();
+      setupStore({ renameInsight });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+      const input = screen.getByTestId('insight-rename-input-test_insight');
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(renameInsight).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
+    });
+
+    it('closes without renaming when the name is empty', async () => {
+      const renameInsight = jest.fn();
+      setupStore({ renameInsight });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+      const input = screen.getByTestId('insight-rename-input-test_insight');
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(renameInsight).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
+    });
+
+    it('Escape cancels the rename without committing', async () => {
+      const renameInsight = jest.fn();
+      setupStore({ renameInsight });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+      const input = screen.getByTestId('insight-rename-input-test_insight');
+      fireEvent.change(input, { target: { value: 'discarded' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(renameInsight).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
+      // Displayed name is unchanged
+      expect(screen.getByTestId('insight-name-test_insight')).toHaveTextContent('test_insight');
+    });
+
+    it('shows a collision error and stays in rename mode when the name is taken', async () => {
+      const renameInsight = jest.fn(() => {
+        const err = new Error('Name "dupe" is already in use by a model. Choose a different name.');
+        err.code = 'NAME_COLLISION';
+        throw err;
+      });
+      setupStore({ renameInsight });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+      const input = screen.getByTestId('insight-rename-input-test_insight');
+      fireEvent.change(input, { target: { value: 'dupe' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(screen.getByTestId('insight-rename-error-test_insight')).toHaveTextContent(
+        'already in use by a model'
+      );
+      expect(screen.getByTestId('insight-rename-input-test_insight')).toBeInTheDocument();
+    });
+
+    it('typing after a collision clears the error', async () => {
+      const renameInsight = jest.fn(() => {
+        const err = new Error('Name "dupe" is already in use. Choose a different name.');
+        err.code = 'NAME_COLLISION';
+        throw err;
+      });
+      setupStore({ renameInsight });
+
+      await renderSettled(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+
+      fireEvent.click(screen.getByTestId('insight-name-test_insight'));
+      const input = screen.getByTestId('insight-rename-input-test_insight');
+      fireEvent.change(input, { target: { value: 'dupe' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(screen.getByTestId('insight-rename-error-test_insight')).toBeInTheDocument();
+
+      fireEvent.change(input, { target: { value: 'dupe_2' } });
+      expect(
+        screen.queryByTestId('insight-rename-error-test_insight')
+      ).not.toBeInTheDocument();
     });
   });
 });

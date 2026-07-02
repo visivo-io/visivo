@@ -136,6 +136,83 @@ describe('SliceMenu — Range inline inputs', () => {
   });
 });
 
+describe('SliceMenu — prefill from current slice', () => {
+  it('opens with "At row" expanded and prefilled for a custom index slice', () => {
+    renderHarness({ slotShape: 'mixed', slice: '[3]' });
+    const input = screen.getByTestId('slice-at-row-input');
+    expect(input).toHaveValue(3);
+  });
+
+  it('does not expand "At row" for the canonical [0]/[-1] slices', () => {
+    renderHarness({ slotShape: 'mixed', slice: '[0]' });
+    expect(screen.queryByTestId('slice-at-row-input')).not.toBeInTheDocument();
+  });
+
+  it('opens with Range expanded and both bounds prefilled for "[1:5]"', () => {
+    renderHarness({ slotShape: 'mixed', slice: '[1:5]' });
+    expect(screen.getByTestId('slice-range-start')).toHaveValue(1);
+    expect(screen.getByTestId('slice-range-end')).toHaveValue(5);
+  });
+
+  it('leaves the open bound empty for a half-open range like "[:5]"', () => {
+    renderHarness({ slotShape: 'mixed', slice: '[:5]' });
+    expect(screen.getByTestId('slice-range-start')).toHaveValue(null);
+    expect(screen.getByTestId('slice-range-end')).toHaveValue(5);
+  });
+});
+
+describe('SliceMenu — Range edge cases', () => {
+  it('Enter on the end input applies the range', () => {
+    const onChange = jest.fn();
+    renderHarness({ slotShape: 'mixed', onChange });
+    fireEvent.click(screen.getByTestId('slice-option-range'));
+    fireEvent.change(screen.getByTestId('slice-range-start'), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('slice-range-end'), { target: { value: '8' } });
+    fireEvent.keyDown(screen.getByTestId('slice-range-end'), { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('[2:8]');
+  });
+
+  it('does not emit when both range bounds are empty', () => {
+    const onChange = jest.fn();
+    renderHarness({ slotShape: 'mixed', onChange });
+    fireEvent.click(screen.getByTestId('slice-option-range'));
+    fireEvent.click(screen.getByTestId('slice-range-apply'));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('emits a half-open range when only one bound is set', () => {
+    const onChange = jest.fn();
+    renderHarness({ slotShape: 'mixed', onChange });
+    fireEvent.click(screen.getByTestId('slice-option-range'));
+    fireEvent.change(screen.getByTestId('slice-range-end'), { target: { value: '4' } });
+    fireEvent.click(screen.getByTestId('slice-range-apply'));
+    expect(onChange).toHaveBeenCalledWith('[:4]');
+  });
+});
+
+describe('SliceMenu — dismissal', () => {
+  it('closes on mousedown outside the menu', () => {
+    const onClose = jest.fn();
+    renderHarness({ slotShape: 'mixed', onClose });
+    fireEvent.mouseDown(document.body);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('does not close on mousedown inside the menu', () => {
+    const onClose = jest.fn();
+    renderHarness({ slotShape: 'mixed', onClose });
+    fireEvent.mouseDown(screen.getByTestId('slice-option-first'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not close on mousedown on the anchor (anchor owns the toggle)', () => {
+    const onClose = jest.fn();
+    renderHarness({ slotShape: 'mixed', onClose });
+    fireEvent.mouseDown(screen.getByTestId('harness-anchor'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
 describe('SliceMenu — current-selection indicator', () => {
   it('marks the option matching the current slice as selected', () => {
     renderHarness({ slotShape: 'mixed', slice: '[0]' });

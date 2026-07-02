@@ -159,4 +159,69 @@ describe('JoinOperatorPopover', () => {
       expect(screen.getByTestId('join-popover-error')).toHaveTextContent('boom')
     );
   });
+
+  it('the @-mention picker filters models by the typed query and re-targets the endpoint', () => {
+    renderPopover();
+    const input = screen.getByTestId('join-endpoint-b-model-input');
+
+    // Typing filters the model list (with or without the leading @).
+    fireEvent.change(input, { target: { value: '@ord' } });
+    const options = screen.getByTestId('join-endpoint-b-model-options');
+    expect(within(options).getByTestId('join-endpoint-b-model-option-orders')).toBeInTheDocument();
+    expect(
+      within(options).queryByTestId('join-endpoint-b-model-option-users')
+    ).not.toBeInTheDocument();
+
+    // Picking a model re-targets side B and resets its column…
+    fireEvent.click(screen.getByTestId('join-endpoint-b-model-option-orders'));
+    expect(screen.getByTestId('join-endpoint-b-model-input')).toHaveValue('orders');
+    expect(screen.queryByTestId('join-endpoint-b-model-options')).not.toBeInTheDocument();
+    // …so the live preview waits for a column pick again.
+    expect(screen.getByTestId('join-condition-preview')).toHaveTextContent('—');
+  });
+
+  it('a query with no matching model renders no options list', () => {
+    renderPopover();
+    fireEvent.change(screen.getByTestId('join-endpoint-a-model-input'), {
+      target: { value: 'zzz' },
+    });
+    expect(screen.queryByTestId('join-endpoint-a-model-options')).not.toBeInTheDocument();
+  });
+
+  it('opening the Custom SQL section makes the free-text condition override the preview', () => {
+    renderPopover();
+    fireEvent.change(screen.getByTestId('join-custom-sql'), {
+      target: { value: '${ref(a).x} = ${ref(b).y}' },
+    });
+    // The details toggle flips the override on (jsdom: drive the toggle event).
+    // eslint-disable-next-line testing-library/no-node-access
+    const details = screen.getByTestId('join-custom-sql').closest('details');
+    details.open = true;
+    fireEvent(details, new Event('toggle', { bubbles: false }));
+
+    expect(screen.getByTestId('join-condition-preview')).toHaveTextContent(
+      '${ref(a).x} = ${ref(b).y}'
+    );
+  });
+
+  it('dismisses on an outside pointer-down but never from clicks inside itself', () => {
+    const onClose = jest.fn();
+    renderPopover({ onClose });
+
+    // Inside the popover → stays open.
+    fireEvent.pointerDown(screen.getByTestId('join-operator-popover'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Outside → dismissed.
+    fireEvent.pointerDown(document.body);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('the Cancel button closes the popover without saving', () => {
+    const onClose = jest.fn();
+    renderPopover({ onClose });
+    fireEvent.click(screen.getByTestId('join-popover-cancel'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockSaveRelation).not.toHaveBeenCalled();
+  });
 });

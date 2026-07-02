@@ -304,13 +304,14 @@ export default function useSourceOutline(sourceName) {
 
   // A source is "cold" (offer Generate) when the API authoritatively reports no
   // cached schema. Only `hasCachedSchema === false` is cold — never merely an
-  // empty/failed read (VIS-1004 fix). Generation in-flight is not cold.
+  // empty/failed read (VIS-1004 fix). A generation run IN FLIGHT stays cold:
+  // the cold state is where the progress copy + disabled Generate button live,
+  // so flipping to the (empty) tree mid-run would hide the progress indicator.
   const isCold = useMemo(() => {
     if (!available) return false;
-    if (generating) return false;
     if (nodes && nodes.length > 0) return false;
     return hasCachedSchema === false;
-  }, [available, generating, nodes, hasCachedSchema]);
+  }, [available, nodes, hasCachedSchema]);
 
   // Force-refresh: evict the per-session cache for this source, then re-fetch.
   const reload = useCallback(() => {

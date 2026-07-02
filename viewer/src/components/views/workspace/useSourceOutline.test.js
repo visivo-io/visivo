@@ -16,6 +16,9 @@ import useSourceOutline from './useSourceOutline';
 import {
   fetchSourceSchemaJobs,
   fetchSourceTables,
+  fetchTableColumns,
+  generateSourceSchema,
+  fetchSchemaGenerationStatus,
 } from '../../../api/sourceSchemaJobs';
 
 jest.mock('../../../contexts/URLContext', () => ({
@@ -131,5 +134,63 @@ describe('useSourceOutline', () => {
     expect(useStore.getState().workspaceSourceOutlineDataCache?.A).toMatchObject({
       hasCachedSchema: false,
     });
+  });
+
+  test('a failing TABLES fetch (warm source) surfaces a retryable error, not a bare tree', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
+    fetchSourceTables.mockRejectedValue(new Error('tables boom'));
+
+    const { result } = renderHook(() => useSourceOutline('A'));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toBe('tables boom');
+    // The error is not cached — a re-select would re-fetch.
+    expect(useStore.getState().workspaceSourceOutlineDataCache?.A).toBeUndefined();
+  });
+
+  test('a FAILED schema generation surfaces the run error and clears the progress state', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: false }]);
+    generateSourceSchema.mockResolvedValue({ run_id: 'run-9' });
+    fetchSchemaGenerationStatus.mockResolvedValue({ status: 'failed', error: 'duckdb locked' });
+
+    const { result } = renderHook(() => useSourceOutline('A'));
+    await waitFor(() => expect(result.current.isCold).toBe(true));
+
+    await act(async () => {
+      await result.current.generateSchema();
+    });
+
+    expect(result.current.error).toBe('duckdb locked');
+    expect(result.current.generating).toBeNull();
+    // Still cold — the user can retry Generate.
+    expect(result.current.isCold).toBe(true);
+    expect(fetchSourceTables).not.toHaveBeenCalled();
+  });
+
+  test('lazy column loads record a per-table error entry instead of throwing', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
+    fetchSourceTables.mockResolvedValue([{ name: 't1', column_count: 1 }]);
+    fetchTableColumns.mockRejectedValue(new Error('cols boom'));
+
+    const { result } = renderHook(() => useSourceOutline('A'));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    const tKey = 'source-outline::A::db::A::table::t1';
+    await act(async () => {
+      await result.current.loadFlatColumns(tKey);
+    });
+    expect(result.current.flatColumns[tKey]).toEqual({ error: 'cols boom' });
+
+    // A key that is not a table key never fetches.
+    fetchTableColumns.mockClear();
+    await act(async () => {
+      await result.current.loadFlatColumns('source-outline::A::db::A');
+    });
+    expect(fetchTableColumns).not.toHaveBeenCalled();
+
+    // An already-resolved key (even an error entry) is not re-fetched.
+    await act(async () => {
+      await result.current.loadFlatColumns(tKey);
+    });
+    expect(fetchTableColumns).not.toHaveBeenCalled();
   });
 });

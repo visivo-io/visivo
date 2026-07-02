@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import Table from './Table';
 import { withProviders } from '../../utils/test-utils';
 import useStore from '../../stores/store';
@@ -11,6 +11,15 @@ jest.mock('./PivotableTable', () => ({ table, sourceData }) => (
     ))}
   </div>
 ));
+
+// The legacy MRT path exports whatever tableData holds (always empty on that
+// path — data-backed tables render PivotableTable); the real generateCsv
+// throws on an empty dataset, so stub the CSV builder and assert the download
+// wiring behaviorally instead.
+jest.mock('export-to-csv', () => ({
+  mkConfig: jest.fn(cfg => cfg),
+  generateCsv: jest.fn(() => () => 'csv-content'),
+}));
 
 let table;
 
@@ -52,6 +61,113 @@ test('shows loading when data not yet available', async () => {
 
   await waitFor(() => {
     expect(screen.getByText('name')).toBeInTheDocument();
+  });
+});
+
+test('shows loading when shouldLoad is false, even with data available', () => {
+  render(<Table table={table} shouldLoad={false} />, { wrapper: withProviders });
+  expect(screen.getByText('name')).toBeInTheDocument();
+  expect(screen.queryByTestId('pivotable-table')).not.toBeInTheDocument();
+});
+
+test('derives the data source from ref strings in columns/rows/values', async () => {
+  useStore.setState(s => ({
+    insightJobs: {
+      'my-insight': {
+        ...s.insightJobs['my-insight'],
+        // Exercise the props_mapping reverse-mapping derivation too.
+        props_mapping: { 'props.columns.a': 'col_a' },
+      },
+    },
+  }));
+  const refTable = {
+    name: 'ref-table',
+    columns: ['${ref(my-insight).col_a}'],
+    rows: ['${ref(my-insight).col_b}'],
+  };
+  render(<Table table={refTable} shouldLoad={true} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByTestId('pivotable-table')).toBeInTheDocument();
+  });
+  expect(screen.getByText('plain text, 100')).toBeInTheDocument();
+});
+
+test('reads model-backed data from modelJobs when table.data is a model object', async () => {
+  useStore.setState({
+    insightJobs: {},
+    modelJobs: { m1: { data: [{ a: 'model-row', b: 7 }] } },
+  });
+  const modelTable = { name: 'model-table', data: { name: 'm1', sql: 'select 1' } };
+  render(<Table table={modelTable} shouldLoad={true} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByTestId('pivotable-table')).toBeInTheDocument();
+  });
+  expect(screen.getByText('model-row, 7')).toBeInTheDocument();
+});
+
+describe('legacy MRT path (no data ref)', () => {
+  const legacyTable = { name: 'legacy-table', rows_per_page: 5 };
+
+  test('renders the MRT toolbar with a CSV export named after the table', () => {
+    render(<Table table={legacyTable} shouldLoad={true} />, { wrapper: withProviders });
+
+    const exportButton = screen.getByRole('button', { name: 'DownloadCsv' });
+    expect(exportButton).toBeInTheDocument();
+    expect(screen.queryByTestId('pivotable-table')).not.toBeInTheDocument();
+
+    const appendSpy = jest.spyOn(document.body, 'appendChild');
+    fireEvent.click(exportButton);
+    const link = appendSpy.mock.calls.map(c => c[0]).find(n => n.tagName === 'A');
+    expect(link).toBeDefined();
+    expect(link.getAttribute('download')).toBe('legacy-table.csv');
+    appendSpy.mockRestore();
+  });
+
+  describe('mobile toolbar', () => {
+    const originalMatchMedia = window.matchMedia;
+
+    beforeEach(() => {
+      window.matchMedia = jest.fn().mockImplementation(query => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }));
+    });
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    test('toggling search reveals the mobile field; typing + clearing drive the global filter', () => {
+      render(<Table table={legacyTable} shouldLoad={true} />, { wrapper: withProviders });
+
+      // Closed by default.
+      expect(screen.queryByPlaceholderText('Search...')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText('Open search'));
+      const input = screen.getByPlaceholderText('Search...');
+      expect(input).toBeInTheDocument();
+
+      fireEvent.change(input, { target: { value: 'zz' } });
+      expect(input).toHaveValue('zz');
+
+      // The clear adornment appears once a filter is set; clicking it resets.
+      // eslint-disable-next-line testing-library/no-node-access
+      const clearButton = input.closest('.MuiInputBase-root').querySelector('button');
+      fireEvent.click(clearButton);
+      expect(screen.getByPlaceholderText('Search...')).toHaveValue('');
+
+      // Toggle closed again (the Close variant carries the same label).
+      fireEvent.click(screen.getByLabelText('Open search'));
+      expect(screen.queryByPlaceholderText('Search...')).not.toBeInTheDocument();
+    });
   });
 });
 

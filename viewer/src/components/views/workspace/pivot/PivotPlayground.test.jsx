@@ -37,12 +37,12 @@ jest.mock('./PivotResultPanel', () => ({
   ),
 }));
 
-// Each mocked shelf renders a button that fires its onDropField with the test
-// field, plus a remove button when it has chips — enough to mutate the draft.
+// Each mocked shelf renders buttons that fire its onDropField / onRemoveChip /
+// onAggChange callbacks — enough to mutate the draft without a real dnd drag.
 jest.mock('./PivotShelf', () => ({
   __esModule: true,
   AGGREGATIONS: ['sum', 'avg', 'min', 'max', 'count', 'count_distinct'],
-  default: ({ shelf, chips, onDropField }) => (
+  default: ({ shelf, chips, onDropField, onRemoveChip, onAggChange }) => (
     <div data-testid={`shelf-mock-${shelf}`}>
       <span data-testid={`shelf-mock-${shelf}-count`}>{chips.length}</span>
       <button
@@ -52,6 +52,22 @@ jest.mock('./PivotShelf', () => ({
       >
         drop
       </button>
+      <button
+        type="button"
+        data-testid={`shelf-mock-${shelf}-remove-first`}
+        onClick={() => onRemoveChip && onRemoveChip(0)}
+      >
+        remove
+      </button>
+      {onAggChange && (
+        <button
+          type="button"
+          data-testid={`shelf-mock-${shelf}-agg-avg`}
+          onClick={() => onAggChange(0, 'avg')}
+        >
+          avg
+        </button>
+      )}
     </div>
   ),
 }));
@@ -254,5 +270,72 @@ describe('PivotPlayground (VIS-1008)', () => {
   test('renders the empty state when no table is selected', () => {
     renderPlayground({ activeObject: { type: 'table', name: null }, record: null });
     expect(screen.getByTestId('pivot-playground-empty')).toBeInTheDocument();
+  });
+
+  test('drops land on ALL three shelves and mirror into the store draft', () => {
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    fireEvent.click(screen.getByTestId('shelf-mock-rows-drop'));
+    fireEvent.click(screen.getByTestId('shelf-mock-values-drop'));
+
+    expect(screen.getByTestId('shelf-mock-columns-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('shelf-mock-rows-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('shelf-mock-values-count')).toHaveTextContent('1');
+
+    const draft = useStore.getState().workspacePivotDraft;
+    expect(draft.columns).toEqual(['${ref(sales-insight).revenue}']);
+    expect(draft.rows).toEqual(['${ref(sales-insight).revenue}']);
+    // A values drop lands as an aggregated chip (default agg).
+    expect(draft.values).toEqual(['sum(${ref(sales-insight).revenue})']);
+  });
+
+  test('removing a chip empties its shelf and reports clean again', () => {
+    const setDirty = jest.fn();
+    renderPlayground({ record: { name: 'sales-pivot-table' }, setDirty });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    expect(setDirty).toHaveBeenLastCalledWith(true);
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-remove-first'));
+    expect(screen.getByTestId('shelf-mock-columns-count')).toHaveTextContent('0');
+    // Back to the saved (empty) config → clean.
+    expect(setDirty).toHaveBeenLastCalledWith(false);
+    expect(useStore.getState().workspacePivotDraft.columns).toEqual([]);
+  });
+
+  test('changing a value chip aggregation rewrites its serialized expression', () => {
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-values-drop'));
+    expect(useStore.getState().workspacePivotDraft.values).toEqual([
+      'sum(${ref(sales-insight).revenue})',
+    ]);
+
+    fireEvent.click(screen.getByTestId('shelf-mock-values-agg-avg'));
+    expect(useStore.getState().workspacePivotDraft.values).toEqual([
+      'avg(${ref(sales-insight).revenue})',
+    ]);
+  });
+
+  test('cancelling the save modal keeps the dirty draft and never commits', () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [{ name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } }],
+      });
+    });
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    fireEvent.click(screen.getByTestId('pivot-playground-save'));
+    expect(screen.getByTestId('pivot-save-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('pivot-save-cancel'));
+    expect(screen.queryByTestId('pivot-save-modal')).not.toBeInTheDocument();
+    expect(saveTable).not.toHaveBeenCalled();
+    // The draft is still dirty — Save stays enabled for another attempt.
+    expect(screen.getByTestId('pivot-playground-save')).not.toBeDisabled();
   });
 });
