@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
+import useRecordSave from '../../../hooks/useRecordSave';
 import { FormInput, FormTextarea, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import RefTextArea from './RefTextArea';
 import { validateName } from './namedModel';
@@ -23,6 +24,12 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
  */
 const DimensionEditForm = ({ dimension, isCreate, onClose, onSave, onGoBack }) => {
   const { saveDimension, deleteDimension, checkCommitStatus } = useStore();
+
+  // VIS-993: edit-mode saves flush through the gated optimistic backbone —
+  // one useRecordSave per open record — so schema/ref-invalid configs are
+  // blocked BEFORE they persist (no POST, no doomed run). Create mode keeps
+  // the direct saveDimension call: the record isn't in the collection yet.
+  const { saveNow } = useRecordSave('dimension', dimension?.name || null);
 
   // Detect embedded mode (inline dimension within a model)
   const isEmbedded = isEmbeddedObject(dimension);
@@ -110,12 +117,26 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave, onGoBack }) =
         // Parent handles panel close on success
       } else {
         // Save as project-level dimension (always multi-model)
-        const result = await saveDimension(name, config);
+        const result = isEditMode ? await saveNow(config) : await saveDimension(name, config);
 
         setSaving(false);
-        if (result?.success) {
+        if (result?.success !== false) {
           onSave && onSave(config);
           onClose();
+        } else if (result?.validation) {
+          // Gate-blocked (VIS-993): map field-path errors onto the form; the
+          // expression field owns anything under its path.
+          const exprError = result.validation.errors?.find(
+            e => e.path === 'expression' || e.path?.startsWith('expression')
+          );
+          if (exprError) {
+            setErrors(prev => ({ ...prev, expression: exprError.message }));
+          } else {
+            setSaveError(
+              result.validation.errors?.map(e => `${e.path}: ${e.message}`).join('; ') ||
+                'Configuration is invalid'
+            );
+          }
         } else {
           setSaveError(result?.error || 'Failed to save dimension');
         }
