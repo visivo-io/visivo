@@ -21,6 +21,7 @@ const StageSelection = ({ status }) => {
   const [loading, setLoading] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [deployingMsg, setDeployingMsg] = useState('Deploying...');
+  const [deployError, setDeployError] = useState(null);
   const [deploymentSuccess, setDeploymentSuccess] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -48,6 +49,7 @@ const StageSelection = ({ status }) => {
     setDeploying(false);
     setDeploymentSuccess(false);
     setDeployingMsg('Deploying...');
+    setDeployError(null);
     setPreviewUrl('');
   };
 
@@ -108,8 +110,12 @@ const StageSelection = ({ status }) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       pollDeploymentStatus(data.deploy_id);
     } catch (err) {
+      // A failed POST must leave a VISIBLE error — `deployingMsg` only renders
+      // while `deploying === true`, so setting it here silently returned the
+      // form to idle. The error alert renders below and clears on retry
+      // (handleDeploy starts with resetDeploymentState).
       setDeploying(false);
-      setDeployingMsg('Deployment failed');
+      setDeployError('Deployment failed. Please check your connection and try again.');
     }
   };
 
@@ -230,6 +236,22 @@ const StageSelection = ({ status }) => {
                   <p className="text-blue-600 mt-1">
                     Make sure your code is ready for the {selectedStage} environment.
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Deploy Error */}
+          {deployError && !deploying && (
+            <div data-testid="deploy-error" className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-start">
+                <FontAwesomeIcon
+                  icon={faTriangleExclamation}
+                  className="w-5 h-5 text-red-400 mt-0.5 mr-2"
+                />
+                <div className="text-sm">
+                  <p className="font-medium text-red-800">Deployment failed</p>
+                  <p className="text-red-600 mt-1">{deployError}</p>
                 </div>
               </div>
             </div>

@@ -110,6 +110,11 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
     setSaveError(null);
   }, [table, isCreate]);
 
+  // Blank pivot entries (the '' scaffold RefListField's Add button creates, or
+  // whitespace-only edits) must never save — `columns: ['']` is not a valid
+  // pivot config. Validation rejects them with a visible per-list error.
+  const hasBlankEntry = list => list.some(entry => typeof entry === 'string' && entry.trim() === '');
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -132,6 +137,16 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 
     if ((rows.length > 0) !== (values.length > 0)) {
       newErrors.rows = 'Rows and values must be specified together';
+    }
+
+    if (hasBlankEntry(columns)) {
+      newErrors.columns = 'Column entries cannot be empty';
+    }
+    if (hasBlankEntry(rows)) {
+      newErrors.rows = 'Row entries cannot be empty';
+    }
+    if (hasBlankEntry(values)) {
+      newErrors.values = 'Value entries cannot be empty';
     }
 
     setErrors(newErrors);

@@ -91,20 +91,10 @@ export function getStaticSchema(schema, defs = {}) {
       return singleOption;
     }
 
-    // If only array option, return it
-    if (arrayOption) {
-      return arrayOption;
-    }
-
-    // Fallback: return first static option, recursing if needed
-    const firstOption = staticOptions[0];
-    if (firstOption.oneOf || firstOption.anyOf) {
-      return getStaticSchema(firstOption, defs);
-    }
-    if (firstOption.$ref) {
-      return resolveRef(firstOption.$ref, defs) || firstOption;
-    }
-    return firstOption;
+    // No single option means EVERY remaining static option is an
+    // array-with-items (anything else would have matched singleOption), so
+    // arrayOption is always the first static option here — return it.
+    return arrayOption;
   }
 
   return schema;

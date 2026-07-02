@@ -168,6 +168,39 @@ describe('TableEditForm — validation', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  test('a pivot list holding only a blank entry blocks save with a visible error', async () => {
+    // Regression: `columns: ['']` used to pass validation and save the blank
+    // entry into the config.
+    seed();
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ onSave });
+
+    setName('tbl');
+    addPivotEntry('columns'); // RefListField's Add scaffolds '' — leave it blank
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Column entries cannot be empty')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('whitespace-only rows/values entries are rejected too', async () => {
+    seed();
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ onSave });
+
+    setName('tbl');
+    addPivotEntry('columns');
+    addPivotEntry('rows');
+    addPivotEntry('values'); // stays '' (blank)
+    setRefEntry(0, 'ref(m).month');
+    setRefEntry(1, '   ');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Row entries cannot be empty')).toBeInTheDocument();
+    expect(screen.getByText('Value entries cannot be empty')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   test('rows without values (or vice versa) blocks save', async () => {
     seed();
     const onSave = jest.fn();

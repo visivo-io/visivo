@@ -396,6 +396,24 @@ describe('schemaUtils', () => {
       expect(getStaticSchema(schema, defs)).toEqual(schema);
     });
 
+    it('returns the FIRST array option when every static option is an array-with-items', () => {
+      // Exhaustiveness pin: when no single-value option exists, every static
+      // option is an array-with-items (anything else would have matched
+      // singleOption), so the arrayOption return always resolves — there is no
+      // reachable fallback beyond it.
+      const schema = {
+        oneOf: [
+          { $ref: '#/$defs/query-string' },
+          { type: 'array', items: { type: 'number' } },
+          { type: 'array', items: { type: 'string' } },
+        ],
+      };
+      expect(getStaticSchema(schema, defs)).toEqual({
+        type: 'array',
+        items: { type: 'number' },
+      });
+    });
+
     it('supports anyOf the same as oneOf', () => {
       const schema = {
         anyOf: [{ $ref: '#/$defs/query-string' }, { $ref: '#/$defs/color' }],
