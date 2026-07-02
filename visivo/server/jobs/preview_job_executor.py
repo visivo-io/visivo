@@ -67,7 +67,10 @@ def _inject_cached_objects(flask_app, preview_project):
         setattr(preview_project, project_field, _merge_objects_into_list(obj_list, new_objects))
 
 
-CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "relations", "insights"}
+# Relations are deliberately NOT a context-object type: they are never
+# previewed unsaved — the inline join builder (VIS-1007) saves the relation to
+# the draft cache and the preview re-runs against it like any other DAG run.
+CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "insights"}
 
 
 def _get_type_adapter(field_name):
@@ -90,10 +93,6 @@ def _get_type_adapter(field_name):
         from visivo.models.inputs.fields import InputField
 
         return TypeAdapter(InputField)
-    elif field_name == "relations":
-        from visivo.models.relation import Relation
-
-        return TypeAdapter(Relation)
     elif field_name == "insights":
         return TypeAdapter(Insight)
     return None
@@ -253,8 +252,10 @@ def execute_preview_job(
         output_dir: Output directory for files
         run_manager: PreviewRunManager instance
         context_objects: Optional dict of {type: [configs]} overrides (models, insights,
-            sources, inputs, metrics, dimensions, relations). Bodies for any insights
-            in insight_names that are not already published should be sent here.
+            inputs, metrics, dimensions). Bodies for any insights in insight_names
+            that are not already published should be sent here. Relations are not
+            accepted — they save to the draft cache and flow in via the cached
+            overlay like any other DAG run.
 
     Returns:
         None (updates run status via run_manager)
