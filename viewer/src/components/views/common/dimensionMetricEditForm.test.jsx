@@ -14,9 +14,12 @@ const mockActions = {
   checkCommitStatus: jest.fn(),
 };
 const mockSaveNow = jest.fn();
+const mockScheduleSave = jest.fn();
+// Mutable so individual tests can drive the gate's status/errors surface.
+let mockRecordSave;
 jest.mock('../../../hooks/useRecordSave', () => ({
   __esModule: true,
-  default: () => ({ saveNow: mockSaveNow, status: 'idle', errors: null }),
+  default: () => mockRecordSave,
 }));
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
@@ -58,6 +61,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
   mockSaveNow.mockResolvedValue({ success: true });
+  mockScheduleSave.mockClear();
+  mockRecordSave = { scheduleSave: mockScheduleSave, saveNow: mockSaveNow, status: 'idle', errors: null };
 });
 
 describe.each(CASES)('$label EditForm', ({ Form, prop, word, nameLabel, save, del }) => {
@@ -231,33 +236,41 @@ describe.each(CASES)('$label EditForm', ({ Form, prop, word, nameLabel, save, de
   });
 });
 
-describe.each(CASES)('$label edit-mode save routes through the gated backbone (VIS-993)', ({ Form, prop, word, save }) => {
-  test('edit mode persists via useRecordSave.saveNow, never the raw store action', async () => {
-    const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(x, 2)' } };
+describe.each(CASES)('$label edit mode auto-saves through the gated backbone (VIS-993)', ({ Form, prop, word }) => {
+  const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(x, 2)' } };
+
+  test('renders NO Save button — persistence is debounced auto-save', () => {
     render(<Form {...{ [prop]: record }} onClose={jest.fn()} onSave={jest.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(mockSaveNow).toHaveBeenCalledTimes(1));
-    expect(mockSaveNow).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'existing', expression: 'ROUND(x, 2)' })
-    );
-    expect(save()).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
   });
 
-  test('a gate-blocked save maps the expression error onto the field', async () => {
-    mockSaveNow.mockResolvedValue({
-      success: false,
-      validation: {
-        errors: [{ path: 'expression', message: "ref 'ghost' does not match any existing object", keyword: 'ref' }],
-      },
-    });
-    const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(x, 2)' } };
+  test('an expression edit schedules a debounced save with the full config', () => {
     render(<Form {...{ [prop]: record }} onClose={jest.fn()} onSave={jest.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'ROUND(x, 3)' } });
 
-    expect(await screen.findByText(/ghost/)).toBeInTheDocument();
-    expect(save()).not.toHaveBeenCalled();
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'existing', expression: 'ROUND(x, 3)' })
+    );
+    expect(mockSaveNow).not.toHaveBeenCalled();
+  });
+
+  test('gate errors surface on the expression field', () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      saveNow: mockSaveNow,
+      status: 'invalid',
+      errors: [
+        { path: 'expression', message: 'Expecting ). Line 1, Col: 25.', keyword: 'expression' },
+      ],
+    };
+    render(<Form {...{ [prop]: record }} onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.getByText(/Expecting \)/)).toBeInTheDocument();
+  });
+
+  test('create mode still uses an explicit Create button', () => {
+    render(<Form isCreate onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.getByRole('button', { name: /Create|Save/ })).toBeInTheDocument();
   });
 });

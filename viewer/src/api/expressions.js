@@ -32,3 +32,32 @@ export const translateExpressions = async (expressions, sourceDialect) => {
 
   throw new Error('Failed to translate expressions');
 };
+
+/**
+ * Validate that SQL expressions parse under the source dialect (VIS-993).
+ *
+ * Fail-open contract: when the endpoint isn't available (dist mode, cloud),
+ * every expression reports valid — the gate must never block on a check it
+ * cannot run; the backend and the run remain the net.
+ *
+ * @param {Array<{name: string, expression: string}>} expressions
+ * @param {string} [sourceDialect]
+ * @returns {Promise<{results: Array<{name: string, valid: boolean, error?: string}>}>}
+ */
+export const validateExpressions = async (expressions, sourceDialect) => {
+  if (!isAvailable('expressionsValidate')) {
+    return { results: expressions.map(e => ({ name: e.name, valid: true })) };
+  }
+
+  const response = await apiFetch(getUrl('expressionsValidate'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expressions, source_dialect: sourceDialect }),
+  });
+
+  if (response.status === 200) {
+    return await response.json();
+  }
+
+  throw new Error('Failed to validate expressions');
+};

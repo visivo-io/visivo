@@ -6,6 +6,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { validateName } from './namedModel';
 import Select from '../../common/Select';
 import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 
 /**
  * MarkdownEditForm - Form component for editing/creating markdowns
@@ -50,7 +51,24 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
   // the footer save flushes through this (writes the config optimistically into
   // the markdown store, then persists the CURRENT store value), sharing the same
   // backbone as the editor canvas so the two can't clobber each other.
-  const { saveNow } = useRecordSave('markdown', markdown?.name || null);
+  const {
+    scheduleSave,
+    status: autoSaveStatus,
+    errors: gateErrors,
+  } = useRecordSave('markdown', markdown?.name || null);
+
+  const buildConfig = (over = {}) => ({ name, content, align, justify, ...over });
+
+  const gateErrorText =
+    gateErrors && gateErrors.length > 0
+      ? gateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
+      : null;
+
+  const isAutoSave = isEditMode;
+  const autoSave = over => {
+    if (!isAutoSave) return;
+    scheduleSave(buildConfig(over));
+  };
 
   // Initialize form when markdown changes
   useEffect(() => {
@@ -102,18 +120,10 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
         justify,
       };
 
-      let result;
-      if (isEditMode) {
-        // EDIT mode: flush through the shared optimistic + fire-time-read
-        // backbone (writes `config` into the markdown store optimistically, then
-        // persists the current store value) so this form and the editor canvas
-        // converge on the last write instead of clobbering each other.
-        result = await saveNow(config);
-      } else {
-        // CREATE mode: the record isn't in the store collection yet, so there is
-        // nothing to optimistically update — persist directly.
-        result = await saveMarkdown(name, config);
-      }
+      // Create mode only — edit mode auto-saves via scheduleSave (VIS-993:
+      // no Save button; each field change debounces through the gated
+      // optimistic backbone).
+      const result = await saveMarkdown(name, config);
 
       if (result?.success) {
         onSave && onSave(config);
@@ -215,7 +225,10 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
               <textarea
                 id="markdownContent"
                 value={content}
-                onChange={e => setContent(e.target.value)}
+                onChange={e => {
+                  setContent(e.target.value);
+                  autoSave({ content: e.target.value });
+                }}
                 placeholder=" "
                 rows={10}
                 className={`block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:border-primary-500 peer placeholder-transparent resize-y font-mono ${errors.content ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}`}
@@ -246,7 +259,10 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
                 aria-label="Horizontal Alignment"
                 value={align}
                 options={ALIGN_OPTIONS}
-                onChange={setAlign}
+                onChange={v => {
+                  setAlign(v);
+                  autoSave({ align: v });
+                }}
               />
               <label
                 htmlFor="markdownAlign"
@@ -263,7 +279,10 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
                 aria-label="Vertical Distribution"
                 value={justify}
                 options={JUSTIFY_OPTIONS}
-                onChange={setJustify}
+                onChange={v => {
+                  setJustify(v);
+                  autoSave({ justify: v });
+                }}
               />
               <label
                 htmlFor="markdownJustify"
@@ -276,6 +295,11 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
           {/* Save Error */}
           {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {gateErrorText && (
+            <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm" data-testid="markdown-gate-errors">
+              {gateErrorText}
+            </div>
+          )}
         </div>
       </div>
 
@@ -323,21 +347,27 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
             )}
           </div>
 
-          <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
-            </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </Button>
-          </div>
+          {isAutoSave ? (
+            <div className="flex items-center gap-2" data-testid="form-footer-autosave">
+              <SaveStateIndicator status={autoSaveStatus} />
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <ButtonOutline type="button" onClick={onClose} className="text-sm">
+                Cancel
+              </ButtonOutline>
+              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+                {saving ? (
+                  <>
+                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </>

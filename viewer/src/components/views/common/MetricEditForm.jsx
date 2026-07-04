@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 import { FormInput, FormTextarea, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import RefTextArea from './RefTextArea';
 import { validateName } from './namedModel';
@@ -25,11 +26,16 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
 const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
   const { saveMetric, deleteMetric, checkCommitStatus } = useStore();
 
-  // VIS-993: edit-mode saves flush through the gated optimistic backbone —
-  // one useRecordSave per open record — so schema/ref-invalid configs are
-  // blocked BEFORE they persist (no POST, no doomed run). Create mode keeps
-  // the direct saveMetric call: the record isn't in the collection yet.
-  const { saveNow } = useRecordSave('metric', metric?.name || null);
+  // VIS-993: edit mode is AUTO-SAVE — every field change debounces through
+  // the gated optimistic backbone (no Save button), so schema/ref/expression-
+  // invalid configs are blocked BEFORE they persist (no POST, no doomed run)
+  // and the gate's errors render live on the fields. Create mode keeps the
+  // explicit saveMetric button: the record isn't in the collection yet.
+  const {
+    scheduleSave,
+    status: autoSaveStatus,
+    errors: gateErrors,
+  } = useRecordSave('metric', metric?.name || null);
 
   // Detect embedded mode (inline metric within a model)
   const isEmbedded = isEmbeddedObject(metric);
@@ -92,6 +98,29 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Build the config the backbone persists; `over` carries the just-typed
+  // value so we never read one keystroke behind React state.
+  const buildConfig = (over = {}) => {
+    const cfg = { name, expression, description: description || undefined, ...over };
+    if (cfg.description === undefined) delete cfg.description;
+    return cfg;
+  };
+
+  const isAutoSave = isEditMode;
+  const autoSave = over => {
+    if (!isAutoSave) return;
+    scheduleSave(buildConfig(over));
+  };
+
+  // Gate errors (VIS-993) render live: expression-path errors land on the
+  // field, anything else in the form-level alert.
+  const gateExpressionError = gateErrors?.find(
+    e => e.path === 'expression' || e.path?.startsWith('expression')
+  )?.message;
+  const gateOtherErrors = (gateErrors || []).filter(
+    e => !(e.path === 'expression' || e.path?.startsWith('expression'))
+  );
+
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -116,27 +145,13 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
         }
         // Parent handles panel close on success
       } else {
-        // Save as project-level metric (always multi-model)
-        const result = isEditMode ? await saveNow(config) : await saveMetric(name, config);
+        // Create mode only — edit mode auto-saves via scheduleSave.
+        const result = await saveMetric(name, config);
 
         setSaving(false);
-        if (result?.success !== false) {
+        if (result?.success) {
           onSave && onSave(config);
           onClose();
-        } else if (result?.validation) {
-          // Gate-blocked (VIS-993): map field-path errors onto the form; the
-          // expression field owns anything under its path.
-          const exprError = result.validation.errors?.find(
-            e => e.path === 'expression' || e.path?.startsWith('expression')
-          );
-          if (exprError) {
-            setErrors(prev => ({ ...prev, expression: exprError.message }));
-          } else {
-            setSaveError(
-              result.validation.errors?.map(e => `${e.path}: ${e.message}`).join('; ') ||
-                'Configuration is invalid'
-            );
-          }
         } else {
           setSaveError(result?.error || 'Failed to save metric');
         }
@@ -186,10 +201,13 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
 
         <RefTextArea
           value={expression}
-          onChange={setExpression}
+          onChange={v => {
+            setExpression(v);
+            autoSave({ expression: v });
+          }}
           label="Expression"
           required
-          error={errors.expression}
+          error={errors.expression || gateExpressionError}
           allowedTypes={isEmbedded ? [] : ['model', 'metric', 'dimension']}
           hideAddButton={isEmbedded}
           rows={4}
@@ -204,14 +222,24 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
           id="metricDescription"
           label="Description"
           value={description}
-          onChange={e => setDescription(e.target.value)}
+          onChange={e => {
+            setDescription(e.target.value);
+            autoSave({ description: e.target.value || undefined });
+          }}
           rows={2}
         />
 
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
+        {gateOtherErrors.length > 0 && (
+          <FormAlert variant="error">
+            {gateOtherErrors.map(e => `${e.path}: ${e.message}`).join('; ')}
+          </FormAlert>
+        )}
       </FormLayout>
 
       <FormFooter
+        autoSave={isAutoSave}
+        rightContent={<SaveStateIndicator status={autoSaveStatus} />}
         onCancel={onClose}
         onSave={handleSave}
         saving={saving}

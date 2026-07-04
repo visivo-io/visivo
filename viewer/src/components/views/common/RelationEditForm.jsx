@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 import RefTextArea from './RefTextArea';
 import Select from '../../common/Select';
 import {
@@ -27,11 +28,15 @@ import { validateName } from './namedModel';
 const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
   const { saveRelation, deleteRelation, checkCommitStatus } = useStore();
 
-  // VIS-993: edit-mode saves flush through the gated optimistic backbone so
-  // schema/ref-invalid configs are blocked BEFORE they persist (no POST, no
-  // doomed run). Create mode keeps the direct saveRelation call: the record
-  // isn't in the collection yet.
-  const { saveNow } = useRecordSave('relation', relation?.name || null);
+  // VIS-993: edit mode is AUTO-SAVE — every field change debounces through
+  // the gated optimistic backbone (no Save button); gate errors render live
+  // on the fields. Create mode keeps the explicit button: the record isn't
+  // in the collection yet.
+  const {
+    scheduleSave,
+    status: autoSaveStatus,
+    errors: gateErrors,
+  } = useRecordSave('relation', relation?.name || null);
 
   // Form state
   const [name, setName] = useState('');
@@ -82,6 +87,27 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const buildConfig = (over = {}) => ({
+    name,
+    join_type: joinType,
+    condition,
+    is_default: isDefault || undefined,
+    ...over,
+  });
+
+  const isAutoSave = isEditMode;
+  const autoSave = over => {
+    if (!isAutoSave) return;
+    scheduleSave(buildConfig(over));
+  };
+
+  const gateConditionError = gateErrors?.find(
+    e => e.path === 'condition' || e.path?.startsWith('condition')
+  )?.message;
+  const gateOtherErrors = (gateErrors || []).filter(
+    e => !(e.path === 'condition' || e.path?.startsWith('condition'))
+  );
+
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -95,27 +121,14 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
       is_default: isDefault || undefined,
     };
 
-    const result = isEditMode ? await saveNow(config) : await saveRelation(name, config);
+    // Create mode only — edit mode auto-saves via scheduleSave.
+    const result = await saveRelation(name, config);
 
     setSaving(false);
 
-    if (result?.success !== false) {
+    if (result?.success) {
       onSave && onSave(config);
       onClose();
-    } else if (result?.validation) {
-      // Gate-blocked (VIS-993): the condition field owns anything under its
-      // path; everything else lands in the form-level alert.
-      const condError = result.validation.errors?.find(
-        e => e.path === 'condition' || e.path?.startsWith('condition')
-      );
-      if (condError) {
-        setErrors(prev => ({ ...prev, condition: condError.message }));
-      } else {
-        setSaveError(
-          result.validation.errors?.map(e => `${e.path}: ${e.message}`).join('; ') ||
-            'Configuration is invalid'
-        );
-      }
     } else {
       setSaveError(result?.error || 'Failed to save relation');
     }
@@ -149,7 +162,15 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
         />
 
         <div className="relative">
-          <Select id="joinType" aria-label="Join Type" value={joinType} onChange={setJoinType}>
+          <Select
+            id="joinType"
+            aria-label="Join Type"
+            value={joinType}
+            onChange={v => {
+              setJoinType(v);
+              autoSave({ join_type: v });
+            }}
+          >
             <option value="inner">Inner Join</option>
             <option value="left">Left Join</option>
             <option value="right">Right Join</option>
@@ -165,10 +186,13 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
 
         <RefTextArea
           value={condition}
-          onChange={setCondition}
+          onChange={v => {
+            setCondition(v);
+            autoSave({ condition: v });
+          }}
           label="Condition"
           required
-          error={errors.condition}
+          error={errors.condition || gateConditionError}
           allowedTypes={['model']}
           rows={4}
           /* eslint-disable-next-line no-template-curly-in-string */
@@ -179,13 +203,23 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
           id="isDefault"
           label="Default relation for these models"
           checked={isDefault}
-          onChange={e => setIsDefault(e.target.checked)}
+          onChange={e => {
+            setIsDefault(e.target.checked);
+            autoSave({ is_default: e.target.checked || undefined });
+          }}
         />
 
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
+        {gateOtherErrors.length > 0 && (
+          <FormAlert variant="error">
+            {gateOtherErrors.map(e => `${e.path}: ${e.message}`).join('; ')}
+          </FormAlert>
+        )}
       </FormLayout>
 
       <FormFooter
+        autoSave={isAutoSave}
+        rightContent={<SaveStateIndicator status={autoSaveStatus} />}
         onCancel={onClose}
         onSave={handleSave}
         saving={saving}

@@ -1,22 +1,27 @@
 /**
  * Story: validation-as-save (VIS-993).
  *
- * The rail's save path is gated: a semantically doomed edit (dangling ref in a
- * dimension expression) never POSTs — no draft-cache write, no run under
- * runs-on-changes, no cloud commit block — and the blocking reason renders on
- * the field. Fixing the value saves normally and the commit badge reflects the
- * pending change.
+ * The rail is AUTO-SAVE with a gated backbone: there is no Save button in edit
+ * mode — every field change debounces through useRecordSave, where a
+ * semantically doomed edit (dangling ref, unparseable SQL expression) never
+ * POSTs — no draft-cache write, no run under runs-on-changes, no cloud commit
+ * block — and the blocking reason renders on the field. Fixing the value
+ * auto-saves and the change lands in the backend pending set.
  *
- * Runs in the `state-mutating` playwright project (writes the in-memory draft
- * cache on the valid-save step; discarded in afterAll).
+ * Runs in the `state-mutating` playwright project (the valid-save steps write
+ * the in-memory draft cache; discarded in afterAll).
  */
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 const API = BASE.replace(':3001', ':8001');
 const WAIT = 20000;
+// The backbone debounces 500ms, then the async gate (schema + refs + backend
+// sqlglot) must run before any POST could fire. 1500ms comfortably covers it.
+const SETTLE = 1500;
 
 const DIMENSION = 'x_rounded';
+const METRIC = 'avg_value';
 
 test.describe('Validation-as-save gates the rail (VIS-993)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -24,14 +29,14 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
 
   /** @type {import('@playwright/test').Page} */
   let page;
-  const dimensionPosts = [];
+  const posts = { dimensions: [], metrics: [] };
 
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage();
     page.on('request', req => {
-      if (req.method() === 'POST' && req.url().includes('/api/dimensions/')) {
-        dimensionPosts.push(req.url());
-      }
+      if (req.method() !== 'POST') return;
+      if (req.url().includes('/api/dimensions/')) posts.dimensions.push(req.url());
+      if (req.url().includes('/api/metrics/')) posts.metrics.push(req.url());
     });
   });
 
@@ -41,14 +46,14 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     await page.close();
   });
 
-  const openDimensionForm = async () => {
+  const openForm = async (type, name) => {
     await page.goto(`${BASE}/workspace`);
     await page.waitForLoadState('networkidle');
-    const section = page.getByTestId('library-subsection-dimension-header');
+    const section = page.getByTestId(`library-subsection-${type}-header`);
     if (await section.isVisible().catch(() => false)) {
       await section.click();
     }
-    const row = page.getByTestId(`library-row-dimension-${DIMENSION}`);
+    const row = page.getByTestId(`library-row-${type}-${name}`);
     await row.scrollIntoViewIfNeeded();
     await row.click();
     await expect(page.getByTestId('ref-textarea-editable')).toBeVisible({ timeout: WAIT });
@@ -62,51 +67,67 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     await editable.pressSequentially(text, { delay: 10 });
   };
 
-  test('a dangling ref blocks Save: inline reason, zero POSTs, badge unchanged', async () => {
-    await openDimensionForm();
-
-    const postsBefore = dimensionPosts.length;
-    await setExpression('${ref(ghost_model)}');
-    await page.getByRole('button', { name: 'Save' }).click();
-
-    // The gate's reason lands on the expression field.
-    await expect(page.getByText(/ghost_model/).first()).toBeVisible({ timeout: WAIT });
-
-    // Nothing persisted: no dimension POST left the browser.
-    expect(dimensionPosts.length).toBe(postsBefore);
-
-    // And the backend agrees — the draft cache holds no pending changes.
+  const backendPending = async name => {
     const changes = await page.request
       .get(`${API}/api/commit/pending/`)
       .then(r => r.json())
       .catch(() => ({ pending: [] }));
-    const pendingDimension = (changes.pending || []).find(c => c.name === DIMENSION);
-    expect(pendingDimension).toBeUndefined();
+    return (changes.pending || []).some(c => c.name === name);
+  };
+
+  test('there is no Save button — the rail is auto-save', async () => {
+    await openForm('dimension', DIMENSION);
+    await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
   });
 
-  test('fixing the expression saves through: POST fires and the change is pending', async () => {
-    const postsBefore = dimensionPosts.length;
+  test('a dangling ref blocks the auto-save: inline reason, zero POSTs', async () => {
+    const postsBefore = posts.dimensions.length;
+    await setExpression('${ref(ghost_model)}');
+    await page.waitForTimeout(SETTLE);
+
+    // The gate's reason lands on the expression field.
+    await expect(page.getByText(/ghost_model/).first()).toBeVisible({ timeout: WAIT });
+
+    // Nothing persisted: no dimension POST left the browser, backend agrees.
+    expect(posts.dimensions.length).toBe(postsBefore);
+    expect(await backendPending(DIMENSION)).toBe(false);
+  });
+
+  test('fixing the expression auto-saves: POST fires without any Save click', async () => {
+    const postsBefore = posts.dimensions.length;
 
     await setExpression('ROUND(x, 1)');
-    await page.getByRole('button', { name: 'Save' }).click();
 
-    // The save leaves the browser…
     await expect
-      .poll(() => dimensionPosts.length, { timeout: WAIT })
+      .poll(() => posts.dimensions.length, { timeout: WAIT })
       .toBeGreaterThan(postsBefore);
+    await expect.poll(() => backendPending(DIMENSION), { timeout: WAIT }).toBe(true);
+  });
 
-    // …and the backend now reports the dimension as a pending draft change.
+  test("an unparseable metric expression blocks: the user's AVG(value)} repro", async () => {
+    await openForm('metric', METRIC);
+
+    const postsBefore = posts.metrics.length;
+    await setExpression('AVG(value)}');
+    await page.waitForTimeout(SETTLE);
+
+    // The backend sqlglot parse error surfaces on the expression field.
+    await expect(
+      page.getByText(/Expecting|Invalid expression|parse/i).first()
+    ).toBeVisible({ timeout: WAIT });
+
+    expect(posts.metrics.length).toBe(postsBefore);
+    expect(await backendPending(METRIC)).toBe(false);
+  });
+
+  test('fixing the metric expression auto-saves through', async () => {
+    const postsBefore = posts.metrics.length;
+
+    await setExpression('AVG(value)');
+
     await expect
-      .poll(
-        async () => {
-          const changes = await page.request
-            .get(`${API}/api/commit/pending/`)
-            .then(r => r.json())
-            .catch(() => ({ pending: [] }));
-          return (changes.pending || []).some(c => c.name === DIMENSION);
-        },
-        { timeout: WAIT }
-      )
-      .toBe(true);
+      .poll(() => posts.metrics.length, { timeout: WAIT })
+      .toBeGreaterThan(postsBefore);
+    await expect.poll(() => backendPending(METRIC), { timeout: WAIT }).toBe(true);
   });
 });
