@@ -34,6 +34,11 @@ const FormFooter = ({
   saveLabel = 'Save',
   cancelLabel = 'Cancel',
   leftActions,
+  // VIS-993 auto-save mode: persistence is debounced through useRecordSave,
+  // so the footer renders NO Cancel/Save buttons — just Delete plus whatever
+  // the form passes as rightContent (typically a SaveStateIndicator).
+  autoSave = false,
+  rightContent = null,
 }) => {
   return (
     <div className="border-t border-gray-200 bg-gray-50">
@@ -77,21 +82,27 @@ const FormFooter = ({
           )}
         </div>
 
-        <div className="flex gap-2">
-          <ButtonOutline type="button" onClick={onCancel} className="text-sm">
-            {cancelLabel}
-          </ButtonOutline>
-          <Button type="button" onClick={onSave} disabled={saving} className="text-sm">
-            {saving ? (
-              <>
-                <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                Saving...
-              </>
-            ) : (
-              saveLabel
-            )}
-          </Button>
-        </div>
+        {autoSave ? (
+          <div className="flex items-center gap-2" data-testid="form-footer-autosave">
+            {rightContent}
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <ButtonOutline type="button" onClick={onCancel} className="text-sm">
+              {cancelLabel}
+            </ButtonOutline>
+            <Button type="button" onClick={onSave} disabled={saving} className="text-sm">
+              {saving ? (
+                <>
+                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                  Saving...
+                </>
+              ) : (
+                saveLabel
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

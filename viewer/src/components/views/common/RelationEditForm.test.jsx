@@ -9,9 +9,11 @@ const mockActions = {
   checkCommitStatus: jest.fn(),
 };
 const mockSaveNow = jest.fn();
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
 jest.mock('../../../hooks/useRecordSave', () => ({
   __esModule: true,
-  default: () => ({ saveNow: mockSaveNow, status: 'idle', errors: null }),
+  default: () => mockRecordSave,
 }));
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
@@ -33,6 +35,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockActions.saveRelation.mockResolvedValue({ success: true });
   mockSaveNow.mockResolvedValue({ success: true });
+  mockScheduleSave.mockClear();
+  mockRecordSave = { scheduleSave: mockScheduleSave, saveNow: mockSaveNow, status: 'idle', errors: null };
   mockActions.deleteRelation.mockResolvedValue({ success: true });
   mockActions.checkCommitStatus.mockResolvedValue();
 });
@@ -105,38 +109,42 @@ describe('RelationEditForm', () => {
   });
 });
 
-describe('edit-mode save routes through the gated backbone (VIS-993)', () => {
+describe('edit mode auto-saves through the gated backbone (VIS-993)', () => {
   const record = {
     name: 'orders_to_users',
     config: { name: 'orders_to_users', join_type: 'inner', condition: 'a.id = b.a_id' },
   };
 
-  test('edit mode persists via useRecordSave.saveNow, never the raw store action', async () => {
+  test('renders NO Save button — persistence is debounced auto-save', () => {
     render(<RelationEditForm relation={record} onClose={jest.fn()} onSave={jest.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(mockSaveNow).toHaveBeenCalledTimes(1));
-    expect(mockSaveNow).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'orders_to_users', condition: 'a.id = b.a_id' })
-    );
-    expect(mockActions.saveRelation).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
   });
 
-  test('a gate-blocked save maps the condition error onto the field', async () => {
-    mockSaveNow.mockResolvedValue({
-      success: false,
-      validation: {
-        errors: [
-          { path: 'condition', message: "ref 'ghost_model' does not match any existing object", keyword: 'ref' },
-        ],
-      },
-    });
+  test('a condition edit schedules a debounced save with the full config', () => {
     render(<RelationEditForm relation={record} onClose={jest.fn()} onSave={jest.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.change(screen.getByLabelText('Condition'), {
+      target: { value: 'a.id = b.parent_id' },
+    });
 
-    expect(await screen.findByText(/ghost_model/)).toBeInTheDocument();
-    expect(mockActions.saveRelation).not.toHaveBeenCalled();
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'orders_to_users', condition: 'a.id = b.parent_id' })
+    );
+  });
+
+  test('gate errors surface on the condition field', () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      saveNow: mockSaveNow,
+      status: 'invalid',
+      errors: [{ path: 'condition', message: 'Expecting ). parse error', keyword: 'expression' }],
+    };
+    render(<RelationEditForm relation={record} onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.getByText(/parse error/)).toBeInTheDocument();
+  });
+
+  test('create mode still uses an explicit save button', () => {
+    render(<RelationEditForm isCreate onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.getByRole('button', { name: /Create|Save/ })).toBeInTheDocument();
   });
 });

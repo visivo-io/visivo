@@ -127,6 +127,9 @@ const URL_PATTERNS = {
     // Expression translation endpoint
     expressionsTranslate: '/api/expressions/translate/',
 
+    // Expression parse validation (VIS-993 gate; server-only — dist/cloud fail open)
+    expressionsValidate: '/api/expressions/validate/',
+
     // Model data endpoint
     modelData: '/api/models/{name}/data/',
 

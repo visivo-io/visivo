@@ -7,6 +7,7 @@ import {
   validateRecordConfigSync,
 } from '../components/views/workspace/validateAgainstSchema';
 import { checkRefTargets } from '../components/views/workspace/refPreflight';
+import { checkExpressions } from '../components/views/workspace/expressionPreflight';
 
 /**
  * Cloud read-only probe (VIS-1025). `capabilities` is null/undefined under
@@ -147,14 +148,20 @@ export default function useRecordSave(type, name, opts = {}) {
     }
 
     // VIS-993 gate — authoritative fire-time check. Runs BEFORE the global
-    // save-activity tick: a blocked edit is not a save in flight.
+    // save-activity tick: a blocked edit is not a save in flight. Three
+    // layers, cheapest first: $defs schema → dangling refs → SQL parse of
+    // expression fields (backend sqlglot; async-only, fail-open off-server).
     const validation = await validateRecordConfig(t, config);
-    const blocked = !validation.valid
+    let blocked = !validation.valid
       ? validation
       : (() => {
           const refCheck = checkRefTargets(config, useStore.getState());
           return refCheck.valid ? null : refCheck;
         })();
+    if (!blocked) {
+      const exprCheck = await checkExpressions(t, config);
+      if (!exprCheck.valid) blocked = exprCheck;
+    }
     if (blocked) {
       if (mountedRef.current) {
         setStatus('invalid');

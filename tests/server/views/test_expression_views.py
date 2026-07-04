@@ -174,3 +174,93 @@ class TestExpressionViews:
         data = response.get_json()
         assert len(data["translations"]) == 1
         assert data["translations"][0]["duckdb_expression"] is not None
+
+
+class TestExpressionValidateView:
+    """/api/expressions/validate/ (VIS-993 layer 2): sqlglot parse validation.
+
+    Unlike /translate/ (which gracefully passes unparseable expressions through
+    so the explorer keeps working), /validate/ REPORTS parse failures so the
+    viewer's validation-as-save gate can block persistence of a doomed
+    expression before it caches and fires a run.
+    """
+
+    @pytest.fixture
+    def app(self):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        flask_app = Mock()
+        register_expression_views(app, flask_app, "/tmp/output")
+        return app
+
+    @pytest.fixture
+    def client(self, app):
+        return app.test_client()
+
+    def _validate(self, client, expression, name="expr", dialect="duckdb"):
+        response = client.post(
+            "/api/expressions/validate/",
+            json={
+                "expressions": [{"name": name, "expression": expression}],
+                "source_dialect": dialect,
+            },
+        )
+        assert response.status_code == 200
+        return response.get_json()["results"][0]
+
+    def test_valid_aggregate_expression(self, client):
+        result = self._validate(client, "AVG(value)")
+        assert result["valid"] is True
+        assert result["name"] == "expr"
+
+    def test_unbalanced_brace_is_invalid(self, client):
+        result = self._validate(client, "AVG(value)}")
+        assert result["valid"] is False
+        assert result["error"]
+
+    def test_error_messages_carry_no_ansi_escapes(self, client):
+        result = self._validate(client, "AVG(value)}")
+        assert "\x1b" not in result["error"]
+
+    def test_unbalanced_quote_is_invalid(self, client):
+        result = self._validate(client, "SUM('amount")
+        assert result["valid"] is False
+
+    def test_context_ref_with_field_is_substituted_and_valid(self, client):
+        result = self._validate(client, "${ref(daily_metrics).value} * 2")
+        assert result["valid"] is True
+
+    def test_composite_metric_refs_are_substituted_and_valid(self, client):
+        result = self._validate(client, "${ref(avg_value)} / ${ref(new_y_sum)}")
+        assert result["valid"] is True
+
+    def test_relation_condition_with_refs_is_valid(self, client):
+        result = self._validate(client, "${ref(orders).id} = ${ref(users).order_id}")
+        assert result["valid"] is True
+
+    def test_broken_sql_around_valid_refs_is_invalid(self, client):
+        result = self._validate(client, "${ref(daily_metrics).value} +* 2")
+        assert result["valid"] is False
+
+    def test_empty_expression_is_invalid(self, client):
+        result = self._validate(client, "")
+        assert result["valid"] is False
+
+    def test_multiple_expressions_validate_independently(self, client):
+        response = client.post(
+            "/api/expressions/validate/",
+            json={
+                "expressions": [
+                    {"name": "good", "expression": "SUM(x)"},
+                    {"name": "bad", "expression": "SUM(x))"},
+                ],
+                "source_dialect": "duckdb",
+            },
+        )
+        results = response.get_json()["results"]
+        assert results[0]["valid"] is True
+        assert results[1]["valid"] is False
+
+    def test_missing_body_is_400(self, client):
+        response = client.post("/api/expressions/validate/", json=None)
+        assert response.status_code == 400

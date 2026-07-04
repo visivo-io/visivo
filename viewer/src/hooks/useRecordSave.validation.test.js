@@ -9,13 +9,21 @@
  * stubbed permissive.
  */
 import { renderHook, act } from '@testing-library/react';
-
+import { validateExpressions } from '../api/expressions';
 import useRecordSave from './useRecordSave';
 import useStore from '../stores/store';
 import {
   preloadValidationSchema,
   clearValidationCache,
 } from '../components/views/workspace/validateAgainstSchema';
+
+// The expression pre-flight's network layer — the real endpoint contract is
+// covered by the backend suite + the e2e story. (jest.mock is hoisted.)
+jest.mock('../api/expressions', () => ({
+  validateExpressions: jest.fn(async exprs => ({
+    results: exprs.map(e => ({ name: e.name, valid: true })),
+  })),
+}));
 // The real $defs validators compile heavyweight unions; under full-suite
 // CPU contention the first compile can exceed jest's 5s default.
 jest.setTimeout(30000);
@@ -196,6 +204,36 @@ describe('useRecordSave validation gate (VIS-993)', () => {
     expect(saveFn).not.toHaveBeenCalled();
     expect(result.current.status).toBe('invalid');
     expect(result.current.errors.some(e => e.path === 'props.mode')).toBe(true);
+  });
+
+  test('an unparseable metric expression is blocked at fire time (VIS-993 layer 2)', async () => {
+    const { clearExpressionCache } = jest.requireActual(
+      '../components/views/workspace/expressionPreflight'
+    );
+    clearExpressionCache();
+    validateExpressions.mockResolvedValueOnce({
+      results: [{ name: 'expression', valid: false, error: "Expecting ). Line 1, Col: 25." }],
+    });
+    const saveFn = setupCollection(
+      'metrics',
+      'avg_value',
+      { name: 'avg_value', expression: 'AVG(value)' },
+      'saveMetric'
+    );
+    const { result } = renderHook(() => useRecordSave('metric', 'avg_value', { delay: 500 }));
+
+    act(() => result.current.scheduleSave({ name: 'avg_value', expression: 'AVG(value)}' }));
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(saveFn).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('invalid');
+    expect(result.current.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'expression', keyword: 'expression' }),
+      ])
+    );
   });
 
   test('types without a schema mapping still save (fail-open)', async () => {

@@ -12,9 +12,11 @@ const mockActions = {
 // Edit mode persists through the useRecordSave backbone (VIS-1018) — mock it
 // (the backbone has its own suite) and assert the component's contract.
 const mockSaveNow = jest.fn();
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
 jest.mock('../../../hooks/useRecordSave', () => ({
   __esModule: true,
-  default: () => ({ saveNow: mockSaveNow, status: 'idle' }),
+  default: () => mockRecordSave,
 }));
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
@@ -26,6 +28,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
   mockSaveNow.mockResolvedValue({ success: true });
+  mockScheduleSave.mockClear();
+  mockRecordSave = { scheduleSave: mockScheduleSave, saveNow: mockSaveNow, status: 'idle', errors: null };
 });
 
 const renderForm = (props = {}) =>
@@ -135,7 +139,7 @@ describe('MarkdownEditForm — save paths', () => {
 });
 
 describe('MarkdownEditForm — edit mode', () => {
-  test('initializes from markdown.config, disables the name, and re-saves it', async () => {
+  test('initializes from markdown.config, disables the name, and auto-saves edits', () => {
     const markdown = {
       name: 'md1',
       status: 'PUBLISHED',
@@ -146,17 +150,15 @@ describe('MarkdownEditForm — edit mode', () => {
     expect(screen.getByLabelText(/Markdown Name/)).toBeDisabled();
     expect(screen.getByLabelText(/Content/)).toHaveValue('Hi there');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    // Edit mode flushes through the useRecordSave backbone (VIS-1018), not a
-    // direct saveMarkdown call — create mode keeps the direct call.
-    await waitFor(() =>
-      expect(mockSaveNow).toHaveBeenCalledWith({
-        name: 'md1',
-        content: 'Hi there',
-        align: 'right',
-        justify: 'center',
-      })
-    );
+    // Edit mode auto-saves through the useRecordSave backbone (VIS-993) —
+    // there is no Save button; each change debounces via scheduleSave.
+    fireEvent.change(screen.getByLabelText(/Content/), { target: { value: 'Hi again' } });
+    expect(mockScheduleSave).toHaveBeenCalledWith({
+      name: 'md1',
+      content: 'Hi again',
+      align: 'right',
+      justify: 'center',
+    });
     expect(mockActions.saveMarkdown).not.toHaveBeenCalled();
   });
 
@@ -205,5 +207,32 @@ describe('MarkdownEditForm — delete flow', () => {
     expect(screen.queryByRole('button', { name: 'Confirm Delete' })).not.toBeInTheDocument();
     expect(mockActions.deleteMarkdown).not.toHaveBeenCalled();
     expect(screen.getByTitle('Delete markdown')).toBeInTheDocument();
+  });
+});
+
+describe('edit mode auto-saves through the gated backbone (VIS-993)', () => {
+  const record = {
+    name: 'notes',
+    config: { name: 'notes', content: 'hello', align: 'left', justify: 'start' },
+  };
+
+  test('renders NO Save button — persistence is debounced auto-save', () => {
+    render(<MarkdownEditForm markdown={record} onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
+
+  test('a content edit schedules a debounced save with the full config', () => {
+    render(<MarkdownEditForm markdown={record} onClose={jest.fn()} onSave={jest.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/Content/), { target: { value: 'updated text' } });
+
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'notes', content: 'updated text' })
+    );
+  });
+
+  test('create mode still uses an explicit save button', () => {
+    render(<MarkdownEditForm isCreate onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.getByRole('button', { name: /Create|Save/ })).toBeInTheDocument();
   });
 });
