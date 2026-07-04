@@ -96,7 +96,18 @@ export async function checkExpressions(type, config, sourceDialect) {
       return errors.length === 0 ? SKIP : { valid: false, errors };
     }
 
-    const byName = new Map((response?.results || []).map(r => [r.name, r]));
+    // A well-behaved endpoint returns { results: [...] }, but never trust the
+    // shape: a malformed 200 body (results absent, an object, or holding
+    // nullish entries) must not throw out of this pre-flight — that would
+    // reject the whole save (the backend stays authoritative). Treat an
+    // unusable body exactly like an unreachable endpoint: fail open.
+    const rawResults = Array.isArray(response?.results) ? response.results : null;
+    if (!rawResults) {
+      return errors.length === 0 ? SKIP : { valid: false, errors };
+    }
+    const byName = new Map(
+      rawResults.filter(r => r && typeof r === 'object' && 'name' in r).map(r => [r.name, r])
+    );
     for (const p of pending) {
       const result = byName.get(p.field);
       if (!result) continue;

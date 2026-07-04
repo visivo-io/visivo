@@ -34,9 +34,8 @@ import {
   appendEmptyItem,
   createRow,
   setItemWidth,
-  checkLeafExclusivity,
+  runDashboardConfigGate,
 } from './itemMutations';
-import { validateRecordConfig, validateRecordConfigSync } from './validateAgainstSchema';
 import { emitWorkspaceEvent } from './telemetry';
 
 /**
@@ -252,23 +251,11 @@ const RightRailEditPanel = () => {
           ...meta,
         });
       };
-      // The mutual-exclusion rule is a backend model_validator with no
-      // JSON-schema encoding — check it first (cheap, schema-free).
-      const exclusivity = checkLeafExclusivity(nextConfig);
-      if (!exclusivity.valid) {
-        finish(exclusivity);
-        return;
-      }
-      // Sync schema fast path; when the schema isn't loaded yet (null), defer
-      // to the async authoritative check before arming the save.
-      const sync = validateRecordConfigSync('dashboard', nextConfig);
-      if (sync) {
-        finish(sync.valid ? null : sync);
-        return;
-      }
-      validateRecordConfig('dashboard', nextConfig).then(result =>
-        finish(result.valid ? null : result)
-      );
+      // The shared gate runner (exclusivity → sync schema → async schema)
+      // delivers exactly one verdict and FAILS OPEN on gate-internal errors —
+      // a crashed gate must never silently swallow the save (the
+      // canvas-persist regression). Same runner as commitCanvasConfig.
+      runDashboardConfigGate(nextConfig, finish);
     },
     [updateDashboardConfigOptimistic, scheduleSave, dashboardName, readOnly]
   );

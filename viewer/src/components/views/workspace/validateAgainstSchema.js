@@ -139,6 +139,25 @@ const runValidator = (validate, config) => {
 const SKIP = { valid: true, errors: [], skipped: true };
 
 /**
+ * Fail-open guard for gate-internal work (VIS-993 canvas-persist regression).
+ * The module's contract is that internal failures NEVER produce a rejection
+ * or a throw — a crashed gate must yield SKIP so persistence proceeds and the
+ * backend Pydantic validator stays authoritative. Before this guard, an error
+ * inside registerRoot/runValidator REJECTED the async gate promise; every
+ * call site consumed the gate with a bare `.then`, so the save was silently
+ * swallowed: the optimistic UI applied but nothing persisted and not even the
+ * blocked-telemetry fired (the "canvas resize doesn't save" field failure).
+ */
+const failOpen = (label, fn) => {
+  try {
+    return fn();
+  } catch (err) {
+    console.error(`validateAgainstSchema: ${label} failed — failing open`, err);
+    return SKIP;
+  }
+};
+
+/**
  * Authoritative (async) validation of a record config against its $defs slice.
  *
  * @param {string} type   canonical object type ('dimension', 'markdown', …)
@@ -154,10 +173,16 @@ export async function validateRecordConfig(type, config) {
   if (!validate) {
     if (!rootReady) {
       // getObjectSchema returns the $defs-attached slice (and caches it) —
-      // its $defs IS the full graph, which we register once.
+      // its $defs IS the full graph, which we register once. Registration
+      // errors FAIL OPEN (see failOpen): a rejection here used to silently
+      // swallow the caller's save.
       const slice = await getObjectSchema(type);
       if (!slice?.$defs) return SKIP;
-      registerRoot(slice.$defs);
+      const registered = failOpen('registerRoot', () => {
+        registerRoot(slice.$defs);
+        return true;
+      });
+      if (registered !== true) return SKIP;
     }
     try {
       validate = compileForDef(defName);
@@ -168,7 +193,7 @@ export async function validateRecordConfig(type, config) {
       return SKIP;
     }
   }
-  const structural = runValidator(validate, config);
+  const structural = failOpen('validate', () => runValidator(validate, config));
 
   // Insight props precision: the registered graph relaxes props to a plain
   // object (see registerRoot), so run the per-type Plotly validator here and
@@ -213,7 +238,7 @@ export function validateRecordConfigSync(type, config) {
       return SKIP;
     }
   }
-  return runValidator(validate, config);
+  return failOpen('validate', () => runValidator(validate, config));
 }
 
 /**
@@ -225,7 +250,12 @@ export async function preloadValidationSchema() {
   if (!rootReady) {
     // Any type resolves the root; 'dimension' is a stable mapping.
     const slice = await getObjectSchema('dimension');
-    if (slice?.$defs) registerRoot(slice.$defs);
+    if (slice?.$defs) {
+      failOpen('registerRoot (preload)', () => {
+        registerRoot(slice.$defs);
+        return true;
+      });
+    }
   }
 }
 

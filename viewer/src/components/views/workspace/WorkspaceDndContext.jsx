@@ -15,8 +15,7 @@ import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import LibraryDragPreview from './library/LibraryDragPreview';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
-import { checkLeafExclusivity } from './itemMutations';
-import { validateRecordConfig, validateRecordConfigSync } from './validateAgainstSchema';
+import { runDashboardConfigGate } from './itemMutations';
 import {
   reorderItemsInRow,
   moveItemBetweenRows,
@@ -604,16 +603,18 @@ const WorkspaceDndContext = ({ children }) => {
   // BORN-valid configs, so the gate — $defs schema (validateAgainstSchema)
   // plus the leaf mutual-exclusion check the JSON schema cannot express — is
   // defense-in-depth: an invalid config is never handed to saveDashboard
-  // (sanitizeDashboardConfig is retired; nothing repairs the payload). This is
-  // the SAME contract RightRailEditPanel.persistConfig applies on the
-  // structure-form path.
+  // (sanitizeDashboardConfig is retired; nothing repairs the payload). The
+  // shared runDashboardConfigGate delivers EXACTLY ONE verdict and FAILS OPEN
+  // on gate-internal errors (a crashed gate must never silently swallow the
+  // save — the canvas-persist regression). This is the SAME runner
+  // RightRailEditPanel.persistConfig uses on the structure-form path.
   const commitCanvasConfig = useCallback(
     (dashboardName, nextConfig) => {
       if (!dashboardName) return;
       if (updateDashboardConfigOptimistic) {
         updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
-      const persist = blocked => {
+      runDashboardConfigGate(nextConfig, blocked => {
         if (blocked) {
           emitWorkspaceEvent('canvas_commit_blocked', {
             name: dashboardName,
@@ -624,21 +625,7 @@ const WorkspaceDndContext = ({ children }) => {
         if (typeof saveDashboard === 'function') {
           saveDashboard(dashboardName, nextConfig);
         }
-      };
-      const exclusivity = checkLeafExclusivity(nextConfig);
-      if (!exclusivity.valid) {
-        persist(exclusivity);
-        return;
-      }
-      // Sync schema fast path; pre-load (null) defers to the async check.
-      const sync = validateRecordConfigSync('dashboard', nextConfig);
-      if (sync) {
-        persist(sync.valid ? null : sync);
-        return;
-      }
-      validateRecordConfig('dashboard', nextConfig).then(result =>
-        persist(result.valid ? null : result)
-      );
+      });
     },
     [updateDashboardConfigOptimistic, saveDashboard]
   );
