@@ -344,12 +344,12 @@ def identify_column_references(
     # Build a SELECT query with the expression from the model_hash table
     query = exp.select(parsed).from_(table_ref)
 
-    # Build schema for qualify - if Snowflake, we need uppercase table key to match table_ref
-    if sqlglot_dialect == "snowflake":
-        # Create schema with uppercase table key
-        schema_for_qualify = {table_ref: model_schema.get(model_hash, {})}
-    else:
-        schema_for_qualify = model_schema
+    # Build schema for qualify scoped to just this model's column block. The
+    # model schema artifact carries sibling envelope keys (model_name, columns,
+    # metadata, …) alongside the {model_hash: {col: type}} block; SQLGlot's
+    # MappingSchema requires a consistent nesting level, so we pass only the
+    # hash block (uppercasing the table key for Snowflake to match table_ref).
+    schema_for_qualify = {table_ref: model_schema.get(model_hash, {})}
 
     # Wrap schema in MappingSchema for SQLGlot's qualify function
     schema = MappingSchema(schema=schema_for_qualify)

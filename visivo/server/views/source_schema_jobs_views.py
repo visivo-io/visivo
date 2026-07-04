@@ -17,6 +17,7 @@ from visivo.logger.logger import Logger
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus
 from visivo.server.jobs.source_schema_job_executor import execute_source_schema_job
+from visivo.server.views.schema_path_safety import is_safe_path_segment
 
 
 def _load_schema_with_fallback(source_name: str, output_dir: str, run_id: str = None):
@@ -246,6 +247,11 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
     def _get_source_schema(source_name):
         """Get cached schema for a source."""
         run_id_param = request.args.get("run_id")
+        if not is_safe_path_segment(source_name) or (
+            run_id_param is not None and not is_safe_path_segment(run_id_param)
+        ):
+            return jsonify({"message": "Invalid source_name or run_id"}), 400
+
         schema_data, _ = _load_schema_with_fallback(source_name, output_dir, run_id=run_id_param)
 
         if schema_data is None:
@@ -279,6 +285,11 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         """
         try:
             run_id_param = request.args.get("run_id")
+            if not is_safe_path_segment(source_name) or (
+                run_id_param is not None and not is_safe_path_segment(run_id_param)
+            ):
+                return jsonify({"message": "Invalid source_name or run_id"}), 400
+
             schema_data, _ = _load_schema_with_fallback(
                 source_name, output_dir, run_id=run_id_param
             )
@@ -332,6 +343,15 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         """
         try:
             run_id_param = request.args.get("run_id")
+            # Only source_name and run_id flow into the artifact path; table_name
+            # is a dict-key lookup below (not a filesystem segment), so it is not
+            # validated here — real table names can carry characters the path
+            # allowlist rejects.
+            if not is_safe_path_segment(source_name) or (
+                run_id_param is not None and not is_safe_path_segment(run_id_param)
+            ):
+                return jsonify({"message": "Invalid source_name or run_id"}), 400
+
             schema_data, _ = _load_schema_with_fallback(
                 source_name, output_dir, run_id=run_id_param
             )

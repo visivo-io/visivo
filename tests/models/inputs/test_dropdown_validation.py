@@ -194,3 +194,64 @@ class TestMultiSelectValidation:
         assert result is not None
         assert result["range"]["start"] == 0
         assert result["range"]["end"] == 100
+
+
+class TestDefaultInOptionsTypeInsensitivity:
+    """
+    Regression tests for VIS-902.
+
+    The default-in-options validators compared the default against the options
+    list using a type-sensitive membership check. Because static options are
+    stored as strings while a default may be parsed as an int/float, a default
+    that is genuinely present (e.g. int 10 against options ["3", "5", "10"])
+    was falsely reported as "not found". The membership check now compares
+    string representations on both sides.
+    """
+
+    def test_single_select_int_default_matches_string_options(self):
+        """An int default validates against equivalent string options."""
+        input_obj = SingleSelectInput(
+            name="threshold",
+            options=["3", "5", "7", "10"],
+            display={"type": "dropdown", "default": {"value": 10}},
+        )
+
+        assert input_obj.display.default.value == 10
+
+    def test_single_select_string_default_matches_int_like_options(self):
+        """A string default validates against numeric-looking string options."""
+        input_obj = SingleSelectInput(
+            name="threshold",
+            options=["3", "5", "7", "10"],
+            display={"type": "dropdown", "default": {"value": "10"}},
+        )
+
+        assert input_obj.display.default.value == "10"
+
+    def test_single_select_absent_default_still_raises(self):
+        """A genuinely-absent default still raises a clear error."""
+        with pytest.raises(ValueError, match="not found in options"):
+            SingleSelectInput(
+                name="threshold",
+                options=["3", "5", "7"],
+                display={"type": "dropdown", "default": {"value": 99}},
+            )
+
+    def test_multi_select_int_defaults_match_string_options(self):
+        """Int default values validate against equivalent string options."""
+        input_obj = MultiSelectInput(
+            name="thresholds",
+            options=["3", "5", "7", "10"],
+            display={"type": "dropdown", "default": {"values": [10, 5]}},
+        )
+
+        assert input_obj.display.default.values == [10, 5]
+
+    def test_multi_select_absent_default_value_still_raises(self):
+        """A multi-select default value not present in options still raises."""
+        with pytest.raises(ValueError, match="not found in options"):
+            MultiSelectInput(
+                name="thresholds",
+                options=["3", "5", "7"],
+                display={"type": "dropdown", "default": {"values": [5, 99]}},
+            )

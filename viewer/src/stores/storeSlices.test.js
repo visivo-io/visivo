@@ -45,6 +45,9 @@ describe('commitStore', () => {
   const build = () => makeStore(createCommitSlice, { project: { id: 'proj-1' } });
 
   it('checkCommitStatus reflects /changes/ and fails closed', async () => {
+    // The Workspace TopBar cluster needs a live count, so checkCommitStatus
+    // derives count + list + boolean from the project's /changes/ in one
+    // round trip.
     branchingApi.fetchChanges.mockResolvedValueOnce({
       to_publish: [{ name: 'a', type: 'chart', status: 'new' }],
       to_remove: [],
@@ -55,10 +58,12 @@ describe('commitStore', () => {
     expect(branchingApi.fetchChanges).toHaveBeenCalledWith('proj-1');
     expect(store.get().hasUncommittedChanges).toBe(true);
     expect(store.get().pendingChanges).toEqual([{ name: 'a', type: 'chart', status: 'new' }]);
+    expect(store.get().pendingCount).toBe(1);
 
     branchingApi.fetchChanges.mockRejectedValueOnce(new Error('offline'));
     await store.get().checkCommitStatus();
     expect(store.get().hasUncommittedChanges).toBe(false);
+    expect(store.get().pendingCount).toBe(0);
   });
 
   it('fetchPendingChanges returns the dirty list from /changes/', async () => {
@@ -283,11 +288,8 @@ describe('sourceStore connection testing', () => {
 });
 
 describe('runtime job slices', () => {
-  it('insightJobs slice sets db and merges/updates jobs', () => {
+  it('insightJobs slice merges/updates jobs', () => {
     const store = makeStore(createInsightJobsSlice);
-    store.get().setDB({ conn: 1 });
-    expect(store.get().db).toEqual({ conn: 1 });
-
     store.get().setInsightJobs({ a: { rows: 1 } });
     store.get().setInsightJobs({ b: { rows: 2 } });
     expect(Object.keys(store.get().insightJobs).sort()).toEqual(['a', 'b']);

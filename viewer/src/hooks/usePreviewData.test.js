@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { useInsightPreviewData, useChartPreviewJob } from './usePreviewData';
+import { useInsightPreviewData, useChartPreviewJob, usePreviewInsightData } from './usePreviewData';
 import { useInsightsData } from './useInsightsData';
 import useStore from '../stores/store';
 
@@ -120,5 +120,47 @@ describe('useChartPreviewJob', () => {
 
     const lastCall = useInsightsData.mock.calls[useInsightsData.mock.calls.length - 1];
     expect(lastCall[1]).toEqual([]);
+  });
+});
+
+describe('usePreviewInsightData', () => {
+  test('resolves the synthetic chart to the un-prefixed main-run key', () => {
+    const { result } = renderHook(() =>
+      usePreviewInsightData({ name: 'my-insight' }, { projectId: 'proj' })
+    );
+
+    expect(result.current.chartInsightKey).toBe('my-insight');
+    // No preview run — inert failure surface, settled progress.
+    expect(result.current.errorDetails).toBeNull();
+    expect(typeof result.current.resetPreview).toBe('function');
+  });
+
+  test('reads the built main run for the insight', () => {
+    setStore({ insightJobs: {}, runDataVersion: 5 });
+
+    renderHook(() => usePreviewInsightData({ name: 'my-insight' }, { projectId: 'proj' }));
+
+    expect(useInsightsData).toHaveBeenCalledWith('proj', ['my-insight'], undefined, {
+      cacheKey: 5,
+    });
+  });
+
+  test('flags insightNotInMain when the insight has no main-run entry', () => {
+    setStore({ insightJobs: {}, runDataVersion: 0 });
+    const { result: missing } = renderHook(() =>
+      usePreviewInsightData({ name: 'missing' }, { projectId: 'proj' })
+    );
+    expect(missing.current.insightNotInMain).toBe(true);
+
+    setStore({ insightJobs: { present: { data: [] } }, runDataVersion: 0 });
+    const { result: present } = renderHook(() =>
+      usePreviewInsightData({ name: 'present' }, { projectId: 'proj' })
+    );
+    expect(present.current.insightNotInMain).toBe(false);
+  });
+
+  test('chartInsightKey is null when config has no name', () => {
+    const { result } = renderHook(() => usePreviewInsightData({}, { projectId: 'proj' }));
+    expect(result.current.chartInsightKey).toBeNull();
   });
 });

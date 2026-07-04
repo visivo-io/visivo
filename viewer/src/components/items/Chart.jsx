@@ -1,20 +1,14 @@
 import Loading from '../common/Loading';
-import Menu from './Menu';
 import Plot from 'react-plotly.js';
 import React, { useState, useMemo, useImperativeHandle } from 'react';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
-import MenuContainer from './MenuContainer';
-import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 
 const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
-  const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
   const chartInsightNames = useMemo(() => {
     if (!chart.insights?.length) return [];
@@ -73,8 +67,6 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
 
   const isInsightsWaiting = hasInsights && !hasAllInsightData;
   const isDataLoading = !shouldLoad || isInsightsWaiting;
-
-  const [hovering, setHovering] = useState(false);
 
   const selectedPlotData = useMemo(() => {
     const data = [];
@@ -138,33 +130,8 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
   return (
     <ItemContainer
       className={hideToolbar ? 'h-full' : ''}
-      onMouseOver={() => setHovering(true)}
-      onMouseOut={() => setHovering(false)}
       id={itemNameToSlug(chart.name)}
     >
-      {!hideToolbar && (
-        <MenuContainer>
-          <Menu
-            hovering={hovering}
-            withDropDown={false}
-            buttonChildren={<FontAwesomeIcon icon={faShareAlt} />}
-            buttonProps={{
-              style: {
-                cursor: 'pointer',
-                visibility: hovering ? 'visible' : 'hidden',
-              },
-              onClick: () => {
-                const url = new URL(window.location.href);
-                url.searchParams.set('element_id', window.scrollY);
-                copyText(url.toString());
-              },
-              onMouseLeave: resetToolTip,
-            }}
-            showToolTip
-            toolTip={toolTip}
-          ></Menu>
-        </MenuContainer>
-      )}
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}

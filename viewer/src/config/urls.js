@@ -100,6 +100,7 @@ const URL_PATTERNS = {
     commitStatus: '/api/commit/status/',
     commitPending: '/api/commit/pending/',
     commit: '/api/commit/',
+    commitDiscard: '/api/commit/discard/',
 
     // Cloud-editing endpoints (core/Django only; 404 under local `visivo serve`)
     projectCapabilities: '/api/projects/{projectId}/capabilities/',
@@ -129,9 +130,18 @@ const URL_PATTERNS = {
     // Model data endpoint
     modelData: '/api/models/{name}/data/',
 
+    // Model schema endpoints (run-phase column schema artifact)
+    modelSchemaJob: '/api/model-schema-jobs/{name}/',
+    modelSchemaJobColumns: '/api/model-schema-jobs/{name}/columns/',
+
     // Exploration persistence endpoints
     explorationsList: '/api/explorations/',
     explorationDetail: '/api/explorations/{id}/',
+
+    // Workspace telemetry forwarding endpoint (VIS-822) — the local Flask
+    // server relays workspace events through the CLI's PostHog client so the
+    // CLI telemetry opt-out + anonymization apply to frontend events.
+    workspaceTelemetry: '/api/telemetry/workspace-event/',
   },
 
   dist: {
@@ -228,6 +238,7 @@ const URL_PATTERNS = {
     commitStatus: null,
     commitPending: null,
     commit: null,
+    commitDiscard: null,
 
     // Cloud-editing endpoints (not available in dist)
     projectCapabilities: null,
@@ -251,9 +262,21 @@ const URL_PATTERNS = {
     // Model data endpoint (not available in dist)
     modelData: null,
 
+    // Model schema endpoints — null in dist for now. The dist build does NOT
+    // yet copy {output_dir}/main/schemas/{model}/schema.json into /data/ (see
+    // dist_phase.py, which copies insights.json / inputs.json / parquet but not
+    // model schemas), so there is no static JSON to point at. With these null,
+    // the frontend falls back to model data. Set modelSchemaJob to
+    // '/data/schemas/models/{name}/schema.json' once dist_phase copies them.
+    modelSchemaJob: null,
+    modelSchemaJobColumns: null,
+
     // Exploration persistence endpoints (not available in dist)
     explorationsList: null,
     explorationDetail: null,
+
+    // Workspace telemetry forwarding (not available in dist — no Flask server)
+    workspaceTelemetry: null,
   },
 };
 

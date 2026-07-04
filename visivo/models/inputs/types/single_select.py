@@ -131,7 +131,7 @@ class SingleSelectInput(Input):
             and isinstance(self.options, list)
         ):
             default_value = self.display.default.value
-            if default_value not in self.options:
+            if str(default_value) not in [str(opt) for opt in self.options]:
                 raise ValueError(
                     f"Input '{self.name}' default value '{default_value}' not found in options.\n"
                     f"Available options: {', '.join(str(opt) for opt in self.options)}"

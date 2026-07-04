@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Loading from '../common/Loading';
+import Select from '../common/Select';
 import DeployLoader from './DeployLoader';
 import AddStageForm from './AddStageForm';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -20,6 +21,7 @@ const StageSelection = ({ status }) => {
   const [loading, setLoading] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [deployingMsg, setDeployingMsg] = useState('Deploying...');
+  const [deployError, setDeployError] = useState(null);
   const [deploymentSuccess, setDeploymentSuccess] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -47,6 +49,7 @@ const StageSelection = ({ status }) => {
     setDeploying(false);
     setDeploymentSuccess(false);
     setDeployingMsg('Deploying...');
+    setDeployError(null);
     setPreviewUrl('');
   };
 
@@ -107,8 +110,12 @@ const StageSelection = ({ status }) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       pollDeploymentStatus(data.deploy_id);
     } catch (err) {
+      // A failed POST must leave a VISIBLE error — `deployingMsg` only renders
+      // while `deploying === true`, so setting it here silently returned the
+      // form to idle. The error alert renders below and clears on retry
+      // (handleDeploy starts with resetDeploymentState).
       setDeploying(false);
-      setDeployingMsg('Deployment failed');
+      setDeployError('Deployment failed. Please check your connection and try again.');
     }
   };
 
@@ -184,20 +191,15 @@ const StageSelection = ({ status }) => {
             <label htmlFor="stage-select" className="block text-sm font-medium text-gray-700 mb-2">
               Deployment Environment
             </label>
-            <select
+            <Select
               id="stage-select"
+              data-testid="stage-select"
+              placeholder="Select a stage..."
               value={selectedStage}
-              onChange={e => setSelectedStage(e.target.value)}
+              options={stages.map(stage => ({ value: stage.name, label: stage.name }))}
+              onChange={value => setSelectedStage(value || '')}
               disabled={deploying}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select a stage...</option>
-              {stages.map(stage => (
-                <option key={stage.id || stage.name} value={stage.name}>
-                  {stage.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Add Stage Button */}
@@ -234,6 +236,22 @@ const StageSelection = ({ status }) => {
                   <p className="text-blue-600 mt-1">
                     Make sure your code is ready for the {selectedStage} environment.
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Deploy Error */}
+          {deployError && !deploying && (
+            <div data-testid="deploy-error" className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-start">
+                <FontAwesomeIcon
+                  icon={faTriangleExclamation}
+                  className="w-5 h-5 text-red-400 mt-0.5 mr-2"
+                />
+                <div className="text-sm">
+                  <p className="font-medium text-red-800">Deployment failed</p>
+                  <p className="text-red-600 mt-1">{deployError}</p>
                 </div>
               </div>
             </div>

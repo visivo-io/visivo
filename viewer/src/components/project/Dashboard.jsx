@@ -12,6 +12,35 @@ import { useVisibleRows } from '../../hooks/useVisibleRows';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
 /**
+ * Normalize a chart/table `insights` array so Chart/Table always receive
+ * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
+ * (`"${ref(insight-name)}"`).
+ *
+ * Chart.jsx derives the insight names it loads via `chart.insights.map(i => i.name)`.
+ * When the dashboard comes from the `/api/dashboards/` store endpoint (the path
+ * used by both Project and the Workspace canvas, via <Dashboard>), embedded
+ * chart objects carry their `insights` as un-resolved string refs. Without this
+ * normalization `i.name` is `undefined`, no insight data is ever matched, and the
+ * chart spins forever (VIS-827). The old `project_json` route pre-resolves insights
+ * into objects, which is why that route was unaffected.
+ *
+ * Returns a new config object (never mutates the store's object) when insights
+ * are present; otherwise returns the config unchanged.
+ */
+const normalizeInsightRefs = config => {
+  if (!config || !Array.isArray(config.insights)) return config;
+  return {
+    ...config,
+    insights: config.insights.map(insight => {
+      if (typeof insight === 'string') {
+        return { name: parseRefValue(insight) };
+      }
+      return insight; // Already an object (may carry name/props/interactions)
+    }),
+  };
+};
+
+/**
  * Resolve an item reference (chart, table, markdown, input) from the store.
  * Handles both string references (names), context strings (${ ref(...) }), and legacy embedded objects.
  * Transforms insight/input string references to object format expected by components.
@@ -29,27 +58,48 @@ const resolveItem = (itemRef, getItemByName) => {
 
     // Transform insights array from string references to objects with name property
     // Chart/Table components expect insights to be [{name: 'insight-name'}] not ["${ref(insight-name)}"]
-    if (config.insights && Array.isArray(config.insights)) {
-      config.insights = config.insights.map(insight => {
-        if (typeof insight === 'string') {
-          const insightName = parseRefValue(insight);
-          return { name: insightName };
-        }
-        return insight; // Already an object
-      });
-    }
-
-    return config;
+    return normalizeInsightRefs(config);
   }
 
-  // Legacy: If it's already an object, use it directly
-  return itemRef;
+  // Legacy/embedded: the chart/table object lives inline in the dashboard row.
+  // Its `insights` are still un-resolved string refs from the API, so normalize
+  // them the same way as the string-ref branch above (VIS-827).
+  return normalizeInsightRefs(itemRef);
 };
 
 /**
  * Collect all insight names from visible rows for centralized prefetching.
  */
 const isModelData = data => data && (data.sql || data.args || data.models);
+
+/**
+ * Resolve a table's `data` ref into a `{ name, isModel }` classification used to
+ * route the name into the right prefetch bucket (insightNames vs modelNames).
+ *
+ * A table's `data` can be (per the Table Pydantic model) a ${ ref() } to EITHER
+ * a model OR an insight, and it arrives from the `/api/tables/` store endpoint in
+ * one of two shapes:
+ *   - a STRING context-ref ("${ref(wide-columns-table)}") — the common case, and
+ *     the one that regressed (VIS-827). The string alone carries no model/insight
+ *     signal, so we consult the model registry: a name that is a known model is
+ *     model-data; otherwise it's treated as an insight (preserving the prior
+ *     behavior for insight-backed simple tables).
+ *   - an OBJECT carrying `name` + `sql|args|models` (an embedded/inlined model
+ *     definition) — classified directly via isModelData().
+ *
+ * Returns null when no data name can be derived.
+ */
+const classifyTableData = (tableData, isKnownModel) => {
+  if (!tableData) return null;
+  if (typeof tableData === 'string') {
+    const name = parseRefValue(tableData);
+    if (!name) return null;
+    return { name, isModel: isKnownModel(name) };
+  }
+  const name = tableData?.name;
+  if (!name) return null;
+  return { name, isModel: isModelData(tableData) };
+};
 
 /**
  * Recursively yield every Item across a list of rows, descending through
@@ -69,7 +119,7 @@ const forEachItemDeep = (rows, callback) => {
   }
 };
 
-const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName, knownInsightNames = new Set()) => {
+const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName, knownInsightNames = new Set(), isKnownModel = () => false) => {
   const insightNames = new Set();
   const modelNames = new Set();
   const pivotRefStrings = [];
@@ -92,14 +142,14 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByNam
 
     const table = resolveItem(item.table, getTableByName);
     if (table?.data) {
-      const tableData = typeof table.data === 'string' ? table.data : table.data;
-      const name = typeof tableData === 'string' ? parseRefValue(tableData) : tableData?.name;
-      if (name) {
-        if (typeof tableData === 'object' && isModelData(tableData)) {
-          modelNames.add(name);
-        } else {
-          insightNames.add(name);
-        }
+      // A string-ref `data` (the common case) carries no model/insight signal on
+      // its own; classifyTableData consults the model registry so model-data
+      // tables route into modelNames (VIS-827). Previously every string ref fell
+      // into insightNames, so useModelsData never fetched the model and the table
+      // spun forever.
+      const classified = classifyTableData(table.data, isKnownModel);
+      if (classified) {
+        (classified.isModel ? modelNames : insightNames).add(classified.name);
       }
     }
     const tableConfig = table?.config || table || {};
@@ -151,7 +201,29 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * Dashboard - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const Dashboard = ({ projectId, dashboardName }) => {
+const Dashboard = ({
+  projectId,
+  dashboardName,
+  eagerLoad = true,
+  stackBreakpoint = 1024,
+  // When true, suppress the default "This dashboard is empty" placeholder so a
+  // build-surface overlay (the canvas's D-8 "+ Add Row" CTA) can own the empty
+  // state instead. The dashboard root still mounts so the overlay's measuring
+  // ancestor exists. (VIS-794)
+  hideEmptyPlaceholder = false,
+  // When true (canvas build surface only), render a visible placeholder for an
+  // EMPTY item slot (no chart/table/markdown/input/rows) so users can see — and
+  // drop onto — an otherwise-invisible empty slot. View mode keeps the legacy
+  // behaviour (an empty slot renders nothing). (VIS-901 #3)
+  canvasMode = false,
+  // Optional broken-reference renderer (VIS-792 / Track L L-1). When a leaf's
+  // chart/table/markdown/input ref doesn't resolve, the renderer calls this with
+  // `({ type, name, itemPath })` so the canvas can mount an interactive
+  // <BrokenRefCard> (Fix… / Delete this slot). When absent (View mode), the
+  // renderer falls back to the legacy "<Type> not found: <name>" placeholder so
+  // static viewing stays at parity.
+  renderBrokenRef = null,
+}) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -164,6 +236,13 @@ const Dashboard = ({ projectId, dashboardName }) => {
   const fetchTables = useStore(state => state.fetchTables);
   const tables = useStore(state => state.tables);
   const getTableByName = useStore(state => state.getTableByName);
+
+  // Model registry — used to classify a table's `data` string ref as model-data
+  // vs insight-data so model-backed tables get fetched via useModelsData (VIS-827).
+  // The /api/tables/ store hands `data` to us as a bare context-ref string with no
+  // model/insight signal, so we look the name up against the fetched model list.
+  const fetchModels = useStore(state => state.fetchModels);
+  const models = useStore(state => state.models);
 
   // Markdown store
   const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
@@ -186,16 +265,51 @@ const Dashboard = ({ projectId, dashboardName }) => {
     },
   });
 
-  const widthBreakpoint = 1024;
-  const isColumn = width < widthBreakpoint;
+  // Stacking breakpoint. `width` is CONTAINER-relative — it comes from the
+  // ResizeObserver (`observe`) attached to the dashboard root div below, NOT
+  // the viewport. It is PER-SURFACE (VIS-829): static viewing (/project-new and,
+  // once VIS-833 lands, /project) keeps the default 1024 so rows stack earlier
+  // for readability on genuinely narrow windows; the Workspace canvas passes
+  // `stackBreakpoint={768}` (via ProjectCanvas) because it loses ~600px to the
+  // left + right rails, so a 1024 threshold made every row collapse into a
+  // single column even on a wide screen (the "everything stacks" bug). The
+  // threshold is applied per-container (top-level + each nested slot) via
+  // `shouldStack`, so nesting decisions stay slot-relative.
+  const widthBreakpoint = stackBreakpoint;
 
-  // Fetch item data on mount (dashboards fetched by Project container)
+  // Decide whether a container of `containerWidth` pixels should stack its items
+  // vertically. Falls back to the dashboard width when no explicit slot width is
+  // provided (top-level rows). A nested slot that is only a fraction of the
+  // dashboard width can stack independently of its (wider) parent.
+  const shouldStack = containerWidth => {
+    const effective =
+      typeof containerWidth === 'number' && containerWidth > 0 ? containerWidth : width;
+    return effective < widthBreakpoint;
+  };
+
+  const isColumn = shouldStack(width);
+
+  // Fetch item data on mount (dashboards fetched by Project container).
+  // `fetchModels` populates the model registry consumed by `isKnownModel` below;
+  // the Workspace canvas already fetches it (via Workspace.jsx), but the /project
+  // View route does not, so Dashboard fetches it itself to classify model-data
+  // tables correctly on both surfaces (VIS-827).
   useEffect(() => {
     fetchCharts();
     fetchTables();
     fetchMarkdowns();
     fetchInputs();
-  }, [fetchCharts, fetchTables, fetchMarkdowns, fetchInputs]);
+    fetchModels();
+  }, [fetchCharts, fetchTables, fetchMarkdowns, fetchInputs, fetchModels]);
+
+  // Stable membership test against the fetched model registry. A name not present
+  // in the registry is treated as a non-model (insight), preserving the prior
+  // behavior for insight-backed simple tables.
+  const modelNameSet = useMemo(
+    () => new Set((models || []).map(m => m.name)),
+    [models]
+  );
+  const isKnownModel = useCallback(name => modelNameSet.has(name), [modelNameSet]);
 
   // Find the current dashboard and extract its config
   const dashboard = useMemo(() => {
@@ -206,8 +320,12 @@ const Dashboard = ({ projectId, dashboardName }) => {
     return dashboardData.config || dashboardData;
   }, [dashboards, dashboardName]);
 
-  // Height calculation helpers
+  // Height calculation helpers.
+  // `Row.height` accepts either an enum token (compact|xsmall|...|xxlarge) or a
+  // positive integer pixel value (canvas's Shift-modifier fluid-resize gesture
+  // writes ints directly to the same field). See VIS-A1 / specs §5.6.
   const getHeight = height => {
+    if (typeof height === 'number') return height;
     if (height === 'xsmall') return 128;
     if (height === 'small') return 256;
     if (height === 'medium') return 396;
@@ -261,8 +379,6 @@ const Dashboard = ({ projectId, dashboardName }) => {
     return collectInputNames(dashboard.rows, allRowIndices, shouldShowItem);
   }, [dashboard?.rows, shouldShowItem]);
 
-  useInputsData(projectId, visibleInputNames, { cacheKey: runDataVersion });
-
   const knownInsightNames = useMemo(() => {
     const names = new Set();
     forEachItemDeep(dashboard?.rows, item => {
@@ -273,15 +389,18 @@ const Dashboard = ({ projectId, dashboardName }) => {
       });
       const table = resolveItem(item.table, getTableByName);
       if (table?.data) {
-        const tableData = typeof table.data === 'string' ? table.data : table.data;
-        const name = typeof tableData === 'string' ? parseRefValue(tableData) : tableData?.name;
-        if (name && !(typeof tableData === 'object' && isModelData(tableData))) {
-          names.add(name);
+        // Only insight-classified table data contributes to the known-insight set
+        // used to disambiguate pivot refs; model-data tables (string ref to a
+        // known model, or embedded sql/args/models) must NOT be treated as
+        // insights (VIS-827).
+        const classified = classifyTableData(table.data, isKnownModel);
+        if (classified && !classified.isModel) {
+          names.add(classified.name);
         }
       }
     });
     return names;
-  }, [dashboard?.rows, getChartByName, getTableByName]);
+  }, [dashboard?.rows, getChartByName, getTableByName, isKnownModel]);
 
   const { visibleInsightNames, visibleModelNames } = useMemo(() => {
     if (!dashboard?.rows) return { visibleInsightNames: [], visibleModelNames: [] };
@@ -292,12 +411,39 @@ const Dashboard = ({ projectId, dashboardName }) => {
       shouldShowItem,
       getChartByName,
       getTableByName,
-      knownInsightNames
+      knownInsightNames,
+      isKnownModel
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.rows, charts, tables, getChartByName, getTableByName, shouldShowItem]);
+  }, [dashboard?.rows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel]);
 
+  // Inputs an insight DEPENDS ON (referenced via `${input.value}` inside its
+  // query / static_props) must be prefetched too. Otherwise an input-driven
+  // chart added to a dashboard that carries no input WIDGET for that input never
+  // gets the input's options/default loaded, so the insight stays
+  // `pendingInputs` and its tile spins forever. useInsightsData publishes the
+  // per-insight dependency list into `insightJobs[name].inputDependencies` (and
+  // `pendingInputs` while still waiting); union them across the visible insights
+  // and prefetch alongside the widget inputs.
+  const insightJobs = useStore(state => state.insightJobs);
+  const insightInputNames = useMemo(() => {
+    const names = new Set();
+    visibleInsightNames.forEach(name => {
+      const job = insightJobs?.[name];
+      if (!job) return;
+      (job.inputDependencies || []).forEach(n => names.add(n));
+      (job.pendingInputs || []).forEach(n => names.add(n));
+    });
+    return [...names];
+  }, [insightJobs, visibleInsightNames]);
+
+  const allInputNames = useMemo(
+    () => [...new Set([...visibleInputNames, ...insightInputNames])],
+    [visibleInputNames, insightInputNames]
+  );
+
+  useInputsData(projectId, allInputNames, { cacheKey: runDataVersion });
   useInsightsData(projectId, visibleInsightNames, undefined, { cacheKey: runDataVersion });
   useModelsData(projectId, visibleModelNames, undefined, { cacheKey: runDataVersion });
 
@@ -307,13 +453,34 @@ const Dashboard = ({ projectId, dashboardName }) => {
   // the item is a row-container. `keyPrefix` namespaces children when the item
   // is being rendered inside a nested-rows context (so React keys stay unique
   // across multiple flips of the same dashboard).
-  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '') => {
+  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '', itemPath = '') => {
     const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
 
     // Pixel width this item slot was given by its parent row. Used for chart
     // sizing on leaves AND threaded down into nested rows so nested charts
     // size from the slot, not the dashboard.
     const effectiveSlotWidth = getWidth(items, item, slotPixelWidth);
+
+    // Render the placeholder for a leaf whose reference doesn't resolve. The
+    // canvas passes `renderBrokenRef` to mount the interactive <BrokenRefCard>
+    // (VIS-792 / L-1); View mode falls back to the legacy inline text so static
+    // viewing stays at parity.
+    const brokenRef = (type, rawRef) => {
+      const name = typeof rawRef === 'string' ? parseRefValue(rawRef) || rawRef : 'unknown';
+      if (typeof renderBrokenRef === 'function') {
+        return (
+          <div key={key} className="h-full w-full">
+            {renderBrokenRef({ type, name, itemPath })}
+          </div>
+        );
+      }
+      const label = type.charAt(0).toUpperCase() + type.slice(1);
+      return (
+        <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
+          {label} not found: {typeof rawRef === 'string' ? rawRef : 'unknown'}
+        </div>
+      );
+    };
 
     // Row-container item: render nested rows as a vertical flex stack with
     // weight-based heights (see Q9 — sub-row heights are relative weights inside
@@ -331,7 +498,17 @@ const Dashboard = ({ projectId, dashboardName }) => {
           key={key}
           className="dashboard-nested-rows flex flex-col w-full h-full"
           data-testid="dashboard-nested-rows"
-          style={{ gap: '0.5rem', minWidth: 0, minHeight: 0 }}
+          // Floor the container at its intended pixel height. In GRID (side-by-
+          // side) mode the row has an explicit height, so the grid cell stretches
+          // and `h-full` already resolves correctly (≥ this floor, no change). In
+          // STACKED/column mode the row has NO definite height, so `h-full`
+          // (a percentage of a content-driven parent) collapses to 0 and every
+          // nested sub-row/leaf renders at 0px. The minHeight gives the flex
+          // column a definite height to distribute, fixing the collapse without
+          // touching the working grid path. (VIS-829-adjacent: stacked-mode
+          // nested-container height; affects /project View mode at narrow widths
+          // too, since Dashboard is the shared renderer.)
+          style={{ gap: '0.5rem', minWidth: 0, minHeight: parentPixelHeight || 0 }}
         >
           {subRows.map((subRow, subIdx) => {
             const subHeightPx = parentPixelHeight * (heightToWeight(subRow.height) / totalWeight);
@@ -347,7 +524,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
                   height: subHeightPx,
                 }}
               >
-                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`)}
+                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`, itemPath)}
               </div>
             );
           })}
@@ -358,11 +535,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
     if (item.input) {
       const input = resolveItem(item.input, getInputByName);
       if (!input) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Input not found: {typeof item.input === 'string' ? item.input : 'unknown'}
-          </div>
-        );
+        return brokenRef('input', item.input);
       }
       return (
         <Input
@@ -384,11 +557,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
     if (item.chart) {
       const chart = resolveItem(item.chart, getChartByName);
       if (!chart) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Chart not found: {typeof item.chart === 'string' ? item.chart : 'unknown'}
-          </div>
-        );
+        return brokenRef('chart', item.chart);
       }
       return (
         <Chart
@@ -406,11 +575,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
     if (item.table) {
       const table = resolveItem(item.table, getTableByName);
       if (!table) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Table not found: {typeof item.table === 'string' ? item.table : 'unknown'}
-          </div>
-        );
+        return brokenRef('table', item.table);
       }
       return (
         <Table
@@ -428,11 +593,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
     if (item.markdown) {
       const markdown = resolveItem(item.markdown, getMarkdownByName);
       if (!markdown) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Markdown not found: {typeof item.markdown === 'string' ? item.markdown : 'unknown'}
-          </div>
-        );
+        return brokenRef('markdown', item.markdown);
       }
       return (
         <Markdown
@@ -444,6 +605,23 @@ const Dashboard = ({ projectId, dashboardName }) => {
       );
     }
 
+    // Empty layout slot ({ width } with no leaf ref / rows). In View mode this
+    // renders nothing (parity preserved); on the canvas build surface we paint a
+    // visible dashed placeholder so the slot is discoverable + a drop target
+    // (VIS-901 #3). Backend persistence of a truly-empty item lands with VIS-900.
+    if (canvasMode) {
+      return (
+        <div
+          key={key}
+          data-testid="canvas-empty-slot"
+          className="flex h-full w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-[11px] font-medium text-gray-400"
+          style={{ minHeight: 48 }}
+        >
+          Empty slot
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -451,17 +629,33 @@ const Dashboard = ({ projectId, dashboardName }) => {
   // as a top-level row, but height is governed by the parent slot's flex
   // allocation rather than the row's pixel-mapped HeightEnum. Reuses renderItem
   // so leaf-vs-row-container handling is shared with the top level.
-  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix) => {
+  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix, parentItemPath = '') => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+    // Composite selection path (VIS-768): mirrors OutlineTreePanel's recursive
+    // key scheme `row.<ri>.item.<ii>[.row.<ri>.item.<ii>]…` so the canvas overlay
+    // and Outline tree share ONE selection key at any nesting depth.
+    const subRowPath = parentItemPath
+      ? `${parentItemPath}.row.${subRowIndex}`
+      : `row.${subRowIndex}`;
+    // Slot-relative stacking: a nested row only occupies its parent slot's
+    // width, not the full dashboard. Deciding `isColumn` from the dashboard-wide
+    // breakpoint either (a) kept nested multi-item rows side-by-side inside a
+    // narrow slot (overflow — e.g. a 2x2 KPI cluster crammed into a 1/4 slot) or
+    // (b) stacked everything once the dashboard dipped below the breakpoint.
+    // Compare the slot width instead so each nested container stacks on its own
+    // terms. See VIS-829.
+    const nestedIsColumn = shouldStack(slotPixelWidth);
     return (
       <div
-        className={`dashboard-nested-row w-full h-full ${isColumn ? 'flex' : 'grid'}`}
+        className={`dashboard-nested-row w-full h-full ${nestedIsColumn ? 'flex' : 'grid'}`}
+        data-testid="dashboard-nested-row"
+        data-canvas-path={subRowPath}
         style={{
-          display: isColumn ? 'flex' : 'grid',
-          flexDirection: isColumn ? 'column' : undefined,
-          gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
+          display: nestedIsColumn ? 'flex' : 'grid',
+          flexDirection: nestedIsColumn ? 'column' : undefined,
+          gridTemplateColumns: nestedIsColumn ? undefined : `repeat(${totalWidth}, minmax(0, 1fr))`,
           gap: '0.5rem',
           minWidth: 0,
           minHeight: 0,
@@ -470,10 +664,14 @@ const Dashboard = ({ projectId, dashboardName }) => {
         {visibleItems.map((item, itemIdx) => (
           <div
             key={`${keyPrefix}item-${itemIdx}`}
-            className={isColumn ? 'w-full max-w-full' : ''}
+            // Composite selection anchor (VIS-768): nested item slots carry their
+            // full path so a click at any depth resolves to the exact leaf the
+            // Outline tree would, and an Outline→canvas selection rings it.
+            data-canvas-path={`${subRowPath}.item.${itemIdx}`}
+            className={nestedIsColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
-              gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
-              width: isColumn ? '100%' : 'auto',
+              gridColumn: nestedIsColumn ? undefined : `span ${item.width || 1}`,
+              width: nestedIsColumn ? '100%' : 'auto',
               minWidth: 0,
               minHeight: 0,
             }}
@@ -489,6 +687,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
                 slotPixelHeight,
                 slotPixelWidth,
                 keyPrefix,
+                `${subRowPath}.item.${itemIdx}`,
               )}
             </div>
           </div>
@@ -502,13 +701,22 @@ const Dashboard = ({ projectId, dashboardName }) => {
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
     const rowStyle = isColumn ? {} : { height: row.height !== 'compact' ? getHeight(row.height) : undefined };
-    const shouldLoad = visibleRows.has(rowIndex);
+    // VIS-827: eager-load by default. The row-visibility lazy-loader
+    // (useVisibleRows) relies on an IntersectionObserver that does not fire
+    // inside the Workspace canvas's inner overflow-auto scroll container, so
+    // rows past the initial seed never become "visible" and their charts spin
+    // forever even though the insight data is already in the store. Eager-loading
+    // the new renderer renders every row; callers can pass eagerLoad={false} to
+    // opt back into lazy loading once the observer is wired to the scroll root.
+    const shouldLoad = eagerLoad || visibleRows.has(rowIndex);
 
     return (
       <div
         key={`row-${rowIndex}`}
         ref={el => setRowRef(el, rowIndex)}
         data-row-index={rowIndex}
+        data-canvas-path={`row.${rowIndex}`}
+        data-testid={`dashboard-row-${rowIndex}`}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
           // Use vertical-only margin so the row stays inside its parent's
@@ -531,6 +739,15 @@ const Dashboard = ({ projectId, dashboardName }) => {
         {visibleItems.map((item, itemIndex) => (
           <div
             key={`item-${rowIndex}-${itemIndex}`}
+            // Additive selection anchors consumed by the Workspace canvas's
+            // overlay layer (VIS-768). These data attributes are inert in View
+            // mode and keep Dashboard's render at parity — the overlay reads
+            // them via event delegation + getBoundingClientRect to place
+            // hover/selection rings, never mutating this render. `data-canvas-path`
+            // is the composite key (matches OutlineTreePanel) the overlay resolves
+            // in both directions; `data-canvas-item-index` is kept for back-compat.
+            data-canvas-item-index={itemIndex}
+            data-canvas-path={`row.${rowIndex}.item.${itemIndex}`}
             className={isColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
@@ -555,6 +772,8 @@ const Dashboard = ({ projectId, dashboardName }) => {
                 visibleItems,
                 row.height !== 'compact' ? getHeight(row.height) : undefined,
                 width, // top-level container width = dashboard width
+                '', // keyPrefix (top level needs none)
+                `row.${rowIndex}.item.${itemIndex}`,
               )}
             </div>
           </div>
@@ -574,6 +793,19 @@ const Dashboard = ({ projectId, dashboardName }) => {
 
   // Empty dashboard state
   if (!dashboard.rows || dashboard.rows.length === 0) {
+    if (hideEmptyPlaceholder) {
+      // The canvas overlay (CanvasAddRow) renders the D-8 CTA on top; still
+      // mount a positioned, full-size root so the overlay has an ancestor to
+      // measure against and fill.
+      return (
+        <div
+          ref={observe}
+          data-testid={`dashboard_${dashboardName}`}
+          data-dashboard-empty="true"
+          className="flex grow flex-col w-full max-w-full"
+        />
+      );
+    }
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-gray-400">This dashboard is empty</div>

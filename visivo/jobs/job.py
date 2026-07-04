@@ -9,11 +9,22 @@ from termcolor import colored
 
 
 class JobResult:
-    def __init__(self, item: NamedModel, success: bool, message: str, warnings: list = None):
+    def __init__(
+        self,
+        item: NamedModel,
+        success: bool,
+        message: str,
+        warnings: list = None,
+        error_details: dict = None,
+    ):
         self.item = item
         self.success = success
         self.message = message
         self.warnings = warnings or []
+        # Structured, machine-readable error metadata for typed-error handling
+        # (e.g. VIS-1007's missing-relation inline fix). None for ordinary
+        # failures, which keep flowing through the human-readable ``message``.
+        self.error_details = error_details
 
 
 class CachedFuture:

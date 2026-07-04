@@ -19,14 +19,14 @@
 import { test, expect } from '@playwright/test';
 
 // Both renderers now support recursive Item.rows: DashboardNew.jsx (store-based,
-// /project-new/) and the legacy Dashboard.jsx (project_json-based, /project/).
-// We keep /project-new/ as the primary path the full step suite runs against —
+// /project/) and the legacy Dashboard.jsx (project_json-based, /project/).
+// We keep /project/ as the primary path the full step suite runs against —
 // it's where new authoring features land first — and add a parallel suite at
 // the bottom of this file that runs the high-value invariants (nested-rows
 // wrapper, charts render, no track collapse, padding symmetry) against
 // /project/ so the legacy surface that core/ and dist still depend on stays
 // in lockstep.
-const DASHBOARD_PATH = '/project-new/nested-layouts-dashboard';
+const DASHBOARD_PATH = '/project/nested-layouts-dashboard';
 const LEGACY_DASHBOARD_PATH = '/project/nested-layouts-dashboard';
 
 test.describe('Nested Layouts', () => {

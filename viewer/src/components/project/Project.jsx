@@ -1,7 +1,8 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import useStore from '../../stores/store';
 import Dashboard from './Dashboard';
+import ProjectViewFlipLayer from './ProjectViewFlipLayer';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
@@ -15,6 +16,10 @@ import FilterBar from '../project/FilterBar';
  */
 function Project() {
   const { dashboardName } = useParams();
+
+  // Positioned root the View-mode flip layer (VIS-788 / I-1) measures + delegates
+  // pointer events against, so its flip buttons land over the dashboard's slots.
+  const viewRootRef = useRef(null);
 
   // Store access
   const project = useStore(state => state.project);
@@ -47,6 +52,15 @@ function Project() {
       path: '',
     }));
   }, [dashboards]);
+
+  // The active dashboard's config — fed to the View-mode flip layer (VIS-788)
+  // so it can resolve each slot's lineage subject without re-fetching.
+  const activeDashboardConfig = useMemo(() => {
+    if (!dashboardName || !Array.isArray(dashboards)) return null;
+    const entry = dashboards.find(d => d.name === dashboardName);
+    if (!entry) return null;
+    return entry.config || entry;
+  }, [dashboards, dashboardName]);
 
   // Project defaults can live in either of two envelope shapes:
   //   - visivo Studio: ``project.project_json.defaults`` (full project_json blob)
@@ -123,12 +137,19 @@ function Project() {
     );
   }
 
-  // Render specific dashboard
+  // Render specific dashboard. Wrapped in a positioned root so the View-mode
+  // flip layer (VIS-788 / I-1) can mount as a sibling over the render-only
+  // <Dashboard> and place its kebab menus / lineage cards over each slot. The
+  // kebab (⋮) owns Copy link, so the items no longer render a built-in share
+  // button — no context provider is needed.
   return (
-    <Dashboard
-      projectId={project.id}
-      dashboardName={dashboardName}
-    />
+    <div ref={viewRootRef} data-testid="project-view-root" className="relative flex grow flex-col">
+      <Dashboard
+        projectId={project.id}
+        dashboardName={dashboardName}
+      />
+      <ProjectViewFlipLayer rootRef={viewRootRef} dashboardConfig={activeDashboardConfig} />
+    </div>
   );
 }
 

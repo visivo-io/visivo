@@ -3,6 +3,7 @@
 @plugin '@tailwindcss/typography';
 
 @theme {
+  --color-primary-50: #f3edf0;
   --color-primary-100: #e2d7dd;
   --color-primary-200: #c6b0bb;
   --color-primary-300: #a9899a;
@@ -14,6 +15,7 @@
   --color-primary-900: #160b11;
   --color-primary: #713b57;
 
+  --color-secondary-50: #f6f6f6;
   --color-secondary-100: #dbdadb;
   --color-secondary-200: #b8b6b7;
   --color-secondary-300: #959193;
@@ -25,6 +27,7 @@
   --color-secondary-900: #0f0e0f;
   --color-secondary: #4f494c;
 
+  --color-highlight-50: #fdf5f3;
   --color-highlight-100: #f6ddda;
   --color-highlight-200: #edbcb5;
   --color-highlight-300: #e49b90;

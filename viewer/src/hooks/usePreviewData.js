@@ -92,3 +92,47 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
     resetPreview: () => {},
   };
 };
+
+/**
+ * Two-mode insight-preview resolver reduced to its build-data form.
+ *
+ * The preview-run path (MODE B, `__preview__`-prefixed) is gone in the
+ * run-on-save paradigm, so only MODE A remains: point the synthetic chart at
+ * the insight's un-prefixed `main`-run key and read it via `useInsightsData`,
+ * exactly like the dashboard / workspace ChartPreview. Kept as its own export
+ * so `views/common/InsightPreview` (and its tests) need no changes — it just
+ * always resolves to the published key.
+ */
+export const usePreviewInsightData = (insightConfig, options = {}) => {
+  const insightName = insightConfig?.name || null;
+  const runDataVersion = useStore(state => state.runDataVersion);
+
+  const insightsDataState = useInsightsData(
+    options.projectId,
+    insightName ? [insightName] : [],
+    undefined, // the "main" run
+    { cacheKey: runDataVersion }
+  );
+
+  const insightNotInMain = useStore(
+    useCallback(
+      state => {
+        if (!insightName) return false;
+        return !state.insightJobs?.[insightName];
+      },
+      [insightName]
+    )
+  );
+
+  return {
+    chartInsightKey: insightName,
+    isLoading: insightsDataState.isInsightsLoading,
+    error: insightsDataState.error || null,
+    // No preview run means no typed missing/ambiguous-relation failure here.
+    errorDetails: null,
+    progress: insightsDataState.isInsightsLoading ? 0 : 1,
+    progressMessage: '',
+    insightNotInMain,
+    resetPreview: () => {},
+  };
+};

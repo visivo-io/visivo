@@ -237,6 +237,27 @@ bash scripts/sandbox.sh restart  # Stop then start
 NEVER start sandbox servers with ad-hoc commands — always use `bash scripts/sandbox.sh`.
 Use Playwright MCP or `npx playwright test` against `http://localhost:3001` — never `:3000`.
 
+## Object Type Colors + Icons (single source of truth)
+
+ALWAYS use `viewer/src/components/views/common/objectTypeConfigs.js` for any
+type-driven colour or icon. NEVER hand-roll Tailwind classes (`bg-pink-100`,
+`text-purple-800`, custom hex codes, etc.) for source / model / insight /
+chart / table / markdown / input / dimension / metric / relation / dashboard
+surfaces. The palette is the rainbow spectrum defined there (source=orange,
+model=amber, insight=purple, chart=pink, dashboard=rose, …) and is consumed by
+every viewer surface — divergence in one component creates a colour mismatch
+across the app.
+
+```js
+import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
+const { bg, text, border, node } = getTypeColors(obj.type);
+const Icon = getTypeIcon(obj.type);
+```
+
+If a new tone is genuinely needed (e.g. a selected/active variant the existing
+`bgSelected` / `nodeSelected` doesn't cover), extend the shared config — don't
+fork the palette in a single component.
+
 ## Mandatory Testing Protocol
 
 ### After EVERY code edit:

@@ -9,7 +9,10 @@ export default defineConfig({
   retries: 2,
   workers: '75%',
   use: {
-    baseURL: 'http://localhost:3001',
+    // Defaults to the standard sandbox (:3001). An isolated hardening sandbox
+    // (e.g. :3022) can be targeted via PLAYWRIGHT_BASE_URL without editing this
+    // file, so parallel agents don't collide on ports.
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
@@ -24,7 +27,11 @@ export default defineConfig({
       name: 'parallel',
       testIgnore: [
         '**/explorer-crud-save.spec.mjs',
+        '**/explorer-library-reactivity.spec.mjs',
         '**/explorer-publish-to-files.spec.mjs',
+        '**/build-mode-publish.spec.mjs',
+        '**/external-edit-banner.spec.mjs',
+        '**/library-inline-create.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -32,7 +39,13 @@ export default defineConfig({
     },
     {
       name: 'state-mutating',
-      testMatch: ['**/explorer-crud-save.spec.mjs'],
+      testMatch: [
+        '**/explorer-crud-save.spec.mjs',
+        // J-4: saves a chart from Explorer, asserts the Library reflects it.
+        '**/explorer-library-reactivity.spec.mjs',
+        // Drafts objects into the backend cache via the Library create flow.
+        '**/library-inline-create.spec.mjs',
+      ],
       dependencies: ['parallel'],
     },
     {
@@ -43,6 +56,19 @@ export default defineConfig({
       workers: 1,
       // Retries would run against polluted backend cache from the failed
       // attempt, so they give no useful signal. Fail fast instead.
+      retries: 0,
+    },
+    {
+      // Track H stories (VIS-806/808) — both mutate the integration project's
+      // YAML on disk (publish writes / external-edit simulation), so they get
+      // the same isolation as 'publish': serial, no retries (a retry would
+      // race the file-watcher recompile triggered by the previous attempt's
+      // YAML restore and see phantom pending changes). Targets its own
+      // sandbox via VIS_PUBLISH_BASE.
+      name: 'workspace-publish',
+      testMatch: ['**/build-mode-publish.spec.mjs', '**/external-edit-banner.spec.mjs'],
+      fullyParallel: false,
+      workers: 1,
       retries: 0,
     },
   ],

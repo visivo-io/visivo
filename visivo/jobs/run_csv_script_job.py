@@ -12,6 +12,7 @@ from visivo.jobs.job import (
 )
 from time import time
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.query.model_schema_aggregator import ModelSchemaAggregator
 
 
 def _write_schema(csv_script_model: CsvScriptModel, run_output_dir: str):
@@ -20,8 +21,13 @@ def _write_schema(csv_script_model: CsvScriptModel, run_output_dir: str):
     SqlModel writes a schema file after building its parquet so the field
     resolver can resolve `${ref(model).<col>}` against an implicit dimension.
     CsvScriptModel previously skipped this step, which broke any insight
-    referencing a CSV-script model column. This mirrors the SqlModel format:
-    `{ name_hash: { col_name: type, ... } }`.
+    referencing a CSV-script model column.
+
+    The artifact preserves the legacy `{ name_hash: { col_name: type } }` block
+    (the field resolver depends on it) and adds the model schema envelope
+    (`model_name` / `model_type` / `columns` / `metadata`) via
+    `ModelSchemaAggregator.build_envelope`. `nullable` is taken from DuckDB's
+    `information_schema.columns.is_nullable`.
     """
     source = csv_script_model.get_duckdb_source(output_dir=run_output_dir)
     db_path = source.database
@@ -31,7 +37,8 @@ def _write_schema(csv_script_model: CsvScriptModel, run_output_dir: str):
     conn = duckdb.connect(db_path, read_only=True)
     try:
         rows = conn.execute(
-            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ?",
+            "SELECT column_name, data_type, is_nullable FROM information_schema.columns "
+            "WHERE table_name = ?",
             [csv_script_model.table_name],
         ).fetchall()
     finally:
@@ -40,12 +47,22 @@ def _write_schema(csv_script_model: CsvScriptModel, run_output_dir: str):
     if not rows:
         return
 
-    columns = {col_name: data_type for col_name, data_type in rows}
+    columns = {
+        col_name: {"type": data_type, "nullable": str(is_nullable).upper() != "NO"}
+        for col_name, data_type, is_nullable in rows
+    }
+    payload = ModelSchemaAggregator.build_envelope(
+        name_hash=csv_script_model.name_hash(),
+        model_name=csv_script_model.name,
+        model_type="csv_script",
+        columns=columns,
+        source_dialect="duckdb",
+    )
     schema_directory = f"{run_output_dir}/schemas/{csv_script_model.name}/"
     os.makedirs(schema_directory, exist_ok=True)
     schema_file = f"{schema_directory}schema.json"
     with open(schema_file, "w") as fp:
-        json.dump({csv_script_model.name_hash(): columns}, fp, indent=2)
+        json.dump(payload, fp, indent=2, default=str)
 
 
 def action(csv_script_model: CsvScriptModel, output_dir, working_dir=None, run_id=DEFAULT_RUN_ID):
