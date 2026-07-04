@@ -340,4 +340,48 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
       expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0.row.0');
     });
   });
+
+  describe('resize-gesture clicks (VIS-993 canvas-editing regression)', () => {
+    // CanvasResizeLayer paints its handles as SIBLING overlay nodes inside the
+    // same root — they carry `data-resize-axis` but NO `data-canvas-path`. A
+    // resize drag ends with the browser synthesizing a `click` on the handle
+    // (pointer capture keeps down/up on the same element), which used to fall
+    // through resolveTarget's chrome branch and DESELECT the node the user
+    // just resized — the handles vanished after every single gesture.
+    const ResizeHarness = () => {
+      const rootRef = useRef(null);
+      return (
+        <div ref={rootRef} data-testid="root" style={{ position: 'relative' }}>
+          <div data-testid="dashboard-row-0" data-row-index="0" data-canvas-path="row.0">
+            <div data-testid="slot-0-0" data-canvas-path="row.0.item.0">
+              chart a
+            </div>
+          </div>
+          {/* Stand-in for a CanvasResizeLayer handle: overlay node, no canvas path. */}
+          <div data-testid="fake-resize-handle" data-resize-axis="height" />
+          <CanvasSelectionOverlay rootRef={rootRef} />
+        </div>
+      );
+    };
+
+    test("a click on a resize handle does NOT collapse the selection to chrome", () => {
+      render(<ResizeHarness />);
+      act(() => {
+        useStore.getState().setWorkspaceOutlineSelectedKey('row.0');
+      });
+      fireEvent.click(screen.getByTestId('fake-resize-handle'));
+      // The selection the user is resizing must SURVIVE the gesture's
+      // terminal click — otherwise every resize hides the handles.
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.0');
+    });
+
+    test('a genuine chrome click still deselects to the dashboard', () => {
+      render(<ResizeHarness />);
+      act(() => {
+        useStore.getState().setWorkspaceOutlineSelectedKey('row.0');
+      });
+      fireEvent.click(screen.getByTestId('root'));
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+  });
 });

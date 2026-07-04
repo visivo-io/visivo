@@ -151,16 +151,30 @@ export default function useRecordSave(type, name, opts = {}) {
     // save-activity tick: a blocked edit is not a save in flight. Three
     // layers, cheapest first: $defs schema → dangling refs → SQL parse of
     // expression fields (backend sqlglot; async-only, fail-open off-server).
-    const validation = await validateRecordConfig(t, config);
-    let blocked = !validation.valid
-      ? validation
-      : (() => {
-          const refCheck = checkRefTargets(config, useStore.getState());
-          return refCheck.valid ? null : refCheck;
-        })();
-    if (!blocked) {
-      const exprCheck = await checkExpressions(t, config);
-      if (!exprCheck.valid) blocked = exprCheck;
+    // FAIL-OPEN on a gate CRASH (canvas-persist regression): an internal gate
+    // error must never swallow the persist — only a real invalid VERDICT
+    // blocks; the backend Pydantic validator stays authoritative either way.
+    // ALL THREE layers run inside ONE try/catch — a throw from ANY of them
+    // (validateRecordConfig's AJV, a malformed config walked by checkRefTargets,
+    // or checkExpressions' network layer) must fail open, not escape runSave and
+    // silently swallow the persist. Each layer only runs while `blocked` is
+    // still null, so the catch can only ever fire pre-verdict: a real invalid
+    // VERDICT is never erased by a later-layer crash.
+    let blocked = null;
+    try {
+      const validation = await validateRecordConfig(t, config);
+      if (!validation.valid) blocked = validation;
+      if (!blocked) {
+        const refCheck = checkRefTargets(config, useStore.getState());
+        if (!refCheck.valid) blocked = refCheck;
+      }
+      if (!blocked) {
+        const exprCheck = await checkExpressions(t, config);
+        if (!exprCheck.valid) blocked = exprCheck;
+      }
+    } catch (err) {
+      console.error('useRecordSave: validation gate crashed — failing open', err);
+      blocked = null;
     }
     if (blocked) {
       if (mountedRef.current) {

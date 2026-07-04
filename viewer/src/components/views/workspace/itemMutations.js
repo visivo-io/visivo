@@ -24,6 +24,7 @@
  */
 
 import { formatRefExpression } from '../../../utils/refString';
+import { validateRecordConfig, validateRecordConfigSync } from './validateAgainstSchema';
 
 /** The four mutually-exclusive leaf ref fields on a dashboard Item. */
 export const LEAF_REF_FIELDS = ['chart', 'table', 'markdown', 'input'];
@@ -164,6 +165,60 @@ export const checkLeafExclusivity = config => {
     walkRows(config.rows, '');
   }
   return errors.length === 0 ? { valid: true, errors: [] } : { valid: false, errors };
+};
+
+/**
+ * runDashboardConfigGate — the ONE shared gate runner for dashboard-structure
+ * persistence (VIS-993 §3). Both the canvas commit path (commitCanvasConfig)
+ * and the rail's structure-form path (RightRailEditPanel.persistConfig) route
+ * their verdict through here so the sequencing — leaf exclusivity → sync
+ * schema fast path → async authoritative schema — and, critically, the
+ * FAIL-OPEN error handling can never drift between the two surfaces.
+ *
+ * `onResult(blocked)` is invoked EXACTLY ONCE: synchronously whenever a
+ * verdict is available without an async hop, else after the authoritative
+ * check settles. `blocked` is `null` when persistence may proceed, or the
+ * `{ valid:false, errors }` verdict when the gate holds it.
+ *
+ * FAIL-OPEN (the canvas-persist regression): a gate that CRASHES — sync throw
+ * or async rejection — must never swallow the save. Before this runner, the
+ * call sites consumed `validateRecordConfig(...)` with a bare `.then`, so any
+ * internal gate error left the commit in limbo: the optimistic UI applied,
+ * telemetry fired, but nothing persisted and not even the blocked event was
+ * emitted. A crashed gate now resolves `onResult(null)` (persist; the backend
+ * Pydantic validator stays authoritative) with a console.error for
+ * observability. Only a real `{ valid:false }` VERDICT blocks.
+ *
+ * @param {object} config     the dashboard config that would be persisted.
+ * @param {Function} onResult receives `null` (persist) or the blocking verdict.
+ */
+export const runDashboardConfigGate = (config, onResult) => {
+  // The mutual-exclusion rule is a backend model_validator with no
+  // JSON-schema encoding — check it first (cheap, schema-free).
+  const exclusivity = checkLeafExclusivity(config);
+  if (!exclusivity.valid) {
+    onResult(exclusivity);
+    return;
+  }
+  let sync;
+  try {
+    sync = validateRecordConfigSync('dashboard', config);
+  } catch (err) {
+    console.error('runDashboardConfigGate: sync gate crashed — failing open', err);
+    onResult(null);
+    return;
+  }
+  if (sync) {
+    onResult(sync.valid ? null : sync);
+    return;
+  }
+  // Schema not loaded yet (null) — defer to the async authoritative check.
+  validateRecordConfig('dashboard', config)
+    .then(result => onResult(result.valid ? null : result))
+    .catch(err => {
+      console.error('runDashboardConfigGate: async gate crashed — failing open', err);
+      onResult(null);
+    });
 };
 
 /**

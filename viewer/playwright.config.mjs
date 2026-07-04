@@ -33,6 +33,9 @@ export default defineConfig({
         '**/external-edit-banner.spec.mjs',
         '**/library-inline-create.spec.mjs',
         '**/validation-as-save.spec.mjs',
+        // VIS-993 regression: canvas edits must persist to the DRAFT CACHE
+        // (backend), so this story writes state and runs serially.
+        '**/canvas-editing.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -48,6 +51,9 @@ export default defineConfig({
         '**/library-inline-create.spec.mjs',
         // VIS-993: the valid-save step drafts a dimension into the cache.
         '**/validation-as-save.spec.mjs',
+        // VIS-993 regression: canvas resize/DnD edits draft dashboard changes
+        // into the cache and assert them via /api/dashboards/ + reload.
+        '**/canvas-editing.spec.mjs',
       ],
       dependencies: ['parallel'],
     },

@@ -94,4 +94,25 @@ describe('checkExpressions', () => {
     const result = await checkExpressions('metric', { name: 'm', expression: 'SUM(y)' });
     expect(result.valid).toBe(false);
   });
+
+  // A malformed 200 body must NEVER throw out of the pre-flight (that would
+  // reject the whole save — the silent-swallow bug shape). Each shape fails
+  // open instead.
+  test.each([
+    ['results absent', {}],
+    ['results is an object', { results: {} }],
+    ['results is a string', { results: 'nope' }],
+    ['response is null', null],
+  ])('a malformed body (%s) fails open without throwing', async (_label, body) => {
+    validateExpressions.mockResolvedValue(body);
+    const result = await checkExpressions('metric', { name: 'm', expression: 'SUM(x)' });
+    expect(result.valid).toBe(true);
+    expect(result.skipped).toBe(true);
+  });
+
+  test('nullish entries inside results are skipped, not dereferenced', async () => {
+    validateExpressions.mockResolvedValue({ results: [null, { name: 'expression', valid: true }] });
+    const result = await checkExpressions('metric', { name: 'm', expression: 'SUM(x)' });
+    expect(result.valid).toBe(true);
+  });
 });

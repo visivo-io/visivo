@@ -201,6 +201,14 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
   const handleClick = useCallback(
     e => {
       const root = rootRef.current;
+      // A resize gesture ends with the browser synthesizing a `click` on the
+      // handle itself (pointer capture keeps down/up on the same element).
+      // The handles are overlay nodes with NO data-canvas-path, so that click
+      // used to fall through to the chrome branch and DESELECT the node the
+      // user just resized — hiding the handles after every single gesture
+      // (the "drag to resize is broken" feel). A click originating on a
+      // resize handle is part of the gesture, never a selection intent.
+      if (e.target?.closest?.('[data-resize-axis]')) return;
       const target = resolveTarget(e.target, root);
       if (!target) return;
       const nextKey = keyForTarget(target);
