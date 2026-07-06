@@ -44,6 +44,22 @@ import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
 import { unwrapConfig, withConfig } from '../components/views/workspace/unwrapRecordConfig';
 
+/**
+ * Two `{ type, name }` selection descriptors identify the same object.
+ * Used by the tab actions to decide whether an outline-key reset is due:
+ * moving to a DIFFERENT object invalidates any `row.N.item.M` key scoped to
+ * the previous object's structure (VIS-994 / former VIS-978 stale-key bug).
+ */
+const sameWorkspaceObject = (a, b) => !!a && !!b && a.type === b.type && a.name === b.name;
+
+/**
+ * The outline-key reset patch for a transition from `previous` to `next`
+ * active object — `{}` when the object is unchanged (keep the user's node
+ * selection), the `'dashboard'` default otherwise.
+ */
+const outlineKeyResetFor = (previous, next) =>
+  sameWorkspaceObject(previous, next) ? {} : { workspaceOutlineSelectedKey: 'dashboard' };
+
 const createWorkspaceSlice = (set, get) => ({
   // Tabs --------------------------------------------------------------------
   workspaceTabs: [],
@@ -138,11 +154,12 @@ const createWorkspaceSlice = (set, get) => ({
     const state = get();
     const existing = state.workspaceTabs.find((t) => t.id === id);
     const activeObject = { type: tab.type, name: tab.name };
+    const keyReset = outlineKeyResetFor(state.workspaceActiveObject, activeObject);
     if (existing) {
       if (state.workspaceActiveTabId !== id) {
         emitWorkspaceEvent('tab_switched', { id, type: tab.type, name: tab.name, via: 'open' });
       }
-      set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject });
+      set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject, ...keyReset });
       return id;
     }
     const next = {
@@ -161,6 +178,7 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: [...state.workspaceTabs, next],
       workspaceActiveTabId: id,
       workspaceActiveObject: activeObject,
+      ...keyReset,
     });
     return id;
   },
@@ -197,9 +215,11 @@ const createWorkspaceSlice = (set, get) => ({
     if (state.workspaceActiveTabId !== tabId) {
       emitWorkspaceEvent('tab_switched', { id: tabId, type: tab.type, name: tab.name });
     }
+    const activeObject = { type: tab.type, name: tab.name };
     set({
       workspaceActiveTabId: tabId,
-      workspaceActiveObject: { type: tab.type, name: tab.name },
+      workspaceActiveObject: activeObject,
+      ...outlineKeyResetFor(state.workspaceActiveObject, activeObject),
     });
   },
 
@@ -236,6 +256,7 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: remaining,
       workspaceActiveTabId: activeId,
       workspaceActiveObject: activeObject,
+      ...outlineKeyResetFor(state.workspaceActiveObject, activeObject),
       // A tab closed by any path can't stay parked in the confirm dialog.
       workspacePendingCloseTabId:
         state.workspacePendingCloseTabId === tabId ? null : state.workspacePendingCloseTabId,
@@ -368,15 +389,27 @@ const createWorkspaceSlice = (set, get) => ({
   },
 
   /**
-   * Atomically select both an active object (library/canvas) and an outline-tree
-   * key (dashboard structure). Either argument can be null to clear that half.
-   * Use this instead of separate `setWorkspaceOutlineSelectedKey` +
-   * `workspaceActiveObject` updates to avoid split-render glitches.
+   * The unified selection action (VIS-994; subsumes the old VIS-976/977/978/984
+   * split-write bugs by construction). Atomically selects an active object
+   * (library/canvas/tab) and/or an outline-tree key (dashboard structure), and
+   * optionally reveals the right-rail Edit panel in the same write. Either
+   * selection argument can be null to clear that half. Use this instead of
+   * separate `setWorkspaceOutlineSelectedKey` + `workspaceActiveObject` updates
+   * to avoid split-render glitches.
    *
-   * @param {{ type: string, name: string }|null} activeObject - the object, or null to clear
+   * Deliberately NOT owned here:
+   *   - `workspaceLensIntent` — producers set it one statement before the
+   *     selection change that consumes it, and `ObjectCanvasFrame` self-clears
+   *     it; a blanket clear-on-selection would break Lineage-on-open.
+   *   - `workspacePivotDraft` — component-lifecycle managed by PivotPlayground.
+   *
+   * @param {{ type: string, name: string }|null} activeObject - the object, or null to clear; undefined keeps the current object.
    * @param {string|null} outlineKey - outline key (e.g. 'dashboard', 'row.0', 'row.0.item.1'); null resets to the 'dashboard' default, undefined keeps the existing key.
+   * @param {{ revealEdit?: boolean }} [options] - `revealEdit: true` switches the
+   *   right rail to the Edit tab AND un-collapses the rail (VIS-977: canvas
+   *   click must surface the editor, not just move the selection ring).
    */
-  setWorkspaceSelection: (activeObject, outlineKey) => {
+  setWorkspaceSelection: (activeObject, outlineKey, { revealEdit = false } = {}) => {
     const update = {};
 
     // Update active object if explicitly passed (including null to clear)
@@ -392,6 +425,11 @@ const createWorkspaceSlice = (set, get) => ({
     } else if (outlineKey === null) {
       // null explicitly clears / resets to 'dashboard'
       update.workspaceOutlineSelectedKey = 'dashboard';
+    }
+
+    if (revealEdit) {
+      update.workspaceRightTab = 'edit';
+      update.workspaceRightCollapsed = false;
     }
 
     if (Object.keys(update).length > 0) {
@@ -600,12 +638,12 @@ const createWorkspaceSlice = (set, get) => ({
     const safeTabs = tabs || [];
     const activeId = activeTabId || (safeTabs[0] ? safeTabs[0].id : null);
     const activeTab = safeTabs.find((t) => t.id === activeId) || null;
+    const activeObject = activeTab ? { type: activeTab.type, name: activeTab.name } : null;
     set({
       workspaceTabs: safeTabs,
       workspaceActiveTabId: activeId,
-      workspaceActiveObject: activeTab
-        ? { type: activeTab.type, name: activeTab.name }
-        : null,
+      workspaceActiveObject: activeObject,
+      ...outlineKeyResetFor(get().workspaceActiveObject, activeObject),
     });
   },
 

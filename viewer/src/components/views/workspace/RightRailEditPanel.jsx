@@ -168,7 +168,13 @@ const EmptyState = () => (
 const RightRailEditPanel = () => {
   const activeObject = useStore(s => s.workspaceActiveObject);
   const outlineKey = useStore(s => s.workspaceOutlineSelectedKey);
-  const setOutlineKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
+  // Outline-key writes routed through the unified action (VIS-994); the panel
+  // is already the Edit surface so no revealEdit is needed.
+  const setOutlineKey = useCallback(
+    key => setWorkspaceSelection(undefined, key),
+    [setWorkspaceSelection]
+  );
   const dashboards = useStore(s => s.dashboards);
   const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);

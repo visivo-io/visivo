@@ -97,7 +97,7 @@ const measure = (el, rootEl) => {
 
 const CanvasSelectionOverlay = ({ rootRef }) => {
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
-  const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
   // Publish the hovered path so CanvasDndLayer can reveal drag-grips on hover.
   // This overlay is the single hover source (it already resolves the target);
   // sharing the key keeps the grip reveal aligned 1:1 with the hover ring.
@@ -213,13 +213,16 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       if (!target) return;
       const nextKey = keyForTarget(target);
       if (!nextKey) return;
-      setSelectedKey(nextKey);
+      // A canvas click is an EDIT intent, not just a selection-ring move:
+      // reveal the right-rail Edit panel (un-collapsing if needed) in the same
+      // atomic write (VIS-994 / former VIS-977).
+      setWorkspaceSelection(undefined, nextKey, { revealEdit: true });
       emitWorkspaceEvent('canvas_selection_changed', {
         key: nextKey,
         kind: target.kind,
       });
     },
-    [rootRef, setSelectedKey]
+    [rootRef, setWorkspaceSelection]
   );
 
   // Bind pointer handlers to the canvas root (delegation) rather than an

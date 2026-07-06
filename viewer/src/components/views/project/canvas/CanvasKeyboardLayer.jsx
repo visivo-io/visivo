@@ -32,7 +32,14 @@ import useCanvasKeyboardNav, { announceSelection } from './useCanvasKeyboardNav'
 
 const CanvasKeyboardLayer = ({ rootRef, dashboardName }) => {
   const outlineKey = useStore(s => s.workspaceOutlineSelectedKey);
-  const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
+  // Selection routed through the unified action (VIS-994). No revealEdit:
+  // arrow-key navigation moves the selection ring without yanking the rail
+  // open on every keypress; an already-open Edit panel tracks the key anyway.
+  const setSelectedKey = useCallback(
+    key => setWorkspaceSelection(undefined, key),
+    [setWorkspaceSelection]
+  );
   const dashboards = useStore(s => s.dashboards);
   const commitCanvasConfig = useWorkspaceCommit();
 
