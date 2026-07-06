@@ -2,13 +2,13 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
-import RunIndicator from './RunIndicator';
+import RunsToolIcon from './RunsToolIcon';
 import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
-import { PiMagnifyingGlass, PiPencil, PiPlayCircle } from 'react-icons/pi';
+import { PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
 import { useMediaQuery, useTheme } from '@mui/material';
 
@@ -37,7 +37,7 @@ const LOCAL_STAGE = {
 const DEFAULT_TOOLS = [
   { id: 'explorer', label: 'Explorer', to: '/explorer', icon: PiMagnifyingGlass },
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
-  { id: 'runs', label: 'Runs', to: '/runs', icon: PiPlayCircle },
+  { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate },
 ];
 
@@ -443,8 +443,8 @@ const TopNav = ({
   versions,
   currentVersion,
   onVersionChange = () => {},
-  // commit / deploy — both surface only when there are uncommitted changes
-  // (nothing to commit or deploy on a clean project, so the slot is empty).
+  // commit / deploy — mutually exclusive by dirty state: Commit shows when there
+  // are uncommitted changes; Deploy shows when the project is clean.
   hasUncommittedChanges,
   // count of pending (uncommitted) changes — shown as a badge on Commit.
   commitCount = 0,
@@ -490,14 +490,13 @@ const TopNav = ({
   const showVersions = showProject && Array.isArray(versions) && versions.length > 0 && currentVersion;
   const inHistory = showVersions && !currentVersion.live;
 
-  // Both Commit and Deploy only make sense when there's something to act on,
-  // so the action slot is empty on a clean project and shows Commit (+ Deploy
-  // where deploy exists) once there are uncommitted changes.
+  // Commit and Deploy are mutually exclusive by dirty state: a dirty project
+  // shows Commit (changes must be committed before they can ship), and a clean
+  // project shows Deploy where deploy exists (nothing to commit, ready to ship).
   const action = hasUncommittedChanges ? (
-    <>
-      <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
-      {showDeploy && <DeployButton onClick={onDeployClick} compact={narrow} />}
-    </>
+    <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
+  ) : showDeploy ? (
+    <DeployButton onClick={onDeployClick} compact={narrow} />
   ) : null;
 
   const banner = inHistory && (
@@ -537,7 +536,6 @@ const TopNav = ({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
-            {showProject && <RunIndicator />}
             {showProject && branchControls}
             {showProject && action}
             <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
@@ -563,7 +561,6 @@ const TopNav = ({
         {showProject && <ToolSwitch tools={tools} activeTool={resolvedActive} />}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} />}
-          {showProject && <RunIndicator />}
           {showProject && branchControls}
           {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />

@@ -5,20 +5,21 @@ import { ACTIVE_RUN_STATES } from '../stores/runStore';
 /**
  * Poll the active project's run status while editing a draft, so rendered data
  * refreshes when a run finishes (runStore bumps runDataVersion → data hooks
- * refetch) and the UI can show a live run indicator.
+ * refetch) and the toolbar run indicator always reflects the current run.
  *
- * Only polls a draft (project.status === 'draft'). It self-stops when idle — it
- * runs while a run is in flight OR within the post-edit window (pollWindowUntil,
- * set on each save) — so a dirty draft isn't polled forever. Re-arms whenever a
- * new edit moves pollWindowUntil.
+ * Polls continuously while the project is a draft (project.status === 'draft'),
+ * faster while a run is in flight (2s) and slower when idle (4s). It has to run
+ * even when the user isn't actively saving — a run can start from a coalesced
+ * save, sit queued through a cold start, or simply be watched from the Runs
+ * view — and a self-stopping poller would miss those and leave the indicator
+ * stale while the Runs rows (which poll independently) show it running. Polling
+ * stops on its own once the draft is committed/deployed (status leaves 'draft').
+ * Local serve reports status 'draft'; dist has no status, so the poller stays
+ * off there — correct, a build without a run model has no runs to poll.
  */
 export const useRunPolling = () => {
   const projectId = useStore(state => state.project?.id);
-  // A draft is the explicit status — not "deploy_finished_at is null", which is
-  // also true of a deploy that never finished. (Local serve has no status, so
-  // this is falsy there and the poller stays off — correct, serve has no runs.)
   const isDraft = useStore(state => state.project?.status === 'draft');
-  const pollWindowUntil = useStore(state => state.pollWindowUntil);
   const pollRuns = useStore(state => state.pollRuns);
 
   useEffect(() => {
@@ -30,15 +31,8 @@ export const useRunPolling = () => {
       if (cancelled) return;
       await pollRuns();
       if (cancelled) return;
-      const { latestRun, pollWindowUntil: until } = useStore.getState();
-      const active = ACTIVE_RUN_STATES.includes(latestRun?.state);
-      const withinWindow = Date.now() < (until || 0);
-      // Keep polling while a run is in flight (it sits queued through the cold
-      // start, then running) or we're still bridging to the first poll;
-      // otherwise stop until the next edit re-arms us.
-      if (active || withinWindow) {
-        timer = setTimeout(tick, active ? 2000 : 4000);
-      }
+      const active = ACTIVE_RUN_STATES.includes(useStore.getState().latestRun?.state);
+      timer = setTimeout(tick, active ? 2000 : 4000);
     };
 
     tick();
@@ -46,8 +40,7 @@ export const useRunPolling = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-    // pollWindowUntil in deps: a new edit re-arms polling after it has stopped.
-  }, [projectId, isDraft, pollWindowUntil, pollRuns]);
+  }, [projectId, isDraft, pollRuns]);
 };
 
 export default useRunPolling;

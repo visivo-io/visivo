@@ -48,13 +48,6 @@ describe('runStore', () => {
     expect(store.get().runDataVersion).toBe(1); // refresh!
   });
 
-  it('noteDraftActivity opens a future poll window', () => {
-    const store = build();
-    expect(store.get().pollWindowUntil).toBe(0);
-    store.get().noteDraftActivity();
-    expect(store.get().pollWindowUntil).toBeGreaterThan(Date.now());
-  });
-
   it('no-ops when the run endpoint is unavailable (local serve / dist)', async () => {
     branchingApi.fetchRuns.mockRejectedValueOnce(new Error('404'));
     const store = build();
