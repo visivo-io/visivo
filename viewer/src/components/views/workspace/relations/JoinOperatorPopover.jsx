@@ -14,7 +14,7 @@ import Select from '../../../common/Select';
  * Opened by a column→column drag (or by picking two models via the @-mention
  * pickers), it synthesises a relation `condition` and persists it through the
  * relation store's `saveRelation(name, config)` action — the SAME config shape
- * RelationEditForm writes: `{ name, join_type, condition, is_default }`.
+ * the schema-driven relation form writes: `{ name, join_type, condition, is_default }`.
  *
  * Controls:
  *   - a 6-operator segmented control (= != > < >= <=);

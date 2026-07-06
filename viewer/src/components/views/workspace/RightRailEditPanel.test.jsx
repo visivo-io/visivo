@@ -141,9 +141,28 @@ jest.mock('../common/TableEditForm', () => stubForm('table-edit-form-stub', 'tab
 jest.mock('../common/SourceEditForm', () => stubForm('source-edit-form-stub', 'source'));
 jest.mock('../common/InsightEditForm', () => stubForm('insight-edit-form-stub', 'insight'));
 jest.mock('../common/ModelEditForm', () => stubForm('model-edit-form-stub', 'model'));
-jest.mock('../common/DimensionEditForm', () => stubForm('dimension-edit-form-stub', 'dimension'));
-jest.mock('../common/MetricEditForm', () => stubForm('metric-edit-form-stub', 'metric'));
-jest.mock('../common/RelationEditForm', () => stubForm('relation-edit-form-stub', 'relation'));
+// VIS-980 (folded into VIS-996): csv/local-merge script models now edit INLINE.
+jest.mock('../common/CsvScriptModelEditForm', () => stubForm('csv-script-model-edit-form-stub', 'model'));
+jest.mock('../common/LocalMergeModelEditForm', () => stubForm('local-merge-model-edit-form-stub', 'model'));
+// VIS-996: dimension/metric/relation now render through the SINGLE generic
+// SchemaLeafForm (type-keyed), replacing the three bespoke *EditForm files. The
+// stub keys its testid off `props.type` so the existing per-type routing +
+// self-save assertions carry over unchanged (`${type}-edit-form-stub`).
+jest.mock('./SchemaLeafForm', () => ({
+  __esModule: true,
+  default: ({ type, record, onSave }) => (
+    <div data-testid={`${type}-edit-form-stub`}>
+      {`${type}-edit-form-stub:${record?.name || 'none'}`}
+      <button
+        type="button"
+        data-testid={`${type}-edit-form-stub-self-save`}
+        onClick={() => onSave?.({ name: record?.name, edited: true })}
+      >
+        self-save
+      </button>
+    </div>
+  ),
+}));
 // VIS-807 (M-2b) + VIS-809 (M-3) — the level/defaults forms now render real
 // forms (not placeholders). Stub them so routing assertions stay focused; each
 // stub echoes the prop the router passes through (level index / defaults name).
@@ -494,6 +513,9 @@ describe('RightRailEditPanel Library-row routing (GAP-1/GAP-2 inline forms)', ()
     ['metric', 'metrics', 'metric-edit-form-stub', 'arr_metric'],
     ['relation', 'relations', 'relation-edit-form-stub', 'orders_to_users'],
     ['input', 'inputs', 'input-edit-form-stub', 'date_input'],
+    // VIS-980 fold: csv/local-merge models now edit inline, not "open elsewhere".
+    ['csvScriptModel', 'csvScriptModels', 'csv-script-model-edit-form-stub', 'seed_csv'],
+    ['localMergeModel', 'localMergeModels', 'local-merge-model-edit-form-stub', 'merged'],
   ];
 
   test.each(CASES)(
@@ -512,11 +534,11 @@ describe('RightRailEditPanel Library-row routing (GAP-1/GAP-2 inline forms)', ()
     }
   );
 
-  test('a compound type without an in-rail form (csvScriptModel) offers "Open" instead', () => {
+  test('a compound type without an in-rail form (dashboard) offers "Open" instead', () => {
     const openWorkspaceTab = jest.fn();
     resetStore({
-      workspaceActiveObject: { type: 'csvScriptModel', name: 'seed_csv' },
-      csvScriptModels: [{ name: 'seed_csv', config: {} }],
+      workspaceActiveObject: { type: 'dashboard', name: 'sales' },
+      dashboards: [{ name: 'sales', config: { name: 'sales', rows: [] } }],
       openWorkspaceTab,
     });
     renderPanel();
@@ -524,7 +546,33 @@ describe('RightRailEditPanel Library-row routing (GAP-1/GAP-2 inline forms)', ()
     expect(screen.queryByTestId('right-rail-edit-leaf-form')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /open/i }));
-    expect(openWorkspaceTab).toHaveBeenCalledWith({ type: 'csvScriptModel', name: 'seed_csv' });
+    expect(openWorkspaceTab).toHaveBeenCalledWith({ type: 'dashboard', name: 'sales' });
+  });
+
+  // VIS-983 (folded into VIS-996): loading / not-found guards for leaf records.
+  test('a leaf selected before its (empty) collection populates shows a loading placeholder', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev' },
+      // Empty collection → fetch may still be in flight → bias to loading, not
+      // a "not found" flash.
+      charts: [],
+    });
+    renderPanel();
+    expect(screen.getByTestId('right-rail-edit-leaf-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('right-rail-edit-leaf-form')).not.toBeInTheDocument();
+  });
+
+  test('a leaf whose record is absent from a loaded collection shows a not-found placeholder', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'ghost' },
+      charts: [{ name: 'other', config: {} }],
+    });
+    renderPanel();
+    const missing = screen.getByTestId('right-rail-edit-leaf-missing');
+    expect(missing).toBeInTheDocument();
+    expect(missing).toHaveTextContent(/not found/i);
+    expect(missing).toHaveTextContent('ghost');
+    expect(screen.queryByTestId('right-rail-edit-leaf-form')).not.toBeInTheDocument();
   });
 
   test('an unsupported selection type falls through to the "no editor yet" state', () => {
