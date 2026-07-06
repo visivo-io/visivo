@@ -180,7 +180,7 @@ const ItemEditForm = ({
           min="1"
           value={item?.width ?? 1}
           onChange={e => handleWidthChange(e.target.value)}
-          className="w-14 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-14 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
           aria-label={`Item ${itemIndex + 1} width`}
         />
       </div>
@@ -196,7 +196,7 @@ const ItemEditForm = ({
           className={[
             'px-2 py-0.5 text-xs rounded border transition-colors',
             !isContainer
-              ? 'bg-[#713b57] text-white border-[#713b57]'
+              ? 'bg-primary text-white border-primary'
               : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50',
           ].join(' ')}
         >
@@ -211,7 +211,7 @@ const ItemEditForm = ({
           className={[
             'px-2 py-0.5 text-xs rounded border transition-colors',
             isContainer
-              ? 'bg-[#713b57] text-white border-[#713b57]'
+              ? 'bg-primary text-white border-primary'
               : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50',
           ].join(' ')}
         >

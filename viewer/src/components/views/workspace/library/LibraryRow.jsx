@@ -97,14 +97,14 @@ const ContextMenuItem = ({ icon: Icon, label, hint, onClick, destructive }) => (
     onClick={onClick}
     className={[
       'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px]',
-      destructive ? 'text-[#a84738] hover:bg-[#f6ddda]/40' : 'text-gray-800 hover:bg-gray-50',
+      destructive ? 'text-highlight-600 hover:bg-highlight-100/40' : 'text-gray-800 hover:bg-gray-50',
     ].join(' ')}
   >
     {Icon && (
       <Icon
         className={[
           'shrink-0',
-          destructive ? 'text-[#a84738]' : 'text-gray-500',
+          destructive ? 'text-highlight-600' : 'text-gray-500',
         ].join(' ')}
         style={{ fontSize: 14 }}
       />
@@ -294,9 +294,9 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
         tabIndex={0}
         style={dragProps.style}
         className={[
-          'relative flex h-8 items-center gap-2 rounded-md pl-2 pr-1 text-[13px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#713b57]/30',
+          'relative flex h-8 items-center gap-2 rounded-md pl-2 pr-1 text-[13px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
           selected
-            ? 'bg-[#e2d7dd]/55 text-[#5a2f45]'
+            ? 'bg-primary-100/55 text-primary-600'
             : showActions
               ? 'bg-gray-100'
               : 'hover:bg-gray-50',
@@ -307,7 +307,7 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
         {selected && (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-[#713b57]"
+            className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-primary"
           />
         )}
         {/* Reserve the drag-handle slot for every row so Layout-Items and
@@ -328,7 +328,7 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
         <Icon
           aria-hidden="true"
           style={{ fontSize: 14 }}
-          className={`shrink-0 ${selected ? 'text-[#5a2f45]' : 'text-gray-500'}`}
+          className={`shrink-0 ${selected ? 'text-primary-600' : 'text-gray-500'}`}
         />
         <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
           {obj.name}
@@ -349,7 +349,7 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
             className={[
               'inline-flex h-6 w-6 items-center justify-center rounded',
               popoverOpen
-                ? 'bg-white text-[#713b57] ring-1 ring-[#713b57]/30 shadow-sm'
+                ? 'bg-white text-primary ring-1 ring-primary/30 shadow-sm'
                 : 'text-gray-500 hover:bg-white hover:text-gray-900',
             ].join(' ')}
           >
@@ -365,7 +365,7 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
             className={[
               'inline-flex h-6 w-6 items-center justify-center rounded',
               menuOpen
-                ? 'bg-white text-[#713b57] ring-1 ring-[#713b57]/30 shadow-sm'
+                ? 'bg-white text-primary ring-1 ring-primary/30 shadow-sm'
                 : 'text-gray-500 hover:bg-white hover:text-gray-900',
             ].join(' ')}
           >

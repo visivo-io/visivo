@@ -119,7 +119,7 @@ const RefDropZone = ({
   const stateClasses = showInvalid
     ? 'border-red-400 bg-red-50 text-red-600 animate-pulse'
     : showValid
-      ? 'border-[#713b57] ring-2 ring-[#713b57]/40 bg-[#f9f6f8] text-[#713b57]'
+      ? 'border-primary ring-2 ring-primary/40 bg-primary-50 text-primary'
       : 'border-gray-300 text-gray-400 hover:border-gray-400';
 
   return (

@@ -44,8 +44,8 @@ const FormFooter = ({
     <div className="border-t border-gray-200 bg-gray-50">
       {/* Delete Confirmation */}
       {deleteConfirm?.show && (
-        <div className="px-4 py-3 bg-red-50 border-b border-red-200">
-          <p className="text-sm text-red-700 mb-2">{deleteConfirm.message}</p>
+        <div className="px-4 py-3 bg-highlight-50 border-b border-highlight-200">
+          <p className="text-sm text-highlight-700 mb-2">{deleteConfirm.message}</p>
           <div className="flex gap-2">
             <button
               onClick={deleteConfirm.onCancel}
@@ -57,7 +57,7 @@ const FormFooter = ({
             <button
               onClick={deleteConfirm.onConfirm}
               disabled={deleteConfirm.deleting}
-              className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+              className="px-3 py-1 text-sm text-white bg-highlight-600 rounded hover:bg-highlight-700 disabled:opacity-50"
             >
               {deleteConfirm.deleting ? 'Deleting...' : 'Confirm Delete'}
             </button>
@@ -74,7 +74,7 @@ const FormFooter = ({
             <button
               type="button"
               onClick={onDeleteClick}
-              className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
+              className="p-1.5 text-highlight-600 hover:text-highlight-700 border border-highlight-300 hover:bg-highlight-50 rounded transition-colors"
               title="Delete"
             >
               <DeleteOutlineIcon fontSize="small" />

@@ -23,11 +23,11 @@ const LibraryDragPreview = ({ data }) => {
   return (
     <div
       data-testid="library-drag-preview"
-      className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-[#713b57]"
+      className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-primary"
     >
-      <Icon aria-hidden="true" style={{ fontSize: 14 }} className="text-[#713b57]" />
+      <Icon aria-hidden="true" style={{ fontSize: 14 }} className="text-primary" />
       <span className="text-[13px] font-medium text-gray-900">{name}</span>
-      <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
+      <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-primary-100 px-1 text-[10px] font-bold uppercase tracking-wide text-primary-600">
         {def.label}
       </span>
     </div>

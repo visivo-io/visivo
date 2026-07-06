@@ -418,7 +418,7 @@ const SubjectRow = ({ subject, testIdPrefix }) => {
       data-testid={`${testIdPrefix}-lineage-subject`}
       data-direction="subject"
       className={[
-        'relative flex items-center self-stretch rounded-md ring-1 ring-[#713b57]/40',
+        'relative flex items-center self-stretch rounded-md ring-1 ring-primary/40',
         tone.pill,
       ].join(' ')}
       style={{ height: ROW_HEIGHT + 4, paddingLeft: 6, paddingRight: 6 }}
@@ -832,7 +832,7 @@ const MiniLineageCard = ({
 
       <div className="shrink-0 px-3 pt-2">
         <div
-          className="flex h-7 items-center gap-1.5 rounded-md bg-gray-50 px-2 ring-1 ring-gray-200 focus-within:ring-[#713b57]/40"
+          className="flex h-7 items-center gap-1.5 rounded-md bg-gray-50 px-2 ring-1 ring-gray-200 focus-within:ring-primary/40"
           data-testid={`${testIdPrefix}-selector`}
         >
           <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400">

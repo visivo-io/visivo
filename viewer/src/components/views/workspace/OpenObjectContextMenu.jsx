@@ -24,7 +24,7 @@ import { getTypeIcon } from '../common/objectTypeConfigs';
  * pane, the editor's scroll container). Dismisses on outside pointer-down,
  * Escape, or scroll — same contract as CanvasContextMenu.
  */
-const MULBERRY = '#713b57';
+const MULBERRY = 'var(--color-primary-500)';
 
 const MenuItem = ({ testid, icon: Icon, label, onClick }) => (
   <button
@@ -37,7 +37,7 @@ const MenuItem = ({ testid, icon: Icon, label, onClick }) => (
       e.stopPropagation();
       onClick && onClick(e);
     }}
-    className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-[12.5px] text-gray-700 transition-colors hover:bg-[#f9f6f8] focus:bg-[#f9f6f8] focus:outline-none"
+    className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-[12.5px] text-gray-700 transition-colors hover:bg-primary-50 focus:bg-primary-50 focus:outline-none"
   >
     {Icon && <Icon className="shrink-0 text-gray-500" style={{ fontSize: 14 }} />}
     <span className="font-medium">{label}</span>
@@ -76,7 +76,7 @@ const OpenObjectContextMenu = ({ x, y, obj, onOpen, onOpenInNewTab, onDismiss, t
       role="menu"
       aria-label={`${obj.name} actions`}
       data-testid={`${prefix}-menu`}
-      className="fixed z-[80] min-w-[190px] rounded-lg border border-[#e5e0e3] bg-white p-1 shadow-lg"
+      className="fixed z-[80] min-w-[190px] rounded-lg border border-primary-100 bg-white p-1 shadow-lg"
       style={{ top: y, left: x }}
       onPointerDown={e => e.stopPropagation()}
       onClick={e => e.stopPropagation()}

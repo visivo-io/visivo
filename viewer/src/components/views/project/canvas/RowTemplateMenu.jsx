@@ -11,15 +11,15 @@ import { ROW_TEMPLATES } from './canvasReorder';
  * a template calls `onSelect(templateKey)`; the caller builds the row + commits
  * it.
  *
- * Mulberry (`#713b57`) is the selection/active colour (NOT a type colour — these
+ * Mulberry (`primary`) is the selection/active colour (NOT a type colour — these
  * empty-slot previews carry no object type, so objectTypeConfigs is intentionally
  * not consulted here). Keyboard: Up/Down navigate, Enter commits the focused
  * template, Esc dismisses (returns focus to the trigger via `onDismiss`).
  */
 
-const MULBERRY = '#713b57';
-const SLOT_FILL = '#e2d7dd';
-const SLOT_BORDER = '#c6b0bb';
+const MULBERRY = 'var(--color-primary-500)';
+const SLOT_FILL = 'var(--color-primary-100)';
+const SLOT_BORDER = 'var(--color-primary-200)';
 
 // Per-template wireframe preview: a row of soft-hatched rectangles diagramming
 // the column layout. Driven directly off the template `widths` so the preview
@@ -125,10 +125,10 @@ const RowTemplateMenu = ({ onSelect, onDismiss, anchor = 'bottom' }) => {
                 onMouseEnter={() => setHoveredKey(key)}
                 onMouseLeave={() => setHoveredKey(null)}
                 onFocus={() => (focusIndexRef.current = idx)}
-                style={isSelected ? { backgroundColor: '#e2d7dd' } : undefined}
+                style={isSelected ? { backgroundColor: 'var(--color-primary-100)' } : undefined}
                 className={[
                   'group/item flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors',
-                  'focus:outline-none focus:ring-2 focus:ring-[#713b57]',
+                  'focus:outline-none focus:ring-2 focus:ring-primary',
                   isSelected ? '' : isHovered ? 'bg-gray-100' : 'hover:bg-gray-50',
                 ].join(' ')}
               >

@@ -220,7 +220,7 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
           data-testid="dimension-inspector-run"
           onClick={handleRun}
           disabled={isRunning || profiling || !sourceName || !modelSql}
-          className="inline-flex h-7 items-center gap-1 rounded-md bg-[#0d9488] px-3 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0f766e] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-7 items-center gap-1 rounded-md bg-primary px-3 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isRunning || profiling ? (
             <CircularProgress size={12} style={{ color: 'white' }} />

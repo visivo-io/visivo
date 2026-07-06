@@ -16,7 +16,7 @@ import copyItemLink from '../../../project/copyItemLink';
  * Per-item action affordance for the Workspace dashboard canvas. A SIBLING over
  * the render-only <Dashboard> (mounted by ProjectCanvas alongside the selection
  * / DnD / resize / keyboard overlays). For the hovered-or-selected leaf item it
- * paints the consolidated mulberry (`#713b57`) kebab (⋮) — the SAME
+ * paints the consolidated mulberry (`primary`) kebab (⋮) — the SAME
  * <ItemActionMenu> View mode uses — anchored to the item's top-right corner.
  * The action list is Copy link + Flip to lineage.
  *
@@ -48,7 +48,7 @@ import copyItemLink from '../../../project/copyItemLink';
  *   - `prefers-reduced-motion`: the card rotation animation is suppressed (it
  *     degrades to a fade, honored by the OS setting).
  *
- * Mulberry (`#713b57`) is the affordance colour; the lineage card's per-type
+ * Mulberry (`primary`) is the affordance colour; the lineage card's per-type
  * colours come from objectTypeConfigs via MiniLineageCard.
  */
 

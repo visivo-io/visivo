@@ -464,7 +464,7 @@ const RightRailEditPanel = () => {
               type="button"
               data-testid="right-rail-edit-add-row"
               onClick={addRow}
-              className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium text-[#713b57] transition-colors hover:bg-[#e2d7dd]/40"
+              className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary-100/40"
             >
               <PiPlus className="h-3.5 w-3.5" /> Add row
             </button>
@@ -821,9 +821,9 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
         {recordSaveStatus === 'invalid' && recordSaveErrors?.length > 0 && (
           <div
             data-testid="record-save-errors"
-            className="border-b border-[#d25946]/30 bg-[#fdf5f3] px-3 py-2"
+            className="border-b border-highlight/30 bg-[#fdf5f3] px-3 py-2"
           >
-            <p className="text-[11.5px] font-semibold text-[#d25946]">Not saved — fix to save</p>
+            <p className="text-[11.5px] font-semibold text-highlight">Not saved — fix to save</p>
             <ul className="mt-0.5 space-y-0.5">
               {recordSaveErrors.map((err, i) => (
                 <li key={`${err.path || 'root'}-${i}`} className="text-[11px] text-[#a03c2d]">
@@ -872,7 +872,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
         <button
           type="button"
           onClick={() => openWorkspaceTab && openWorkspaceTab({ type, name })}
-          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[#713b57] px-3 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45]"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
         >
           Open {singular}
         </button>

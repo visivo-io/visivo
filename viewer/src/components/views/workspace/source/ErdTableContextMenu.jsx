@@ -25,7 +25,7 @@ import { generateUniqueName } from '../../../../utils/uniqueName';
  * pointer-down, Escape, or scroll — matching OpenObjectContextMenu.
  */
 
-const MULBERRY = '#713b57';
+const MULBERRY = 'var(--color-primary-500)';
 
 // A bare identifier (letters/digits/underscore, not starting with a digit) needs
 // no quoting; anything else is double-quoted with embedded quotes doubled.
@@ -55,7 +55,7 @@ const MenuItem = ({ testid, icon: Icon, label, disabled, onClick }) => (
       e.stopPropagation();
       if (!disabled && onClick) onClick(e);
     }}
-    className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-[12.5px] text-gray-700 transition-colors hover:bg-[#f9f6f8] focus:bg-[#f9f6f8] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-[12.5px] text-gray-700 transition-colors hover:bg-primary-50 focus:bg-primary-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
   >
     {Icon && <Icon className="shrink-0 text-gray-500" style={{ fontSize: 14 }} />}
     <span className="font-medium">{label}</span>
@@ -127,7 +127,7 @@ const ErdTableContextMenu = ({ x, y, sourceName, target, onDismiss }) => {
       role="menu"
       aria-label={`${qualifiedName} actions`}
       data-testid="erd-table-ctx-menu"
-      className="fixed z-[80] min-w-[230px] rounded-lg border border-[#e5e0e3] bg-white p-1 shadow-lg"
+      className="fixed z-[80] min-w-[230px] rounded-lg border border-primary-100 bg-white p-1 shadow-lg"
       style={{ top: y, left: x }}
       onPointerDown={e => e.stopPropagation()}
       onClick={e => e.stopPropagation()}

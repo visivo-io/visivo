@@ -37,7 +37,7 @@ describe('SaveStateIndicator (VIS-802)', () => {
       render(<SaveStateIndicator status={status} />);
       const badge = screen.getByTestId('right-rail-save-state');
       // Highlight orange-red, not mulberry/primary.
-      expect(badge.className).toContain('text-[#d25946]');
+      expect(badge.className).toContain('text-highlight');
       expect(badge.className).not.toContain('713b57');
     }
   );

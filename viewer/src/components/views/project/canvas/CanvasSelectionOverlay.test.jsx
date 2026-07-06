@@ -183,7 +183,7 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     dispatch(fireEvent.click, screen.getByTestId('slot-0-0'));
     const ring = screen.getByTestId('canvas-overlay-selected-item');
     expect(ring).toBeInTheDocument();
-    expect(ring.className).toContain('ring-[#713b57]');
+    expect(ring.className).toContain('ring-primary');
   });
 
   test('dashboard-chrome selection paints a subtle inset outer border', () => {
@@ -193,7 +193,7 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     const chrome = screen.getByTestId('canvas-overlay-chrome-selected');
     expect(chrome).toBeInTheDocument();
     expect(chrome.className).toContain('ring-inset');
-    expect(chrome.className).toContain('ring-[#713b57]');
+    expect(chrome.className).toContain('ring-primary');
   });
 
   test('hovering an item paints the hover outline', () => {
