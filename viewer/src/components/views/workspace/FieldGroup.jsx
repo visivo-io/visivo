@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   PiCaretDown,
   PiCaretRight,
@@ -63,6 +63,10 @@ const GROUP_ICONS = {
  *   can swap in a richer widget (e.g. RefTextArea for SQL expressions) without
  *   forking the group layout. The render fn receives
  *   `{ field, value, onChange, onRemove, disabled, error }`.
+ * @param {string} props.revealPath - optional field name (dot-path) to jump to
+ *   (VIS-1021 Field Finder). When this group owns `revealPath`, the group
+ *   force-expands (overriding its persisted collapse AND the "+ N more" fold),
+ *   scrolls the target row into view, and flashes a highlight ring.
  */
 export function FieldGroup({
   group,
@@ -72,17 +76,40 @@ export function FieldGroup({
   disabled = false,
   errors = {},
   overrides = {},
+  revealPath = null,
 }) {
   const { id, label, icon, objectType, alwaysOpen, fields = [] } = group || {};
 
   const collapsedMap = useFieldGroupCollapseStore(s => s.collapsed);
   const toggleCollapsed = useFieldGroupCollapseStore(s => s.toggleCollapsed);
   const persistedCollapsed = isGroupCollapsed(collapsedMap, objectType, id);
-  const collapsed = alwaysOpen ? false : persistedCollapsed;
 
   // Rare/unset fields ("+ N more"). Local — not persisted; expanding the group's
   // tail is a transient action.
   const [showMore, setShowMore] = useState(false);
+
+  // VIS-1021 reveal: does THIS group own the field being jumped to?
+  const ownsReveal = !!revealPath && fields.some(f => f.name === revealPath);
+  const collapsed = alwaysOpen || ownsReveal ? false : persistedCollapsed;
+
+  const revealRef = useRef(null);
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (!ownsReveal) return undefined;
+    // Ensure the tail is unfolded so a rare/unset target renders, then scroll.
+    setShowMore(true);
+    const el = revealRef.current;
+    if (el) {
+      // jsdom has no scrollIntoView — guard so the highlight still runs in tests.
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 1500);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [ownsReveal, revealPath]);
 
   const GroupIcon = GROUP_ICONS[icon] || PiSliders;
 
@@ -133,10 +160,18 @@ export function FieldGroup({
       {!collapsed && (
         <div className="flex flex-col gap-1.5 p-2">
           {visibleFields.map(field => {
+            const isRevealTarget = field.name === revealPath;
+            const rowProps = {
+              'data-field-path': field.name,
+              ref: isRevealTarget ? revealRef : undefined,
+              className: `rounded-md transition-shadow ${
+                isRevealTarget && flash ? 'ring-2 ring-primary-400 ring-offset-1' : ''
+              }`,
+            };
             const override = overrides[field.name];
             if (typeof override === 'function') {
               return (
-                <div key={field.name} data-testid={`field-override-${field.name}`}>
+                <div key={field.name} data-testid={`field-override-${field.name}`} {...rowProps}>
                   {override({
                     field,
                     value: getValueAtPath(value, field.name),
@@ -149,18 +184,19 @@ export function FieldGroup({
               );
             }
             return (
-              <PropertyRow
-                key={field.name}
-                path={field.name}
-                value={getValueAtPath(value, field.name)}
-                onChange={newValue => handleFieldChange(field.name, newValue)}
-                onRemove={field.required ? undefined : () => handleFieldRemove(field.name)}
-                schema={field.schema}
-                defs={defs}
-                description={field.schema?.description || ''}
-                disabled={disabled}
-                error={errors[field.name]}
-              />
+              <div key={field.name} {...rowProps}>
+                <PropertyRow
+                  path={field.name}
+                  value={getValueAtPath(value, field.name)}
+                  onChange={newValue => handleFieldChange(field.name, newValue)}
+                  onRemove={field.required ? undefined : () => handleFieldRemove(field.name)}
+                  schema={field.schema}
+                  defs={defs}
+                  description={field.schema?.description || ''}
+                  disabled={disabled}
+                  error={errors[field.name]}
+                />
+              </div>
             );
           })}
 
