@@ -68,6 +68,14 @@ describe('EditPanelBreadcrumb rendering', () => {
     expect(screen.getByTestId(`edit-breadcrumb-segment-${key}`)).toHaveTextContent('notes');
   });
 
+  test('renders a discoverable keyboard-nav hint (VIS-985/VIS-1000)', () => {
+    renderBreadcrumb({ outlineKey: 'row.0' });
+    const hint = screen.getByTestId('edit-breadcrumb-kbd-hint');
+    // The shortcut legend is discoverable via native title AND an SR-only span.
+    expect(hint).toHaveAttribute('title', expect.stringMatching(/reorder/i));
+    expect(hint).toHaveTextContent(/↑↓ move between siblings/);
+  });
+
   test('a11y position announced for screen readers', () => {
     renderBreadcrumb({ outlineKey: 'row.0.item.0' });
     expect(screen.getByTestId('edit-breadcrumb-position')).toHaveTextContent(

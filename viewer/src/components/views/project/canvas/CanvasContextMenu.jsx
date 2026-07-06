@@ -33,12 +33,12 @@ import {
  * fires a `canvas_action` telemetry event. There is NO depth limit (Q12): a leaf
  * can be wrapped arbitrarily deep with no warning.
  *
- * Mulberry (`#713b57`) is the active/selection colour; type colours (for the
+ * Mulberry (`primary`) is the active/selection colour; type colours (for the
  * future per-type menu chrome) come from objectTypeConfigs.js — none are
  * hand-rolled here.
  */
 
-const MULBERRY = '#713b57';
+const MULBERRY = 'var(--color-primary-500)';
 
 // Classify a composite key as item / row / chrome (mirrors the selection
 // overlay's kindForKey).
@@ -136,8 +136,8 @@ const MenuItem = ({ testid, label, hint, onClick, danger }) => (
     role="menuitem"
     data-testid={testid}
     onClick={onClick}
-    className="flex w-full items-center justify-between gap-6 rounded px-2.5 py-1.5 text-left text-[12.5px] text-gray-700 transition-colors hover:bg-[#f9f6f8] focus:bg-[#f9f6f8] focus:outline-none"
-    style={danger ? { color: '#b91c1c' } : undefined}
+    className="flex w-full items-center justify-between gap-6 rounded px-2.5 py-1.5 text-left text-[12.5px] text-gray-700 transition-colors hover:bg-primary-50 focus:bg-primary-50 focus:outline-none"
+    style={danger ? { color: 'var(--color-highlight-600)' } : undefined}
   >
     <span className="font-medium">{label}</span>
     {hint && <span className="text-[10.5px] text-gray-400">{hint}</span>}
@@ -294,7 +294,7 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
       ref={menuRef}
       role="menu"
       aria-label="Canvas item actions"
-      className="absolute z-50 min-w-[200px] rounded-lg border border-[#e5e0e3] bg-white p-1 shadow-lg"
+      className="absolute z-50 min-w-[200px] rounded-lg border border-primary-100 bg-white p-1 shadow-lg"
       style={{ top: menu.y, left: menu.x }}
     >
       <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
@@ -321,7 +321,7 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
             hint="↗"
             onClick={() => openInExplorer(explorerSubject)}
           />
-          <div className="my-1 h-px bg-[#f0ebed]" />
+          <div className="my-1 h-px bg-primary-50" />
         </>
       )}
 
@@ -364,7 +364,7 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
 
       {canUnwrap && (
         <>
-          <div className="my-1 h-px bg-[#f0ebed]" />
+          <div className="my-1 h-px bg-primary-50" />
           <MenuItem
             testid="canvas-ctx-unwrap"
             label="Unwrap container"

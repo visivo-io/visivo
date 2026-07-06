@@ -515,16 +515,16 @@ const DASH_COLORS = getTypeColors('dashboard');
 const CanvasRowDragPreview = ({ name }) => (
   <div
     data-testid="canvas-row-drag-preview"
-    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-[#713b57]"
+    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-primary"
   >
-    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-[#713b57]">
+    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-primary">
       <g fill="currentColor">
         <rect x="1" y="2" width="12" height="3" rx="1" />
         <rect x="1" y="9" width="12" height="3" rx="1" />
       </g>
     </svg>
     <span className="text-[13px] font-medium text-gray-900">{name}</span>
-    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
+    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-primary-100 px-1 text-[10px] font-bold uppercase tracking-wide text-primary-600">
       Row
     </span>
   </div>
@@ -537,9 +537,9 @@ const CanvasRowDragPreview = ({ name }) => (
 const CanvasLevelDragPreview = ({ name }) => (
   <div
     data-testid="level-drag-preview"
-    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-[#713b57]"
+    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-primary"
   >
-    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-[#713b57]">
+    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-primary">
       <g fill="currentColor">
         <rect x="1" y="2" width="12" height="2.5" rx="1" />
         <rect x="1" y="6" width="9" height="2.5" rx="1" />
@@ -547,7 +547,7 @@ const CanvasLevelDragPreview = ({ name }) => (
       </g>
     </svg>
     <span className="text-[13px] font-medium text-gray-900">{name}</span>
-    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
+    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-primary-100 px-1 text-[10px] font-bold uppercase tracking-wide text-primary-600">
       Level
     </span>
   </div>
@@ -561,9 +561,9 @@ const CanvasLevelDragPreview = ({ name }) => (
 const PivotFieldDragPreview = ({ name }) => (
   <div
     data-testid="pivot-field-drag-preview"
-    className="pointer-events-none inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-900 shadow-lg ring-1 ring-[#713b57]"
+    className="pointer-events-none inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-900 shadow-lg ring-1 ring-primary"
   >
-    <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" className="text-[#713b57]">
+    <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" className="text-primary">
       <g fill="currentColor">
         <rect x="1" y="2" width="12" height="3" rx="1" />
         <rect x="1" y="9" width="12" height="3" rx="1" />

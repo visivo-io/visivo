@@ -112,15 +112,15 @@ const Node = ({
           }
         }}
         className={[
-          'group/node relative flex h-7 cursor-pointer items-center gap-1.5 pr-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#713b57]/30',
-          selected ? 'bg-[#e2d7dd]/55 text-[#5a2f45]' : 'hover:bg-gray-50',
+          'group/node relative flex h-7 cursor-pointer items-center gap-1.5 pr-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30',
+          selected ? 'bg-primary-100/55 text-primary-600' : 'hover:bg-gray-50',
         ].join(' ')}
         style={{ paddingLeft: indent }}
       >
         {selected && (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-[#713b57]"
+            className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-primary"
           />
         )}
         {hasChildren ? (
@@ -146,7 +146,7 @@ const Node = ({
         <Icon
           aria-hidden="true"
           style={{ fontSize: 14 }}
-          className={`shrink-0 ${selected ? 'text-[#5a2f45]' : iconClassName || 'text-gray-500'}`}
+          className={`shrink-0 ${selected ? 'text-primary-600' : iconClassName || 'text-gray-500'}`}
         />
         <span
           className={`min-w-0 flex-1 truncate text-[12.5px] ${selected ? 'font-semibold' : ''}`}
@@ -370,7 +370,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
             onChange={e => setQuery(e.target.value)}
             placeholder="Search tables & columns"
             data-testid="source-outline-search"
-            className="h-7 w-full rounded-md border border-gray-200 bg-white pl-7 pr-2 text-[12px] text-gray-800 outline-none transition-colors placeholder:text-gray-400 focus:border-[#713b57]/40 focus:ring-2 focus:ring-[#713b57]/15"
+            className="h-7 w-full rounded-md border border-gray-200 bg-white pl-7 pr-2 text-[12px] text-gray-800 outline-none transition-colors placeholder:text-gray-400 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
           />
         </div>
       </div>
@@ -396,7 +396,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
             type="button"
             onClick={reload}
             data-testid="source-outline-retry"
-            className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-[#713b57] px-2.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45]"
+            className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
           >
             <PiArrowsClockwise aria-hidden="true" className="h-3.5 w-3.5" />
             Retry
@@ -418,7 +418,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
             onClick={generateSchema}
             disabled={!!generating}
             data-testid="source-outline-generate"
-            className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-[#713b57] px-2.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {generating ? (
               <PiSpinnerGap aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />

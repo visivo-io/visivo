@@ -44,13 +44,13 @@ const CONFIG = {
   error: {
     label: 'Save failed',
     Icon: PiWarningCircle,
-    className: 'text-[#d25946]',
+    className: 'text-highlight',
     spin: false,
   },
   invalid: {
     label: 'Invalid — not saved',
     Icon: PiWarningCircle,
-    className: 'text-[#d25946]',
+    className: 'text-highlight',
     spin: false,
   },
 };

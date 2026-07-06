@@ -63,13 +63,13 @@ const DragHandle = ({ side = 'left', testId = 'workspace-drag-handle' }) => {
   const base =
     'group relative h-full w-1 shrink-0 cursor-col-resize select-none';
   const tone = active
-    ? 'bg-[#713b57]/30'
-    : 'bg-transparent hover:bg-[#713b57]/15';
+    ? 'bg-primary/30'
+    : 'bg-transparent hover:bg-primary/15';
   const lineBase =
     'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2';
   const lineTone = active
-    ? 'bg-[#713b57]'
-    : 'bg-gray-200 group-hover:bg-[#713b57]';
+    ? 'bg-primary'
+    : 'bg-gray-200 group-hover:bg-primary';
 
   return (
     <div
@@ -83,7 +83,7 @@ const DragHandle = ({ side = 'left', testId = 'workspace-drag-handle' }) => {
       {active && widthLabel && (
         <div
           className={[
-            'pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#191d33] px-2 py-1 text-[11px] font-medium text-white shadow-md',
+            'pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 whitespace-nowrap rounded-md bg-dark px-2 py-1 text-[11px] font-medium text-white shadow-md',
             side === 'left' ? 'left-3' : 'right-3',
           ].join(' ')}
         >

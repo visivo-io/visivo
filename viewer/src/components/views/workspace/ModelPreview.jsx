@@ -214,7 +214,7 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
           data-testid="model-preview-run"
           onClick={handleRun}
           disabled={isRunning || !sourceName || !sql}
-          className="inline-flex h-7 items-center gap-1 rounded-md bg-[#713b57] px-3 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-7 items-center gap-1 rounded-md bg-primary px-3 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isRunning ? (
             <CircularProgress size={12} style={{ color: 'white' }} />
@@ -258,7 +258,7 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
             <span className="text-sm text-gray-600">{progressMessage || 'Running query…'}</span>
             <div className="h-1.5 w-48 overflow-hidden rounded-full bg-gray-200">
               <div
-                className="h-full bg-[#713b57] transition-all duration-300"
+                className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${(progress || 0) * 100}%` }}
               />
             </div>

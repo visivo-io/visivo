@@ -80,8 +80,8 @@ const LibrarySearch = ({
       className={[
         'flex h-7 items-center gap-1.5 rounded-md px-2 ring-1 transition-colors',
         populated
-          ? 'bg-white ring-[#713b57] shadow-[0_0_0_3px_#e2d7dd]'
-          : 'bg-gray-100 ring-transparent focus-within:bg-white focus-within:ring-[#c6b0bb]',
+          ? 'bg-white ring-primary shadow-[0_0_0_3px_var(--color-primary-100)]'
+          : 'bg-gray-100 ring-transparent focus-within:bg-white focus-within:ring-primary-200',
       ].join(' ')}
       data-testid={`library-search-${sectionKey}-container`}
     >

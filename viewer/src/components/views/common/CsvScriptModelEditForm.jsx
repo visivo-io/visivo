@@ -121,7 +121,7 @@ const CsvScriptModelEditForm = ({ model, isCreate, onSave, onClose }) => {
             type="checkbox"
             checked={allowEmpty}
             onChange={e => setAllowEmpty(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
           />
           <label htmlFor="csv-model-allow-empty" className="text-sm font-medium text-gray-700">
             Allow Empty Output
@@ -152,7 +152,7 @@ const CsvScriptModelEditForm = ({ model, isCreate, onSave, onClose }) => {
                   value={arg}
                   onChange={e => updateArg(index, e.target.value)}
                   placeholder={index === 0 ? 'command (e.g. cat, python)' : 'argument'}
-                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
                 {args.length > 1 && (
                   <button

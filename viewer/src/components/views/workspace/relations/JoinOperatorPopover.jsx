@@ -36,7 +36,7 @@ const JOIN_TYPES = [
   { value: 'full', label: 'Full' },
 ];
 
-const MULBERRY = '#713b57';
+const MULBERRY = 'var(--color-primary-500)';
 
 /** Build the canonical relation name for a model pair. */
 const defaultRelationName = (modelA, modelB) =>
@@ -106,7 +106,7 @@ const EndpointPicker = ({ side, models, columnsByModel = {}, value, onChange, te
               <button
                 type="button"
                 data-testid={`${testId}-model-option-${m.name}`}
-                className="flex w-full items-center px-2 py-1 text-left hover:bg-[#f9f6f8]"
+                className="flex w-full items-center px-2 py-1 text-left hover:bg-primary-50"
                 onClick={() => {
                   setQuery('');
                   onChange({ model: m.name, column: '' });
@@ -235,7 +235,7 @@ const JoinOperatorPopover = ({
       role="dialog"
       aria-label="Author relation"
       data-testid="join-operator-popover"
-      className="fixed z-[90] w-[320px] rounded-lg border border-[#e5e0e3] bg-white p-3 shadow-xl"
+      className="fixed z-[90] w-[320px] rounded-lg border border-primary-100 bg-white p-3 shadow-xl"
       style={{ top: y, left: x }}
       onPointerDown={e => e.stopPropagation()}
     >

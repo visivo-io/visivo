@@ -137,7 +137,7 @@ const CanvasKeyboardLayer = ({ rootRef, dashboardName }) => {
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onFocus={onFocus}
-        className="pointer-events-none absolute inset-0 z-[5] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#713b57]/50"
+        className="pointer-events-none absolute inset-0 z-[5] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50"
       />
       {/* Polite live region for selection / reorder announcements. */}
       <div

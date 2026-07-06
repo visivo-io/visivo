@@ -32,10 +32,10 @@ import { parseRefValue } from '../../../../utils/refString';
  * pointer-events-none; only the handles + drop zones opt back into pointer
  * events so Dashboard's own interactivity (Plotly hover, links) is preserved.
  *
- * Mulberry (`#713b57`) is the active/insertion colour (NOT a type colour).
+ * Mulberry (`primary`) is the active/insertion colour (NOT a type colour).
  */
 
-const MULBERRY = '#713b57';
+const MULBERRY = 'var(--color-primary-500)';
 
 // Measure a node's box relative to the overlay root (so we can absolutely
 // position handles/zones inside the same positioned ancestor).
@@ -103,7 +103,7 @@ const CanvasFrameGrab = ({ id, box, kind, dragData, label, visible }) => {
   // grab + that it's draggable); it deepens on hover/drag.
   const stripBase = {
     position: 'absolute',
-    background: isDragging ? 'rgba(113,59,87,0.16)' : 'rgba(113,59,87,0.07)',
+    background: isDragging ? 'color-mix(in srgb, var(--color-primary-500) 16%, transparent)' : 'color-mix(in srgb, var(--color-primary-500) 7%, transparent)',
     cursor: grabCursor,
     touchAction: 'none',
   };
@@ -183,7 +183,7 @@ const CanvasRowGutter = ({ id, box, dragData, label, visible }) => {
       data-canvas-path={id}
       aria-label={label}
       title={label}
-      className="pointer-events-auto absolute z-20 flex items-center justify-center rounded-md border border-[#c6b0bb] bg-white/95 text-[#713b57] shadow-sm transition-opacity hover:bg-[#f9f6f8]"
+      className="pointer-events-auto absolute z-20 flex items-center justify-center rounded-md border border-primary-200 bg-white/95 text-primary shadow-sm transition-opacity hover:bg-primary-50"
       style={{
         top: box.top,
         left,
@@ -252,7 +252,7 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
               top: barTop,
               height: 3,
               background: MULBERRY,
-              boxShadow: '0 0 0 2px rgba(113,59,87,0.18)',
+              boxShadow: '0 0 0 2px color-mix(in srgb, var(--color-primary-500) 18%, transparent)',
             }}
           />
         )}
@@ -277,7 +277,7 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 rounded-md"
             style={{
-              background: 'rgba(113,59,87,0.08)',
+              background: 'color-mix(in srgb, var(--color-primary-500) 8%, transparent)',
               boxShadow: `inset 0 0 0 2px ${MULBERRY}, inset 0 0 0 4px rgba(255,255,255,0.6)`,
             }}
           />
@@ -303,7 +303,7 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
             bottom: 0,
             width: 3,
             background: MULBERRY,
-            boxShadow: '0 0 0 2px rgba(113,59,87,0.18)',
+            boxShadow: '0 0 0 2px color-mix(in srgb, var(--color-primary-500) 18%, transparent)',
           }}
         />
       )}

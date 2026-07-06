@@ -31,7 +31,7 @@ const TypeBtn = ({ typeKey, active, onClick }) => {
       className={[
         'inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors',
         active
-          ? 'bg-[#e2d7dd] text-[#5a2f45]'
+          ? 'bg-primary-100 text-primary-600'
           : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
       ].join(' ')}
     >

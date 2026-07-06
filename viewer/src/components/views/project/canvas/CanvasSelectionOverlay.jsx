@@ -32,7 +32,7 @@ import { emitWorkspaceEvent } from '../../workspace/telemetry';
  *        - Selected item/row → persistent mulberry-500 ring (with offset).
  *        - Dashboard-chrome selected → subtle inset outer border on the canvas.
  *
- * Mulberry / primary (`#713b57`) is the SELECTION colour only — type colours
+ * Mulberry / primary (`primary`) is the SELECTION colour only — type colours
  * (rainbow) come from objectTypeConfigs.js elsewhere and are never used here.
  *
  * Right-rail mount + the full hover toolbar are out of scope (G-1 / D-4): D-2
@@ -255,7 +255,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       {chromeSelected && (
         <div
           data-testid="canvas-overlay-chrome-selected"
-          className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-inset ring-[#713b57]/60"
+          className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-inset ring-primary/60"
         />
       )}
 
@@ -279,8 +279,8 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
               // rounded-lg matches the item card's own corner radius so the
               // outline hugs the card instead of cutting a tighter arc inside it
               // (the "double-line" effect, VIS-990 polish).
-              'pointer-events-none absolute rounded-lg ring-1 ring-[#c6b0bb]',
-              hoverBox.kind === 'row' ? 'bg-[#713b57]/[0.02]' : '',
+              'pointer-events-none absolute rounded-lg ring-1 ring-primary-200',
+              hoverBox.kind === 'row' ? 'bg-primary/[0.02]' : '',
             ].join(' ')}
             style={{
               top: hoverBox.rect.top,
@@ -299,7 +299,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
           // rounded-lg (matches the card radius) + NO ring-offset: the offset
           // gap was what produced the ugly double line against the card's own
           // border (VIS-990 polish). The 2px mulberry ring now hugs the card edge.
-          className="pointer-events-none absolute rounded-lg ring-2 ring-[#713b57] bg-[#713b57]/[0.03]"
+          className="pointer-events-none absolute rounded-lg ring-2 ring-primary bg-primary/[0.03]"
           style={{
             top: selectedBox.rect.top,
             left: selectedBox.rect.left,

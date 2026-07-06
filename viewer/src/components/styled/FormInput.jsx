@@ -30,7 +30,7 @@ const FormInput = forwardRef(
       focus:outline-none focus:ring-2 focus:border-primary-500
       peer placeholder-transparent
       ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}
-      ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
+      ${error ? 'border-highlight-500 focus:ring-highlight-500' : 'border-gray-300 focus:ring-primary-500'}
     `;
 
     const labelClasses = `
@@ -39,7 +39,7 @@ const FormInput = forwardRef(
       peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
       peer-placeholder-shown:top-1/2
       peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-      ${error ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
+      ${error ? 'text-highlight-500' : 'text-gray-500 peer-focus:text-primary-500'}
     `;
 
     return (
@@ -57,9 +57,9 @@ const FormInput = forwardRef(
         />
         <label htmlFor={id} className={labelClasses}>
           {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
+          {required && <span className="text-highlight-500 ml-0.5">*</span>}
         </label>
-        {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+        {error && <p className="mt-1 text-xs text-highlight-500">{error}</p>}
         {helperText && !error && <p className="mt-1 text-xs text-gray-500">{helperText}</p>}
       </div>
     );

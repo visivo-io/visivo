@@ -104,15 +104,15 @@ const Node = ({
           }
         }}
         className={[
-          'group/node relative flex h-7 cursor-pointer items-center gap-1.5 pr-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#713b57]/30',
-          selected ? 'bg-[#e2d7dd]/55 text-[#5a2f45]' : 'hover:bg-gray-50',
+          'group/node relative flex h-7 cursor-pointer items-center gap-1.5 pr-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30',
+          selected ? 'bg-primary-100/55 text-primary-600' : 'hover:bg-gray-50',
         ].join(' ')}
         style={{ paddingLeft: indent }}
       >
         {selected && (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-[#713b57]"
+            className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-primary"
           />
         )}
         {/* Disclosure caret — parents toggle collapse; items get a spacer to align icons. */}
@@ -139,7 +139,7 @@ const Node = ({
         <Icon
           aria-hidden="true"
           style={{ fontSize: 14 }}
-          className={`shrink-0 ${selected ? 'text-[#5a2f45]' : 'text-gray-500'}`}
+          className={`shrink-0 ${selected ? 'text-primary-600' : 'text-gray-500'}`}
         />
         <span
           className={`min-w-0 flex-1 truncate text-[12.5px] ${selected ? 'font-semibold' : ''}`}
@@ -173,13 +173,13 @@ const EmptyState = ({ onAddRow }) => (
     <p className="mt-2 text-[13px] font-medium text-gray-900">No rows yet.</p>
     <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
       Drag from Library or click{' '}
-      <span className="font-medium text-[#713b57]">+ Add row</span>.
+      <span className="font-medium text-primary">+ Add row</span>.
     </p>
     <button
       type="button"
       onClick={onAddRow}
       data-testid="outline-tree-add-row-empty"
-      className="mt-3 inline-flex h-7 items-center gap-1 rounded-md bg-[#713b57] px-2 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45]"
+      className="mt-3 inline-flex h-7 items-center gap-1 rounded-md bg-primary px-2 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
     >
       <PiPlus aria-hidden="true" className="h-3.5 w-3.5" /> Add row
     </button>
@@ -355,7 +355,7 @@ const OutlineTreePanel = () => {
             type="button"
             onClick={handleAddRow}
             data-testid="outline-tree-add-row"
-            className="mt-2 ml-3 inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-[12px] font-medium text-[#713b57] transition-colors hover:bg-[#e2d7dd]/40"
+            className="mt-2 ml-3 inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary-100/40"
           >
             <PiPlus aria-hidden="true" className="h-3.5 w-3.5" /> Add row
           </button>
