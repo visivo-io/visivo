@@ -56,6 +56,4 @@ def register_run_views(app, flask_app, output_dir):
         run = flask_app.run_manager.get(run_id)
         if run is None:
             return jsonify({"error": "Run not found"}), 404
-        return jsonify(
-            {"state": run.state.value, "logs": run.logs, "error_json": run.error_json}
-        )
+        return jsonify({"state": run.state.value, "logs": run.logs, "error_json": run.error_json})

@@ -50,9 +50,7 @@ def _fire(flask_app):
         return
     dag_filter = ",".join(f"+{name}+" for name in names)
     run = flask_app.run_manager.create(dag_filter)
-    thread = threading.Thread(
-        target=_execute, args=(flask_app, run.id, dag_filter), daemon=True
-    )
+    thread = threading.Thread(target=_execute, args=(flask_app, run.id, dag_filter), daemon=True)
     thread.start()
 
 
@@ -82,9 +80,7 @@ def _execute(flask_app, run_id, dag_filter):
 
         logs = _format_logs(runner)
         if runner.failed_job_results:
-            run_manager.set_state(
-                run_id, RunState.FAILED, logs=logs, error_json={"phase": "run"}
-            )
+            run_manager.set_state(run_id, RunState.FAILED, logs=logs, error_json={"phase": "run"})
         else:
             run_manager.set_state(run_id, RunState.SUCCEEDED, logs=logs)
     except Exception as exc:  # compile/validation/etc. — surface as a failed run
