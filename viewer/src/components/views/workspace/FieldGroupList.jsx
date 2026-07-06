@@ -19,6 +19,8 @@ import { FieldGroup } from './FieldGroup';
  *   message map (AJV) threaded to each FieldGroup/PropertyRow.
  * @param {Record<string,function>} props.overrides - optional field-name →
  *   render-function map threaded to each FieldGroup (VIS-996; see FieldGroup).
+ * @param {string} props.revealPath - optional field dot-path to jump to
+ *   (VIS-1021 Field Finder); threaded to each FieldGroup.
  */
 export function FieldGroupList({
   groupSpec = [],
@@ -28,6 +30,7 @@ export function FieldGroupList({
   disabled = false,
   errors = {},
   overrides = {},
+  revealPath = null,
 }) {
   if (!Array.isArray(groupSpec) || groupSpec.length === 0) {
     return (
@@ -49,6 +52,7 @@ export function FieldGroupList({
           disabled={disabled}
           errors={errors}
           overrides={overrides}
+          revealPath={revealPath}
         />
       ))}
     </div>

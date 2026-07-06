@@ -8,6 +8,10 @@ import { loadCatalog, loadTraceGroups } from '../../../schemas/traceCatalogLoade
 import { buildTraceGroupSpec } from './buildTraceGroupSpec';
 import { preserveTraceProps } from './preserveTraceProps';
 import { validateProps } from '../../../schemas/plotlyValidator';
+import FieldFinderPalette from './fieldFinder/FieldFinderPalette';
+import { buildFieldIndex } from './fieldFinder/fieldFinderIndex';
+import { setValueAtPath } from './SchemaEditor/utils/schemaUtils';
+import { isMacPlatform, isEditableTarget } from '../workspace/useWorkspaceTabShortcuts';
 
 /**
  * TracePropsEditor (VIS-1020)
@@ -70,6 +74,11 @@ const TracePropsEditor = ({
   // AJV validation: dot-path → message map + overall validity.
   const [errorMap, setErrorMap] = useState({});
   const [isValid, setIsValid] = useState(true);
+
+  // VIS-1021 Field Finder: palette open state + the path currently being
+  // revealed (jumped-to) in the grouped form after a compound-result select.
+  const [fieldFinderOpen, setFieldFinderOpen] = useState(false);
+  const [revealPath, setRevealPath] = useState(null);
 
   // Load schema + catalog + groups whenever the type changes.
   useEffect(() => {
@@ -205,8 +214,55 @@ const TracePropsEditor = ({
   );
 
   const handleOpenFieldFinder = useCallback(() => {
+    // Let a host override the opener if it wants to own the palette; otherwise
+    // open the built-in one.
     if (onOpenFieldFinder) onOpenFieldFinder();
+    else setFieldFinderOpen(true);
   }, [onOpenFieldFinder]);
+
+  // ⌘K / Ctrl+K opens the Field Finder while this editor is mounted (skipping
+  // keystrokes typed into an input/textarea so it never hijacks field entry).
+  useEffect(() => {
+    if (onOpenFieldFinder) return undefined; // host owns the shortcut too
+    const mac = isMacPlatform();
+    const onKey = e => {
+      const mod = mac ? e.metaKey : e.ctrlKey;
+      if (mod && (e.key === 'k' || e.key === 'K') && !isEditableTarget(e.target)) {
+        e.preventDefault();
+        setFieldFinderOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onOpenFieldFinder]);
+
+  // The per-type searchable index for the palette. Built LAZILY — only once the
+  // palette is actually opened — so the common editor render path never pays the
+  // schema-flatten cost (and the index module caches per type across opens).
+  const fieldIndex = useMemo(
+    () => (fieldFinderOpen && schema ? buildFieldIndex(type, schema, catalogEntries) : []),
+    [fieldFinderOpen, schema, type, catalogEntries]
+  );
+
+  // Palette inline scalar edit → write the prop straight into the controlled
+  // props (re-attaching `type`).
+  const handleFieldFinderEdit = useCallback(
+    (path, nextValue) => {
+      if (!onChange) return;
+      const next = setValueAtPath(traceProps || {}, path, nextValue);
+      onChange({ ...next, type });
+    },
+    [onChange, traceProps, type]
+  );
+
+  // Palette compound-result select → jump-and-focus that path in the grouped
+  // form. Clear the reveal marker after the flash so re-selecting the same path
+  // re-triggers the scroll/highlight.
+  const handleReveal = useCallback(path => {
+    setRevealPath(path);
+    const t = setTimeout(() => setRevealPath(null), 1600);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div className="flex flex-col gap-3" data-testid="trace-props-editor">
@@ -265,6 +321,19 @@ const TracePropsEditor = ({
           defs={schema?.$defs || {}}
           disabled={disabled}
           errors={errorMap}
+          revealPath={revealPath}
+        />
+      )}
+
+      {/* VIS-1021 Field Finder palette (built-in unless a host overrode the opener) */}
+      {fieldFinderOpen && !onOpenFieldFinder && (
+        <FieldFinderPalette
+          type={type}
+          entries={fieldIndex}
+          value={traceProps || {}}
+          onEditScalar={handleFieldFinderEdit}
+          onRevealCompound={handleReveal}
+          onClose={() => setFieldFinderOpen(false)}
         />
       )}
     </div>

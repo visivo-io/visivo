@@ -82,6 +82,24 @@ jest.mock('../../../schemas/schemas', () => ({
   ],
 }));
 
+// Field Finder (VIS-1021) is unit-tested separately; here we only assert the
+// editor OPENS it (via ⌘K or the Find-fields button), so stub the palette +
+// the index build.
+jest.mock('./fieldFinder/FieldFinderPalette', () => ({
+  __esModule: true,
+  default: ({ onClose }) => (
+    <div data-testid="field-finder-palette-stub">
+      <button type="button" onClick={onClose}>
+        close-palette
+      </button>
+    </div>
+  ),
+}));
+jest.mock('./fieldFinder/fieldFinderIndex', () => ({
+  __esModule: true,
+  buildFieldIndex: jest.fn(() => []),
+}));
+
 jest.mock('../../../schemas/traceCatalogLoader', () => ({
   __esModule: true,
   loadCatalog: jest.fn(async type => {
@@ -162,6 +180,41 @@ describe('TracePropsEditor', () => {
     );
     fireEvent.click(await screen.findByTestId('trace-props-field-finder'));
     expect(onOpenFieldFinder).toHaveBeenCalledTimes(1);
+    // A host that owns the opener also owns the palette — the built-in one stays closed.
+    expect(screen.queryByTestId('field-finder-palette-stub')).not.toBeInTheDocument();
+  });
+
+  test('with no host opener, the Find-fields button opens the built-in palette', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    expect(screen.queryByTestId('field-finder-palette-stub')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+    expect(screen.getByTestId('field-finder-palette-stub')).toBeInTheDocument();
+    // And it closes on the palette's onClose.
+    fireEvent.click(screen.getByRole('button', { name: 'close-palette' }));
+    expect(screen.queryByTestId('field-finder-palette-stub')).not.toBeInTheDocument();
+  });
+
+  test('⌘K / Ctrl+K opens the built-in palette (skipped while a host owns the opener)', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    // Set both modifiers so the assertion is platform-agnostic (the handler
+    // reads metaKey on macOS, ctrlKey elsewhere); dispatch on body so it
+    // bubbles to the window-level listener.
+    fireEvent.keyDown(document.body, { key: 'k', metaKey: true, ctrlKey: true });
+    expect(screen.getByTestId('field-finder-palette-stub')).toBeInTheDocument();
+  });
+
+  test('⌘K does NOT open the palette while typing in an input', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    // Simulate the keydown target being an editable element.
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    fireEvent.keyDown(input, { key: 'k', metaKey: true });
+    expect(screen.queryByTestId('field-finder-palette-stub')).not.toBeInTheDocument();
+    document.body.removeChild(input);
   });
 
   test('changing type to "bar" calls onChange with preserved x/y and type:"bar"', async () => {
