@@ -257,12 +257,21 @@ const TracePropsEditor = ({
 
   // Palette compound-result select → jump-and-focus that path in the grouped
   // form. Clear the reveal marker after the flash so re-selecting the same path
-  // re-triggers the scroll/highlight.
+  // re-triggers the scroll/highlight. The timer is held in a ref and cleared on
+  // unmount / re-reveal — a useCallback's return value is discarded, so an
+  // inline cleanup would leak the timer (setState after unmount → test flake).
+  const revealTimerRef = useRef(null);
   const handleReveal = useCallback(path => {
     setRevealPath(path);
-    const t = setTimeout(() => setRevealPath(null), 1600);
-    return () => clearTimeout(t);
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    revealTimerRef.current = setTimeout(() => setRevealPath(null), 1600);
   }, []);
+  useEffect(
+    () => () => {
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    },
+    []
+  );
 
   return (
     <div className="flex flex-col gap-3" data-testid="trace-props-editor">
