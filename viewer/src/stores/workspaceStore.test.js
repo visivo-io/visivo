@@ -616,6 +616,121 @@ describe('workspace store slice', () => {
       expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2');
       expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'chart', name: 'x' });
     });
+
+    test('revealEdit switches the right rail to Edit and un-collapses it', () => {
+      act(() => {
+        useStore.setState({ workspaceRightTab: 'outline', workspaceRightCollapsed: true });
+        useStore.getState().setWorkspaceSelection(undefined, 'row.0.item.1', { revealEdit: true });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceOutlineSelectedKey).toBe('row.0.item.1');
+      expect(s.workspaceRightTab).toBe('edit');
+      expect(s.workspaceRightCollapsed).toBe(false);
+    });
+
+    test('without revealEdit the rail tab and collapse state are untouched', () => {
+      act(() => {
+        useStore.setState({ workspaceRightTab: 'outline', workspaceRightCollapsed: true });
+        useStore.getState().setWorkspaceSelection(undefined, 'row.1');
+      });
+      const s = useStore.getState();
+      expect(s.workspaceOutlineSelectedKey).toBe('row.1');
+      expect(s.workspaceRightTab).toBe('outline');
+      expect(s.workspaceRightCollapsed).toBe(true);
+    });
+
+    test('revealEdit alone (no selection args) still reveals the Edit panel', () => {
+      act(() => {
+        useStore.setState({
+          workspaceRightTab: 'outline',
+          workspaceRightCollapsed: true,
+          workspaceOutlineSelectedKey: 'row.3',
+        });
+        useStore.getState().setWorkspaceSelection(undefined, undefined, { revealEdit: true });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceRightTab).toBe('edit');
+      expect(s.workspaceRightCollapsed).toBe(false);
+      expect(s.workspaceOutlineSelectedKey).toBe('row.3');
+    });
+  });
+
+  // Outline-key reset on active-object change (VIS-994 / former VIS-978) -------
+  // A `row.N.item.M` key is scoped to one dashboard's structure; carrying it
+  // onto a different object produces "Row not found" placeholders. Every tab
+  // action that changes the active object resets the key to 'dashboard'.
+
+  describe('outline-key reset on tab transitions', () => {
+    const openDashA = () =>
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-a' });
+    const selectNestedNode = () =>
+      useStore.setState({ workspaceOutlineSelectedKey: 'row.3.item.2' });
+
+    test('openWorkspaceTab to a DIFFERENT object resets the outline key', () => {
+      act(() => {
+        openDashA();
+        selectNestedNode();
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-b' });
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('openWorkspaceTab re-focusing the SAME object keeps the outline key', () => {
+      act(() => {
+        openDashA();
+        selectNestedNode();
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-a' });
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.3.item.2');
+    });
+
+    test('switchWorkspaceTab to a different tab resets; to the same tab keeps', () => {
+      act(() => {
+        openDashA();
+        useStore.getState().openWorkspaceTabBackground({ type: 'dashboard', name: 'dash-b' });
+        selectNestedNode();
+        useStore.getState().switchWorkspaceTab('dashboard:dash-a'); // same object
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.3.item.2');
+      act(() => {
+        useStore.getState().switchWorkspaceTab('dashboard:dash-b'); // different object
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('closeWorkspaceTab that shifts focus to another object resets the key', () => {
+      act(() => {
+        openDashA();
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-b' });
+        selectNestedNode();
+        useStore.getState().closeWorkspaceTab('dashboard:dash-b'); // focus falls back to dash-a
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('closeWorkspaceTab of a background tab keeps the active selection', () => {
+      act(() => {
+        openDashA();
+        useStore.getState().openWorkspaceTabBackground({ type: 'dashboard', name: 'dash-b' });
+        selectNestedNode();
+        useStore.getState().closeWorkspaceTab('dashboard:dash-b'); // active tab unchanged
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.3.item.2');
+    });
+
+    test('hydrateWorkspaceTabs onto a different active object resets the key', () => {
+      act(() => {
+        openDashA();
+        selectNestedNode();
+        useStore
+          .getState()
+          .hydrateWorkspaceTabs(
+            [{ id: 'dashboard:dash-b', type: 'dashboard', name: 'dash-b' }],
+            'dashboard:dash-b'
+          );
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
   });
 
   // Source outline (VIS-1004) — disjoint selection key + per-source expand -----

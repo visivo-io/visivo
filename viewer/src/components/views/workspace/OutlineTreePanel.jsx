@@ -15,7 +15,7 @@ import { parseRefValue } from '../../../utils/refString';
  * mutates the same `dashboards` slice the tree updates live for free.
  *
  * Behaviour:
- *   - Click any node → `setWorkspaceOutlineSelectedKey` updates the workspace
+ *   - Click any node → `setWorkspaceSelection` (VIS-994) updates the workspace
  *     selection (the canvas highlights the same key once Track D ships).
  *   - "+ Add row" (mulberry) appends an empty row via `addDashboardRow`.
  *   - Empty / no-dashboard states render their own messaging.
@@ -204,7 +204,13 @@ const OutlineTreePanel = () => {
   const { dashboardName } = useWorkspaceScope();
   const dashboards = useStore(s => s.dashboards);
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
-  const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
+  // Selection routed through the unified action (VIS-994). No revealEdit:
+  // clicking outline nodes is browsing — the user is already in the rail.
+  const setSelectedKey = useCallback(
+    key => setWorkspaceSelection(undefined, key),
+    [setWorkspaceSelection]
+  );
   const addDashboardRow = useStore(s => s.addDashboardRow);
 
   // Collapse/expand state for parent nodes (dashboard / row / container), keyed

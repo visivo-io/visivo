@@ -147,7 +147,13 @@ const MenuItem = ({ testid, label, hint, onClick, danger }) => (
 const CanvasContextMenu = ({ rootRef, dashboardName }) => {
   const navigate = useNavigate();
   const dashboards = useStore(s => s.dashboards);
-  const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
+  // Selection routed through the unified action (VIS-994). No revealEdit:
+  // a right-click's intent is the context menu, not the Edit panel.
+  const setSelectedKey = useCallback(
+    key => setWorkspaceSelection(undefined, key),
+    [setWorkspaceSelection]
+  );
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
   const commitCanvasConfig = useWorkspaceCommit();

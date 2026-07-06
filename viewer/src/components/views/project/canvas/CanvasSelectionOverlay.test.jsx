@@ -143,6 +143,21 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.0.item.1');
   });
 
+  test('clicking an item REVEALS the right-rail Edit panel (VIS-994 / former VIS-977)', () => {
+    render(<Harness />);
+    measureFakeDom();
+    // User is browsing the Outline tab with the rail collapsed — the exact
+    // state where the old raw key-write left the editor invisible.
+    act(() => {
+      useStore.setState({ workspaceRightTab: 'outline', workspaceRightCollapsed: true });
+    });
+    dispatch(fireEvent.click, screen.getByTestId('slot-0-1'));
+    const s = useStore.getState();
+    expect(s.workspaceOutlineSelectedKey).toBe('row.0.item.1');
+    expect(s.workspaceRightTab).toBe('edit');
+    expect(s.workspaceRightCollapsed).toBe(false);
+  });
+
   test('clicking a row (not an item) writes row.N', () => {
     render(<Harness />);
     measureFakeDom();
