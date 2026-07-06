@@ -57,8 +57,22 @@ const GROUP_ICONS = {
  * @param {boolean} props.disabled
  * @param {Record<string,string>} props.errors - optional dot-path → inline error
  *   message map (AJV); surfaced next to the offending PropertyRow.
+ * @param {Record<string,function>} props.overrides - optional field-name →
+ *   render-function map (VIS-996). When a field has an override, it renders
+ *   INSTEAD of the generic PropertyRow — same slot, same grouping — so a host
+ *   can swap in a richer widget (e.g. RefTextArea for SQL expressions) without
+ *   forking the group layout. The render fn receives
+ *   `{ field, value, onChange, onRemove, disabled, error }`.
  */
-export function FieldGroup({ group, value = {}, onChange, defs = {}, disabled = false, errors = {} }) {
+export function FieldGroup({
+  group,
+  value = {},
+  onChange,
+  defs = {},
+  disabled = false,
+  errors = {},
+  overrides = {},
+}) {
   const { id, label, icon, objectType, alwaysOpen, fields = [] } = group || {};
 
   const collapsedMap = useFieldGroupCollapseStore(s => s.collapsed);
@@ -118,20 +132,37 @@ export function FieldGroup({ group, value = {}, onChange, defs = {}, disabled = 
 
       {!collapsed && (
         <div className="flex flex-col gap-1.5 p-2">
-          {visibleFields.map(field => (
-            <PropertyRow
-              key={field.name}
-              path={field.name}
-              value={getValueAtPath(value, field.name)}
-              onChange={newValue => handleFieldChange(field.name, newValue)}
-              onRemove={field.required ? undefined : () => handleFieldRemove(field.name)}
-              schema={field.schema}
-              defs={defs}
-              description={field.schema?.description || ''}
-              disabled={disabled}
-              error={errors[field.name]}
-            />
-          ))}
+          {visibleFields.map(field => {
+            const override = overrides[field.name];
+            if (typeof override === 'function') {
+              return (
+                <div key={field.name} data-testid={`field-override-${field.name}`}>
+                  {override({
+                    field,
+                    value: getValueAtPath(value, field.name),
+                    onChange: newValue => handleFieldChange(field.name, newValue),
+                    onRemove: field.required ? undefined : () => handleFieldRemove(field.name),
+                    disabled,
+                    error: errors[field.name],
+                  })}
+                </div>
+              );
+            }
+            return (
+              <PropertyRow
+                key={field.name}
+                path={field.name}
+                value={getValueAtPath(value, field.name)}
+                onChange={newValue => handleFieldChange(field.name, newValue)}
+                onRemove={field.required ? undefined : () => handleFieldRemove(field.name)}
+                schema={field.schema}
+                defs={defs}
+                description={field.schema?.description || ''}
+                disabled={disabled}
+                error={errors[field.name]}
+              />
+            );
+          })}
 
           {!showMore && rest.length > 0 && (
             <button

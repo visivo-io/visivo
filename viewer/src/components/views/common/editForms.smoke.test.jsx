@@ -4,11 +4,10 @@
 // `useStore()` destructure and the `useStore(s => s.x)` selector styles, returning
 // async action stubs and empty collections. The goal is to exercise each form's
 // create-mode render + effects (was ~1% covered), not its full interaction matrix
-// (RelationEditForm.test.jsx covers that depth for the representative form).
+// (SchemaLeafForm.test.jsx covers dimension/metric/relation at interaction depth;
+// this file smoke-covers the bespoke forms that have NOT yet migrated.)
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import DimensionEditForm from './DimensionEditForm';
-import MetricEditForm from './MetricEditForm';
 import MarkdownEditForm from './MarkdownEditForm';
 import ProjectDefaultsEditForm from './ProjectDefaultsEditForm';
 import CsvScriptModelEditForm from './CsvScriptModelEditForm';
@@ -73,8 +72,6 @@ jest.mock('../../sources/SourceTypeSelector', () => ({
 }));
 
 const FORMS = [
-  ['DimensionEditForm', DimensionEditForm],
-  ['MetricEditForm', MetricEditForm],
   ['MarkdownEditForm', MarkdownEditForm],
   ['ProjectDefaultsEditForm', ProjectDefaultsEditForm],
   ['CsvScriptModelEditForm', CsvScriptModelEditForm],

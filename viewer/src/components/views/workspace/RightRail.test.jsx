@@ -34,6 +34,14 @@ jest.mock('../../../api/sourceSchemaJobs', () => ({
   fetchSourceTables: jest.fn(() => Promise.resolve([])),
   fetchTableColumns: jest.fn(() => Promise.resolve([])),
 }));
+// VIS-996: dimension/metric/relation render through SchemaLeafForm, whose
+// FormShell async-loads the project schema. This test asserts the rail's TAB
+// SET per object type, not form internals — stub it so the async schema load
+// can't fire a post-assert setState (act warning).
+jest.mock('./SchemaLeafForm', () => ({
+  __esModule: true,
+  default: ({ type }) => <div data-testid={`${type}-edit-form-stub`} />,
+}));
 
 const resetStore = (overrides = {}) => {
   act(() => {

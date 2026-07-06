@@ -20,9 +20,9 @@ import TableEditForm from '../common/TableEditForm';
 import SourceEditForm from '../common/SourceEditForm';
 import InsightEditForm from '../common/InsightEditForm';
 import ModelEditForm from '../common/ModelEditForm';
-import DimensionEditForm from '../common/DimensionEditForm';
-import MetricEditForm from '../common/MetricEditForm';
-import RelationEditForm from '../common/RelationEditForm';
+import CsvScriptModelEditForm from '../common/CsvScriptModelEditForm';
+import LocalMergeModelEditForm from '../common/LocalMergeModelEditForm';
+import SchemaLeafForm from './SchemaLeafForm';
 import LevelEditForm from '../common/LevelEditForm';
 import DefaultsEditForm from '../common/DefaultsEditForm';
 import { getTypeByValue } from '../common/objectTypeConfigs';
@@ -62,12 +62,18 @@ import { emitWorkspaceEvent } from './telemetry';
  * Every form is fronted by a <SelectionChip> header (rainbow type colour +
  * name) and an inline auto-save indicator. There are NO Save buttons for the
  * dashboard-structure forms — edits flow through `saveDashboard` with a ~500ms
- * debounce (see useDebouncedSave). The reused leaf/Library-row forms keep their
- * own save affordances (out of scope to rebuild).
+ * debounce (see useDebouncedSave).
  *
- * SELECTION SOURCE: Outline-tree + Library selection only. The canvas
- * round-trip (a canvas node updating `workspaceOutlineSelectedKey`) needs D-2
- * which is NOT in this base and is DEFERRED.
+ * FORM SOURCING (VIS-996): dimension/metric/relation render through the generic
+ * schema-driven <SchemaLeafForm> (field sets from the published `$defs`, not
+ * bespoke JSX). csv/local-merge script models edit INLINE via their existing
+ * forms (VIS-980). The remaining heavy forms (chart/table/insight/input/model/
+ * markdown/source) keep their bespoke UI + save affordances pending their own
+ * migration stages.
+ *
+ * SELECTION SOURCE: Outline-tree, Library, AND canvas — a canvas click routes
+ * through `setWorkspaceSelection` (VIS-994), which writes the outline key and
+ * reveals this Edit panel.
  */
 
 // Object types that are edited by reusing their existing leaf/Library-row form.
@@ -684,9 +690,31 @@ const INLINE_LEAF_FORMS = {
   model: (record, common) => (
     <ModelEditForm model={record} onSave={common.onSave} onCancel={common.onClose} />
   ),
-  dimension: (record, common) => <DimensionEditForm dimension={record} {...common} />,
-  metric: (record, common) => <MetricEditForm metric={record} {...common} />,
-  relation: (record, common) => <RelationEditForm relation={record} {...common} />,
+  // VIS-996: dimension/metric/relation render through the generic schema-driven
+  // leaf form — field sets come from the published $defs, not bespoke JSX.
+  dimension: (record, common) => <SchemaLeafForm type="dimension" record={record} {...common} />,
+  metric: (record, common) => <SchemaLeafForm type="metric" record={record} {...common} />,
+  relation: (record, common) => <SchemaLeafForm type="relation" record={record} {...common} />,
+  // VIS-980 (folded into VIS-996): the csv/local-merge script models edit INLINE
+  // via their existing forms instead of routing to the "open elsewhere"
+  // fallback. Delegating onSave → the rail's useRecordSave backbone, same as
+  // `model`.
+  csvScriptModel: (record, common) => (
+    <CsvScriptModelEditForm
+      model={record}
+      isCreate={common.isCreate}
+      onSave={common.onSave}
+      onClose={common.onClose}
+    />
+  ),
+  localMergeModel: (record, common) => (
+    <LocalMergeModelEditForm
+      model={record}
+      isCreate={common.isCreate}
+      onSave={common.onSave}
+      onClose={common.onClose}
+    />
+  ),
 };
 
 const LeafObjectForm = ({ type, name, onSelectRef }) => {
@@ -740,6 +768,39 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   const saveStatus = leafSaveStatus !== undefined ? leafSaveStatus : recordSaveStatus;
 
   const renderForm = INLINE_LEAF_FORMS[type];
+
+  // VIS-983 (folded into VIS-996): loading / not-found guards. A registered
+  // leaf type whose record isn't resolvable must NOT hand a null record to its
+  // form (blank / half-broken UI). Collections initialise to `[]` and populate
+  // on the workspace's mount fetch, so the absent-record signal is ambiguous:
+  //   - a NON-EMPTY collection that lacks this name → the fetch resolved with
+  //     data and this record genuinely isn't in it (deleted / renamed / stale
+  //     deep link) → NOT FOUND;
+  //   - an EMPTY or not-yet-array collection → ambiguous (fetch may still be in
+  //     flight, e.g. a fresh deep link) → LOADING, biased this way so a
+  //     transient initial load never flashes a "not found" error.
+  if (renderForm && !record) {
+    const loading = !Array.isArray(collection) || collection.length === 0;
+    return (
+      <>
+        <SelectionChip type={type} name={name} subtitle={singular} />
+        {loading ? (
+          <Placeholder
+            testId="right-rail-edit-leaf-loading"
+            title={`Loading ${singular}…`}
+            body="Fetching the latest saved version."
+          />
+        ) : (
+          <Placeholder
+            testId="right-rail-edit-leaf-missing"
+            title={`${singular.charAt(0).toUpperCase() + singular.slice(1)} not found`}
+            body={`No ${singular} named "${name}" exists. It may have been deleted or renamed.`}
+          />
+        )}
+      </>
+    );
+  }
+
   if (renderForm) {
     const common = {
       isCreate: false,

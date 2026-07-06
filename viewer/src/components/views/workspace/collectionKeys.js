@@ -46,4 +46,26 @@ export const SAVE_ACTION = {
   input: 'saveInput',
 };
 
+/**
+ * DELETE_ACTION — the store action that deletes a record of each type, keyed
+ * identically to COLLECTION_KEY/SAVE_ACTION so the schema-driven leaf form
+ * (VIS-996) can resolve the delete path generically instead of each bespoke
+ * form importing its own `deleteX`.
+ */
+export const DELETE_ACTION = {
+  source: 'deleteSource',
+  model: 'deleteModel',
+  dimension: 'deleteDimension',
+  metric: 'deleteMetric',
+  relation: 'deleteRelation',
+  insight: 'deleteInsight',
+  markdown: 'deleteMarkdown',
+  chart: 'deleteChart',
+  table: 'deleteTable',
+  dashboard: 'deleteDashboard',
+  csvScriptModel: 'deleteCsvScriptModel',
+  localMergeModel: 'deleteLocalMergeModel',
+  input: 'deleteInput',
+};
+
 export default COLLECTION_KEY;

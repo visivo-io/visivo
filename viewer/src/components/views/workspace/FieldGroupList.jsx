@@ -17,6 +17,8 @@ import { FieldGroup } from './FieldGroup';
  * @param {boolean} props.disabled
  * @param {Record<string,string>} props.errors - optional dot-path → inline error
  *   message map (AJV) threaded to each FieldGroup/PropertyRow.
+ * @param {Record<string,function>} props.overrides - optional field-name →
+ *   render-function map threaded to each FieldGroup (VIS-996; see FieldGroup).
  */
 export function FieldGroupList({
   groupSpec = [],
@@ -25,6 +27,7 @@ export function FieldGroupList({
   defs = {},
   disabled = false,
   errors = {},
+  overrides = {},
 }) {
   if (!Array.isArray(groupSpec) || groupSpec.length === 0) {
     return (
@@ -45,6 +48,7 @@ export function FieldGroupList({
           defs={defs}
           disabled={disabled}
           errors={errors}
+          overrides={overrides}
         />
       ))}
     </div>
