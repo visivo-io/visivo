@@ -1,7 +1,7 @@
 """Unit tests for the data fingerprint — the query-relevant subset of a config
 that decides whether a save needs a run (ported from core's data_fingerprint)."""
 
-from visivo.server.jobs.data_fingerprint import (
+from visivo.server.hash.data_fingerprint import (
     data_fingerprint,
     has_inline_query,
     is_query_value,

@@ -8,7 +8,7 @@ import pytest
 
 from visivo.server.managers.run_manager import RunManager, RunState
 from visivo.server.jobs import save_run_executor
-from visivo.server.views.run_views import _DATA_RESOURCE_RE
+from visivo.server.views.run_views import _RESOURCE_ROUTE_RE, RESOURCE_META
 
 
 @pytest.fixture(autouse=True)
@@ -98,23 +98,37 @@ class TestRunEndpoints:
 
 
 class TestRunOnSave:
-    def test_data_resource_routes_match_presentation_routes_do_not(self):
+    def test_every_resource_detail_route_matches(self):
+        # All mapped resources — incl. the query-mode presentation types
+        # (charts/tables/markdowns/dashboards), which run when an inline ?{ }
+        # layout query changes — match; list/collection + non-resource routes
+        # don't.
         for path in [
             "/api/sources/db/",
             "/api/models/m/",
+            "/api/local-merge-models/lm/",
             "/api/insights/i/",
-            "/api/inputs/in/",
-            "/api/csv-script-models/c/",
-        ]:
-            assert _DATA_RESOURCE_RE.match(path), path
-        for path in [
             "/api/charts/c/",
             "/api/tables/t/",
             "/api/markdowns/m/",
             "/api/dashboards/d/",
-            "/api/insights/",
         ]:
-            assert _DATA_RESOURCE_RE.match(path) is None, path
+            assert _RESOURCE_ROUTE_RE.match(path), path
+        for path in [
+            "/api/insights/",  # collection, not a detail route
+            "/api/insight-jobs/abc/",  # not a config resource
+            "/api/projects/id/run/",
+        ]:
+            assert _RESOURCE_ROUTE_RE.match(path) is None, path
+
+    def test_resource_meta_modes(self):
+        # whole-mode data resources hash their whole config; the insight is
+        # query-mode + data-producing; the presentation types are query-mode and
+        # NOT data-producing (only an inline ?{ } layout query is data).
+        assert RESOURCE_META["models"] == ("model_manager", "whole", True)
+        assert RESOURCE_META["insights"] == ("insight_manager", "query", True)
+        assert RESOURCE_META["charts"] == ("chart_manager", "query", False)
+        assert RESOURCE_META["tables"][1:] == ("query", False)
 
     def test_request_run_debounces_and_rebuilds_into_main(self, integration_app):
         # Mock the actual build so the test doesn't depend on the factory project
@@ -229,7 +243,7 @@ class TestDataAffectingGate:
             integration_client.post("/api/models/m/", json={"sql": "select 1"})
             req.assert_not_called()
 
-    def test_delete_always_runs(self, integration_client):
+    def test_deleting_a_data_producing_resource_runs(self, integration_client):
         with patch("visivo.server.views.run_views.request_run") as req:
             self._save_insight(
                 integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
@@ -238,3 +252,35 @@ class TestDataAffectingGate:
             r = integration_client.delete("/api/insights/w/")
             assert r.status_code < 400
             req.assert_called_once()
+
+    # Charts are query-mode, non-data-producing: an inline ?{ } layout query is
+    # data (visivo folds it into the insight's query), but plain layout edits are
+    # not — so a chart only runs when its ?{ } layout query moves.
+    def _save_chart(self, client, name, layout):
+        return client.post(
+            f"/api/charts/{name}/", json={"insights": ["${ref(w)}"], "layout": layout}
+        )
+
+    def test_chart_query_layout_change_runs(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            self._save_chart(integration_client, "c", {"title": {"text": "?{ ${ref(M).a} }"}})
+            req.reset_mock()
+            self._save_chart(integration_client, "c", {"title": {"text": "?{ ${ref(M).b} }"}})
+            req.assert_called_once()
+            assert req.call_args[0][1] == ["c"]
+
+    def test_chart_presentation_only_edit_skips_run(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            self._save_chart(integration_client, "c", {"title": {"text": "Hello"}})
+            req.reset_mock()
+            r = self._save_chart(integration_client, "c", {"title": {"text": "Goodbye"}})
+            assert r.status_code == 200
+            req.assert_not_called()
+
+    def test_deleting_a_plain_chart_skips_run(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            self._save_chart(integration_client, "c", {"title": {"text": "Hello"}})
+            req.reset_mock()
+            r = integration_client.delete("/api/charts/c/")
+            assert r.status_code < 400
+            req.assert_not_called()
