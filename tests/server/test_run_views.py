@@ -167,3 +167,74 @@ class TestRunOnSave:
         runs = integration_app.run_manager.list()
         assert len(runs) == 1
         assert runs[0]["dag_filter"] == "+a+,+b+"
+
+
+class TestDataAffectingGate:
+    """A save only triggers a run when it changed the DATA — presentation-only
+    edits (an insight type/color, whose query leaves are unchanged) just update
+    the views. ``request_run`` is patched so the gate decision is observed
+    without launching a real build thread."""
+
+    def _save_insight(self, client, name, props):
+        return client.post(f"/api/insights/{name}/", json={"props": props})
+
+    def test_new_insight_with_a_query_runs(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            r = self._save_insight(
+                integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
+            )
+            assert r.status_code == 200
+            req.assert_called_once()
+            assert req.call_args[0][1] == ["w"]
+
+    def test_presentation_only_edit_skips_run(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            self._save_insight(
+                integration_client,
+                "w",
+                {"type": "bar", "x": "?{ ${ref(M).a} }", "marker": {"color": "red"}},
+            )
+            req.reset_mock()  # ignore the create's run
+            r = self._save_insight(
+                integration_client,
+                "w",
+                {"type": "scatter", "x": "?{ ${ref(M).a} }", "marker": {"color": "blue"}},
+            )
+            assert r.status_code == 200
+            req.assert_not_called()
+
+    def test_query_edit_runs(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            self._save_insight(
+                integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
+            )
+            req.reset_mock()
+            self._save_insight(
+                integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).b} }"}
+            )
+            req.assert_called_once()
+
+    def test_model_config_change_runs(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            integration_client.post("/api/models/m/", json={"sql": "select 1"})
+            req.reset_mock()
+            integration_client.post("/api/models/m/", json={"sql": "select 2"})
+            req.assert_called_once()
+            assert req.call_args[0][1] == ["m"]
+
+    def test_idempotent_save_skips_run(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            integration_client.post("/api/models/m/", json={"sql": "select 1"})
+            req.reset_mock()
+            integration_client.post("/api/models/m/", json={"sql": "select 1"})
+            req.assert_not_called()
+
+    def test_delete_always_runs(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            self._save_insight(
+                integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
+            )
+            req.reset_mock()
+            r = integration_client.delete("/api/insights/w/")
+            assert r.status_code < 400
+            req.assert_called_once()

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import useStore from '../stores/store';
 import { fetchRuns, fetchRunLog } from '../api/branching';
+import AnsiText from './common/AnsiText';
 
 // queued/running are the only non-terminal states — while active a run is still
 // building, so the detail panel tail-polls the log.
@@ -58,7 +59,7 @@ function RunDetail({ run }) {
           {err ? `Error${err.phase ? ` — ${err.phase}` : ''}` : 'Logs'}
         </div>
         <pre className="bg-gray-900 text-gray-100 rounded p-3 overflow-auto max-h-80 whitespace-pre-wrap">
-          {consoleText}
+          <AnsiText text={consoleText} />
         </pre>
       </div>
     </div>
