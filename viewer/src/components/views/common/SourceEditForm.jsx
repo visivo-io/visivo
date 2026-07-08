@@ -53,14 +53,17 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
       setName(source.name || '');
 
       const configToUse = source.config;
-      setSourceType(configToUse?.type || '');
 
       // Extract form values from the config object
       if (configToUse) {
+        setSourceType(configToUse.type || '');
         const { name: _, type: __, ...formProps } = configToUse;
         setFormValues(formProps);
       } else {
-        // Fallback for flat source objects
+        // Fallback for flat source objects — restore the type from the flat
+        // object too, otherwise a config-less source renders the "select a
+        // source type" placeholder instead of its connection fields.
+        setSourceType(source.type || '');
         const { name: _, type: __, status: ___, config: ____, _embedded: _____, ...formProps } = source;
         setFormValues(formProps);
       }

@@ -265,6 +265,34 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('a query matching only a LOADED column keeps its table (and ancestors) visible', async () => {
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    const tableKey = `${DB_KEY}::table::orders`;
+    fireEvent.click(await screen.findByTestId(`source-outline-node-${DB_KEY}-toggle`));
+    fireEvent.click(await screen.findByTestId(`source-outline-node-${tableKey}-toggle`));
+    await screen.findByTestId(`source-outline-node-${tableKey}::col::amount`);
+
+    // 'amount' matches ONLY the orders table's lazily-loaded `amount` column —
+    // not the source/db name nor either table name. Loaded columns live in
+    // `flatColumns[tableKey]` (not `node.children`), so the match must consult
+    // them: the table AND its ancestor db group stay visible.
+    fireEvent.change(screen.getByTestId('source-outline-search'), {
+      target: { value: 'amount' },
+    });
+    expect(screen.getByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`source-outline-node-${tableKey}`)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`source-outline-node-${tableKey}::col::amount`)
+    ).toBeInTheDocument();
+    // Non-matching siblings are still filtered out.
+    expect(
+      screen.queryByTestId(`source-outline-node-${tableKey}::col::id`)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`source-outline-node-${DB_KEY}::table::users`)
+    ).not.toBeInTheDocument();
+  });
+
   test('Enter / Space on a focused node selects it (keyboard parity with click)', async () => {
     render(<SourceOutlineTreePanel sourceName={SRC} />);
     const dbNode = await screen.findByTestId(`source-outline-node-${DB_KEY}`);

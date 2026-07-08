@@ -328,4 +328,36 @@ describe('deployment polling', () => {
     expect(statusCallCount()).toBe(0);
     expect(screen.queryByText('Deployment Successful!')).not.toBeInTheDocument();
   });
+
+  it('shows a VISIBLE error after a failed deploy POST and clears it on retry', async () => {
+    // Previously the catch set `deployingMsg` AFTER setDeploying(false), but the
+    // message only renders while `deploying === true` — a failed POST silently
+    // returned the form to idle with no feedback.
+    let failDeploy = true;
+    fetch.mockImplementation(url => {
+      if (url === '/api/cloud/stages/') {
+        return Promise.resolve({ json: async () => mockStages });
+      }
+      if (url === '/api/cloud/deploy/') {
+        return failDeploy
+          ? Promise.resolve({ ok: false, status: 500, json: async () => ({}) })
+          : new Promise(() => {}); // retry stays in flight → deploying state
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    await renderAndPickStaging();
+
+    fireEvent.click(screen.getByRole('button', { name: /deploy to staging/i }));
+
+    // The failure renders a visible error alert (not a silent idle form)…
+    const alert = await screen.findByTestId('deploy-error');
+    expect(alert).toHaveTextContent(/deployment failed/i);
+    // …while the form is back to idle so the user can retry.
+    expect(screen.getByRole('button', { name: /deploy to staging/i })).not.toBeDisabled();
+
+    // Retrying clears the stale error immediately.
+    failDeploy = false;
+    fireEvent.click(screen.getByRole('button', { name: /deploy to staging/i }));
+    await waitFor(() => expect(screen.queryByTestId('deploy-error')).not.toBeInTheDocument());
+  });
 });

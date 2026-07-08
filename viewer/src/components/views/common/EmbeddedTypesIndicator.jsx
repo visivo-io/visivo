@@ -52,13 +52,15 @@ export const EmbeddedTypesIndicator = ({ types }) => {
 
   if (typeIcons.length === 0) return null;
 
-  // Single type - just show the icon in a square
+  // Single type - just show the icon in a square. The title must name the same
+  // (first RESOLVABLE) type the icon renders — `types[0]` could be an
+  // unresolvable entry that was filtered out of `typeIcons` above.
   if (typeIcons.length === 1) {
-    const { Icon, color } = typeIcons[0];
+    const { Icon, color, type } = typeIcons[0];
     return (
       <span
         className="flex-shrink-0 flex items-center justify-center w-5 h-5 bg-white rounded shadow-sm"
-        title={`Contains embedded ${types[0]}`}
+        title={`Contains embedded ${type}`}
       >
         <Icon style={{ fontSize: 14 }} className={color} />
       </span>

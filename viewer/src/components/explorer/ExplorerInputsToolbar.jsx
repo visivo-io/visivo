@@ -12,14 +12,14 @@ const ExplorerInputsToolbar = ({ projectId }) => {
 
   const inputConfigs = useMemo(
     () =>
-      derivedInputNames
-        .map((name) => {
-          const storeInput = storeInputs.find((i) => i.name === name);
-          if (!storeInput) return null;
-          // Flatten config into the input object so Input.jsx can read input.type, input.display, etc.
-          return { name: storeInput.name, ...storeInput.config };
-        })
-        .filter(Boolean),
+      derivedInputNames.map((name) => {
+        // Guaranteed to resolve: selectDerivedInputNames only returns names it
+        // found in s.inputs (candidates are filtered through inputNameSet), and
+        // both selectors read the same store snapshot.
+        const storeInput = storeInputs.find((i) => i.name === name);
+        // Flatten config into the input object so Input.jsx can read input.type, input.display, etc.
+        return { name: storeInput.name, ...storeInput.config };
+      }),
     [derivedInputNames, storeInputs]
   );
 

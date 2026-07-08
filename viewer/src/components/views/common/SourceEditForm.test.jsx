@@ -163,18 +163,20 @@ describe('SourceEditForm — edit mode', () => {
     );
   });
 
-  test('falls back to flat source fields when config is missing (type is not recovered)', () => {
+  test('falls back to flat source fields when config is missing (type recovered from the flat object)', () => {
     renderForm({
       source: { name: 'flat1', type: 'duckdb', database: ':memory:', status: 'PUBLISHED' },
       isCreate: false,
     });
     expect(screen.getByLabelText(/Source Name/)).toHaveValue('flat1');
-    // The init effect only reads type from source.config, so a flat source
-    // renders the "pick a type" placeholder instead of its fields.
-    expect(screen.getByTestId('source-type-value')).toHaveTextContent('');
+    // The init fallback restores form values AND the type from the flat object,
+    // so the form renders duckdb's connection fields — not the "pick a source
+    // type" placeholder it used to dead-end on.
+    expect(screen.getByTestId('source-type-value')).toHaveTextContent('duckdb');
+    expect(screen.getByLabelText(/Database Path/)).toHaveValue(':memory:');
     expect(
-      screen.getByText('Select a source type to configure connection settings')
-    ).toBeInTheDocument();
+      screen.queryByText('Select a source type to configure connection settings')
+    ).not.toBeInTheDocument();
   });
 
   test('clears the connection status for the source on unmount', () => {

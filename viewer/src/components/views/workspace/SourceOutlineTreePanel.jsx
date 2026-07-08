@@ -55,12 +55,20 @@ const KIND_ICON = {
 const matchesSearch = (name, query) =>
   !query || (name || '').toLowerCase().includes(query.toLowerCase());
 
-/** Does this node (or any descendant) match the query? Drives search filtering. */
-const nodeMatches = (node, query) => {
+/**
+ * Does this node (or any descendant) match the query? Drives search filtering.
+ * Lazily-loaded columns live in `flatColumns[tableKey]` (NOT `node.children` —
+ * the cached feed carries no eager column data), so LOADED columns must be
+ * consulted too: a table whose loaded column matches stays visible, as do its
+ * ancestor groups. Unloaded columns can't match (they aren't known yet).
+ */
+const nodeMatches = (node, query, flatColumns) => {
   if (!query) return true;
   if (matchesSearch(node.name, query)) return true;
   const children = Array.isArray(node.children) ? node.children : [];
-  return children.some(child => nodeMatches(child, query));
+  if (children.some(child => nodeMatches(child, query, flatColumns))) return true;
+  const lazyCols = node.key ? flatColumns?.[node.key] : null;
+  return Array.isArray(lazyCols) && lazyCols.some(col => matchesSearch(col?.name, query));
 };
 
 /**
@@ -269,7 +277,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
   };
 
   const renderTableNode = (table, level) => {
-    if (!nodeMatches(table, query)) return null;
+    if (!nodeMatches(table, query, flatColumns)) return null;
     // Columns lazy-load into `flatColumns[tableKey]` on expand (the cached feed
     // carries no eager column data). `table.children` only matters if a future
     // feed ever supplies columns eagerly.
@@ -316,7 +324,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
   };
 
   const renderGroupNode = (node, level) => {
-    if (!nodeMatches(node, query)) return null;
+    if (!nodeMatches(node, query, flatColumns)) return null;
     const children = Array.isArray(node.children) ? node.children : [];
     const collapsed = !expandedSet.has(node.key);
     const isSchema = node.kind === 'schema';

@@ -29,13 +29,7 @@ import { getTypeByValue } from '../common/objectTypeConfigs';
 import { COLLECTION_KEY } from './collectionKeys';
 import useRecordSave from '../../../hooks/useRecordSave';
 import RecordRunStatus from './RecordRunStatus';
-import {
-  applyLeafRef,
-  appendEmptyItem,
-  createRow,
-  setItemWidth,
-  runDashboardConfigGate,
-} from './itemMutations';
+import { appendEmptyItem, createRow, runDashboardConfigGate } from './itemMutations';
 import { emitWorkspaceEvent } from './telemetry';
 
 /**
@@ -420,6 +414,10 @@ const RightRailEditPanel = () => {
               </p>
             ) : (
               rows.map((row, rowIndex) => (
+                // `onItemChange` is the SOLE item-update channel here — RowEditForm
+                // always prefers it over the legacy onItemWidthChange/onItemRefChange
+                // callbacks (those exist only for the bundled DashboardEditForm path),
+                // so passing them alongside it would be dead code.
                 <RowEditForm
                   key={rowIndex}
                   row={row}
@@ -432,22 +430,6 @@ const RightRailEditPanel = () => {
                     updateRow(rowIndex, {
                       ...row,
                       items: (row.items || []).filter((_, i) => i !== itemIndex),
-                    })
-                  }
-                  onItemWidthChange={(itemIndex, width) =>
-                    updateRow(rowIndex, {
-                      ...row,
-                      items: (row.items || []).map((it, i) =>
-                        i === itemIndex ? setItemWidth(it, width) : it
-                      ),
-                    })
-                  }
-                  onItemRefChange={(itemIndex, ref) =>
-                    updateRow(rowIndex, {
-                      ...row,
-                      items: (row.items || []).map((it, i) =>
-                        i === itemIndex ? applyLeafRef(it, ref) : it
-                      ),
                     })
                   }
                   onItemChange={(itemIndex, nextItem) =>
@@ -528,18 +510,6 @@ const RightRailEditPanel = () => {
               onAddItem={() => updateRow(appendEmptyItem(row))}
               onRemoveItem={itemIndex =>
                 updateRow({ ...row, items: items.filter((_, i) => i !== itemIndex) })
-              }
-              onItemWidthChange={(itemIndex, width) =>
-                updateRow({
-                  ...row,
-                  items: items.map((it, i) => (i === itemIndex ? setItemWidth(it, width) : it)),
-                })
-              }
-              onItemRefChange={(itemIndex, ref) =>
-                updateRow({
-                  ...row,
-                  items: items.map((it, i) => (i === itemIndex ? applyLeafRef(it, ref) : it)),
-                })
               }
               onItemChange={(itemIndex, nextItem) =>
                 updateRow({
