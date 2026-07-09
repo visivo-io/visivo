@@ -35,7 +35,7 @@ const RecordRunStatus = ({ name, showRunsLink = false }) => {
     <div
       data-testid="record-run-status"
       role="status"
-      className="flex items-start gap-2 border-b border-highlight/30 bg-[#fdf5f3] px-3 py-2"
+      className="flex items-start gap-2 border-b border-highlight/30 bg-highlight-50 px-3 py-2"
     >
       <PiWarningCircle
         aria-hidden="true"
@@ -43,7 +43,7 @@ const RecordRunStatus = ({ name, showRunsLink = false }) => {
       />
       <div className="min-w-0 flex-1">
         <p className="text-[11.5px] font-semibold text-highlight">Last run failed</p>
-        <p className="truncate text-[11px] text-[#a03c2d]" title={failure.error}>
+        <p className="truncate text-[11px] text-highlight-600" title={failure.error}>
           {failure.error}
         </p>
       </div>
@@ -51,7 +51,7 @@ const RecordRunStatus = ({ name, showRunsLink = false }) => {
         <Link
           to="/runs"
           data-testid="record-run-status-view-runs"
-          className="shrink-0 text-[11px] font-medium text-highlight underline transition-colors hover:text-[#a03c2d]"
+          className="shrink-0 text-[11px] font-medium text-highlight underline transition-colors hover:text-highlight-600"
         >
           View runs
         </Link>

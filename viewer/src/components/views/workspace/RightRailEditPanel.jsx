@@ -284,7 +284,7 @@ const RightRailEditPanel = () => {
   const validationBanner = validationErrors ? (
     <div
       data-testid="right-rail-validation-errors"
-      className="border-b border-[#f3ded9] bg-[#fdf5f3] px-3 py-2 text-[11px] leading-relaxed text-[#a2432f]"
+      className="border-b border-highlight-200 bg-highlight-50 px-3 py-2 text-[11px] leading-relaxed text-highlight-600"
     >
       <p className="font-semibold">Invalid configuration — changes are not being saved:</p>
       <ul className="mt-0.5 list-disc pl-4">
@@ -312,7 +312,10 @@ const RightRailEditPanel = () => {
   // breadcrumb + Edit form follow the node to its new index.
   const handleBreadcrumbReorder = useCallback(
     op => {
-      if (!op || !dashboardConfig) return;
+      // Read-only: persistConfig no-ops the move, so moving the selection key
+      // would desync the breadcrumb/Edit form from the (unchanged) node. Bail
+      // before touching selection.
+      if (!op || !dashboardConfig || readOnly) return;
       const nextConfig = applyReorder(dashboardConfig, op);
       persistConfig(nextConfig, { kind: 'reorder', axis: op.axis });
       const nextKey = op.parentKey === 'dashboard'
@@ -320,7 +323,7 @@ const RightRailEditPanel = () => {
         : `${op.parentKey}.${op.axis}.${op.toIndex}`;
       if (setOutlineKey) setOutlineKey(nextKey);
     },
-    [dashboardConfig, persistConfig, setOutlineKey]
+    [dashboardConfig, persistConfig, setOutlineKey, readOnly]
   );
 
   // Enter on the breadcrumb focuses the Edit form's first focusable field.
@@ -791,12 +794,12 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
         {recordSaveStatus === 'invalid' && recordSaveErrors?.length > 0 && (
           <div
             data-testid="record-save-errors"
-            className="border-b border-highlight/30 bg-[#fdf5f3] px-3 py-2"
+            className="border-b border-highlight/30 bg-highlight-50 px-3 py-2"
           >
             <p className="text-[11.5px] font-semibold text-highlight">Not saved — fix to save</p>
             <ul className="mt-0.5 space-y-0.5">
               {recordSaveErrors.map((err, i) => (
-                <li key={`${err.path || 'root'}-${i}`} className="text-[11px] text-[#a03c2d]">
+                <li key={`${err.path || 'root'}-${i}`} className="text-[11px] text-highlight-600">
                   {err.path ? <span className="font-medium">{err.path}: </span> : null}
                   {err.message}
                 </li>

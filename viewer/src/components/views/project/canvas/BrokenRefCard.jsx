@@ -31,8 +31,8 @@ const HIGHLIGHT = 'var(--color-highlight-500)';
 // Muted warning tones (the highlight family at low saturation) — a fix-this
 // signal, not danger. Kept inline (these are warning-surface tints, not an
 // object-type colour, so they don't belong in objectTypeConfigs).
-const WARN_BG = '#fdf5f3'; // highlight-50
-const WARN_BORDER = '#f3c9c1'; // highlight-200-ish
+const WARN_BG = 'var(--color-highlight-50)';
+const WARN_BORDER = 'var(--color-highlight-200)';
 const WARN_ICON = 'var(--color-highlight-500)'; // highlight
 
 const BrokenRefCard = ({ type, name, onFix, onDelete, onCreateNew }) => {

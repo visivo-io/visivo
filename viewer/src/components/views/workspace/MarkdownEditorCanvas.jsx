@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import useStore from '../../../stores/store';
+import useStore, { ObjectStatus } from '../../../stores/store';
 import Markdown from '../../items/Markdown';
 import { getTypeColors } from '../common/objectTypeConfigs';
 import { useObjectCanvasDirty } from './ObjectCanvasFrame';
@@ -64,6 +64,16 @@ const MarkdownEditorCanvas = ({ activeObject, record }) => {
   const align = savedRecord?.align ?? record?.align ?? 'left';
   const justify = savedRecord?.justify ?? record?.justify ?? 'start';
 
+  // The record's backend status (NEW/MODIFIED/PUBLISHED). PUBLISHED means the
+  // store content equals what's on disk — the signal for advancing the dirty
+  // baseline below. The optimistic write does NOT flip status, so during typing
+  // the record stays whatever it was and only flips MODIFIED after the persist
+  // round-trips (and back to PUBLISHED on commit / revert-to-disk).
+  const savedStatus = useMemo(() => {
+    const fromStore = Array.isArray(markdowns) ? markdowns.find(m => m.name === name) : null;
+    return fromStore?.status ?? null;
+  }, [markdowns, name]);
+
   const [draft, setDraft] = useState(savedContent);
   const { setDirty } = useObjectCanvasDirty();
 
@@ -75,23 +85,37 @@ const MarkdownEditorCanvas = ({ activeObject, record }) => {
   // Re-seed the draft when the active object changes (the frame reuses this
   // body across sibling selections, so without this the previous object's draft
   // would leak). We key on `name` so an external save (which updates
-  // `savedContent`) does NOT clobber in-flight typing. `seededContentRef` keeps
-  // the baseline this record was loaded with — `savedContent` now tracks the
-  // OPTIMISTIC store (it mirrors in-flight edits via `updateRecordConfigOptimistic`),
-  // so it can't be the dirty baseline.
+  // `savedContent`) does NOT clobber in-flight typing. `seededContent` is the
+  // dirty baseline (what's on disk) — `savedContent` now tracks the OPTIMISTIC
+  // store (it mirrors in-flight edits via `updateRecordConfigOptimistic`), so it
+  // can't be the baseline. It is STATE (not a ref) so advancing it recomputes
+  // the dirty flag.
   const seededNameRef = useRef(null);
-  const seededContentRef = useRef(savedContent);
+  const [seededContent, setSeededContent] = useState(savedContent);
   useEffect(() => {
     if (seededNameRef.current !== name) {
       seededNameRef.current = name;
-      seededContentRef.current = savedContent;
+      setSeededContent(savedContent);
       setDraft(savedContent);
     }
   }, [name, savedContent]);
 
-  // Dirty === the draft differs from the content this record was SEEDED with
-  // (what's on disk), not from the live optimistic store value.
-  const isDirty = draft !== seededContentRef.current;
+  // Advance the dirty baseline whenever the record transitions back to a
+  // committed (PUBLISHED) state — a commit, or typing back to the on-disk value.
+  // That transition is the ONLY moment the optimistic store content equals
+  // what's on disk. Freezing the baseline at selection time left the "Unsaved"
+  // pill stuck after a commit until the user reselected (VIS-514 review).
+  const prevStatusRef = useRef(savedStatus);
+  useEffect(() => {
+    if (savedStatus === ObjectStatus.PUBLISHED && prevStatusRef.current !== ObjectStatus.PUBLISHED) {
+      setSeededContent(savedContent);
+    }
+    prevStatusRef.current = savedStatus;
+  }, [savedStatus, savedContent]);
+
+  // Dirty === the draft differs from the on-disk baseline, not from the live
+  // optimistic store value.
+  const isDirty = draft !== seededContent;
   useEffect(() => {
     setDirty(isDirty);
   }, [isDirty, setDirty]);
@@ -101,11 +125,11 @@ const MarkdownEditorCanvas = ({ activeObject, record }) => {
     setDraft(next);
     if (!name) return;
     // Push the keystroke through the shared optimistic store + debounced persist.
-    // We schedule whenever the content differs from the SEEDED baseline (what's
-    // on disk) — including typing back to it, so the revert persists too.
+    // We schedule whenever the content differs from the baseline (what's on
+    // disk) — including typing back to it, so the revert persists too.
     // align/justify are preserved from the saved record so a content edit never
     // drops them.
-    if (next !== seededContentRef.current) {
+    if (next !== seededContent) {
       scheduleSave({ name, content: next, align, justify });
     }
   };

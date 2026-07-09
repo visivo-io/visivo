@@ -851,6 +851,29 @@ describe('RightRailEditPanel breadcrumb keyboard nav (VIS-804)', () => {
     // The form's first focusable field is the row-height combobox input.
     expect(screen.getByLabelText('Row 1 height')).toHaveFocus();
   });
+
+  test('⌘↓ under a read-only stage neither moves the selection nor persists', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceOutlineSelectedKey: 'row.0',
+      saveDashboard,
+      capabilities: { can_view: true, can_edit: false },
+    });
+    renderPanel();
+
+    fireEvent.keyDown(screen.getByTestId('edit-breadcrumb'), {
+      key: 'ArrowDown',
+      metaKey: true,
+    });
+
+    // The persist no-ops under read-only, so the selection must NOT advance to
+    // the index the node would have moved to (that would desync the breadcrumb).
+    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.0');
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(saveDashboard).not.toHaveBeenCalled();
+  });
 });
 
 describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {

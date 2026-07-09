@@ -10,7 +10,7 @@
 import React from 'react';
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import MarkdownEditorCanvas from './MarkdownEditorCanvas';
-import useStore from '../../../stores/store';
+import useStore, { ObjectStatus } from '../../../stores/store';
 import { ObjectCanvasDirtyContext } from './ObjectCanvasFrame';
 
 const mockMdSpy = jest.fn();
@@ -110,6 +110,40 @@ describe('MarkdownEditorCanvas (VIS-1010)', () => {
     // Type back to the saved value → dirty clears.
     fireEvent.change(screen.getByTestId('markdown-editor-textarea'), {
       target: { value: '# Hello' },
+    });
+    expect(setDirty).toHaveBeenLastCalledWith(false);
+  });
+
+  test('a commit (status returns to PUBLISHED) clears the stuck "Unsaved" flag', () => {
+    const setDirty = jest.fn();
+    seed([{ name: 'intro', status: ObjectStatus.PUBLISHED, config: { content: '# Hello' } }]);
+    renderEditor({ setDirty });
+
+    // Edit → dirty.
+    fireEvent.change(screen.getByTestId('markdown-editor-textarea'), {
+      target: { value: '# Hello world' },
+    });
+    expect(setDirty).toHaveBeenLastCalledWith(true);
+
+    // The save round-trips → the backend flips the record MODIFIED (still dirty).
+    act(() => {
+      useStore.setState({
+        markdowns: [
+          { name: 'intro', status: ObjectStatus.MODIFIED, config: { content: '# Hello world' } },
+        ],
+      });
+    });
+    expect(setDirty).toHaveBeenLastCalledWith(true);
+
+    // Commit writes it to disk → status returns to PUBLISHED. The baseline
+    // advances and dirty clears (previously it stuck at the selection-time
+    // baseline until the user reselected).
+    act(() => {
+      useStore.setState({
+        markdowns: [
+          { name: 'intro', status: ObjectStatus.PUBLISHED, config: { content: '# Hello world' } },
+        ],
+      });
     });
     expect(setDirty).toHaveBeenLastCalledWith(false);
   });
