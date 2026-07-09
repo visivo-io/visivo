@@ -64,3 +64,25 @@ describe('traceGroups coverage', () => {
     expect(groups['xaxis']).toBe('layout');
   });
 });
+
+// ── Drift guard (VIS-514 review) ────────────────────────────────────────────
+// The committed .groups.json sidecars are build artifacts and the build script
+// is wired into nothing (no package.json script, no CI). A plotly.js bump that
+// adds/removes/renames leaf attributes would leave them stale. Mirror the
+// catalog coverage test: re-derive each sidecar from the LIVE plot-schema using
+// the build script's OWN classifier (no duplicated walk logic) and diff. If this
+// fails, run `node scripts/build-trace-groups.js` and commit the result.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { groupsForType, SYNTHETIC_TO_PLOTLY } = require('../../../../scripts/build-trace-groups');
+
+describe('traceGroups drift guard — committed sidecars match the live plot-schema', () => {
+  ALL_TYPES.forEach(type => {
+    const plotlyType = SYNTHETIC_TO_PLOTLY[type] || type;
+    const { groups, traceSchema } = groupsForType(type);
+    // Removed types (heatmapgl/pointcloud in Plotly 3) have no schema node; the
+    // build script emits an empty map for them — still a valid diff target.
+    test(`${type}.groups.json is current${traceSchema ? '' : ' (no plot-schema node → empty)'}`, () => {
+      expect(loadGroups(type)).toEqual(groups);
+    });
+  });
+});

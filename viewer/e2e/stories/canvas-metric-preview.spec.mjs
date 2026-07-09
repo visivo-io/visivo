@@ -1,22 +1,19 @@
 /**
- * Story: the Metric Field Lens (MetricPlayground) LIVE preview (Fix #3).
+ * Story: the Metric Field Lens (MetricPlayground) LOCAL preview (VIS-1026).
  *
  * Selecting a metric in the Library opens its middle-pane Canvas — the
- * MetricPlayground, a synthetic single-metric insight with always-defaulted
- * split-by + time-grain controls (VIS-1009). The default split for `avg_value`
- * (model `daily_metrics`) is the string dimension `formatted_date`
- * (= strftime(date,'%Y-%m-%d'), a VARCHAR). Before the fix the playground wrapped
- * that split in `date_trunc('month', <expr>)`, which DuckDB rejects on a VARCHAR
- * ("No function matches date_trunc(STRING_LITERAL, VARCHAR)") → "Preview Failed".
+ * MetricPlayground. VIS-1026 moved it OFF the deleted insight-preview pipeline:
+ * it is now ON-DEMAND (a "Preview this metric" prompt until you click Run), runs
+ * the parent model via `/api/model-query-jobs/`, then aggregates the metric
+ * LOCALLY in DuckDB-WASM and renders self-drawn CSS bars
+ * (`metric-playground-bars`, NOT a Plotly plot).
  *
- * The fix CASTs the split expression to TIMESTAMP before truncation
- * (`date_trunc('month', CAST(<expr> AS TIMESTAMP))`), so a real chart renders.
- *
- * This story asserts the metric LIVE preview now succeeds:
- *   - the MetricPlayground shell + split/time-grain controls mount,
- *   - a real Plotly plot becomes visible (NOT the "Preview Failed" red card),
- *   - the default (month) grain AND a re-grained (year / day) bucket of the
- *     string-date split each keep producing a real chart (the cast path).
+ * The default split for `avg_value` (model `daily_metrics`) is the string
+ * dimension `formatted_date` (a VARCHAR), time grain `month`. The local aggregate
+ * CASTs the split to TIMESTAMP before `date_trunc`, so a VARCHAR date buckets
+ * fine. This story asserts Run → bars for the default grain AND for a re-grained
+ * bucket (changing the grain re-aggregates locally over the already-loaded rows,
+ * with no server re-run — VIS-1026 + the stale-bars fix).
  *
  * Precondition: the isolated sandbox running the integration project
  * (`bash scripts/sandbox.sh start`). Override the base via VIS_CANVAS_BASE.
@@ -33,116 +30,109 @@ import {
 
 test.use({ viewport: { width: 1600, height: 1400 } });
 
-// The synthetic `__metric_preview__<name>` insight has no pre-materialized data
-// file, so the preview pipeline first PROBES `/api/insight-jobs/` (a benign 404)
-// and then runs a fresh preview job that DOES render the chart. Those probe 404s
-// are the expected "probe-then-run" handshake, not a regression — filter them so
-// a real product error still fails the test. (Mirrors canvas-field-lens.spec.mjs.)
+// Benign network noise in the local-preview flow (model-query-job polling can
+// 404 before the job registers; DuckDB-WASM cross-origin warnings). A real
+// product error still fails the test.
 const realErrors = errors =>
-  errors.filter(
-    e => !/__metric_preview__|insight-jobs.*metric|Preview execution failed/i.test(e)
-  );
+  errors.filter(e => !/model-query-jobs|duckdb|Cross-Origin|insight-jobs/i.test(e));
 
-// Wait for the metric playground to settle into a REAL chart rather than the
-// "Preview Failed" card. Surfaces the failure message if it appears so a
-// regression reports the actual DuckDB error instead of a bare timeout.
-const expectRealChart = async page => {
-  const plot = page.locator('.js-plotly-plot').first();
-  const failed = page.getByTestId('preview-error');
+// Click Run and wait for the metric to settle into self-drawn bars rather than
+// the error card. Surfaces the error text so a regression reports the real
+// DuckDB message instead of a bare timeout.
+const runAndExpectBars = async page => {
+  await page.getByTestId('metric-playground-run').click();
+  const bars = page.getByTestId('metric-playground-bars');
+  const failed = page.getByTestId('metric-playground-error');
   await expect
     .poll(
       async () => {
-        if (await plot.isVisible().catch(() => false)) return 'chart';
+        if (await bars.isVisible().catch(() => false)) return 'bars';
         if (await failed.isVisible().catch(() => false)) {
           return `failed:${(await failed.textContent().catch(() => '')) || ''}`;
         }
         return 'pending';
       },
-      { timeout: WAIT, message: 'metric playground never produced a real chart' }
+      { timeout: WAIT, message: 'metric playground never produced bars' }
     )
-    .toBe('chart');
+    .toBe('bars');
 };
 
-test.describe('Metric Field Lens live preview (Fix #3 — date_trunc on a string dimension)', () => {
+// Drive the brand react-select (metric-playground-time-grain): open the menu,
+// type to filter, click the option (the menu portals to body with the brand
+// classNamePrefix `vis-select__option`). Mirrors trace-props-editor.spec.mjs.
+const selectGrain = async (page, label) => {
+  const grain = page.getByTestId('metric-playground-time-grain');
+  await grain.click();
+  await grain.getByRole('combobox').fill(label);
+  const option = page
+    .locator('.vis-select__option', { hasText: new RegExp(`^${label}$`, 'i') })
+    .first();
+  await option.waitFor({ timeout: WAIT });
+  await option.click();
+};
+
+test.describe('Metric Field Lens local preview (VIS-1026 — Run → DuckDB bars)', () => {
   test.setTimeout(90000);
 
-  test('avg_value renders a real chart with the default split + time grain (no Preview Failed)', async ({
-    page,
-  }) => {
+  test('avg_value: Run renders bars for the default split + month grain', async ({ page }) => {
     const errors = collectErrors(page);
     await openWorkspace(page);
 
     await selectLibraryObject(page, 'metric', 'avg_value');
 
     // The metric canvas frame mounts on the Canvas (preview) lens.
-    await expect(page.getByTestId('workspace-middle-metric-preview')).toBeVisible({
-      timeout: WAIT,
-    });
-
-    // The MetricPlayground shell + its always-defaulted controls render.
+    await expect(page.getByTestId('workspace-middle-metric-preview')).toBeVisible({ timeout: WAIT });
     await expect(page.getByTestId('metric-playground')).toBeVisible({ timeout: WAIT });
-    const split = page.getByTestId('metric-playground-split');
-    const grain = page.getByTestId('metric-playground-time-grain');
-    await expect(split).toBeVisible({ timeout: WAIT });
-    await expect(grain).toBeVisible({ timeout: WAIT });
 
-    // The default split is the string dimension `formatted_date`, time grain
-    // `month` — the exact combination that used to fail. It must now plot.
-    await expect(split).toHaveValue('formatted_date');
-    await expect(grain).toBeEnabled();
-    await expect(grain).toHaveValue('month');
+    // On-demand: the pre-run prompt shows until Run is clicked (no auto-preview),
+    // with the always-defaulted split + time-grain controls.
+    await expect(page.getByTestId('metric-playground-prompt')).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId('metric-playground-split')).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId('metric-playground-time-grain')).toBeVisible({ timeout: WAIT });
 
-    // A real Plotly plot renders (expectRealChart asserts the chart wins over
-    // the "Preview Failed" card — the bug's symptom).
-    await expectRealChart(page);
+    // Run → the parent model runs, the metric aggregates locally, bars render.
+    await runAndExpectBars(page);
 
-    await page.screenshot({ path: `${SCREENS}/fix3-01-metric-default-grain.png` });
+    await page.screenshot({ path: `${SCREENS}/metric-preview-01-default-grain.png` });
     expect(realErrors(errors)).toEqual([]);
   });
 
-  test('changing the time grain keeps producing a real chart', async ({ page }) => {
-    const errors = collectErrors(page);
-    await openWorkspace(page);
-
-    await selectLibraryObject(page, 'metric', 'avg_value');
-    await expect(page.getByTestId('metric-playground')).toBeVisible({ timeout: WAIT });
-    await expectRealChart(page);
-
-    // Re-grain the string-date dimension to a coarser bucket — still a real chart.
-    const grain = page.getByTestId('metric-playground-time-grain');
-    await grain.selectOption('year');
-    await expect(grain).toHaveValue('year');
-
-    await expectRealChart(page);
-
-    await page.screenshot({ path: `${SCREENS}/fix3-02-metric-year-grain.png` });
-    expect(realErrors(errors)).toEqual([]);
-  });
-
-  test('a finer (day) grain on the string-date split still renders a real chart', async ({
-    page,
-  }) => {
+  test('re-graining the string-date split (year) still renders bars', async ({ page }) => {
     const errors = collectErrors(page);
     await openWorkspace(page);
 
     await selectLibraryObject(page, 'metric', 'avg_value');
     await expect(page.getByTestId('metric-playground')).toBeVisible({ timeout: WAIT });
 
-    // The split is the string dimension `formatted_date`; the grain control is
-    // enabled because the candidate is date-like.
-    const split = page.getByTestId('metric-playground-split');
-    const grain = page.getByTestId('metric-playground-time-grain');
-    await expect(split).toHaveValue('formatted_date');
-    await expect(grain).toBeEnabled();
-    await expectRealChart(page);
+    await runAndExpectBars(page);
 
-    // date_trunc('day', CAST(formatted_date AS TIMESTAMP)) — the daily bucket of
-    // a VARCHAR date is exactly the cast path the fix added; it must still plot.
-    await grain.selectOption('day');
-    await expect(grain).toHaveValue('day');
-    await expectRealChart(page);
+    // Coarser bucket of the VARCHAR date (date_trunc('year', CAST(<expr> AS
+    // TIMESTAMP))). The grain change re-aggregates locally over the already-loaded
+    // model rows — no server re-run — and must keep producing bars, not an error.
+    await selectGrain(page, 'Year');
+    await expect(page.getByTestId('metric-playground-bars')).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId('metric-playground-error')).toHaveCount(0);
 
-    await page.screenshot({ path: `${SCREENS}/fix3-03-metric-day-grain.png` });
+    await page.screenshot({ path: `${SCREENS}/metric-preview-02-year-grain.png` });
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('a finer (day) grain on the string-date split still renders bars', async ({ page }) => {
+    const errors = collectErrors(page);
+    await openWorkspace(page);
+
+    await selectLibraryObject(page, 'metric', 'avg_value');
+    await expect(page.getByTestId('metric-playground')).toBeVisible({ timeout: WAIT });
+
+    await runAndExpectBars(page);
+
+    // date_trunc('day', CAST(formatted_date AS TIMESTAMP)) — the daily bucket of a
+    // VARCHAR date is exactly the cast path; it must still render bars.
+    await selectGrain(page, 'Day');
+    await expect(page.getByTestId('metric-playground-bars')).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId('metric-playground-error')).toHaveCount(0);
+
+    await page.screenshot({ path: `${SCREENS}/metric-preview-03-day-grain.png` });
     expect(realErrors(errors)).toEqual([]);
   });
 });

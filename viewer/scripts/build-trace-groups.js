@@ -244,41 +244,59 @@ function hasChildAttributes(node) {
 
 // ── 5. Build and write groups JSONs ─────────────────────────────────────────
 
-const outDir = path.resolve(__dirname, '../src/schemas');
-
-if (!fs.existsSync(outDir)) {
-  fs.mkdirSync(outDir, { recursive: true });
-}
-
-let totalTypes = 0;
-let totalLeaves = 0;
-
-CHART_TYPES.forEach(({ value: type }) => {
-  if (type === 'layout') return; // layout is a pseudo-type, not a trace.
-
+/** Re-derive the { dotPath: group } map for one type from the live plot-schema. */
+function groupsForType(type) {
   const plotlyType = SYNTHETIC_TO_PLOTLY[type] || type;
   const traceSchema = traceSchemas[plotlyType];
-
-  if (!traceSchema && !SYNTHETIC_ALLOWLIST.has(type)) {
-    console.warn(
-      `  ⚠ "${type}" is absent from the Plotly schema — emitting an empty ` +
-        `groups map. If this type was removed (e.g. heatmapgl/pointcloud in ` +
-        `Plotly 3), that is expected; otherwise check for a typo.`
-    );
-  }
-
   const groups = {};
   if (traceSchema) {
     walkAttributes(traceSchema.attributes || {}, '', groups);
   }
+  return { groups, traceSchema };
+}
 
-  const outPath = path.join(outDir, `${type}.groups.json`);
-  fs.writeFileSync(outPath, JSON.stringify(groups, null, 2) + '\n');
+function writeGroups() {
+  const outDir = path.resolve(__dirname, '../src/schemas');
 
-  totalTypes += 1;
-  const leafCount = Object.keys(groups).length;
-  totalLeaves += leafCount;
-  console.log(`  ✓ ${type}.groups.json (${leafCount} leaves)`);
-});
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
 
-console.log(`\nDone. Wrote ${totalTypes} groups files, ${totalLeaves} total leaf classifications.`);
+  let totalTypes = 0;
+  let totalLeaves = 0;
+
+  CHART_TYPES.forEach(({ value: type }) => {
+    if (type === 'layout') return; // layout is a pseudo-type, not a trace.
+
+    const { groups, traceSchema } = groupsForType(type);
+
+    if (!traceSchema && !SYNTHETIC_ALLOWLIST.has(type)) {
+      console.warn(
+        `  ⚠ "${type}" is absent from the Plotly schema — emitting an empty ` +
+          `groups map. If this type was removed (e.g. heatmapgl/pointcloud in ` +
+          `Plotly 3), that is expected; otherwise check for a typo.`
+      );
+    }
+
+    const outPath = path.join(outDir, `${type}.groups.json`);
+    fs.writeFileSync(outPath, JSON.stringify(groups, null, 2) + '\n');
+
+    totalTypes += 1;
+    const leafCount = Object.keys(groups).length;
+    totalLeaves += leafCount;
+    console.log(`  ✓ ${type}.groups.json (${leafCount} leaves)`);
+  });
+
+  console.log(`\nDone. Wrote ${totalTypes} groups files, ${totalLeaves} total leaf classifications.`);
+}
+
+// Reusable core for the drift-guard test (traceGroups.coverage.test.js): the
+// SAME classifier the committed sidecars were built from, so the test can
+// re-derive them from the live plot-schema and diff — no duplicated walk logic.
+module.exports = { walkAttributes, classifyLeaf, groupsForType, SYNTHETIC_TO_PLOTLY };
+
+// Only write files when run directly (`node scripts/build-trace-groups.js`);
+// requiring this module (the test) just imports the functions above.
+if (require.main === module) {
+  writeGroups();
+}
