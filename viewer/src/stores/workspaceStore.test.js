@@ -596,13 +596,30 @@ describe('workspace store slice', () => {
       expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
     });
 
-    test('keeps existing outlineKey when outlineKey is undefined', () => {
+    test('resets the outlineKey to dashboard when the object changes and outlineKey is undefined', () => {
       act(() => {
-        useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
-        useStore.getState().setWorkspaceSelection({ type: 'source', name: 'db' }, undefined);
+        useStore.setState({
+          workspaceActiveObject: { type: 'dashboard', name: 'A' },
+          workspaceOutlineSelectedKey: 'row.2.item.3',
+        });
+        useStore.getState().setWorkspaceSelection({ type: 'dashboard', name: 'B' }, undefined);
+      });
+      // A dashboard-A-scoped structure key must not leak onto dashboard B (VIS-978)
+      // — the same stale-key reset the tab actions enforce.
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'dashboard', name: 'B' });
+    });
+
+    test('keeps the outlineKey when re-selecting the SAME object with outlineKey undefined', () => {
+      act(() => {
+        useStore.setState({
+          workspaceActiveObject: { type: 'dashboard', name: 'A' },
+          workspaceOutlineSelectedKey: 'row.1',
+        });
+        useStore.getState().setWorkspaceSelection({ type: 'dashboard', name: 'A' }, undefined);
       });
       expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
-      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'source', name: 'db' });
+      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'dashboard', name: 'A' });
     });
 
     test('does not update when both args are undefined', () => {

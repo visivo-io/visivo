@@ -10,7 +10,6 @@ import { EnumField } from './EnumField';
 import { ColorField } from './ColorField';
 import { ArrayField } from './ArrayField';
 import { PatternMultiSelectField } from './PatternMultiSelectField';
-import { RefSlotField } from './RefSlotField';
 import { ExpressionField } from './ExpressionField';
 import { ObjectField } from './ObjectField';
 
@@ -21,7 +20,6 @@ export { EnumField } from './EnumField';
 export { ColorField } from './ColorField';
 export { ArrayField } from './ArrayField';
 export { PatternMultiSelectField } from './PatternMultiSelectField';
-export { RefSlotField } from './RefSlotField';
 export { ExpressionField } from './ExpressionField';
 export { ObjectField } from './ObjectField';
 
@@ -36,7 +34,6 @@ export const FIELD_COMPONENTS = {
   ColorField,
   ArrayField,
   PatternMultiSelectField,
-  RefSlotField,
   ExpressionField,
   ObjectField,
 };
@@ -57,7 +54,6 @@ export function getFieldComponent(fieldType) {
     array: ArrayField,
     object: ObjectField, // Read-only — nested objects are edited in dedicated editors
     patternMultiselect: PatternMultiSelectField,
-    ref: RefSlotField,
     'query-string': ExpressionField,
     unknown: StringField, // Fallback
   };

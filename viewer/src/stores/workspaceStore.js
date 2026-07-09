@@ -411,6 +411,7 @@ const createWorkspaceSlice = (set, get) => ({
    */
   setWorkspaceSelection: (activeObject, outlineKey, { revealEdit = false } = {}) => {
     const update = {};
+    const prevObject = get().workspaceActiveObject;
 
     // Update active object if explicitly passed (including null to clear)
     if (activeObject !== undefined) {
@@ -425,6 +426,13 @@ const createWorkspaceSlice = (set, get) => ({
     } else if (outlineKey === null) {
       // null explicitly clears / resets to 'dashboard'
       update.workspaceOutlineSelectedKey = 'dashboard';
+    } else if (activeObject !== undefined) {
+      // outlineKey left undefined: keep the key when re-selecting the SAME object,
+      // but reset it when the object CHANGES. A 'row.N.item.M' key is scoped to
+      // one dashboard's structure and renders "Row not found" placeholders if
+      // carried onto a different object (VIS-978) — the same stale-key invariant
+      // the tab actions enforce, which this unified action is documented to own.
+      Object.assign(update, outlineKeyResetFor(prevObject, activeObject));
     }
 
     if (revealEdit) {
