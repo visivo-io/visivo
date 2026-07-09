@@ -131,7 +131,10 @@ function InlineScalarEditor({ entry, value, onCommit }) {
           type="text"
           value={draft ?? ''}
           onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && commit(draft)}
+          onKeyDown={e => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') e.stopPropagation();
+            if (e.key === 'Enter') commit(draft);
+          }}
           onBlur={() => commit(draft)}
           className="w-24 px-2 py-0.5 text-[11px] rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-500"
           aria-label={`${entry.label} value`}
@@ -148,6 +151,12 @@ function InlineScalarEditor({ entry, value, onCommit }) {
       onClick={stop}
       onChange={e => setDraft(e.target.value)}
       onKeyDown={e => {
+        // Keep nav/commit keys inside the editor — bubbling to the palette's list
+        // handler would move the active row and unmount this editor mid-type,
+        // discarding the draft.
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+          e.stopPropagation();
+        }
         if (e.key === 'Enter') {
           const v =
             entry.controlType === 'number' && draft !== '' ? Number(draft) : draft || undefined;
@@ -329,7 +338,7 @@ export default function FieldFinderPalette({
               <span className="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">
                 {showAll ? 'All fields' : 'Suggested'}
               </span>
-              {mru.length > 0 && !showAll && (
+              {!showAll && rows.some(r => mru.includes(r.path)) && (
                 <span className="inline-flex items-center gap-1 text-[10.5px] text-gray-400">
                   <PiClockCounterClockwise size={11} /> recent first
                 </span>
@@ -348,7 +357,13 @@ export default function FieldFinderPalette({
                 data-ff-row={entry.path}
                 data-ff-index={i}
                 data-testid={`field-finder-row-${entry.path}`}
-                onMouseEnter={() => setActiveIndex(i)}
+                onMouseEnter={() => {
+                  // Don't let a stray hover steal the active row while an inline
+                  // editor is focused — that would unmount it and drop the draft.
+                  const ae = document.activeElement;
+                  if (ae && ae.closest && ae.closest('[data-ff-inline]')) return;
+                  setActiveIndex(i);
+                }}
                 onClick={() => activateRow(entry)}
                 className={`flex items-center gap-3 px-3 py-2 cursor-pointer border-l-2 ${
                   isActive ? 'bg-primary-50 border-primary-500' : 'border-transparent'

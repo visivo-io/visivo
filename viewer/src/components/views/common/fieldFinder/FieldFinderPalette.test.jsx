@@ -3,9 +3,9 @@
  * index so search/rank/inline-edit/reveal behavior is exact.
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import FieldFinderPalette from './FieldFinderPalette';
-import { readMru, clearMru } from './fieldFinderMru';
+import { readMru, clearMru, bumpMru } from './fieldFinderMru';
 
 const ENTRIES = [
   { path: 'x', label: 'X Axis', description: 'x coordinates', keywords: ['x', 'axis'], tier: 'A', controlType: 'array', enumValues: null, isScalar: false, hidden: false },
@@ -129,5 +129,33 @@ describe('FieldFinderPalette', () => {
     // The active row is a compound → reveal fired for some path (deterministic
     // order puts marker.colorbar last among the shown rows).
     expect(onRevealCompound).toHaveBeenCalled();
+  });
+
+  it('keeps the inline editor mounted and preserves the draft when Arrow keys fire inside it', () => {
+    setup({ value: { opacity: 0.5 } });
+    // Curated list has multiple rows; hover to make opacity the active (editing) row.
+    fireEvent.mouseEnter(screen.getByTestId('field-finder-row-opacity'));
+    const input = screen.getByLabelText('Opacity value');
+    fireEvent.change(input, { target: { value: '3' } });
+    // Arrow keys inside the editor must NOT bubble to the list handler (which
+    // would move the active row and unmount the editor, dropping the draft).
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    const still = screen.getByLabelText('Opacity value');
+    expect(still).toBeInTheDocument();
+    expect(still.value).toBe('3');
+  });
+
+  it('hides the “recent first” hint when no visible curated row is MRU-floated', () => {
+    // A tier-null path is recorded, but it never appears in the curated empty-query list.
+    bumpMru('scatter', 'marker.colorbar');
+    setup();
+    expect(screen.queryByText('recent first')).not.toBeInTheDocument();
+  });
+
+  it('shows the “recent first” hint when a curated row IS MRU-floated', () => {
+    bumpMru('scatter', 'opacity'); // Tier B → present in the curated list
+    setup();
+    expect(screen.getByText('recent first')).toBeInTheDocument();
   });
 });

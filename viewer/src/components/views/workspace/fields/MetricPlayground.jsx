@@ -158,9 +158,11 @@ const MetricPlayground = ({ activeObject, record: providedRecord }) => {
   // job's completed state doesn't change identity (the guard below still holds
   // it until the model run actually completes).
   const [runToken, setRunToken] = useState(0);
-  // The last runToken already aggregated — makes the effect idempotent per run
-  // so it can't loop if a memo dep (previewSpec) churns identity across renders.
-  const aggregatedTokenRef = useRef(-1);
+  // Content signature of the last aggregation (run token + preview spec). Keying
+  // on CONTENT — not previewSpec identity — keeps the effect idempotent (no loop
+  // when a memo dep churns identity) WHILE still re-aggregating when Split-by /
+  // grain actually change, so the bars never disagree with the controls.
+  const aggregatedSigRef = useRef(null);
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -192,9 +194,19 @@ const MetricPlayground = ({ activeObject, record: providedRecord }) => {
     setRows(null);
     setAggError(null);
     setAggregating(false);
+    aggregatedSigRef.current = null;
   }, [name, reset]);
 
-  // When the model run completes, compute the metric aggregate locally.
+  // Content signature: bumps on a new Run (runToken) OR a Split-by/grain change
+  // (previewSpec content), so the local aggregate re-runs over the already-loaded
+  // model rows without a server re-run — never leaving stale bars behind a
+  // changed control.
+  const previewSig = previewSpec
+    ? `${runToken}|${previewSpec.metricExpr}|${previewSpec.splitExpr}|${previewSpec.showGrain}|${previewSpec.grain}`
+    : null;
+
+  // When the model run completes (or the spec changes after it), compute the
+  // metric aggregate locally.
   useEffect(() => {
     const modelRows = result?.rows || result?.data || null;
     if (
@@ -204,17 +216,17 @@ const MetricPlayground = ({ activeObject, record: providedRecord }) => {
       !previewSpec ||
       !Array.isArray(modelRows) ||
       modelRows.length === 0 ||
-      aggregatedTokenRef.current === runToken // already aggregated THIS run
+      aggregatedSigRef.current === previewSig // already aggregated this spec+run
     ) {
       return undefined;
     }
-    aggregatedTokenRef.current = runToken;
-    const thisToken = runToken;
-    // Run-latest-wins: apply the result only if this is still the newest run
-    // (a newer Run bumps aggregatedTokenRef) and the component is still mounted.
-    // NOT tied to the effect's cleanup — a churny `previewSpec` identity would
-    // otherwise cancel an in-flight aggregation on a no-op re-run.
-    const isCurrent = () => mountedRef.current && aggregatedTokenRef.current === thisToken;
+    aggregatedSigRef.current = previewSig;
+    const thisSig = previewSig;
+    // Run-latest-wins: apply the result only if this is still the newest spec+run
+    // (a newer Run or control change bumps the signature) and the component is
+    // still mounted. NOT tied to the effect's cleanup — a churny `previewSpec`
+    // identity would otherwise cancel an in-flight aggregation on a no-op re-run.
+    const isCurrent = () => mountedRef.current && aggregatedSigRef.current === thisSig;
     (async () => {
       setAggregating(true);
       setAggError(null);
@@ -234,7 +246,7 @@ const MetricPlayground = ({ activeObject, record: providedRecord }) => {
       }
     })();
     return undefined;
-  }, [jobStatus, result, db, previewSpec, name, runToken]);
+  }, [jobStatus, result, db, previewSpec, name, previewSig]);
 
   const colors = getTypeColors('metric');
 

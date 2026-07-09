@@ -10,7 +10,7 @@
  * Run button, the built preview spec, and the rendered bars.
  */
 import React from 'react';
-import { render, screen, act, fireEvent, within } from '@testing-library/react';
+import { render, screen, act, fireEvent, within, waitFor } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import MetricPlayground from './MetricPlayground';
 import useStore from '../../../../stores/store';
@@ -132,6 +132,39 @@ describe('MetricPlayground (VIS-1026)', () => {
     expect(spec.splitExpr).toBe('strftime(dt)');
     expect(spec.showGrain).toBe(true);
     expect(spec.grain).toBe('quarter');
+  });
+
+  test('changing Split-by after a Run re-aggregates locally without a new model run', async () => {
+    seed({
+      ...DAILY,
+      dimensions: [
+        { name: 'category', parentModel: 'daily', config: { expression: 'category' } },
+        { name: 'region', parentModel: 'daily', config: { expression: 'region' } },
+      ],
+    });
+    mockJob = completedJob([{ category: 'a', region: 'x', value: 10 }]);
+    renderPlayground();
+
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(await screen.findByTestId('metric-playground-bars')).toBeInTheDocument();
+    expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBe('category');
+    const aggregatesAfterRun = mockRunMetricPreview.mock.calls.length;
+    const modelRunsAfterRun = mockJob.executeQuery.mock.calls.length;
+
+    // Switch Split-by to 'region' — must re-aggregate over the SAME model rows.
+    const split = screen.getByTestId('metric-playground-split');
+    selectEvent.openMenu(within(split).getByRole('combobox'));
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'region'));
+    });
+
+    await waitFor(() =>
+      expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBe('region')
+    );
+    // A fresh local aggregate ran…
+    expect(mockRunMetricPreview.mock.calls.length).toBeGreaterThan(aggregatesAfterRun);
+    // …but NO new server model run was triggered.
+    expect(mockJob.executeQuery.mock.calls.length).toBe(modelRunsAfterRun);
   });
 
   test('surfaces a model-run error', async () => {
