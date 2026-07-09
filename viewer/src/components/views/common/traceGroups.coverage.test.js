@@ -73,11 +73,10 @@ describe('traceGroups coverage', () => {
 // the build script's OWN classifier (no duplicated walk logic) and diff. If this
 // fails, run `node scripts/build-trace-groups.js` and commit the result.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { groupsForType, SYNTHETIC_TO_PLOTLY } = require('../../../../scripts/build-trace-groups');
+const { groupsForType } = require('../../../../scripts/build-trace-groups');
 
 describe('traceGroups drift guard — committed sidecars match the live plot-schema', () => {
   ALL_TYPES.forEach(type => {
-    const plotlyType = SYNTHETIC_TO_PLOTLY[type] || type;
     const { groups, traceSchema } = groupsForType(type);
     // Removed types (heatmapgl/pointcloud in Plotly 3) have no schema node; the
     // build script emits an empty map for them — still a valid diff target.

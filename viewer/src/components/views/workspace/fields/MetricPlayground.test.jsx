@@ -154,9 +154,7 @@ describe('MetricPlayground (VIS-1026)', () => {
     // Switch Split-by to 'region' — must re-aggregate over the SAME model rows.
     const split = screen.getByTestId('metric-playground-split');
     selectEvent.openMenu(within(split).getByRole('combobox'));
-    await act(async () => {
-      fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'region'));
-    });
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'region'));
 
     await waitFor(() =>
       expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBe('region')
