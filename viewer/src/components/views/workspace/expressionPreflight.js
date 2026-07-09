@@ -30,11 +30,14 @@ const EXPRESSION_FIELDS = {
 
 const SKIP = { valid: true, errors: [], skipped: true };
 
-// verdict cache: `${type}:${field}:${expression}` → {valid, error}
+// verdict cache: `${type}:${field}:${dialect}:${expression}` → {valid, error}.
+// The dialect is part of the key: the same expression can parse under one source
+// dialect and fail under another, so verdicts must not collide across dialects.
 const cache = new Map();
 const CACHE_MAX = 200;
 
-const cacheKey = (type, field, expression) => `${type}:${field}:${expression}`;
+const cacheKey = (type, field, expression, sourceDialect) =>
+  `${type}:${field}:${sourceDialect || 'duckdb'}:${expression}`;
 
 const remember = (key, verdict) => {
   if (cache.size >= CACHE_MAX) {
@@ -66,7 +69,7 @@ export async function checkExpressions(type, config, sourceDialect) {
   for (const field of fields) {
     const value = config[field];
     if (typeof value !== 'string' || !value.trim()) continue;
-    const key = cacheKey(type, field, value);
+    const key = cacheKey(type, field, value, sourceDialect);
     const cached = cache.get(key);
     if (cached) {
       if (!cached.valid) {
@@ -78,9 +81,9 @@ export async function checkExpressions(type, config, sourceDialect) {
   }
 
   if (pending.length === 0 && errors.length === 0) {
-    return errors.length === 0 && pending.length === 0 && !fields.some(f => config[f])
-      ? SKIP
-      : { valid: true, errors: [] };
+    // Both conjuncts of the enclosing `if` are already true here, so the only
+    // remaining question is whether the record has ANY expression field set.
+    return !fields.some(f => config[f]) ? SKIP : { valid: true, errors: [] };
   }
 
   if (pending.length > 0) {

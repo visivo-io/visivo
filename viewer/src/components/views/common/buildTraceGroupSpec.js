@@ -59,12 +59,6 @@ const GROUP_DEF_BY_ID = TRACE_GROUP_DEFS.reduce((acc, g) => {
  */
 const HIDDEN_PATHS = new Set(['type']);
 
-/**
- * Number of fields rendered up-front in a group before the "+ N more" affordance
- * kicks in. Mirrors FieldGroup's expanded/rest split for non-essential groups.
- */
-const VISIBLE_HEAD = 3;
-
 // ─── Schema resolution helpers (no external imports) ────────────────────────
 
 /**
@@ -259,19 +253,6 @@ function requiredFirst(fields) {
   return [...req, ...rest];
 }
 
-/**
- * Compute the `hiddenCount` for a non-essential group: how many fields sit
- * beyond the first `VISIBLE_HEAD` (surfaced behind "+ N more"). Only counts the
- * collapsed tail (fields that are not `expanded`), matching FieldGroup, but is
- * floored by the simple ">3 beyond the first 3" rule from §3.
- */
-function computeHiddenCount(fields) {
-  const tail = fields.filter(f => !f.expanded);
-  if (fields.length <= VISIBLE_HEAD) return 0;
-  // Fields beyond the first VISIBLE_HEAD that are part of the collapsed tail.
-  return Math.min(tail.length, fields.length - VISIBLE_HEAD);
-}
-
 // ─── Main builder ───────────────────────────────────────────────────────────
 
 /**
@@ -289,7 +270,7 @@ function computeHiddenCount(fields) {
  * @param {object} args.value - current trace-prop values object.
  * @returns {Array<object>} ordered groupSpec (only non-empty groups), each shaped
  *   `{ id, title, label, icon, glyph, objectType, defaultOpen, alwaysOpen,
- *      hiddenCount, fields }`.
+ *      fields }`.
  */
 export function buildTraceGroupSpec({
   type,
@@ -406,8 +387,6 @@ export function buildTraceGroupSpec({
 
     // "Key fields (<type>)" weaves the type into the title literally.
     const title = id === 'key' ? `Key fields (${objectType})` : def.title;
-    // Non-essential groups surface a "+ N more" count; Essentials never hides.
-    const hiddenCount = id === 'essentials' ? 0 : computeHiddenCount(fields);
 
     return {
       id,
@@ -420,7 +399,6 @@ export function buildTraceGroupSpec({
       defaultOpen: def.defaultOpen,
       // FieldGroup reads `group.alwaysOpen`; Essentials must never collapse.
       alwaysOpen: id === 'essentials',
-      hiddenCount,
       fields,
     };
   }).filter(Boolean);

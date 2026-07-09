@@ -12,6 +12,7 @@ import { FormShell } from './FormShell';
 import { SAVE_ACTION, DELETE_ACTION } from './collectionKeys';
 import { unwrapConfig } from './unwrapRecordConfig';
 import { getObjectSchemaSync } from '../../../schemas/projectSchema';
+import { useFieldParentModel } from './fields/useFieldParentModel';
 
 /**
  * SchemaLeafForm (VIS-996) — the generic schema-driven leaf edit form.
@@ -105,12 +106,26 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
 
   const recordName = record?.config?.name || record?.name || '';
 
+  // Resolve the record's source SQL dialect so the expression parse gate
+  // (VIS-993) validates source-authored SQL under the right dialect rather than
+  // defaulting to duckdb (which false-rejects e.g. Snowflake path syntax). The
+  // dimension/metric's parent model resolves the source; an unresolved or duckdb
+  // source yields undefined (backend default), a no-op change.
+  const { sourceName } = useFieldParentModel(record);
+  const sourceDialect = useMemo(() => {
+    if (!sourceName || !Array.isArray(store.sources)) return undefined;
+    const src = store.sources.find(s => s.name === sourceName || s.source_name === sourceName);
+    const t = (src?.type || src?.config?.type || '').toLowerCase();
+    if (!t || t === 'duckdb') return undefined;
+    return t === 'postgresql' ? 'postgres' : t;
+  }, [sourceName, store.sources]);
+
   // VIS-993: edit mode is AUTO-SAVE through the gated optimistic backbone.
   const {
     scheduleSave,
     status: autoSaveStatus,
     errors: gateErrors,
-  } = useRecordSave(type, isEditMode ? recordName || null : null);
+  } = useRecordSave(type, isEditMode ? recordName || null : null, { sourceDialect });
 
   useEffect(() => {
     if (record) {

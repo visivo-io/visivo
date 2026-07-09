@@ -286,44 +286,6 @@ describe('buildTraceGroupSpec — Layout / Animation / Other collapsed', () => {
   });
 });
 
-describe('buildTraceGroupSpec — hiddenCount', () => {
-  test('non-essential groups mark hiddenCount when >3 fields beyond first 3', () => {
-    // Build a style group with 6 uncatalogued, unset fields → 3 hidden.
-    const props = { type: { const: 'scatter' } };
-    const groups = {};
-    for (let i = 0; i < 6; i++) {
-      props[`s${i}`] = { type: 'string' };
-      groups[`s${i}`] = 'style';
-    }
-    const schema = { type: 'object', required: ['type'], properties: props };
-    const spec = buildTraceGroupSpec({
-      type: 'scatter',
-      schema,
-      catalogEntries: [],
-      groupsMap: groups,
-    });
-    const style = spec.find(g => g.id === 'style');
-    expect(style.fields.length).toBe(6);
-    expect(style.hiddenCount).toBe(3);
-  });
-
-  test('no hiddenCount when <=3 fields', () => {
-    const schema = {
-      type: 'object',
-      required: ['type'],
-      properties: { type: { const: 'scatter' }, a: { type: 'string' }, b: { type: 'string' } },
-    };
-    const spec = buildTraceGroupSpec({
-      type: 'scatter',
-      schema,
-      catalogEntries: [],
-      groupsMap: { a: 'style', b: 'style' },
-    });
-    const style = spec.find(g => g.id === 'style');
-    expect(style.hiddenCount).toBe(0);
-  });
-});
-
 // ─── Coverage invariant: NO field is ever dropped (real scatter sidecars) ────
 describe('buildTraceGroupSpec — coverage invariant (scatter)', () => {
   test('real scatter has Essentials(x,y), Key fields(scatter)+Tier-B, Encoding, Style', () => {

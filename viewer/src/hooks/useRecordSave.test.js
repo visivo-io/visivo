@@ -287,6 +287,66 @@ describe('useRecordSave (VIS-1018)', () => {
     expect(saveFn).toHaveBeenLastCalledWith('md1', { name: 'md1', content: 'C' });
   });
 
+  // ── VIS-514 review: identity-change / unmount flush (no dropped edit) ───────
+  test('flushes a pending save against the OLD record when the identity changes mid-debounce', async () => {
+    const saveFn = jest.fn(() => Promise.resolve({ success: true }));
+    useStore.setState({
+      charts: [
+        { name: 'c1', config: { name: 'c1', v: 0 } },
+        { name: 'c2', config: { name: 'c2', v: 0 } },
+      ],
+      saveChart: saveFn,
+      saveActivityCount: 0,
+      lastSaveFailed: false,
+      capabilities: null,
+    });
+
+    const { result, rerender } = renderHook(
+      ({ name }) => useRecordSave('chart', name, { delay: 500 }),
+      { initialProps: { name: 'c1' } }
+    );
+
+    // Edit c1 → arms the debounce (does NOT fire yet).
+    act(() => result.current.scheduleSave({ name: 'c1', v: 1 }));
+    expect(result.current.status).toBe('pending');
+    expect(saveFn).not.toHaveBeenCalled();
+
+    // Switch selection to c2 WITHIN the debounce window (the reused hook instance
+    // gets new props). The identity effect must flush c1's pending edit against
+    // c1 — not carry the armed timer onto c2. The flush's runSave settles across
+    // microtasks (it setStates on the still-mounted hook), so flush them in act.
+    rerender({ name: 'c2' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(saveFn).toHaveBeenCalledTimes(1);
+    expect(saveFn).toHaveBeenCalledWith('c1', { name: 'c1', v: 1 });
+
+    // No spurious save fires against c2 from a surviving timer.
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(saveFn).toHaveBeenCalledTimes(1);
+  });
+
+  test('flushes a pending save on unmount rather than dropping the edit', async () => {
+    const saveFn = setupCollection('charts', 'c1', { name: 'c1', v: 0 }, 'saveChart');
+    const { result, unmount } = renderHook(() => useRecordSave('chart', 'c1', { delay: 500 }));
+
+    act(() => result.current.scheduleSave({ name: 'c1', v: 5 }));
+    expect(saveFn).not.toHaveBeenCalled();
+
+    unmount();
+    // The unmount flush fires runSave fire-and-forget; flush its microtasks so
+    // the POST lands (setState inside is guarded by the now-false mountedRef).
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(saveFn).toHaveBeenCalledWith('c1', { name: 'c1', v: 5 });
+  });
+
   // ── VIS-1025: cloud read-only short-circuit ────────────────────────────────
   // capabilities (branchingStore): null = local serve (always editable); an
   // object = cloud, where can_edit:false means the stage is read-only. The

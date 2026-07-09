@@ -67,10 +67,13 @@ const isReadOnly = state => {
  * @param {string} name  the record name (the collection key + persist arg).
  * @param {object} [opts]
  * @param {number} [opts.delay=500]  debounce window in ms.
+ * @param {string} [opts.sourceDialect]  the record's source SQL dialect (e.g.
+ *   'snowflake', 'postgres'); forwarded to the expression parse gate so
+ *   source-authored SQL validates under the right dialect instead of duckdb.
  * @returns {{ status: string, scheduleSave: (nextConfig:object)=>void, saveNow: (nextConfig?:object)=>Promise<void>, reset: ()=>void }}
  */
 export default function useRecordSave(type, name, opts = {}) {
-  const { delay = 500 } = opts;
+  const { delay = 500, sourceDialect } = opts;
   const [status, setStatus] = useState('idle');
   // Validation errors ({path, message, keyword}[]) when status === 'invalid'.
   const [errors, setErrors] = useState(null);
@@ -88,20 +91,10 @@ export default function useRecordSave(type, name, opts = {}) {
   // runSave) and recover the user's latest keystroke from a refetch revert.
   const latestConfigRef = useRef(undefined);
   const seqRef = useRef(0);
-
-  useEffect(() => {
-    typeRef.current = type;
-    nameRef.current = name;
-  }, [type, name]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    };
-  }, []);
+  // Latest source dialect in a ref so the fire-time expression gate reads the
+  // current value (kept fresh each render — lag-free vs an effect).
+  const sourceDialectRef = useRef(sourceDialect);
+  sourceDialectRef.current = sourceDialect;
 
   /**
    * Read the record's CURRENT optimistic config straight out of the live store
@@ -169,7 +162,7 @@ export default function useRecordSave(type, name, opts = {}) {
         if (!refCheck.valid) blocked = refCheck;
       }
       if (!blocked) {
-        const exprCheck = await checkExpressions(t, config);
+        const exprCheck = await checkExpressions(t, config, sourceDialectRef.current);
         if (!exprCheck.valid) blocked = exprCheck;
       }
     } catch (err) {
@@ -210,7 +203,12 @@ export default function useRecordSave(type, name, opts = {}) {
       // data — and the pending debounced persist would then read the reverted
       // value. Detect the newer edit (seq advanced) and re-apply the latest
       // optimistic config so the next fire-time read sees the user's newest edit.
-      if (seqRef.current !== seqAtFire && latestConfigRef.current !== undefined) {
+      if (
+        seqRef.current !== seqAtFire &&
+        latestConfigRef.current !== undefined &&
+        typeRef.current === t &&
+        nameRef.current === n
+      ) {
         useStore.getState().updateRecordConfigOptimistic?.(t, n, latestConfigRef.current);
       }
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
@@ -225,6 +223,38 @@ export default function useRecordSave(type, name, opts = {}) {
       endSaveActivity?.(ok);
     }
   }, [readCurrentConfig]);
+
+  // Keep the refs pointed at the CURRENT open record. If a debounced save is
+  // still armed for the PREVIOUS record when the identity changes, FLUSH it
+  // against that record first — the refs still hold the old identity here, and
+  // runSave captures type/name/config synchronously before its first await, so
+  // the pending edit persists to the right record. Without this, the armed
+  // timer would fire after the refs flip and save the NEW record instead,
+  // silently dropping the old record's last edit (VIS-514 review).
+  useEffect(() => {
+    if (typeRef.current === type && nameRef.current === name) return;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      runSave();
+    }
+    typeRef.current = type;
+    nameRef.current = name;
+  }, [type, name, runSave]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      // Flush a still-armed debounced save on unmount rather than dropping the
+      // edit (mirrors useDebouncedSave's flush-on-unmount). setState inside
+      // runSave is guarded by mountedRef, so on teardown only the POST goes out.
+      const hadPending = !!timerRef.current;
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      if (hadPending) runSave();
+    };
+  }, [runSave]);
 
   const scheduleSave = useCallback(
     nextConfig => {

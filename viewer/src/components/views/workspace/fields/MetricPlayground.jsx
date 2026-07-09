@@ -162,8 +162,11 @@ const MetricPlayground = ({ activeObject, record: providedRecord }) => {
   // so it can't loop if a memo dep (previewSpec) churns identity across renders.
   const aggregatedTokenRef = useRef(-1);
   const mountedRef = useRef(true);
-  useEffect(() => () => {
-    mountedRef.current = false;
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const handleRun = useCallback(() => {

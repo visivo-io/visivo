@@ -13,7 +13,7 @@ import {
 } from 'react-icons/pi';
 import { PropertyRow } from '../common/SchemaEditor/PropertyRow';
 import { getValueAtPath, setValueAtPath } from '../common/SchemaEditor/utils/schemaUtils';
-import useFieldGroupCollapseStore, { isGroupCollapsed } from './fieldGroupCollapseStore';
+import useFieldGroupCollapseStore, { collapseKey } from './fieldGroupCollapseStore';
 
 /**
  * Map a group `icon` key (from buildGroupSpec's GROUP_DEFS) to a phosphor icon.
@@ -78,11 +78,17 @@ export function FieldGroup({
   overrides = {},
   revealPath = null,
 }) {
-  const { id, label, icon, objectType, alwaysOpen, fields = [] } = group || {};
+  const { id, label, icon, objectType, alwaysOpen, defaultOpen = true, fields = [] } = group || {};
 
   const collapsedMap = useFieldGroupCollapseStore(s => s.collapsed);
   const toggleCollapsed = useFieldGroupCollapseStore(s => s.toggleCollapsed);
-  const persistedCollapsed = isGroupCollapsed(collapsedMap, objectType, id);
+  // Effective collapse: an explicit persisted entry wins; absent, fall back to
+  // the group's `defaultOpen` (trace-prop Layout/Animation/Other are
+  // collapsed-by-default per §3). `defaultOpen` defaults to true, so semantic
+  // leaf-form groups (no defaultOpen) keep their expanded-by-default behavior.
+  const persistKey = collapseKey(objectType, id);
+  const persistedCollapsed =
+    collapsedMap && persistKey in collapsedMap ? !!collapsedMap[persistKey] : !defaultOpen;
 
   // Rare/unset fields ("+ N more"). Local — not persisted; expanding the group's
   // tail is a transient action.
@@ -130,7 +136,11 @@ export function FieldGroup({
     onChange(setValueAtPath(value, name, undefined));
   };
 
-  const visibleFields = collapsed ? [] : showMore ? [...upFront, ...rest] : upFront;
+  // When this group owns a reveal, render the tail on THIS pass so the target
+  // row exists when the post-commit effect reads revealRef (the effect's own
+  // setShowMore(true) only takes effect a render later — too late to scroll to).
+  const visibleFields =
+    collapsed ? [] : showMore || ownsReveal ? [...upFront, ...rest] : upFront;
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden" data-testid={`field-group-${id}`}>

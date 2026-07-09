@@ -78,6 +78,23 @@ describe('checkExpressions', () => {
     expect(validateExpressions).toHaveBeenCalledTimes(1);
   });
 
+  test('the source dialect is forwarded to the validator (VIS-514 review)', async () => {
+    await checkExpressions('metric', { name: 'm', expression: 'payload:price::number' }, 'snowflake');
+    expect(validateExpressions).toHaveBeenCalledWith(
+      [{ name: 'expression', expression: 'payload:price::number' }],
+      'snowflake'
+    );
+  });
+
+  test('the verdict cache is dialect-scoped — same expression, different dialect re-POSTs', async () => {
+    await checkExpressions('metric', { name: 'm', expression: 'SUM(x)' }, 'snowflake');
+    await checkExpressions('metric', { name: 'm', expression: 'SUM(x)' }, 'postgres');
+    expect(validateExpressions).toHaveBeenCalledTimes(2);
+    // …but the same (expression, dialect) pair is still cached.
+    await checkExpressions('metric', { name: 'm', expression: 'SUM(x)' }, 'snowflake');
+    expect(validateExpressions).toHaveBeenCalledTimes(2);
+  });
+
   test('a network failure fails open', async () => {
     validateExpressions.mockRejectedValue(new Error('boom'));
     const result = await checkExpressions('metric', { name: 'm', expression: 'SUM(x)' });
