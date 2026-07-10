@@ -14,6 +14,8 @@
  * previews the metric without any server insight run.
  */
 
+import { coerceServerRowsForDuckDB, selectWithDateCasts } from '../../../../duckdb/coerceRows';
+
 const MAX_GROUPS = 50;
 
 /** Wrap a date-like split expression in a grain bucket when a grain is active. */
@@ -62,11 +64,14 @@ export async function runMetricPreview({ db, getConnection, runQuery, modelRows,
   const conn = await getConnection(db);
   const baseTable = `metric_base_${modelRows.length}_${spec.metricExpr.length}`;
   const tempFile = `${baseTable}.json`;
-  await db.registerFileText(tempFile, JSON.stringify(modelRows));
+  // Rewrite RFC-1123 server dates to ISO and force-cast those columns to
+  // TIMESTAMP, else strftime/date_trunc in a split expression fail — VIS-1026.
+  const { rows: coercedRows, dateColumns } = coerceServerRowsForDuckDB(modelRows);
+  await db.registerFileText(tempFile, JSON.stringify(coercedRows));
   try {
     await conn.query(`DROP TABLE IF EXISTS "${baseTable}"`).catch(() => {});
     await conn.query(
-      `CREATE TABLE "${baseTable}" AS SELECT * FROM read_json_auto('${tempFile}')`
+      `CREATE TABLE "${baseTable}" AS SELECT ${selectWithDateCasts(dateColumns)} FROM read_json_auto('${tempFile}')`
     );
     const sql = buildMetricPreviewSql({ ...spec, baseTable });
     const arrow = await runQuery(db, sql);

@@ -165,6 +165,22 @@ describe('MetricPlayground (VIS-1026)', () => {
     expect(mockJob.executeQuery.mock.calls.length).toBe(modelRunsAfterRun);
   });
 
+  test('selecting "(none)" clears the split — the auto-default does not re-populate it', async () => {
+    seed(DAILY);
+    mockJob = completedJob([{ category: 'a', value: 10 }]);
+    renderPlayground();
+
+    // The split auto-defaults to the first candidate; pick "(none)" instead.
+    const split = screen.getByTestId('metric-playground-split');
+    selectEvent.openMenu(within(split).getByRole('combobox'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === '(none)'));
+
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(await screen.findByTestId('metric-playground-bars')).toBeInTheDocument();
+    // "(none)" stuck → the aggregate runs with no split (a plain AVG(value)).
+    expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBeNull();
+  });
+
   test('surfaces a model-run error', async () => {
     seed(DAILY);
     mockJob = { ...idleJob(), status: 'failed', error: 'connection refused' };

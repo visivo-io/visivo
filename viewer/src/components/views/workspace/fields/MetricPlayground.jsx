@@ -97,23 +97,29 @@ const MetricPlayground = ({ activeObject, record: providedRecord }) => {
       }));
   }, [dimensions, parentModelName]);
 
-  const [splitField, setSplitField] = useState('');
+  // splitField tri-state: null = not-yet-defaulted (auto-default will fill it),
+  // '' = the user explicitly chose "(none)" (no split), or a candidate name.
+  // The null sentinel is what makes "(none)" selectable — an empty '' would
+  // otherwise be re-populated by the auto-default effect below.
+  const [splitField, setSplitField] = useState(null);
   const [grain, setGrain] = useState('month');
 
   // The frame reuses this body across sibling selections — drop a split field
   // that isn't one of THIS metric's candidates (e.g. it survived a switch onto
   // a metric with a different parent model) so it can re-default cleanly
-  // instead of building a broken `${ref(newModel).old_field}` query.
+  // instead of building a broken `${ref(newModel).old_field}` query. Reset to
+  // the null sentinel (not '') so the auto-default effect re-fills it.
   useEffect(() => {
     if (splitField && !splitCandidates.some(c => c.name === splitField)) {
-      setSplitField('');
+      setSplitField(null);
     }
   }, [splitCandidates, splitField]);
 
-  // Always default the split to the first candidate so a chart renders without
-  // the user touching the controls.
+  // Default the split to the first candidate so a chart renders without the user
+  // touching the controls — but ONLY from the null sentinel, so an explicit
+  // "(none)" (splitField === '') is left alone.
   useEffect(() => {
-    if (!splitField && splitCandidates.length > 0) {
+    if (splitField === null && splitCandidates.length > 0) {
       setSplitField(splitCandidates[0].name);
     }
   }, [splitCandidates, splitField]);
@@ -195,6 +201,8 @@ const MetricPlayground = ({ activeObject, record: providedRecord }) => {
     setAggError(null);
     setAggregating(false);
     aggregatedSigRef.current = null;
+    // Re-default the split for the new metric (drop a prior "(none)"/stale pick).
+    setSplitField(null);
   }, [name, reset]);
 
   // Content signature: bumps on a new Run (runToken) OR a Split-by/grain change

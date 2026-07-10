@@ -9,24 +9,14 @@
  * (`metric-playground-bars`, NOT a Plotly plot). This story is rewritten to that
  * flow (the old version tested the deleted synthetic-insight Plotly path).
  *
- * ⚠️ `test.describe.fixme` — the whole story is BLOCKED on a VIS-1026 regression
- *    this rewrite surfaced against the sandbox. Two compounding bugs make the
- *    metric preview unusable for the integration project's `daily_metrics`:
- *
- *    1. Local-preview date-type loss. The aggregate loads the server model rows
- *       into DuckDB-WASM via `read_json_auto`, which types the JSON `date` column
- *       as VARCHAR. `daily_metrics`'s only dimension is `formatted_date`
- *       (`strftime(date,'%Y-%m-%d')`), so the split runs `strftime(VARCHAR, …)`:
- *         Binder Error: No function matches strftime(VARCHAR, STRING_LITERAL).
- *       The old server-side preview saw a real TIMESTAMP `date` and worked. Shared
- *       with DimensionInspector (same read_json_auto load).
- *    2. `(none)` split is unreachable. MetricPlayground auto-defaults an empty
- *       split back to the first candidate (`if (!splitField) setSplitField(
- *       candidates[0])`), so a user can't pick "(none)" to get the plain
- *       `AVG(value)` aggregate that would dodge bug #1.
- *
- *    Un-fixme once the local aggregate preserves the model's column types (or
- *    casts date-like columns) so date splits work — and/or "(none)" is honored.
+ * The default split for `avg_value` (model `daily_metrics`) is the string
+ * dimension `formatted_date` (`strftime(date,'%Y-%m-%d')`), time grain `month`.
+ * The local aggregate CASTs the split to TIMESTAMP before `date_trunc`. The
+ * server serializes the model's `date` column as RFC 1123 ("Mon, 01 Jan 2024 …
+ * GMT"); `coerceServerRowsForDuckDB` rewrites that to ISO so DuckDB-WASM's
+ * read_json_auto types it as TIMESTAMP and `strftime`/`date_trunc` work (the
+ * VIS-1026 local-preview date-type fix). This story asserts Run → bars for the
+ * default grain AND for re-grained buckets.
  *
  * Precondition: the isolated sandbox running the integration project
  * (`bash scripts/sandbox.sh start`). Override the base via VIS_CANVAS_BASE.
@@ -83,7 +73,7 @@ const selectGrain = async (page, label) => {
   await option.click();
 };
 
-test.describe.fixme('Metric Field Lens local preview (VIS-1026 — Run → DuckDB bars)', () => {
+test.describe('Metric Field Lens local preview (VIS-1026 — Run → DuckDB bars)', () => {
   test.setTimeout(90000);
 
   test('avg_value: Run renders bars for the default split + month grain', async ({ page }) => {

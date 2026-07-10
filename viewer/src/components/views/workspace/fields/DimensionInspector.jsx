@@ -7,6 +7,7 @@ import { useDuckDB } from '../../../../contexts/DuckDBContext';
 import { useModelQueryJob } from '../../../../hooks/useModelQueryJob';
 import { getConnection } from '../../../../duckdb/duckdb';
 import { profileTableLocally } from '../../../../duckdb/profiling';
+import { coerceServerRowsForDuckDB, selectWithDateCasts } from '../../../../duckdb/coerceRows';
 import { getTypeColors } from '../../common/objectTypeConfigs';
 import DimensionProfileDashboard from './DimensionProfileDashboard';
 import { useFieldParentModel } from './useFieldParentModel';
@@ -138,9 +139,13 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
         const derivedTable = `dim_derived_${Date.now()}`;
         const tempFile = `dim_data_${Date.now()}.json`;
 
-        await db.registerFileText(tempFile, JSON.stringify(rows));
+        // Rewrite RFC-1123 server dates to ISO and force-cast those columns to
+        // TIMESTAMP, else strftime/date_trunc in the dimension expression fail
+        // — VIS-1026.
+        const { rows: coercedRows, dateColumns } = coerceServerRowsForDuckDB(rows);
+        await db.registerFileText(tempFile, JSON.stringify(coercedRows));
         await conn.query(
-          `CREATE TABLE "${baseTable}" AS SELECT * FROM read_json_auto('${tempFile}')`
+          `CREATE TABLE "${baseTable}" AS SELECT ${selectWithDateCasts(dateColumns)} FROM read_json_auto('${tempFile}')`
         );
         await db.dropFile(tempFile);
 
