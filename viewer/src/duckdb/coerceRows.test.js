@@ -22,11 +22,16 @@ describe('coerceServerRowsForDuckDB', () => {
     expect(dateColumns).toEqual([]);
   });
 
-  test('passes ISO strings through unchanged (not RFC-1123)', () => {
-    const rows = [{ date: '2024-01-01T00:00:00', value: 1 }];
+  test('flags ISO date columns for casting without rewriting them (cloud/ISO backend)', () => {
+    const rows = [
+      { ts: '2024-01-01T00:00:00', d: '2024-06-15', tz: '2024-01-01 00:00:00.000Z', value: 1 },
+    ];
     const { rows: out, dateColumns } = coerceServerRowsForDuckDB(rows);
-    expect(out[0].date).toBe('2024-01-01T00:00:00');
-    expect(dateColumns).toEqual([]);
+    // Not rewritten (already CAST-friendly)…
+    expect(out[0].ts).toBe('2024-01-01T00:00:00');
+    expect(out[0].d).toBe('2024-06-15');
+    // …but flagged so the caller force-casts (read_json_auto won't type them).
+    expect(dateColumns.sort()).toEqual(['d', 'ts', 'tz']);
   });
 
   test('returns the SAME array reference when nothing matched (cheap no-op)', () => {

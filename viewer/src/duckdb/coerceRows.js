@@ -22,14 +22,18 @@
  * touched, so category / text columns are never misidentified as dates.
  */
 
-// e.g. "Mon, 01 Jan 2024 00:00:00 GMT"
+// e.g. "Mon, 01 Jan 2024 00:00:00 GMT" (Flask's default datetime JSON format).
 const RFC_1123_RE = /^[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+// ISO 8601 date / timestamp (e.g. a cloud endpoint): "2024-01-01",
+// "2024-01-01T00:00:00", "2024-01-01 00:00:00.000Z", "2024-01-01T00:00:00+00:00".
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
 
 /**
  * @param {Array<object>} rows - server model-query rows (plain JSON objects).
  * @returns {{ rows: Array<object>, dateColumns: string[] }} the rows with
- *   RFC-1123 dates rewritten to ISO (the same array reference when nothing
- *   matched), plus the names of the columns that held date values.
+ *   RFC-1123 dates rewritten to ISO (the same array reference when nothing was
+ *   rewritten), plus the names of the columns that held date values (RFC-1123
+ *   OR already-ISO) — the caller force-casts these to TIMESTAMP.
  */
 export function coerceServerRowsForDuckDB(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return { rows, dateColumns: [] };
@@ -41,7 +45,8 @@ export function coerceServerRowsForDuckDB(rows) {
     let next = row;
     for (const key of Object.keys(row)) {
       const v = row[key];
-      if (typeof v === 'string' && RFC_1123_RE.test(v)) {
+      if (typeof v !== 'string') continue;
+      if (RFC_1123_RE.test(v)) {
         const ms = Date.parse(v);
         if (!Number.isNaN(ms)) {
           if (next === row) next = { ...row };
@@ -51,6 +56,11 @@ export function coerceServerRowsForDuckDB(rows) {
           next[key] = new Date(ms).toISOString().slice(0, -1);
           dateCols.add(key);
         }
+      } else if (ISO_DATE_RE.test(v)) {
+        // Already CAST-friendly (a cloud endpoint may send ISO). No rewrite, but
+        // flag it so the caller still force-casts — read_json_auto does NOT
+        // reliably type ISO strings as TIMESTAMP in DuckDB-WASM.
+        dateCols.add(key);
       }
     }
     if (next !== row) changedAny = true;
