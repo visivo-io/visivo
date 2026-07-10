@@ -40,7 +40,6 @@ const LibrarySection = ({
   selectedRowId = null,
   onRowClick,
   onContextAction,
-  onCreate,
 }) => {
   const collapsed = useStore(s => !!s.libraryCollapsedSections[sectionKey]);
   const toggleSectionCollapsed = useStore(s => s.toggleLibrarySectionCollapsed);
@@ -129,7 +128,6 @@ const LibrarySection = ({
                   selectedRowId={selectedRowId}
                   onRowClick={onRowClick}
                   onContextAction={onContextAction}
-                  onCreate={onCreate}
                 />
               );
             })}

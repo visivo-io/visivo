@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PiPlus, PiSidebar } from 'react-icons/pi';
 import LibrarySection from './LibrarySection';
 import useLibraryData from './useLibraryData';
-import { LAYOUT_TYPES, DATA_TYPES, CREATABLE_TYPES, getTypeDef } from './LibraryRow';
+import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
 import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
@@ -35,9 +35,10 @@ import { emitWorkspaceEvent } from '../telemetry';
  * store via `openWorkspaceTab` — clicking a row opens (or focuses) a tab
  * for the object. Track G wires the actual Edit form into the right rail.
  *
- * "+ New X" CTAs (droppable subsections only) delegate to each store's
- * per-type `openCreate*Modal()` action. The `inline_create_used` telemetry
- * event fires only from this rail per the C3 scope.
+ * Creation is via the single "+ New" menu in the Library header (the
+ * per-subsection inline "+ New X" CTAs were removed as redundant with it);
+ * `handleCreate` drafts a minimal valid config and opens its tab, firing the
+ * `inline_create_used` telemetry event.
  *
  * The drag-preview pill itself is rendered by the workspace `<DragOverlay>`
  * via `<LibraryDragPreview>` — see Track D for the `<DndContext>` wiring.
@@ -167,6 +168,26 @@ const Library = () => {
     [createWorkspaceObject, openWorkspaceTab, navigate, scope.dashboardName]
   );
 
+  // "+ New" menu pick. Everything templatable goes through `handleCreate`; a
+  // relation can't be templated (its condition needs two real models), so
+  // "Relation" opens the Semantic Layer, where you author it by connecting two
+  // models — the same surface MiddlePane opens for relations.
+  const handleNewPick = useCallback(
+    typeKey => {
+      setNewMenuOpen(false);
+      if (typeKey === 'relation') {
+        openWorkspaceTab({
+          id: 'semantic-layer:semantic-layer',
+          type: 'semantic-layer',
+          name: 'semantic-layer',
+        });
+        return;
+      }
+      handleCreate(typeKey, 'library-menu');
+    },
+    [openWorkspaceTab, handleCreate]
+  );
+
   return (
     <aside
       data-testid="workspace-left-rail"
@@ -194,27 +215,37 @@ const Library = () => {
             {newMenuOpen && (
               <div
                 data-testid="library-new-object-menu"
-                className="absolute right-0 top-7 z-50 w-44 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+                className="absolute right-0 top-7 z-50 w-48 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
               >
-                {CREATABLE_TYPES.map(typeKey => {
-                  const def = getTypeDef(typeKey);
-                  const Icon = def.icon;
-                  return (
-                    <button
-                      key={typeKey}
-                      type="button"
-                      data-testid={`library-new-object-${typeKey}`}
-                      onClick={() => {
-                        setNewMenuOpen(false);
-                        handleCreate(typeKey, 'library-menu');
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
-                    >
-                      {Icon && <Icon style={{ fontSize: 14 }} className="shrink-0" />}
-                      New {def.label}
-                    </button>
-                  );
-                })}
+                {/* Grouped like the sidebar (Layout Items · Data Layer). The menu
+                    is already "New", so items drop the redundant "New " prefix. */}
+                {[
+                  { label: 'Layout Items', types: LAYOUT_TYPES },
+                  { label: 'Data Layer', types: DATA_TYPES },
+                ].map((group, groupIndex) => (
+                  <div key={group.label} data-testid={`library-new-group-${group.label}`}>
+                    {groupIndex > 0 && <div className="my-1 border-t border-gray-100" />}
+                    <div className="px-3 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                      {group.label}
+                    </div>
+                    {group.types.map(typeKey => {
+                      const def = getTypeDef(typeKey);
+                      const Icon = def.icon;
+                      return (
+                        <button
+                          key={typeKey}
+                          type="button"
+                          data-testid={`library-new-object-${typeKey}`}
+                          onClick={() => handleNewPick(typeKey)}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
+                        >
+                          {Icon && <Icon style={{ fontSize: 14 }} className="shrink-0" />}
+                          {def.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -241,7 +272,6 @@ const Library = () => {
           selectedRowId={selectedRowId}
           onRowClick={handleRowClick}
           onContextAction={handleContextAction}
-          onCreate={handleCreate}
         />
         <LibrarySection
           sectionKey="data"
@@ -252,7 +282,6 @@ const Library = () => {
           selectedRowId={selectedRowId}
           onRowClick={handleRowClick}
           onContextAction={handleContextAction}
-          onCreate={handleCreate}
         />
       </div>
 

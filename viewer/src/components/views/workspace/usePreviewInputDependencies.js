@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import useStore from '../../../stores/store';
 import { useInputsData } from '../../../hooks/useInputsData';
@@ -42,8 +42,16 @@ export const usePreviewInputDependencies = (projectId, { insightNames = [], conf
   const storeInputs = useStore(s => s.inputs);
   const fetchInputs = useStore(s => s.fetchInputs);
 
+  // Lazy-load the inputs list ONCE if we don't have it. A project with no
+  // inputs makes `fetchInputs` write a fresh empty array on every call, which
+  // changes the `inputs` reference; keying this effect on `storeInputs` then
+  // re-ran it endlessly (a continuous /api/inputs/ poll). Guard with a ref so
+  // the fetch fires at most once regardless of that reference churn.
+  const fetchedInputsRef = useRef(false);
   useEffect(() => {
+    if (fetchedInputsRef.current) return;
     if ((!storeInputs || storeInputs.length === 0) && typeof fetchInputs === 'function') {
+      fetchedInputsRef.current = true;
       fetchInputs();
     }
   }, [storeInputs, fetchInputs]);

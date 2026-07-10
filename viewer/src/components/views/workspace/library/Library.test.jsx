@@ -8,9 +8,10 @@
  *     Items; Sources/Models/Dimensions/Metrics/Relations/Insights under
  *     Data Layer).
  *   - Drag handles on Layout-Items rows; none on Data-Layer rows.
- *   - "+ New X" buttons only on the four droppable Layout subsections.
+ *   - No inline "+ New X" CTAs — creation is via the header "+ New" menu,
+ *     grouped like the sidebar (Layout Items · Data Layer) and including
+ *     Relation (which opens the Semantic Layer).
  *   - Row click delegates to `openWorkspaceTab`.
- *   - "+ New X" delegates to the corresponding store opener + telemetry.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
@@ -191,16 +192,13 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-row-table-revenue_rows')).not.toBeInTheDocument();
   });
 
-  test('"+ New X" buttons appear on every creatable subsection (all but relation)', () => {
+  test('renders no inline "+ New X" CTAs — creation is via the header "+ New" menu', () => {
     renderLibrary();
-    ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight'].forEach(
+    ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight', 'relation'].forEach(
       t => {
-        expect(screen.getByTestId(`library-subsection-${t}-create`)).toBeInTheDocument();
+        expect(screen.queryByTestId(`library-subsection-${t}-create`)).not.toBeInTheDocument();
       }
     );
-    // A relation can't be templated (its condition must reference two real
-    // models), so it has no inline create.
-    expect(screen.queryByTestId('library-subsection-relation-create')).not.toBeInTheDocument();
   });
 
   test('Layout-Items rows expose drag handles; Data-Layer rows do not', () => {
@@ -394,14 +392,17 @@ describe('Library', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('"+ New Chart" drafts a chart and opens it as a workspace tab (unscoped)', async () => {
+  const openNewMenu = () => fireEvent.click(screen.getByTestId('library-new-object-button'));
+
+  test('"+ New" → Chart drafts a chart and opens it as a workspace tab (unscoped)', async () => {
     const createWorkspaceObject = jest
       .fn()
       .mockResolvedValue({ success: true, name: 'new-chart' });
     const openWorkspaceTab = jest.fn();
     seedStore({ createWorkspaceObject, openWorkspaceTab });
     renderLibrary();
-    fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-chart'));
     await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('chart'));
     await waitFor(() =>
       expect(openWorkspaceTab).toHaveBeenCalledWith({
@@ -412,11 +413,12 @@ describe('Library', () => {
     );
   });
 
-  test('"+ New Chart" opens the Explorer round-trip overlay when scoped to a dashboard (J-2)', () => {
+  test('"+ New" → Chart opens the Explorer round-trip overlay when scoped to a dashboard (J-2)', () => {
     const createWorkspaceObject = jest.fn();
     seedStore({ createWorkspaceObject });
     renderLibrary('/workspace/dashboard/overview');
-    fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-chart'));
     expect(createWorkspaceObject).not.toHaveBeenCalled();
     expect(screen.getByTestId('location-probe')).toHaveTextContent(
       '/workspace/dashboard/overview/explorer'
@@ -425,14 +427,15 @@ describe('Library', () => {
     expect(screen.getByTestId('location-probe')).toHaveTextContent('slot=new');
   });
 
-  test('a data-layer "+ New Model" drafts a model and opens its tab', async () => {
+  test('"+ New" → Model drafts a model and opens its tab', async () => {
     const createWorkspaceObject = jest
       .fn()
       .mockResolvedValue({ success: true, name: 'new-model' });
     const openWorkspaceTab = jest.fn();
     seedStore({ createWorkspaceObject, openWorkspaceTab });
     renderLibrary();
-    fireEvent.click(screen.getByTestId('library-subsection-model-create'));
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-model'));
     await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('model'));
     await waitFor(() =>
       expect(openWorkspaceTab).toHaveBeenCalledWith({
@@ -443,7 +446,7 @@ describe('Library', () => {
     );
   });
 
-  test('the header "+ New" menu lists every creatable type and creates on pick', async () => {
+  test('the "+ New" menu is grouped like the sidebar, drops the "New " prefix, and creates on pick', async () => {
     const createWorkspaceObject = jest
       .fn()
       .mockResolvedValue({ success: true, name: 'new_metric' });
@@ -453,10 +456,16 @@ describe('Library', () => {
     const unsubscribe = setWorkspaceTelemetryListener(evt => events.push(evt));
     try {
       renderLibrary();
-      fireEvent.click(screen.getByTestId('library-new-object-button'));
-      const menu = screen.getByTestId('library-new-object-menu');
-      expect(menu).toBeInTheDocument();
-      expect(screen.queryByTestId('library-new-object-relation')).not.toBeInTheDocument();
+      openNewMenu();
+      expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+      // Grouped like the sidebar.
+      expect(screen.getByTestId('library-new-group-Layout Items')).toBeInTheDocument();
+      expect(screen.getByTestId('library-new-group-Data Layer')).toBeInTheDocument();
+      // Relation now appears (in the Data Layer group).
+      expect(screen.getByTestId('library-new-object-relation')).toBeInTheDocument();
+      // Items drop the redundant "New " prefix.
+      expect(screen.getByTestId('library-new-object-chart')).toHaveTextContent('Chart');
+      expect(screen.getByTestId('library-new-object-chart')).not.toHaveTextContent('New Chart');
 
       fireEvent.click(screen.getByTestId('library-new-object-metric'));
       expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
@@ -478,6 +487,21 @@ describe('Library', () => {
     }
   });
 
+  test('"+ New" → Relation opens the Semantic Layer (a relation can\'t be templated)', () => {
+    const createWorkspaceObject = jest.fn();
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab });
+    renderLibrary();
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-relation'));
+    expect(createWorkspaceObject).not.toHaveBeenCalled();
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'semantic-layer:semantic-layer',
+      type: 'semantic-layer',
+      name: 'semantic-layer',
+    });
+  });
+
   test('the header "+ New" menu dismisses on Escape', () => {
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-new-object-button'));
@@ -495,20 +519,6 @@ describe('Library', () => {
     expect(screen.getByTestId('library-subsection-model-empty')).toHaveTextContent(
       'No models yet'
     );
-  });
-
-  test('fires the inline_create_used telemetry event when "+ New X" is clicked', () => {
-    const events = [];
-    const unsubscribe = setWorkspaceTelemetryListener(evt => events.push(evt));
-    try {
-      renderLibrary();
-      fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
-      const created = events.filter(e => e.eventName === 'inline_create_used');
-      expect(created).toHaveLength(1);
-      expect(created[0].payload).toEqual({ source: 'library', kind: 'chart' });
-    } finally {
-      unsubscribe();
-    }
   });
 
   test('the type-filter chip narrows a section to a single subsection', () => {
