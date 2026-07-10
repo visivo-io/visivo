@@ -73,6 +73,14 @@ describe('ModelPreview (VIS-801)', () => {
     expect(mockEditorSpy.mock.calls[0][0].value).toBe('SELECT 1');
   });
 
+  test('the preview pane can shrink (min-w-0) so it does not overflow on rail resize', () => {
+    // Root cause of the "black panes": the flex item kept its content width and
+    // the dark Monaco editor overflowed the narrowing pane. min-w-0 lets it shrink.
+    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    expect(screen.getByTestId('model-preview').className).toContain('min-w-0');
+  });
+
   test('relayouts the SQL editor when a rail width changes (fixes the black-pane resize glitch)', () => {
     seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
     render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
