@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import useStore from '../../../stores/store';
 import WorkspaceShell from './WorkspaceShell';
 import { emitWorkspaceEvent, markBuildModeEntered } from './telemetry';
 import { useWorkspaceScope } from './useWorkspaceScope';
 import useProjectChangeListener from './useProjectChangeListener';
+import { workspaceTabFromUrl } from './workspaceUrl';
 
 /**
  * Workspace — route container for `/workspace` and
@@ -24,11 +25,15 @@ const Workspace = () => {
   const { dashboardName } = useParams();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  // The `/workspace/semantic-layer` route opens the project-wide Semantic Layer
-  // page (VIS-1014) — a synthetic workspace tab dispatched by MiddlePane.
-  const isSemanticLayerRoute = location.pathname === '/workspace/semantic-layer';
+  const navigate = useNavigate();
   const project = useStore(s => s.project);
-  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  // `activateWorkspaceTab` is the URL→store write (sets active in the store); UI
+  // goes through `openWorkspaceTab`, which routes the selection through the URL.
+  const activateWorkspaceTab = useStore(s => s.activateWorkspaceTab);
+  const registerWorkspaceUrlNavigate = useStore(s => s.registerWorkspaceUrlNavigate);
+  const workspaceActiveTabId = useStore(s => s.workspaceActiveTabId);
+  const workspaceTabs = useStore(s => s.workspaceTabs);
+  const restoreWorkspaceTabs = useStore(s => s.restoreWorkspaceTabs);
   const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
   const checkCommitStatus = useStore(s => s.checkCommitStatus);
   const scope = useWorkspaceScope();
@@ -91,81 +96,76 @@ const Workspace = () => {
     fetchDashboards,
   ]);
 
-  // Auto-hydrate the project tab once, after `project` resolves (so the tab
-  // doesn't carry a stale name from the pre-load default). After that, the
-  // project tab is user-managed — closing it should stick across navigation.
-  //
-  // Every OTHER hydration below is keyed on its route VALUE (a ref of the
-  // last-hydrated dashboardName / edit param / …), NOT on `project` identity:
-  // the effect re-runs on every project refetch (e.g. refreshFromProjectChange
-  // after a backend recompile), and value-keying stops a refetch from
-  // re-focusing / resurrecting the route's tabs or re-asserting the deep link.
-  const projectTabHydrated = useRef(false);
-  const hydratedDashboardRef = useRef(null);
-  const hydratedSemanticLayerRef = useRef(false);
-  const hydratedEditParamRef = useRef(null);
-  const hydratedViewParamRef = useRef(null);
+  // Register the router's `navigate` so the store's tab actions can route the
+  // active selection through the URL (the single clean loop). Unregister on
+  // unmount so a stale navigate can't fire once the Workspace is gone.
   useEffect(() => {
-    if (project && !projectTabHydrated.current) {
+    registerWorkspaceUrlNavigate(navigate);
+    return () => registerWorkspaceUrlNavigate(null);
+  }, [navigate, registerWorkspaceUrlNavigate]);
+
+  // #6: persist the OPEN-TAB SET across refresh (the active tab is restored from
+  // the URL). Keyed per project so projects don't share strips.
+  const tabsStorageKey = project ? `visivo.workspace.tabs.${projectName}` : null;
+  const tabsRestored = useRef(false);
+  // Restore once, BEFORE the URL→store sync below, so the URL's tab joins the
+  // restored strip instead of replacing it.
+  useEffect(() => {
+    if (!project || tabsRestored.current || !tabsStorageKey) return;
+    tabsRestored.current = true;
+    try {
+      const saved = JSON.parse(localStorage.getItem(tabsStorageKey) || 'null');
+      if (Array.isArray(saved) && saved.length) restoreWorkspaceTabs(saved);
+    } catch {
+      /* ignore malformed / unavailable storage */
+    }
+  }, [project, tabsStorageKey, restoreWorkspaceTabs]);
+
+  const projectTabHydrated = useRef(false);
+  const syncedTargetRef = useRef(null);
+  const hydratedViewParamRef = useRef(null);
+  // URL → store: the URL is the source of the ACTIVE tab, so this reads it into
+  // the store via `activateWorkspaceTab` (never navigates). The store's
+  // `openWorkspaceTab`/`switchWorkspaceTab` WRITE the URL; this closes the loop.
+  // Keyed on the URL's target id (via `syncedTargetRef`), so a project refetch
+  // (same URL) never re-focuses or resurrects a closed tab.
+  useEffect(() => {
+    if (!project) return;
+    // The project tab is the always-present home; create it once (with its real
+    // name after `project` resolves). After that it's user-managed — closing it
+    // sticks.
+    if (!projectTabHydrated.current) {
       projectTabHydrated.current = true;
-      openWorkspaceTab({
-        id: `project:${projectName}`,
-        type: 'project',
-        name: projectName,
-      });
-      // Opening the project tab focuses it. When `project` resolves AFTER the
-      // route targets hydrated (slow first load), re-arm them so the blocks
-      // below re-assert focus on the route's tab — identical to initial-load
-      // ordering (project tab first, route target focused last).
-      hydratedDashboardRef.current = null;
-      hydratedSemanticLayerRef.current = false;
-      hydratedEditParamRef.current = null;
+      activateWorkspaceTab({ id: `project:${projectName}`, type: 'project', name: projectName });
+      syncedTargetRef.current = `project:${projectName}`;
     }
-    if (dashboardName && hydratedDashboardRef.current !== dashboardName) {
-      openWorkspaceTab({
-        id: `dashboard:${dashboardName}`,
-        type: 'dashboard',
-        name: dashboardName,
-      });
-    }
-    // Leaving the dashboard route re-arms the hydration, so returning to the
-    // same dashboard URL re-focuses its tab.
-    hydratedDashboardRef.current = dashboardName || null;
-    if (isSemanticLayerRoute && !hydratedSemanticLayerRef.current) {
-      openWorkspaceTab({
-        id: 'semantic-layer:semantic-layer',
-        type: 'semantic-layer',
-        name: 'semantic-layer',
-      });
-    }
-    // Re-arm the semantic-layer hydration when the route is left, so returning
-    // to /workspace/semantic-layer re-focuses the tab (per route VALUE).
-    hydratedSemanticLayerRef.current = isSemanticLayerRoute;
-    // Deep-link from the flip card's "Expand / Open full lineage" gesture:
-    // `?edit=<type>:<name>` opens a real tab for the subject (so the tab strip
-    // gains it and it becomes active), and `?lens=lineage` shows the full
-    // lineage in the middle pane. Without opening the tab the Workspace would
-    // land on the unscoped Project Editor (only the project tab visible).
-    const editParam = searchParams.get('edit');
-    if (editParam && editParam.includes(':') && hydratedEditParamRef.current !== editParam) {
-      const [type, ...rest] = editParam.split(':');
-      const name = rest.join(':');
-      if (type && name) {
-        openWorkspaceTab({ type, name });
-        // `workspaceLens` is the GLOBAL dashboard-pane lens; per-object types
-        // handle `?lens=lineage` locally in ObjectCanvasFrame. Setting the
-        // global lens for them would make every dashboard opened later land
-        // on lineage.
-        if (searchParams.get('lens') === 'lineage' && type === 'dashboard') {
+
+    const target = workspaceTabFromUrl(location.pathname, searchParams) || {
+      type: 'project',
+      name: projectName,
+    };
+    const targetId = `${target.type}:${target.name}`;
+    if (targetId !== syncedTargetRef.current) {
+      if (target.type === 'project') {
+        // Focus the project tab — but never resurrect one the user closed.
+        const projectTab = useStore.getState().workspaceTabs.find(t => t.type === 'project');
+        if (projectTab) activateWorkspaceTab(projectTab);
+      } else {
+        activateWorkspaceTab(target);
+        // `?edit=dashboard:<name>&lens=lineage` → the GLOBAL dashboard lens;
+        // per-object types consume `?lens=lineage` locally in ObjectCanvasFrame,
+        // so setting the global lens for them would make every dashboard opened
+        // later land on lineage.
+        if (target.type === 'dashboard' && searchParams.get('lens') === 'lineage') {
           setWorkspaceLens('lineage');
         }
       }
+      syncedTargetRef.current = targetId;
     }
-    hydratedEditParamRef.current = editParam || null;
-    // `/lineage` redirects to `/workspace?view=lineage` (LocalRouter): show the
+
+    // `/lineage` redirects to `/workspace?view=lineage` (LocalRouter): the
     // global dashboard-pane lineage lens — the same full-project DAG the old
-    // /lineage page rendered. `view=project` is the default and needs no
-    // handling.
+    // /lineage page rendered.
     const viewParam = searchParams.get('view');
     if (viewParam === 'lineage' && hydratedViewParamRef.current !== viewParam) {
       setWorkspaceLens('lineage');
@@ -174,12 +174,40 @@ const Workspace = () => {
   }, [
     project,
     projectName,
-    dashboardName,
-    isSemanticLayerRoute,
+    location.pathname,
     searchParams,
-    openWorkspaceTab,
+    activateWorkspaceTab,
     setWorkspaceLens,
   ]);
+
+  // #6: persist the open-tab set on every change — but only AFTER the initial
+  // restore, so we never clobber the saved strip with the empty starting one.
+  useEffect(() => {
+    if (!tabsStorageKey || !tabsRestored.current) return;
+    try {
+      localStorage.setItem(
+        tabsStorageKey,
+        JSON.stringify(workspaceTabs.map(t => ({ id: t.id, type: t.type, name: t.name })))
+      );
+    } catch {
+      /* ignore unavailable storage */
+    }
+  }, [workspaceTabs, tabsStorageKey]);
+
+  // Push the selected tab into the document title so the browser tab is
+  // informative (VIS thread: "the open tab in the browser will be more
+  // informative"). Project tab → just the project; every other tab →
+  // "<tab> · <project>".
+  useEffect(() => {
+    const base = projectName || 'Visivo';
+    const activeTab = workspaceTabs.find(t => t.id === workspaceActiveTabId);
+    if (!activeTab || activeTab.type === 'project') {
+      document.title = base;
+      return;
+    }
+    const label = activeTab.type === 'semantic-layer' ? 'Semantic Layer' : activeTab.name;
+    document.title = `${label} · ${base}`;
+  }, [workspaceActiveTabId, workspaceTabs, projectName]);
 
   // Check publish status so the Publish · N button has accurate count.
   useEffect(() => {

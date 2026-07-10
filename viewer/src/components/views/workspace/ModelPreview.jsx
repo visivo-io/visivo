@@ -171,6 +171,18 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
 
   const [hasRun, setHasRun] = useState(false);
 
+  // The SQL editor is Monaco (canvas-rendered). Its `automaticLayout` only
+  // POLLS for size changes, so a flex-driven rail resize (dragging the right
+  // divider) leaves its dark canvas unpainted — the "black panes" from the VIS
+  // thread. Force a relayout the instant a rail width changes or a drag ends.
+  const editorRef = useRef(null);
+  const rightWidth = useStore(s => s.workspaceRightWidth);
+  const leftWidth = useStore(s => s.workspaceLeftWidth);
+  const resizing = useStore(s => s.workspaceResizing);
+  useEffect(() => {
+    editorRef.current?.layout?.();
+  }, [rightWidth, leftWidth, resizing]);
+
   const handleRun = () => {
     if (!sourceName || !sql) return;
     setHasRun(true);
@@ -233,6 +245,9 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
           language="sql"
           theme="vs-dark"
           value={sql}
+          onMount={editor => {
+            editorRef.current = editor;
+          }}
           options={{
             readOnly: true,
             domReadOnly: true,

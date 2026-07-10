@@ -58,10 +58,14 @@ jest.mock('../common/LevelEditForm', () => stubLeafForm('level-edit-form-stub'))
 jest.mock('../common/DefaultsEditForm', () => stubLeafForm('defaults-edit-form-stub'));
 
 const resetWorkspaceStore = () => {
+  // The open-tab set persists to localStorage (#6); clear it so tabs never bleed
+  // across tests via a restore on mount.
+  localStorage.clear();
   act(() => {
     useStore.setState({
       workspaceTabs: [],
       workspaceActiveTabId: null,
+      workspaceUrlNavigate: null,
       // Reset the active object so tests are isolated: a non-project active
       // object makes MiddlePane mount that type's preview (Track N), whose
       // on-mount data fetch would otherwise leak into the next test's
@@ -400,6 +404,91 @@ describe('VIS-775 Workspace shell', () => {
     expect(
       screen.queryByTestId('workspace-tab-dashboard:simple-dashboard')
     ).not.toBeInTheDocument();
+  });
+
+  test('routes the active tab through the URL so the Back button walks tab history', async () => {
+    const router = createMemoryRouter(
+      createRoutesFromElements(
+        <>
+          <Route path="/workspace" element={<Workspace />} />
+          <Route path="/workspace/dashboard/:dashboardName" element={<Workspace />} />
+        </>
+      ),
+      { initialEntries: ['/workspace'], future: futureFlags }
+    );
+    render(<RouterProvider router={router} future={futureFlags} />);
+    const editParam = () => new URLSearchParams(router.state.location.search).get('edit');
+
+    // openWorkspaceTab WRITES the URL; the URL→store sync sets it active.
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue_chart' });
+    });
+    await waitFor(() => expect(editParam()).toBe('chart:revenue_chart'));
+    await waitFor(() =>
+      expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue_chart')
+    );
+
+    // Switching back to the project tab clears the edit param.
+    act(() => {
+      useStore.getState().switchWorkspaceTab('project:analytics-platform');
+    });
+    await waitFor(() => expect(router.state.location.pathname).toBe('/workspace'));
+    await waitFor(() =>
+      expect(useStore.getState().workspaceActiveTabId).toBe('project:analytics-platform')
+    );
+    expect(editParam()).toBeNull();
+
+    // The browser Back button returns to the chart tab.
+    act(() => {
+      router.navigate(-1);
+    });
+    await waitFor(() =>
+      expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue_chart')
+    );
+  });
+
+  test('persists the open tab set and restores it on reload', async () => {
+    // First "page load": open an object tab (routes through the URL → store).
+    const { unmount } = renderAt('/workspace');
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue_chart' });
+    });
+    expect(await screen.findByTestId('workspace-tab-chart:revenue_chart')).toBeInTheDocument();
+    unmount();
+
+    // Simulate a refresh: the store's tabs reset, localStorage survives.
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        workspaceUrlNavigate: null,
+      });
+    });
+    renderAt('/workspace');
+
+    // The chart tab is restored from storage alongside the project tab.
+    expect(await screen.findByTestId('workspace-tab-chart:revenue_chart')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toBeInTheDocument();
+  });
+
+  test('reflects the active tab in the document title', async () => {
+    renderAt('/workspace');
+    await waitFor(() => expect(document.title).toBe('analytics-platform'));
+
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue_chart' });
+    });
+    await waitFor(() =>
+      expect(document.title).toBe('revenue_chart · analytics-platform')
+    );
+
+    // Back on the project tab, the title is just the project.
+    act(() => {
+      useStore.getState().switchWorkspaceTab('project:analytics-platform');
+    });
+    await waitFor(() => expect(document.title).toBe('analytics-platform'));
   });
 
   test('fires workspace_mode_entered telemetry with null dashboardName when unscoped', () => {

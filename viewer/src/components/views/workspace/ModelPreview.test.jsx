@@ -12,13 +12,19 @@ import ModelPreview from './ModelPreview';
 import useStore from '../../../stores/store';
 
 const mockEditorSpy = jest.fn();
-jest.mock('@monaco-editor/react', () => ({
-  __esModule: true,
-  default: props => {
+const mockEditorLayout = jest.fn();
+jest.mock('@monaco-editor/react', () => {
+  const React = require('react');
+  const MockEditor = props => {
     mockEditorSpy(props);
+    // Simulate Monaco's onMount, handing back a fake editor with layout().
+    React.useEffect(() => {
+      props.onMount?.({ layout: mockEditorLayout });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     return <div data-testid="monaco-mock" data-readonly={String(!!props.options?.readOnly)} />;
-  },
-}));
+  };
+  return { __esModule: true, default: MockEditor };
+});
 
 const mockExecuteQuery = jest.fn(() => Promise.resolve('job-1'));
 let mockJobState;
@@ -46,6 +52,7 @@ const seed = (models = [], sources = [], defaults = null, fields = {}) => {
 describe('ModelPreview (VIS-801)', () => {
   beforeEach(() => {
     mockEditorSpy.mockClear();
+    mockEditorLayout.mockClear();
     mockExecuteQuery.mockClear();
     mockJobState = {
       status: null,
@@ -64,6 +71,16 @@ describe('ModelPreview (VIS-801)', () => {
     expect(screen.getByTestId('model-preview')).toBeInTheDocument();
     expect(screen.getByTestId('monaco-mock')).toHaveAttribute('data-readonly', 'true');
     expect(mockEditorSpy.mock.calls[0][0].value).toBe('SELECT 1');
+  });
+
+  test('relayouts the SQL editor when a rail width changes (fixes the black-pane resize glitch)', () => {
+    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    mockEditorLayout.mockClear(); // ignore the mount-time layout
+    act(() => {
+      useStore.getState().setWorkspaceRightWidth(420);
+    });
+    expect(mockEditorLayout).toHaveBeenCalled();
   });
 
   test('does not render results until Run is clicked', () => {

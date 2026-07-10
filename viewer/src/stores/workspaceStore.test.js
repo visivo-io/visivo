@@ -16,6 +16,7 @@ const reset = () => {
       workspaceTabs: [],
       workspaceActiveTabId: null,
       workspacePendingCloseTabId: null,
+      workspaceUrlNavigate: null,
       workspaceLeftCollapsed: false,
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
@@ -38,6 +39,50 @@ describe('workspace store slice', () => {
     expect(s.workspaceTabs).toHaveLength(1);
     expect(s.workspaceTabs[0].id).toBe('dashboard:simple-dashboard');
     expect(s.workspaceActiveTabId).toBe('dashboard:simple-dashboard');
+  });
+
+  test('openWorkspaceTab routes the active selection through the registered URL navigator', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    // It navigates to the tab's URL; the URL→store sync (in Workspace) then sets
+    // it active — it is NOT activated in-store directly here.
+    expect(nav).toHaveBeenCalledWith('/workspace?edit=chart%3Arevenue');
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    // The id is still returned synchronously for callers that need it.
+    let id;
+    act(() => {
+      id = useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    expect(id).toBe('chart:revenue');
+  });
+
+  test('activateWorkspaceTab is the URL→store write — it sets active without navigating', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().activateWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    expect(nav).not.toHaveBeenCalled();
+    expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
+  });
+
+  test('restoreWorkspaceTabs replaces the strip without focusing (dedupe + sanitize)', () => {
+    act(() => {
+      useStore.getState().restoreWorkspaceTabs([
+        { type: 'chart', name: 'a' },
+        { id: 'chart:a', type: 'chart', name: 'a' }, // duplicate id → dropped
+        { type: 'model', name: 'm', dirty: true }, // dirty is not restored
+        { type: 'bad' }, // missing name → dropped
+        null, // junk → dropped
+      ]);
+    });
+    const s = useStore.getState();
+    expect(s.workspaceTabs.map(t => t.id)).toEqual(['chart:a', 'model:m']);
+    expect(s.workspaceActiveTabId).toBeNull(); // restore never focuses
+    expect(s.workspaceTabs.find(t => t.id === 'model:m').dirty).toBe(false);
   });
 
   test('openWorkspaceTab re-focuses an existing tab without duplicating it', () => {

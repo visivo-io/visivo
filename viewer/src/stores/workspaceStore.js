@@ -43,6 +43,7 @@ import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
 import { unwrapConfig, withConfig } from '../components/views/workspace/unwrapRecordConfig';
+import { workspaceTabUrl } from '../components/views/workspace/workspaceUrl';
 
 /**
  * Two `{ type, name }` selection descriptors identify the same object.
@@ -65,6 +66,15 @@ const createWorkspaceSlice = (set, get) => ({
   workspaceTabs: [],
   workspaceActiveTabId: null,
   workspaceActiveObject: null, // `{ type, name }` mirror of the active tab.
+
+  // The active tab is URL-addressable (VIS thread: Back button + the URL as the
+  // clean single loop). The Workspace registers the router's `navigate` here on
+  // mount; the tab actions route the active SELECTION through it, and
+  // `useWorkspaceUrlSync` reads the URL back into `workspaceActiveTabId`. When
+  // no navigator is registered (unit tests / non-Workspace mounts) the actions
+  // fall back to activating in-store synchronously, so callers keep working.
+  workspaceUrlNavigate: null,
+  registerWorkspaceUrlNavigate: fn => set({ workspaceUrlNavigate: fn || null }),
 
   // Dirty-close confirmation (VIS-812 / O-3): the tab id awaiting the user's
   // confirm/cancel in the close dialog, or null when no close is pending.
@@ -151,6 +161,27 @@ const createWorkspaceSlice = (set, get) => ({
   openWorkspaceTab: (tab) => {
     if (!tab || !tab.type || !tab.name) return null;
     const id = tab.id || `${tab.type}:${tab.name}`;
+    const nav = get().workspaceUrlNavigate;
+    if (nav) {
+      // Route the active selection THROUGH the URL: navigate to the tab's URL
+      // and let `useWorkspaceUrlSync` set it active (single clean loop). The id
+      // is returned synchronously so callers keep their contract.
+      nav(workspaceTabUrl({ type: tab.type, name: tab.name }));
+      return id;
+    }
+    // No router mounted — activate in-store directly (synchronous fallback).
+    return get().activateWorkspaceTab(tab);
+  },
+
+  /**
+   * Set the active tab IN THE STORE (ensure it's open, focus it). This is the
+   * URL→store write called by `useWorkspaceUrlSync` once the URL changes (and
+   * the no-router fallback for `openWorkspaceTab`). Nothing else should call it
+   * directly — UI goes through `openWorkspaceTab` so the URL stays the source.
+   */
+  activateWorkspaceTab: (tab) => {
+    if (!tab || !tab.type || !tab.name) return null;
+    const id = tab.id || `${tab.type}:${tab.name}`;
     const state = get();
     const existing = state.workspaceTabs.find((t) => t.id === id);
     const activeObject = { type: tab.type, name: tab.name };
@@ -162,25 +193,34 @@ const createWorkspaceSlice = (set, get) => ({
       set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject, ...keyReset });
       return id;
     }
-    const next = {
-      id,
-      type: tab.type,
-      name: tab.name,
-      dirty: !!tab.dirty,
-    };
-    emitWorkspaceEvent('tab_opened', {
-      id,
-      type: tab.type,
-      name: tab.name,
-      background: false,
-    });
+    emitWorkspaceEvent('tab_opened', { id, type: tab.type, name: tab.name, background: false });
     set({
-      workspaceTabs: [...state.workspaceTabs, next],
+      workspaceTabs: [...state.workspaceTabs, { id, type: tab.type, name: tab.name, dirty: !!tab.dirty }],
       workspaceActiveTabId: id,
       workspaceActiveObject: activeObject,
       ...keyReset,
     });
     return id;
+  },
+
+  /**
+   * Restore the OPEN-TAB SET from persistence (VIS thread: "if you refresh you
+   * lose all the open tabs"). Replaces the strip WITHOUT focusing anything — the
+   * active tab is restored separately from the URL. Sanitizes + de-dupes the
+   * saved payload (dirty flags don't survive a reload).
+   */
+  restoreWorkspaceTabs: (tabs) => {
+    if (!Array.isArray(tabs)) return;
+    const seen = new Set();
+    const restored = [];
+    for (const t of tabs) {
+      if (!t || !t.type || !t.name) continue;
+      const id = t.id || `${t.type}:${t.name}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      restored.push({ id, type: t.type, name: t.name, dirty: false });
+    }
+    set({ workspaceTabs: restored });
   },
 
   /**
@@ -212,15 +252,13 @@ const createWorkspaceSlice = (set, get) => ({
     const state = get();
     const tab = state.workspaceTabs.find((t) => t.id === tabId);
     if (!tab) return;
-    if (state.workspaceActiveTabId !== tabId) {
-      emitWorkspaceEvent('tab_switched', { id: tabId, type: tab.type, name: tab.name });
+    // Route the selection through the URL (Back button + single loop); the
+    // no-router fallback focuses in-store directly.
+    if (state.workspaceUrlNavigate) {
+      state.workspaceUrlNavigate(workspaceTabUrl(tab));
+      return;
     }
-    const activeObject = { type: tab.type, name: tab.name };
-    set({
-      workspaceActiveTabId: tabId,
-      workspaceActiveObject: activeObject,
-      ...outlineKeyResetFor(state.workspaceActiveObject, activeObject),
-    });
+    state.activateWorkspaceTab(tab);
   },
 
   /**
@@ -240,18 +278,18 @@ const createWorkspaceSlice = (set, get) => ({
       dirty: !!closing.dirty,
     });
     const remaining = state.workspaceTabs.filter((t) => t.id !== tabId);
+    const wasActive = state.workspaceActiveTabId === tabId;
+    const newActive = wasActive && remaining.length ? remaining[Math.max(0, idx - 1)] : null;
     let activeId = state.workspaceActiveTabId;
     let activeObject = state.workspaceActiveObject;
-    if (activeId === tabId) {
-      if (remaining.length === 0) {
-        activeId = null;
-        activeObject = null;
-      } else {
-        const newActive = remaining[Math.max(0, idx - 1)];
-        activeId = newActive.id;
-        activeObject = { type: newActive.type, name: newActive.name };
-      }
+    if (wasActive) {
+      activeId = newActive ? newActive.id : null;
+      activeObject = newActive ? { type: newActive.type, name: newActive.name } : null;
     }
+    // Removing from the open set + shifting active is one store update (the
+    // active id must never dangle at a removed tab). We set active here rather
+    // than routing it through the URL, then sync the URL below so Back still
+    // works — the URL sync re-confirms the same value (idempotent, no loop).
     set({
       workspaceTabs: remaining,
       workspaceActiveTabId: activeId,
@@ -261,6 +299,12 @@ const createWorkspaceSlice = (set, get) => ({
       workspacePendingCloseTabId:
         state.workspacePendingCloseTabId === tabId ? null : state.workspacePendingCloseTabId,
     });
+    // Sync the URL to the new active tab. Closing the LAST tab leaves an empty
+    // workspace (active null) — navigating to `/workspace` there would resurrect
+    // the project tab, so we skip it.
+    if (wasActive && newActive && state.workspaceUrlNavigate) {
+      state.workspaceUrlNavigate(workspaceTabUrl(newActive));
+    }
   },
 
   /**

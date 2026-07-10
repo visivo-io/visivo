@@ -47,6 +47,8 @@ const renderLibrary = (entry = '/workspace') => {
           element={<DndContext><Library /><LocationProbe /></DndContext>}
         />
         <Route path="/workspace/dashboard/:dashboardName/explorer" element={<LocationProbe />} />
+        <Route path="/workspace/semantic-layer" element={<LocationProbe />} />
+        <Route path="/explorer" element={<LocationProbe />} />
       </>
     ),
     { initialEntries: [entry], future: futureFlags }
@@ -519,6 +521,53 @@ describe('Library', () => {
     expect(screen.getByTestId('library-subsection-model-empty')).toHaveTextContent(
       'No models yet'
     );
+  });
+
+  test('expanding the rail reveals the active object (expands its section + subsection)', () => {
+    // Simulate: nav minimized, an item selected, then re-expanded — the Library
+    // mounts with the active object's group collapsed and must reveal it.
+    seedStore({
+      workspaceActiveObject: { type: 'model', name: 'monthly_revenue' },
+      workspaceActiveTabId: 'model:monthly_revenue',
+      libraryCollapsedSections: { data: true },
+      libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
+    });
+    renderLibrary();
+    expect(useStore.getState().libraryCollapsedSections.data).toBe(false);
+    expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
+    // The selected model row is now visible.
+    expect(screen.getByTestId('library-row-model-monthly_revenue')).toBeInTheDocument();
+  });
+
+  test('the surfaces row exposes Project / Explorer / Semantic Layer', () => {
+    renderLibrary();
+    expect(screen.getByTestId('library-surface-project')).toBeInTheDocument();
+    expect(screen.getByTestId('library-surface-explorer')).toHaveTextContent('Explorer');
+    expect(screen.getByTestId('library-surface-semantic-layer')).toBeInTheDocument();
+  });
+
+  test('clicking Explorer navigates to the Explorer route', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-surface-explorer'));
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/explorer');
+  });
+
+  test('clicking Semantic reopens the semantic-layer tab and navigates to it', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-surface-semantic-layer'));
+    expect(useStore.getState().workspaceActiveTabId).toBe('semantic-layer:semantic-layer');
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/workspace/semantic-layer');
+  });
+
+  test('clicking Project reopens (resurrects) the project tab', () => {
+    // Even with no project tab open, the surface button brings it back.
+    act(() => useStore.setState({ workspaceTabs: [], workspaceActiveTabId: null }));
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-surface-project'));
+    expect(
+      useStore.getState().workspaceTabs.some(t => t.type === 'project')
+    ).toBe(true);
+    expect(useStore.getState().workspaceActiveObject?.type).toBe('project');
   });
 
   test('the type-filter chip narrows a section to a single subsection', () => {
