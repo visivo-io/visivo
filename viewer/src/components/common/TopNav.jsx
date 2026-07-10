@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
+import RunsToolIcon from './RunsToolIcon';
 import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
@@ -31,11 +32,12 @@ const LOCAL_STAGE = {
 
 // Intra-project tools. The Workspace subsumes the legacy Editor and Lineage
 // surfaces (both `/editor` and `/lineage` now redirect into `/workspace`), so
-// the switcher is three: build (Workspace), explore (Explorer), view
-// (Dashboards).
+// the switcher is four: explore (Explorer), build (Workspace), the local
+// run-on-save history (Runs), and view (Dashboards).
 const DEFAULT_TOOLS = [
   { id: 'explorer', label: 'Explorer', to: '/explorer', icon: PiMagnifyingGlass },
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
+  { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate },
 ];
 
@@ -441,8 +443,8 @@ const TopNav = ({
   versions,
   currentVersion,
   onVersionChange = () => {},
-  // commit / deploy — both surface only when there are uncommitted changes
-  // (nothing to commit or deploy on a clean project, so the slot is empty).
+  // commit / deploy — mutually exclusive by dirty state: Commit shows when there
+  // are uncommitted changes; Deploy shows when the project is clean.
   hasUncommittedChanges,
   // count of pending (uncommitted) changes — shown as a badge on Commit.
   commitCount = 0,
@@ -488,14 +490,13 @@ const TopNav = ({
   const showVersions = showProject && Array.isArray(versions) && versions.length > 0 && currentVersion;
   const inHistory = showVersions && !currentVersion.live;
 
-  // Both Commit and Deploy only make sense when there's something to act on,
-  // so the action slot is empty on a clean project and shows Commit (+ Deploy
-  // where deploy exists) once there are uncommitted changes.
+  // Commit and Deploy are mutually exclusive by dirty state: a dirty project
+  // shows Commit (changes must be committed before they can ship), and a clean
+  // project shows Deploy where deploy exists (nothing to commit, ready to ship).
   const action = hasUncommittedChanges ? (
-    <>
-      <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
-      {showDeploy && <DeployButton onClick={onDeployClick} compact={narrow} />}
-    </>
+    <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
+  ) : showDeploy ? (
+    <DeployButton onClick={onDeployClick} compact={narrow} />
   ) : null;
 
   const banner = inHistory && (

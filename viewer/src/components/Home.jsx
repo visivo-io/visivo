@@ -14,6 +14,7 @@ import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import OnboardingCoach from './onboarding/OnboardingCoach';
 import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
 import { hasCompletedOnboarding } from './onboarding/onboardingState';
+import { useRunPolling } from '../hooks/useRunPolling';
 import { useState, useEffect } from 'react';
 
 const Home = () => {
@@ -35,6 +36,12 @@ const Home = () => {
   const projectId = useStore(state => state.project?.id);
   const capabilities = useStore(state => state.capabilities);
   const fetchCapabilities = useStore(state => state.fetchCapabilities);
+
+  // Poll run status so on-save runs refresh rendered data (runDataVersion) and
+  // the toolbar run indicator updates. Self-gates on project.status === 'draft'
+  // (local serve reports it; published projects stay off). Mounted here at the
+  // shell so it's active across every project sub-view.
+  useRunPolling();
 
   // Check commit status on mount
   useEffect(() => {

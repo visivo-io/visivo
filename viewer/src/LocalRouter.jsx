@@ -11,6 +11,7 @@ import Onboarding from './components/onboarding/Onboarding';
 import ExplorerPage from './components/explorer/ExplorerPage';
 import ExplorerOverlay from './components/explorer/ExplorerOverlay';
 import Workspace from './components/views/workspace/Workspace';
+import RunsView from './components/RunsView';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
 // VIS-778 / J-2: Build-mode → Explorer round-trip. The overlay composes OVER
@@ -125,6 +126,14 @@ const LocalRouter = createBrowserRouter(
           element={<ExplorerPage />}
           handle={{
             crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="runs"
+          path="/runs"
+          element={<RunsView />}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/runs">Runs</BreadcrumbLink>,
           }}
         />
         <Route

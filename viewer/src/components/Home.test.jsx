@@ -130,7 +130,8 @@ test('keeps the full tool set while on an editable draft', async () => {
 });
 
 test('Deploy button toggles the deploy modal open', async () => {
-  renderWithStore({ hasUncommittedChanges: true });
+  // Deploy surfaces on a clean project (nothing to commit, ready to ship).
+  renderWithStore({ hasUncommittedChanges: false });
   expect(await screen.findByTitle('Deploy')).toBeInTheDocument();
   expect(screen.queryByTestId('deploy-modal-open')).not.toBeInTheDocument();
   fireEvent.click(screen.getByTitle('Deploy'));

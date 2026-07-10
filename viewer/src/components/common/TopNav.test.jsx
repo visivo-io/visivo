@@ -39,14 +39,20 @@ describe('TopNav', () => {
     expect(screen.getByText('Local')).toBeInTheDocument();
   });
 
-  it('shows both Commit and Deploy when there are uncommitted changes', () => {
+  it('shows Commit but not Deploy when there are uncommitted changes', () => {
     renderNav({ hasUncommittedChanges: true });
     expect(screen.getByTitle('Commit changes')).toBeInTheDocument();
-    expect(screen.getByTitle('Deploy')).toBeInTheDocument();
+    expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
   });
 
-  it('shows neither Commit nor Deploy when the project is clean', () => {
+  it('shows Deploy but not Commit when the project is clean', () => {
     renderNav({ hasUncommittedChanges: false });
+    expect(screen.getByTitle('Deploy')).toBeInTheDocument();
+    expect(screen.queryByTitle('Commit changes')).not.toBeInTheDocument();
+  });
+
+  it('shows neither when clean and showDeploy is false (cloud)', () => {
+    renderNav({ hasUncommittedChanges: false, showDeploy: false });
     expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Commit changes')).not.toBeInTheDocument();
   });
@@ -330,24 +336,38 @@ describe('TopNav', () => {
   });
 
   describe('commit / deploy buttons', () => {
-    it('fires onCommitClick and onDeployClick', () => {
+    it('fires onCommitClick when dirty and onDeployClick when clean', () => {
       const onCommitClick = jest.fn();
       const onDeployClick = jest.fn();
-      renderNav({ hasUncommittedChanges: true, onCommitClick, onDeployClick });
+      const { rerender } = renderNav({ hasUncommittedChanges: true, onCommitClick, onDeployClick });
       fireEvent.click(screen.getByTitle('Commit changes'));
       expect(onCommitClick).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter initialEntries={['/workspace']} future={futureFlags}>
+          <TopNav
+            hasUncommittedChanges={false}
+            onCommitClick={onCommitClick}
+            onDeployClick={onDeployClick}
+          />
+        </MemoryRouter>
+      );
       fireEvent.click(screen.getByTitle('Deploy'));
       expect(onDeployClick).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTitle('Commit changes')).not.toBeInTheDocument();
     });
 
     it('darkens on hover and restores on leave', () => {
-      renderNav({ hasUncommittedChanges: true });
+      const { unmount } = renderNav({ hasUncommittedChanges: true });
       const commit = screen.getByTitle('Commit changes');
       fireEvent.mouseEnter(commit);
       expect(commit.style.background).toBe('rgb(21, 128, 61)');
       fireEvent.mouseLeave(commit);
       expect(commit.style.background).toBe('rgb(22, 163, 74)');
+      unmount();
 
+      renderNav({ hasUncommittedChanges: false });
       const deploy = screen.getByTitle('Deploy');
       fireEvent.mouseEnter(deploy);
       expect(deploy.style.background).toBe('rgb(90, 47, 70)');
@@ -369,11 +389,14 @@ describe('TopNav', () => {
       expect(screen.getByText('Local')).toBeInTheDocument();
     });
 
-    it('compacts Commit/Deploy to icon-only buttons', () => {
-      renderNav({ hasUncommittedChanges: true, commitCount: 2 });
+    it('compacts Commit and Deploy to icon-only buttons', () => {
+      const { unmount } = renderNav({ hasUncommittedChanges: true, commitCount: 2 });
       const commit = screen.getByTitle('Commit changes');
       expect(commit).not.toHaveTextContent('Commit');
       expect(commit).toHaveTextContent('2'); // count badge survives compaction
+      unmount();
+
+      renderNav({ hasUncommittedChanges: false });
       expect(screen.getByTitle('Deploy')).not.toHaveTextContent('Deploy');
     });
 
