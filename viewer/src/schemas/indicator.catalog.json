@@ -1,0 +1,106 @@
+[
+  {
+    "path": "value",
+    "label": "Value",
+    "tier": "A",
+    "description": "Sets the displayed number",
+    "keywords": [
+      "value",
+      "number",
+      "kpi",
+      "metric"
+    ],
+    "enumValues": null,
+    "example": 450,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "mode",
+    "label": "Display Mode",
+    "tier": "A",
+    "description": "Determines which indicator components are displayed",
+    "keywords": [
+      "mode",
+      "gauge",
+      "delta",
+      "number"
+    ],
+    "enumValues": [
+      "number",
+      "delta",
+      "gauge",
+      "number+delta",
+      "number+gauge",
+      "gauge+delta",
+      "number+delta+gauge"
+    ],
+    "example": "number",
+    "schemaValType": "flaglist",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "title.text",
+    "label": "Title",
+    "tier": "B",
+    "description": "Sets the title text of the indicator",
+    "keywords": [
+      "title",
+      "label",
+      "heading"
+    ],
+    "enumValues": null,
+    "example": "Revenue",
+    "schemaValType": "string",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "delta.reference",
+    "label": "Delta Reference",
+    "tier": "B",
+    "description": "Sets the reference value for computing the delta",
+    "keywords": [
+      "delta",
+      "reference",
+      "comparison"
+    ],
+    "enumValues": null,
+    "example": 400,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "gauge.axis.range",
+    "label": "Gauge Range",
+    "tier": "B",
+    "description": "Sets the gauge axis range [min, max]",
+    "keywords": [
+      "gauge",
+      "range",
+      "min",
+      "max"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1000
+    ],
+    "schemaValType": "info_array",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "number.prefix",
+    "label": "Number Prefix",
+    "tier": "B",
+    "description": "Sets a string shown before the number",
+    "keywords": [
+      "prefix",
+      "currency",
+      "symbol"
+    ],
+    "enumValues": null,
+    "example": "$",
+    "schemaValType": "string",
+    "schemaEditType": "plot"
+  }
+]

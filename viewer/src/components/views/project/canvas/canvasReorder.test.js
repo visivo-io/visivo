@@ -241,13 +241,13 @@ describe('moveItemIntoSlot (VIS-989 fill an empty slot)', () => {
   test('fills an empty slot in another row with the dragged item (a move)', () => {
     // Drag row.1 item 0 (chart d) onto row.0's empty slot at index 1.
     const after = moveItemIntoSlot(slotConfig(), 'row.1', 0, 'row.0.item.1');
-    // The empty slot is now the moved item; the source row keeps its remaining
-    // (here: re-seeded by sanitize elsewhere — the helper leaves it empty).
+    // The empty slot is now the moved item; the source row is left with an
+    // empty items array — a valid (if visually empty) row (VIS-993).
     expect(names(after.rows[0].items)).toEqual(['ref(a)', 'ref(d)', 'ref(c)']);
     expect(after.rows[0].items[1].chart).toBe('ref(d)');
     // The moved item kept its own width (12), the slot's width (3) is discarded.
     expect(after.rows[0].items[1].width).toBe(12);
-    expect(after.rows[1].items).toEqual([]); // source emptied (sanitize re-seeds)
+    expect(after.rows[1].items).toEqual([]); // source emptied — valid as-is
   });
 
   test('fills an empty slot within the SAME row (index shift handled)', () => {
@@ -512,7 +512,7 @@ describe('buildTemplateRow (VIS-794 / D-7)', () => {
     const row = buildTemplateRow('kpi');
     expect(row.items).toHaveLength(4);
     expect(row.items.every(it => it.width === 3)).toBe(true);
-    // Empty slots carry NO leaf ref — backend-valid after sanitize.
+    // Empty slots carry NO leaf ref — born backend-valid (VIS-900/VIS-993).
     expect(row.items.every(it => Object.keys(it).length === 1)).toBe(true);
   });
 

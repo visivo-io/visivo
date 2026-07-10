@@ -20,15 +20,16 @@ import TableEditForm from '../common/TableEditForm';
 import SourceEditForm from '../common/SourceEditForm';
 import InsightEditForm from '../common/InsightEditForm';
 import ModelEditForm from '../common/ModelEditForm';
-import DimensionEditForm from '../common/DimensionEditForm';
-import MetricEditForm from '../common/MetricEditForm';
-import RelationEditForm from '../common/RelationEditForm';
+import CsvScriptModelEditForm from '../common/CsvScriptModelEditForm';
+import LocalMergeModelEditForm from '../common/LocalMergeModelEditForm';
+import SchemaLeafForm from './SchemaLeafForm';
 import LevelEditForm from '../common/LevelEditForm';
 import DefaultsEditForm from '../common/DefaultsEditForm';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { COLLECTION_KEY } from './collectionKeys';
-import { useObjectSave } from '../../../hooks/useObjectSave';
-import sanitizeDashboardConfig from './sanitizeDashboardConfig';
+import useRecordSave from '../../../hooks/useRecordSave';
+import RecordRunStatus from './RecordRunStatus';
+import { appendEmptyItem, createRow, runDashboardConfigGate } from './itemMutations';
 import { emitWorkspaceEvent } from './telemetry';
 
 /**
@@ -55,12 +56,18 @@ import { emitWorkspaceEvent } from './telemetry';
  * Every form is fronted by a <SelectionChip> header (rainbow type colour +
  * name) and an inline auto-save indicator. There are NO Save buttons for the
  * dashboard-structure forms — edits flow through `saveDashboard` with a ~500ms
- * debounce (see useDebouncedSave). The reused leaf/Library-row forms keep their
- * own save affordances (out of scope to rebuild).
+ * debounce (see useDebouncedSave).
  *
- * SELECTION SOURCE: Outline-tree + Library selection only. The canvas
- * round-trip (a canvas node updating `workspaceOutlineSelectedKey`) needs D-2
- * which is NOT in this base and is DEFERRED.
+ * FORM SOURCING (VIS-996): dimension/metric/relation render through the generic
+ * schema-driven <SchemaLeafForm> (field sets from the published `$defs`, not
+ * bespoke JSX). csv/local-merge script models edit INLINE via their existing
+ * forms (VIS-980). The remaining heavy forms (chart/table/insight/input/model/
+ * markdown/source) keep their bespoke UI + save affordances pending their own
+ * migration stages.
+ *
+ * SELECTION SOURCE: Outline-tree, Library, AND canvas — a canvas click routes
+ * through `setWorkspaceSelection` (VIS-994), which writes the outline key and
+ * reveals this Edit panel.
  */
 
 // Object types that are edited by reusing their existing leaf/Library-row form.
@@ -84,8 +91,6 @@ const LIBRARY_EDITABLE_TYPES = [
   'dashboard',
 ];
 
-const emptyLeafFields = () => ({ chart: '', table: '', markdown: '', selector: '', input: '' });
-
 /**
  * Parse a selection key at ANY depth (nested container keys like
  * `row.0.item.1.row.0.item.0` included — OutlineTreePanel + breadcrumbNav both
@@ -108,6 +113,22 @@ const parseOutlineKey = key => {
     itemIndex: last.axis === 'item' ? last.index : null,
   };
 };
+
+/**
+ * ReadOnlyNotice — VIS-1025. Compact muted band shown when the cloud stage is
+ * read-only (capabilities.can_edit === false): names the state and surfaces the
+ * server's `edit_action` hint (e.g. "Create a draft to edit"). Local serve
+ * (capabilities null) never renders this.
+ */
+const ReadOnlyNotice = ({ editAction }) => (
+  <div
+    data-testid="right-rail-readonly"
+    className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600"
+  >
+    <span className="font-semibold">Read-only</span>
+    {editAction ? ` — ${editAction}` : ''}
+  </div>
+);
 
 const Placeholder = ({ title, body, testId }) => (
   <div
@@ -147,11 +168,21 @@ const EmptyState = () => (
 const RightRailEditPanel = () => {
   const activeObject = useStore(s => s.workspaceActiveObject);
   const outlineKey = useStore(s => s.workspaceOutlineSelectedKey);
-  const setOutlineKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
+  // Outline-key writes routed through the unified action (VIS-994); the panel
+  // is already the Edit surface so no revealEdit is needed.
+  const setOutlineKey = useCallback(
+    key => setWorkspaceSelection(undefined, key),
+    [setWorkspaceSelection]
+  );
   const dashboards = useStore(s => s.dashboards);
   const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  // VIS-1025: null = local serve (always editable); a cloud capability object
+  // with can_edit:false makes every rail write a no-op.
+  const capabilities = useStore(s => s.capabilities);
+  const readOnly = !!(capabilities && capabilities.can_edit === false);
   const { dashboardName } = useWorkspaceScope();
 
   const type = activeObject?.type || null;
@@ -184,33 +215,60 @@ const RightRailEditPanel = () => {
   const { status: saveStatus, scheduleSave } = useDebouncedSave(dashSaveFn, {
     delay: 500,
   });
+  // VIS-993: validation errors ({path, message, keyword}[]) when the gate is
+  // holding persistence — the same status/errors contract useRecordSave uses.
+  const [validationErrors, setValidationErrors] = useState(null);
 
   /**
    * Commit a next-config: optimistically update the store (so the form, the
    * Outline tree, and the canvas reflect the edit immediately — independent of
-   * the backend round-trip), schedule the debounced save, and emit telemetry.
+   * the backend round-trip), then GATE persistence (VIS-993 §3): structure
+   * configs are BORN valid (itemMutations), so this gate is defense-in-depth —
+   * schema ($defs AJV) + leaf mutual-exclusion checks run before the debounced
+   * save is armed, and an invalid config is never handed to saveDashboard. The
+   * optimistic write still happens so bound surfaces stay live; only
+   * PERSISTENCE is held, with `validationErrors` surfaced at the indicator.
    */
   const persistConfig = useCallback(
     (nextConfig, meta) => {
-      // GAP-3: never optimistic-update OR POST an invalid intermediate scaffold.
-      // The forms scaffold items with empty-string leaf fields (+ a spurious
-      // `selector`), which the backend Item validator rejects with a 400.
-      // Normalising here keeps the store, canvas, Outline, AND the persisted
-      // YAML always backend-valid — the empty slot stays an empty slot until a
-      // real ref is dropped in.
-      const cleanConfig = sanitizeDashboardConfig(nextConfig);
+      // VIS-1025 read-only hold — BEFORE the optimistic write and BEFORE the
+      // validation gate (not-allowed is not 'invalid'): structure edits under
+      // a read-only stage neither write into the store nor persist.
+      if (readOnly) return;
       if (updateDashboardConfigOptimistic) {
-        updateDashboardConfigOptimistic(dashboardName, cleanConfig);
+        updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
-      scheduleSave(cleanConfig);
-      emitWorkspaceEvent('right_rail_autosave_scheduled', {
-        object: 'dashboard',
-        name: dashboardName,
-        ...meta,
-      });
+      const finish = blocked => {
+        if (blocked) {
+          setValidationErrors(blocked.errors);
+          emitWorkspaceEvent('right_rail_autosave_blocked', {
+            object: 'dashboard',
+            name: dashboardName,
+            errors: blocked.errors.length,
+            ...meta,
+          });
+          return;
+        }
+        setValidationErrors(null);
+        scheduleSave(nextConfig);
+        emitWorkspaceEvent('right_rail_autosave_scheduled', {
+          object: 'dashboard',
+          name: dashboardName,
+          ...meta,
+        });
+      };
+      // The shared gate runner (exclusivity → sync schema → async schema)
+      // delivers exactly one verdict and FAILS OPEN on gate-internal errors —
+      // a crashed gate must never silently swallow the save (the
+      // canvas-persist regression). Same runner as commitCanvasConfig.
+      runDashboardConfigGate(nextConfig, finish);
     },
-    [updateDashboardConfigOptimistic, scheduleSave, dashboardName]
+    [updateDashboardConfigOptimistic, scheduleSave, dashboardName, readOnly]
   );
+
+  // VIS-1025: the compact read-only band rendered above every structure form
+  // (LeafObjectForm renders its own — see below).
+  const readOnlyNotice = readOnly ? <ReadOnlyNotice editAction={capabilities?.edit_action} /> : null;
 
   const writeRows = useCallback(
     (nextRows, meta) => {
@@ -219,6 +277,26 @@ const RightRailEditPanel = () => {
     },
     [dashboardConfig, persistConfig]
   );
+
+  // VIS-993: while the gate holds persistence the indicator reads 'invalid'
+  // (the useRecordSave status vocabulary) and the rail lists the errors.
+  const effectiveSaveStatus = validationErrors ? 'invalid' : saveStatus;
+  const validationBanner = validationErrors ? (
+    <div
+      data-testid="right-rail-validation-errors"
+      className="border-b border-highlight-200 bg-highlight-50 px-3 py-2 text-[11px] leading-relaxed text-highlight-600"
+    >
+      <p className="font-semibold">Invalid configuration — changes are not being saved:</p>
+      <ul className="mt-0.5 list-disc pl-4">
+        {validationErrors.map((err, i) => (
+          <li key={`${err.path}-${i}`}>
+            {err.path ? `${err.path}: ` : ''}
+            {err.message}
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
 
   const handleSelectRef = useCallback(
     ref => {
@@ -234,7 +312,10 @@ const RightRailEditPanel = () => {
   // breadcrumb + Edit form follow the node to its new index.
   const handleBreadcrumbReorder = useCallback(
     op => {
-      if (!op || !dashboardConfig) return;
+      // Read-only: persistConfig no-ops the move, so moving the selection key
+      // would desync the breadcrumb/Edit form from the (unchanged) node. Bail
+      // before touching selection.
+      if (!op || !dashboardConfig || readOnly) return;
       const nextConfig = applyReorder(dashboardConfig, op);
       persistConfig(nextConfig, { kind: 'reorder', axis: op.axis });
       const nextKey = op.parentKey === 'dashboard'
@@ -242,7 +323,7 @@ const RightRailEditPanel = () => {
         : `${op.parentKey}.${op.axis}.${op.toIndex}`;
       if (setOutlineKey) setOutlineKey(nextKey);
     },
-    [dashboardConfig, persistConfig, setOutlineKey]
+    [dashboardConfig, persistConfig, setOutlineKey, readOnly]
   );
 
   // Enter on the breadcrumb focuses the Edit form's first focusable field.
@@ -307,8 +388,9 @@ const RightRailEditPanel = () => {
 
     // dashboard-chrome → bundled rows editor (auto-saved, no Save button).
     if (sel.kind === 'dashboard') {
-      const addRow = () =>
-        writeRows([...rows, { height: 'medium', items: [] }], { kind: 'add_row' });
+      // VIS-993: a new row is BORN with one empty slot (itemMutations) so it
+      // stays a visible drop target (VIS-989) — no sanitize re-seeding.
+      const addRow = () => writeRows([...rows, createRow()], { kind: 'add_row' });
       const updateRow = (rowIndex, nextRow) =>
         writeRows(rows.map((r, i) => (i === rowIndex ? nextRow : r)), { kind: 'update_row' });
       const removeRow = rowIndex =>
@@ -321,8 +403,10 @@ const RightRailEditPanel = () => {
             type="dashboard"
             name={dashboardName}
             subtitle={`${rows.length} row${rows.length === 1 ? '' : 's'}`}
-            saveStatus={saveStatus}
+            saveStatus={effectiveSaveStatus}
           />
+          {readOnlyNotice}
+          {validationBanner}
           <div
             data-testid="right-rail-edit-dashboard"
             className="flex-1 overflow-y-auto p-3 space-y-3"
@@ -344,12 +428,7 @@ const RightRailEditPanel = () => {
                   rowIndex={rowIndex}
                   onRemoveRow={() => removeRow(rowIndex)}
                   onHeightChange={height => updateRow(rowIndex, { ...row, height })}
-                  onAddItem={() =>
-                    updateRow(rowIndex, {
-                      ...row,
-                      items: [...(row.items || []), { width: 1, ...emptyLeafFields() }],
-                    })
-                  }
+                  onAddItem={() => updateRow(rowIndex, appendEmptyItem(row))}
                   onRemoveItem={itemIndex =>
                     updateRow(rowIndex, {
                       ...row,
@@ -370,7 +449,7 @@ const RightRailEditPanel = () => {
               type="button"
               data-testid="right-rail-edit-add-row"
               onClick={addRow}
-              className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium text-[#713b57] transition-colors hover:bg-[#e2d7dd]/40"
+              className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary-100/40"
             >
               <PiPlus className="h-3.5 w-3.5" /> Add row
             </button>
@@ -413,8 +492,10 @@ const RightRailEditPanel = () => {
             type="dashboard"
             name={`Row ${sel.rowIndex + 1}`}
             subtitle={`${row.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
-            saveStatus={saveStatus}
+            saveStatus={effectiveSaveStatus}
           />
+          {readOnlyNotice}
+          {validationBanner}
           <div data-testid="right-rail-edit-row" className="flex-1 overflow-y-auto p-3">
             <RowEditForm
               row={row}
@@ -429,12 +510,7 @@ const RightRailEditPanel = () => {
                 )
               }
               onHeightChange={height => updateRow({ ...row, height })}
-              onAddItem={() =>
-                updateRow({
-                  ...row,
-                  items: [...items, { width: 1, ...emptyLeafFields() }],
-                })
-              }
+              onAddItem={() => updateRow(appendEmptyItem(row))}
               onRemoveItem={itemIndex =>
                 updateRow({ ...row, items: items.filter((_, i) => i !== itemIndex) })
               }
@@ -509,8 +585,10 @@ const RightRailEditPanel = () => {
                 ? `Row ${sel.rowIndex + 1} · inline ${leafRef.type}`
                 : `Row ${sel.rowIndex + 1} · empty slot`
             }
-            saveStatus={saveStatus}
+            saveStatus={effectiveSaveStatus}
           />
+          {readOnlyNotice}
+          {validationBanner}
           <div data-testid="right-rail-edit-item" className="flex-1 overflow-y-auto p-3">
             <ItemEditForm
               item={item}
@@ -556,13 +634,16 @@ const RightRailEditPanel = () => {
  * type's edit form" contract and matches the G-1 design artboard 03 (a chart
  * item selects → an inline ChartEditForm), per VIS-802 GAP-1/GAP-2.
  *
- * Saves go through the shared `useObjectSave` handler (the same one EditorNew /
- * Lineage use), so editing a chart/table/insight/etc. here persists to the
- * backend exactly as it does elsewhere. There is no modal to close in the rail,
- * so `onClose`/`onCancel`/embedded-nav are no-ops; the forms keep their own Save
- * footer. A handful of compound data-layer types (dashboard, csv/local-merge
- * models) still open in their own surface — they have no lightweight in-rail
- * form yet.
+ * Saves go through the unified `useRecordSave` backbone (one instance per open
+ * record, VIS-1018 step 3 — retiring `useObjectSave`'s 13-case switch). The
+ * form's `onSave(type, name, config)` flushes through `saveNow`, so every
+ * standalone leaf save writes the record optimistically into its store
+ * collection and persists through the same `saveX` action the rest of the app
+ * uses — converging with any concurrent canvas/rail edit on the last write.
+ * There is no modal to close in the rail, so `onClose`/`onCancel`/embedded-nav
+ * are no-ops; the forms keep their own Save footer. A handful of compound
+ * data-layer types (dashboard, csv/local-merge models) still open in their own
+ * surface — they have no lightweight in-rail form yet.
  */
 const INLINE_LEAF_FORMS = {
   chart: (record, common) => <ChartEditForm chart={record} {...common} />,
@@ -582,15 +663,42 @@ const INLINE_LEAF_FORMS = {
   model: (record, common) => (
     <ModelEditForm model={record} onSave={common.onSave} onCancel={common.onClose} />
   ),
-  dimension: (record, common) => <DimensionEditForm dimension={record} {...common} />,
-  metric: (record, common) => <MetricEditForm metric={record} {...common} />,
-  relation: (record, common) => <RelationEditForm relation={record} {...common} />,
+  // VIS-996: dimension/metric/relation render through the generic schema-driven
+  // leaf form — field sets come from the published $defs, not bespoke JSX.
+  dimension: (record, common) => <SchemaLeafForm type="dimension" record={record} {...common} />,
+  metric: (record, common) => <SchemaLeafForm type="metric" record={record} {...common} />,
+  relation: (record, common) => <SchemaLeafForm type="relation" record={record} {...common} />,
+  // VIS-980 (folded into VIS-996): the csv/local-merge script models edit INLINE
+  // via their existing forms instead of routing to the "open elsewhere"
+  // fallback. Delegating onSave → the rail's useRecordSave backbone, same as
+  // `model`.
+  csvScriptModel: (record, common) => (
+    <CsvScriptModelEditForm
+      model={record}
+      isCreate={common.isCreate}
+      onSave={common.onSave}
+      onClose={common.onClose}
+    />
+  ),
+  localMergeModel: (record, common) => (
+    <LocalMergeModelEditForm
+      model={record}
+      isCreate={common.isCreate}
+      onSave={common.onSave}
+      onClose={common.onClose}
+    />
+  ),
 };
 
 const LeafObjectForm = ({ type, name, onSelectRef }) => {
   const collectionKey = COLLECTION_KEY[type];
   const collection = useStore(s => (collectionKey ? s[collectionKey] : null));
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  // VIS-1025: cloud read-only — render the form for inspection, but disabled
+  // behind the Read-only notice. The write path is independently held by
+  // useRecordSave's short-circuit; this is the UX affordance layer.
+  const capabilities = useStore(s => s.capabilities);
+  const readOnly = !!(capabilities && capabilities.can_edit === false);
   const record = useMemo(
     () => (Array.isArray(collection) ? collection.find(o => o.name === name) || null : null),
     [collection, name]
@@ -603,13 +711,69 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   // the dashboard-structure forms.
   const [leafSaveStatus, setLeafSaveStatus] = useState(undefined);
 
-  // Standalone (non-embedded) save: the same unified handler EditorNew uses,
-  // routed to the right per-type store action. currentEdit=null keeps it on the
-  // standalone-save path (no edit stack in the rail).
+  // No modal to close in the rail, so the forms' close/cancel/embedded-nav
+  // callbacks are no-ops.
   const noop = useCallback(() => {}, []);
-  const handleObjectSave = useObjectSave(null, noop, undefined);
+
+  // Standalone (non-embedded) save through the unified optimistic + debounced
+  // backbone — one `useRecordSave` instance per open record (VIS-1018 step 3,
+  // retiring `useObjectSave`). `saveNow` writes the record optimistically into
+  // its store collection and persists via the type's `saveX` action, so the rail
+  // save converges with any concurrent canvas edit on the last write.
+  //
+  // Two `onSave` conventions exist across the leaf forms:
+  //   - DELEGATING (chart/source/table/model/insight/input): call
+  //     `onSave(type, name, config)` and rely on the rail to persist → saveNow.
+  //   - SELF-SAVING (relation/dimension/metric/markdown): persist via their own
+  //     store action / `useRecordSave` FIRST, then call `onSave(config)` purely
+  //     as a post-save NOTIFICATION. Re-persisting that here double-fired `saveX`
+  //     (VIS-1018 adversarial-review fix), so the single-arg notification is a
+  //     no-op — the form already wrote the record.
+  const { status: recordSaveStatus, errors: recordSaveErrors, saveNow } = useRecordSave(type, name);
+  const handleObjectSave = useCallback(
+    (typeOrConfig, _name, config) =>
+      typeof typeOrConfig === 'string' && config !== undefined ? saveNow(config) : undefined,
+    [saveNow]
+  );
+
+  // Prefer a leaf form's own auto-save status (Input reports its debounce via
+  // onSaveStatusChange) and otherwise surface this record's save status.
+  const saveStatus = leafSaveStatus !== undefined ? leafSaveStatus : recordSaveStatus;
 
   const renderForm = INLINE_LEAF_FORMS[type];
+
+  // VIS-983 (folded into VIS-996): loading / not-found guards. A registered
+  // leaf type whose record isn't resolvable must NOT hand a null record to its
+  // form (blank / half-broken UI). Collections initialise to `[]` and populate
+  // on the workspace's mount fetch, so the absent-record signal is ambiguous:
+  //   - a NON-EMPTY collection that lacks this name → the fetch resolved with
+  //     data and this record genuinely isn't in it (deleted / renamed / stale
+  //     deep link) → NOT FOUND;
+  //   - an EMPTY or not-yet-array collection → ambiguous (fetch may still be in
+  //     flight, e.g. a fresh deep link) → LOADING, biased this way so a
+  //     transient initial load never flashes a "not found" error.
+  if (renderForm && !record) {
+    const loading = !Array.isArray(collection) || collection.length === 0;
+    return (
+      <>
+        <SelectionChip type={type} name={name} subtitle={singular} />
+        {loading ? (
+          <Placeholder
+            testId="right-rail-edit-leaf-loading"
+            title={`Loading ${singular}…`}
+            body="Fetching the latest saved version."
+          />
+        ) : (
+          <Placeholder
+            testId="right-rail-edit-leaf-missing"
+            title={`${singular.charAt(0).toUpperCase() + singular.slice(1)} not found`}
+            body={`No ${singular} named "${name}" exists. It may have been deleted or renamed.`}
+          />
+        )}
+      </>
+    );
+  }
+
   if (renderForm) {
     const common = {
       isCreate: false,
@@ -621,9 +785,45 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
     };
     return (
       <>
-        <SelectionChip type={type} name={name} subtitle={singular} saveStatus={leafSaveStatus} />
+        <SelectionChip type={type} name={name} subtitle={singular} saveStatus={saveStatus} />
+        {readOnly && <ReadOnlyNotice editAction={capabilities?.edit_action} />}
+        {/* VIS-993 §2 — the save-status block: the validation gate's 'invalid'
+            errors (rail-level `path: message` list; per-field mapping comes
+            with VIS-996) + the run-failure loop-back banner for THIS record,
+            reading as one block with the chip's save indicator above. */}
+        {recordSaveStatus === 'invalid' && recordSaveErrors?.length > 0 && (
+          <div
+            data-testid="record-save-errors"
+            className="border-b border-highlight/30 bg-highlight-50 px-3 py-2"
+          >
+            <p className="text-[11.5px] font-semibold text-highlight">Not saved — fix to save</p>
+            <ul className="mt-0.5 space-y-0.5">
+              {recordSaveErrors.map((err, i) => (
+                <li key={`${err.path || 'root'}-${i}`} className="text-[11px] text-highlight-600">
+                  {err.path ? <span className="font-medium">{err.path}: </span> : null}
+                  {err.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <RecordRunStatus name={name} />
         <div data-testid="right-rail-edit-leaf-form" className="flex-1 overflow-y-auto">
-          {renderForm(record, common)}
+          {/* None of the leaf forms take a disabled prop, so read-only uses the
+              one mechanism that covers them all: a disabled <fieldset> (native
+              controls + keyboard) with pointer-events held (react-select /
+              contenteditable / editor surfaces). */}
+          {readOnly ? (
+            <fieldset
+              disabled
+              data-testid="right-rail-readonly-fieldset"
+              className="pointer-events-none opacity-60"
+            >
+              {renderForm(record, common)}
+            </fieldset>
+          ) : (
+            renderForm(record, common)
+          )}
         </div>
       </>
     );
@@ -634,6 +834,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   return (
     <>
       <SelectionChip type={type} name={name} subtitle={singular} />
+      <RecordRunStatus name={name} />
       <div
         data-testid="right-rail-edit-leaf-open"
         className="flex flex-1 flex-col items-center justify-start gap-3 px-6 py-8 text-center"
@@ -644,7 +845,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
         <button
           type="button"
           onClick={() => openWorkspaceTab && openWorkspaceTab({ type, name })}
-          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[#713b57] px-3 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45]"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
         >
           Open {singular}
         </button>

@@ -32,7 +32,7 @@ import { emitWorkspaceEvent } from '../../workspace/telemetry';
  *        - Selected item/row → persistent mulberry-500 ring (with offset).
  *        - Dashboard-chrome selected → subtle inset outer border on the canvas.
  *
- * Mulberry / primary (`#713b57`) is the SELECTION colour only — type colours
+ * Mulberry / primary (`primary`) is the SELECTION colour only — type colours
  * (rainbow) come from objectTypeConfigs.js elsewhere and are never used here.
  *
  * Right-rail mount + the full hover toolbar are out of scope (G-1 / D-4): D-2
@@ -97,7 +97,7 @@ const measure = (el, rootEl) => {
 
 const CanvasSelectionOverlay = ({ rootRef }) => {
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
-  const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
   // Publish the hovered path so CanvasDndLayer can reveal drag-grips on hover.
   // This overlay is the single hover source (it already resolves the target);
   // sharing the key keeps the grip reveal aligned 1:1 with the hover ring.
@@ -201,17 +201,28 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
   const handleClick = useCallback(
     e => {
       const root = rootRef.current;
+      // A resize gesture ends with the browser synthesizing a `click` on the
+      // handle itself (pointer capture keeps down/up on the same element).
+      // The handles are overlay nodes with NO data-canvas-path, so that click
+      // used to fall through to the chrome branch and DESELECT the node the
+      // user just resized — hiding the handles after every single gesture
+      // (the "drag to resize is broken" feel). A click originating on a
+      // resize handle is part of the gesture, never a selection intent.
+      if (e.target?.closest?.('[data-resize-axis]')) return;
       const target = resolveTarget(e.target, root);
       if (!target) return;
       const nextKey = keyForTarget(target);
       if (!nextKey) return;
-      setSelectedKey(nextKey);
+      // A canvas click is an EDIT intent, not just a selection-ring move:
+      // reveal the right-rail Edit panel (un-collapsing if needed) in the same
+      // atomic write (VIS-994 / former VIS-977).
+      setWorkspaceSelection(undefined, nextKey, { revealEdit: true });
       emitWorkspaceEvent('canvas_selection_changed', {
         key: nextKey,
         kind: target.kind,
       });
     },
-    [rootRef, setSelectedKey]
+    [rootRef, setWorkspaceSelection]
   );
 
   // Bind pointer handlers to the canvas root (delegation) rather than an
@@ -244,7 +255,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       {chromeSelected && (
         <div
           data-testid="canvas-overlay-chrome-selected"
-          className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-inset ring-[#713b57]/60"
+          className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-inset ring-primary/60"
         />
       )}
 
@@ -268,8 +279,8 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
               // rounded-lg matches the item card's own corner radius so the
               // outline hugs the card instead of cutting a tighter arc inside it
               // (the "double-line" effect, VIS-990 polish).
-              'pointer-events-none absolute rounded-lg ring-1 ring-[#c6b0bb]',
-              hoverBox.kind === 'row' ? 'bg-[#713b57]/[0.02]' : '',
+              'pointer-events-none absolute rounded-lg ring-1 ring-primary-200',
+              hoverBox.kind === 'row' ? 'bg-primary/[0.02]' : '',
             ].join(' ')}
             style={{
               top: hoverBox.rect.top,
@@ -288,7 +299,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
           // rounded-lg (matches the card radius) + NO ring-offset: the offset
           // gap was what produced the ugly double line against the card's own
           // border (VIS-990 polish). The 2px mulberry ring now hugs the card edge.
-          className="pointer-events-none absolute rounded-lg ring-2 ring-[#713b57] bg-[#713b57]/[0.03]"
+          className="pointer-events-none absolute rounded-lg ring-2 ring-primary bg-primary/[0.03]"
           style={{
             top: selectedBox.rect.top,
             left: selectedBox.rect.left,

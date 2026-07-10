@@ -575,6 +575,181 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0');
   });
 
+  // setWorkspaceSelection (VIS-994) — unified atomic selection routing -----------
+
+  describe('setWorkspaceSelection', () => {
+    test('sets both activeObject and outlineKey atomically', () => {
+      act(() => {
+        useStore.getState().setWorkspaceSelection({ type: 'chart', name: 'rev' }, 'row.0.item.0');
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveObject).toEqual({ type: 'chart', name: 'rev' });
+      expect(s.workspaceOutlineSelectedKey).toBe('row.0.item.0');
+    });
+
+    test('clears activeObject when null passed', () => {
+      act(() => {
+        useStore.setState({ workspaceActiveObject: { type: 'chart', name: 'old' } });
+        useStore.getState().setWorkspaceSelection(null, null);
+      });
+      expect(useStore.getState().workspaceActiveObject).toBeNull();
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('resets the outlineKey to dashboard when the object changes and outlineKey is undefined', () => {
+      act(() => {
+        useStore.setState({
+          workspaceActiveObject: { type: 'dashboard', name: 'A' },
+          workspaceOutlineSelectedKey: 'row.2.item.3',
+        });
+        useStore.getState().setWorkspaceSelection({ type: 'dashboard', name: 'B' }, undefined);
+      });
+      // A dashboard-A-scoped structure key must not leak onto dashboard B (VIS-978)
+      // — the same stale-key reset the tab actions enforce.
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'dashboard', name: 'B' });
+    });
+
+    test('keeps the outlineKey when re-selecting the SAME object with outlineKey undefined', () => {
+      act(() => {
+        useStore.setState({
+          workspaceActiveObject: { type: 'dashboard', name: 'A' },
+          workspaceOutlineSelectedKey: 'row.1',
+        });
+        useStore.getState().setWorkspaceSelection({ type: 'dashboard', name: 'A' }, undefined);
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
+      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'dashboard', name: 'A' });
+    });
+
+    test('does not update when both args are undefined', () => {
+      act(() => {
+        useStore.setState({
+          workspaceOutlineSelectedKey: 'row.2',
+          workspaceActiveObject: { type: 'chart', name: 'x' },
+        });
+        useStore.getState().setWorkspaceSelection(undefined, undefined);
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2');
+      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'chart', name: 'x' });
+    });
+
+    test('revealEdit switches the right rail to Edit and un-collapses it', () => {
+      act(() => {
+        useStore.setState({ workspaceRightTab: 'outline', workspaceRightCollapsed: true });
+        useStore.getState().setWorkspaceSelection(undefined, 'row.0.item.1', { revealEdit: true });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceOutlineSelectedKey).toBe('row.0.item.1');
+      expect(s.workspaceRightTab).toBe('edit');
+      expect(s.workspaceRightCollapsed).toBe(false);
+    });
+
+    test('without revealEdit the rail tab and collapse state are untouched', () => {
+      act(() => {
+        useStore.setState({ workspaceRightTab: 'outline', workspaceRightCollapsed: true });
+        useStore.getState().setWorkspaceSelection(undefined, 'row.1');
+      });
+      const s = useStore.getState();
+      expect(s.workspaceOutlineSelectedKey).toBe('row.1');
+      expect(s.workspaceRightTab).toBe('outline');
+      expect(s.workspaceRightCollapsed).toBe(true);
+    });
+
+    test('revealEdit alone (no selection args) still reveals the Edit panel', () => {
+      act(() => {
+        useStore.setState({
+          workspaceRightTab: 'outline',
+          workspaceRightCollapsed: true,
+          workspaceOutlineSelectedKey: 'row.3',
+        });
+        useStore.getState().setWorkspaceSelection(undefined, undefined, { revealEdit: true });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceRightTab).toBe('edit');
+      expect(s.workspaceRightCollapsed).toBe(false);
+      expect(s.workspaceOutlineSelectedKey).toBe('row.3');
+    });
+  });
+
+  // Outline-key reset on active-object change (VIS-994 / former VIS-978) -------
+  // A `row.N.item.M` key is scoped to one dashboard's structure; carrying it
+  // onto a different object produces "Row not found" placeholders. Every tab
+  // action that changes the active object resets the key to 'dashboard'.
+
+  describe('outline-key reset on tab transitions', () => {
+    const openDashA = () =>
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-a' });
+    const selectNestedNode = () =>
+      useStore.setState({ workspaceOutlineSelectedKey: 'row.3.item.2' });
+
+    test('openWorkspaceTab to a DIFFERENT object resets the outline key', () => {
+      act(() => {
+        openDashA();
+        selectNestedNode();
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-b' });
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('openWorkspaceTab re-focusing the SAME object keeps the outline key', () => {
+      act(() => {
+        openDashA();
+        selectNestedNode();
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-a' });
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.3.item.2');
+    });
+
+    test('switchWorkspaceTab to a different tab resets; to the same tab keeps', () => {
+      act(() => {
+        openDashA();
+        useStore.getState().openWorkspaceTabBackground({ type: 'dashboard', name: 'dash-b' });
+        selectNestedNode();
+        useStore.getState().switchWorkspaceTab('dashboard:dash-a'); // same object
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.3.item.2');
+      act(() => {
+        useStore.getState().switchWorkspaceTab('dashboard:dash-b'); // different object
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('closeWorkspaceTab that shifts focus to another object resets the key', () => {
+      act(() => {
+        openDashA();
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash-b' });
+        selectNestedNode();
+        useStore.getState().closeWorkspaceTab('dashboard:dash-b'); // focus falls back to dash-a
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('closeWorkspaceTab of a background tab keeps the active selection', () => {
+      act(() => {
+        openDashA();
+        useStore.getState().openWorkspaceTabBackground({ type: 'dashboard', name: 'dash-b' });
+        selectNestedNode();
+        useStore.getState().closeWorkspaceTab('dashboard:dash-b'); // active tab unchanged
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.3.item.2');
+    });
+
+    test('hydrateWorkspaceTabs onto a different active object resets the key', () => {
+      act(() => {
+        openDashA();
+        selectNestedNode();
+        useStore
+          .getState()
+          .hydrateWorkspaceTabs(
+            [{ id: 'dashboard:dash-b', type: 'dashboard', name: 'dash-b' }],
+            'dashboard:dash-b'
+          );
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+  });
+
   // Source outline (VIS-1004) — disjoint selection key + per-source expand -----
 
   test('setWorkspaceSourceOutlineSelectedKey selects, toggles off, and stays disjoint', () => {
@@ -697,6 +872,79 @@ describe('workspace store slice', () => {
       returned = useStore.getState().updateDashboardConfigOptimistic('missing', { rows: [] });
     });
     expect(returned).toBe(false);
+  });
+
+  test('updateRecordConfigOptimistic replaces a non-dashboard record config without saving (VIS-1018)', () => {
+    const saveChart = jest.fn();
+    act(() => {
+      useStore.setState({
+        charts: [{ name: 'c1', config: { name: 'c1', type: 'scatter' } }],
+        saveChart,
+      });
+    });
+
+    const nextConfig = { name: 'c1', type: 'bar' };
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateRecordConfigOptimistic('chart', 'c1', nextConfig);
+    });
+
+    expect(returned).toBe(true);
+    const chart = useStore.getState().charts.find((c) => c.name === 'c1');
+    expect(chart.config.type).toBe('bar');
+    // It only mutates the in-memory list — never persists.
+    expect(saveChart).not.toHaveBeenCalled();
+  });
+
+  test('updateRecordConfigOptimistic handles bare (un-enveloped) entries (VIS-1018)', () => {
+    act(() => {
+      useStore.setState({
+        markdowns: [{ name: 'md1', markdown: '# old' }],
+      });
+    });
+
+    let returned;
+    act(() => {
+      returned = useStore
+        .getState()
+        .updateRecordConfigOptimistic('markdown', 'md1', { name: 'md1', markdown: '# new' });
+    });
+
+    expect(returned).toBe(true);
+    const md = useStore.getState().markdowns.find((m) => m.name === 'md1');
+    expect(md.markdown).toBe('# new');
+  });
+
+  test('updateRecordConfigOptimistic delegates dashboards to updateDashboardConfigOptimistic (VIS-1018)', () => {
+    act(() => {
+      useStore.setState({
+        dashboards: [{ name: 'd1', config: { name: 'd1', rows: [] } }],
+        saveDashboard: jest.fn(),
+      });
+    });
+
+    let returned;
+    act(() => {
+      returned = useStore
+        .getState()
+        .updateRecordConfigOptimistic('dashboard', 'd1', {
+          name: 'd1',
+          rows: [{ height: 'large', items: [] }],
+        });
+    });
+
+    expect(returned).toBe(true);
+    const dash = useStore.getState().dashboards.find((d) => d.name === 'd1');
+    expect(dash.config.rows[0].height).toBe('large');
+  });
+
+  test('updateRecordConfigOptimistic is a no-op for unknown type / name (VIS-1018)', () => {
+    act(() => {
+      useStore.setState({ charts: [] });
+    });
+    expect(useStore.getState().updateRecordConfigOptimistic('bogus', 'x', {})).toBe(false);
+    expect(useStore.getState().updateRecordConfigOptimistic('chart', 'missing', {})).toBe(false);
+    expect(useStore.getState().updateRecordConfigOptimistic('chart', '', {})).toBe(false);
   });
 });
 

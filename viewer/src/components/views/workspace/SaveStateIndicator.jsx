@@ -13,6 +13,9 @@ import { PiCheckCircle, PiCircleNotch, PiWarningCircle, PiClock } from 'react-ic
  *   - 'saving'  → "Saving…" (spinner).
  *   - 'saved'   → "Saved" (green check).
  *   - 'error'   → "Save failed" (highlight/red warning).
+ *   - 'invalid' → "Invalid — not saved" (highlight/red warning) — the VIS-993
+ *                 validation gate is holding persistence until the config is
+ *                 backend-valid again (same status useRecordSave reports).
  *   - 'idle'    → nothing (no recent activity).
  *
  * Colours: mulberry/primary is reserved for SELECTION, so this uses neutral
@@ -41,7 +44,13 @@ const CONFIG = {
   error: {
     label: 'Save failed',
     Icon: PiWarningCircle,
-    className: 'text-[#d25946]',
+    className: 'text-highlight',
+    spin: false,
+  },
+  invalid: {
+    label: 'Invalid — not saved',
+    Icon: PiWarningCircle,
+    className: 'text-highlight',
     spin: false,
   },
 };

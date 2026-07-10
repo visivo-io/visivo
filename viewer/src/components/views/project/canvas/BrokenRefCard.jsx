@@ -15,7 +15,7 @@ import { getTypeByValue } from '../../common/objectTypeConfigs';
  *     it adapts content density from ~200×150 up to 1024×512 via container
  *     queries on its own size, but the layout is fluid so no fixed dimensions
  *     are imposed).
- *   - WARNING palette, MUTED — the `highlight` family (`#d25946`) at low
+ *   - WARNING palette, MUTED — the `highlight` family (`highlight`) at low
  *     saturation; this is a fix-this signal, not a danger signal.
  *   - Heading "Chart 'foo' not found" (type-aware), the missing ref name in
  *     monospace for copy/paste, an explanatory subheading.
@@ -27,13 +27,13 @@ import { getTypeByValue } from '../../common/objectTypeConfigs';
  * the picker's "Create new…" to the existing CreateButton flow.
  */
 
-const HIGHLIGHT = '#d25946';
+const HIGHLIGHT = 'var(--color-highlight-500)';
 // Muted warning tones (the highlight family at low saturation) — a fix-this
 // signal, not danger. Kept inline (these are warning-surface tints, not an
 // object-type colour, so they don't belong in objectTypeConfigs).
-const WARN_BG = '#fdf5f3'; // highlight-50
-const WARN_BORDER = '#f3c9c1'; // highlight-200-ish
-const WARN_ICON = '#d25946'; // highlight
+const WARN_BG = 'var(--color-highlight-50)';
+const WARN_BORDER = 'var(--color-highlight-200)';
+const WARN_ICON = 'var(--color-highlight-500)'; // highlight
 
 const BrokenRefCard = ({ type, name, onFix, onDelete, onCreateNew }) => {
   const [pickerOpen, setPickerOpen] = useState(false);

@@ -1,0 +1,166 @@
+[
+  {
+    "path": "x",
+    "label": "X Coordinates",
+    "tier": "A",
+    "description": "Sets the x coordinates of the vector field",
+    "keywords": [
+      "x",
+      "coordinates",
+      "3d",
+      "field"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Coordinates",
+    "tier": "A",
+    "description": "Sets the y coordinates of the vector field",
+    "keywords": [
+      "y",
+      "coordinates",
+      "3d",
+      "field"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "z",
+    "label": "Z Coordinates",
+    "tier": "A",
+    "description": "Sets the z coordinates of the vector field",
+    "keywords": [
+      "z",
+      "coordinates",
+      "3d",
+      "field"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "u",
+    "label": "U (X Component)",
+    "tier": "A",
+    "description": "Sets the x components of the vector field",
+    "keywords": [
+      "u",
+      "vector",
+      "x"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1,
+      0
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "v",
+    "label": "V (Y Component)",
+    "tier": "A",
+    "description": "Sets the y components of the vector field",
+    "keywords": [
+      "v",
+      "vector",
+      "y"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      0,
+      0
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "w",
+    "label": "W (Z Component)",
+    "tier": "A",
+    "description": "Sets the z components of the vector field",
+    "keywords": [
+      "w",
+      "vector",
+      "z"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      0,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Hot",
+      "RdBu"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "sizeref",
+    "label": "Size Reference",
+    "tier": "B",
+    "description": "The scaling factor for the streamtubes",
+    "keywords": [
+      "size",
+      "scale",
+      "width"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  }
+]

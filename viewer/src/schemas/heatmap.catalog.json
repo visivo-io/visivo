@@ -1,0 +1,155 @@
+[
+  {
+    "path": "z",
+    "label": "Z Values",
+    "tier": "A",
+    "description": "Sets the z values (2D array of heat values)",
+    "keywords": [
+      "z",
+      "values",
+      "data",
+      "matrix"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "x",
+    "label": "X Labels",
+    "tier": "A",
+    "description": "Sets the x axis labels",
+    "keywords": [
+      "x",
+      "labels",
+      "columns"
+    ],
+    "enumValues": null,
+    "example": [
+      "Mon",
+      "Tue"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Labels",
+    "tier": "A",
+    "description": "Sets the y axis labels",
+    "keywords": [
+      "y",
+      "labels",
+      "rows"
+    ],
+    "enumValues": null,
+    "example": [
+      "A",
+      "B"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale for the heatmap",
+    "keywords": [
+      "colorscale",
+      "colors",
+      "palette"
+    ],
+    "enumValues": [
+      "Greys",
+      "YlGnBu",
+      "Greens",
+      "YlOrRd",
+      "Bluered",
+      "RdBu",
+      "Reds",
+      "Blues",
+      "Picnic",
+      "Rainbow",
+      "Portland",
+      "Jet",
+      "Hot",
+      "Blackbody",
+      "Earth",
+      "Electric",
+      "Viridis",
+      "Cividis"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Heatmap",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "zmin",
+    "label": "Z Min",
+    "tier": "B",
+    "description": "Sets the minimum color value",
+    "keywords": [
+      "zmin",
+      "min",
+      "scale"
+    ],
+    "enumValues": null,
+    "example": 0,
+    "schemaValType": "number",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "zmax",
+    "label": "Z Max",
+    "tier": "B",
+    "description": "Sets the maximum color value",
+    "keywords": [
+      "zmax",
+      "max",
+      "scale"
+    ],
+    "enumValues": null,
+    "example": 100,
+    "schemaValType": "number",
+    "schemaEditType": "plot"
+  }
+]

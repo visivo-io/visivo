@@ -1,0 +1,123 @@
+[
+  {
+    "path": "x",
+    "label": "X Axis",
+    "tier": "A",
+    "description": "Sets the x coordinates",
+    "keywords": [
+      "x",
+      "axis",
+      "categories",
+      "data"
+    ],
+    "enumValues": null,
+    "example": [
+      "A",
+      "B",
+      "C"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Axis",
+    "tier": "A",
+    "description": "Sets the y coordinates",
+    "keywords": [
+      "y",
+      "axis",
+      "values",
+      "data"
+    ],
+    "enumValues": null,
+    "example": [
+      10,
+      20,
+      30
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "orientation",
+    "label": "Orientation",
+    "tier": "B",
+    "description": "Sets the orientation of the bars",
+    "keywords": [
+      "orientation",
+      "horizontal",
+      "vertical"
+    ],
+    "enumValues": [
+      "v",
+      "h"
+    ],
+    "example": "v",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name shown in the legend",
+    "keywords": [
+      "name",
+      "legend",
+      "label"
+    ],
+    "enumValues": null,
+    "example": "Sales",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Bar Color",
+    "tier": "B",
+    "description": "Sets the bar color",
+    "keywords": [
+      "color",
+      "bar",
+      "fill"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace (0–1)",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "text",
+    "label": "Text Labels",
+    "tier": "B",
+    "description": "Sets text elements associated with each bar",
+    "keywords": [
+      "text",
+      "label",
+      "annotation"
+    ],
+    "enumValues": null,
+    "example": [
+      "10",
+      "20",
+      "30"
+    ],
+    "schemaValType": "string",
+    "schemaEditType": "calc"
+  }
+]

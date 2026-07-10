@@ -1,29 +1,35 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { PiFunnel } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
-import { formatRefExpression, parseRefValue } from '../../../../utils/refString';
+import { parseRefValue } from '../../../../utils/refString';
 import { getTypeColors } from '../../common/objectTypeConfigs';
-import ExplorerInsightPreview from '../../common/InsightPreview';
+import { useDuckDB } from '../../../../contexts/DuckDBContext';
+import { useModelQueryJob } from '../../../../hooks/useModelQueryJob';
+import { getConnection } from '../../../../duckdb/duckdb';
+import { runDuckDBQuery } from '../../../../duckdb/queries';
 import { useFieldParentModel } from './useFieldParentModel';
+import { runMetricPreview } from './metricPreview';
 import Select from '../../../common/Select';
 
 /**
- * MetricPlayground — the Field Lens body for a `metric` (VIS-1009).
+ * MetricPlayground — the Field Lens body for a `metric` (VIS-1009 / VIS-1026).
  *
- * A one-metric studio: a mini result (a small chart of the metric) backed by a
- * SYNTHETIC single-metric insight, plus two always-defaulted controls that lean
- * on the existing Insights split / time-grain machinery:
+ * A one-metric studio: a mini result (a compact bar breakdown of the metric),
+ * plus two always-defaulted controls:
  *
- *   - split-by — choose a parent-model dimension to break the metric into series
- *     (rendered as an insight `split` interaction); defaults to the first
- *     available dimension so a chart renders immediately.
+ *   - split-by — choose a parent-model dimension to break the metric into bars;
+ *     defaults to the first available dimension.
  *   - time-grain — when the split field is a date/time dimension, bucket it with
  *     `date_trunc(<grain>, …)` so the metric trends over time.
  *
- * The synthetic insight is handed to the SAME `common/InsightPreview` the
- * Explorer / right-rail editor use (it builds a synthetic chart + input widgets
- * and drives data through the preview-run pipeline), so a metric previews
- * exactly like a saved insight. Read-only; editing lives in the right rail.
+ * VIS-1026: the preview no longer routes a SYNTHETIC insight through the
+ * insight-preview run pipeline (`tim-local-serve-run-on-save` deletes it).
+ * Instead it uses the surviving model-query-job + DuckDB-WASM path that
+ * DimensionInspector uses: run the parent model's SQL against its source, then
+ * compute the metric's `GROUP BY` aggregate locally. Read-only; editing lives in
+ * the right rail. On-demand (a Run button), matching the sibling dimension lens.
  */
 const TIME_GRAINS = [
   { value: 'day', label: 'Day' },
@@ -47,7 +53,7 @@ const FieldCallout = ({ testId, title, body }) => (
   </div>
 );
 
-const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) => {
+const MetricPlayground = ({ activeObject, record: providedRecord }) => {
   const name = activeObject?.name || null;
   const metrics = useStore(s => s.metrics);
   const fetchMetrics = useStore(s => s.fetchMetrics);
@@ -71,35 +77,49 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
     return cfg?.expression || null;
   }, [fieldRecord, providedRecord]);
 
-  const { parentModelName, status: parentStatus } = useFieldParentModel(fieldRecord);
+  const { parentModelName, modelConfig, sourceName, status: parentStatus } =
+    useFieldParentModel(fieldRecord);
+  const modelSql = modelConfig?.sql || null;
 
   // Sibling dimensions of the same parent model are the split candidates. A
   // dimension's model binding may be a raw `${ref(model)}` string — unwrap it
-  // before comparing against the resolved bare model name.
+  // before comparing against the resolved bare model name. Each candidate
+  // carries its RAW expression (falling back to the bare name as a column) so
+  // the local DuckDB aggregate can group on real SQL, not a semantic `${ref}`.
   const splitCandidates = useMemo(() => {
     if (!parentModelName || !Array.isArray(dimensions)) return [];
     return dimensions
       .filter(d => parseRefValue(d.parentModel || d.config?.model) === parentModelName)
-      .map(d => ({ name: d.name, isDate: DATE_HINT.test(d.name) }));
+      .map(d => ({
+        name: d.name,
+        isDate: DATE_HINT.test(d.name),
+        expression: d.config?.expression || `"${d.name}"`,
+      }));
   }, [dimensions, parentModelName]);
 
-  const [splitField, setSplitField] = useState('');
+  // splitField tri-state: null = not-yet-defaulted (auto-default will fill it),
+  // '' = the user explicitly chose "(none)" (no split), or a candidate name.
+  // The null sentinel is what makes "(none)" selectable — an empty '' would
+  // otherwise be re-populated by the auto-default effect below.
+  const [splitField, setSplitField] = useState(null);
   const [grain, setGrain] = useState('month');
 
   // The frame reuses this body across sibling selections — drop a split field
   // that isn't one of THIS metric's candidates (e.g. it survived a switch onto
   // a metric with a different parent model) so it can re-default cleanly
-  // instead of building a broken `${ref(newModel).old_field}` query.
+  // instead of building a broken `${ref(newModel).old_field}` query. Reset to
+  // the null sentinel (not '') so the auto-default effect re-fills it.
   useEffect(() => {
     if (splitField && !splitCandidates.some(c => c.name === splitField)) {
-      setSplitField('');
+      setSplitField(null);
     }
   }, [splitCandidates, splitField]);
 
-  // Always default the split to the first candidate so a chart renders without
-  // the user touching the controls.
+  // Default the split to the first candidate so a chart renders without the user
+  // touching the controls — but ONLY from the null sentinel, so an explicit
+  // "(none)" (splitField === '') is left alone.
   useEffect(() => {
-    if (!splitField && splitCandidates.length > 0) {
+    if (splitField === null && splitCandidates.length > 0) {
       setSplitField(splitCandidates[0].name);
     }
   }, [splitCandidates, splitField]);
@@ -110,48 +130,131 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
   );
   const showGrain = Boolean(activeCandidate?.isDate);
 
-  // Build the synthetic single-metric insight. y is the named metric ref; x is
-  // the chosen split dimension (date-bucketed by the grain when applicable).
-  const insightConfig = useMemo(() => {
-    if (!parentModelName || !name) return null;
-    const metricRef = formatRefExpression(parentModelName, name);
-
-    if (!splitField) {
-      // No dimension to split on — a single aggregate value (bar with a constant x).
-      return {
-        name: `__metric_preview__${name}`,
-        props: {
-          type: 'bar',
-          x: `?{ '${name}' }`,
-          y: `?{ ${metricRef} }`,
-        },
-        interactions: [],
-      };
-    }
-
-    const dimRef = formatRefExpression(parentModelName, splitField);
-    // The split candidate is heuristically date-like (DATE_HINT on its name), but
-    // the underlying column may be a VARCHAR (e.g. `formatted_date` =
-    // strftime(date,'%Y-%m-%d')). date_trunc only accepts a date/timestamp, so we
-    // CAST the expression to TIMESTAMP first — DuckDB parses ISO-ish date strings
-    // and the cast is a no-op for genuine DATE/TIMESTAMP columns, so the grain
-    // works on either a string-date or a real date/time dimension.
-    const xExpr = showGrain
-      ? `date_trunc('${grain}', CAST(${dimRef} AS TIMESTAMP))`
-      : dimRef;
+  // The local-aggregate spec: y is the metric's raw expression; x is the split
+  // dimension's raw expression (date-bucketed by the grain — see the CAST note
+  // in metricPreview.js: date_trunc needs a timestamp, and DuckDB parses ISO-ish
+  // date strings so the cast covers both real dates and string-dates).
+  const previewSpec = useMemo(() => {
+    if (!expression) return null;
     return {
-      name: `__metric_preview__${name}`,
-      props: {
-        type: 'bar',
-        x: `?{ ${xExpr} }`,
-        y: `?{ ${metricRef} }`,
-      },
-      // Split on the SAME expression as x — when a grain is active, splitting
-      // on the raw dimension would drag the raw date into the GROUP BY and
-      // nullify the bucketing (per-raw-date groups, one series per date).
-      interactions: [{ split: `?{ ${xExpr} }` }],
+      metricExpr: expression,
+      splitExpr: splitField && activeCandidate ? activeCandidate.expression : null,
+      showGrain,
+      grain,
     };
-  }, [parentModelName, name, splitField, showGrain, grain]);
+  }, [expression, splitField, activeCandidate, showGrain, grain]);
+
+  // Preview run: the parent model runs server-side (real source), then the
+  // metric aggregate is computed locally in DuckDB over its rows (VIS-1026).
+  const db = useDuckDB();
+  const {
+    status: jobStatus,
+    result,
+    error,
+    isRunning,
+    executeQuery,
+    reset,
+  } = useModelQueryJob();
+  const [hasRun, setHasRun] = useState(false);
+  const [aggregating, setAggregating] = useState(false);
+  const [rows, setRows] = useState(null);
+  const [aggError, setAggError] = useState(null);
+  const runForNameRef = useRef(null);
+  // A per-Run token so the aggregate effect re-fires on each Run even when the
+  // job's completed state doesn't change identity (the guard below still holds
+  // it until the model run actually completes).
+  const [runToken, setRunToken] = useState(0);
+  // Content signature of the last aggregation (run token + preview spec). Keying
+  // on CONTENT — not previewSpec identity — keeps the effect idempotent (no loop
+  // when a memo dep churns identity) WHILE still re-aggregating when Split-by /
+  // grain actually change, so the bars never disagree with the controls.
+  const aggregatedSigRef = useRef(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const handleRun = useCallback(() => {
+    if (!sourceName || !modelSql) return;
+    runForNameRef.current = name;
+    setHasRun(true);
+    setRows(null);
+    setAggError(null);
+    setRunToken(t => t + 1);
+    executeQuery(sourceName, modelSql).catch(() => {});
+  }, [sourceName, modelSql, executeQuery, name]);
+
+  // The frame reuses this body across sibling metric selections — reset the run
+  // state when the metric changes so a stale aggregate never shows for the new
+  // metric.
+  const lastNameRef = useRef(name);
+  useEffect(() => {
+    if (lastNameRef.current === name) return;
+    lastNameRef.current = name;
+    runForNameRef.current = null;
+    reset();
+    setHasRun(false);
+    setRows(null);
+    setAggError(null);
+    setAggregating(false);
+    aggregatedSigRef.current = null;
+    // Re-default the split for the new metric (drop a prior "(none)"/stale pick).
+    setSplitField(null);
+  }, [name, reset]);
+
+  // Content signature: bumps on a new Run (runToken) OR a Split-by/grain change
+  // (previewSpec content), so the local aggregate re-runs over the already-loaded
+  // model rows without a server re-run — never leaving stale bars behind a
+  // changed control.
+  const previewSig = previewSpec
+    ? `${runToken}|${previewSpec.metricExpr}|${previewSpec.splitExpr}|${previewSpec.showGrain}|${previewSpec.grain}`
+    : null;
+
+  // When the model run completes (or the spec changes after it), compute the
+  // metric aggregate locally.
+  useEffect(() => {
+    const modelRows = result?.rows || result?.data || null;
+    if (
+      jobStatus !== 'completed' ||
+      runForNameRef.current !== name ||
+      !db ||
+      !previewSpec ||
+      !Array.isArray(modelRows) ||
+      modelRows.length === 0 ||
+      aggregatedSigRef.current === previewSig // already aggregated this spec+run
+    ) {
+      return undefined;
+    }
+    aggregatedSigRef.current = previewSig;
+    const thisSig = previewSig;
+    // Run-latest-wins: apply the result only if this is still the newest spec+run
+    // (a newer Run or control change bumps the signature) and the component is
+    // still mounted. NOT tied to the effect's cleanup — a churny `previewSpec`
+    // identity would otherwise cancel an in-flight aggregation on a no-op re-run.
+    const isCurrent = () => mountedRef.current && aggregatedSigRef.current === thisSig;
+    (async () => {
+      setAggregating(true);
+      setAggError(null);
+      try {
+        const out = await runMetricPreview({
+          db,
+          getConnection,
+          runQuery: runDuckDBQuery,
+          modelRows,
+          spec: previewSpec,
+        });
+        if (isCurrent()) setRows(out);
+      } catch (err) {
+        if (isCurrent()) setAggError(err.message || String(err));
+      } finally {
+        if (isCurrent()) setAggregating(false);
+      }
+    })();
+    return undefined;
+  }, [jobStatus, result, db, previewSpec, name, previewSig]);
 
   const colors = getTypeColors('metric');
 
@@ -179,7 +282,7 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
       data-testid="metric-playground"
       className="flex flex-1 min-h-0 flex-col overflow-hidden bg-white"
     >
-      {/* Header: metric chip + expression */}
+      {/* Header: metric chip + expression + run */}
       <div className="border-b border-gray-200 px-4 py-3">
         <div className="mb-1 flex items-center gap-2">
           <span
@@ -194,6 +297,20 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
               · <span className="font-mono">{parentModelName}</span>
             </span>
           )}
+          <button
+            type="button"
+            data-testid="metric-playground-run"
+            onClick={handleRun}
+            disabled={isRunning || aggregating || !sourceName || !modelSql}
+            className="ml-auto inline-flex h-7 items-center gap-1 rounded-md bg-primary px-3 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isRunning || aggregating ? (
+              <CircularProgress size={12} style={{ color: 'white' }} />
+            ) : (
+              <PlayArrowIcon style={{ fontSize: 16 }} />
+            )}
+            Run
+          </button>
         </div>
         <pre
           data-testid="metric-playground-expression"
@@ -236,18 +353,97 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
         </label>
       </div>
 
-      {/* Mini result */}
-      <div data-testid="metric-playground-result" className="flex flex-1 min-h-0 flex-col">
-        {insightConfig ? (
-          <ExplorerInsightPreview insightConfig={insightConfig} projectId={projectId} />
-        ) : (
+      {/* Mini result (VIS-1026: local aggregate, on-demand) */}
+      <div
+        data-testid="metric-playground-result"
+        className="flex flex-1 min-h-0 flex-col overflow-y-auto px-4 py-3"
+      >
+        {!previewSpec ? (
           <FieldCallout
             testId="metric-playground-idle"
             title="Resolving metric…"
             body="Binding this metric to its parent model."
           />
-        )}
+        ) : !hasRun ? (
+          <FieldCallout
+            testId="metric-playground-prompt"
+            title="Preview this metric"
+            body="Run to evaluate the metric against its parent model and see it broken down by the split dimension."
+          />
+        ) : isRunning ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+            <CircularProgress size={28} />
+            <span className="text-sm text-gray-600">Running model…</span>
+          </div>
+        ) : error ? (
+          <div
+            data-testid="metric-playground-error"
+            className="rounded bg-highlight-50 p-3 font-mono text-sm text-highlight-700"
+          >
+            {typeof error === 'string' ? error : error?.message || String(error)}
+          </div>
+        ) : aggError ? (
+          <div
+            data-testid="metric-playground-error"
+            className="rounded bg-highlight-50 p-3 font-mono text-sm text-highlight-700"
+          >
+            {aggError}
+          </div>
+        ) : aggregating ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+            <CircularProgress size={28} />
+            <span className="text-sm text-gray-600">Aggregating the metric…</span>
+          </div>
+        ) : rows && rows.length > 0 ? (
+          <MetricResultBars rows={rows} accent={colors} splitField={splitField} />
+        ) : rows ? (
+          <FieldCallout
+            testId="metric-playground-empty"
+            title="No rows"
+            body="The parent model returned no rows, so the metric has nothing to aggregate."
+          />
+        ) : null}
       </div>
+    </div>
+  );
+};
+
+/**
+ * A compact CSS-bar breakdown of the metric result — a horizontal bar per group
+ * sized to `y / max(y)`. Self-drawn (no Plotly): the metric lens is a quick
+ * sanity-check, not a full chart surface.
+ */
+const MetricResultBars = ({ rows, accent, splitField }) => {
+  const max = Math.max(...rows.map(r => Math.abs(Number(r.y) || 0)), 1);
+  const fmtX = v => {
+    if (v == null) return '(null)';
+    if (v instanceof Date) return v.toISOString().slice(0, 10);
+    return String(v);
+  };
+  const fmtY = v => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v);
+    return Math.abs(n) >= 1000 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : `${n}`;
+  };
+  return (
+    <div data-testid="metric-playground-bars" className="flex flex-col gap-1.5">
+      {rows.map((r, i) => (
+        <div key={`${fmtX(r.x)}-${i}`} className="flex items-center gap-2 text-[12px]">
+          <span
+            className="w-28 shrink-0 truncate text-right text-gray-600"
+            title={fmtX(r.x)}
+          >
+            {splitField ? fmtX(r.x) : 'Total'}
+          </span>
+          <div className="relative h-4 flex-1 rounded bg-gray-100">
+            <div
+              className={`absolute inset-y-0 left-0 rounded ${accent.bg}`}
+              style={{ width: `${Math.max((Math.abs(Number(r.y) || 0) / max) * 100, 2)}%` }}
+            />
+          </div>
+          <span className="w-16 shrink-0 text-right font-mono text-gray-800">{fmtY(r.y)}</span>
+        </div>
+      ))}
     </div>
   );
 };

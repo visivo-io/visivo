@@ -215,28 +215,6 @@ export function resolveFieldType(schema, defs = {}) {
 }
 
 /**
- * Get the field component name for a resolved type
- * @param {string} fieldType - The resolved field type
- * @returns {string} The component name to use
- */
-export function getFieldComponentName(fieldType) {
-  const componentMap = {
-    string: 'StringField',
-    number: 'NumberField',
-    boolean: 'BooleanField',
-    enum: 'EnumField',
-    color: 'ColorField',
-    colorscale: 'ColorscaleField',
-    array: 'ArrayField',
-    patternMultiselect: 'PatternMultiSelectField',
-    'query-string': 'QueryStringField',
-    unknown: 'StringField', // Fallback to string input
-  };
-
-  return componentMap[fieldType] || 'StringField';
-}
-
-/**
  * Extract enum values from a schema
  * @param {object} schema - The JSON schema
  * @param {object} defs - The $defs object

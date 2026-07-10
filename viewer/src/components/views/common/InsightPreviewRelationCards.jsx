@@ -98,7 +98,7 @@ export const MissingRelationCard = ({ models = [], onRelationSaved }) => {
         data-testid="missing-relation-draw-join"
         onClick={handleOpen}
         className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold text-white transition-colors"
-        style={{ background: '#713b57' }}
+        style={{ background: 'var(--color-primary-500)' }}
       >
         <PiLinkSimpleBold style={{ fontSize: 15 }} aria-hidden="true" />
         Draw the join
@@ -201,7 +201,7 @@ export const AmbiguousRelationCard = ({ models = [], onRelationSaved }) => {
                 data-testid={`ambiguous-relation-option-${rel.name}`}
                 disabled={saving === rel.name}
                 onClick={() => handlePick(rel)}
-                className="flex w-full items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-left text-[13px] hover:bg-[#f9f6f8] disabled:opacity-50"
+                className="flex w-full items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-left text-[13px] hover:bg-primary-50 disabled:opacity-50"
               >
                 <span className="font-medium text-gray-700">{rel.name}</span>
                 <span className="font-mono text-[11px] text-gray-400 truncate ml-3">

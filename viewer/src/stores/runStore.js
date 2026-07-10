@@ -22,6 +22,10 @@ const POLL_WINDOW_MS = 30000;
 
 const createRunSlice = (set, get) => ({
   latestRun: null, // {id, state, created_at, dag_filter, error_json} | null
+  // The FULL recent-runs list (cloud Run shape) — feeds the per-record
+  // failure selectors in runFailures.js (VIS-993 §2), which match failed runs
+  // to record names via dag_filter. Stays [] where the endpoint 404s.
+  runs: [],
   lastSucceededRunId: null,
   runDataVersion: 0,
   pollWindowUntil: 0, // poll while now < this (set on each edit)
@@ -41,7 +45,7 @@ const createRunSlice = (set, get) => ({
       return null; // no run endpoint here (local serve / dist) — nothing to poll
     }
     const latest = (runs && runs[0]) || null;
-    set({ latestRun: latest });
+    set({ latestRun: latest, runs: runs || [] });
 
     const succeeded = (runs || []).find(r => r.state === 'succeeded');
     if (succeeded) {

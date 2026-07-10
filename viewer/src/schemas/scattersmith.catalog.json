@@ -1,0 +1,113 @@
+[
+  {
+    "path": "real",
+    "label": "Real (Resistance)",
+    "tier": "A",
+    "description": "Sets the real part of the complex coordinates",
+    "keywords": [
+      "real",
+      "resistance",
+      "smith",
+      "impedance"
+    ],
+    "enumValues": null,
+    "example": [
+      0.5,
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "imag",
+    "label": "Imaginary (Reactance)",
+    "tier": "A",
+    "description": "Sets the imaginary part of the complex coordinates",
+    "keywords": [
+      "imag",
+      "reactance",
+      "smith",
+      "impedance"
+    ],
+    "enumValues": null,
+    "example": [
+      0.5,
+      -0.5,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "mode",
+    "label": "Display Mode",
+    "tier": "B",
+    "description": "Determines the drawing mode",
+    "keywords": [
+      "mode",
+      "markers",
+      "lines"
+    ],
+    "enumValues": [
+      "lines",
+      "markers",
+      "lines+markers",
+      "text",
+      "none"
+    ],
+    "example": "markers",
+    "schemaValType": "flaglist",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Smith",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "line.dash",
+    "label": "Line Dash",
+    "tier": "B",
+    "description": "Sets the dash style of lines",
+    "keywords": [
+      "dash",
+      "line",
+      "style"
+    ],
+    "enumValues": [
+      "solid",
+      "dot",
+      "dash",
+      "longdash",
+      "dashdot",
+      "longdashdot"
+    ],
+    "example": "solid",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  }
+]

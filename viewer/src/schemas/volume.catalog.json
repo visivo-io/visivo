@@ -1,0 +1,149 @@
+[
+  {
+    "path": "x",
+    "label": "X Coordinates",
+    "tier": "A",
+    "description": "Sets the x coordinates of the volume",
+    "keywords": [
+      "x",
+      "coordinates",
+      "3d",
+      "volume"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1,
+      0,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Coordinates",
+    "tier": "A",
+    "description": "Sets the y coordinates of the volume",
+    "keywords": [
+      "y",
+      "coordinates",
+      "3d",
+      "volume"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      0,
+      1,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "z",
+    "label": "Z Coordinates",
+    "tier": "A",
+    "description": "Sets the z coordinates of the volume",
+    "keywords": [
+      "z",
+      "coordinates",
+      "3d",
+      "volume"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "value",
+    "label": "Values",
+    "tier": "A",
+    "description": "Sets the 4th dimension of the data (scalar field)",
+    "keywords": [
+      "value",
+      "scalar",
+      "data",
+      "3d"
+    ],
+    "enumValues": null,
+    "example": [
+      0.1,
+      0.5,
+      0.8,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Hot",
+      "RdBu",
+      "Blues"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the volume",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 0.1,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "isomin",
+    "label": "Iso Min",
+    "tier": "B",
+    "description": "Sets the minimum boundary for the iso-surface",
+    "keywords": [
+      "isomin",
+      "threshold",
+      "min"
+    ],
+    "enumValues": null,
+    "example": 0,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "isomax",
+    "label": "Iso Max",
+    "tier": "B",
+    "description": "Sets the maximum boundary for the iso-surface",
+    "keywords": [
+      "isomax",
+      "threshold",
+      "max"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  }
+]

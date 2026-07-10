@@ -1,0 +1,107 @@
+[
+  {
+    "path": "x",
+    "label": "X Values",
+    "tier": "A",
+    "description": "Sets the x sample data",
+    "keywords": [
+      "x",
+      "data",
+      "sample"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Values",
+    "tier": "A",
+    "description": "Sets the y sample data",
+    "keywords": [
+      "y",
+      "data",
+      "sample"
+    ],
+    "enumValues": null,
+    "example": [
+      4,
+      5,
+      5,
+      6
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors",
+      "palette"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Hot",
+      "Greys",
+      "YlOrRd",
+      "Blues"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "2D Histogram",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "nbinsx",
+    "label": "X Bins",
+    "tier": "B",
+    "description": "Maximum number of desired bins in x",
+    "keywords": [
+      "bins",
+      "x",
+      "resolution"
+    ],
+    "enumValues": null,
+    "example": 20,
+    "schemaValType": "integer",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "nbinsy",
+    "label": "Y Bins",
+    "tier": "B",
+    "description": "Maximum number of desired bins in y",
+    "keywords": [
+      "bins",
+      "y",
+      "resolution"
+    ],
+    "enumValues": null,
+    "example": 20,
+    "schemaValType": "integer",
+    "schemaEditType": "calc"
+  }
+]

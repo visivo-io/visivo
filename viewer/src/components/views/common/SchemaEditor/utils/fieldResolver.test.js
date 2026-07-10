@@ -1,6 +1,5 @@
 import {
   resolveFieldType,
-  getFieldComponentName,
   getEnumValues,
   getNumberConstraints,
   getArrayItemSchema,
@@ -274,48 +273,6 @@ describe('fieldResolver', () => {
     it('returns empty array for non-oneOf schema', () => {
       const schema = { type: 'string' };
       expect(getPatternEnumValues(schema, defs)).toEqual([]);
-    });
-  });
-
-  describe('getFieldComponentName', () => {
-    it('maps string to StringField', () => {
-      expect(getFieldComponentName('string')).toBe('StringField');
-    });
-
-    it('maps number to NumberField', () => {
-      expect(getFieldComponentName('number')).toBe('NumberField');
-    });
-
-    it('maps boolean to BooleanField', () => {
-      expect(getFieldComponentName('boolean')).toBe('BooleanField');
-    });
-
-    it('maps enum to EnumField', () => {
-      expect(getFieldComponentName('enum')).toBe('EnumField');
-    });
-
-    it('maps color to ColorField', () => {
-      expect(getFieldComponentName('color')).toBe('ColorField');
-    });
-
-    it('maps colorscale to ColorscaleField', () => {
-      expect(getFieldComponentName('colorscale')).toBe('ColorscaleField');
-    });
-
-    it('maps array to ArrayField', () => {
-      expect(getFieldComponentName('array')).toBe('ArrayField');
-    });
-
-    it('maps patternMultiselect to PatternMultiSelectField', () => {
-      expect(getFieldComponentName('patternMultiselect')).toBe('PatternMultiSelectField');
-    });
-
-    it('maps unknown to StringField fallback', () => {
-      expect(getFieldComponentName('unknown')).toBe('StringField');
-    });
-
-    it('returns StringField for unrecognized type', () => {
-      expect(getFieldComponentName('somethingelse')).toBe('StringField');
     });
   });
 

@@ -1,0 +1,116 @@
+[
+  {
+    "path": "labels",
+    "label": "Labels",
+    "tier": "A",
+    "description": "Sets the labels of each sector",
+    "keywords": [
+      "labels",
+      "names",
+      "categories"
+    ],
+    "enumValues": null,
+    "example": [
+      "Total",
+      "A",
+      "B"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "parents",
+    "label": "Parents",
+    "tier": "A",
+    "description": "Sets the parent sector for each sector",
+    "keywords": [
+      "parents",
+      "hierarchy",
+      "tree"
+    ],
+    "enumValues": null,
+    "example": [
+      "",
+      "Total",
+      "Total"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "values",
+    "label": "Values",
+    "tier": "A",
+    "description": "Sets the values associated with each sector",
+    "keywords": [
+      "values",
+      "size",
+      "area"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      10,
+      20
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Treemap",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "branchvalues",
+    "label": "Branch Values",
+    "tier": "B",
+    "description": "Determines how the items in `values` are summed",
+    "keywords": [
+      "branch",
+      "values",
+      "total",
+      "remainder"
+    ],
+    "enumValues": [
+      "remainder",
+      "total"
+    ],
+    "example": "remainder",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "textinfo",
+    "label": "Text Info",
+    "tier": "B",
+    "description": "Determines which text is shown on each sector",
+    "keywords": [
+      "text",
+      "label",
+      "info"
+    ],
+    "enumValues": [
+      "label",
+      "text",
+      "value",
+      "current path",
+      "percent root",
+      "percent entry",
+      "percent parent",
+      "none"
+    ],
+    "example": "label+value",
+    "schemaValType": "flaglist",
+    "schemaEditType": "plot"
+  }
+]

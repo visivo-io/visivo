@@ -11,9 +11,29 @@
 import createCommonSlice from './commonStore';
 import { fetchProjectBlob } from '../api/project';
 import { fetchProjectFilePath } from '../api/projectFilePath';
+import { isObjectSchemaLoaded, resetProjectSchemaCache } from '../schemas/projectSchema';
+import {
+  preloadValidationSchema,
+  validateRecordConfigSync,
+  clearValidationCache,
+} from '../components/views/workspace/validateAgainstSchema';
 
 jest.mock('../api/project', () => ({ fetchProjectBlob: jest.fn() }));
 jest.mock('../api/projectFilePath', () => ({ fetchProjectFilePath: jest.fn() }));
+// Keep the schema-identity tests fast: swap the multi-MB bundled snapshot for a
+// tiny $defs fixture (the loader/validator contract is identical).
+jest.mock('../schemas/visivo_project_schema.json', () => ({
+  __esModule: true,
+  default: {
+    $defs: {
+      Dimension: {
+        type: 'object',
+        required: ['expression'],
+        properties: { expression: { type: 'string' } },
+      },
+    },
+  },
+}));
 
 // Mirrors the KEY constant in components/onboarding/onboardingState.js
 const ONBOARDING_STATE_KEY = 'visivo.onboarding.v1';
@@ -183,6 +203,106 @@ describe('commonStore slice actions', () => {
       await store.getState().fetchProjectFilePath();
 
       expect(store.getState().projectFilePath).toBe('/repo/project.visivo.yml');
+    });
+  });
+
+  // ── VIS-1025: project-keyed schema caches ──────────────────────────────────
+  // projectSchema's module-level caches (and validateAgainstSchema's compiled
+  // validators on top) carry no project identity. The store layer is the seam
+  // where project switches land — commonStore compares the previous project.id
+  // on EVERY project write (setProject, fetchProject — and transitively the
+  // commitStore project_changed soft refresh, which routes through
+  // fetchProject) and drops BOTH cache layers only when the id CHANGES.
+  describe('project-keyed schema caches (VIS-1025)', () => {
+    const warm = async () => {
+      await preloadValidationSchema();
+      expect(validateRecordConfigSync('dimension', { expression: 'x' })).toEqual(
+        expect.objectContaining({ valid: true })
+      );
+      expect(isObjectSchemaLoaded()).toBe(true);
+    };
+
+    beforeEach(() => {
+      clearValidationCache();
+      resetProjectSchemaCache();
+    });
+    afterEach(() => {
+      clearValidationCache();
+      resetProjectSchemaCache();
+    });
+
+    test('switching to a DIFFERENT project id clears the schema + validator caches', async () => {
+      const store = createHarness();
+      store.getState().setProject({ id: 'proj-1' });
+      await warm();
+
+      store.getState().setProject({ id: 'proj-2' });
+
+      // Cold until re-warmed: the sync gate yields null (defer to async),
+      // and the root schema is no longer loaded.
+      expect(validateRecordConfigSync('dimension', { expression: 'x' })).toBeNull();
+      expect(isObjectSchemaLoaded()).toBe(false);
+
+      // Re-warming binds cleanly against the new identity.
+      await preloadValidationSchema();
+      expect(validateRecordConfigSync('dimension', { expression: 'x' })).toEqual(
+        expect.objectContaining({ valid: true })
+      );
+    });
+
+    test('a same-id refetch keeps both cache layers warm', async () => {
+      const store = createHarness();
+      store.getState().setProject({ id: 'proj-1' });
+      await warm();
+
+      store.getState().setProject({ id: 'proj-1', refetched_at: 'now' });
+
+      expect(validateRecordConfigSync('dimension', { expression: 'x' })).toEqual(
+        expect.objectContaining({ valid: true })
+      );
+      expect(isObjectSchemaLoaded()).toBe(true);
+    });
+
+    test('the FIRST project landing does not blow a pre-warmed cache', async () => {
+      const store = createHarness();
+      await warm(); // preloaded before any project id is known
+
+      store.getState().setProject({ id: 'proj-1' });
+
+      expect(validateRecordConfigSync('dimension', { expression: 'x' })).toEqual(
+        expect.objectContaining({ valid: true })
+      );
+      expect(isObjectSchemaLoaded()).toBe(true);
+    });
+
+    test('a project write WITHOUT an id (local blob) never clears', async () => {
+      const store = createHarness();
+      store.getState().setProject({ id: 'proj-1' });
+      await warm();
+
+      store.getState().setProject({ project_json: { name: 'local', dashboards: [] } });
+
+      expect(isObjectSchemaLoaded()).toBe(true);
+    });
+
+    test('fetchProject routes through the same identity check (id change clears, same id keeps)', async () => {
+      const store = createHarness();
+      store.getState().setProject({ id: 'proj-1' });
+      await warm();
+
+      // Same-id refetch (the project_changed soft-refresh shape) — intact.
+      fetchProjectBlob.mockResolvedValue({ id: 'proj-1', project_json: { name: 'p' } });
+      await store.getState().fetchProject();
+      expect(isObjectSchemaLoaded()).toBe(true);
+      expect(validateRecordConfigSync('dimension', { expression: 'x' })).toEqual(
+        expect.objectContaining({ valid: true })
+      );
+
+      // Id flip (e.g. the active project became a different one) — cleared.
+      fetchProjectBlob.mockResolvedValue({ id: 'proj-2', project_json: { name: 'p2' } });
+      await store.getState().fetchProject();
+      expect(validateRecordConfigSync('dimension', { expression: 'x' })).toBeNull();
+      expect(isObjectSchemaLoaded()).toBe(false);
     });
   });
 

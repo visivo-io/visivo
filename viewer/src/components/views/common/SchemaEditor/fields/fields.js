@@ -10,6 +10,8 @@ import { EnumField } from './EnumField';
 import { ColorField } from './ColorField';
 import { ArrayField } from './ArrayField';
 import { PatternMultiSelectField } from './PatternMultiSelectField';
+import { ExpressionField } from './ExpressionField';
+import { ObjectField } from './ObjectField';
 
 export { StringField } from './StringField';
 export { NumberField } from './NumberField';
@@ -18,6 +20,8 @@ export { EnumField } from './EnumField';
 export { ColorField } from './ColorField';
 export { ArrayField } from './ArrayField';
 export { PatternMultiSelectField } from './PatternMultiSelectField';
+export { ExpressionField } from './ExpressionField';
+export { ObjectField } from './ObjectField';
 
 /**
  * Registry mapping field type names to components
@@ -30,6 +34,8 @@ export const FIELD_COMPONENTS = {
   ColorField,
   ArrayField,
   PatternMultiSelectField,
+  ExpressionField,
+  ObjectField,
 };
 
 /**
@@ -46,7 +52,9 @@ export function getFieldComponent(fieldType) {
     color: ColorField,
     colorscale: ArrayField, // Colorscales are arrays of colors
     array: ArrayField,
+    object: ObjectField, // Read-only — nested objects are edited in dedicated editors
     patternMultiselect: PatternMultiSelectField,
+    'query-string': ExpressionField,
     unknown: StringField, // Fallback
   };
 

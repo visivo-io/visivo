@@ -77,7 +77,7 @@ export const HelperText = tw.p`
 // Error text for form validation
 export const ErrorText = tw.p`
   text-xs
-  text-red-600
+  text-highlight-600
   mt-1
 `;
 
@@ -187,7 +187,7 @@ export const AlertContainer = tw.div`
   rounded-md
   ${p => {
     switch(p.$type) {
-      case 'error': return 'bg-red-50 border border-red-200';
+      case 'error': return 'bg-highlight-50 border border-highlight-200';
       case 'warning': return 'bg-amber-50 border border-amber-200';
       case 'success': return 'bg-green-50 border border-green-200';
       case 'info': return 'bg-blue-50 border border-blue-200';
@@ -201,7 +201,7 @@ export const AlertText = tw.p`
   text-sm
   ${p => {
     switch(p.$type) {
-      case 'error': return 'text-red-800';
+      case 'error': return 'text-highlight-800';
       case 'warning': return 'text-amber-800';
       case 'success': return 'text-green-800';
       case 'info': return 'text-blue-800';

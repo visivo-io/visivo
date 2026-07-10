@@ -1,0 +1,110 @@
+[
+  {
+    "path": "r",
+    "label": "R (Radius)",
+    "tier": "A",
+    "description": "Sets the radial coordinates",
+    "keywords": [
+      "r",
+      "radius",
+      "polar",
+      "radial"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "theta",
+    "label": "Theta (Angle)",
+    "tier": "A",
+    "description": "Sets the angular coordinates",
+    "keywords": [
+      "theta",
+      "angle",
+      "polar",
+      "angular"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      90,
+      180
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "mode",
+    "label": "Display Mode",
+    "tier": "B",
+    "description": "Determines the drawing mode",
+    "keywords": [
+      "mode",
+      "markers",
+      "lines"
+    ],
+    "enumValues": [
+      "lines",
+      "markers",
+      "lines+markers",
+      "text",
+      "none"
+    ],
+    "example": "markers",
+    "schemaValType": "flaglist",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Polar Series",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "fill",
+    "label": "Fill",
+    "tier": "B",
+    "description": "Sets the area to fill",
+    "keywords": [
+      "fill",
+      "area",
+      "shade"
+    ],
+    "enumValues": [
+      "none",
+      "toself",
+      "tonext"
+    ],
+    "example": "none",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  }
+]

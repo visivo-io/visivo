@@ -13,7 +13,7 @@ import { getTypeDef } from './LibraryRow';
  *   - One rounded-full chip per type in the section (`Charts | Tables |
  *     Markdowns | Inputs` for Layout Items; the six data types for Data
  *     Layer). The chip label is the type's plural noun.
- *   - The active chip is mulberry-fill (`bg-[#713b57] text-white`); inactive
+ *   - The active chip is mulberry-fill (`bg-primary text-white`); inactive
  *     chips carry a hairline ring.
  *
  * Filtering is single-select: clicking a chip activates it (and hides every
@@ -50,7 +50,7 @@ const LibraryFilterChips = ({ sectionKey, types = [], value = null, onChange }) 
             className={[
               'inline-flex h-5 items-center gap-1 rounded-full px-1.5 text-[10.5px] font-medium transition-colors',
               active
-                ? 'bg-[#713b57] text-white'
+                ? 'bg-primary text-white'
                 : 'text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100 hover:text-gray-900',
             ].join(' ')}
           >

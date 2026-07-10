@@ -1,0 +1,133 @@
+[
+  {
+    "path": "x",
+    "label": "X Axis",
+    "tier": "A",
+    "description": "Sets the x coordinates",
+    "keywords": [
+      "x",
+      "axis",
+      "data",
+      "coordinates"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Axis",
+    "tier": "A",
+    "description": "Sets the y coordinates",
+    "keywords": [
+      "y",
+      "axis",
+      "data",
+      "coordinates"
+    ],
+    "enumValues": null,
+    "example": [
+      4,
+      5,
+      6
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "mode",
+    "label": "Display Mode",
+    "tier": "B",
+    "description": "Determines the drawing mode for this scatter trace",
+    "keywords": [
+      "mode",
+      "lines",
+      "markers",
+      "text",
+      "display"
+    ],
+    "enumValues": [
+      "lines",
+      "markers",
+      "lines+markers",
+      "text",
+      "none"
+    ],
+    "example": "markers",
+    "schemaValType": "flaglist",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name shown in the legend",
+    "keywords": [
+      "name",
+      "legend",
+      "label"
+    ],
+    "enumValues": null,
+    "example": "Series A",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker",
+      "fill"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace (0–1)",
+    "keywords": [
+      "opacity",
+      "transparency",
+      "alpha"
+    ],
+    "enumValues": null,
+    "example": 0.8,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "line.dash",
+    "label": "Line Dash",
+    "tier": "B",
+    "description": "Sets the dash style of lines",
+    "keywords": [
+      "dash",
+      "line",
+      "style",
+      "dashed"
+    ],
+    "enumValues": [
+      "solid",
+      "dot",
+      "dash",
+      "longdash",
+      "dashdot",
+      "longdashdot"
+    ],
+    "example": "solid",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  }
+]

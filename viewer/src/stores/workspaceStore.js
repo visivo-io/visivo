@@ -41,6 +41,24 @@
 
 import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
+import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
+import { unwrapConfig, withConfig } from '../components/views/workspace/unwrapRecordConfig';
+
+/**
+ * Two `{ type, name }` selection descriptors identify the same object.
+ * Used by the tab actions to decide whether an outline-key reset is due:
+ * moving to a DIFFERENT object invalidates any `row.N.item.M` key scoped to
+ * the previous object's structure (VIS-994 / former VIS-978 stale-key bug).
+ */
+const sameWorkspaceObject = (a, b) => !!a && !!b && a.type === b.type && a.name === b.name;
+
+/**
+ * The outline-key reset patch for a transition from `previous` to `next`
+ * active object — `{}` when the object is unchanged (keep the user's node
+ * selection), the `'dashboard'` default otherwise.
+ */
+const outlineKeyResetFor = (previous, next) =>
+  sameWorkspaceObject(previous, next) ? {} : { workspaceOutlineSelectedKey: 'dashboard' };
 
 const createWorkspaceSlice = (set, get) => ({
   // Tabs --------------------------------------------------------------------
@@ -136,11 +154,12 @@ const createWorkspaceSlice = (set, get) => ({
     const state = get();
     const existing = state.workspaceTabs.find((t) => t.id === id);
     const activeObject = { type: tab.type, name: tab.name };
+    const keyReset = outlineKeyResetFor(state.workspaceActiveObject, activeObject);
     if (existing) {
       if (state.workspaceActiveTabId !== id) {
         emitWorkspaceEvent('tab_switched', { id, type: tab.type, name: tab.name, via: 'open' });
       }
-      set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject });
+      set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject, ...keyReset });
       return id;
     }
     const next = {
@@ -159,6 +178,7 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: [...state.workspaceTabs, next],
       workspaceActiveTabId: id,
       workspaceActiveObject: activeObject,
+      ...keyReset,
     });
     return id;
   },
@@ -195,9 +215,11 @@ const createWorkspaceSlice = (set, get) => ({
     if (state.workspaceActiveTabId !== tabId) {
       emitWorkspaceEvent('tab_switched', { id: tabId, type: tab.type, name: tab.name });
     }
+    const activeObject = { type: tab.type, name: tab.name };
     set({
       workspaceActiveTabId: tabId,
-      workspaceActiveObject: { type: tab.type, name: tab.name },
+      workspaceActiveObject: activeObject,
+      ...outlineKeyResetFor(state.workspaceActiveObject, activeObject),
     });
   },
 
@@ -234,6 +256,7 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: remaining,
       workspaceActiveTabId: activeId,
       workspaceActiveObject: activeObject,
+      ...outlineKeyResetFor(state.workspaceActiveObject, activeObject),
       // A tab closed by any path can't stay parked in the confirm dialog.
       workspacePendingCloseTabId:
         state.workspacePendingCloseTabId === tabId ? null : state.workspacePendingCloseTabId,
@@ -366,6 +389,63 @@ const createWorkspaceSlice = (set, get) => ({
   },
 
   /**
+   * The unified selection action (VIS-994; subsumes the old VIS-976/977/978/984
+   * split-write bugs by construction). Atomically selects an active object
+   * (library/canvas/tab) and/or an outline-tree key (dashboard structure), and
+   * optionally reveals the right-rail Edit panel in the same write. Either
+   * selection argument can be null to clear that half. Use this instead of
+   * separate `setWorkspaceOutlineSelectedKey` + `workspaceActiveObject` updates
+   * to avoid split-render glitches.
+   *
+   * Deliberately NOT owned here:
+   *   - `workspaceLensIntent` — producers set it one statement before the
+   *     selection change that consumes it, and `ObjectCanvasFrame` self-clears
+   *     it; a blanket clear-on-selection would break Lineage-on-open.
+   *   - `workspacePivotDraft` — component-lifecycle managed by PivotPlayground.
+   *
+   * @param {{ type: string, name: string }|null} activeObject - the object, or null to clear; undefined keeps the current object.
+   * @param {string|null} outlineKey - outline key (e.g. 'dashboard', 'row.0', 'row.0.item.1'); null resets to the 'dashboard' default, undefined keeps the existing key.
+   * @param {{ revealEdit?: boolean }} [options] - `revealEdit: true` switches the
+   *   right rail to the Edit tab AND un-collapses the rail (VIS-977: canvas
+   *   click must surface the editor, not just move the selection ring).
+   */
+  setWorkspaceSelection: (activeObject, outlineKey, { revealEdit = false } = {}) => {
+    const update = {};
+    const prevObject = get().workspaceActiveObject;
+
+    // Update active object if explicitly passed (including null to clear)
+    if (activeObject !== undefined) {
+      update.workspaceActiveObject = activeObject;
+    }
+
+    // Update outline key if provided and valid
+    if (outlineKey !== undefined && outlineKey !== null) {
+      if (typeof outlineKey === 'string' && outlineKey) {
+        update.workspaceOutlineSelectedKey = outlineKey;
+      }
+    } else if (outlineKey === null) {
+      // null explicitly clears / resets to 'dashboard'
+      update.workspaceOutlineSelectedKey = 'dashboard';
+    } else if (activeObject !== undefined) {
+      // outlineKey left undefined: keep the key when re-selecting the SAME object,
+      // but reset it when the object CHANGES. A 'row.N.item.M' key is scoped to
+      // one dashboard's structure and renders "Row not found" placeholders if
+      // carried onto a different object (VIS-978) — the same stale-key invariant
+      // the tab actions enforce, which this unified action is documented to own.
+      Object.assign(update, outlineKeyResetFor(prevObject, activeObject));
+    }
+
+    if (revealEdit) {
+      update.workspaceRightTab = 'edit';
+      update.workspaceRightCollapsed = false;
+    }
+
+    if (Object.keys(update).length > 0) {
+      set(update);
+    }
+  },
+
+  /**
    * Set the canvas hover key (or `null` to clear). Used only to reveal canvas
    * drag-grips on hover; never affects the Outline selection.
    */
@@ -456,10 +536,45 @@ const createWorkspaceSlice = (set, get) => ({
     const idx = list.findIndex((d) => d.name === dashboardName);
     if (idx === -1) return false;
     const entry = list[idx];
-    const nextEntry = entry.config ? { ...entry, config: nextConfig } : nextConfig;
+    const nextEntry = withConfig(entry, nextConfig);
     const nextList = [...list];
     nextList[idx] = nextEntry;
     set({ dashboards: nextList });
+    return true;
+  },
+
+  /**
+   * Generic, type-keyed sibling of `updateDashboardConfigOptimistic`
+   * (VIS-1018 step 1). Optimistically replace a record's draft config in its
+   * store collection WITHOUT persisting, for ANY object type. This is the
+   * in-memory half of the unified `useRecordSave` backbone: every open editing
+   * surface writes here immediately so the canvas, Outline, and the form's own
+   * widgets converge on the latest edit before the debounced persist fires.
+   *
+   * The collection for a type comes from the shared `COLLECTION_KEY` map, and
+   * the envelope-vs-bare entry shape is handled by `withConfig`, so this and
+   * the dashboard-specific action can never drift. `dashboard` delegates to
+   * `updateDashboardConfigOptimistic` so its row-selection side effects (and
+   * any future dashboard-only behaviour) stay in one place.
+   *
+   * @returns {boolean} `true` on a write, `false` for an unknown type/name or a
+   *          record that isn't in the collection.
+   */
+  updateRecordConfigOptimistic: (type, name, nextConfig) => {
+    if (!type || !name) return false;
+    if (type === 'dashboard') {
+      return get().updateDashboardConfigOptimistic(name, nextConfig);
+    }
+    const collectionKey = COLLECTION_KEY[type];
+    if (!collectionKey) return false;
+    const state = get();
+    const list = state[collectionKey] || [];
+    const idx = list.findIndex((r) => r.name === name);
+    if (idx === -1) return false;
+    const entry = list[idx];
+    const nextList = [...list];
+    nextList[idx] = withConfig(entry, nextConfig);
+    set({ [collectionKey]: nextList });
     return true;
   },
 
@@ -478,15 +593,13 @@ const createWorkspaceSlice = (set, get) => ({
     if (idx === -1) return null;
 
     const entry = list[idx];
-    const config = entry.config || entry;
+    const config = unwrapConfig(entry);
     const rows = Array.isArray(config.rows) ? config.rows : [];
     const newRow = { height: 'medium', items: [] };
     const nextRows = [...rows, newRow];
     const nextConfig = { ...config, rows: nextRows };
 
-    const nextEntry = entry.config
-      ? { ...entry, config: nextConfig }
-      : nextConfig;
+    const nextEntry = withConfig(entry, nextConfig);
     const nextList = [...list];
     nextList[idx] = nextEntry;
 
@@ -533,12 +646,12 @@ const createWorkspaceSlice = (set, get) => ({
     const safeTabs = tabs || [];
     const activeId = activeTabId || (safeTabs[0] ? safeTabs[0].id : null);
     const activeTab = safeTabs.find((t) => t.id === activeId) || null;
+    const activeObject = activeTab ? { type: activeTab.type, name: activeTab.name } : null;
     set({
       workspaceTabs: safeTabs,
       workspaceActiveTabId: activeId,
-      workspaceActiveObject: activeTab
-        ? { type: activeTab.type, name: activeTab.name }
-        : null,
+      workspaceActiveObject: activeObject,
+      ...outlineKeyResetFor(get().workspaceActiveObject, activeObject),
     });
   },
 

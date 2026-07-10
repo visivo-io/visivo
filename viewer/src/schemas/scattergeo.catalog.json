@@ -1,0 +1,105 @@
+[
+  {
+    "path": "lat",
+    "label": "Latitude",
+    "tier": "A",
+    "description": "Sets the latitude coordinates",
+    "keywords": [
+      "lat",
+      "latitude",
+      "geo",
+      "map"
+    ],
+    "enumValues": null,
+    "example": [
+      40.7,
+      34
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "lon",
+    "label": "Longitude",
+    "tier": "A",
+    "description": "Sets the longitude coordinates",
+    "keywords": [
+      "lon",
+      "longitude",
+      "geo",
+      "map"
+    ],
+    "enumValues": null,
+    "example": [
+      -74,
+      -118.2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "mode",
+    "label": "Display Mode",
+    "tier": "B",
+    "description": "Determines the drawing mode",
+    "keywords": [
+      "mode",
+      "markers",
+      "lines",
+      "text"
+    ],
+    "enumValues": [
+      "markers",
+      "lines",
+      "lines+markers",
+      "text",
+      "none"
+    ],
+    "example": "markers",
+    "schemaValType": "flaglist",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Cities",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "marker.size",
+    "label": "Marker Size",
+    "tier": "B",
+    "description": "Sets the marker size",
+    "keywords": [
+      "size",
+      "marker",
+      "radius"
+    ],
+    "enumValues": null,
+    "example": 8,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  }
+]

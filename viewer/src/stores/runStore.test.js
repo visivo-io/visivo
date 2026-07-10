@@ -62,5 +62,45 @@ describe('runStore', () => {
     expect(result).toBeNull();
     expect(store.get().latestRun).toBeNull();
     expect(store.get().runDataVersion).toBe(0);
+    // The runs list stays empty too — per-record failure selectors see nothing.
+    expect(store.get().runs).toEqual([]);
+  });
+
+  // VIS-993 §2: the FULL runs list must land in state so per-record failure
+  // selectors (runFailures.js) can match failed runs to record names via
+  // dag_filter — latestRun alone loses every non-head run.
+  it('stores the full runs list for per-record failure selectors', async () => {
+    const runsPayload = [
+      {
+        id: 'r2',
+        state: 'failed',
+        dag_filter: '+revenue_insight+',
+        error_json: '{"message":"boom"}',
+        is_superseded: false,
+        created_at: '2026-07-01T12:00:00Z',
+      },
+      {
+        id: 'r1',
+        state: 'succeeded',
+        dag_filter: '+orders_model+',
+        error_json: null,
+        is_superseded: false,
+        created_at: '2026-07-01T11:00:00Z',
+      },
+    ];
+    branchingApi.fetchRuns.mockResolvedValueOnce(runsPayload);
+    const store = build();
+    expect(store.get().runs).toEqual([]); // initial state
+    await store.get().pollRuns();
+    expect(store.get().runs).toEqual(runsPayload);
+  });
+
+  it('normalizes a null runs payload to an empty list', async () => {
+    branchingApi.fetchRuns.mockResolvedValueOnce(null);
+    const store = build();
+    const result = await store.get().pollRuns();
+    expect(result).toBeNull();
+    expect(store.get().latestRun).toBeNull();
+    expect(store.get().runs).toEqual([]);
   });
 });

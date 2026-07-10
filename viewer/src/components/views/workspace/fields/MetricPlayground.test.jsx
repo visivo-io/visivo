@@ -1,27 +1,52 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 /**
- * MetricPlayground tests (VIS-1009).
+ * MetricPlayground tests (VIS-1009 / VIS-1026).
  *
- * The Field Lens body for a metric: a synthetic single-metric insight rendered
- * through the SAME `common/InsightPreview` the Explorer uses, plus always-
- * defaulted split-by + time-grain controls. We mock the Explorer preview (so we
- * can assert the synthetic insight config it receives) and seed the store with
- * the metric, its parent model, and a sibling dimension to split on.
+ * The Field Lens body for a metric. VIS-1026: the preview no longer routes a
+ * synthetic insight through the deleted insight-preview pipeline — it runs the
+ * parent model via `useModelQueryJob` and aggregates the metric locally in
+ * DuckDB (`runMetricPreview`). We mock the model job + DuckDB + the local
+ * aggregate (unit-tested in metricPreview.test.js) and assert the wiring: the
+ * Run button, the built preview spec, and the rendered bars.
  */
 import React from 'react';
-import { render, screen, act, fireEvent, within } from '@testing-library/react';
+import { render, screen, act, fireEvent, within, waitFor } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import MetricPlayground from './MetricPlayground';
 import useStore from '../../../../stores/store';
 
-const mockPreviewSpy = jest.fn();
-jest.mock('../../common/InsightPreview', () => ({
+// The model-query job — a mutable handle so a test can flip it to "completed".
+let mockJob;
+jest.mock('../../../../hooks/useModelQueryJob', () => ({
   __esModule: true,
-  default: props => {
-    mockPreviewSpy(props);
-    return <div data-testid="explorer-insight-preview-mock">{props.insightConfig?.name}</div>;
-  },
+  useModelQueryJob: () => mockJob,
 }));
+jest.mock('../../../../contexts/DuckDBContext', () => ({
+  __esModule: true,
+  useDuckDB: () => ({ __fakeDb: true }),
+}));
+// The local aggregate is unit-tested separately; here we assert the SPEC it
+// receives and render its returned rows.
+const mockRunMetricPreview = jest.fn();
+jest.mock('./metricPreview', () => ({
+  __esModule: true,
+  runMetricPreview: (...args) => mockRunMetricPreview(...args),
+}));
+
+const idleJob = () => ({
+  status: 'idle',
+  result: null,
+  error: null,
+  isRunning: false,
+  executeQuery: jest.fn(() => Promise.resolve()),
+  reset: jest.fn(),
+});
+
+const completedJob = (rows = [{ id: 1 }]) => ({
+  ...idleJob(),
+  status: 'completed',
+  result: { rows },
+});
 
 const seed = ({ metrics = [], dimensions = [], models = [] } = {}) => {
   act(() => {
@@ -41,92 +66,132 @@ const seed = ({ metrics = [], dimensions = [], models = [] } = {}) => {
 };
 
 const renderPlayground = (name = 'avg_value') =>
-  render(<MetricPlayground activeObject={{ type: 'metric', name }} projectId="p1" />);
+  render(<MetricPlayground activeObject={{ type: 'metric', name }} />);
 
-describe('MetricPlayground (VIS-1009)', () => {
-  beforeEach(() => mockPreviewSpy.mockClear());
+const DAILY = {
+  metrics: [{ name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } }],
+  dimensions: [{ name: 'category', parentModel: 'daily', config: { expression: 'category' } }],
+  models: [{ name: 'daily', config: { sql: 'SELECT 1', source: 'db' } }],
+};
 
-  test('renders the metric expression, value preview, and split + time-grain controls', () => {
-    seed({
-      metrics: [{ name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } }],
-      dimensions: [
-        { name: 'category', parentModel: 'daily', config: { expression: 'category' } },
-      ],
-      models: [{ name: 'daily', config: { sql: 'SELECT 1' } }],
-    });
+beforeEach(() => {
+  mockJob = idleJob();
+  mockRunMetricPreview.mockReset();
+  mockRunMetricPreview.mockResolvedValue([{ x: 'a', y: 10 }]);
+});
+
+describe('MetricPlayground (VIS-1026)', () => {
+  test('renders the expression, both controls, the Run button, and the pre-run prompt', () => {
+    seed(DAILY);
     renderPlayground();
-
-    expect(screen.getByTestId('metric-playground')).toBeInTheDocument();
     expect(screen.getByTestId('metric-playground-expression')).toHaveTextContent('AVG(value)');
-    // The mini result mounts the shared Explorer insight preview (value + chart).
-    expect(screen.getByTestId('metric-playground-result')).toBeInTheDocument();
-    expect(screen.getByTestId('explorer-insight-preview-mock')).toBeInTheDocument();
-    // Both controls render.
     expect(screen.getByTestId('metric-playground-split')).toBeInTheDocument();
     expect(screen.getByTestId('metric-playground-time-grain')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-playground-run')).toBeInTheDocument();
+    // No auto-preview: the pre-run prompt shows until Run.
+    expect(screen.getByTestId('metric-playground-prompt')).toBeInTheDocument();
   });
 
-  test('builds a synthetic insight referencing the metric, defaulting the split to a sibling dimension', () => {
+  test('Run executes the parent model, then aggregates + renders bars from the result', async () => {
+    seed(DAILY);
+    // Job already reports a completed model run so the aggregate effect fires
+    // as soon as Run flags this metric.
+    mockJob = completedJob([{ category: 'a', value: 10 }]);
+    renderPlayground();
+
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(mockJob.executeQuery).toHaveBeenCalledWith('db', 'SELECT 1');
+
+    // Flush the model-job → local-aggregate promise chain INSIDE act so the
+    // resulting setState lands wrapped, then assert the bars + read the spec.
+    expect(await screen.findByTestId('metric-playground-bars')).toBeInTheDocument();
+    const { spec, modelRows } = mockRunMetricPreview.mock.calls.at(-1)[0];
+    expect(spec.metricExpr).toBe('AVG(value)');
+    expect(spec.splitExpr).toBe('category'); // default sibling dimension's raw expr
+    expect(modelRows).toEqual([{ category: 'a', value: 10 }]);
+  });
+
+  test('a date split enables the grain control and buckets the split expression', async () => {
     seed({
-      metrics: [{ name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } }],
+      ...DAILY,
+      dimensions: [
+        { name: 'formatted_date', parentModel: 'daily', config: { expression: 'strftime(dt)' } },
+      ],
+    });
+    mockJob = completedJob([{ dt: '2020-01-01' }]);
+    renderPlayground();
+
+    const grain = screen.getByTestId('metric-playground-time-grain');
+    expect(within(grain).getByRole('combobox')).not.toBeDisabled();
+    selectEvent.openMenu(within(grain).getByRole('combobox'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'Quarter'));
+
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(await screen.findByTestId('metric-playground-bars')).toBeInTheDocument();
+    const { spec } = mockRunMetricPreview.mock.calls.at(-1)[0];
+    expect(spec.splitExpr).toBe('strftime(dt)');
+    expect(spec.showGrain).toBe(true);
+    expect(spec.grain).toBe('quarter');
+  });
+
+  test('changing Split-by after a Run re-aggregates locally without a new model run', async () => {
+    seed({
+      ...DAILY,
       dimensions: [
         { name: 'category', parentModel: 'daily', config: { expression: 'category' } },
+        { name: 'region', parentModel: 'daily', config: { expression: 'region' } },
       ],
-      models: [{ name: 'daily', config: { sql: 'SELECT 1' } }],
     });
+    mockJob = completedJob([{ category: 'a', region: 'x', value: 10 }]);
     renderPlayground();
 
-    const cfg = mockPreviewSpy.mock.calls.at(-1)[0].insightConfig;
-    expect(cfg.props.type).toBe('bar');
-    // y references the named metric on its parent model.
-    expect(cfg.props.y).toContain('ref(daily).avg_value');
-    // x + split default to the sibling dimension (always-defaulted, no user input).
-    expect(cfg.props.x).toContain('ref(daily).category');
-    expect(cfg.interactions[0].split).toContain('ref(daily).category');
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(await screen.findByTestId('metric-playground-bars')).toBeInTheDocument();
+    expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBe('category');
+    const aggregatesAfterRun = mockRunMetricPreview.mock.calls.length;
+    const modelRunsAfterRun = mockJob.executeQuery.mock.calls.length;
+
+    // Switch Split-by to 'region' — must re-aggregate over the SAME model rows.
+    const split = screen.getByTestId('metric-playground-split');
+    selectEvent.openMenu(within(split).getByRole('combobox'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'region'));
+
+    await waitFor(() =>
+      expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBe('region')
+    );
+    // A fresh local aggregate ran…
+    expect(mockRunMetricPreview.mock.calls.length).toBeGreaterThan(aggregatesAfterRun);
+    // …but NO new server model run was triggered.
+    expect(mockJob.executeQuery.mock.calls.length).toBe(modelRunsAfterRun);
   });
 
-  test('a date split engages the time-grain control and date_trunc-buckets x', async () => {
-    seed({
-      metrics: [{ name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } }],
-      dimensions: [
-        { name: 'formatted_date', parentModel: 'daily', config: { expression: "strftime(date)" } },
-      ],
-      models: [{ name: 'daily', config: { sql: 'SELECT 1' } }],
-    });
+  test('selecting "(none)" clears the split — the auto-default does not re-populate it', async () => {
+    seed(DAILY);
+    mockJob = completedJob([{ category: 'a', value: 10 }]);
     renderPlayground();
 
-    // formatted_date is the only (and default) split → date-like → grain enabled.
-    const grain = screen.getByTestId('metric-playground-time-grain');
-    const grainCombo = within(grain).getByRole('combobox');
-    expect(grainCombo).not.toBeDisabled();
+    // The split auto-defaults to the first candidate; pick "(none)" instead.
+    const split = screen.getByTestId('metric-playground-split');
+    selectEvent.openMenu(within(split).getByRole('combobox'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === '(none)'));
 
-    selectEvent.openMenu(grainCombo);
-    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'Quarter'));
-    const cfg = mockPreviewSpy.mock.calls.at(-1)[0].insightConfig;
-    expect(cfg.props.x).toContain("date_trunc('quarter'");
-    expect(cfg.props.x).toContain('ref(daily).formatted_date');
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(await screen.findByTestId('metric-playground-bars')).toBeInTheDocument();
+    // "(none)" stuck → the aggregate runs with no split (a plain AVG(value)).
+    expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBeNull();
   });
 
-  test('an active grain buckets the split interaction too (not the raw dimension)', () => {
-    seed({
-      metrics: [{ name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } }],
-      dimensions: [
-        { name: 'formatted_date', parentModel: 'daily', config: { expression: 'strftime(date)' } },
-      ],
-      models: [{ name: 'daily', config: { sql: 'SELECT 1' } }],
-    });
+  test('surfaces a model-run error', async () => {
+    seed(DAILY);
+    mockJob = { ...idleJob(), status: 'failed', error: 'connection refused' };
     renderPlayground();
-
-    // Splitting on the RAW dimension would put the raw date in the GROUP BY and
-    // nullify the date_trunc bucketing — the split must use the same bucketed
-    // expression as x (default grain: month).
-    const cfg = mockPreviewSpy.mock.calls.at(-1)[0].insightConfig;
-    expect(cfg.props.x).toContain("date_trunc('month'");
-    expect(cfg.interactions[0].split).toContain("date_trunc('month'");
-    expect(cfg.interactions[0].split).toContain('ref(daily).formatted_date');
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(await screen.findByTestId('metric-playground-error')).toHaveTextContent(
+      'connection refused'
+    );
   });
 
-  test('switching metrics drops a split field that is not a candidate of the new parent model', () => {
+  test('switching metrics resets the run (new metric shows the prompt again)', () => {
     seed({
       metrics: [
         { name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } },
@@ -137,48 +202,35 @@ describe('MetricPlayground (VIS-1009)', () => {
         { name: 'region', parentModel: 'weekly', config: { expression: 'region' } },
       ],
       models: [
-        { name: 'daily', config: { sql: 'SELECT 1' } },
-        { name: 'weekly', config: { sql: 'SELECT 2' } },
+        { name: 'daily', config: { sql: 'SELECT 1', source: 'db' } },
+        { name: 'weekly', config: { sql: 'SELECT 2', source: 'db' } },
       ],
     });
     const { rerender } = renderPlayground();
-    // avg_value defaults its split to daily's `category`.
-    expect(mockPreviewSpy.mock.calls.at(-1)[0].insightConfig.props.x).toContain(
-      'ref(daily).category'
-    );
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
 
-    // The frame reuses this body across sibling selections — switching to a
-    // metric on ANOTHER model must not keep splitting on the old model's field
-    // (a broken `${ref(weekly).category}` query).
-    rerender(<MetricPlayground activeObject={{ type: 'metric', name: 'sum_total' }} projectId="p1" />);
-    const cfg = mockPreviewSpy.mock.calls.at(-1)[0].insightConfig;
-    expect(cfg.props.y).toContain('ref(weekly).sum_total');
-    expect(cfg.props.x).toContain('ref(weekly).region');
-    expect(cfg.props.x).not.toContain('category');
+    rerender(<MetricPlayground activeObject={{ type: 'metric', name: 'sum_total' }} />);
+    // The reset clears hasRun → the new metric is back to its pre-run prompt.
+    expect(screen.getByTestId('metric-playground-prompt')).toBeInTheDocument();
+    expect(mockJob.reset).toHaveBeenCalled();
   });
 
-  test('offers dimensions bound via a raw ${ref(model)} string as split candidates', () => {
+  test('offers dimensions bound via a raw ${ref(model)} string as split candidates', async () => {
     seed({
-      metrics: [{ name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } }],
+      ...DAILY,
       dimensions: [
-        // No parentModel; the binding is the config's raw `${ref()}` string.
         { name: 'category', config: { expression: 'category', model: '${ref(daily)}' } },
       ],
-      models: [{ name: 'daily', config: { sql: 'SELECT 1' } }],
     });
+    mockJob = completedJob([{ category: 'a' }]);
     renderPlayground();
-
-    const cfg = mockPreviewSpy.mock.calls.at(-1)[0].insightConfig;
-    // The raw-ref dimension is recognised as a sibling and used for the split.
-    expect(cfg.props.x).toContain('ref(daily).category');
-    expect(cfg.interactions[0].split).toContain('ref(daily).category');
+    fireEvent.click(screen.getByTestId('metric-playground-run'));
+    expect(await screen.findByTestId('metric-playground-bars')).toBeInTheDocument();
+    expect(mockRunMetricPreview.mock.calls.at(-1)[0].spec.splitExpr).toBe('category');
   });
 
   test('renders a no-parent callout when the metric has no owning model', () => {
-    seed({
-      metrics: [{ name: 'composite', config: { expression: 'a + b' } }],
-      models: [],
-    });
+    seed({ metrics: [{ name: 'composite', config: { expression: 'a + b' } }], models: [] });
     renderPlayground('composite');
     expect(screen.getByTestId('metric-playground-no-parent')).toBeInTheDocument();
   });

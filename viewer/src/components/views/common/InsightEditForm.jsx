@@ -7,14 +7,11 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RefTextArea from './RefTextArea';
 import Select from '../../common/Select';
-import { SchemaEditor } from './SchemaEditor';
-import { getSchema, CHART_TYPES, isSchemaLoaded, preloadSchemas } from '../../../schemas/schemas';
+import TracePropsEditor from './TracePropsEditor';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
-import { getRequiredFields, getAllFieldNames } from './insightRequiredFields';
-import RequiredFieldsSection from './RequiredFieldsSection';
 import { useDebounce } from '../../../hooks/useDebounce';
 import {
   SectionContainer,
@@ -46,25 +43,23 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  // Props state - chart type and schema-driven props
-  const [propsType, setPropsType] = useState('scatter');
-  const [propsValues, setPropsValues] = useState({});
+  // Props state - the insight's Plotly props object (carries `.type`). Fully
+  // controlled by TracePropsEditor; the parent (this form) persists it on save.
+  const [props, setProps] = useState({ type: 'scatter' });
 
   // Interactions state - array of {type: 'filter'|'split'|'sort', value: string}
   const [interactions, setInteractions] = useState([]);
 
   // UI state
   const [errors, setErrors] = useState({});
+  // VIS-993: TracePropsEditor reports AJV validity; Save is held while false so
+  // a plotly-invalid props object is never handed to the save path (which the
+  // useRecordSave gate would block anyway — this surfaces the reason here).
+  const [propsValid, setPropsValid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  // Schema loading state
-  const [currentSchema, setCurrentSchema] = useState(null);
-  const [schemaLoading, setSchemaLoading] = useState(false);
-  const [schemaError, setSchemaError] = useState(null);
-
 
   const isEditMode = !!insight && !isCreate;
   const isNewObject = insight?.status === ObjectStatus.NEW;
@@ -73,8 +68,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   const parentType = insight?._embedded?.parentType;
 
   // Debounce the values for preview updates
-  const debouncedPropsType = useDebounce(propsType, 500);
-  const debouncedPropsValues = useDebounce(propsValues, 500);
+  const debouncedProps = useDebounce(props, 500);
   const debouncedInteractions = useDebounce(interactions, 500);
 
   // Set preview config when values change
@@ -83,10 +77,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       setPreviewConfig({
         insightConfig: {
           name: name || insight?.name || '__preview__',
-          props: {
-            type: debouncedPropsType,
-            ...debouncedPropsValues,
-          },
+          props: debouncedProps,
           interactions: debouncedInteractions.map(i => {
             if (i.type === 'filter') return { filter: i.value };
             if (i.type === 'split') return { split: i.value };
@@ -97,7 +88,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
         projectId: useStore.getState().project?.id,
       });
     }
-  }, [setPreviewConfig, name, insight?.name, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
+  }, [setPreviewConfig, name, insight?.name, debouncedProps, debouncedInteractions]);
 
   // Initialize form when insight changes
   useEffect(() => {
@@ -108,11 +99,8 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       const configToUse = insight.config;
       setDescription(configToUse?.description || '');
 
-      // Props - extract type separately, rest goes to propsValues
-      const props = configToUse?.props || {};
-      const { type, ...restProps } = props;
-      setPropsType(type || 'scatter');
-      setPropsValues(restProps);
+      // Props - the full Plotly props object (carries `.type`).
+      setProps(configToUse?.props || { type: 'scatter' });
 
       // Interactions - each interaction has only one type (filter, split, or sort)
       const insightInteractions = configToUse?.interactions || [];
@@ -129,52 +117,12 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       // Create mode - reset form
       setName('');
       setDescription('');
-      setPropsType('scatter');
-      setPropsValues({});
+      setProps({ type: 'scatter' });
       setInteractions([]);
     }
     setErrors({});
     setSaveError(null);
   }, [insight, isCreate]);
-
-  // Load schema when propsType changes
-  useEffect(() => {
-    const loadSchemaAsync = async () => {
-      if (!propsType) return;
-
-      // Check if already cached
-      if (isSchemaLoaded(propsType)) {
-        // Get from cache immediately
-        const schema = await getSchema(propsType);
-        setCurrentSchema(schema);
-        return;
-      }
-
-      // Load schema asynchronously
-      setSchemaLoading(true);
-      setSchemaError(null);
-
-      try {
-        const schema = await getSchema(propsType);
-        setCurrentSchema(schema);
-      } catch (error) {
-        console.error('Failed to load schema:', error);
-        setSchemaError(`Failed to load schema for ${propsType}`);
-        setCurrentSchema(null);
-      } finally {
-        setSchemaLoading(false);
-      }
-    };
-
-    loadSchemaAsync();
-  }, [propsType]);
-
-  // Preload common schemas on mount for better performance
-  useEffect(() => {
-    // Preload the most common chart types
-    const commonTypes = ['scatter', 'bar', 'pie', 'heatmap', 'histogram'];
-    preloadSchemas(commonTypes).catch(console.error);
-  }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -187,8 +135,12 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       }
     }
 
-    if (!propsType) {
+    if (!props.type) {
       newErrors.propsType = 'Chart type is required';
+    }
+
+    if (props.type && !propsValid) {
+      newErrors.props = 'Fix the invalid trace properties before saving.';
     }
 
     setErrors(newErrors);
@@ -200,12 +152,6 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
     setSaving(true);
     setSaveError(null);
-
-    // Build props object - combine type with schema-driven values
-    const props = {
-      type: propsType,
-      ...propsValues,
-    };
 
     // Build config object - embedded insights don't include name
     const config = isEmbedded
@@ -361,66 +307,20 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
               Visualization Props
             </SectionTitle>
 
-            {/* Chart Type selector */}
-            <div className="relative">
-              <Select
-                id="propsType"
-                aria-label="Chart Type"
-                value={propsType}
-                options={CHART_TYPES}
-                onChange={setPropsType}
-              />
-              <label
-                htmlFor="propsType"
-                className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
-              >
-                Chart Type<span className="text-red-500 ml-0.5">*</span>
-              </label>
-              {errors.propsType && <p className="mt-1 text-xs text-red-500">{errors.propsType}</p>}
-            </div>
-
-            {/* Required fields for this chart type */}
-            <RequiredFieldsSection
-              fields={getRequiredFields(propsType)}
-              values={propsValues}
-              errors={Object.fromEntries(
-                Object.entries(errors)
-                  .filter(([key]) => key.startsWith('prop.'))
-                  .map(([key, value]) => [key.replace('prop.', ''), value])
-              )}
-              onChange={(fieldName, value) => setPropsValues(prev => ({
-                ...prev,
-                [fieldName]: value
-              }))}
+            {/* Grouped, schema-driven, AJV-validated props editor. Fully controlled:
+                it owns no persistence — this form persists `props` on save. */}
+            <TracePropsEditor
+              ownerName={name || 'insight'}
+              props={props}
+              onChange={setProps}
+              onValidityChange={(ok) => setPropsValid(ok)}
             />
-
-            {/* Additional optional props from schema */}
-            {schemaLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <CircularProgress size={24} />
-                <span className="ml-2 text-sm text-gray-600">Loading schema...</span>
-              </div>
-            ) : schemaError ? (
-              <AlertContainer $type="error">
-                <AlertText>{schemaError}</AlertText>
-              </AlertContainer>
-            ) : currentSchema ? (
-              <div className="mt-4">
-                <div className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-3">
-                  Additional Properties
-                </div>
-                <SchemaEditor
-                  schema={currentSchema}
-                  value={propsValues}
-                  onChange={setPropsValues}
-                  excludeProperties={['type', ...getAllFieldNames(propsType)]}
-                />
-              </div>
-            ) : (
-              <EmptyState>
-                Select a chart type to configure properties
-              </EmptyState>
+            {errors.props && (
+              <p className="mt-1 text-xs text-red-500" data-testid="insight-props-invalid">
+                {errors.props}
+              </p>
             )}
+            {errors.propsType && <p className="mt-1 text-xs text-red-500">{errors.propsType}</p>}
           </SectionContainer>
 
           {/* Interactions Section */}

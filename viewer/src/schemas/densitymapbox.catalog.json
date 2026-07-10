@@ -1,0 +1,106 @@
+[
+  {
+    "path": "lat",
+    "label": "Latitude",
+    "tier": "A",
+    "description": "Sets the latitude coordinates of each point",
+    "keywords": [
+      "lat",
+      "latitude",
+      "mapbox",
+      "density"
+    ],
+    "enumValues": null,
+    "example": [
+      40.7,
+      34
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "lon",
+    "label": "Longitude",
+    "tier": "A",
+    "description": "Sets the longitude coordinates of each point",
+    "keywords": [
+      "lon",
+      "longitude",
+      "mapbox",
+      "density"
+    ],
+    "enumValues": null,
+    "example": [
+      -74,
+      -118.2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "z",
+    "label": "Values",
+    "tier": "B",
+    "description": "Sets the points weight (density value)",
+    "keywords": [
+      "z",
+      "weight",
+      "density",
+      "value"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Density",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "radius",
+    "label": "Point Radius",
+    "tier": "B",
+    "description": "Sets the radius of influence of one point in pixels",
+    "keywords": [
+      "radius",
+      "size",
+      "influence"
+    ],
+    "enumValues": null,
+    "example": 30,
+    "schemaValType": "number",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Hot",
+      "RdBu"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  }
+]

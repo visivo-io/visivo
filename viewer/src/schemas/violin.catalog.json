@@ -1,0 +1,108 @@
+[
+  {
+    "path": "y",
+    "label": "Y Values",
+    "tier": "A",
+    "description": "Sets the y sample data",
+    "keywords": [
+      "y",
+      "values",
+      "data",
+      "sample"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "x",
+    "label": "X Categories",
+    "tier": "A",
+    "description": "Sets the x categories for grouping",
+    "keywords": [
+      "x",
+      "categories",
+      "group"
+    ],
+    "enumValues": null,
+    "example": [
+      "A",
+      "A",
+      "B",
+      "B",
+      "B"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Group A",
+    "schemaValType": "string",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "marker.color",
+    "label": "Fill Color",
+    "tier": "B",
+    "description": "Sets the violin fill color",
+    "keywords": [
+      "color",
+      "fill"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "box.visible",
+    "label": "Show Box",
+    "tier": "B",
+    "description": "Shows the box plot inside the violin",
+    "keywords": [
+      "box",
+      "boxplot",
+      "inner"
+    ],
+    "enumValues": null,
+    "example": true,
+    "schemaValType": "boolean",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "points",
+    "label": "Show Data Points",
+    "tier": "B",
+    "description": "Determines which points are displayed",
+    "keywords": [
+      "points",
+      "outliers",
+      "jitter"
+    ],
+    "enumValues": [
+      "all",
+      "outliers",
+      "suspectedoutliers",
+      "false"
+    ],
+    "example": "outliers",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  }
+]

@@ -83,7 +83,7 @@ const AddModelMention = ({ models = [], excludeNames = [], onAdd, testId = 'erd-
               <button
                 type="button"
                 data-testid={`${testId}-option-${m.name}`}
-                className="flex w-full items-center gap-1.5 px-2 py-1 text-left hover:bg-[#f9f6f8]"
+                className="flex w-full items-center gap-1.5 px-2 py-1 text-left hover:bg-primary-50"
                 onClick={() => choose(m.name)}
               >
                 {Icon && (

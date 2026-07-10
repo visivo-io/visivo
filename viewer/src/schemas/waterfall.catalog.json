@@ -1,0 +1,107 @@
+[
+  {
+    "path": "x",
+    "label": "X Categories",
+    "tier": "A",
+    "description": "Sets the x categories for each waterfall bar",
+    "keywords": [
+      "x",
+      "categories",
+      "labels"
+    ],
+    "enumValues": null,
+    "example": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Total"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Values",
+    "tier": "A",
+    "description": "Sets the y values (changes) for each bar",
+    "keywords": [
+      "y",
+      "values",
+      "changes",
+      "delta"
+    ],
+    "enumValues": null,
+    "example": [
+      100,
+      -20,
+      50,
+      130
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Revenue",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "increasing.marker.color",
+    "label": "Increasing Color",
+    "tier": "B",
+    "description": "Sets the color of increasing bars",
+    "keywords": [
+      "color",
+      "increasing",
+      "positive"
+    ],
+    "enumValues": null,
+    "example": "#00cc96",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "decreasing.marker.color",
+    "label": "Decreasing Color",
+    "tier": "B",
+    "description": "Sets the color of decreasing bars",
+    "keywords": [
+      "color",
+      "decreasing",
+      "negative"
+    ],
+    "enumValues": null,
+    "example": "#ef553b",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "textposition",
+    "label": "Text Position",
+    "tier": "B",
+    "description": "Specifies the text label position",
+    "keywords": [
+      "text",
+      "label",
+      "position"
+    ],
+    "enumValues": [
+      "inside",
+      "outside",
+      "auto",
+      "none"
+    ],
+    "example": "outside",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  }
+]

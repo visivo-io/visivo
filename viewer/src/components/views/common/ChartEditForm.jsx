@@ -11,8 +11,11 @@ import { getSchema, isSchemaLoaded } from '../../../schemas/schemas';
 import { getTypeByValue } from './objectTypeConfigs';
 import { setAtPath } from './embeddedObjectUtils';
 import { parseRefValue, formatRef } from '../../../utils/refString';
+import { unwrapConfig } from '../workspace/unwrapRecordConfig';
 import EmbeddedPill from '../lineage/EmbeddedPill';
 import Select from '../../common/Select';
+import TracePropsEditor from './TracePropsEditor';
+import useRecordSave from '../../../hooks/useRecordSave';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -33,6 +36,11 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
   const [name, setName] = useState('');
   const [insights, setInsights] = useState([]);
   const [layoutValues, setLayoutValues] = useState({});
+
+  // The insight whose props are currently being edited via TracePropsEditor.
+  // For a ref insight this is its name; for an embedded insight it is the
+  // synthetic key `__embedded__:<index>` (so the picker can address either).
+  const [selectedInsightName, setSelectedInsightName] = useState('');
 
   // UI state
   const [errors, setErrors] = useState({});
@@ -99,6 +107,60 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     .map((insight, index) => ({ insight, index }))
     .filter(({ insight }) => typeof insight === 'object');
 
+  // Prefix that marks the picker value of an EMBEDDED insight (vs a ref name).
+  const EMBEDDED_PREFIX = '__embedded__:';
+  const isEmbeddedSelection =
+    typeof selectedInsightName === 'string' && selectedInsightName.startsWith(EMBEDDED_PREFIX);
+  const selectedEmbeddedIndex = isEmbeddedSelection
+    ? Number(selectedInsightName.slice(EMBEDDED_PREFIX.length))
+    : null;
+
+  // The store record for the currently-selected REF insight (envelope-or-bare
+  // unwrapped to its config). Used to seed TracePropsEditor and as the base for
+  // the persisted insight write.
+  const selectedInsightRecord =
+    !isEmbeddedSelection && selectedInsightName
+      ? storeInsights?.find(i => i.name === selectedInsightName)
+      : null;
+  const selectedInsightConfig = selectedInsightRecord ? unwrapConfig(selectedInsightRecord) : null;
+
+  // Optimistic + debounced persist for the SELECTED ref insight. The chart record
+  // is untouched — we write the insight record through the unified backbone.
+  const { scheduleSave: scheduleInsightSave } = useRecordSave('insight', selectedInsightName);
+
+  // Build the props object handed to TracePropsEditor for whichever insight is
+  // selected (ref record's config.props, or the embedded insight's props).
+  let selectedInsightProps = null;
+  if (isEmbeddedSelection && selectedEmbeddedIndex != null) {
+    const embedded = rawInsights[selectedEmbeddedIndex];
+    selectedInsightProps =
+      (embedded && typeof embedded === 'object' ? embedded.props : null) || { type: 'scatter' };
+  } else if (selectedInsightConfig) {
+    selectedInsightProps = selectedInsightConfig.props || { type: 'scatter' };
+  }
+
+  // Persist a props edit for the selected insight. Ref insights write the insight
+  // record (backbone); embedded insights edit inline + persist the CHART.
+  const handleInsightPropsChange = nextProps => {
+    if (isEmbeddedSelection && selectedEmbeddedIndex != null) {
+      const updatedInsights = rawInsights.map((insight, index) =>
+        index === selectedEmbeddedIndex && typeof insight === 'object'
+          ? { ...insight, props: nextProps }
+          : insight
+      );
+      // Inline-edit the embedded insight and persist the chart via its save path.
+      const config = { name, insights: updatedInsights };
+      if (Object.keys(layoutValues).length > 0) {
+        config.layout = layoutValues;
+      }
+      if (onSave) onSave('chart', name, config);
+      return;
+    }
+    if (selectedInsightRecord) {
+      scheduleInsightSave({ ...selectedInsightConfig, props: nextProps });
+    }
+  };
+
   // Initialize form when chart changes
   useEffect(() => {
     if (chart) {
@@ -125,6 +187,33 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     setErrors({});
     setSaveError(null);
   }, [chart, isCreate]);
+
+  // Build the options for the insight props picker: every ref insight by name,
+  // plus an entry per embedded insight. Keeps a stable identity so the picker
+  // can default-select the lone insight and stay in sync as refs change.
+  const insightPickerOptions = [
+    ...insights.map(i => ({ value: i, label: i })),
+    ...embeddedInsights.map(({ insight, index }) => ({
+      value: `${EMBEDDED_PREFIX}${index}`,
+      label: insight.name || `(embedded insight ${index + 1})`,
+    })),
+  ];
+
+  // Default-select the chart's only insight; otherwise keep the selection valid
+  // as the refs/embedded lists change (drop a stale selection).
+  useEffect(() => {
+    const validValues = insightPickerOptions.map(o => o.value);
+    if (selectedInsightName && validValues.includes(selectedInsightName)) {
+      return; // current selection still valid
+    }
+    if (insightPickerOptions.length === 1) {
+      setSelectedInsightName(insightPickerOptions[0].value);
+    } else if (selectedInsightName) {
+      // Selection no longer exists (e.g. its ref was removed/swapped).
+      setSelectedInsightName('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insights, embeddedInsights.length, selectedInsightName]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -372,6 +461,55 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
               );
             })()}
           </div>
+
+          {/* Insight Props Section — edit the selected insight's Plotly props.
+              This is an ADDITION to the chart's own fields (refs + layout); the
+              chart record is unchanged for ref insights — the insight record is
+              persisted through the unified backbone. */}
+          {insightPickerOptions.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
+                Insight Props
+              </h3>
+
+              {/* Insight picker */}
+              <div className="relative">
+                <Select
+                  aria-label="Insight"
+                  data-testid="insight-props-select"
+                  value={selectedInsightName}
+                  options={insightPickerOptions}
+                  onChange={value => setSelectedInsightName(value || '')}
+                  placeholder="Select an insight to edit…"
+                />
+                <label className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500">
+                  Insight
+                </label>
+              </div>
+
+              {/* Selected insight's grouped props editor (controlled). */}
+              {selectedInsightName && selectedInsightProps ? (
+                <TracePropsEditor
+                  ownerName={
+                    isEmbeddedSelection
+                      ? insightPickerOptions.find(o => o.value === selectedInsightName)?.label ||
+                        'insight'
+                      : selectedInsightName
+                  }
+                  props={selectedInsightProps}
+                  onChange={handleInsightPropsChange}
+                />
+              ) : selectedInsightName ? (
+                <p className="text-sm text-gray-500 italic" data-testid="insight-props-unloaded">
+                  Loading insight…
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  Select an insight above to edit its visualization props.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Layout Section */}
           <div className="space-y-4">

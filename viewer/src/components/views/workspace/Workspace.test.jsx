@@ -47,9 +47,11 @@ jest.mock('../common/TableEditForm', () => stubLeafForm('table-edit-form-stub'))
 jest.mock('../common/SourceEditForm', () => stubLeafForm('source-edit-form-stub'));
 jest.mock('../common/InsightEditForm', () => stubLeafForm('insight-edit-form-stub'));
 jest.mock('../common/ModelEditForm', () => stubLeafForm('model-edit-form-stub'));
-jest.mock('../common/DimensionEditForm', () => stubLeafForm('dimension-edit-form-stub'));
-jest.mock('../common/MetricEditForm', () => stubLeafForm('metric-edit-form-stub'));
-jest.mock('../common/RelationEditForm', () => stubLeafForm('relation-edit-form-stub'));
+// VIS-996: dimension/metric/relation render through the shared SchemaLeafForm.
+jest.mock('./SchemaLeafForm', () => ({
+  __esModule: true,
+  default: ({ type }) => <div data-testid={`${type}-edit-form-stub`} />,
+}));
 // The level/defaults Edit forms (VIS-807 / VIS-809) self-fetch (sources/defaults)
 // on mount; stub them so the shell-mount fetch assertions stay route-level.
 jest.mock('../common/LevelEditForm', () => stubLeafForm('level-edit-form-stub'));

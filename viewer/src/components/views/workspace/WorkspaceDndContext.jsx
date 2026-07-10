@@ -15,7 +15,7 @@ import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import LibraryDragPreview from './library/LibraryDragPreview';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
-import sanitizeDashboardConfig from './sanitizeDashboardConfig';
+import { runDashboardConfigGate } from './itemMutations';
 import {
   reorderItemsInRow,
   moveItemBetweenRows,
@@ -146,14 +146,15 @@ export const useWorkspaceDrag = () => useContext(WorkspaceDragContext)?.activeDr
 
 /**
  * Read the shared `commitCanvasConfig(dashboardName, nextConfig, meta)` —
- * sanitize → optimistic → save. Surfaced for the canvas resize overlay
- * (VIS-777 / D-4), which persists width/height/weight gestures through the SAME
- * dashboard save path the DnD router uses. Returns a no-op outside the provider.
+ * optimistic → validate → save (VIS-993). Surfaced for the canvas resize
+ * overlay (VIS-777 / D-4), which persists width/height/weight gestures through
+ * the SAME dashboard save path the DnD router uses. Returns a no-op outside
+ * the provider.
  */
 export const useCommitCanvasConfig = () =>
   useContext(WorkspaceDragContext)?.commitCanvasConfig ?? (() => {});
 
-// Exposes the shell's `commitCanvasConfig` (sanitize → optimistic → save) to
+// Exposes the shell's `commitCanvasConfig` (optimistic → validate → save) to
 // non-DnD canvas affordances — the "+ Add Row" template menu + empty-canvas CTA
 // (VIS-794 / D-7, D-8) — so they reuse the SAME persistence path the DnD router
 // uses, rather than re-implementing the save flow.
@@ -186,7 +187,7 @@ export const WorkspaceCommitProvider = ({ value, children }) => (
  * @param {Function} deps.moveLevel  store action `(fromIndex, toIndex) => void`
  *                   for canvas level reorder (VIS-901 #5).
  * @param {Function} deps.commitCanvasConfig  applies a next dashboard config
- *                   (sanitize → optimistic → save) for canvas D-3 mutations:
+ *                   (optimistic → validate → save) for canvas D-3 mutations:
  *                   `(dashboardName, nextConfig, meta) => void`.
  * @param {Function} deps.emit        telemetry emitter.
  * @returns {string} a short tag describing the routed action (for tests):
@@ -514,16 +515,16 @@ const DASH_COLORS = getTypeColors('dashboard');
 const CanvasRowDragPreview = ({ name }) => (
   <div
     data-testid="canvas-row-drag-preview"
-    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-[#713b57]"
+    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-primary"
   >
-    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-[#713b57]">
+    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-primary">
       <g fill="currentColor">
         <rect x="1" y="2" width="12" height="3" rx="1" />
         <rect x="1" y="9" width="12" height="3" rx="1" />
       </g>
     </svg>
     <span className="text-[13px] font-medium text-gray-900">{name}</span>
-    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
+    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-primary-100 px-1 text-[10px] font-bold uppercase tracking-wide text-primary-600">
       Row
     </span>
   </div>
@@ -536,9 +537,9 @@ const CanvasRowDragPreview = ({ name }) => (
 const CanvasLevelDragPreview = ({ name }) => (
   <div
     data-testid="level-drag-preview"
-    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-[#713b57]"
+    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-primary"
   >
-    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-[#713b57]">
+    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-primary">
       <g fill="currentColor">
         <rect x="1" y="2" width="12" height="2.5" rx="1" />
         <rect x="1" y="6" width="9" height="2.5" rx="1" />
@@ -546,7 +547,7 @@ const CanvasLevelDragPreview = ({ name }) => (
       </g>
     </svg>
     <span className="text-[13px] font-medium text-gray-900">{name}</span>
-    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
+    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-primary-100 px-1 text-[10px] font-bold uppercase tracking-wide text-primary-600">
       Level
     </span>
   </div>
@@ -560,9 +561,9 @@ const CanvasLevelDragPreview = ({ name }) => (
 const PivotFieldDragPreview = ({ name }) => (
   <div
     data-testid="pivot-field-drag-preview"
-    className="pointer-events-none inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-900 shadow-lg ring-1 ring-[#713b57]"
+    className="pointer-events-none inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-900 shadow-lg ring-1 ring-primary"
   >
-    <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" className="text-[#713b57]">
+    <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" className="text-primary">
       <g fill="currentColor">
         <rect x="1" y="2" width="12" height="3" rx="1" />
         <rect x="1" y="9" width="12" height="3" rx="1" />
@@ -596,21 +597,35 @@ const WorkspaceDndContext = ({ children }) => {
   // and consumers (ProjectEditor) can read: `{ kind, name, level, type }`.
   const [activeDrag, setActiveDrag] = useState(null);
 
-  // Commit a canvas-driven config mutation (D-3): sanitize so the payload is
-  // always backend-valid (GAP-3 — see sanitizeDashboardConfig), optimistically
-  // swap the store config so the canvas + Outline reflect it immediately, then
-  // persist through the shared dashboard save path (the SAME path the right-rail
-  // forms use via RightRailEditPanel.persistConfig).
+  // Commit a canvas-driven config mutation (D-3): optimistically swap the
+  // store config so the canvas + Outline reflect it immediately, then GATE
+  // persistence (VIS-993 §3). The canvas transforms (canvasReorder) produce
+  // BORN-valid configs, so the gate — $defs schema (validateAgainstSchema)
+  // plus the leaf mutual-exclusion check the JSON schema cannot express — is
+  // defense-in-depth: an invalid config is never handed to saveDashboard
+  // (sanitizeDashboardConfig is retired; nothing repairs the payload). The
+  // shared runDashboardConfigGate delivers EXACTLY ONE verdict and FAILS OPEN
+  // on gate-internal errors (a crashed gate must never silently swallow the
+  // save — the canvas-persist regression). This is the SAME runner
+  // RightRailEditPanel.persistConfig uses on the structure-form path.
   const commitCanvasConfig = useCallback(
     (dashboardName, nextConfig) => {
       if (!dashboardName) return;
-      const clean = sanitizeDashboardConfig(nextConfig);
       if (updateDashboardConfigOptimistic) {
-        updateDashboardConfigOptimistic(dashboardName, clean);
+        updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
-      if (typeof saveDashboard === 'function') {
-        saveDashboard(dashboardName, clean);
-      }
+      runDashboardConfigGate(nextConfig, blocked => {
+        if (blocked) {
+          emitWorkspaceEvent('canvas_commit_blocked', {
+            name: dashboardName,
+            errors: blocked.errors.length,
+          });
+          return;
+        }
+        if (typeof saveDashboard === 'function') {
+          saveDashboard(dashboardName, nextConfig);
+        }
+      });
     },
     [updateDashboardConfigOptimistic, saveDashboard]
   );

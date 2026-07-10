@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef } from 'react';
-import { PiPencil, PiCaretRight, PiSquaresFour } from 'react-icons/pi';
+import { PiPencil, PiCaretRight, PiSquaresFour, PiKeyboard } from 'react-icons/pi';
 import { getTypeIcon } from '../common/objectTypeConfigs';
 import {
   buildBreadcrumbSegments,
@@ -27,7 +27,7 @@ import {
  *
  * Type colour + icon come exclusively from `objectTypeConfigs` (rainbow);
  * `row` has no config entry so it uses a Phosphor squares glyph, and the
- * CURRENT (last) segment carries the mulberry selection chip (`#713b57`).
+ * CURRENT (last) segment carries the mulberry selection chip (`primary`).
  *
  * The whole logic is pure-function-backed (`editPanelBreadcrumb.js`) so the
  * key derivation + nav handlers are unit-tested in isolation.
@@ -47,9 +47,9 @@ const Segment = ({ segment, isCurrent, isFocused, onSelect }) => {
   const cls = [
     'group/crumb inline-flex h-6 max-w-[140px] items-center gap-1 rounded-md px-1.5 text-[11.5px] outline-none transition-colors',
     isCurrent
-      ? 'bg-[#e2d7dd] font-semibold text-[#5a2f45]'
+      ? 'bg-primary-100 font-semibold text-primary-600'
       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer',
-    isFocused ? 'ring-2 ring-[#713b57] bg-white text-gray-900' : '',
+    isFocused ? 'ring-2 ring-primary bg-white text-gray-900' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -181,29 +181,51 @@ const EditPanelBreadcrumb = ({
       aria-label="Selection breadcrumb"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="sticky top-0 z-10 flex h-7 items-center gap-1 border-b border-gray-100 bg-gray-50 px-2 outline-none focus-visible:ring-2 focus-visible:ring-[#713b57]/40"
+      className="sticky top-0 z-10 flex h-7 items-center gap-1 border-b border-gray-100 bg-gray-50 px-2 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
       <span data-testid="edit-breadcrumb-position" className="sr-only" aria-live="polite">
         {positionLabel}
       </span>
-      {segments.map((segment, i) => {
-        const isLast = i === segments.length - 1;
-        return (
-          <React.Fragment key={segment.key}>
-            <Segment
-              segment={segment}
-              isCurrent={isLast}
-              isFocused={i === focusedIndex && i !== 0 && isLast}
-              onSelect={handleSelect}
-            />
-            {!isLast && (
-              <PiCaretRight aria-hidden="true" className="h-2.5 w-2.5 shrink-0 text-gray-300" />
-            )}
-          </React.Fragment>
-        );
-      })}
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+        {segments.map((segment, i) => {
+          const isLast = i === segments.length - 1;
+          return (
+            <React.Fragment key={segment.key}>
+              <Segment
+                segment={segment}
+                isCurrent={isLast}
+                isFocused={i === focusedIndex && i !== 0 && isLast}
+                onSelect={handleSelect}
+              />
+              {!isLast && (
+                <PiCaretRight aria-hidden="true" className="h-2.5 w-2.5 shrink-0 text-gray-300" />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <KeyboardNavHint />
     </div>
   );
 };
+
+/**
+ * A discoverable affordance for the breadcrumb's keyboard navigation (VIS-985 /
+ * VIS-1000): a small keyboard glyph whose native `title` + an SR-only legend
+ * spell out the shortcuts, so the ↑↓/←→/⌘↑↓/Enter/Esc model isn't invisible.
+ */
+const KEYBOARD_HINT =
+  'Keyboard: ↑↓ move between siblings · ←→ move up/down the hierarchy · ⌘↑ / ⌘↓ reorder · Enter edit · Esc to dashboard';
+
+const KeyboardNavHint = () => (
+  <span
+    data-testid="edit-breadcrumb-kbd-hint"
+    title={KEYBOARD_HINT}
+    className="ml-1 flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded text-gray-300 transition-colors hover:bg-primary-50 hover:text-primary"
+  >
+    <PiKeyboard aria-hidden="true" className="h-3.5 w-3.5" />
+    <span className="sr-only">{KEYBOARD_HINT}</span>
+  </span>
+);
 
 export default EditPanelBreadcrumb;

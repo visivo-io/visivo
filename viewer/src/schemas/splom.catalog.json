@@ -1,0 +1,84 @@
+[
+  {
+    "path": "dimensions",
+    "label": "Dimensions",
+    "tier": "A",
+    "description": "The dimensions of the scatter plot matrix",
+    "keywords": [
+      "dimensions",
+      "axes",
+      "matrix",
+      "splom"
+    ],
+    "enumValues": null,
+    "example": [
+      {
+        "label": "Dim 1",
+        "values": [
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "SPLOM",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.size",
+    "label": "Marker Size",
+    "tier": "B",
+    "description": "Sets the marker size",
+    "keywords": [
+      "size",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": 5,
+    "schemaValType": "number",
+    "schemaEditType": "markerSize"
+  },
+  {
+    "path": "diagonal.visible",
+    "label": "Show Diagonal",
+    "tier": "B",
+    "description": "Determines whether or not subplots on the diagonal are displayed",
+    "keywords": [
+      "diagonal",
+      "visible",
+      "subplots"
+    ],
+    "enumValues": null,
+    "example": true,
+    "schemaValType": "boolean",
+    "schemaEditType": "calc"
+  }
+]

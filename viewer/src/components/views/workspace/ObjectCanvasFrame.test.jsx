@@ -27,6 +27,10 @@ jest.mock('./ModelPreview', () => ({
   __esModule: true,
   default: () => <div data-testid="model-preview-mock" />,
 }));
+jest.mock('./relations/RelationErdCanvas', () => ({
+  __esModule: true,
+  default: () => <div data-testid="relation-erd-mock" />,
+}));
 jest.mock('../../../contexts/URLContext', () => {
   const actual = jest.requireActual('../../../contexts/URLContext');
   return { ...actual, isAvailable: jest.fn(() => true) };
@@ -90,6 +94,36 @@ describe('ObjectCanvasFrame', () => {
     render(frameFor('model', 'orders'));
     expect(await screen.findByTestId('model-preview-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('canvas-unavailable')).not.toBeInTheDocument();
+  });
+
+  // VIS-1018 step 4 — the chrome dirty indicator is derived from the backend
+  // ObjectStatus.MODIFIED (polled via getProject), not a frontend-only boolean.
+  test('an editable lens reads "Unsaved" when the record status is MODIFIED', async () => {
+    act(() => {
+      useStore.setState({
+        relations: [{ name: 'rel', status: 'modified', config: {} }],
+        fetchRelations: jest.fn(),
+      });
+    });
+    render(frameFor('relation', 'rel'));
+    const pill = await screen.findByTestId('canvas-dirty-indicator');
+    expect(pill).toHaveAttribute('data-dirty', 'true');
+    expect(pill).toHaveTextContent('Unsaved');
+    await screen.findByTestId('relation-erd-mock');
+  });
+
+  test('an editable lens reads "Saved" when the record status is not MODIFIED', async () => {
+    act(() => {
+      useStore.setState({
+        relations: [{ name: 'rel', status: 'published', config: {} }],
+        fetchRelations: jest.fn(),
+      });
+    });
+    render(frameFor('relation', 'rel'));
+    const pill = await screen.findByTestId('canvas-dirty-indicator');
+    expect(pill).toHaveAttribute('data-dirty', 'false');
+    expect(pill).toHaveTextContent('Saved');
+    await screen.findByTestId('relation-erd-mock');
   });
 
   test('a type with no descriptor parks on Lineage with the Canvas option muted', () => {

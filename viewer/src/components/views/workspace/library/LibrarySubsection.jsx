@@ -119,7 +119,7 @@ const LibrarySubsection = ({
               type="button"
               onClick={() => onCreate && onCreate(typeKey)}
               data-testid={`library-subsection-${typeKey}-create`}
-              className="mt-0.5 inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-[#713b57] hover:bg-[#e2d7dd]/40"
+              className="mt-0.5 inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-primary hover:bg-primary-100/40"
             >
               <PiPlus className="h-3 w-3" /> New {def.label}
             </button>

@@ -43,8 +43,8 @@ const Segmented = ({
         const isDisabled = !!opt.disabled;
         const baseActive =
           tone === 'dark'
-            ? 'bg-white text-[#191d33] shadow-sm'
-            : 'bg-white text-[#191d33] shadow-sm ring-1 ring-gray-200';
+            ? 'bg-white text-dark shadow-sm'
+            : 'bg-white text-dark shadow-sm ring-1 ring-gray-200';
         const baseInactive =
           tone === 'dark'
             ? 'text-white/70 hover:text-white hover:bg-white/10'

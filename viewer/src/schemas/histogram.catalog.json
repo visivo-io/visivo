@@ -1,0 +1,104 @@
+[
+  {
+    "path": "x",
+    "label": "X Values",
+    "tier": "A",
+    "description": "Sets the sample data to be binned on the x axis",
+    "keywords": [
+      "x",
+      "data",
+      "values",
+      "sample"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      2,
+      3,
+      3,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "nbinsx",
+    "label": "Number of Bins",
+    "tier": "B",
+    "description": "Specifies the maximum number of desired bins",
+    "keywords": [
+      "bins",
+      "buckets",
+      "resolution"
+    ],
+    "enumValues": null,
+    "example": 10,
+    "schemaValType": "integer",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name shown in the legend",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Distribution",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Bar Color",
+    "tier": "B",
+    "description": "Sets the bar color",
+    "keywords": [
+      "color",
+      "bar",
+      "fill"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 0.75,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "histnorm",
+    "label": "Normalization",
+    "tier": "B",
+    "description": "Specifies the normalization method for the histogram",
+    "keywords": [
+      "normalization",
+      "probability",
+      "density"
+    ],
+    "enumValues": [
+      "",
+      "percent",
+      "probability",
+      "density",
+      "probability density"
+    ],
+    "example": "",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  }
+]

@@ -25,15 +25,15 @@ import RowTemplateMenu from './RowTemplateMenu';
  * Each trigger opens <RowTemplateMenu>; selecting a template builds a row of
  * empty slots (canvasReorder.buildTemplateRow) and inserts it at the trigger's
  * target index (insertRowAtIndex), committing through the shell's shared
- * `commitCanvasConfig` (sanitize → optimistic → save) — the SAME path the DnD
+ * `commitCanvasConfig` (optimistic → validate → save) — the SAME path the DnD
  * router uses. It also exposes the inline-create entry points (+ New Chart /
  * Table / Markdown) that route to the Explorer (the full round-trip is VIS-J2;
  * here we fire `inline_create_used` + navigate).
  *
- * Mulberry (`#713b57`) is the active/CTA colour (NOT a type colour).
+ * Mulberry (`primary`) is the active/CTA colour (NOT a type colour).
  */
 
-const MULBERRY = '#713b57';
+const MULBERRY = 'var(--color-primary-500)';
 const PlusIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
     <path d="M12 5v14M5 12h14" />
@@ -230,7 +230,7 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
                 type="button"
                 data-testid={`canvas-inline-create-${type}`}
                 onClick={() => handleInlineCreate(type)}
-                className="font-medium text-[#713b57] hover:underline"
+                className="font-medium text-primary hover:underline"
               >
                 {label}
               </button>
@@ -276,7 +276,7 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
                 <span
                   aria-hidden="true"
                   className="absolute left-0 right-0 h-px"
-                  style={{ backgroundColor: 'rgba(113,59,87,0.4)', width: gap.width }}
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary-500) 40%, transparent)', width: gap.width }}
                 />
                 <button
                   type="button"
@@ -289,7 +289,7 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
                     )
                   }
                   className="relative z-10 inline-flex h-7 items-center gap-1.5 rounded-full bg-white px-3 text-[11px] font-medium shadow-sm ring-1"
-                  style={{ color: MULBERRY, borderColor: '#c6b0bb' }}
+                  style={{ color: MULBERRY, borderColor: 'var(--color-primary-200)' }}
                 >
                   <PlusIcon className="h-3 w-3" />
                   Add row
@@ -314,8 +314,8 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
             type="button"
             data-testid="canvas-add-row-end-button"
             onClick={() => setOpenMenu(o => (o?.kind === 'end' ? null : { kind: 'end' }))}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-dashed bg-white px-4 text-[13px] font-medium transition-colors hover:bg-[#fbf7f9]"
-            style={{ borderColor: MULBERRY, color: '#5a2f45' }}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-dashed bg-white px-4 text-[13px] font-medium transition-colors hover:bg-primary-50"
+            style={{ borderColor: MULBERRY, color: 'var(--color-primary-600)' }}
           >
             <PlusIcon className="h-4 w-4" />
             Add row

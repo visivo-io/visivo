@@ -138,7 +138,7 @@ const ProjectDefaultsEditForm = ({ defaults, onSave, onClose }) => {
             type="checkbox"
             checked={telemetryEnabled}
             onChange={e => setTelemetryEnabled(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
           />
           <label htmlFor="defaults-telemetry" className="text-sm font-medium text-gray-700">
             Telemetry Enabled
@@ -179,14 +179,14 @@ const ProjectDefaultsEditForm = ({ defaults, onSave, onClose }) => {
                     value={level.title}
                     onChange={e => updateLevel(index, 'title', e.target.value)}
                     placeholder="Title"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
                   <input
                     type="text"
                     value={level.description}
                     onChange={e => updateLevel(index, 'description', e.target.value)}
                     placeholder="Description"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
                 </div>
               ))}

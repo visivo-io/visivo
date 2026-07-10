@@ -1,12 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import useStore from '../../../stores/store';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import useStore, { ObjectStatus } from '../../../stores/store';
 import Markdown from '../../items/Markdown';
 import { getTypeColors } from '../common/objectTypeConfigs';
 import { useObjectCanvasDirty } from './ObjectCanvasFrame';
-import useDebouncedSave from './useDebouncedSave';
+import useRecordSave from '../../../hooks/useRecordSave';
 
 /**
- * MarkdownEditorCanvas — VIS-1010.
+ * MarkdownEditorCanvas — VIS-1010 / VIS-1018 step 2.
  *
  * The editable `edit` lens of the markdown object canvas. A clean split surface:
  * a plain-text markdown editor on the LEFT, a LIVE rendered preview on the RIGHT
@@ -14,10 +14,19 @@ import useDebouncedSave from './useDebouncedSave';
  * item, so what you type is exactly what ships).
  *
  * Behaviour:
- *   - owns a LOCAL draft of the record's markdown content (align / justify are
- *     preserved from the saved record so a content edit never drops them);
- *   - debounce-saves the draft (~600ms) through the markdown store's
- *     `saveMarkdown(name, config)` action;
+ *   - owns a LOCAL draft of the record's markdown content for responsive typing
+ *     (align / justify are preserved from the saved record so a content edit
+ *     never drops them);
+ *   - routes every keystroke through the unified `useRecordSave('markdown', …)`
+ *     backbone: the keystroke writes the draft into the record's store
+ *     collection OPTIMISTICALLY (`updateRecordConfigOptimistic`) AND schedules a
+ *     debounced persist that reads the CURRENT store value at fire time. This is
+ *     the VIS-1018 clobber fix — the rail form, this canvas, and the standalone
+ *     rail-save now share ONE optimistic store + fire-time-read persist, so two
+ *     surfaces editing the same markdown converge on the last write instead of
+ *     racing stale per-surface drafts back over each other;
+ *   - re-seeds its local draft ONLY on record `name` change (not on every store
+ *     update) so a concurrent save can't interrupt in-flight typing;
  *   - drives the frame's dirty state via `useObjectCanvasDirty().setDirty` —
  *     dirty === the draft differs from the last SAVED content.
  *
@@ -32,10 +41,10 @@ const MarkdownEditorCanvas = ({ activeObject, record }) => {
   const colors = getTypeColors('markdown');
 
   // The live markdown collection is the source of truth for the SAVED content
-  // (the store refreshes it after every save). We seed the draft from it / the
+  // (the store refreshes it after every save, and `updateRecordConfigOptimistic`
+  // writes the in-flight draft into it). We seed the draft from it / the
   // frame-resolved record and re-seed when the selected object changes.
   const markdowns = useStore(s => s.markdowns);
-  const saveMarkdown = useStore(s => s.saveMarkdown);
 
   const savedRecord = useMemo(() => {
     const fromStore = Array.isArray(markdowns)
@@ -55,31 +64,58 @@ const MarkdownEditorCanvas = ({ activeObject, record }) => {
   const align = savedRecord?.align ?? record?.align ?? 'left';
   const justify = savedRecord?.justify ?? record?.justify ?? 'start';
 
+  // The record's backend status (NEW/MODIFIED/PUBLISHED). PUBLISHED means the
+  // store content equals what's on disk — the signal for advancing the dirty
+  // baseline below. The optimistic write does NOT flip status, so during typing
+  // the record stays whatever it was and only flips MODIFIED after the persist
+  // round-trips (and back to PUBLISHED on commit / revert-to-disk).
+  const savedStatus = useMemo(() => {
+    const fromStore = Array.isArray(markdowns) ? markdowns.find(m => m.name === name) : null;
+    return fromStore?.status ?? null;
+  }, [markdowns, name]);
+
   const [draft, setDraft] = useState(savedContent);
   const { setDirty } = useObjectCanvasDirty();
 
-  const save = useCallback(
-    content => {
-      if (!name || typeof saveMarkdown !== 'function') return undefined;
-      return saveMarkdown(name, { name, content, align, justify });
-    },
-    [name, saveMarkdown, align, justify]
-  );
-  const { scheduleSave } = useDebouncedSave(save, { delay: SAVE_DELAY_MS });
+  // Unified optimistic + debounced save backbone (VIS-1018). The hook reads the
+  // CURRENT store value at fire time, so the persist always reflects the latest
+  // edit across every surface bound to this markdown.
+  const { scheduleSave } = useRecordSave('markdown', name, { delay: SAVE_DELAY_MS });
 
   // Re-seed the draft when the active object changes (the frame reuses this
   // body across sibling selections, so without this the previous object's draft
   // would leak). We key on `name` so an external save (which updates
-  // `savedContent`) does NOT clobber in-flight typing.
+  // `savedContent`) does NOT clobber in-flight typing. `seededContent` is the
+  // dirty baseline (what's on disk) — `savedContent` now tracks the OPTIMISTIC
+  // store (it mirrors in-flight edits via `updateRecordConfigOptimistic`), so it
+  // can't be the baseline. It is STATE (not a ref) so advancing it recomputes
+  // the dirty flag.
   const seededNameRef = useRef(null);
+  const [seededContent, setSeededContent] = useState(savedContent);
   useEffect(() => {
     if (seededNameRef.current !== name) {
       seededNameRef.current = name;
+      setSeededContent(savedContent);
       setDraft(savedContent);
     }
   }, [name, savedContent]);
 
-  const isDirty = draft !== savedContent;
+  // Advance the dirty baseline whenever the record transitions back to a
+  // committed (PUBLISHED) state — a commit, or typing back to the on-disk value.
+  // That transition is the ONLY moment the optimistic store content equals
+  // what's on disk. Freezing the baseline at selection time left the "Unsaved"
+  // pill stuck after a commit until the user reselected (VIS-514 review).
+  const prevStatusRef = useRef(savedStatus);
+  useEffect(() => {
+    if (savedStatus === ObjectStatus.PUBLISHED && prevStatusRef.current !== ObjectStatus.PUBLISHED) {
+      setSeededContent(savedContent);
+    }
+    prevStatusRef.current = savedStatus;
+  }, [savedStatus, savedContent]);
+
+  // Dirty === the draft differs from the on-disk baseline, not from the live
+  // optimistic store value.
+  const isDirty = draft !== seededContent;
   useEffect(() => {
     setDirty(isDirty);
   }, [isDirty, setDirty]);
@@ -87,7 +123,15 @@ const MarkdownEditorCanvas = ({ activeObject, record }) => {
   const handleChange = e => {
     const next = e.target.value;
     setDraft(next);
-    if (next !== savedContent) scheduleSave(next);
+    if (!name) return;
+    // Push the keystroke through the shared optimistic store + debounced persist.
+    // We schedule whenever the content differs from the baseline (what's on
+    // disk) — including typing back to it, so the revert persists too.
+    // align/justify are preserved from the saved record so a content edit never
+    // drops them.
+    if (next !== seededContent) {
+      scheduleSave({ name, content: next, align, justify });
+    }
   };
 
   if (!name) {

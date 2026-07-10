@@ -21,7 +21,7 @@ import {
  * `data-canvas-path` markers the other overlays read, then paints edge handles
  * on the CURRENTLY SELECTED item / row and turns a drag on them into a config
  * mutation persisted through the shell's shared `commitCanvasConfig`
- * (sanitize → optimistic → save).
+ * (optimistic → validate → save).
  *
  * Handle types (D-3 contract):
  *   - Item RIGHT-EDGE (↔ width): drag changes the item's integer col-span
@@ -49,12 +49,12 @@ import {
  * config swap) can never drop the gesture — the moves keep flowing to the
  * captured handle regardless of what reflows underneath.
  *
- * Mulberry / primary (`#713b57`) is the SELECTION colour only (matches the
+ * Mulberry / primary (`primary`) is the SELECTION colour only (matches the
  * selection overlay + DnD insertion bar). Type colours come from
  * objectTypeConfigs.js elsewhere and are never used here.
  */
 
-const MULBERRY = '#713b57';
+const MULBERRY = 'var(--color-primary-500)';
 const COLS = 12;
 
 // Classify a composite selection key as item / row / chrome (mirrors the
@@ -508,8 +508,8 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
             left: ghost.left,
             width: ghost.width,
             height: ghost.height,
-            background: 'rgba(113,59,87,0.06)',
-            boxShadow: `0 0 0 2px ${MULBERRY}, 0 0 0 5px rgba(113,59,87,0.18)`,
+            background: 'color-mix(in srgb, var(--color-primary-500) 6%, transparent)',
+            boxShadow: `0 0 0 2px ${MULBERRY}, 0 0 0 5px color-mix(in srgb, var(--color-primary-500) 18%, transparent)`,
           }}
         />
       )}
@@ -637,7 +637,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           }}
         >
           {drag.kind === 'height' && !drag.fluid ? (
-            <div className="flex flex-col gap-0.5 rounded-md bg-white/95 p-1 shadow-md ring-1 ring-[#c6b0bb]">
+            <div className="flex flex-col gap-0.5 rounded-md bg-white/95 p-1 shadow-md ring-1 ring-primary-200">
               {HEIGHT_ENUM_STOPS.map(stop => {
                 const active = stop.label === drag.label;
                 return (
