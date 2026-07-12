@@ -101,6 +101,7 @@ const URL_PATTERNS = {
     commitPending: '/api/commit/pending/',
     commit: '/api/commit/',
     commitDiscard: '/api/commit/discard/',
+    commitDiscardObject: '/api/commit/discard/{type}/{name}/',
 
     // Cloud-editing endpoints (core/Django only; 404 under local `visivo serve`)
     projectCapabilities: '/api/projects/{projectId}/capabilities/',
@@ -242,6 +243,7 @@ const URL_PATTERNS = {
     commitPending: null,
     commit: null,
     commitDiscard: null,
+    commitDiscardObject: null,
 
     // Cloud-editing endpoints (not available in dist)
     projectCapabilities: null,

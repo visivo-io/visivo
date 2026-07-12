@@ -16,6 +16,7 @@ import EmbeddedPill from '../lineage/EmbeddedPill';
 import Select from '../../common/Select';
 import TracePropsEditor from './TracePropsEditor';
 import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -128,6 +129,21 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
   // is untouched — we write the insight record through the unified backbone.
   const { scheduleSave: scheduleInsightSave } = useRecordSave('insight', selectedInsightName);
 
+  // Separate backbone for the CHART'S OWN edit-mode auto-save (VIS-1018). Edit
+  // mode persists every valid change through here (schema-gated) and shows a
+  // save-state indicator instead of a Save button; create mode keeps the button.
+  const isAutoSave = isEditMode;
+  const {
+    scheduleSave,
+    status: chartSaveStatus,
+    errors: chartGateErrors,
+  } = useRecordSave('chart', chart?.name || null);
+
+  const chartGateErrorText =
+    chartGateErrors && chartGateErrors.length > 0
+      ? chartGateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
+      : null;
+
   // Build the props object handed to TracePropsEditor for whichever insight is
   // selected (ref record's config.props, or the embedded insight's props).
   let selectedInsightProps = null;
@@ -148,12 +164,15 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
           ? { ...insight, props: nextProps }
           : insight
       );
-      // Inline-edit the embedded insight and persist the chart via its save path.
+      // Inline-edit the embedded insight and persist the chart. Edit mode routes
+      // through the chart backbone (schema-gated, drives the save indicator);
+      // create mode uses the parent onSave.
       const config = { name, insights: updatedInsights };
       if (Object.keys(layoutValues).length > 0) {
         config.layout = layoutValues;
       }
-      if (onSave) onSave('chart', name, config);
+      if (isAutoSave) scheduleSave(config);
+      else if (onSave) onSave('chart', name, config);
       return;
     }
     if (selectedInsightRecord) {
@@ -161,8 +180,12 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     }
   };
 
-  // Initialize form when chart changes
+  // Set true once hydrated from `chart`, so the auto-save effect never fires on
+  // hydration (only on real edits). Keyed on the chart NAME so an optimistic
+  // refetch doesn't re-hydrate over in-progress edits.
+  const hydratedRef = useRef(false);
   useEffect(() => {
+    hydratedRef.current = false;
     if (chart) {
       // Edit mode - populate from existing chart
       setName(chart.name || '');
@@ -186,7 +209,50 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     }
     setErrors({});
     setSaveError(null);
-  }, [chart, isCreate]);
+    // Defer past the state-set renders so their auto-save effect runs while
+    // still un-hydrated (mirrors the other edit forms).
+    const id = setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chart?.name, isCreate]);
+
+  // Build the chart config from the current form state (shared by manual save
+  // and the debounced auto-save path). Combines ref insights with embedded
+  // insights, preserving the original interleaving (insight order drives trace
+  // layering / legend order).
+  const buildChartConfig = () => {
+    const config = { name };
+    const refInsights = insights.map(i => formatRef(i));
+    const rebuiltInsights = [];
+    let refIdx = 0;
+    rawInsights.forEach(item => {
+      if (typeof item === 'object' && item !== null) {
+        rebuiltInsights.push(item);
+      } else if (refIdx < refInsights.length) {
+        rebuiltInsights.push(refInsights[refIdx]);
+        refIdx += 1;
+      }
+    });
+    for (; refIdx < refInsights.length; refIdx += 1) {
+      rebuiltInsights.push(refInsights[refIdx]);
+    }
+    if (rebuiltInsights.length > 0) config.insights = rebuiltInsights;
+    if (layoutValues && Object.keys(layoutValues).length > 0) config.layout = layoutValues;
+    return config;
+  };
+
+  // Auto-save: whenever an editable field changes (post-hydration), schedule a
+  // gated save once the local minimums (a name + at least one insight) are met.
+  // The schema gate in scheduleSave decides whether it actually persists.
+  useEffect(() => {
+    if (!isAutoSave || !hydratedRef.current) return;
+    if (!name.trim()) return;
+    if (insights.length === 0 && embeddedInsights.length === 0) return;
+    scheduleSave(buildChartConfig());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, insights, layoutValues]);
 
   // Build the options for the insight props picker: every ref insight by name,
   // plus an entry per embedded insight. Keeps a stable identity so the picker
@@ -237,39 +303,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     setSaving(true);
     setSaveError(null);
 
-    // Build config object
-    const config = {
-      name,
-    };
-
-    // Combine ref insights with embedded insights, preserving the original
-    // interleaving (insight order drives trace layering / legend order).
-    // Embedded objects stay at their original slots; the (possibly edited)
-    // refs fill the string slots in order; any newly added refs go at the end.
-    const refInsights = insights.map(i => formatRef(i));
-    const rebuiltInsights = [];
-    let refIdx = 0;
-    rawInsights.forEach(item => {
-      if (typeof item === 'object' && item !== null) {
-        rebuiltInsights.push(item);
-      } else if (refIdx < refInsights.length) {
-        rebuiltInsights.push(refInsights[refIdx]);
-        refIdx += 1;
-      }
-    });
-    for (; refIdx < refInsights.length; refIdx += 1) {
-      rebuiltInsights.push(refInsights[refIdx]);
-    }
-
-    if (rebuiltInsights.length > 0) {
-      config.insights = rebuiltInsights;
-    }
-
-    // Add layout if there are values (the SchemaEditor emits undefined when
-    // its last property is removed).
-    if (layoutValues && Object.keys(layoutValues).length > 0) {
-      config.layout = layoutValues;
-    }
+    const config = buildChartConfig();
 
     // Call unified save - parent handles routing and panel close
     const result = await onSave('chart', name, config);
@@ -549,6 +583,14 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
 
           {/* Save Error */}
           {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {chartGateErrorText && (
+            <div
+              className="p-3 rounded-md bg-red-50 text-red-700 text-sm"
+              data-testid="chart-gate-errors"
+            >
+              {chartGateErrorText}
+            </div>
+          )}
         </div>
       </div>
 
@@ -596,21 +638,30 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
             )}
           </div>
 
-          <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
-            </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </Button>
-          </div>
+          {/* Edit mode auto-saves on every valid change; the footer shows a
+              save-state indicator instead of a Save button. Create keeps the
+              explicit Cancel/Save. */}
+          {isAutoSave ? (
+            <div className="flex items-center gap-2" data-testid="form-footer-autosave">
+              <SaveStateIndicator status={chartSaveStatus} />
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <ButtonOutline type="button" onClick={onClose} className="text-sm">
+                Cancel
+              </ButtonOutline>
+              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+                {saving ? (
+                  <>
+                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </>

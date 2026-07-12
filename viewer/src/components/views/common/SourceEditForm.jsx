@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { ButtonOutline } from '../../styled/Button';
 import SourceTypeSelector from '../../sources/SourceTypeSelector';
@@ -16,6 +16,8 @@ import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
+import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
@@ -26,6 +28,14 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
  * - onClose: Callback to close the panel
  * - onSave: Function(type, name, config) - Unified save callback
  * - onGoBack: Callback to navigate back to parent (for embedded sources)
+ *
+ * VIS-1018: a STANDALONE source in edit mode auto-saves through the unified
+ * `useRecordSave('source', …)` backbone — each field change debounces and
+ * persists only if the config passes schema validation, so the footer shows a
+ * save-state indicator instead of a Save button. CREATE mode keeps its explicit
+ * Save button (the record isn't in the store yet), and EMBEDDED sources keep it
+ * too: they have no name to key the backbone on and route through the parent's
+ * `onSave`/applyToParent, so their save can't go through the name-keyed backbone.
  */
 const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
   const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkCommitStatus } =
@@ -46,8 +56,41 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
   const isEmbedded = isEmbeddedObject(source);
   const parentName = source?._embedded?.parentName;
 
-  // Initialize form when source changes
+  // Edit mode auto-saves through the unified backbone (VIS-1018); create mode
+  // keeps an explicit Save button, and embedded sources do too — they have no
+  // name to key the name-scoped backbone on and save via the parent instead.
+  const isAutoSave = isEditMode && !isEmbedded;
+
+  // Unified optimistic + debounced + schema-validated save backbone (VIS-1018).
+  // scheduleSave writes the config optimistically into the source store, then
+  // debounce-persists ONLY if it passes schema validation; otherwise it reports
+  // status:'invalid' with per-field gate errors and persists nothing.
+  const {
+    scheduleSave,
+    status: autoSaveStatus,
+    errors: gateErrors,
+  } = useRecordSave('source', source?.name || null);
+
+  const gateErrorText =
+    gateErrors && gateErrors.length > 0
+      ? gateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
+      : null;
+
+  // Build the source config from the current form state (shared by the manual
+  // create-mode save and the debounced auto-save path). Embedded sources omit
+  // the name (they're keyed by their position in the parent config).
+  const buildConfig = () =>
+    isEmbedded
+      ? { type: sourceType, ...formValues }
+      : { name, type: sourceType, ...formValues };
+
+  // Set true once the form has hydrated from `source`, so the auto-save effect
+  // below never fires on hydration (only on real user edits). Keyed on the
+  // source NAME (not identity), so an optimistic-save refetch doesn't re-hydrate
+  // and clobber in-progress edits.
+  const hydratedRef = useRef(false);
   useEffect(() => {
+    hydratedRef.current = false;
     if (source) {
       // Edit mode - populate from existing source
       setName(source.name || '');
@@ -75,7 +118,24 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
     }
     setErrors({});
     setSaveError(null);
-  }, [source, isCreate]);
+    // Defer past the state-set renders so their auto-save effect runs while
+    // still un-hydrated (mirrors ModelEditForm).
+    const id = setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source?.name, isCreate]);
+
+  // Auto-save: whenever an editable field changes (post-hydration), schedule a
+  // save once the local minimums (name + type) are present. The schema gate in
+  // scheduleSave still decides whether it actually persists.
+  useEffect(() => {
+    if (!isAutoSave || !hydratedRef.current) return;
+    if (!name.trim() || !sourceType) return;
+    scheduleSave(buildConfig());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, sourceType, formValues]);
 
   // Clear connection status when panel closes
   useEffect(() => {
@@ -132,9 +192,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
     setSaveError(null);
 
     // Build config - embedded sources don't include name
-    const config = isEmbedded
-      ? { type: sourceType, ...formValues }
-      : { name, type: sourceType, ...formValues };
+    const config = buildConfig();
 
     // Call unified save - parent handles embedded vs standalone routing
     const result = await onSave('source', name, config);
@@ -245,6 +303,11 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
           )}
 
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
+        {gateErrorText && (
+          <div data-testid="source-gate-errors">
+            <FormAlert variant="error">{gateErrorText}</FormAlert>
+          </div>
+        )}
       </FormLayout>
 
       <FormFooter
@@ -266,6 +329,8 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
               }
             : null
         }
+        autoSave={isAutoSave}
+        rightContent={isAutoSave ? <SaveStateIndicator status={autoSaveStatus} /> : null}
         leftActions={
           <ButtonOutline
             type="button"

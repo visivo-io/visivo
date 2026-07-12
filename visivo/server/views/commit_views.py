@@ -621,6 +621,57 @@ def register_commit_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error discarding changes: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/commit/discard/<type_name>/<name>/", methods=["POST"])
+    def discard_object_changes(type_name, name):
+        """Revert a SINGLE object to its published version (per-object Discard).
+
+        Universal across statuses: `delete_from_cache` drops the object's cached
+        draft — the modified config, or the None tombstone a mark-for-deletion
+        stored — so it falls back to its published state, or disappears entirely
+        if it was newly created in this draft. Local Flask only; cloud drafts are
+        reverted through the branching draft flow instead.
+        """
+        managers_by_type = {
+            "source": flask_app.source_manager,
+            "model": flask_app.model_manager,
+            "dimension": flask_app.dimension_manager,
+            "metric": flask_app.metric_manager,
+            "relation": flask_app.relation_manager,
+            "insight": flask_app.insight_manager,
+            "markdown": flask_app.markdown_manager,
+            "chart": flask_app.chart_manager,
+            "table": flask_app.table_manager,
+            "dashboard": flask_app.dashboard_manager,
+            "csvScriptModel": flask_app.csv_script_model_manager,
+            "localMergeModel": flask_app.local_merge_model_manager,
+            "input": flask_app.input_manager,
+        }
+        try:
+            if type_name == "defaults":
+                reverted = flask_app._cached_defaults is not None
+                flask_app._cached_defaults = None
+            else:
+                manager = managers_by_type.get(type_name)
+                if manager is None:
+                    return jsonify({"error": f"Unknown type '{type_name}'"}), 400
+                reverted = manager.delete_from_cache(name)
+
+            if not reverted:
+                return (
+                    jsonify({"error": f"'{name}' has no pending changes to discard"}),
+                    404,
+                )
+            return jsonify(
+                {
+                    "message": f"Discarded changes to {type_name} '{name}'",
+                    "name": name,
+                    "type": type_name,
+                }
+            )
+        except Exception as e:
+            Logger.instance().error(f"Error discarding object changes: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
 
 def _build_child_info(
     name,

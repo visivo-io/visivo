@@ -48,6 +48,9 @@ const createCommitSlice = (set, get) => ({
   commitError: null,
   commitModalOpen: false,
   discardLoading: false,
+  // Key (`${type}:${name}`) of the single object whose per-object discard is in
+  // flight, so the commit modal can show that one row as "Discarding…".
+  discardingObjectKey: null,
   // Timestamp of the last successful commit — the TopBar cluster derives
   // its transient "Committed ✓" flash from changes to this value.
   lastCommittedAt: null,
@@ -170,6 +173,25 @@ const createCommitSlice = (set, get) => ({
       // Surface through commitError so CommitModal shows feedback instead of
       // silently keeping the confirm state open.
       set({ discardLoading: false, commitError: error.message });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Discard just ONE object's changes, reverting it to its published version
+  // (per-object Discard) — local Flask only, same as discardChanges. Unlike the
+  // all-or-nothing discard this keeps the modal open and re-derives the pending
+  // set (via checkCommitStatus) so the remaining rows stay accurate, then
+  // refetches the named children so the canvas reflects the reverted object.
+  discardObjectChanges: async (type, name) => {
+    set({ discardingObjectKey: `${type}:${name}`, commitError: null });
+    try {
+      const result = await commitApi.discardObjectChanges(type, name);
+      await get()._refreshNamedChildren();
+      await get().checkCommitStatus();
+      set({ discardingObjectKey: null });
+      return { success: true, result };
+    } catch (error) {
+      set({ discardingObjectKey: null, commitError: error.message });
       return { success: false, error: error.message };
     }
   },

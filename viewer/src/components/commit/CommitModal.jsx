@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import UndoIcon from '@mui/icons-material/Undo';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 import useStore, { ObjectStatus } from '../../stores/store';
 import { getTypeByValue } from '../views/common/objectTypeConfigs';
@@ -54,9 +55,16 @@ const CommitModal = () => {
   // rather than offered and guaranteed to fail.
   const discardChanges = useStore(state => state.discardChanges);
   const discardLoading = useStore(state => state.discardLoading);
+  // Per-object discard (revert one object to published). Same local-Flask-only
+  // gating as discard-all — the endpoint has no cloud equivalent yet.
+  const discardObjectChanges = useStore(state => state.discardObjectChanges);
+  const discardingObjectKey = useStore(state => state.discardingObjectKey);
   const capabilities = useStore(state => state.capabilities);
   const discardAvailable = capabilities === null;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  // Key (`${type}:${name}`) of the row whose per-object discard is being
+  // confirmed inline; only one row confirms at a time.
+  const [rowConfirmKey, setRowConfirmKey] = useState(null);
 
   if (!commitModalOpen) return null;
 
@@ -73,6 +81,15 @@ const CommitModal = () => {
       setConfirmingDiscard(false);
       closeCommitModal();
     }
+  };
+
+  // Revert just this object. On success the store re-derives pendingChanges, so
+  // the row drops out of the list; if it was the last change the list empties
+  // but we leave the modal open (the user chose granular discard, not "cancel
+  // everything").
+  const handleDiscardObject = async change => {
+    const result = await discardObjectChanges(change.type, change.name);
+    if (result?.success) setRowConfirmKey(null);
   };
 
   const count = pendingChanges.length;
@@ -104,21 +121,63 @@ const CommitModal = () => {
             <p className="text-gray-500 text-center py-4">No pending changes to commit.</p>
           ) : (
             <ul className="space-y-2">
-              {pendingChanges.map((change, index) => (
-                <li
-                  key={`${change.type}-${change.name}-${index}`}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <TypeBadge type={change.type} />
-                    <span className="font-medium text-gray-900">{change.name}</span>
-                    {change.source_type && (
-                      <span className="text-gray-500 text-sm">({change.source_type})</span>
-                    )}
-                  </div>
-                  <StatusBadge status={change.status} />
-                </li>
-              ))}
+              {pendingChanges.map((change, index) => {
+                const objectKey = `${change.type}:${change.name}`;
+                const isRowDiscarding = discardingObjectKey === objectKey;
+                // Stay in the confirm view while the revert is in flight so the
+                // row can show "Discarding…" even after rowConfirmKey clears.
+                const isRowConfirming = rowConfirmKey === objectKey || isRowDiscarding;
+                return (
+                  <li
+                    key={`${change.type}-${change.name}-${index}`}
+                    className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-md"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TypeBadge type={change.type} />
+                      <span className="font-medium text-gray-900 truncate">{change.name}</span>
+                      {change.source_type && (
+                        <span className="text-gray-500 text-sm shrink-0">
+                          ({change.source_type})
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={change.status} />
+                      {discardAvailable &&
+                        (isRowConfirming ? (
+                          <span className="flex items-center gap-1">
+                            <button
+                              onClick={() => setRowConfirmKey(null)}
+                              disabled={isRowDiscarding}
+                              className="px-2 py-1 text-xs text-gray-700 bg-gray-200 rounded hover:bg-gray-300 focus:outline-none"
+                            >
+                              Keep
+                            </button>
+                            <button
+                              onClick={() => handleDiscardObject(change)}
+                              disabled={isRowDiscarding}
+                              data-testid={`commit-modal-discard-object-confirm-${change.type}-${change.name}`}
+                              className="px-2 py-1 text-xs text-white bg-highlight rounded hover:bg-highlight-700 focus:outline-none disabled:opacity-60"
+                            >
+                              {isRowDiscarding ? 'Discarding…' : 'Discard'}
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setRowConfirmKey(objectKey)}
+                            disabled={!!discardingObjectKey || commitLoading}
+                            title="Discard this object's changes"
+                            aria-label={`Discard changes to ${change.name}`}
+                            data-testid={`commit-modal-discard-object-${change.type}-${change.name}`}
+                            className="p-1 text-gray-400 hover:text-highlight-700 hover:bg-highlight-50 rounded focus:outline-none disabled:text-gray-300 disabled:hover:bg-transparent"
+                          >
+                            <UndoIcon style={{ fontSize: 16 }} />
+                          </button>
+                        ))}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

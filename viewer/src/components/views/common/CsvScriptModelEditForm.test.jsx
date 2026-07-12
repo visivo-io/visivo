@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import CsvScriptModelEditForm from './CsvScriptModelEditForm';
 
 // Selector-aware store mock (form pulls actions via useStore(state => state.x)).
@@ -11,6 +11,15 @@ jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'new', MODIFIED: 'modified', PUBLISHED: 'published', DELETED: 'deleted' },
   default: selector => (typeof selector === 'function' ? selector(mockState) : mockState),
+}));
+
+// Edit-mode auto-save routes through the unified useRecordSave backbone; a
+// controllable stub lets tests assert the scheduled config + drive status/errors.
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => mockRecordSave,
 }));
 
 const setName = value =>
@@ -55,7 +64,25 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockState.deleteCsvScriptModel.mockResolvedValue({ success: true });
   mockState.checkCommitStatus.mockResolvedValue({ success: true });
+  mockRecordSave = {
+    scheduleSave: mockScheduleSave,
+    status: 'idle',
+    errors: null,
+    saveNow: jest.fn(),
+    reset: jest.fn(),
+  };
 });
+
+// Edit mode auto-saves after a setTimeout(0) flips the hydration guard on;
+// render under fake timers and flush it so subsequent edits count as real edits.
+const renderEditHydrated = (props = {}) => {
+  const utils = renderEdit(props);
+  act(() => {
+    jest.advanceTimersByTime(1);
+  });
+  mockScheduleSave.mockClear();
+  return utils;
+};
 
 describe('CsvScriptModelEditForm — create mode', () => {
   it('renders defaults: table name "model", unchecked allow-empty, one arg row', () => {
@@ -183,17 +210,58 @@ describe('CsvScriptModelEditForm — edit mode', () => {
     expect(screen.getByPlaceholderText('command (e.g. cat, python)')).toHaveValue('');
   });
 
-  it('re-saves the existing config through onSave', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
-    renderEdit({ onSave });
-    clickSave();
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave).toHaveBeenCalledWith('csvScriptModel', 'csv_orders', {
-      name: 'csv_orders',
-      table_name: 'orders_tbl',
-      args: ['python', 'generate.py'],
-      allow_empty: true,
+});
+
+describe('CsvScriptModelEditForm — edit-mode auto-save', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('shows the SaveStateIndicator instead of a Save/Cancel footer', () => {
+    renderEditHydrated();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-autosave')).toBeInTheDocument();
+    expect(screen.getByTitle('Delete model')).toBeInTheDocument();
+  });
+
+  it('does not schedule a save on hydration (only on a real edit)', () => {
+    renderEditHydrated();
+    act(() => {
+      jest.advanceTimersByTime(1000);
     });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  it('schedules the full config when a field changes', () => {
+    renderEditHydrated();
+    setTableName('renamed_tbl');
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'csv_orders',
+        table_name: 'renamed_tbl',
+        args: ['python', 'generate.py'],
+        allow_empty: true,
+      })
+    );
+  });
+
+  it('surfaces schema gate errors reported by the backbone', () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      status: 'invalid',
+      errors: [{ path: 'args', message: 'must be a non-empty list' }],
+      saveNow: jest.fn(),
+      reset: jest.fn(),
+    };
+    renderEditHydrated();
+    expect(screen.getByTestId('csvScriptModel-gate-errors')).toHaveTextContent(
+      'args: must be a non-empty list'
+    );
   });
 });
 

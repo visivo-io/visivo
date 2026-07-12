@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import LocalMergeModelEditForm from './LocalMergeModelEditForm';
 
 // Selector-aware store mock (form pulls actions via useStore(state => state.x)).
@@ -12,6 +12,16 @@ jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'new', MODIFIED: 'modified', PUBLISHED: 'published', DELETED: 'deleted' },
   default: selector => (typeof selector === 'function' ? selector(mockState) : mockState),
+}));
+
+// Edit-mode auto-save routes through the unified useRecordSave backbone; a
+// controllable stub lets tests assert the scheduled config + drive the
+// status/errors the footer indicator reflects.
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => mockRecordSave,
 }));
 
 jest.mock('@monaco-editor/react', () => ({
@@ -65,10 +75,29 @@ const renderEdit = (props = {}) =>
     />
   );
 
+// Edit mode auto-saves after a setTimeout(0) flips the hydration guard on;
+// render under fake timers and flush it so subsequent edits count as real
+// changes (not hydration).
+const renderEditHydrated = (props = {}) => {
+  const utils = renderEdit(props);
+  act(() => {
+    jest.advanceTimersByTime(1);
+  });
+  mockScheduleSave.mockClear(); // ignore any hydration-time noise
+  return utils;
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockState.deleteLocalMergeModel.mockResolvedValue({ success: true });
   mockState.checkCommitStatus.mockResolvedValue({ success: true });
+  mockRecordSave = {
+    scheduleSave: mockScheduleSave,
+    status: 'idle',
+    errors: null,
+    saveNow: jest.fn(),
+    reset: jest.fn(),
+  };
 });
 
 describe('LocalMergeModelEditForm — create mode', () => {
@@ -162,9 +191,15 @@ describe('LocalMergeModelEditForm — create mode', () => {
     clickSave();
     expect(await screen.findByText('Failed to save local merge model')).toBeInTheDocument();
   });
+
+  it('does not render the auto-save indicator in create mode', () => {
+    renderCreate();
+    expect(screen.queryByTestId('form-footer-autosave')).not.toBeInTheDocument();
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
 });
 
-describe('LocalMergeModelEditForm — edit mode', () => {
+describe('LocalMergeModelEditForm — edit mode initialization', () => {
   it('initializes from the model, trimming/parsing refs and dropping blanks', () => {
     renderEdit();
     expect(screen.getByLabelText('Name')).toHaveValue('merged_orders');
@@ -191,17 +226,82 @@ describe('LocalMergeModelEditForm — edit mode', () => {
     expect(refs).toHaveLength(1);
     expect(refs[0]).toHaveValue('');
   });
+});
 
-  it('re-saves the parsed model refs', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
-    renderEdit({ onSave });
-    clickSave();
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave).toHaveBeenCalledWith('localMergeModel', 'merged_orders', {
-      name: 'merged_orders',
-      sql: 'select * from m',
-      models: ['orders', 'items', 'plain_model'],
+describe('LocalMergeModelEditForm — edit-mode auto-save (workspace rail)', () => {
+  // The post-hydration guard uses setTimeout(0); fake timers make the
+  // hydrate-then-edit sequencing deterministic.
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('shows the SaveStateIndicator instead of a Save/Cancel footer', () => {
+    renderEditHydrated();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    // No delete confirmation open → no footer Cancel button either.
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-autosave')).toBeInTheDocument();
+    // Delete affordance stays available.
+    expect(screen.getByTitle('Delete model')).toBeInTheDocument();
+  });
+
+  it('does not schedule a save on hydration (only on a real edit)', () => {
+    // renderEditHydrated clears scheduleSave after hydration; assert it stays
+    // untouched until the user actually edits.
+    renderEditHydrated();
+    act(() => {
+      jest.advanceTimersByTime(1000);
     });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  it('schedules the full parsed config (name, sql, models) on a field edit', () => {
+    renderEditHydrated();
+    setSql('select 99 from m');
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'merged_orders',
+        sql: 'select 99 from m',
+        models: ['orders', 'items', 'plain_model'],
+      })
+    );
+  });
+
+  it('schedules the updated models list when a ref row changes', () => {
+    renderEditHydrated();
+    setRef(0, 'ref(new_orders)');
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        models: ['new_orders', 'items', 'plain_model'],
+      })
+    );
+  });
+
+  it('does not schedule a save while the local minimums are missing', () => {
+    renderEditHydrated();
+    setSql('   '); // clear SQL → below the name+sql+ref minimum
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  it('surfaces schema gate errors reported by the backbone', () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      status: 'invalid',
+      errors: [{ path: 'sql', message: 'must be a valid query' }],
+      saveNow: jest.fn(),
+      reset: jest.fn(),
+    };
+    renderEditHydrated();
+    expect(screen.getByTestId('localMergeModel-gate-errors')).toHaveTextContent(
+      'sql: must be a valid query'
+    );
   });
 });
 

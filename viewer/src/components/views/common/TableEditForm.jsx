@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -11,6 +11,8 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
 import RefTextArea from './RefTextArea';
 import Select from '../../common/Select';
+import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -25,6 +27,13 @@ import Select from '../../common/Select';
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
+ *
+ * VIS-1018: in EDIT mode each field change auto-saves through the unified
+ * `useRecordSave('table', …)` backbone (optimistic write + debounced,
+ * schema-gated persist) — there is no Save button, a SaveStateIndicator shows
+ * the save state instead. CREATE mode keeps its explicit Save button (the
+ * record isn't in the store collection yet, so there is nothing to optimistically
+ * update).
  */
 const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
   const {
@@ -53,6 +62,9 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 
   const isEditMode = !!table && !isCreate;
   const isNewObject = table?.status === ObjectStatus.NEW;
+  // Edit mode auto-saves through the unified backbone; create mode keeps an
+  // explicit Save button.
+  const isAutoSave = isEditMode;
 
   // Combine insights and models for the data source dropdown
   const availableInsights = storeInsights?.map(i => ({ name: i.name, type: 'insight' })) || [];
@@ -61,6 +73,21 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 
   // Rows per page options
   const ROWS_PER_PAGE_OPTIONS = [3, 5, 15, 25, 50, 100, 500, 1000];
+
+  // Unified optimistic + debounced + schema-validated save backbone (VIS-1018).
+  // scheduleSave writes the config optimistically into the table store, then
+  // debounce-persists ONLY if it passes schema validation; otherwise it reports
+  // status:'invalid' with per-field gate errors and persists nothing.
+  const {
+    scheduleSave,
+    status: autoSaveStatus,
+    errors: gateErrors,
+  } = useRecordSave('table', table?.name || null);
+
+  const gateErrorText =
+    gateErrors && gateErrors.length > 0
+      ? gateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
+      : null;
 
   // Fetch insights and models on mount if needed. Guarded by a ref: the store
   // writes a FRESH array on every fetch (even an empty one), so gating on
@@ -81,8 +108,14 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
   const rawData = table?.config?.data || table?.data;
   const isEmbeddedData = rawData && typeof rawData === 'object';
 
+  // Set true once the form has hydrated from `table`, so the auto-save effect
+  // below never fires on hydration (only on real user edits). Keyed on the
+  // table NAME (not identity), so an optimistic-save refetch doesn't re-hydrate
+  // and clobber in-progress edits.
+  const hydratedRef = useRef(false);
   // Initialize form when table changes
   useEffect(() => {
+    hydratedRef.current = false;
     if (table) {
       const config = table.config || table;
       setName(table.name || '');
@@ -108,7 +141,45 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
     }
     setErrors({});
     setSaveError(null);
-  }, [table, isCreate]);
+    // Defer past the state-set renders so the auto-save effect runs while still
+    // un-hydrated (mirrors ModelEditForm/InputEditForm).
+    const id = setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table?.name, isCreate]);
+
+  // Build the table config from the current form state (shared by manual save
+  // and the debounced auto-save path) — identical shape to what onSave sends.
+  const buildConfig = useCallback(() => {
+    const config = {
+      name,
+      rows_per_page: rowsPerPage,
+    };
+
+    if (isEmbeddedData) {
+      config.data = rawData;
+    } else if (dataRef) {
+      config.data = formatRef(dataRef);
+    }
+
+    if (columns.length > 0) config.columns = columns;
+    if (rows.length > 0) config.rows = rows;
+    if (values.length > 0) config.values = values;
+
+    return config;
+  }, [name, rowsPerPage, isEmbeddedData, rawData, dataRef, columns, rows, values]);
+
+  // Auto-save: whenever an editable field changes (post-hydration), schedule a
+  // gated save once the local minimum (a name) is present. The schema gate in
+  // scheduleSave decides whether it actually persists.
+  useEffect(() => {
+    if (!isAutoSave || !hydratedRef.current) return;
+    if (!name.trim()) return;
+    scheduleSave(buildConfig());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, dataRef, rowsPerPage, columns, rows, values]);
 
   // Blank pivot entries (the '' scaffold RefListField's Add button creates, or
   // whitespace-only edits) must never save — `columns: ['']` is not a valid
@@ -159,20 +230,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
     setSaving(true);
     setSaveError(null);
 
-    const config = {
-      name,
-      rows_per_page: rowsPerPage,
-    };
-
-    if (isEmbeddedData) {
-      config.data = rawData;
-    } else if (dataRef) {
-      config.data = formatRef(dataRef);
-    }
-
-    if (columns.length > 0) config.columns = columns;
-    if (rows.length > 0) config.rows = rows;
-    if (values.length > 0) config.values = values;
+    const config = buildConfig();
 
     const result = await onSave('table', name, config);
 
@@ -388,6 +446,14 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 
           {/* Save Error */}
           {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {gateErrorText && (
+            <div
+              className="p-3 rounded-md bg-red-50 text-red-700 text-sm"
+              data-testid="table-gate-errors"
+            >
+              {gateErrorText}
+            </div>
+          )}
         </div>
       </div>
 
@@ -434,21 +500,30 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
             )}
           </div>
 
-          <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
-            </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </Button>
-          </div>
+          {/* Edit mode auto-saves on every valid change through the unified
+              backbone, so the footer shows a save-state indicator instead of a
+              Save button. Create keeps the explicit Cancel/Save. */}
+          {isAutoSave ? (
+            <div className="flex items-center gap-2" data-testid="form-footer-autosave">
+              <SaveStateIndicator status={autoSaveStatus} />
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <ButtonOutline type="button" onClick={onClose} className="text-sm">
+                Cancel
+              </ButtonOutline>
+              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+                {saving ? (
+                  <>
+                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </>

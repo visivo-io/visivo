@@ -28,6 +28,38 @@ jest.mock('./RefTextArea', () => ({
   ),
 }));
 
+// Edit-mode auto-save routes through the unified useRecordSave backbone; a
+// controllable stub lets tests assert the scheduled config + drive status/errors.
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => mockRecordSave,
+}));
+
+beforeEach(() => {
+  mockScheduleSave.mockClear();
+  mockRecordSave = {
+    scheduleSave: mockScheduleSave,
+    status: 'idle',
+    errors: null,
+    saveNow: jest.fn(),
+    reset: jest.fn(),
+  };
+});
+
+// Edit mode flips a hydration guard on via setTimeout(0); flush a real macrotask
+// so subsequent field edits count as real edits (not hydration). Real timers so
+// react-select-event still works for the Select-driven fields.
+const renderEditHydrated = async props => {
+  const utils = renderForm({ isCreate: false, ...props });
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+  mockScheduleSave.mockClear();
+  return utils;
+};
+
 const seed = (overrides = {}) => {
   act(() => {
     useStore.setState({
@@ -86,26 +118,19 @@ describe('TableEditForm — data ref + pivot conflict', () => {
     },
   };
 
-  test('shows BOTH sections and surfaces the validation error on Save', async () => {
+  test('keeps BOTH sections visible so the conflict can be resolved', () => {
     seed({
       insights: [{ name: 'rev_insight' }],
       models: [{ name: 'm' }],
       fetchInsights: jest.fn(),
       fetchModels: jest.fn(),
     });
-    const onSave = jest.fn(async () => ({ success: true }));
-    renderForm({ table: conflictedTable, isCreate: false, onSave });
+    renderForm({ table: conflictedTable, isCreate: false, onSave: jest.fn() });
 
-    // Both sections must stay visible so the user can remove one of the two.
+    // Both sections must stay visible so the user can remove one of the two; the
+    // schema gate (useRecordSave) is what refuses to persist the conflict.
     expect(screen.getByText('Data Source')).toBeInTheDocument();
     expect(screen.getByText('Pivot Configuration')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    expect(
-      await screen.findByText('Cannot use both data source and columns/rows/values')
-    ).toBeInTheDocument();
-    expect(onSave).not.toHaveBeenCalled();
   });
 });
 
@@ -292,10 +317,9 @@ describe('TableEditForm — save payloads', () => {
     expect(config.columns).toEqual(['ref(m).b']);
   });
 
-  test('a saved string data ref round-trips through edit mode', async () => {
+  test('a string data ref round-trips through the edit-mode auto-save', async () => {
     seed({ insights: [{ name: 'rev_insight' }], models: [{ name: 'm' }] });
-    const onSave = jest.fn(async () => ({ success: true }));
-    renderForm({
+    await renderEditHydrated({
       table: {
         name: 't1',
         status: ObjectStatus.PUBLISHED,
@@ -306,8 +330,6 @@ describe('TableEditForm — save payloads', () => {
           rows_per_page: 100,
         },
       },
-      isCreate: false,
-      onSave,
     });
 
     expect(screen.getByLabelText(/Table Name/)).toHaveValue('t1');
@@ -316,14 +338,18 @@ describe('TableEditForm — save payloads', () => {
     expect(screen.getByText('Data Source')).toBeInTheDocument();
     expect(screen.queryByText('Pivot Configuration')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave).toHaveBeenCalledWith('table', 't1', {
-      name: 't1',
-      rows_per_page: 100,
-      data: 'ref(rev_insight)',
+    // Edit a field → the data ref is preserved in the scheduled config.
+    await selectEvent.select(screen.getByLabelText('Rows Per Page'), '50', {
+      container: document.body,
     });
+
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 't1',
+        rows_per_page: 50,
+        data: 'ref(rev_insight)',
+      })
+    );
   });
 
   test('surfaces a save failure message', async () => {
@@ -386,19 +412,21 @@ describe('TableEditForm — embedded data source', () => {
     });
   });
 
-  test('saving keeps the embedded object as the data value', async () => {
+  test('auto-save keeps the embedded object as the data value', async () => {
     seed();
-    const onSave = jest.fn(async () => ({ success: true }));
-    renderForm({ table: embeddedTable, isCreate: false, onSave });
+    await renderEditHydrated({ table: embeddedTable });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave).toHaveBeenCalledWith('table', 't2', {
-      name: 't2',
-      rows_per_page: 25,
-      data: rawData,
+    await selectEvent.select(screen.getByLabelText('Rows Per Page'), '50', {
+      container: document.body,
     });
+
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 't2',
+        rows_per_page: 50,
+        data: rawData,
+      })
+    );
   });
 
   test('unnamed embedded data falls back to placeholder labels and survives a missing callback', () => {
@@ -414,6 +442,48 @@ describe('TableEditForm — embedded data source', () => {
     // No onNavigateToEmbedded — the click must be a no-op, not a crash.
     fireEvent.click(button);
     expect(screen.getByRole('button', { name: /Embedded data source/ })).toBeInTheDocument();
+  });
+});
+
+describe('TableEditForm — edit-mode auto-save', () => {
+  const editTable = {
+    name: 't1',
+    status: ObjectStatus.PUBLISHED,
+    // eslint-disable-next-line no-template-curly-in-string
+    config: { name: 't1', data: '${ref(rev_insight)}', rows_per_page: 25 },
+  };
+
+  test('shows the SaveStateIndicator instead of a Save/Cancel footer', async () => {
+    seed({ insights: [{ name: 'rev_insight' }], models: [{ name: 'm' }] });
+    await renderEditHydrated({ table: editTable });
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-autosave')).toBeInTheDocument();
+    expect(screen.getByTitle('Delete table')).toBeInTheDocument();
+  });
+
+  test('does not schedule a save on hydration (only on a real edit)', async () => {
+    seed({ insights: [{ name: 'rev_insight' }], models: [{ name: 'm' }] });
+    // Render + flush hydration WITHOUT the helper's mock-clear, so we can assert
+    // nothing was scheduled during hydration.
+    renderForm({ isCreate: false, table: editTable });
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  test('surfaces schema gate errors reported by the backbone', async () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      status: 'invalid',
+      errors: [{ path: 'data', message: 'unknown ref' }],
+      saveNow: jest.fn(),
+      reset: jest.fn(),
+    };
+    seed({ insights: [{ name: 'rev_insight' }], models: [{ name: 'm' }] });
+    renderForm({ isCreate: false, table: editTable });
+    expect(await screen.findByTestId('table-gate-errors')).toHaveTextContent('data: unknown ref');
   });
 });
 

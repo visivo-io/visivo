@@ -193,29 +193,33 @@ describe('ChartEditForm — insight fetch guard', () => {
 describe('ChartEditForm — embedded insights on save', () => {
   const embeddedInsight = { name: 'inline_insight', props: { type: 'scatter' } };
 
-  test('a chart whose insights are ALL embedded objects can still be saved', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
+  test('a chart whose insights are ALL embedded objects auto-saves', async () => {
+    // Give the layout editor a schema so its (mocked) clear button renders — a
+    // layout edit is the auto-save trigger that leaves `insights` untouched.
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    getSchema.mockResolvedValueOnce({ type: 'object' });
     render(
       <ChartEditForm
         chart={{ name: 'embed_chart', status: 'published', config: { insights: [embeddedInsight] } }}
         isCreate={false}
         onClose={jest.fn()}
-        onSave={onSave}
+        onSave={jest.fn()}
         onNavigateToEmbedded={jest.fn()}
       />
     );
     await screen.findByText('Embedded Insights');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('mock-schema-clear'));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(screen.queryByText('At least one insight is required')).not.toBeInTheDocument();
-    const [, , config] = onSave.mock.calls[0];
-    expect(config.insights).toEqual([embeddedInsight]);
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ insights: [embeddedInsight] })
+    );
   });
 
-  test('saving preserves the original ref/embedded insight order', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
+  test('auto-save preserves the original ref/embedded insight order', async () => {
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    getSchema.mockResolvedValueOnce({ type: 'object' });
     render(
       <ChartEditForm
         chart={{
@@ -225,19 +229,20 @@ describe('ChartEditForm — embedded insights on save', () => {
         }}
         isCreate={false}
         onClose={jest.fn()}
-        onSave={onSave}
+        onSave={jest.fn()}
         onNavigateToEmbedded={jest.fn()}
       />
     );
     await screen.findByTestId('ref-insight-row-0');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    // A layout edit auto-saves without touching insight order.
+    fireEvent.click(await screen.findByTestId('mock-schema-clear'));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    const [, , config] = onSave.mock.calls[0];
-    // Order drives trace layering/legend order — an untouched save must not
-    // rewrite [embedded, ref] as [ref, embedded].
-    expect(config.insights).toEqual([embeddedInsight, 'ref(revenue_insight)']);
+    // Order drives trace layering/legend order — a save must not rewrite
+    // [embedded, ref] as [ref, embedded].
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ insights: [embeddedInsight, 'ref(revenue_insight)'] })
+    );
   });
 });
 
@@ -275,8 +280,7 @@ describe('ChartEditForm — validation & save paths', () => {
     expect(config.insights).toEqual(['ref(revenue_insight)']);
   });
 
-  test('non-empty layout values are carried into the saved config', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
+  test('non-empty layout values are carried into the auto-saved config', async () => {
     render(
       <ChartEditForm
         chart={{
@@ -286,21 +290,28 @@ describe('ChartEditForm — validation & save paths', () => {
         }}
         isCreate={false}
         onClose={jest.fn()}
-        onSave={onSave}
+        onSave={jest.fn()}
         onNavigateToEmbedded={jest.fn()}
       />
     );
     await screen.findByTestId('ref-insight-row-0');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    // An insight edit auto-saves and carries the untouched layout along.
+    fireEvent.click(screen.getByText('Add Insight'));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave.mock.calls[0][2].layout).toEqual({ title: { text: 'Revenue' } });
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ layout: { title: { text: 'Revenue' } } })
+    );
   });
 
-  test('a failed save surfaces the backend error and keeps the form open', async () => {
+  test('create mode: a failed save surfaces the backend error and keeps the form open', async () => {
     const onSave = jest.fn(async () => ({ success: false, error: 'chart save exploded' }));
-    await renderForm({ onSave });
+    render(
+      <ChartEditForm chart={null} isCreate onClose={jest.fn()} onSave={onSave} onNavigateToEmbedded={jest.fn()} />
+    );
+    await screen.findByText(/No insights added/i);
+    fireEvent.change(screen.getByLabelText(/Chart Name/), { target: { value: 'new_chart' } });
+    fireEvent.click(screen.getByText('Add Insight'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -455,7 +466,7 @@ describe('ChartEditForm — insight props editor (TracePropsEditor)', () => {
     });
   });
 
-  test('an embedded insight edits inline and persists the CHART via onSave', async () => {
+  test('an embedded insight edits inline and auto-saves the CHART (edit mode)', async () => {
     const onSave = jest.fn(() => Promise.resolve({ success: true }));
     const chartWithEmbedded = {
       name: 'rev_chart',
@@ -481,9 +492,10 @@ describe('ChartEditForm — insight props editor (TracePropsEditor)', () => {
 
     fireEvent.click(screen.getByTestId('tpe-add-prop'));
 
-    // Embedded insight is edited inline; the CHART (not an insight record) saves.
-    expect(mockScheduleSave).not.toHaveBeenCalled();
-    expect(onSave).toHaveBeenCalledWith('chart', 'rev_chart', {
+    // Edit mode: the embedded insight is inline-edited and the CHART persists
+    // through its own schema-gated backbone (scheduleSave), not the raw onSave.
+    expect(onSave).not.toHaveBeenCalled();
+    expect(mockScheduleSave).toHaveBeenCalledWith({
       name: 'rev_chart',
       insights: [{ name: 'inline_one', props: { type: 'bar', marker: { color: 'red' } } }],
     });
@@ -506,21 +518,44 @@ describe('ChartEditForm — layout schema load failure', () => {
 });
 
 describe('ChartEditForm — layout emptied to undefined', () => {
-  test('Save still completes after the layout editor empties to undefined', async () => {
+  test('auto-save drops the layout key when the layout editor empties to undefined', async () => {
     const { getSchema } = jest.requireMock('../../../schemas/schemas');
     getSchema.mockResolvedValueOnce({ type: 'object' });
-    const onSave = jest.fn(async () => ({ success: true }));
-    await renderForm({ onSave });
+    await renderForm();
 
-    // Remove the last layout property — the SchemaEditor emits `undefined`.
+    // Remove the last layout property — the SchemaEditor emits `undefined`,
+    // which auto-saves a config with no layout key.
     fireEvent.click(await screen.findByTestId('mock-schema-clear'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    const [, , config] = onSave.mock.calls[0];
+    expect(mockScheduleSave).toHaveBeenCalled();
+    const config = mockScheduleSave.mock.calls.at(-1)[0];
     expect(config.layout).toBeUndefined();
-    // The button recovered to its idle label (not stuck on 'Saving...').
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+  });
+});
+
+describe('ChartEditForm — edit-mode auto-save footer', () => {
+  test('shows the SaveStateIndicator instead of a Save/Cancel footer', async () => {
+    await renderForm();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-autosave')).toBeInTheDocument();
+    expect(screen.getByTitle('Delete chart')).toBeInTheDocument();
+  });
+
+  test('surfaces chart schema gate errors reported by the backbone', async () => {
+    // The chart backbone (2nd useRecordSave call) reports invalid.
+    mockUseRecordSave.mockImplementation(type =>
+      type === 'chart'
+        ? {
+            status: 'invalid',
+            errors: [{ path: 'insights', message: 'unknown ref' }],
+            scheduleSave: mockScheduleSave,
+            saveNow: jest.fn(),
+            reset: jest.fn(),
+          }
+        : { status: 'idle', scheduleSave: mockScheduleSave, saveNow: jest.fn(), reset: jest.fn() }
+    );
+    await renderForm();
+    expect(screen.getByTestId('chart-gate-errors')).toHaveTextContent('insights: unknown ref');
   });
 });

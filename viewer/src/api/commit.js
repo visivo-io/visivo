@@ -56,3 +56,23 @@ export const discardChanges = async () => {
   const errorData = await response.json().catch(() => ({}));
   throw new Error(errorData.error || 'Failed to discard changes');
 };
+
+/**
+ * Discard the cached changes for a SINGLE object, reverting it to its published
+ * version (per-object Discard). Universal across NEW/MODIFIED/DELETED — the
+ * backend drops the object's draft entry so it falls back to published (or
+ * disappears if it was newly created).
+ */
+export const discardObjectChanges = async (type, name) => {
+  const response = await apiFetch(getUrl('commitDiscardObject', { type, name }), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  if (response.status === 200) {
+    return await response.json();
+  }
+  const errorData = await response.json().catch(() => ({}));
+  throw new Error(errorData.error || `Failed to discard changes to ${type} '${name}'`);
+};

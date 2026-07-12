@@ -6,7 +6,13 @@
  * surface the server's `error` message when the failure body is parseable,
  * and fall back to a generic message when it is not.
  */
-import { getCommitStatus, getPendingChanges, commitChanges, discardChanges } from './commit';
+import {
+  getCommitStatus,
+  getPendingChanges,
+  commitChanges,
+  discardChanges,
+  discardObjectChanges,
+} from './commit';
 import { apiFetch } from './utils';
 
 jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
@@ -97,5 +103,33 @@ describe('discardChanges', () => {
   it('falls back to a generic message when the failure body is unparseable', async () => {
     apiFetch.mockResolvedValueOnce(failUnparseable(500));
     await expect(discardChanges()).rejects.toThrow('Failed to discard changes');
+  });
+});
+
+describe('discardObjectChanges', () => {
+  it('POSTs JSON to the per-object discard endpoint and returns the result', async () => {
+    apiFetch.mockResolvedValueOnce(ok({ name: 'orders', type: 'model' }));
+    await expect(discardObjectChanges('model', 'orders')).resolves.toEqual({
+      name: 'orders',
+      type: 'model',
+    });
+    expect(apiFetch).toHaveBeenCalledWith('/api/commitDiscardObject/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+
+  it('surfaces the server error message on failure', async () => {
+    apiFetch.mockResolvedValueOnce(fail(404, { error: 'no pending changes to discard' }));
+    await expect(discardObjectChanges('chart', 'ghost')).rejects.toThrow(
+      'no pending changes to discard'
+    );
+  });
+
+  it('falls back to a per-object message when the failure body is unparseable', async () => {
+    apiFetch.mockResolvedValueOnce(failUnparseable(500));
+    await expect(discardObjectChanges('model', 'orders')).rejects.toThrow(
+      "Failed to discard changes to model 'orders'"
+    );
   });
 });

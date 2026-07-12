@@ -357,3 +357,42 @@ class TestCommitViews:
         assert response.status_code == 200
         assert response.get_json()["discarded_count"] == 1
         app.flask_app.dashboard_manager.clear_cache.assert_called_once()
+
+    def test_discard_object_reverts_a_single_object(self, client, app):
+        """Per-object discard reverts just that object via delete_from_cache."""
+        app.flask_app.model_manager.delete_from_cache.return_value = True
+
+        response = client.post("/api/commit/discard/model/orders/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["name"] == "orders"
+        assert data["type"] == "model"
+        app.flask_app.model_manager.delete_from_cache.assert_called_once_with("orders")
+        # Only the targeted manager is touched — others are left alone.
+        app.flask_app.source_manager.delete_from_cache.assert_not_called()
+
+    def test_discard_object_404_when_nothing_pending(self, client, app):
+        """A name with no cached draft reverts nothing → 404."""
+        app.flask_app.chart_manager.delete_from_cache.return_value = False
+
+        response = client.post("/api/commit/discard/chart/ghost/")
+
+        assert response.status_code == 404
+        assert "no pending changes" in response.get_json()["error"].lower()
+
+    def test_discard_object_400_for_unknown_type(self, client, app):
+        """An unrecognised type is a client error, not a crash."""
+        response = client.post("/api/commit/discard/bogus/thing/")
+
+        assert response.status_code == 400
+        assert "unknown type" in response.get_json()["error"].lower()
+
+    def test_discard_object_reverts_cached_defaults(self, client, app):
+        """The defaults pseudo-object reverts by clearing the cached defaults."""
+        app.flask_app._cached_defaults = Mock()
+
+        response = client.post("/api/commit/discard/defaults/defaults/")
+
+        assert response.status_code == 200
+        assert app.flask_app._cached_defaults is None

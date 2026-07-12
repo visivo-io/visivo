@@ -22,6 +22,7 @@ jest.mock('../api/commit', () => ({
   getPendingChanges: jest.fn(),
   commitChanges: jest.fn(),
   discardChanges: jest.fn(),
+  discardObjectChanges: jest.fn(),
 }));
 
 jest.mock('../components/views/workspace/telemetry', () => ({
@@ -315,6 +316,42 @@ describe('commitStore (VIS-806)', () => {
       expect(state.pendingCount).toBe(4);
       expect(state.discardLoading).toBe(false);
       expect(state.commitError).toBe('boom');
+      expect(fetcherStubs.fetchDashboards).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('discardObjectChanges (per-object revert)', () => {
+    test('reverts one object, refreshes collections, and re-derives the pending set', async () => {
+      commitApi.discardObjectChanges.mockResolvedValue({ name: 'orders', type: 'model' });
+      // After the revert, /changes/ returns only the remaining change.
+      branchingApi.fetchChanges.mockResolvedValue({
+        to_publish: [{ name: 'rev', type: 'chart', status: 'modified' }],
+        to_remove: [],
+        has_changes: true,
+      });
+
+      const result = await useStore.getState().discardObjectChanges('model', 'orders');
+
+      expect(result.success).toBe(true);
+      expect(commitApi.discardObjectChanges).toHaveBeenCalledWith('model', 'orders');
+      const state = useStore.getState();
+      expect(state.discardingObjectKey).toBeNull();
+      // Pending set re-derived from the refreshed /changes/.
+      expect(state.pendingChanges).toEqual([{ name: 'rev', type: 'chart', status: 'modified' }]);
+      expect(state.pendingCount).toBe(1);
+      // Canvas revert: every named child collection refetched.
+      FETCHER_KEYS.forEach(key => expect(fetcherStubs[key]).toHaveBeenCalled());
+    });
+
+    test('surfaces a failure through commitError and clears the in-flight key', async () => {
+      commitApi.discardObjectChanges.mockRejectedValue(new Error('no pending changes'));
+
+      const result = await useStore.getState().discardObjectChanges('chart', 'ghost');
+
+      expect(result.success).toBe(false);
+      const state = useStore.getState();
+      expect(state.discardingObjectKey).toBeNull();
+      expect(state.commitError).toBe('no pending changes');
       expect(fetcherStubs.fetchDashboards).not.toHaveBeenCalled();
     });
   });

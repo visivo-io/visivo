@@ -27,6 +27,8 @@ const baseState = () => ({
   commitChanges: jest.fn().mockResolvedValue({ success: true }),
   discardChanges: jest.fn().mockResolvedValue({ success: true }),
   discardLoading: false,
+  discardObjectChanges: jest.fn().mockResolvedValue({ success: true }),
+  discardingObjectKey: null,
   // null = local serve (capabilities probe 404s); an object = cloud.
   capabilities: null,
 });
@@ -121,5 +123,60 @@ describe('CommitModal', () => {
     fireEvent.click(screen.getByTestId('commit-modal-discard-confirm-button'));
     await waitFor(() => expect(mockState.discardChanges).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockState.closeCommitModal).toHaveBeenCalled());
+  });
+
+  describe('per-object discard', () => {
+    it('offers a per-object discard control on each row (local serve)', () => {
+      mockState.pendingChanges = [
+        { type: 'model', name: 'orders', status: 'NEW' },
+        { type: 'chart', name: 'rev', status: 'MODIFIED' },
+      ];
+      render(<CommitModal />);
+      expect(
+        screen.getByTestId('commit-modal-discard-object-model-orders')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('commit-modal-discard-object-chart-rev')).toBeInTheDocument();
+    });
+
+    it('hides the per-object discard control on cloud (capabilities present)', () => {
+      mockState.capabilities = { can_edit: true };
+      mockState.pendingChanges = [{ type: 'model', name: 'orders', status: 'NEW' }];
+      render(<CommitModal />);
+      expect(
+        screen.queryByTestId('commit-modal-discard-object-model-orders')
+      ).not.toBeInTheDocument();
+    });
+
+    it('confirms inline, then reverts just that object without closing the modal', async () => {
+      mockState.pendingChanges = [
+        { type: 'model', name: 'orders', status: 'NEW' },
+        { type: 'chart', name: 'rev', status: 'MODIFIED' },
+      ];
+      render(<CommitModal />);
+
+      // Click the row's discard → inline confirm appears, nothing reverted yet.
+      fireEvent.click(screen.getByTestId('commit-modal-discard-object-model-orders'));
+      expect(mockState.discardObjectChanges).not.toHaveBeenCalled();
+
+      // Confirm → reverts only that object, and the modal stays open.
+      fireEvent.click(
+        screen.getByTestId('commit-modal-discard-object-confirm-model-orders')
+      );
+      await waitFor(() =>
+        expect(mockState.discardObjectChanges).toHaveBeenCalledWith('model', 'orders')
+      );
+      expect(mockState.closeCommitModal).not.toHaveBeenCalled();
+    });
+
+    it('shows the in-flight row as Discarding…', () => {
+      mockState.pendingChanges = [{ type: 'model', name: 'orders', status: 'NEW' }];
+      // A revert is already in flight for this row → it stays in the confirm
+      // view with the in-flight label, no click needed.
+      mockState.discardingObjectKey = 'model:orders';
+      render(<CommitModal />);
+      expect(
+        screen.getByTestId('commit-modal-discard-object-confirm-model-orders')
+      ).toHaveTextContent('Discarding…');
+    });
   });
 });

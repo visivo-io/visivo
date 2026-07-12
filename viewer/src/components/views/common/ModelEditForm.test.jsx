@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ModelEditForm from './ModelEditForm';
 
 // Selector-aware store mock: ModelEditForm pulls individual actions via
@@ -9,10 +9,24 @@ const mockState = {
   checkCommitStatus: jest.fn(),
   fetchSources: jest.fn(),
 };
-jest.mock('../../../stores/store', () => ({
+jest.mock('../../../stores/store', () => {
+  const useStore = selector => (typeof selector === 'function' ? selector(mockState) : mockState);
+  useStore.getState = () => mockState;
+  return {
+    __esModule: true,
+    ObjectStatus: { NEW: 'new', MODIFIED: 'modified', PUBLISHED: 'published', DELETED: 'deleted' },
+    default: useStore,
+  };
+});
+
+// Edit-mode auto-save routes through the unified useRecordSave backbone; a
+// controllable stub lets tests assert the scheduled config + drive the
+// status/errors the footer indicator reflects.
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
+jest.mock('../../../hooks/useRecordSave', () => ({
   __esModule: true,
-  ObjectStatus: { NEW: 'new', MODIFIED: 'modified', PUBLISHED: 'published', DELETED: 'deleted' },
-  default: selector => (typeof selector === 'function' ? selector(mockState) : mockState),
+  default: () => mockRecordSave,
 }));
 
 // Monaco doesn't render in jsdom — swap in a plain textarea with the same contract.
@@ -68,7 +82,28 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockState.deleteModel.mockResolvedValue({ success: true });
   mockState.checkCommitStatus.mockResolvedValue({ success: true });
+  mockRecordSave = {
+    scheduleSave: mockScheduleSave,
+    status: 'idle',
+    errors: null,
+    saveNow: jest.fn(),
+    reset: jest.fn(),
+  };
 });
+
+// Edit mode auto-saves after a setTimeout(0) flips the hydration guard on;
+// render under fake timers and flush it so subsequent edits count as real
+// changes (not hydration).
+const renderEditHydrated = (model, extraProps = {}) => {
+  const utils = render(
+    <ModelEditForm model={model} onSave={jest.fn()} onCancel={jest.fn()} {...extraProps} />
+  );
+  act(() => {
+    jest.advanceTimersByTime(1);
+  });
+  mockScheduleSave.mockClear(); // ignore any hydration-time noise
+  return utils;
+};
 
 describe('ModelEditForm — create mode', () => {
   it('fetches sources on mount and disables Save until name and sql are provided', () => {
@@ -149,22 +184,6 @@ describe('ModelEditForm — edit mode initialization and save', () => {
     expect(screen.getByRole('button', { name: /revenue/ })).toBeInTheDocument();
   });
 
-  it('round-trips ref source, dimensions, and metrics through save', async () => {
-    const model = editModel();
-    const onSave = jest.fn(async () => ({ success: true }));
-    render(<ModelEditForm model={model} onSave={onSave} onCancel={jest.fn()} />);
-    clickSave();
-
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave).toHaveBeenCalledWith('model', 'orders', {
-      name: 'orders',
-      sql: 'select * from orders',
-      source: 'ref(warehouse)',
-      dimensions: [{ name: 'region', expression: 'region' }],
-      metrics: [{ name: 'revenue', expression: 'sum(amount)' }],
-    });
-  });
-
   it('resets the form when the model prop is cleared', () => {
     const { rerender } = render(
       <ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />
@@ -232,15 +251,6 @@ describe('ModelEditForm — embedded source', () => {
     expect(screen.getByText('Source: duckdb')).toBeInTheDocument();
   });
 
-  it('preserves the embedded source object on save', async () => {
-    const model = embeddedModel();
-    const onSave = jest.fn(async () => ({ success: true }));
-    render(<ModelEditForm model={model} onSave={onSave} onCancel={jest.fn()} />);
-    clickSave();
-
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave.mock.calls[0][2].source).toEqual({ type: 'duckdb', database: 'local.db' });
-  });
 });
 
 describe('ModelEditForm — inline dimensions', () => {
@@ -317,19 +327,20 @@ describe('ModelEditForm — inline dimensions', () => {
     });
   });
 
-  it('Remove filters the dimension out and the next save drops the key', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
-    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
+  it('Remove filters the dimension out (auto-save drops the key)', () => {
+    jest.useFakeTimers();
+    renderEditHydrated(editModel());
     fireEvent.click(screen.getByTitle('Remove dimension'));
 
     expect(screen.queryByRole('button', { name: /region/ })).not.toBeInTheDocument();
     expect(screen.getByText('No inline dimensions defined.')).toBeInTheDocument();
 
-    clickSave();
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    const config = onSave.mock.calls[0][2];
+    expect(mockScheduleSave).toHaveBeenCalled();
+    const config = mockScheduleSave.mock.calls.at(-1)[0];
     expect(config.dimensions).toBeUndefined();
     expect(config.metrics).toEqual([{ name: 'revenue', expression: 'sum(amount)' }]);
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 });
 
@@ -400,19 +411,20 @@ describe('ModelEditForm — inline metrics', () => {
     ).toEqual({ metrics: [{ name: 'revenue', expression: 'sum(net_amount)' }] });
   });
 
-  it('Remove filters the metric out and the next save drops the key', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
-    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
+  it('Remove filters the metric out (auto-save drops the key)', () => {
+    jest.useFakeTimers();
+    renderEditHydrated(editModel());
     fireEvent.click(screen.getByTitle('Remove metric'));
 
     expect(screen.queryByRole('button', { name: /revenue/ })).not.toBeInTheDocument();
     expect(screen.getByText('No inline metrics defined.')).toBeInTheDocument();
 
-    clickSave();
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    const config = onSave.mock.calls[0][2];
+    expect(mockScheduleSave).toHaveBeenCalled();
+    const config = mockScheduleSave.mock.calls.at(-1)[0];
     expect(config.metrics).toBeUndefined();
     expect(config.dimensions).toEqual([{ name: 'region', expression: 'region' }]);
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 });
 
@@ -484,5 +496,82 @@ describe('ModelEditForm — cancel', () => {
     render(<ModelEditForm model={null} onSave={jest.fn()} onCancel={onCancel} />);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ModelEditForm — edit-mode auto-save (workspace rail)', () => {
+  // The post-hydration guard uses setTimeout(0); fake timers make the
+  // hydrate-then-edit sequencing deterministic.
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('shows the SaveStateIndicator instead of a Save/Cancel footer', () => {
+    renderEditHydrated(editModel());
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    // No delete confirmation open → no Cancel button either.
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-autosave')).toBeInTheDocument();
+    // Delete affordance stays available.
+    expect(screen.getByTitle('Delete model')).toBeInTheDocument();
+  });
+
+  it('does not schedule a save on hydration (only on a real edit)', () => {
+    // renderEditHydrated clears scheduleSave after hydration; assert it stays
+    // untouched until the user actually edits.
+    renderEditHydrated(editModel());
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  it('schedules the full config (ref source, dimensions, metrics) on a field edit', () => {
+    renderEditHydrated(editModel());
+    setSql('select 2 from orders');
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'orders',
+        sql: 'select 2 from orders',
+        source: 'ref(warehouse)',
+        dimensions: [{ name: 'region', expression: 'region' }],
+        metrics: [{ name: 'revenue', expression: 'sum(amount)' }],
+      })
+    );
+  });
+
+  it('preserves the embedded source object in the scheduled config', () => {
+    renderEditHydrated(embeddedModel());
+    setSql('select 2');
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ source: { type: 'duckdb', database: 'local.db' } })
+    );
+  });
+
+  it('does not schedule a save while the local minimums are missing', () => {
+    renderEditHydrated(editModel());
+    setSql('   '); // clear SQL → below the name+sql minimum
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  it('surfaces schema gate errors reported by the backbone', () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      status: 'invalid',
+      errors: [{ path: 'sql', message: 'must be a valid query' }],
+      saveNow: jest.fn(),
+      reset: jest.fn(),
+    };
+    renderEditHydrated(editModel());
+    expect(screen.getByTestId('model-gate-errors')).toHaveTextContent(
+      'sql: must be a valid query'
+    );
   });
 });

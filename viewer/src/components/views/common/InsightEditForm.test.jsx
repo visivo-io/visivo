@@ -13,6 +13,11 @@
  *  - delete confirm flow (published vs NEW copy, cancel, failure);
  *  - the live preview payload (debounce mocked to identity).
  *
+ * VIS-1018: EDIT mode now auto-saves through the unified `useRecordSave` backbone
+ * — there is no Save button in edit mode, only a save-state indicator. Edit-mode
+ * assertions therefore verify the debounced `scheduleSave(config)` (mocked via a
+ * controllable stub) rather than clicking Save. CREATE mode keeps its Save button.
+ *
  * TracePropsEditor is mocked to a tiny stub that (a) echoes `props.type` +
  * `ownerName` so we can assert the controlled value flows in, and (b) exposes
  * buttons that call `onChange` with mutated props objects so we can assert edits
@@ -25,6 +30,16 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import selectEvent from 'react-select-event';
 import InsightEditForm from './InsightEditForm';
 import useStore, { ObjectStatus } from '../../../stores/store';
+
+// Edit-mode auto-save routes through the unified useRecordSave backbone; a
+// controllable stub lets tests assert the scheduled config + drive the
+// status/errors the footer indicator and gate-error banner reflect.
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => mockRecordSave,
+}));
 
 // TracePropsEditor stub: echo ownerName + props.type, and expose buttons that
 // drive onChange so we can assert the parent persists the edited props.
@@ -104,6 +119,13 @@ const seed = (overrides = {}) => {
 beforeEach(() => {
   jest.clearAllMocks();
   seed();
+  mockRecordSave = {
+    scheduleSave: mockScheduleSave,
+    status: 'idle',
+    errors: null,
+    saveNow: jest.fn(),
+    reset: jest.fn(),
+  };
 });
 
 const renderForm = async (props = {}) => {
@@ -123,6 +145,33 @@ const publishedInsight = {
     props: { type: 'bar', x: 'ref(m).x', y: 'ref(m).y' },
     interactions: [{ filter: 'a > 1' }, { split: 'b' }, { sort: 'c DESC' }, {}],
   },
+};
+
+const embeddedInsight = {
+  name: 'inline',
+  status: ObjectStatus.PUBLISHED,
+  _embedded: { parentName: 'sales_chart', parentType: 'chart' },
+  config: { props: { type: 'scatter', x: 'ref(m).x' } },
+};
+
+// Edit mode auto-saves after a setTimeout(0) flips the hydration guard on;
+// render under fake timers and flush it so subsequent edits count as real
+// changes (not hydration). Mirrors ModelEditForm.test.jsx's renderEditHydrated.
+const renderEditHydrated = (insight = publishedInsight, extraProps = {}) => {
+  const utils = render(
+    <InsightEditForm
+      insight={insight}
+      isCreate={false}
+      onClose={jest.fn()}
+      onSave={jest.fn()}
+      {...extraProps}
+    />
+  );
+  act(() => {
+    jest.advanceTimersByTime(1);
+  });
+  mockScheduleSave.mockClear(); // ignore any hydration-time noise
+  return utils;
 };
 
 const setName = value =>
@@ -286,38 +335,33 @@ describe('InsightEditForm — interactions', () => {
     expect(config.interactions).toEqual([{ filter: 'region = "US"' }, { split: 'category' }]);
   });
 
-  test('removing an interaction drops it from the form and the payload', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
-    render(
-      <InsightEditForm
-        insight={publishedInsight}
-        isCreate={false}
-        onClose={jest.fn()}
-        onSave={onSave}
-      />
-    );
-    await screen.findByTestId('trace-props-editor');
+  test('removing an interaction (edit mode) auto-saves the config without it', () => {
+    // Edit mode → no Save button; removal debounces through scheduleSave.
+    jest.useFakeTimers();
+    renderEditHydrated(publishedInsight);
 
     // Remove the first (filter 'a > 1') interaction.
     fireEvent.click(screen.getAllByTitle('Remove interaction')[0]);
     expect(screen.queryByText('Interaction 4')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    const [, , config] = onSave.mock.calls[0];
+    expect(mockScheduleSave).toHaveBeenCalled();
+    const config = mockScheduleSave.mock.calls.at(-1)[0];
+    // The empty fallback filter is dropped; the remaining kinds round-trip.
     expect(config.interactions).toEqual([{ split: 'b' }, { sort: 'c DESC' }]);
+
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 });
 
 describe('InsightEditForm — edit mode', () => {
-  test('initializes from the insight config and round-trips it on save', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
+  test('initializes from the insight config (name locked, props + interactions seeded)', async () => {
     render(
       <InsightEditForm
         insight={publishedInsight}
         isCreate={false}
         onClose={jest.fn()}
-        onSave={onSave}
+        onSave={jest.fn()}
       />
     );
     await screen.findByTestId('trace-props-editor');
@@ -334,15 +378,8 @@ describe('InsightEditForm — edit mode', () => {
     expect(screen.getByLabelText('Split')).toHaveValue('b');
     expect(screen.getByLabelText('Sort')).toHaveValue('c DESC');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave).toHaveBeenCalledWith('insight', 'rev', {
-      name: 'rev',
-      description: 'revenue insight',
-      props: { type: 'bar', x: 'ref(m).x', y: 'ref(m).y' },
-      // The empty fallback interaction is dropped; the rest round-trip.
-      interactions: [{ filter: 'a > 1' }, { split: 'b' }, { sort: 'c DESC' }],
-    });
+    // Edit mode has no Save button — it auto-saves via the backbone.
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
   });
 
   test('delete: confirm calls deleteInsight, refreshes commit status and closes', async () => {
@@ -407,32 +444,90 @@ describe('InsightEditForm — edit mode', () => {
 
     fireEvent.click(screen.getByTitle('Delete insight'));
     expect(screen.getByText(/discard your unsaved changes/)).toBeInTheDocument();
-    // The confirm block renders above the footer actions, so the first
-    // Cancel button is the confirmation's Cancel (the footer's is second).
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0]);
+    // Edit mode has no footer Cancel (auto-save indicator), so the only Cancel
+    // is the confirmation's.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(screen.queryByRole('button', { name: 'Confirm Delete' })).not.toBeInTheDocument();
     expect(deleteInsight).not.toHaveBeenCalled();
   });
 });
 
-describe('InsightEditForm — embedded insights', () => {
-  const embeddedInsight = {
-    name: 'inline',
-    status: ObjectStatus.PUBLISHED,
-    _embedded: { parentName: 'sales_chart', parentType: 'chart' },
-    config: { props: { type: 'scatter', x: 'ref(m).x' } },
-  };
+describe('InsightEditForm — edit-mode auto-save (workspace rail)', () => {
+  // The post-hydration guard uses setTimeout(0); fake timers make the
+  // hydrate-then-edit sequencing deterministic.
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
 
-  test('hides name/delete, saves a nameless config, and navigates back', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
+  test('shows the SaveStateIndicator instead of a Save/Cancel footer', () => {
+    renderEditHydrated();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    // No delete confirmation open → no Cancel button either.
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-autosave')).toBeInTheDocument();
+    // Delete affordance stays available.
+    expect(screen.getByTitle('Delete insight')).toBeInTheDocument();
+  });
+
+  test('does not schedule a save on hydration (only on a real edit)', () => {
+    // renderEditHydrated clears scheduleSave after hydration; assert it stays
+    // untouched until the user actually edits.
+    renderEditHydrated();
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  test('schedules the full round-tripped config on a field edit', () => {
+    renderEditHydrated();
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'updated' } });
+    expect(mockScheduleSave).toHaveBeenCalledWith({
+      name: 'rev',
+      description: 'updated',
+      props: { type: 'bar', x: 'ref(m).x', y: 'ref(m).y' },
+      // The empty fallback interaction is dropped; the rest round-trip.
+      interactions: [{ filter: 'a > 1' }, { split: 'b' }, { sort: 'c DESC' }],
+    });
+  });
+
+  test('schedules the edited props into the config', () => {
+    renderEditHydrated();
+    fireEvent.click(screen.getByTestId('tpe-set-bar'));
+    expect(mockScheduleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ props: { type: 'bar', x: ['a', 'b'] } })
+    );
+  });
+
+  test('surfaces schema gate errors reported by the backbone', () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      status: 'invalid',
+      errors: [{ path: 'props.type', message: 'must be a valid chart type' }],
+      saveNow: jest.fn(),
+      reset: jest.fn(),
+    };
+    renderEditHydrated();
+    expect(screen.getByTestId('insight-gate-errors')).toHaveTextContent(
+      'props.type: must be a valid chart type'
+    );
+  });
+});
+
+describe('InsightEditForm — embedded insights', () => {
+  test('hides name/delete and navigates back to the parent', async () => {
     const onGoBack = jest.fn();
     render(
       <InsightEditForm
         insight={embeddedInsight}
         isCreate={false}
         onClose={jest.fn()}
-        onSave={onSave}
+        onSave={jest.fn()}
         onGoBack={onGoBack}
       />
     );
@@ -445,16 +540,23 @@ describe('InsightEditForm — embedded insights', () => {
     const backButton = screen.getByRole('button', { name: /sales_chart/ });
     fireEvent.click(backButton);
     expect(onGoBack).toHaveBeenCalledTimes(1);
+  });
 
-    // Saving skips name validation and omits `name` from the config (the
-    // synthetic embedded name still rides along as the routing arg).
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    const [type, name, config] = onSave.mock.calls[0];
-    expect(type).toBe('insight');
-    expect(name).toBe('inline');
-    expect(config).toEqual({ props: { type: 'scatter', x: 'ref(m).x' } });
+  test('auto-saves a nameless config on a field edit', () => {
+    jest.useFakeTimers();
+    renderEditHydrated(embeddedInsight);
+
+    // Edit props via the editor stub — embedded edits still auto-save (no name
+    // minimum), and the config never carries `name`.
+    fireEvent.click(screen.getByTestId('tpe-set-bar'));
+
+    expect(mockScheduleSave).toHaveBeenCalled();
+    const config = mockScheduleSave.mock.calls.at(-1)[0];
+    expect(config).toEqual({ props: { type: 'bar', x: ['a', 'b'] } });
     expect(config).not.toHaveProperty('name');
+
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 });
 

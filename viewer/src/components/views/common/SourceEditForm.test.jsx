@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import SourceEditForm from './SourceEditForm';
 
 // Selector-aware store mock (smoke-test convention): the form destructures
@@ -15,6 +15,16 @@ jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
   default: selector => (typeof selector === 'function' ? selector(mockState) : mockState),
+}));
+
+// Edit-mode auto-save routes through the unified useRecordSave backbone; a
+// controllable stub lets tests assert the scheduled config + drive the
+// status/errors the footer indicator reflects.
+const mockScheduleSave = jest.fn();
+let mockRecordSave;
+jest.mock('../../../hooks/useRecordSave', () => ({
+  __esModule: true,
+  default: () => mockRecordSave,
 }));
 
 // The real SourceTypeSelector is a react-select; stub it with plain buttons so
@@ -39,6 +49,13 @@ beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
   mockState = { ...mockActions, connectionStatus: {} };
+  mockRecordSave = {
+    scheduleSave: mockScheduleSave,
+    status: 'idle',
+    errors: null,
+    saveNow: jest.fn(),
+    reset: jest.fn(),
+  };
 });
 
 const renderForm = (props = {}) =>
@@ -56,6 +73,18 @@ const publishedSqlite = {
   name: 's1',
   status: 'PUBLISHED',
   config: { name: 's1', type: 'sqlite', database: 'prod.db' },
+};
+
+// Edit mode auto-saves after a setTimeout(0) flips the hydration guard on;
+// render under fake timers and flush it so subsequent edits count as real
+// changes (not hydration). Requires jest.useFakeTimers() in the caller.
+const renderEditHydrated = (source, props = {}) => {
+  const utils = renderForm({ source, isCreate: false, ...props });
+  act(() => {
+    jest.advanceTimersByTime(1);
+  });
+  mockScheduleSave.mockClear(); // ignore any hydration-time noise
+  return utils;
 };
 
 describe('SourceEditForm — create mode validation', () => {
@@ -144,23 +173,12 @@ describe('SourceEditForm — save paths', () => {
 });
 
 describe('SourceEditForm — edit mode', () => {
-  test('initializes from source.config, disables the name, and re-saves the config', async () => {
-    const onSave = jest.fn(async () => ({ success: true }));
-    renderForm({ source: publishedSqlite, isCreate: false, onSave });
+  test('initializes from source.config and disables the name', () => {
+    renderForm({ source: publishedSqlite, isCreate: false });
     expect(screen.getByLabelText(/Source Name/)).toHaveValue('s1');
     expect(screen.getByLabelText(/Source Name/)).toBeDisabled();
     expect(screen.getByTestId('source-type-value')).toHaveTextContent('sqlite');
     expect(screen.getByLabelText(/Database Path/)).toHaveValue('prod.db');
-
-    fireEvent.change(screen.getByLabelText(/Database Path/), { target: { value: 'new.db' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith('source', 's1', {
-        name: 's1',
-        type: 'sqlite',
-        database: 'new.db',
-      })
-    );
   });
 
   test('falls back to flat source fields when config is missing (type recovered from the flat object)', () => {
@@ -183,6 +201,61 @@ describe('SourceEditForm — edit mode', () => {
     const { unmount } = renderForm({ source: publishedSqlite, isCreate: false });
     unmount();
     expect(mockActions.clearConnectionStatus).toHaveBeenCalledWith('s1');
+  });
+});
+
+describe('SourceEditForm — edit-mode auto-save', () => {
+  // The post-hydration guard uses setTimeout(0); fake timers make the
+  // hydrate-then-edit sequencing deterministic.
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  test('shows the SaveStateIndicator instead of a Save/Cancel footer', () => {
+    renderEditHydrated(publishedSqlite);
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    // No delete confirmation open → no footer Cancel button either.
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-autosave')).toBeInTheDocument();
+    // Delete + Test Connection affordances stay available.
+    expect(screen.getByTitle('Delete')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test Connection' })).toBeInTheDocument();
+  });
+
+  test('does not schedule a save on hydration (only on a real edit)', () => {
+    // renderEditHydrated clears scheduleSave after hydration; assert it stays
+    // untouched until the user actually edits.
+    renderEditHydrated(publishedSqlite);
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(mockScheduleSave).not.toHaveBeenCalled();
+  });
+
+  test('a connection field edit schedules the full config', () => {
+    renderEditHydrated(publishedSqlite);
+    fireEvent.change(screen.getByLabelText(/Database Path/), { target: { value: 'new.db' } });
+    expect(mockScheduleSave).toHaveBeenCalledWith({
+      name: 's1',
+      type: 'sqlite',
+      database: 'new.db',
+    });
+  });
+
+  test('surfaces schema gate errors reported by the backbone', () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      status: 'invalid',
+      errors: [{ path: 'database', message: 'is required' }],
+      saveNow: jest.fn(),
+      reset: jest.fn(),
+    };
+    renderEditHydrated(publishedSqlite);
+    expect(screen.getByTestId('source-gate-errors')).toHaveTextContent('database: is required');
   });
 });
 
@@ -278,6 +351,8 @@ describe('SourceEditForm — embedded sources', () => {
   };
 
   test('hides the name field, skips name validation, and saves a nameless config', async () => {
+    // Embedded sources keep the explicit Save button — they have no name to key
+    // the auto-save backbone on and route through the parent's onSave instead.
     const onSave = jest.fn(async () => ({ success: true }));
     renderForm({ source: embedded, isCreate: false, onSave });
     expect(screen.queryByLabelText(/Source Name/)).not.toBeInTheDocument();

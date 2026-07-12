@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -13,6 +13,8 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
+import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 import {
   SectionContainer,
   SectionTitle,
@@ -35,6 +37,11 @@ import {
  * - isPreviewOpen: Whether the preview panel is open
  * - setIsPreviewOpen: Function to toggle the preview panel
  * - setPreviewConfig: Function to set the preview configuration in parent
+ *
+ * VIS-1018: in EDIT mode each field change auto-saves through the unified
+ * `useRecordSave('insight', …)` backbone (debounced + schema-gated optimistic
+ * persist) — there is no Save button, only a save-state indicator. CREATE mode
+ * keeps its explicit Save button (the record isn't in the store collection yet).
  */
 const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewConfig }) => {
   const { deleteInsight, checkCommitStatus } = useStore();
@@ -67,6 +74,46 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   const parentName = insight?._embedded?.parentName;
   const parentType = insight?._embedded?.parentType;
 
+  // Edit mode auto-saves through the unified backbone; create keeps its Save button.
+  const isAutoSave = isEditMode;
+
+  // Unified optimistic + debounced + schema-validated save backbone (VIS-1018).
+  // scheduleSave writes the config optimistically into the insight store, then
+  // debounce-persists ONLY if it passes schema validation; otherwise it reports
+  // status:'invalid' with per-field gate errors and persists nothing.
+  const {
+    scheduleSave,
+    status: autoSaveStatus,
+    errors: gateErrors,
+  } = useRecordSave('insight', insight?.name || null);
+
+  const gateErrorText =
+    gateErrors && gateErrors.length > 0
+      ? gateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
+      : null;
+
+  // Build the insight config from the current form state (shared by the manual
+  // create-mode save AND the debounced auto-save path). Mirrors the payload the
+  // legacy handleSave produced: embedded insights omit `name`; empty
+  // description/interactions are dropped so they don't pollute the YAML config.
+  const buildConfig = () => {
+    const config = isEmbedded ? { props } : { name, props };
+
+    if (description) {
+      config.description = description;
+    }
+
+    const nonEmptyInteractions = interactions
+      .filter(i => i.value && i.value.trim())
+      .map(i => ({ [i.type]: i.value }));
+
+    if (nonEmptyInteractions.length > 0) {
+      config.interactions = nonEmptyInteractions;
+    }
+
+    return config;
+  };
+
   // Debounce the values for preview updates
   const debouncedProps = useDebounce(props, 500);
   const debouncedInteractions = useDebounce(interactions, 500);
@@ -90,8 +137,15 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     }
   }, [setPreviewConfig, name, insight?.name, debouncedProps, debouncedInteractions]);
 
+  // Set true once the form has hydrated from `insight`, so the auto-save effect
+  // below never fires on hydration (only on real user edits). Keyed on the
+  // record NAME (not identity), so an optimistic-save refetch doesn't re-hydrate
+  // and clobber in-progress edits.
+  const hydratedRef = useRef(false);
+
   // Initialize form when insight changes
   useEffect(() => {
+    hydratedRef.current = false;
     if (insight) {
       // Edit mode - populate from existing insight
       setName(insight.name || '');
@@ -122,7 +176,24 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     }
     setErrors({});
     setSaveError(null);
-  }, [insight, isCreate]);
+    // Defer past the state-set renders so the auto-save effect runs while still
+    // un-hydrated (only real edits schedule a save).
+    const id = setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insight?.name, isCreate]);
+
+  // Auto-save: whenever an editable field changes (post-hydration in edit mode),
+  // schedule a save once the local minimum (a name for standalone insights) is
+  // met. The schema gate in scheduleSave still decides whether it persists.
+  useEffect(() => {
+    if (!isAutoSave || !hydratedRef.current) return;
+    if (!isEmbedded && !name.trim()) return;
+    scheduleSave(buildConfig());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, description, props, interactions]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -154,23 +225,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     setSaveError(null);
 
     // Build config object - embedded insights don't include name
-    const config = isEmbedded
-      ? { props }
-      : { name, props };
-
-    // Only include description if non-empty
-    if (description) {
-      config.description = description;
-    }
-
-    // Only include interactions if non-empty
-    const nonEmptyInteractions = interactions
-      .filter(i => i.value && i.value.trim())
-      .map(i => ({ [i.type]: i.value }));
-
-    if (nonEmptyInteractions.length > 0) {
-      config.interactions = nonEmptyInteractions;
-    }
+    const config = buildConfig();
 
     // Call unified save - parent handles embedded vs standalone routing
     const result = await onSave('insight', name, config);
@@ -392,6 +447,17 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
               <AlertText $type="error">{saveError}</AlertText>
             </AlertContainer>
           )}
+
+          {/* Schema gate errors from the auto-save backbone (edit mode). The
+              shared AlertContainer doesn't forward data-testid, so the testid
+              lives on this wrapper div. */}
+          {gateErrorText && (
+            <div data-testid="insight-gate-errors">
+              <AlertContainer $type="error">
+                <AlertText $type="error">{gateErrorText}</AlertText>
+              </AlertContainer>
+            </div>
+          )}
         </div>
       </div>
 
@@ -439,21 +505,30 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
             )}
           </div>
 
-          <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
-            </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </Button>
-          </div>
+          {/* Edit mode auto-saves on every valid change through the unified
+              backbone, so the footer shows a save-state indicator instead of a
+              Save button. Create keeps the explicit Cancel/Save. */}
+          {isAutoSave ? (
+            <div className="flex items-center gap-2" data-testid="form-footer-autosave">
+              <SaveStateIndicator status={autoSaveStatus} />
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <ButtonOutline type="button" onClick={onClose} className="text-sm">
+                Cancel
+              </ButtonOutline>
+              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+                {saving ? (
+                  <>
+                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

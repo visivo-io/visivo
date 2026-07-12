@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import useStore from '../../../stores/store';
+import useRecordSave from '../../../hooks/useRecordSave';
+import SaveStateIndicator from '../workspace/SaveStateIndicator';
 import RefSelector from './RefSelector';
 import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
@@ -28,6 +30,9 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
   const fetchSources = useStore(state => state.fetchSources);
 
   const isCreate = !model;
+  // Edit mode auto-saves through the unified backbone (VIS-1018); create mode
+  // keeps an explicit Save button (the record isn't in the store yet).
+  const isAutoSave = !isCreate;
 
   // Form state
   const [name, setName] = useState('');
@@ -43,19 +48,19 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
   // Check if source is embedded (object) vs referenced (string)
   const hasEmbeddedSource = model?.config?.source && typeof model.config.source === 'object';
 
-  // Initialize form with model data
+  // Set true once the form has hydrated from `model`, so the auto-save effect
+  // below never fires on hydration (only on real user edits). Keyed on the
+  // model NAME (not identity), so an optimistic-save refetch doesn't re-hydrate
+  // and clobber in-progress edits.
+  const hydratedRef = useRef(false);
   useEffect(() => {
+    hydratedRef.current = false;
     if (model) {
       setName(model.name || '');
       setSql(model.config?.sql || '');
-      // Source comes from API - could be ref() string, embedded object, or null
-      // Only set source state if it's a string reference, not embedded
-      if (typeof model.config?.source === 'string') {
-        setSource(model.config.source);
-      } else {
-        setSource(null);
-      }
-      // Initialize inline dimensions and metrics
+      // Source could be a ref() string, embedded object, or null; only mirror a
+      // string reference into state (embedded stays on the config).
+      setSource(typeof model.config?.source === 'string' ? model.config.source : null);
       setDimensions(model.config?.dimensions || []);
       setMetrics(model.config?.metrics || []);
     } else {
@@ -65,38 +70,69 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       setDimensions([]);
       setMetrics([]);
     }
-  }, [model]);
+    // Defer past the state-set renders so their auto-save effect runs while
+    // still un-hydrated (mirrors InputEditForm).
+    const id = setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model?.name, isCreate]);
 
   // Fetch sources on mount to populate RefSelector
   useEffect(() => {
     fetchSources();
   }, [fetchSources]);
 
-  const handleSubmit = async e => {
-    e.preventDefault();
-    setError(null);
-    setSaving(true);
-
-    // Build config object
+  // Build the model config from the current form state (shared by manual save
+  // and the debounced auto-save path).
+  const buildConfig = useCallback(() => {
     const config = {
       name: name.trim(),
       sql: sql.trim(),
     };
-
-    // Preserve embedded source if it exists, otherwise use selected ref
+    // Preserve an embedded source object; otherwise use the selected ref.
     if (hasEmbeddedSource) {
       config.source = model.config.source;
     } else if (source) {
       config.source = source;
     }
+    if (dimensions.length > 0) config.dimensions = dimensions;
+    if (metrics.length > 0) config.metrics = metrics;
+    return config;
+  }, [name, sql, source, dimensions, metrics, hasEmbeddedSource, model]);
 
-    // Include inline dimensions and metrics from state
-    if (dimensions.length > 0) {
-      config.dimensions = dimensions;
-    }
-    if (metrics.length > 0) {
-      config.metrics = metrics;
-    }
+  // Unified optimistic + debounced + schema-validated save backbone (VIS-1018).
+  // scheduleSave writes the config optimistically into the model store, then
+  // debounce-persists ONLY if it passes schema validation; otherwise it reports
+  // status:'invalid' with per-field gate errors and persists nothing.
+  const {
+    scheduleSave,
+    status: autoSaveStatus,
+    errors: gateErrors,
+  } = useRecordSave('model', model?.name || null);
+
+  const gateErrorText =
+    gateErrors && gateErrors.length > 0
+      ? gateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
+      : null;
+
+  // Auto-save: whenever an editable field changes (post-hydration), schedule a
+  // save once the local minimums (name + SQL) are present. The schema gate in
+  // scheduleSave still decides whether it actually persists.
+  useEffect(() => {
+    if (!isAutoSave || !hydratedRef.current) return;
+    if (!name.trim() || !sql.trim()) return;
+    scheduleSave(buildConfig());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, sql, source, dimensions, metrics]);
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+
+    const config = buildConfig();
 
     // Call unified save - parent handles routing and panel close
     const result = await onSave('model', config.name, config);
@@ -135,6 +171,11 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <FormAlert variant="error">{error}</FormAlert>}
+      {gateErrorText && (
+        <div data-testid="model-gate-errors">
+          <FormAlert variant="error">{gateErrorText}</FormAlert>
+        </div>
+      )}
 
       <FormInput
         id="model-name"
@@ -446,26 +487,35 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
           )}
         </div>
 
-        <div className="flex gap-3">
-          <ButtonOutline
-            type="button"
-            onClick={onCancel}
-            disabled={saving || deleting}
-            className="text-sm"
-          >
-            Cancel
-          </ButtonOutline>
-          <Button type="submit" disabled={!isValid || saving || deleting} className="text-sm">
-            {saving ? (
-              <>
-                <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                Saving...
-              </>
-            ) : (
-              'Save'
-            )}
-          </Button>
-        </div>
+        {/* Edit mode auto-saves on every valid change through the unified
+            backbone, so the footer shows a save-state indicator instead of a
+            Save button. Create keeps the explicit Cancel/Save. */}
+        {isAutoSave ? (
+          <div className="flex items-center gap-2" data-testid="form-footer-autosave">
+            <SaveStateIndicator status={autoSaveStatus} />
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <ButtonOutline
+              type="button"
+              onClick={onCancel}
+              disabled={saving || deleting}
+              className="text-sm"
+            >
+              Cancel
+            </ButtonOutline>
+            <Button type="submit" disabled={!isValid || saving || deleting} className="text-sm">
+              {saving ? (
+                <>
+                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </form>
   );
