@@ -190,10 +190,10 @@ describe('VIS-775 Workspace shell', () => {
     expect(screen.getByTestId('workspace-right-rail')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-drag-handle-left')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-drag-handle-right')).toBeInTheDocument();
-    // Library is mounted in the left rail (VIS-769 / Track C C1+) — the
-    // C-1 two-section design: Layout Items + Data Layer.
-    expect(screen.getByTestId('library-section-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('library-section-data')).toBeInTheDocument();
+    // Library is mounted in the left rail (VIS-769 / Track C C1+) — the flat
+    // single-list design: one shared search + the compact filter dropdown.
+    expect(screen.getByTestId('library-search')).toBeInTheDocument();
+    expect(screen.getByTestId('library-filter-toggle')).toBeInTheDocument();
     // Right rail defaults to Edit tab.
     expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
   });

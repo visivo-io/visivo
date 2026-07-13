@@ -1,12 +1,15 @@
 /**
  * Library behaviour (VIS-769 + VIS-773 + VIS-776 / Track C C1 + C2 + C3).
  *
- * Mounts the full Library inside a router + dnd-kit context. Pins the C-1
- * two-section design:
- *   - Exactly two sections: Layout Items + Data Layer.
- *   - Per-type subsections (Charts/Tables/Markdowns/Inputs under Layout
- *     Items; Sources/Models/Dimensions/Metrics/Relations/Insights under
- *     Data Layer).
+ * Mounts the full Library inside a router + dnd-kit context. Pins the flat
+ * single-list design (workspace-tweaks):
+ *   - ONE shared search input + a compact filter DROPDOWN (group + type
+ *     options, additive multi-select, selected values shown as removable
+ *     chips) at the top; no per-section search boxes or stacked section
+ *     headers.
+ *   - Per-type subsections (Charts/Tables/Markdowns/Inputs/Dashboards for the
+ *     Layout group; Sources/Models/Dimensions/Metrics/Relations/Insights for
+ *     the Data group) rendered flat, filtered by the pills + search.
  *   - Drag handles on Layout-Items rows; none on Data-Layer rows.
  *   - No inline "+ New X" CTAs — creation is via the header "+ New" menu,
  *     grouped like the sidebar (Layout Items · Data Layer) and including
@@ -112,24 +115,28 @@ describe('Library', () => {
     seedStore();
   });
 
-  test('renders exactly the two sections — Layout Items and Data Layer', () => {
+  test('renders ONE shared search + a compact filter dropdown (no per-section headers)', () => {
     renderLibrary();
-    expect(screen.getByTestId('library-section-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('library-section-data')).toBeInTheDocument();
-    expect(screen.getByTestId('library-section-layout-header')).toHaveTextContent(
-      'Layout Items'
-    );
-    expect(screen.getByTestId('library-section-data-header')).toHaveTextContent('Data Layer');
-    // No legacy "Insert" section.
-    expect(screen.queryByTestId('library-section-insert')).not.toBeInTheDocument();
+    // A single search input, not one per section.
+    expect(screen.getAllByTestId('library-search')).toHaveLength(1);
+    // The filter is a dropdown — only the Filter button shows until opened.
+    expect(screen.getByTestId('library-filter-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-filter-menu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('library-filter-option-group-data')).not.toBeInTheDocument();
+    // The old stacked section headers are gone.
+    expect(screen.queryByTestId('library-section-layout')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('library-section-data')).not.toBeInTheDocument();
   });
 
-  test('section counts sum the per-type collections', () => {
+  test('the filter menu options show per-group + per-type row counts', () => {
     renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
     // Layout: 2 charts + 1 table + 1 markdown + 1 input + 1 dashboard = 6.
-    expect(screen.getByTestId('library-section-layout-count')).toHaveTextContent('(6)');
+    expect(screen.getByTestId('library-filter-option-group-layout')).toHaveTextContent('6');
     // Data: 1 source + 1 model + 1 dimension + 1 metric + 1 relation + 1 insight = 6.
-    expect(screen.getByTestId('library-section-data-count')).toHaveTextContent('(6)');
+    expect(screen.getByTestId('library-filter-option-group-data')).toHaveTextContent('6');
+    // 2 charts.
+    expect(screen.getByTestId('library-filter-option-type-chart')).toHaveTextContent('2');
   });
 
   test('renders the five Layout-Item subsections and the six Data-Layer subsections', () => {
@@ -142,18 +149,10 @@ describe('Library', () => {
     });
   });
 
-  test('per-type subsections default to collapsed; sections stay expanded (VIS-828)', () => {
+  test('per-type subsections default to collapsed (VIS-828)', () => {
     // Empty subsection prefs = no saved deviations = collapsed by default.
     seedStore({ libraryCollapsedSubsections: {} });
     renderLibrary();
-
-    // Both top sections stay expanded so their toolbars + subsection headers
-    // are visible.
-    expect(screen.getByTestId('library-section-layout')).toHaveAttribute(
-      'data-collapsed',
-      'false'
-    );
-    expect(screen.getByTestId('library-section-data')).toHaveAttribute('data-collapsed', 'false');
 
     // Every per-type subsection renders collapsed: header + count visible,
     // body (rows / empty placeholder / create button) hidden.
@@ -523,17 +522,15 @@ describe('Library', () => {
     );
   });
 
-  test('expanding the rail reveals the active object (expands its section + subsection)', () => {
+  test('expanding the rail reveals the active object (expands its subsection)', () => {
     // Simulate: nav minimized, an item selected, then re-expanded — the Library
-    // mounts with the active object's group collapsed and must reveal it.
+    // mounts with the active object's subsection collapsed and must reveal it.
     seedStore({
       workspaceActiveObject: { type: 'model', name: 'monthly_revenue' },
       workspaceActiveTabId: 'model:monthly_revenue',
-      libraryCollapsedSections: { data: true },
       libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
     });
     renderLibrary();
-    expect(useStore.getState().libraryCollapsedSections.data).toBe(false);
     expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
     // The selected model row is now visible.
     expect(screen.getByTestId('library-row-model-monthly_revenue')).toBeInTheDocument();
@@ -570,12 +567,76 @@ describe('Library', () => {
     expect(useStore.getState().workspaceActiveObject?.type).toBe('project');
   });
 
-  test('the type-filter chip narrows a section to a single subsection', () => {
+  test('the filter dropdown selects a type ADDITIVELY and shows removable chips', () => {
     renderLibrary();
-    fireEvent.click(screen.getByTestId('library-filter-chip-layout-table'));
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-type-table'));
+    // Just table so far; a chip appears.
     expect(screen.getByTestId('library-subsection-table')).toBeInTheDocument();
     expect(screen.queryByTestId('library-subsection-chart')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('library-subsection-markdown')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-filter-chip-type-table')).toBeInTheDocument();
+    // Add charts (menu stays open) → BOTH show (additive, not exclusive).
+    fireEvent.click(screen.getByTestId('library-filter-option-type-chart'));
+    expect(screen.getByTestId('library-subsection-table')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-source')).not.toBeInTheDocument();
+    // A chip's × removes just that filter.
+    fireEvent.click(screen.getByTestId('library-filter-chip-remove-type-table'));
+    expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+  });
+
+  test('a group filter narrows to that group and composes additively with a type', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-group-data'));
+    // Data-Layer subsections remain; Layout-Item subsections hide.
+    ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t =>
+      expect(screen.getByTestId(`library-subsection-${t}`)).toBeInTheDocument()
+    );
+    ['chart', 'table', 'markdown', 'input', 'dashboard'].forEach(t =>
+      expect(screen.queryByTestId(`library-subsection-${t}`)).not.toBeInTheDocument()
+    );
+    // Add a single layout TYPE → union of (all data types) + charts.
+    fireEvent.click(screen.getByTestId('library-filter-option-type-chart'));
+    expect(screen.getByTestId('library-subsection-source')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
+  });
+
+  test('Clear drops every active filter and restores the full list', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-group-data'));
+    expect(screen.queryByTestId('library-subsection-chart')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('library-filter-clear'));
+    // All subsections back; no chips remain.
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-source')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-filter-chip-group-data')).not.toBeInTheDocument();
+  });
+
+  test('renders Data-Layer subsections before Layout-Items subsections (data first)', () => {
+    renderLibrary();
+    const source = screen.getByTestId('library-subsection-source');
+    const chart = screen.getByTestId('library-subsection-chart');
+    // A data subsection appears earlier in the DOM than a layout one.
+    // eslint-disable-next-line no-bitwise
+    expect(source.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test('the single search filters row names across the whole flat list', async () => {
+    renderLibrary();
+    fireEvent.change(screen.getByTestId('library-search'), {
+      target: { value: 'waterfall' },
+    });
+    // Search is debounced (~250ms), so wait for the non-matching subsections to
+    // drop out; the matching chart subsection (waterfall) stays.
+    await waitFor(() =>
+      expect(screen.queryByTestId('library-subsection-source')).not.toBeInTheDocument()
+    );
+    expect(screen.getByTestId('library-row-chart-waterfall')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
   });
 
   test('highlights the row corresponding to the active workspace tab', () => {

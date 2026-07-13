@@ -46,27 +46,23 @@ const LeftRailCollapsed = ({ onExpand }) => {
   // mulberry pill on the active section.
   const activeObject = useStore(s => s.workspaceActiveObject);
   const activeType = activeObject?.type || null;
-  const setLibrarySectionCollapsed = useStore(s => s.setLibrarySectionCollapsed);
   const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
 
   // Collapsed buttons must not be dead affordances (they render hover/title
   // states that promise interactivity): clicking one expands the rail AND
-  // applies the selection — a type button lands on that type's subsection
-  // (section + subsection expanded), the search button focuses the search.
+  // applies the selection — a type button lands on that type's (now flat)
+  // subsection expanded, the search button focuses the single shared search.
   const handleTypeClick = typeKey => {
-    const sectionKey = LAYOUT_TYPES.includes(typeKey) ? 'layout' : 'data';
-    setLibrarySectionCollapsed(sectionKey, false);
     setLibrarySubsectionCollapsed(typeKey, false);
     onExpand();
   };
   const handleSearchClick = () => {
-    setLibrarySectionCollapsed('layout', false);
     onExpand();
-    // The Library mounts on the re-render after expand — focus its first
+    // The Library mounts on the re-render after expand — focus its single
     // search input on the next tick (same document-query pattern the Edit
     // panel's breadcrumb focus uses).
     setTimeout(() => {
-      const input = document.querySelector('[data-testid="library-search-layout"]');
+      const input = document.querySelector('[data-testid="library-search"]');
       if (input && typeof input.focus === 'function') input.focus();
     }, 0);
   };

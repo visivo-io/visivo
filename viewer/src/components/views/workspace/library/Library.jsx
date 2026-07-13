@@ -1,8 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PiPlus, PiSidebar, PiHouse, PiMagnifyingGlass, PiTreeStructure } from 'react-icons/pi';
-import LibrarySection from './LibrarySection';
+import LibrarySearch from './LibrarySearch';
+import LibraryFilter from './LibraryFilter';
+import LibrarySubsection from './LibrarySubsection';
 import useLibraryData from './useLibraryData';
+import useLibraryFilter from './useLibraryFilter';
 import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
 import { useWorkspaceScope } from '../useWorkspaceScope';
@@ -11,19 +14,21 @@ import { emitWorkspaceEvent } from '../telemetry';
 /**
  * Library — VIS-769 / Track C C1 (+ C2 / C3).
  *
- * The Library left rail. Ports the C-1 `library.jsx` blueprint into
- * production React: two stacked, independently-collapsible sections that
- * replace the legacy `/editor` flat list.
+ * The Library left rail. One flat, searchable list of per-type collapsible
+ * subsections (Data Layer first, then Layout Items), with a SINGLE shared
+ * search input + a compact filter dropdown at the top (workspace-tweaks:
+ * replaces the two stacked "Layout Items" / "Data Layer" section headers —
+ * each of which used to carry its own search box).
  *
- *   - Layout Items — canvas-droppable types (Charts · Tables · Markdowns ·
- *                    Inputs). Subtitle "Drag onto the canvas".
  *   - Data Layer   — click-to-edit types (Sources · Models · Dimensions ·
- *                    Metrics · Relations · Insights). Subtitle
- *                    "Click to edit".
+ *                    Metrics · Relations · Insights).
+ *   - Layout Items — canvas-droppable types (Charts · Tables · Markdowns ·
+ *                    Inputs · Dashboards); rows are dnd-kit drag sources.
  *
- * Each section carries a search input + a type-filter chip row, and groups
- * its objects into per-type collapsible subsections. Layout-Items rows are
- * dnd-kit drag sources; Data-Layer rows are click-to-edit only.
+ * The `<LibraryFilter>` dropdown filters the flat list additively (multi-
+ * select, union): a group option narrows to Data Layer or Layout Items, a
+ * type option narrows to one type, and selected values show as removable
+ * chips. The shared search filters row names across everything visible.
  *
  * The single-PR Library bundles C1 + C2 + C3:
  *   - C1 (VIS-769) — shell + sections + per-type subsections + rows.
@@ -62,15 +67,15 @@ const Library = () => {
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
   const activateWorkspaceTab = useStore(s => s.activateWorkspaceTab);
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
-  const setLibrarySectionCollapsed = useStore(s => s.setLibrarySectionCollapsed);
   const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
   const projectName = useStore(
     s => s.project?.project_json?.name || s.project?.name || 'project'
   );
 
   // #8: when the rail expands (this Library mounts), reveal the active object's
-  // row — expand its section + type subsection so a selection made while the nav
-  // was minimized isn't hidden in a collapsed group, and scroll it into view.
+  // row — expand its type subsection so a selection made while the nav was
+  // minimized isn't hidden in a collapsed group, and scroll it into view. (The
+  // flat list has no section-collapse to reverse anymore.)
   useEffect(() => {
     const active = useStore.getState().workspaceActiveObject;
     if (!active?.type) return;
@@ -78,13 +83,7 @@ const Library = () => {
     const subType = ['csvScriptModel', 'localMergeModel'].includes(active.type)
       ? 'model'
       : active.type;
-    const section = LAYOUT_TYPES.includes(subType)
-      ? 'layout'
-      : DATA_TYPES.includes(subType)
-        ? 'data'
-        : null;
-    if (!section) return;
-    setLibrarySectionCollapsed(section, false);
+    if (!LAYOUT_TYPES.includes(subType) && !DATA_TYPES.includes(subType)) return;
     setLibrarySubsectionCollapsed(subType, false);
     // Best-effort scroll the selected row into view once it renders.
     requestAnimationFrame(() => {
@@ -99,7 +98,7 @@ const Library = () => {
         /* selector can't match an exotic name — the expand alone still reveals it */
       }
     });
-  }, [setLibrarySectionCollapsed, setLibrarySubsectionCollapsed]);
+  }, [setLibrarySubsectionCollapsed]);
 
   // Reopen a top-level surface from the rail (VIS thread: "there should be a way
   // to open the project on the left sidebar … I closed the tab and it isn't
@@ -119,6 +118,71 @@ const Library = () => {
   // `${type}:${name}`. Surfacing it here drives LibraryRow's mulberry-bar +
   // tinted-bg selected state through the section → subsection → row chain.
   const selectedRowId = useStore(s => s.workspaceActiveTabId);
+
+  // One shared search + an additive (multi-select) filter dropdown for the
+  // flat list.
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState([]); // Array<{ kind: 'group'|'type', value }>
+
+  const toggleFilter = useCallback(sel => {
+    setFilters(prev => {
+      const exists = prev.some(f => f.kind === sel.kind && f.value === sel.value);
+      return exists
+        ? prev.filter(f => !(f.kind === sel.kind && f.value === sel.value))
+        : [...prev, sel];
+    });
+  }, []);
+  const clearFilters = useCallback(() => setFilters([]), []);
+
+  // Flat map of every type -> its rows, across both groups.
+  const rowsByType = useMemo(
+    () => ({ ...data.layoutItems, ...data.dataLayer }),
+    [data.layoutItems, data.dataLayer]
+  );
+  // Data Layer first, then Layout Items (VIS thread: data elements before
+  // layout items).
+  const allTypes = useMemo(() => [...DATA_TYPES, ...LAYOUT_TYPES], []);
+  const allRows = useMemo(
+    () => allTypes.flatMap(t => rowsByType[t] || []),
+    [allTypes, rowsByType]
+  );
+
+  const activeGroups = filters.filter(f => f.kind === 'group').map(f => f.value);
+  const activeTypes = filters.filter(f => f.kind === 'type').map(f => f.value);
+  const anyFilter = filters.length > 0;
+
+  // Search filters row names; the pills gate which type subsections show as an
+  // ADDITIVE union — a type appears if its own type pill OR its group pill is
+  // active. No active filter shows everything.
+  const filteredRows = useLibraryFilter({ rows: allRows, search });
+  const searchActive = search.trim().length > 0;
+
+  const GROUP_TYPES = { layout: LAYOUT_TYPES, data: DATA_TYPES };
+  const typeVisible = t => {
+    if (!anyFilter) return true;
+    if (activeTypes.includes(t)) return true;
+    if (activeGroups.includes('layout') && GROUP_TYPES.layout.includes(t)) return true;
+    if (activeGroups.includes('data') && GROUP_TYPES.data.includes(t)) return true;
+    return false;
+  };
+  // A search with zero matches for a type hides that subsection to keep it tidy.
+  const renderedTypes = allTypes
+    .filter(typeVisible)
+    .map(typeKey => ({ typeKey, rows: filteredRows.filter(r => r.type === typeKey) }))
+    .filter(({ rows }) => !(searchActive && rows.length === 0));
+
+  // Row counts for the filter-menu option badges.
+  const groupCounts = useMemo(
+    () => ({
+      layout: LAYOUT_TYPES.reduce((n, t) => n + (rowsByType[t]?.length || 0), 0),
+      data: DATA_TYPES.reduce((n, t) => n + (rowsByType[t]?.length || 0), 0),
+    }),
+    [rowsByType]
+  );
+  const typeCounts = useMemo(
+    () => Object.fromEntries(allTypes.map(t => [t, rowsByType[t]?.length || 0])),
+    [allTypes, rowsByType]
+  );
 
   // Header "+ New" menu — the left-nav entry point for creating any object
   // type (the per-type "+ New X" buttons live inside each subsection).
@@ -358,27 +422,46 @@ const Library = () => {
         ))}
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        <LibrarySection
-          sectionKey="layout"
-          title="Layout Items"
-          subtitle="Drag onto the canvas"
-          types={LAYOUT_TYPES}
-          rowsByType={data.layoutItems}
-          selectedRowId={selectedRowId}
-          onRowClick={handleRowClick}
-          onContextAction={handleContextAction}
+      {/* One shared search + a compact filter dropdown for the whole flat list. */}
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-gray-200 px-3 py-2">
+        <LibrarySearch
+          sectionKey="library"
+          value={search}
+          onChange={setSearch}
+          placeholder="Search the library…"
+          inputTestId="library-search"
         />
-        <LibrarySection
-          sectionKey="data"
-          title="Data Layer"
-          subtitle="Click to edit"
-          types={DATA_TYPES}
-          rowsByType={data.dataLayer}
-          selectedRowId={selectedRowId}
-          onRowClick={handleRowClick}
-          onContextAction={handleContextAction}
+        <LibraryFilter
+          groups={[{ key: 'data' }, { key: 'layout' }]}
+          types={allTypes}
+          groupCounts={groupCounts}
+          typeCounts={typeCounts}
+          value={filters}
+          onToggle={toggleFilter}
+          onClear={clearFilters}
         />
+      </div>
+
+      {/* Flat list of per-type subsections. */}
+      <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-1.5 py-2">
+        {renderedTypes.map(({ typeKey, rows }) => (
+          <LibrarySubsection
+            key={typeKey}
+            typeKey={typeKey}
+            rows={rows}
+            selectedRowId={selectedRowId}
+            onRowClick={handleRowClick}
+            onContextAction={handleContextAction}
+          />
+        ))}
+        {renderedTypes.length === 0 && (
+          <p
+            className="px-3 py-4 text-center text-[11.5px] italic text-gray-400"
+            data-testid="library-empty"
+          >
+            No objects match “{search.trim()}”.
+          </p>
+        )}
       </div>
 
       <div className="shrink-0 border-t border-gray-200 px-3 py-2 text-[11px] text-gray-400">

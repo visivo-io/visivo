@@ -73,22 +73,17 @@ describe('LeftRail collapsed strip', () => {
     renderRail();
     fireEvent.click(screen.getByTestId('workspace-left-rail-collapsed-model'));
     expect(useStore.getState().workspaceLeftCollapsed).toBe(false);
-    // The Library mounts with the Data Layer section + Models subsection open.
-    expect(screen.getByTestId('library-section-data')).toHaveAttribute('data-collapsed', 'false');
+    // The Library mounts (flat list) with the Models subsection open.
     expect(screen.getByTestId('library-subsection-model')).toHaveAttribute(
       'data-collapsed',
       'false'
     );
   });
 
-  test('clicking a collapsed Layout-Items type button opens its section + subsection', () => {
+  test('clicking a collapsed Layout-Items type button opens its subsection', () => {
     renderRail();
     fireEvent.click(screen.getByTestId('workspace-left-rail-collapsed-chart'));
     expect(useStore.getState().workspaceLeftCollapsed).toBe(false);
-    expect(screen.getByTestId('library-section-layout')).toHaveAttribute(
-      'data-collapsed',
-      'false'
-    );
     expect(screen.getByTestId('library-subsection-chart')).toHaveAttribute(
       'data-collapsed',
       'false'
@@ -99,6 +94,6 @@ describe('LeftRail collapsed strip', () => {
     renderRail();
     fireEvent.click(screen.getByTestId('workspace-left-rail-collapsed-search'));
     expect(useStore.getState().workspaceLeftCollapsed).toBe(false);
-    await waitFor(() => expect(screen.getByTestId('library-search-layout')).toHaveFocus());
+    await waitFor(() => expect(screen.getByTestId('library-search')).toHaveFocus());
   });
 });
