@@ -18,40 +18,48 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Library — Dashboards in Layout Items (VIS-824)', () => {
-  test('Step 1: Workspace left rail shows the Layout Items section', async ({ page }) => {
+  test('Step 1: Workspace left rail shows the compact filter dropdown', async ({ page }) => {
     await page.goto('/workspace');
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('workspace-left-rail')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByTestId('library-section-layout')).toBeVisible();
-    await expect(page.getByTestId('library-section-layout-header')).toContainText('Layout Items');
+    // The flat Library exposes a filter dropdown (one shared search + a filter
+    // button now, not two stacked sections). Opening it lists Layout Items.
+    await expect(page.getByTestId('library-filter-toggle')).toBeVisible();
+    await page.getByTestId('library-filter-toggle').click();
+    await expect(page.getByTestId('library-filter-option-group-layout')).toContainText(
+      'Layout Items'
+    );
   });
 
-  test('Step 2: Dashboards render as a Layout-Items subsection with a Dashboards chip', async ({
+  test('Step 2: Dashboards render as a subsection and a Dashboards filter option', async ({
     page,
   }) => {
     await page.goto('/workspace');
     await page.waitForLoadState('networkidle');
 
-    // The per-type Dashboards subsection lives inside the Layout Items section.
+    // The per-type Dashboards subsection renders in the flat list.
     await expect(page.getByTestId('library-subsection-dashboard')).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId('library-subsection-dashboard-header')).toContainText(
       'Dashboards'
     );
 
-    // The Layout Items filter chips include a "Dashboards" chip.
-    await expect(page.getByTestId('library-filter-chip-layout-dashboard')).toBeVisible();
-    await expect(page.getByTestId('library-filter-chip-layout-dashboard')).toContainText(
+    // Open the filter dropdown — it includes a "Dashboards" type option.
+    await page.getByTestId('library-filter-toggle').click();
+    await expect(page.getByTestId('library-filter-option-type-dashboard')).toBeVisible();
+    await expect(page.getByTestId('library-filter-option-type-dashboard')).toContainText(
       'Dashboards'
     );
   });
 
-  test('Step 3: Per-section search narrows to dashboards', async ({ page }) => {
+  test('Step 3: The Dashboards filter narrows the flat list to dashboards', async ({ page }) => {
     await page.goto('/workspace');
     await page.waitForLoadState('networkidle');
 
-    // Click the Dashboards filter chip — Charts / Tables / etc. subsections drop.
-    await page.getByTestId('library-filter-chip-layout-dashboard').click();
+    // Open the filter dropdown and pick Dashboards — Charts / Tables / etc.
+    // subsections drop.
+    await page.getByTestId('library-filter-toggle').click();
+    await page.getByTestId('library-filter-option-type-dashboard').click();
     await expect(page.getByTestId('library-subsection-dashboard')).toBeVisible();
     await expect(page.getByTestId('library-subsection-chart')).toHaveCount(0);
   });

@@ -57,7 +57,7 @@ test.describe('Editor New Smoke', () => {
 
   test('Step 3: Search inputs render (project editor + library)', async () => {
     await expect(page.getByTestId('project-editor-search')).toBeVisible();
-    await expect(page.getByTestId('library-search-data')).toBeVisible();
+    await expect(page.getByTestId('library-search')).toBeVisible();
   });
 
   test('Step 4: Project editor exposes level management + a new-dashboard action', async () => {

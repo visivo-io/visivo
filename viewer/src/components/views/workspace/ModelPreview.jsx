@@ -171,6 +171,20 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
 
   const [hasRun, setHasRun] = useState(false);
 
+  // The SQL editor is Monaco (a dark, canvas-rendered widget). The "black panes"
+  // on a rail-divider drag came from this pane not being allowed to SHRINK: the
+  // root + editor container lacked `min-w-0`, so the flex item kept its content
+  // width and the dark editor overflowed the narrowing pane. `min-w-0` (below)
+  // lets it shrink; this forces an immediate Monaco relayout as the width
+  // changes so it repaints in step instead of lagging behind `automaticLayout`.
+  const editorRef = useRef(null);
+  const rightWidth = useStore(s => s.workspaceRightWidth);
+  const leftWidth = useStore(s => s.workspaceLeftWidth);
+  const resizing = useStore(s => s.workspaceResizing);
+  useEffect(() => {
+    editorRef.current?.layout?.();
+  }, [rightWidth, leftWidth, resizing]);
+
   const handleRun = () => {
     if (!sourceName || !sql) return;
     setHasRun(true);
@@ -198,7 +212,7 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
   }
 
   return (
-    <div data-testid="model-preview" className="flex flex-1 min-h-0 flex-col bg-white">
+    <div data-testid="model-preview" className="flex flex-1 min-h-0 min-w-0 flex-col bg-white">
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
         <span className="text-[12px] text-gray-500">
           {sourceName ? (
@@ -227,12 +241,15 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
 
       <SemanticFieldsStrip modelName={config.name || name} />
 
-      <div className="border-b border-gray-200" style={{ height: 240 }}>
+      <div className="min-w-0 overflow-hidden border-b border-gray-200" style={{ height: 240 }}>
         <Editor
           height="240px"
           language="sql"
           theme="vs-dark"
           value={sql}
+          onMount={editor => {
+            editorRef.current = editor;
+          }}
           options={{
             readOnly: true,
             domReadOnly: true,

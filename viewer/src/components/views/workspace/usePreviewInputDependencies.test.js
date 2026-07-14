@@ -178,4 +178,27 @@ describe('usePreviewInputDependencies', () => {
     // No third argument carrying pending/resolved state.
     expect(call.length).toBe(2);
   });
+
+  it('fetches the inputs list at most once even when the empty-array reference churns', () => {
+    // A project with no inputs makes `fetchInputs` write a fresh [] each call,
+    // so `s.inputs` returns a NEW reference every render. Simulate that by
+    // handing out a new state (new empty `inputs`) on every selector call: the
+    // pre-fix effect re-fetched on every render → a continuous /api/inputs/
+    // loop. The ref guard must hold it to a single fetch.
+    const fetchInputs = jest.fn();
+    useStore.mockImplementation(selector => {
+      const state = { inputs: [], insightJobs: {}, fetchInputs };
+      return typeof selector === 'function' ? selector(state) : state;
+    });
+    useStore.getState = jest.fn(() => ({ inputs: [], insightJobs: {}, fetchInputs }));
+
+    const { rerender } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: [] })
+    );
+    rerender();
+    rerender();
+    rerender();
+
+    expect(fetchInputs).toHaveBeenCalledTimes(1);
+  });
 });

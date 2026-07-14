@@ -1,16 +1,20 @@
 /**
  * Library behaviour (VIS-769 + VIS-773 + VIS-776 / Track C C1 + C2 + C3).
  *
- * Mounts the full Library inside a router + dnd-kit context. Pins the C-1
- * two-section design:
- *   - Exactly two sections: Layout Items + Data Layer.
- *   - Per-type subsections (Charts/Tables/Markdowns/Inputs under Layout
- *     Items; Sources/Models/Dimensions/Metrics/Relations/Insights under
- *     Data Layer).
+ * Mounts the full Library inside a router + dnd-kit context. Pins the flat
+ * single-list design (workspace-tweaks):
+ *   - ONE shared search input + a compact filter DROPDOWN (group + type
+ *     options, additive multi-select, selected values shown as removable
+ *     chips) at the top; no per-section search boxes or stacked section
+ *     headers.
+ *   - Per-type subsections (Charts/Tables/Markdowns/Inputs/Dashboards for the
+ *     Layout group; Sources/Models/Dimensions/Metrics/Relations/Insights for
+ *     the Data group) rendered flat, filtered by the pills + search.
  *   - Drag handles on Layout-Items rows; none on Data-Layer rows.
- *   - "+ New X" buttons only on the four droppable Layout subsections.
+ *   - No inline "+ New X" CTAs — creation is via the header "+ New" menu,
+ *     grouped like the sidebar (Layout Items · Data Layer) and including
+ *     Relation (which opens the Semantic Layer).
  *   - Row click delegates to `openWorkspaceTab`.
- *   - "+ New X" delegates to the corresponding store opener + telemetry.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
@@ -46,6 +50,8 @@ const renderLibrary = (entry = '/workspace') => {
           element={<DndContext><Library /><LocationProbe /></DndContext>}
         />
         <Route path="/workspace/dashboard/:dashboardName/explorer" element={<LocationProbe />} />
+        <Route path="/workspace/semantic-layer" element={<LocationProbe />} />
+        <Route path="/explorer" element={<LocationProbe />} />
       </>
     ),
     { initialEntries: [entry], future: futureFlags }
@@ -109,24 +115,28 @@ describe('Library', () => {
     seedStore();
   });
 
-  test('renders exactly the two sections — Layout Items and Data Layer', () => {
+  test('renders ONE shared search + a compact filter dropdown (no per-section headers)', () => {
     renderLibrary();
-    expect(screen.getByTestId('library-section-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('library-section-data')).toBeInTheDocument();
-    expect(screen.getByTestId('library-section-layout-header')).toHaveTextContent(
-      'Layout Items'
-    );
-    expect(screen.getByTestId('library-section-data-header')).toHaveTextContent('Data Layer');
-    // No legacy "Insert" section.
-    expect(screen.queryByTestId('library-section-insert')).not.toBeInTheDocument();
+    // A single search input, not one per section.
+    expect(screen.getAllByTestId('library-search')).toHaveLength(1);
+    // The filter is a dropdown — only the Filter button shows until opened.
+    expect(screen.getByTestId('library-filter-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-filter-menu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('library-filter-option-group-data')).not.toBeInTheDocument();
+    // The old stacked section headers are gone.
+    expect(screen.queryByTestId('library-section-layout')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('library-section-data')).not.toBeInTheDocument();
   });
 
-  test('section counts sum the per-type collections', () => {
+  test('the filter menu options show per-group + per-type row counts', () => {
     renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
     // Layout: 2 charts + 1 table + 1 markdown + 1 input + 1 dashboard = 6.
-    expect(screen.getByTestId('library-section-layout-count')).toHaveTextContent('(6)');
+    expect(screen.getByTestId('library-filter-option-group-layout')).toHaveTextContent('6');
     // Data: 1 source + 1 model + 1 dimension + 1 metric + 1 relation + 1 insight = 6.
-    expect(screen.getByTestId('library-section-data-count')).toHaveTextContent('(6)');
+    expect(screen.getByTestId('library-filter-option-group-data')).toHaveTextContent('6');
+    // 2 charts.
+    expect(screen.getByTestId('library-filter-option-type-chart')).toHaveTextContent('2');
   });
 
   test('renders the five Layout-Item subsections and the six Data-Layer subsections', () => {
@@ -139,18 +149,10 @@ describe('Library', () => {
     });
   });
 
-  test('per-type subsections default to collapsed; sections stay expanded (VIS-828)', () => {
+  test('per-type subsections default to collapsed (VIS-828)', () => {
     // Empty subsection prefs = no saved deviations = collapsed by default.
     seedStore({ libraryCollapsedSubsections: {} });
     renderLibrary();
-
-    // Both top sections stay expanded so their toolbars + subsection headers
-    // are visible.
-    expect(screen.getByTestId('library-section-layout')).toHaveAttribute(
-      'data-collapsed',
-      'false'
-    );
-    expect(screen.getByTestId('library-section-data')).toHaveAttribute('data-collapsed', 'false');
 
     // Every per-type subsection renders collapsed: header + count visible,
     // body (rows / empty placeholder / create button) hidden.
@@ -191,16 +193,13 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-row-table-revenue_rows')).not.toBeInTheDocument();
   });
 
-  test('"+ New X" buttons appear on every creatable subsection (all but relation)', () => {
+  test('renders no inline "+ New X" CTAs — creation is via the header "+ New" menu', () => {
     renderLibrary();
-    ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight'].forEach(
+    ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight', 'relation'].forEach(
       t => {
-        expect(screen.getByTestId(`library-subsection-${t}-create`)).toBeInTheDocument();
+        expect(screen.queryByTestId(`library-subsection-${t}-create`)).not.toBeInTheDocument();
       }
     );
-    // A relation can't be templated (its condition must reference two real
-    // models), so it has no inline create.
-    expect(screen.queryByTestId('library-subsection-relation-create')).not.toBeInTheDocument();
   });
 
   test('Layout-Items rows expose drag handles; Data-Layer rows do not', () => {
@@ -394,14 +393,17 @@ describe('Library', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('"+ New Chart" drafts a chart and opens it as a workspace tab (unscoped)', async () => {
+  const openNewMenu = () => fireEvent.click(screen.getByTestId('library-new-object-button'));
+
+  test('"+ New" → Chart drafts a chart and opens it as a workspace tab (unscoped)', async () => {
     const createWorkspaceObject = jest
       .fn()
       .mockResolvedValue({ success: true, name: 'new-chart' });
     const openWorkspaceTab = jest.fn();
     seedStore({ createWorkspaceObject, openWorkspaceTab });
     renderLibrary();
-    fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-chart'));
     await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('chart'));
     await waitFor(() =>
       expect(openWorkspaceTab).toHaveBeenCalledWith({
@@ -412,11 +414,12 @@ describe('Library', () => {
     );
   });
 
-  test('"+ New Chart" opens the Explorer round-trip overlay when scoped to a dashboard (J-2)', () => {
+  test('"+ New" → Chart opens the Explorer round-trip overlay when scoped to a dashboard (J-2)', () => {
     const createWorkspaceObject = jest.fn();
     seedStore({ createWorkspaceObject });
     renderLibrary('/workspace/dashboard/overview');
-    fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-chart'));
     expect(createWorkspaceObject).not.toHaveBeenCalled();
     expect(screen.getByTestId('location-probe')).toHaveTextContent(
       '/workspace/dashboard/overview/explorer'
@@ -425,14 +428,15 @@ describe('Library', () => {
     expect(screen.getByTestId('location-probe')).toHaveTextContent('slot=new');
   });
 
-  test('a data-layer "+ New Model" drafts a model and opens its tab', async () => {
+  test('"+ New" → Model drafts a model and opens its tab', async () => {
     const createWorkspaceObject = jest
       .fn()
       .mockResolvedValue({ success: true, name: 'new-model' });
     const openWorkspaceTab = jest.fn();
     seedStore({ createWorkspaceObject, openWorkspaceTab });
     renderLibrary();
-    fireEvent.click(screen.getByTestId('library-subsection-model-create'));
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-model'));
     await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('model'));
     await waitFor(() =>
       expect(openWorkspaceTab).toHaveBeenCalledWith({
@@ -443,7 +447,7 @@ describe('Library', () => {
     );
   });
 
-  test('the header "+ New" menu lists every creatable type and creates on pick', async () => {
+  test('the "+ New" menu is grouped like the sidebar, drops the "New " prefix, and creates on pick', async () => {
     const createWorkspaceObject = jest
       .fn()
       .mockResolvedValue({ success: true, name: 'new_metric' });
@@ -453,10 +457,16 @@ describe('Library', () => {
     const unsubscribe = setWorkspaceTelemetryListener(evt => events.push(evt));
     try {
       renderLibrary();
-      fireEvent.click(screen.getByTestId('library-new-object-button'));
-      const menu = screen.getByTestId('library-new-object-menu');
-      expect(menu).toBeInTheDocument();
-      expect(screen.queryByTestId('library-new-object-relation')).not.toBeInTheDocument();
+      openNewMenu();
+      expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+      // Grouped like the sidebar.
+      expect(screen.getByTestId('library-new-group-Layout Items')).toBeInTheDocument();
+      expect(screen.getByTestId('library-new-group-Data Layer')).toBeInTheDocument();
+      // Relation now appears (in the Data Layer group).
+      expect(screen.getByTestId('library-new-object-relation')).toBeInTheDocument();
+      // Items drop the redundant "New " prefix.
+      expect(screen.getByTestId('library-new-object-chart')).toHaveTextContent('Chart');
+      expect(screen.getByTestId('library-new-object-chart')).not.toHaveTextContent('New Chart');
 
       fireEvent.click(screen.getByTestId('library-new-object-metric'));
       expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
@@ -478,6 +488,21 @@ describe('Library', () => {
     }
   });
 
+  test('"+ New" → Relation opens the Semantic Layer (a relation can\'t be templated)', () => {
+    const createWorkspaceObject = jest.fn();
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab });
+    renderLibrary();
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-relation'));
+    expect(createWorkspaceObject).not.toHaveBeenCalled();
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'semantic-layer:semantic-layer',
+      type: 'semantic-layer',
+      name: 'semantic-layer',
+    });
+  });
+
   test('the header "+ New" menu dismisses on Escape', () => {
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-new-object-button'));
@@ -497,26 +522,121 @@ describe('Library', () => {
     );
   });
 
-  test('fires the inline_create_used telemetry event when "+ New X" is clicked', () => {
-    const events = [];
-    const unsubscribe = setWorkspaceTelemetryListener(evt => events.push(evt));
-    try {
-      renderLibrary();
-      fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
-      const created = events.filter(e => e.eventName === 'inline_create_used');
-      expect(created).toHaveLength(1);
-      expect(created[0].payload).toEqual({ source: 'library', kind: 'chart' });
-    } finally {
-      unsubscribe();
-    }
+  test('expanding the rail reveals the active object (expands its subsection)', () => {
+    // Simulate: nav minimized, an item selected, then re-expanded — the Library
+    // mounts with the active object's subsection collapsed and must reveal it.
+    seedStore({
+      workspaceActiveObject: { type: 'model', name: 'monthly_revenue' },
+      workspaceActiveTabId: 'model:monthly_revenue',
+      libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
+    });
+    renderLibrary();
+    expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
+    // The selected model row is now visible.
+    expect(screen.getByTestId('library-row-model-monthly_revenue')).toBeInTheDocument();
   });
 
-  test('the type-filter chip narrows a section to a single subsection', () => {
+  test('the surfaces row exposes Project / Explorer / Semantic Layer', () => {
     renderLibrary();
-    fireEvent.click(screen.getByTestId('library-filter-chip-layout-table'));
+    expect(screen.getByTestId('library-surface-project')).toBeInTheDocument();
+    expect(screen.getByTestId('library-surface-explorer')).toHaveTextContent('Explorer');
+    expect(screen.getByTestId('library-surface-semantic-layer')).toBeInTheDocument();
+  });
+
+  test('clicking Explorer navigates to the Explorer route', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-surface-explorer'));
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/explorer');
+  });
+
+  test('clicking Semantic reopens the semantic-layer tab and navigates to it', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-surface-semantic-layer'));
+    expect(useStore.getState().workspaceActiveTabId).toBe('semantic-layer:semantic-layer');
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/workspace/semantic-layer');
+  });
+
+  test('clicking Project reopens (resurrects) the project tab', () => {
+    // Even with no project tab open, the surface button brings it back.
+    act(() => useStore.setState({ workspaceTabs: [], workspaceActiveTabId: null }));
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-surface-project'));
+    expect(
+      useStore.getState().workspaceTabs.some(t => t.type === 'project')
+    ).toBe(true);
+    expect(useStore.getState().workspaceActiveObject?.type).toBe('project');
+  });
+
+  test('the filter dropdown selects a type ADDITIVELY and shows removable chips', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-type-table'));
+    // Just table so far; a chip appears.
     expect(screen.getByTestId('library-subsection-table')).toBeInTheDocument();
     expect(screen.queryByTestId('library-subsection-chart')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('library-subsection-markdown')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-filter-chip-type-table')).toBeInTheDocument();
+    // Add charts (menu stays open) → BOTH show (additive, not exclusive).
+    fireEvent.click(screen.getByTestId('library-filter-option-type-chart'));
+    expect(screen.getByTestId('library-subsection-table')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-source')).not.toBeInTheDocument();
+    // A chip's × removes just that filter.
+    fireEvent.click(screen.getByTestId('library-filter-chip-remove-type-table'));
+    expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+  });
+
+  test('a group filter narrows to that group and composes additively with a type', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-group-data'));
+    // Data-Layer subsections remain; Layout-Item subsections hide.
+    ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t =>
+      expect(screen.getByTestId(`library-subsection-${t}`)).toBeInTheDocument()
+    );
+    ['chart', 'table', 'markdown', 'input', 'dashboard'].forEach(t =>
+      expect(screen.queryByTestId(`library-subsection-${t}`)).not.toBeInTheDocument()
+    );
+    // Add a single layout TYPE → union of (all data types) + charts.
+    fireEvent.click(screen.getByTestId('library-filter-option-type-chart'));
+    expect(screen.getByTestId('library-subsection-source')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
+  });
+
+  test('Clear drops every active filter and restores the full list', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-group-data'));
+    expect(screen.queryByTestId('library-subsection-chart')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('library-filter-clear'));
+    // All subsections back; no chips remain.
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-source')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-filter-chip-group-data')).not.toBeInTheDocument();
+  });
+
+  test('renders Data-Layer subsections before Layout-Items subsections (data first)', () => {
+    renderLibrary();
+    const source = screen.getByTestId('library-subsection-source');
+    const chart = screen.getByTestId('library-subsection-chart');
+    // A data subsection appears earlier in the DOM than a layout one.
+    // eslint-disable-next-line no-bitwise
+    expect(source.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test('the single search filters row names across the whole flat list', async () => {
+    renderLibrary();
+    fireEvent.change(screen.getByTestId('library-search'), {
+      target: { value: 'waterfall' },
+    });
+    // Search is debounced (~250ms), so wait for the non-matching subsections to
+    // drop out; the matching chart subsection (waterfall) stays.
+    await waitFor(() =>
+      expect(screen.queryByTestId('library-subsection-source')).not.toBeInTheDocument()
+    );
+    expect(screen.getByTestId('library-row-chart-waterfall')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
   });
 
   test('highlights the row corresponding to the active workspace tab', () => {

@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { PiCaretDown, PiPlus } from 'react-icons/pi';
+import { PiCaretDown } from 'react-icons/pi';
 import LibraryRow from './LibraryRow';
 import { getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
@@ -16,9 +16,10 @@ import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsSto
  *   - The list of `<LibraryRow>` rows for this type.
  *   - An italic empty-state line ("No charts yet") when the subsection has
  *     no rows.
- *   - A "+ New X" button — only for droppable Layout types
- *     (chart / table / markdown / input). Data-layer types use a different
- *     create flow and so render no inline create button.
+ *
+ * Creation happens from the Library's single "+ New" menu (VIS thread: the
+ * per-subsection inline "+ New X" CTAs were redundant with that menu, so
+ * they were removed).
  *
  * Collapse state persists in the `libraryPrefsStore` Zustand slice. Per
  * VIS-828 subsections default to COLLAPSED — with no saved preference the
@@ -34,7 +35,6 @@ const LibrarySubsection = ({
   selectedRowId = null,
   onRowClick,
   onContextAction,
-  onCreate,
 }) => {
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
@@ -110,19 +110,6 @@ const LibrarySubsection = ({
                 </li>
               ))}
             </ul>
-          )}
-
-          {/* "+ New X" — every creatable type gets the inline create button
-              (drafts a minimal valid config; the right rail edits it). */}
-          {def.creatable && onCreate && (
-            <button
-              type="button"
-              onClick={() => onCreate && onCreate(typeKey)}
-              data-testid={`library-subsection-${typeKey}-create`}
-              className="mt-0.5 inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-primary hover:bg-primary-100/40"
-            >
-              <PiPlus className="h-3 w-3" /> New {def.label}
-            </button>
           )}
         </div>
       )}

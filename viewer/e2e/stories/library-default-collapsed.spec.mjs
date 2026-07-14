@@ -44,7 +44,7 @@ const clearLibraryPrefs = async page => {
 };
 
 test.describe('Library — subsections default to collapsed (VIS-828)', () => {
-  test('Step 1: subsections render collapsed by default; sections stay expanded', async ({
+  test('Step 1: subsections render collapsed by default in the flat list', async ({
     page,
   }) => {
     await clearLibraryPrefs(page);
@@ -53,15 +53,9 @@ test.describe('Library — subsections default to collapsed (VIS-828)', () => {
 
     await expect(page.getByTestId('workspace-left-rail')).toBeVisible({ timeout: 15000 });
 
-    // Both top sections stay expanded so their headers + toolbars are visible.
-    await expect(page.getByTestId('library-section-layout')).toHaveAttribute(
-      'data-collapsed',
-      'false'
-    );
-    await expect(page.getByTestId('library-section-data')).toHaveAttribute(
-      'data-collapsed',
-      'false'
-    );
+    // The shared search + filter dropdown are always visible above the list.
+    await expect(page.getByTestId('library-search')).toBeVisible();
+    await expect(page.getByTestId('library-filter-toggle')).toBeVisible();
 
     // Every per-type subsection renders collapsed: header + count visible,
     // body (item rows) hidden.
