@@ -17,6 +17,7 @@ const reset = () => {
       workspaceActiveTabId: null,
       workspacePendingCloseTabId: null,
       workspaceUrlNavigate: null,
+      workspaceUrlBase: '/workspace',
       workspaceLeftCollapsed: false,
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
@@ -57,6 +58,27 @@ describe('workspace store slice', () => {
       id = useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
     });
     expect(id).toBe('chart:revenue');
+  });
+
+  test('tab navigation carries the registered mount base (host prefix)', () => {
+    const nav = jest.fn();
+    act(() => {
+      // A host that mounts the viewer under a prefix registers its own base.
+      useStore.getState().registerWorkspaceUrlBase('/acme/main/proj/workspace');
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    expect(nav).toHaveBeenCalledWith('/acme/main/proj/workspace?edit=chart%3Arevenue');
+  });
+
+  test('registerWorkspaceUrlBase falls back to the root base when cleared', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().registerWorkspaceUrlBase(null);
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
   });
 
   test('activateWorkspaceTab is the URL→store write — it sets active without navigating', () => {
