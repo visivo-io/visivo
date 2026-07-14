@@ -43,7 +43,7 @@ import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
 import { unwrapConfig, withConfig } from '../components/views/workspace/unwrapRecordConfig';
-import { workspaceTabUrl } from '../components/views/workspace/workspaceUrl';
+import { workspaceTabUrl, WORKSPACE_BASE } from '../components/views/workspace/workspaceUrl';
 
 /**
  * Two `{ type, name }` selection descriptors identify the same object.
@@ -75,6 +75,14 @@ const createWorkspaceSlice = (set, get) => ({
   // fall back to activating in-store synchronously, so callers keep working.
   workspaceUrlNavigate: null,
   registerWorkspaceUrlNavigate: fn => set({ workspaceUrlNavigate: fn || null }),
+
+  // The mount prefix for the tab URLs above. Studio serves the viewer at the
+  // root (`/workspace`); a host that mounts it under a path prefix (the cloud
+  // app, at `/:account/:stage/:project/workspace`) registers its own base so
+  // tab navigation stays inside the mount instead of escaping to the root. The
+  // Workspace derives this from the URL on mount.
+  workspaceUrlBase: WORKSPACE_BASE,
+  registerWorkspaceUrlBase: base => set({ workspaceUrlBase: base || WORKSPACE_BASE }),
 
   // Dirty-close confirmation (VIS-812 / O-3): the tab id awaiting the user's
   // confirm/cancel in the close dialog, or null when no close is pending.
@@ -166,7 +174,7 @@ const createWorkspaceSlice = (set, get) => ({
       // Route the active selection THROUGH the URL: navigate to the tab's URL
       // and let `useWorkspaceUrlSync` set it active (single clean loop). The id
       // is returned synchronously so callers keep their contract.
-      nav(workspaceTabUrl({ type: tab.type, name: tab.name }));
+      nav(workspaceTabUrl({ type: tab.type, name: tab.name }, get().workspaceUrlBase));
       return id;
     }
     // No router mounted — activate in-store directly (synchronous fallback).
@@ -255,7 +263,7 @@ const createWorkspaceSlice = (set, get) => ({
     // Route the selection through the URL (Back button + single loop); the
     // no-router fallback focuses in-store directly.
     if (state.workspaceUrlNavigate) {
-      state.workspaceUrlNavigate(workspaceTabUrl(tab));
+      state.workspaceUrlNavigate(workspaceTabUrl(tab, state.workspaceUrlBase));
       return;
     }
     state.activateWorkspaceTab(tab);
@@ -303,7 +311,7 @@ const createWorkspaceSlice = (set, get) => ({
     // workspace (active null) — navigating to `/workspace` there would resurrect
     // the project tab, so we skip it.
     if (wasActive && newActive && state.workspaceUrlNavigate) {
-      state.workspaceUrlNavigate(workspaceTabUrl(newActive));
+      state.workspaceUrlNavigate(workspaceTabUrl(newActive, state.workspaceUrlBase));
     }
   },
 

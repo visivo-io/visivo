@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import useStore from '../../../stores/store';
 import WorkspaceShell from './WorkspaceShell';
 import { emitWorkspaceEvent, markBuildModeEntered } from './telemetry';
 import { useWorkspaceScope } from './useWorkspaceScope';
 import useProjectChangeListener from './useProjectChangeListener';
-import { workspaceTabFromUrl } from './workspaceUrl';
+import { workspaceTabFromUrl, WORKSPACE_BASE } from './workspaceUrl';
 
 /**
  * Workspace — route container for `/workspace` and
@@ -31,6 +31,7 @@ const Workspace = () => {
   // goes through `openWorkspaceTab`, which routes the selection through the URL.
   const activateWorkspaceTab = useStore(s => s.activateWorkspaceTab);
   const registerWorkspaceUrlNavigate = useStore(s => s.registerWorkspaceUrlNavigate);
+  const registerWorkspaceUrlBase = useStore(s => s.registerWorkspaceUrlBase);
   const workspaceActiveTabId = useStore(s => s.workspaceActiveTabId);
   const workspaceTabs = useStore(s => s.workspaceTabs);
   const restoreWorkspaceTabs = useStore(s => s.restoreWorkspaceTabs);
@@ -96,13 +97,29 @@ const Workspace = () => {
     fetchDashboards,
   ]);
 
-  // Register the router's `navigate` so the store's tab actions can route the
-  // active selection through the URL (the single clean loop). Unregister on
-  // unmount so a stale navigate can't fire once the Workspace is gone.
+  // The mount prefix for this Workspace. Studio serves it at the root
+  // (`/workspace`); a host that mounts the viewer under a path prefix (the
+  // cloud app, at `/:account/:stage/:project/workspace`) needs its tab URLs to
+  // carry that prefix, or `navigate` escapes to the root and the route 404s.
+  // Derive it from the path up to and including the `workspace` segment so the
+  // same component works at either mount.
+  const workspaceUrlBase = useMemo(() => {
+    const segments = location.pathname.split('/');
+    const workspaceIndex = segments.indexOf('workspace');
+    return workspaceIndex === -1
+      ? WORKSPACE_BASE
+      : segments.slice(0, workspaceIndex + 1).join('/');
+  }, [location.pathname]);
+
+  // Register the router's `navigate` (and the derived mount base) so the store's
+  // tab actions can route the active selection through the URL (the single clean
+  // loop). Unregister on unmount so a stale navigate can't fire once the
+  // Workspace is gone.
   useEffect(() => {
     registerWorkspaceUrlNavigate(navigate);
+    registerWorkspaceUrlBase(workspaceUrlBase);
     return () => registerWorkspaceUrlNavigate(null);
-  }, [navigate, registerWorkspaceUrlNavigate]);
+  }, [navigate, workspaceUrlBase, registerWorkspaceUrlNavigate, registerWorkspaceUrlBase]);
 
   // #6: persist the OPEN-TAB SET across refresh (the active tab is restored from
   // the URL). Keyed per project so projects don't share strips.
@@ -140,7 +157,7 @@ const Workspace = () => {
       syncedTargetRef.current = `project:${projectName}`;
     }
 
-    const target = workspaceTabFromUrl(location.pathname, searchParams) || {
+    const target = workspaceTabFromUrl(location.pathname, searchParams, workspaceUrlBase) || {
       type: 'project',
       name: projectName,
     };
@@ -176,6 +193,7 @@ const Workspace = () => {
     projectName,
     location.pathname,
     searchParams,
+    workspaceUrlBase,
     activateWorkspaceTab,
     setWorkspaceLens,
   ]);

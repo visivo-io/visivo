@@ -5,22 +5,33 @@
  * the URL (see `workspaceStore.openWorkspaceTab`), `useWorkspaceUrlSync` reads
  * the URL back into the store, and every surface reads the store.
  *
- * The project + object tabs live at `/workspace`, distinguished by
+ * The project + object tabs live at `<base>`, distinguished by
  * `?edit=<type>:<name>`; dashboard and semantic-layer keep their dedicated
  * routes (the dashboard path also drives scope detection). Adding a NEW
  * URL-addressable value is a param here + a case in `useWorkspaceUrlSync`.
+ *
+ * `base` is the mount prefix. Studio serves the viewer at the root, so it
+ * defaults to `/workspace`; a host that mounts the viewer under a path prefix
+ * (the cloud app, at `/:account/:stage/:project/workspace`) passes its own
+ * base so tab navigation stays inside the mount instead of escaping to the
+ * root. The Workspace derives that base from the URL and registers it on the
+ * store (see `registerWorkspaceUrlBase`).
  */
 
 export const WORKSPACE_BASE = '/workspace';
 
+// Escape a base path for embedding in a RegExp — a host mount prefix can carry
+// regex-special characters (e.g. a `.` or `+` in an account slug).
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /** The URL that represents `tab` as the active tab. `null`/project → the base. */
-export const workspaceTabUrl = tab => {
-  if (!tab || tab.type === 'project') return WORKSPACE_BASE;
+export const workspaceTabUrl = (tab, base = WORKSPACE_BASE) => {
+  if (!tab || tab.type === 'project') return base;
   if (tab.type === 'dashboard') {
-    return `${WORKSPACE_BASE}/dashboard/${encodeURIComponent(tab.name)}`;
+    return `${base}/dashboard/${encodeURIComponent(tab.name)}`;
   }
-  if (tab.type === 'semantic-layer') return `${WORKSPACE_BASE}/semantic-layer`;
-  return `${WORKSPACE_BASE}?edit=${encodeURIComponent(`${tab.type}:${tab.name}`)}`;
+  if (tab.type === 'semantic-layer') return `${base}/semantic-layer`;
+  return `${base}?edit=${encodeURIComponent(`${tab.type}:${tab.name}`)}`;
 };
 
 /**
@@ -28,12 +39,12 @@ export const workspaceTabUrl = tab => {
  * `workspaceTabUrl`: dashboard/semantic-layer come from the path; every other
  * object comes from `?edit=<type>:<name>`.
  */
-export const workspaceTabFromUrl = (pathname, searchParams) => {
-  const dashMatch = pathname.match(/^\/workspace\/dashboard\/([^/]+)\/?$/);
+export const workspaceTabFromUrl = (pathname, searchParams, base = WORKSPACE_BASE) => {
+  const dashMatch = pathname.match(new RegExp(`^${escapeRegExp(base)}/dashboard/([^/]+)/?$`));
   if (dashMatch) {
     return { type: 'dashboard', name: decodeURIComponent(dashMatch[1]) };
   }
-  if (pathname === `${WORKSPACE_BASE}/semantic-layer`) {
+  if (pathname === `${base}/semantic-layer`) {
     return { type: 'semantic-layer', name: 'semantic-layer' };
   }
   const edit = searchParams.get('edit');
