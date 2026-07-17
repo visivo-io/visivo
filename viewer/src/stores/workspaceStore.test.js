@@ -15,6 +15,8 @@ const reset = () => {
     useStore.setState({
       workspaceTabs: [],
       workspaceActiveTabId: null,
+      workspaceActiveObject: null,
+      workspaceActiveView: 'project',
       workspacePendingCloseTabId: null,
       workspaceUrlNavigate: null,
       workspaceUrlBase: '/workspace',
@@ -1012,6 +1014,135 @@ describe('workspace store slice', () => {
     expect(useStore.getState().updateRecordConfigOptimistic('bogus', 'x', {})).toBe(false);
     expect(useStore.getState().updateRecordConfigOptimistic('chart', 'missing', {})).toBe(false);
     expect(useStore.getState().updateRecordConfigOptimistic('chart', '', {})).toBe(false);
+  });
+});
+
+describe('workspace VIEWS — the three destinations (D1, Explore 2.0 Phase 0)', () => {
+  beforeEach(reset);
+
+  test('activateWorkspaceView sets the active view and PARKS any active document tab', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
+
+    act(() => {
+      useStore.getState().activateWorkspaceView('semantic-layer');
+    });
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('semantic-layer');
+    // Parked, not closed — the tab record survives.
+    expect(s.workspaceActiveTabId).toBeNull();
+    expect(s.workspaceActiveObject).toBeNull();
+    expect(s.workspaceTabs.some((t) => t.id === 'chart:revenue')).toBe(true);
+  });
+
+  test('activateWorkspaceView rejects an unknown view key', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceView('bogus');
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+  });
+
+  test('openWorkspaceView routes through the registered URL navigator; falls back to the direct write with none registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().openWorkspaceView('semantic-layer');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/semantic-layer');
+    // Routed through the URL — the URL→store sync (Workspace.jsx) would set it
+    // active; it is NOT activated in-store directly here.
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+
+    act(() => {
+      useStore.getState().registerWorkspaceUrlNavigate(null);
+      useStore.getState().openWorkspaceView('explorer');
+    });
+    // No router registered — falls back to the direct store write.
+    expect(useStore.getState().workspaceActiveView).toBe('explorer');
+  });
+
+  test('openWorkspaceTab / activateWorkspaceTab with a VIEW-typed payload delegate to the view actions (legacy call-site back-compat)', () => {
+    // ProjectEditor's "Semantic Layer" button still calls
+    // `openWorkspaceTab({ type: 'semantic-layer', ... })` — it must keep
+    // working as a view activation, not create a tab record.
+    act(() => {
+      useStore.getState().openWorkspaceTab({
+        id: 'semantic-layer:semantic-layer',
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+    });
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('semantic-layer');
+    expect(s.workspaceTabs).toHaveLength(0);
+  });
+
+  test('deep-link rule: activateWorkspaceTab sets workspaceActiveView to the document’s OWNING destination', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'metric', name: 'churn' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'dimension', name: 'segment' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'relation', name: 'orders_customers' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+  });
+
+  test('closeWorkspaceTab hands the view off to the newly-focused tab’s owning destination', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'metric', name: 'churn' });
+      useStore.getState().openWorkspaceTabBackground({ type: 'chart', name: 'revenue' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().closeWorkspaceTab('metric:churn');
+    });
+    // The remaining tab (chart, project-owned) takes over the center AND the view.
+    expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+  });
+
+  test('closeWorkspaceTab leaves the view exactly where it was when NO tab remains (01-ux-spec.md §1 / §4 "Park")', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'metric', name: 'churn' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().closeWorkspaceTab('metric:churn');
+    });
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    // NOT reset to 'project' — the destination stays Semantic Layer.
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+  });
+
+  test('restoreWorkspaceTabs scrubs any persisted project/semantic-layer/explorer records (one-time tab-set migration)', () => {
+    act(() => {
+      useStore.getState().restoreWorkspaceTabs([
+        { id: 'project:analytics', type: 'project', name: 'analytics' },
+        { id: 'semantic-layer:semantic-layer', type: 'semantic-layer', name: 'semantic-layer' },
+        { id: 'explorer:explorer', type: 'explorer', name: 'explorer' },
+        { id: 'chart:revenue', type: 'chart', name: 'revenue' },
+      ]);
+    });
+    const tabs = useStore.getState().workspaceTabs;
+    expect(tabs).toHaveLength(1);
+    expect(tabs[0].id).toBe('chart:revenue');
   });
 });
 
