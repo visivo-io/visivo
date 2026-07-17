@@ -1,15 +1,23 @@
 /**
  * Story: Tab power features — shortcuts, drag-reorder, overflow, dirty-close
- * (VIS-812 / Track O O-3).
+ * (VIS-812 / Track O O-3; keyboard scheme reconciled in Explore 2.0 Phase 0
+ * against the new view-switcher shortcuts, 01-ux-spec.md §6).
  *
- *   1. Cmd/Ctrl+T opens the project ("new") tab.
- *   2. Cmd/Ctrl+1..9 switches by strip position.
+ *   1. Cmd/Ctrl+T activates the Project destination ("new tab" affordance).
+ *   2. Cmd/Ctrl+1/2/3 switch to the three workspace VIEWS (Project / Semantic
+ *      Layer / Explorer) — reassigned from tab-position switching, which
+ *      shifts down to Cmd/Ctrl+4..9.
  *   3. Cmd/Ctrl+W closes the active (clean) tab.
  *   4. Shortcuts are suppressed while typing in an input.
  *   5. Drag-to-reorder with a REAL cursor (pointer-driven dnd-kit).
  *   6. >8 tabs → the strip overflows and scrolls horizontally.
  *   7. Closing a dirty tab raises the confirmation dialog (Keep editing /
  *      Close without saving).
+ *
+ * IMPORTANT (01-ux-spec.md §6): Cmd+1/2/3 were validated to be unclaimed by
+ * any OS-level chord (OS screenshot chords are Cmd+SHIFT+3/4/5) — this real
+ * Playwright keyboard press exercises the actual browser/OS interception,
+ * which a synthetic dispatch would not.
  *
  * Precondition: sandbox running (integration project), e.g.
  *   VISIVO_SANDBOX_NAME=trackO VISIVO_SANDBOX_BACKEND_PORT=8041 \
@@ -44,29 +52,54 @@ async function openLibraryObject(page, type, name) {
 }
 
 test.describe('Tab shortcuts + reorder + overflow + dirty-close (VIS-812)', () => {
-  test('Cmd+1..9 switches by position; Cmd+T focuses the project tab; Cmd+W closes', async ({
+  test('Cmd+1/2/3 switch views; Cmd+4/5 switch tab position; Cmd+T re-activates Project; Cmd+W closes', async ({
     page,
   }) => {
     await gotoWorkspace(page);
     await openLibraryObject(page, 'chart', 'simple-scatter-chart');
     await openLibraryObject(page, 'table', 'new_table');
-    // Strip: [project, chart, table] — table is active.
+    // Strip: [chart, table] — table is active (no project tab; views left the
+    // tab model, Phase 0).
 
-    const projectTab = page.locator('[data-testid^="workspace-tab-project:"]');
     const chartTab = page.getByTestId('workspace-tab-chart:simple-scatter-chart');
     const tableTab = page.getByTestId('workspace-tab-table:new_table');
     await expect(tableTab).toHaveAttribute('data-active', 'true');
 
-    // Cmd+2 → the chart (position 2).
-    await page.keyboard.press(`${MOD}+2`);
+    // Cmd+4 → tab position 1 (the chart).
+    await page.keyboard.press(`${MOD}+4`);
     await expect(chartTab).toHaveAttribute('data-active', 'true');
 
-    // Cmd+1 → the project tab.
-    await page.keyboard.press(`${MOD}+1`);
-    await expect(projectTab).toHaveAttribute('data-active', 'true');
+    // Cmd+5 → tab position 2 (the table).
+    await page.keyboard.press(`${MOD}+5`);
+    await expect(tableTab).toHaveAttribute('data-active', 'true');
 
-    // Cmd+3 → the table.
+    // Cmd+1 → the Project view — parks the table tab (stays open, unfocused).
+    await page.keyboard.press(`${MOD}+1`);
+    await expect(tableTab).toHaveAttribute('data-active', 'false');
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
+    await expect(page.getByTestId('workspace-view-switcher-project')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+
+    // Cmd+2 → the Semantic Layer view.
+    await page.keyboard.press(`${MOD}+2`);
+    await expect(page.getByTestId('workspace-middle-semantic-layer')).toBeVisible();
+    await expect(page.getByTestId('workspace-view-switcher-semantic-layer')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+
+    // Cmd+3 → the Explorer view.
     await page.keyboard.press(`${MOD}+3`);
+    await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible();
+    await expect(page.getByTestId('workspace-view-switcher-explorer')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+
+    // Cmd+5 refocuses the table tab (still open, per the park semantics).
+    await page.keyboard.press(`${MOD}+5`);
     await expect(tableTab).toHaveAttribute('data-active', 'true');
 
     // Cmd+W closes the active clean tab; focus falls back to the chart.
@@ -74,9 +107,11 @@ test.describe('Tab shortcuts + reorder + overflow + dirty-close (VIS-812)', () =
     await expect(page.getByTestId('workspace-tab-table:new_table')).toHaveCount(0);
     await expect(chartTab).toHaveAttribute('data-active', 'true');
 
-    // Cmd+T re-focuses the project ("new") tab.
+    // Cmd+T activates the Project destination ("new tab" affordance) — the
+    // chart tab parks, Project's Home takes the center.
     await page.keyboard.press(`${MOD}+t`);
-    await expect(projectTab).toHaveAttribute('data-active', 'true');
+    await expect(chartTab).toHaveAttribute('data-active', 'false');
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
   });
 
   test('shortcuts are suppressed while typing in an input', async ({ page }) => {
@@ -92,21 +127,26 @@ test.describe('Tab shortcuts + reorder + overflow + dirty-close (VIS-812)', () =
     await page.keyboard.press(`${MOD}+1`);
     await expect(chartTab).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('workspace-tab-chart:simple-scatter-chart')).toHaveCount(1);
+    // The view switcher didn't move either — the chord never reached it.
+    await expect(page.getByTestId('workspace-view-switcher-project')).toHaveAttribute(
+      'data-active',
+      'false'
+    );
   });
 
   test('drag-to-reorder tabs with a real cursor', async ({ page }) => {
     await gotoWorkspace(page);
     await openLibraryObject(page, 'chart', 'simple-scatter-chart');
     await openLibraryObject(page, 'table', 'new_table');
-    // Strip order: [project, chart, table].
+    // Strip order: [chart, table] (no project tab — it left the tab model, Phase 0).
 
     const source = page.getByTestId('workspace-tab-wrapper-table:new_table');
-    const target = page.locator('[data-testid^="workspace-tab-wrapper-project:"]');
+    const target = page.locator('[data-testid^="workspace-tab-wrapper-chart:"]');
     const src = await source.boundingBox();
     const tgt = await target.boundingBox();
     expect(src && tgt).toBeTruthy();
 
-    // Real pointer drag: down on the table tab, glide onto the project tab
+    // Real pointer drag: down on the table tab, glide onto the chart tab
     // (left edge so closest-center resolves to it), release.
     await page.mouse.move(src.x + src.width / 2, src.y + src.height / 2);
     await page.mouse.down();
@@ -134,7 +174,8 @@ test.describe('Tab shortcuts + reorder + overflow + dirty-close (VIS-812)', () =
       }
     });
     const strip = page.getByTestId('workspace-tab-strip');
-    await expect(strip.locator('[role="tab"]')).toHaveCount(11, { timeout: 10000 });
+    // 1 chart + 9 overflow models (no project tab — it left the tab model, Phase 0).
+    await expect(strip.locator('[role="tab"]')).toHaveCount(10, { timeout: 10000 });
 
     const scroller = strip.locator('> div').first();
     const overflows = await scroller.evaluate(el => el.scrollWidth > el.clientWidth);
