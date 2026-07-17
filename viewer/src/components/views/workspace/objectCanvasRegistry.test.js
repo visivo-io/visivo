@@ -1,8 +1,13 @@
 /**
- * objectCanvasRegistry (VIS-1001) — descriptor shape + the previewRegistry shim,
- * plus a lazy-load smoke test: every registered canvas body must resolve its
- * code-split chunk and render (a broken import path would otherwise only fail
- * the first time a user opens that canvas).
+ * objectCanvasRegistry (VIS-1001) — descriptor shape, plus a lazy-load smoke
+ * test: every registered canvas body must resolve its code-split chunk and
+ * render (a broken import path would otherwise only fail the first time a
+ * user opens that canvas).
+ *
+ * B8 (Explore 2.0 Phase 0): `previewRegistry.js`, the one-release
+ * backward-compat shim over this registry, is deleted — it had no production
+ * consumers left (only its own shim-regression test, below, which now asserts
+ * directly against this registry instead).
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
@@ -11,7 +16,6 @@ import {
   getCanvasDescriptor,
   hasCanvas,
 } from './objectCanvasRegistry';
-import { getPreviewComponent, hasPreview } from './previewRegistry';
 
 // Stub every heavy canvas body so React.lazy resolves instantly without pulling
 // Monaco / React-Flow / DuckDB-WASM / Plotly into this suite. Each stub renders
@@ -135,9 +139,11 @@ describe('objectCanvasRegistry', () => {
     ['dimension', 'metric'].forEach(type => {
       const d = OBJECT_CANVAS_REGISTRY[type];
       expect(d).toBeTruthy();
-      // serve-gated on sourcesMetadata (they evaluate against a source/model).
+      // serve-gated on the cached-schema feed (B11 — NOT the dead
+      // `sourcesMetadata` live-introspect feed, which returns zero databases
+      // for file sources like DuckDB).
       expect(d.availability).toBe('serve');
-      expect(d.availabilityKey).toBe('sourcesMetadata');
+      expect(d.availabilityKey).toBe('sourceSchemaJobsList');
       expect(d.defaultLens).toBe('preview');
       // A single read-only Field Lens body (the "first lens" test asserts the
       // preview/Canvas/readonly shape).
@@ -175,14 +181,6 @@ describe('objectCanvasRegistry', () => {
     expect(d.availabilityKey).toBe('sourceSchemaJobsList');
     expect(d.defaultLens).toBe('preview');
     expect(d.Component).toBeTruthy();
-  });
-
-  test('previewRegistry shim still resolves component + hasPreview', () => {
-    // The shim returns the (lazy) Component for back-compat callers.
-    expect(getPreviewComponent('chart')).toBe(OBJECT_CANVAS_REGISTRY.chart.Component);
-    expect(getPreviewComponent('mystery')).toBeNull();
-    expect(hasPreview('table')).toBe(true);
-    expect(hasPreview('mystery')).toBe(false);
   });
 
   test('every lazy canvas body (default + editable lens) resolves and renders', async () => {
