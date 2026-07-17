@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timezone
 
 import factory
 from visivo.models.alert import Alert
@@ -30,6 +31,14 @@ from visivo.models.inputs.types.single_select import SingleSelectInput
 from visivo.models.inputs.types.multi_select import MultiSelectInput
 from visivo.models.inputs.types.display import RangeConfig
 from visivo.models.base.query_string import QueryString
+from visivo.models.exploration import (
+    Exploration,
+    ExplorationDraft,
+    ExplorationQueryDraft,
+    PromotionRecord,
+    ReturnToRef,
+    SeedRef,
+)
 
 
 class SingleSelectInputFactory(factory.Factory):
@@ -393,3 +402,61 @@ class ProjectFactory(factory.Factory):
                 [factory.SubFactory(DashboardFactory, table_item=True) for _ in range(1)]
             ),
         )
+
+
+class ExplorationQueryDraftFactory(factory.Factory):
+    class Meta:
+        model = ExplorationQueryDraft
+
+    name = "orders_q"
+    sql = "SELECT * FROM orders"
+    source = "warehouse"
+
+
+class ExplorationDraftFactory(factory.Factory):
+    class Meta:
+        model = ExplorationDraft
+
+    queries = factory.List([factory.SubFactory(ExplorationQueryDraftFactory)])
+    insights = factory.List([])
+    chart = None
+    computed_columns = factory.List([])
+
+
+class SeedRefFactory(factory.Factory):
+    class Meta:
+        model = SeedRef
+
+    type = "model"
+    name = "orders"
+
+
+class ReturnToRefFactory(factory.Factory):
+    class Meta:
+        model = ReturnToRef
+
+    dashboard = "kpis"
+    slot = "r2-i1"
+
+
+class PromotionRecordFactory(factory.Factory):
+    class Meta:
+        model = PromotionRecord
+
+    type = "metric"
+    name = "churn_rate"
+    promoted_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+
+
+class ExplorationFactory(factory.Factory):
+    class Meta:
+        model = Exploration
+
+    id = factory.Sequence(lambda n: f"exp_test{n:04x}")
+    name = "Scratch"
+    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    seeded_from = None
+    return_to = None
+    draft = factory.SubFactory(ExplorationDraftFactory)
+    promoted = factory.List([])
