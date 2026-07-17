@@ -5,15 +5,17 @@ import WorkspaceShell from './WorkspaceShell';
 import { emitWorkspaceEvent, markBuildModeEntered } from './telemetry';
 import { useWorkspaceScope } from './useWorkspaceScope';
 import useProjectChangeListener from './useProjectChangeListener';
-import { workspaceTabFromUrl, WORKSPACE_BASE } from './workspaceUrl';
+import { workspaceTargetFromUrl, WORKSPACE_BASE } from './workspaceUrl';
+import { isWorkspaceView, DEFAULT_WORKSPACE_VIEW } from './higherLevelViews';
 
 /**
  * Workspace — route container for `/workspace` and
  * `/workspace/dashboard/:dashboardName` (VIS-775 / Track B B2).
  *
  * Owns only ROUTE-DRIVEN side effects:
- *   1. Hydrate the project tab on mount (and a dashboard tab when the URL
- *      is scoped) so opening `/workspace` always shows a project tab.
+ *   1. Sync the URL to the active surface — a destination's Home (Project /
+ *      Semantic Layer / Explorer, `higherLevelViews.js`) or a document tab —
+ *      and restore the persisted tab set + active view on mount.
  *   2. Check publish status so the Publish · N button has an accurate count.
  *   3. Fire the `workspace_mode_entered` telemetry event on mount and on
  *      scope changes.
@@ -121,64 +123,75 @@ const Workspace = () => {
     return () => registerWorkspaceUrlNavigate(null);
   }, [navigate, workspaceUrlBase, registerWorkspaceUrlNavigate, registerWorkspaceUrlBase]);
 
-  // #6: persist the OPEN-TAB SET across refresh (the active tab is restored from
-  // the URL). Keyed per project so projects don't share strips.
+  // #6: persist the OPEN-TAB SET (+ the active VIEW, Explore 2.0 Phase 0)
+  // across refresh — the active TAB is still restored from the URL. Keyed
+  // per project so projects don't share strips.
   const tabsStorageKey = project ? `visivo.workspace.tabs.${projectName}` : null;
   const tabsRestored = useRef(false);
-  // Restore once, BEFORE the URL→store sync below, so the URL's tab joins the
-  // restored strip instead of replacing it.
+  const activateWorkspaceView = useStore(s => s.activateWorkspaceView);
+  const workspaceActiveView = useStore(s => s.workspaceActiveView);
+  // Restore once, BEFORE the URL→store sync below, so the URL's target joins
+  // the restored strip instead of replacing it.
   useEffect(() => {
     if (!project || tabsRestored.current || !tabsStorageKey) return;
     tabsRestored.current = true;
     try {
       const saved = JSON.parse(localStorage.getItem(tabsStorageKey) || 'null');
-      if (Array.isArray(saved) && saved.length) restoreWorkspaceTabs(saved);
+      // Back-compat: a pre-Phase-0 session persisted a bare tab array; the
+      // current shape wraps it alongside the active view.
+      const savedTabs = Array.isArray(saved) ? saved : Array.isArray(saved?.tabs) ? saved.tabs : null;
+      if (savedTabs && savedTabs.length) restoreWorkspaceTabs(savedTabs);
+      const savedView = Array.isArray(saved) ? null : saved?.activeView;
+      if (savedView && isWorkspaceView(savedView)) {
+        activateWorkspaceView(savedView);
+      }
     } catch {
       /* ignore malformed / unavailable storage */
     }
-  }, [project, tabsStorageKey, restoreWorkspaceTabs]);
+  }, [project, tabsStorageKey, restoreWorkspaceTabs, activateWorkspaceView]);
 
-  const projectTabHydrated = useRef(false);
   const syncedTargetRef = useRef(null);
   const hydratedViewParamRef = useRef(null);
-  // URL → store: the URL is the source of the ACTIVE tab, so this reads it into
-  // the store via `activateWorkspaceTab` (never navigates). The store's
-  // `openWorkspaceTab`/`switchWorkspaceTab` WRITE the URL; this closes the loop.
-  // Keyed on the URL's target id (via `syncedTargetRef`), so a project refetch
-  // (same URL) never re-focuses or resurrects a closed tab.
+  const initialUrlSyncRef = useRef(true);
+  // URL → store: the URL is the source of the ACTIVE surface (a view's home OR
+  // a document tab), so this reads it into the store via `activateWorkspaceTab`
+  // / `activateWorkspaceView` (never navigates). The store's
+  // `openWorkspaceTab`/`openWorkspaceView`/`switchWorkspaceTab` WRITE the URL;
+  // this closes the loop. Keyed on the URL's target (via `syncedTargetRef`), so
+  // a project refetch (same URL) never re-focuses or resurrects a closed tab.
   useEffect(() => {
     if (!project) return;
-    // The project tab is the always-present home; create it once (with its real
-    // name after `project` resolves). After that it's user-managed — closing it
-    // sticks.
-    if (!projectTabHydrated.current) {
-      projectTabHydrated.current = true;
-      activateWorkspaceTab({ id: `project:${projectName}`, type: 'project', name: projectName });
-      syncedTargetRef.current = `project:${projectName}`;
-    }
-
-    const target = workspaceTabFromUrl(location.pathname, searchParams, workspaceUrlBase) || {
-      type: 'project',
-      name: projectName,
-    };
-    const targetId = `${target.type}:${target.name}`;
-    if (targetId !== syncedTargetRef.current) {
-      if (target.type === 'project') {
-        // Focus the project tab — but never resurrect one the user closed.
-        const projectTab = useStore.getState().workspaceTabs.find(t => t.type === 'project');
-        if (projectTab) activateWorkspaceTab(projectTab);
-      } else {
-        activateWorkspaceTab(target);
+    const target = workspaceTargetFromUrl(location.pathname, searchParams, workspaceUrlBase);
+    const targetKey =
+      target.kind === 'tab' ? `tab:${target.tab.type}:${target.tab.name}` : `view:${target.view}`;
+    if (targetKey !== syncedTargetRef.current) {
+      if (target.kind === 'tab') {
+        activateWorkspaceTab(target.tab);
         // `?edit=dashboard:<name>&lens=lineage` → the GLOBAL dashboard lens;
         // per-object types consume `?lens=lineage` locally in ObjectCanvasFrame,
         // so setting the global lens for them would make every dashboard opened
         // later land on lineage.
-        if (target.type === 'dashboard' && searchParams.get('lens') === 'lineage') {
+        if (target.tab.type === 'dashboard' && searchParams.get('lens') === 'lineage') {
           setWorkspaceLens('lineage');
         }
+      } else {
+        // The bare `/workspace` root is BOTH the project view's real home AND
+        // the "no specific target" fallback — `workspaceTargetFromUrl` can't
+        // tell them apart (see workspaceUrl.js). On the FIRST sync only (page
+        // load / reload), prefer whatever the localStorage restore above
+        // already put in the store, so a reload while parked on Semantic
+        // Layer/Explorer doesn't always bounce back to Project. Any LATER
+        // bare-root navigation (e.g. clicking "Project" in the switcher, which
+        // navigates here) legitimately means Project and is honored.
+        const isBareRootDefault =
+          target.view === DEFAULT_WORKSPACE_VIEW && location.pathname === workspaceUrlBase;
+        if (!(isBareRootDefault && initialUrlSyncRef.current)) {
+          activateWorkspaceView(target.view);
+        }
       }
-      syncedTargetRef.current = targetId;
+      syncedTargetRef.current = targetKey;
     }
+    initialUrlSyncRef.current = false;
 
     // `/lineage` redirects to `/workspace?view=lineage` (LocalRouter): the
     // global dashboard-pane lineage lens — the same full-project DAG the old
@@ -190,41 +203,44 @@ const Workspace = () => {
     hydratedViewParamRef.current = viewParam || null;
   }, [
     project,
-    projectName,
     location.pathname,
     searchParams,
     workspaceUrlBase,
     activateWorkspaceTab,
+    activateWorkspaceView,
     setWorkspaceLens,
   ]);
 
-  // #6: persist the open-tab set on every change — but only AFTER the initial
-  // restore, so we never clobber the saved strip with the empty starting one.
+  // #6: persist the open-tab set (+ active view) on every change — but only
+  // AFTER the initial restore, so we never clobber the saved strip with the
+  // empty starting one.
   useEffect(() => {
     if (!tabsStorageKey || !tabsRestored.current) return;
     try {
       localStorage.setItem(
         tabsStorageKey,
-        JSON.stringify(workspaceTabs.map(t => ({ id: t.id, type: t.type, name: t.name })))
+        JSON.stringify({
+          tabs: workspaceTabs.map(t => ({ id: t.id, type: t.type, name: t.name })),
+          activeView: workspaceActiveView,
+        })
       );
     } catch {
       /* ignore unavailable storage */
     }
-  }, [workspaceTabs, tabsStorageKey]);
+  }, [workspaceTabs, workspaceActiveView, tabsStorageKey]);
 
   // Push the selected tab into the document title so the browser tab is
   // informative (VIS thread: "the open tab in the browser will be more
-  // informative"). Project tab → just the project; every other tab →
-  // "<tab> · <project>".
+  // informative"). No active document tab (a destination/view owns the
+  // center) → just the project; every open tab → "<tab> · <project>".
   useEffect(() => {
     const base = projectName || 'Visivo';
     const activeTab = workspaceTabs.find(t => t.id === workspaceActiveTabId);
-    if (!activeTab || activeTab.type === 'project') {
+    if (!activeTab) {
       document.title = base;
       return;
     }
-    const label = activeTab.type === 'semantic-layer' ? 'Semantic Layer' : activeTab.name;
-    document.title = `${label} · ${base}`;
+    document.title = `${activeTab.name} · ${base}`;
   }, [workspaceActiveTabId, workspaceTabs, projectName]);
 
   // Check publish status so the Publish · N button has accurate count.
