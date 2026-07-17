@@ -1,11 +1,12 @@
 /**
- * Workspace shell mount tests (VIS-775 / Track B B2).
+ * Workspace shell mount tests (VIS-775 / Track B B2; reworked in Explore 2.0
+ * Phase 0 for the destination/view model).
  *
  * Verifies the smart Workspace container renders the shell at both
- * /workspace (unscoped) and /workspace/dashboard/:dashboardName (scoped),
- * hydrates the project tab, opens a dashboard tab when scoped, fires the
- * workspace_mode_entered telemetry event on mount, and dispatches the
- * middle pane based on the active object type.
+ * /workspace (unscoped, the Project destination's Home) and
+ * /workspace/dashboard/:dashboardName (scoped), opens a dashboard tab when
+ * scoped, fires the workspace_mode_entered telemetry event on mount, and
+ * dispatches the middle pane based on the active object type / active view.
  */
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
@@ -56,6 +57,17 @@ jest.mock('./SchemaLeafForm', () => ({
 // on mount; stub them so the shell-mount fetch assertions stay route-level.
 jest.mock('../common/LevelEditForm', () => stubLeafForm('level-edit-form-stub'));
 jest.mock('../common/DefaultsEditForm', () => stubLeafForm('defaults-edit-form-stub'));
+// The Semantic Layer / relation canvas bodies (VIS-1006/1014) are React-Flow
+// ERDs with their own data-fetch story — stub them so the destination/view
+// tests (Explore 2.0 Phase 0) stay focused on shell routing, not ERD internals.
+jest.mock('./relations/SemanticLayerCanvas', () => ({
+  __esModule: true,
+  default: () => <div data-testid="semantic-layer-canvas-stub" />,
+}));
+jest.mock('./relations/RelationErdCanvas', () => ({
+  __esModule: true,
+  default: () => <div data-testid="relation-erd-canvas-stub" />,
+}));
 
 const resetWorkspaceStore = () => {
   // The open-tab set persists to localStorage (#6); clear it so tabs never bleed
@@ -71,6 +83,9 @@ const resetWorkspaceStore = () => {
       // on-mount data fetch would otherwise leak into the next test's
       // "fetches every collection once" assertion.
       workspaceActiveObject: null,
+      // Views left the tab model (Phase 0) — reset the active destination too
+      // so a test that switched views doesn't leak into the next one.
+      workspaceActiveView: 'project',
       workspaceLeftCollapsed: false,
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
@@ -132,6 +147,10 @@ const renderAt = (entry) => {
           path="/workspace/dashboard/:dashboardName"
           element={<Workspace />}
         />
+        {/* The two other destinations' reserved path segments (Explore 2.0
+            Phase 0, workspaceUrl.js) — the view switcher navigates here. */}
+        <Route path="/workspace/semantic-layer" element={<Workspace />} />
+        <Route path="/workspace/exploration" element={<Workspace />} />
       </>
     ),
     { initialEntries: [entry], future: futureFlags }
@@ -144,20 +163,22 @@ describe('VIS-775 Workspace shell', () => {
     resetWorkspaceStore();
   });
 
-  test('mounts the shell at /workspace (unscoped) with the project tab as default', () => {
+  test('mounts the shell at /workspace (unscoped) on the Project destination by default', () => {
     renderAt('/workspace');
     expect(screen.getByTestId('workspace-shell')).toBeInTheDocument();
     // The Workspace no longer renders its own dark top bar — commit / deploy
     // and the project name live in Home's shared <TopNav>.
     expect(screen.queryByTestId('workspace-top-bar')).not.toBeInTheDocument();
-    // Project tab is hydrated on mount.
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toHaveAttribute('data-active', 'true');
-    // Middle pane mounts the Project Editor surface (M-1, VIS-805).
+    // No document tab is hydrated — Project left the tab model (Phase 0).
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    // The view switcher shows Project active.
+    expect(screen.getByTestId('workspace-view-switcher-project')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+    // Middle pane mounts the Project Editor surface (M-1, VIS-805) via the
+    // Project destination's HomePane.
     expect(screen.getByTestId('workspace-middle-project')).toBeInTheDocument();
     expect(screen.getByTestId('project-editor')).toBeInTheDocument();
   });
@@ -165,13 +186,12 @@ describe('VIS-775 Workspace shell', () => {
   test('mounts the shell at /workspace/dashboard/<name> and focuses the dashboard tab', () => {
     renderAt('/workspace/dashboard/simple-dashboard');
     expect(screen.getByTestId('workspace-shell')).toBeInTheDocument();
-    // Both tabs exist — project (hydrated) + dashboard (URL-scoped).
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toBeInTheDocument();
+    // The dashboard tab opens from the URL — no project tab (views left the
+    // tab model, Phase 0).
     expect(
       screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
     ).toBeInTheDocument();
+    expect(useStore.getState().workspaceTabs).toHaveLength(1);
     // Dashboard tab is the active one (URL drives focus).
     expect(
       screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
@@ -301,39 +321,37 @@ describe('VIS-775 Workspace shell', () => {
     expect(fetchers.fetchDimensions.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 
-  test('project tab does not auto-reopen after the user closes it (regression: re-opens on nav)', () => {
-    renderAt('/workspace');
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toBeInTheDocument();
-    // User closes the project tab.
-    act(() => {
-      useStore.getState().closeWorkspaceTab('project:analytics-platform');
+  test('closing the only open document tab returns to ITS owning destination, not always Project (01-ux-spec.md §1 / §4 "Park")', async () => {
+    // Deep-link a relation — its owning destination is Semantic Layer, not
+    // Project (higherLevelViews.js `viewForDocumentType`).
+    renderAt('/workspace?edit=relation:orders_to_customers');
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+    // Let the relation canvas's lazy chunk (mocked, but still React.lazy)
+    // resolve inside act() before proceeding.
+    expect(await screen.findByTestId('relation-erd-canvas-stub')).toBeInTheDocument();
+
+    await act(async () => {
+      useStore.getState().closeWorkspaceTab('relation:orders_to_customers');
     });
-    expect(
-      screen.queryByTestId('workspace-tab-project:analytics-platform')
-    ).not.toBeInTheDocument();
-    // The hydration ref means subsequent renders don't re-open it. (Full
-    // route navigation is exercised by react-router under the hood; we just
-    // assert the closed state survives a re-rendered cycle by re-running
-    // the active actions.)
+    // No tabs remain, but the view stays where the closed tab left it — the
+    // Semantic Layer Home renders, not the Project Home.
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+    expect(await screen.findByTestId('workspace-middle-semantic-layer')).toBeInTheDocument();
+
+    // An unrelated store update doesn't resurrect anything or change the view.
     act(() => {
-      useStore.setState({ workspaceLens: 'lineage' }); // any unrelated dep flip
+      useStore.setState({ workspaceLens: 'lineage' });
     });
-    expect(
-      screen.queryByTestId('workspace-tab-project:analytics-platform')
-    ).not.toBeInTheDocument();
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
   });
 
   test('?edit=<type>:<name> deep link opens a real tab for the subject and focuses it', () => {
     // The flip card's "Expand / Open full lineage" gesture routes here. Without
     // opening a tab the Workspace would land on the unscoped Project Editor
-    // (only the project tab visible); the deep link must open + focus a tab.
+    // Home; the deep link must open + focus a tab.
     renderAt('/workspace?edit=chart:revenue_chart&lens=lineage');
-    // Project tab is still hydrated, AND a chart tab opened from the deep link.
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toBeInTheDocument();
     const chartTab = screen.getByTestId('workspace-tab-chart:revenue_chart');
     expect(chartTab).toBeInTheDocument();
     // The deep-linked tab becomes active.
@@ -341,6 +359,17 @@ describe('VIS-775 Workspace shell', () => {
     // The middle pane dispatches to the chart's PerObjectPane on the lineage lens.
     expect(screen.getByTestId('workspace-middle-chart')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
+    // Deep-link rule (01-ux-spec.md §1): chart's owning destination is Project.
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+  });
+
+  test('?edit=<type>:<name> deep link sets the active view to the OWNING DESTINATION, not always Project', () => {
+    // relation/metric/dimension are owned by Semantic Layer (viewForDocumentType).
+    renderAt('/workspace?edit=relation:orders_to_customers');
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+    expect(
+      screen.getByTestId('workspace-tab-relation:orders_to_customers')
+    ).toHaveAttribute('data-active', 'true');
   });
 
   test('?edit=dashboard:<name>&lens=lineage sets the GLOBAL dashboard lens to lineage', () => {
@@ -370,24 +399,24 @@ describe('VIS-775 Workspace shell', () => {
       screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
     ).toHaveAttribute('data-active', 'true');
 
-    // User switches to the project tab (tab switches don't navigate).
+    // User activates the Project view (tab switches / view switches don't
+    // navigate the URL sync effect into re-asserting the route dashboard).
     act(() => {
-      useStore.getState().switchWorkspaceTab('project:analytics-platform');
+      useStore.getState().openWorkspaceView('project');
     });
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toHaveAttribute('data-active', 'true');
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    expect(useStore.getState().workspaceActiveView).toBe('project');
 
     // A backend recompile refetches the project (fresh object identity). The
-    // hydration effect re-runs, but must NOT re-assert the URL dashboard tab.
+    // URL-sync effect re-runs, but must NOT re-assert the URL dashboard tab
+    // (the pathname/search haven't changed, so the synced-target guard holds).
     act(() => {
       useStore.setState({
         project: { id: 'p1', project_json: { name: 'analytics-platform' } },
       });
     });
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toHaveAttribute('data-active', 'true');
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    expect(useStore.getState().workspaceActiveView).toBe('project');
 
     // Closing the dashboard tab must also stick across a refetch.
     act(() => {
@@ -428,14 +457,13 @@ describe('VIS-775 Workspace shell', () => {
       expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue_chart')
     );
 
-    // Switching back to the project tab clears the edit param.
+    // Activating the Project view (openWorkspaceView WRITES the URL too)
+    // clears the edit param and parks the chart tab.
     act(() => {
-      useStore.getState().switchWorkspaceTab('project:analytics-platform');
+      useStore.getState().openWorkspaceView('project');
     });
     await waitFor(() => expect(router.state.location.pathname).toBe('/workspace'));
-    await waitFor(() =>
-      expect(useStore.getState().workspaceActiveTabId).toBe('project:analytics-platform')
-    );
+    await waitFor(() => expect(useStore.getState().workspaceActiveTabId).toBeNull());
     expect(editParam()).toBeNull();
 
     // The browser Back button returns to the chart tab.
@@ -466,11 +494,41 @@ describe('VIS-775 Workspace shell', () => {
     });
     renderAt('/workspace');
 
-    // The chart tab is restored from storage alongside the project tab.
+    // The chart tab is restored from storage.
     expect(await screen.findByTestId('workspace-tab-chart:revenue_chart')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('workspace-tab-project:analytics-platform')
-    ).toBeInTheDocument();
+  });
+
+  test('persists the active VIEW alongside the tab set and restores it on a bare-root reload', async () => {
+    // Switch to the Semantic Layer view (navigates to /workspace/semantic-layer,
+    // parking any tabs) — first "page load".
+    const { unmount } = renderAt('/workspace');
+    act(() => {
+      useStore.getState().openWorkspaceView('semantic-layer');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('workspace-view-switcher-semantic-layer')).toHaveAttribute(
+        'data-active',
+        'true'
+      )
+    );
+    unmount();
+
+    // Simulate a refresh AT THE BARE ROOT (not /workspace/semantic-layer) —
+    // this is the ambiguous case workspaceUrl.js's `workspaceTargetFromUrl`
+    // can't itself resolve (bare `/workspace` is both "explicit project" and
+    // "no specific target"); the persisted view must win on this first sync.
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        workspaceActiveView: 'project',
+        workspaceUrlNavigate: null,
+      });
+    });
+    renderAt('/workspace');
+
+    await waitFor(() => expect(useStore.getState().workspaceActiveView).toBe('semantic-layer'));
+    expect(screen.getByTestId('workspace-middle-semantic-layer')).toBeInTheDocument();
   });
 
   test('reflects the active tab in the document title', async () => {
@@ -484,9 +542,10 @@ describe('VIS-775 Workspace shell', () => {
       expect(document.title).toBe('revenue_chart · analytics-platform')
     );
 
-    // Back on the project tab, the title is just the project.
+    // Back on the Project view (no active document tab), the title is just
+    // the project.
     act(() => {
-      useStore.getState().switchWorkspaceTab('project:analytics-platform');
+      useStore.getState().openWorkspaceView('project');
     });
     await waitFor(() => expect(document.title).toBe('analytics-platform'));
   });
