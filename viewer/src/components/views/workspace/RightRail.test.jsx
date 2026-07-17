@@ -272,3 +272,48 @@ describe('RightRail tab set per object type (Outline only for dashboards, Data f
     expect(screen.queryByTestId('workspace-right-rail-outline')).not.toBeInTheDocument();
   });
 });
+
+describe('RightRail offers NO Edit tab for an active DESTINATION (B2 fix, Explore 2.0 Phase 0)', () => {
+  // A destination (Project/Semantic Layer/Explorer) owns the center via
+  // `workspaceActiveView` with NO active document tab — `selectedItem` is
+  // null, so `getTabs(null)` must return no tabs at all (not even Edit),
+  // rather than the pre-Phase-0 "No editor for this object yet / coming soon"
+  // dead-end that a same-shaped bug (semantic-layer falling to the Edit
+  // fallback) used to produce.
+  const resetForDestination = (activeView) => {
+    act(() => {
+      useStore.setState({
+        workspaceRightCollapsed: false,
+        workspaceRightTab: 'edit',
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        workspaceActiveObject: null,
+        workspaceActiveView: activeView,
+        workspaceOutlineSelectedKey: 'dashboard',
+        dashboards: [],
+        saveDashboard: jest.fn(),
+      });
+    });
+  };
+
+  const renderAtRoot = () => {
+    const router = createMemoryRouter(
+      createRoutesFromElements(<Route path="/workspace" element={<RightRail />} />),
+      { initialEntries: ['/workspace'], future: futureFlags }
+    );
+    return render(<RouterProvider router={router} future={futureFlags} />);
+  };
+
+  test.each(['project', 'semantic-layer', 'explorer'])(
+    'renders NO tabs at all while the %s destination owns the center',
+    (view) => {
+      resetForDestination(view);
+      renderAtRoot();
+      expect(screen.queryByTestId('workspace-right-rail-tab-edit')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
+      // No "coming soon" dead-end — the empty state names the real gesture.
+      expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+      expect(screen.getByTestId('right-rail-edit-empty')).toBeInTheDocument();
+    }
+  );
+});

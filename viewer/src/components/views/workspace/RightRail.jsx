@@ -25,9 +25,14 @@ import { emitWorkspaceEvent } from './telemetry';
 //   - dashboard → "Outline" (the compact tree of the scoped dashboard).
 //   - source    → "Data" (the db → schema → table → column tree).
 //   - every other object type → no Outline/Data tab at all, just "Edit".
+//   - no selection at all (a DESTINATION owns the center — Project/Semantic
+//     Layer/Explorer, Explore 2.0 Phase 0) → NO tabs. B2 fix: destinations
+//     never had a real Edit surface, so the rail no longer offers one to
+//     dead-end into ("No editor for this object yet / coming soon").
 const EDIT_TAB = { key: 'edit', label: 'Edit', icon: PiPencil };
 
 const getTabs = type => {
+  if (!type) return [];
   if (type === 'dashboard') {
     return [{ key: 'outline', label: 'Outline', icon: PiList }, EDIT_TAB];
   }

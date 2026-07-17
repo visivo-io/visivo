@@ -8,16 +8,17 @@ import {
   useDroppable,
   closestCenter,
 } from '@dnd-kit/core';
-import { PiX, PiPlus, PiCube } from 'react-icons/pi';
+import { PiX, PiPlus } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { getTypeIcon } from '../common/objectTypeConfigs';
 import TabCloseConfirmDialog from './TabCloseConfirmDialog';
 
-// Tab icons come from the canonical `objectTypeConfigs.js` for the 13 data-
-// object types. `project` is workspace-chrome — not a data object — so it
-// keeps its Phosphor glyph here as a one-line special case.
-const PROJECT_TAB_ICON = PiCube;
-const getTabIcon = type => (type === 'project' ? PROJECT_TAB_ICON : getTypeIcon(type));
+// Tab icons resolve entirely through `objectTypeConfigs.js` — the TabStrip
+// only ever hosts DOCUMENT tabs (Explore 2.0 Phase 0 retired the `project`
+// special case: project/semantic-layer/explorer left the tab model
+// altogether, so there's no chrome type left here to special-case; every
+// remaining tab type has a real `objectTypeConfigs` entry).
+const getTabIcon = type => getTypeIcon(type);
 
 /**
  * Resolve a dnd-kit drag-end event to a `[activeId, overId]` reorder pair,
@@ -156,8 +157,10 @@ const DraggableTab = ({ tab, active, onSelect, onClose, isDragging, isDropTarget
  * right rail), not the project-wide Library.
  *
  * Reads tabs + active id + actions directly from the workspace store — no
- * prop-drilling from the route container. Supports: open project tab on
- * mount, click-to-switch, close-through-the-dirty-guard (VIS-812 — the ×
+ * prop-drilling from the route container. Documents only — the three
+ * destinations (Project/Semantic Layer/Explorer) live in the LeftRail's
+ * `<ViewSwitcher>`, not here (Explore 2.0 Phase 0). Supports: click-to-switch,
+ * close-through-the-dirty-guard (VIS-812 — the ×
  * routes through `requestCloseWorkspaceTab`, so dirty tabs raise the
  * confirmation dialog), drag-to-reorder via a strip-local dnd-kit context
  * (pointer-driven, so it's exercisable with a real cursor), and horizontal
@@ -189,13 +192,21 @@ const TabStrip = () => {
     }
   }, [activeId]);
 
-  if (!tabs || tabs.length === 0) return null;
+  // The strip is persistent chrome (01-ux-spec.md §1's `[+]` control lives here
+  // regardless of the open-tab count) — it no longer disappears when the tab
+  // list is empty. Before Phase 0 the project tab was ALWAYS hydrated, so an
+  // empty strip could never actually happen; now that project left the tab
+  // model, `/workspace` with no document open is the default state, and this
+  // early return would otherwise hide the `+` affordance on every fresh visit.
+  const safeTabs = tabs || [];
 
   const projectName = project?.project_json?.name || project?.name || 'project';
 
-  // The + affordance (and Cmd/Ctrl+T) opens the Workspace's "empty tab" —
-  // the unscoped project tab. The project is a first-class single-instance
-  // tab per the delivered B-1 design, so repeated presses focus it.
+  // The + affordance (and Cmd/Ctrl+T) opens the Workspace's "empty tab" — the
+  // Project destination's Home. `openWorkspaceTab` routes a `project`-typed
+  // payload to `openWorkspaceView` (views left the tab model, Phase 0), so
+  // repeated presses just re-activate the same Home rather than opening
+  // anything new.
   const handleNewTab = () =>
     openWorkspaceTab({
       id: `project:${projectName}`,
@@ -237,7 +248,7 @@ const TabStrip = () => {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          {tabs.map(tab => (
+          {safeTabs.map(tab => (
             <DraggableTab
               key={tab.id}
               tab={tab}

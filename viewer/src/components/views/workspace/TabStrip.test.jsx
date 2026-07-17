@@ -38,10 +38,16 @@ const seedStore = (extra = {}) => {
 };
 
 describe('TabStrip', () => {
-  test('renders nothing when there are no tabs', () => {
+  test('renders the persistent strip shell (just the + affordance) when there are no tabs', () => {
+    // Explore 2.0 Phase 0: project left the tab model, so an empty tab list is
+    // now the DEFAULT state on a fresh `/workspace` visit (not a transient
+    // impossible case) — the strip must stay mounted with its `[+]` control
+    // (01-ux-spec.md §1), not disappear.
     seedStore({ workspaceTabs: [], project: null });
-    const { container } = render(<TabStrip />);
-    expect(container).toBeEmptyDOMElement();
+    render(<TabStrip />);
+    expect(screen.getByTestId('workspace-tab-strip')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-tab-new')).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
   test('renders one tab per descriptor with the right active state', () => {
