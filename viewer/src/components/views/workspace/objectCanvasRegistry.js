@@ -141,11 +141,15 @@ export const OBJECT_CANVAS_REGISTRY = {
   // The semantic-layer fields get a focused per-field studio (VIS-1009) — the
   // Field Lens — instead of muting the Canvas to lineage. Both are CLI-only
   // (`serve`) because they evaluate the field's expression against a real
-  // source/model (gated on `sourcesMetadata`, mirroring the source ERD).
+  // source/model. B11 (Explore 2.0 Phase 0): gated on `sourceSchemaJobsList`
+  // (the cached-schema feed), NOT the dead live-introspect `sourcesMetadata`
+  // feed — that feed returns zero databases for file sources (DuckDB), which
+  // made the Field Lens wrongly report "unavailable" for the common case.
+  // Mirrors the source ERD's fix (VIS-1005, same feed).
   dimension: {
     Component: DimensionInspector,
     availability: 'serve',
-    availabilityKey: 'sourcesMetadata',
+    availabilityKey: 'sourceSchemaJobsList',
     defaultLens: 'preview',
     lenses: [READONLY_PREVIEW()],
     emptyHint: 'No dimension selected.',
@@ -153,7 +157,7 @@ export const OBJECT_CANVAS_REGISTRY = {
   metric: {
     Component: MetricPlayground,
     availability: 'serve',
-    availabilityKey: 'sourcesMetadata',
+    availabilityKey: 'sourceSchemaJobsList',
     defaultLens: 'preview',
     lenses: [READONLY_PREVIEW()],
     emptyHint: 'No metric selected.',
