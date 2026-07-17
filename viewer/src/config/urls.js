@@ -140,6 +140,7 @@ const URL_PATTERNS = {
     // Exploration persistence endpoints
     explorationsList: '/api/explorations/',
     explorationDetail: '/api/explorations/{id}/',
+    explorationConsumeReturnTo: '/api/explorations/{id}/consume-return-to/',
 
     // Workspace telemetry forwarding endpoint (VIS-822) — the local Flask
     // server relays workspace events through the CLI's PostHog client so the
@@ -277,6 +278,7 @@ const URL_PATTERNS = {
     // Exploration persistence endpoints (not available in dist)
     explorationsList: null,
     explorationDetail: null,
+    explorationConsumeReturnTo: null,
 
     // Workspace telemetry forwarding (not available in dist — no Flask server)
     workspaceTelemetry: null,
