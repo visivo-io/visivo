@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PiPlus, PiSidebar, PiHouse, PiMagnifyingGlass, PiTreeStructure } from 'react-icons/pi';
+import { PiPlus, PiSidebar } from 'react-icons/pi';
 import LibrarySearch from './LibrarySearch';
 import LibraryFilter from './LibraryFilter';
 import LibrarySubsection from './LibrarySubsection';
@@ -10,6 +10,7 @@ import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
 import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
+import ViewSwitcher from '../ViewSwitcher';
 
 /**
  * Library — VIS-769 / Track C C1 (+ C2 / C3).
@@ -65,12 +66,8 @@ const Library = () => {
   // required props (the parent LeftRail mounts it as `<Library />`).
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
-  const activateWorkspaceTab = useStore(s => s.activateWorkspaceTab);
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
   const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
-  const projectName = useStore(
-    s => s.project?.project_json?.name || s.project?.name || 'project'
-  );
 
   // #8: when the rail expands (this Library mounts), reveal the active object's
   // row — expand its type subsection so a selection made while the nav was
@@ -99,20 +96,6 @@ const Library = () => {
       }
     });
   }, [setLibrarySubsectionCollapsed]);
-
-  // Reopen a top-level surface from the rail (VIS thread: "there should be a way
-  // to open the project on the left sidebar … I closed the tab and it isn't
-  // obvious how to get it back"). Explorer is its own route; the project +
-  // semantic-layer surfaces are workspace tabs — activate ensures they reopen
-  // even if the user closed them (the project tab's close-sticks guard would
-  // otherwise skip a resurrect), then the URL is synced.
-  const openSurface = useCallback(
-    (tab, url) => {
-      activateWorkspaceTab(tab);
-      navigate(url);
-    },
-    [activateWorkspaceTab, navigate]
-  );
 
   // The active workspace tab's id is the selected row's id — both are
   // `${type}:${name}`. Surfacing it here drives LibraryRow's mulberry-bar +
@@ -379,48 +362,12 @@ const Library = () => {
         </div>
       </div>
 
-      {/* Top-level surfaces — reopen Project / Explorer / Semantic Layer even
-          after their tabs are closed. */}
-      <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
-        {[
-          {
-            key: 'project',
-            label: 'Project',
-            Icon: PiHouse,
-            onClick: () =>
-              openSurface(
-                { id: `project:${projectName}`, type: 'project', name: projectName },
-                '/workspace'
-              ),
-          },
-          {
-            key: 'explorer',
-            label: 'Explorer',
-            Icon: PiMagnifyingGlass,
-            onClick: () => navigate('/explorer'),
-          },
-          {
-            key: 'semantic-layer',
-            label: 'Semantic',
-            Icon: PiTreeStructure,
-            onClick: () =>
-              openSurface(
-                { id: 'semantic-layer:semantic-layer', type: 'semantic-layer', name: 'semantic-layer' },
-                '/workspace/semantic-layer'
-              ),
-          },
-        ].map(surface => (
-          <button
-            key={surface.key}
-            type="button"
-            onClick={surface.onClick}
-            data-testid={`library-surface-${surface.key}`}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded px-1.5 py-1 text-[11.5px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <surface.Icon className="h-3.5 w-3.5 shrink-0" /> {surface.label}
-          </button>
-        ))}
-      </div>
+      {/* Destination switcher — Project / Semantic Layer / Explorer (D1,
+          Explore 2.0 Phase 0). Replaces the old per-surface button row: these
+          are real workspace VIEWS now (`workspaceActiveView`), not bare
+          route navigations, so clicking one activates live workspace state
+          exactly like every other selection instead of leaving the shell. */}
+      <ViewSwitcher />
 
       {/* One shared search + a compact filter dropdown for the whole flat list. */}
       <div className="flex shrink-0 flex-col gap-1.5 border-b border-gray-200 px-3 py-2">
