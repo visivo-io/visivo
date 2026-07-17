@@ -12,6 +12,9 @@ import TerminalIcon from '@mui/icons-material/Terminal';
 import MergeIcon from '@mui/icons-material/Merge';
 import TuneIcon from '@mui/icons-material/Tune';
 import SettingsIcon from '@mui/icons-material/Settings';
+import HomeIcon from '@mui/icons-material/Home';
+import HubIcon from '@mui/icons-material/Hub';
+import ExploreIcon from '@mui/icons-material/Explore';
 
 /**
  * Centralized object type definitions
@@ -304,6 +307,68 @@ export const OBJECT_TYPES = [
       node: 'bg-gray-50 border-gray-200',
       nodeSelected: 'bg-gray-100 border-gray-400',
       connectionHandle: '#6b7280', // gray-500
+    },
+  },
+  // Workspace DESTINATIONS (Explore 2.0 Phase 0, `higherLevelViews.js`) — not
+  // creatable data objects (enabled: false, like `defaults`), so the view
+  // switcher + every consumer that resolves a type's icon/color (TabStrip,
+  // the Home panes) share ONE source instead of each hand-rolling a fallback
+  // (fixes B1 — the Semantic Layer tab used to show a fallback MUI icon in
+  // the TabStrip while its pane borrowed `relation`'s icon). Chrome/slate
+  // toned so they read as distinct from the rainbow data-object spectrum
+  // above.
+  {
+    value: 'project',
+    label: 'Project',
+    singularLabel: 'Project',
+    icon: HomeIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-slate-100',
+      text: 'text-slate-800',
+      border: 'border-slate-200',
+      bgHover: 'hover:bg-slate-50',
+      bgSelected: 'bg-slate-100',
+      borderSelected: 'border-slate-300',
+      node: 'bg-slate-50 border-slate-200',
+      nodeSelected: 'bg-slate-100 border-slate-400',
+      connectionHandle: '#64748b', // slate-500
+    },
+  },
+  {
+    value: 'semantic-layer',
+    label: 'Semantic Layer',
+    singularLabel: 'Semantic Layer',
+    icon: HubIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-zinc-100',
+      text: 'text-zinc-800',
+      border: 'border-zinc-200',
+      bgHover: 'hover:bg-zinc-50',
+      bgSelected: 'bg-zinc-100',
+      borderSelected: 'border-zinc-300',
+      node: 'bg-zinc-50 border-zinc-200',
+      nodeSelected: 'bg-zinc-100 border-zinc-400',
+      connectionHandle: '#71717a', // zinc-500
+    },
+  },
+  {
+    value: 'explorer',
+    label: 'Explorer',
+    singularLabel: 'Explorer',
+    icon: ExploreIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-stone-100',
+      text: 'text-stone-800',
+      border: 'border-stone-200',
+      bgHover: 'hover:bg-stone-50',
+      bgSelected: 'bg-stone-100',
+      borderSelected: 'border-stone-300',
+      node: 'bg-stone-50 border-stone-200',
+      nodeSelected: 'bg-stone-100 border-stone-400',
+      connectionHandle: '#78716c', // stone-500
     },
   },
 ];
