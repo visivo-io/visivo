@@ -183,6 +183,60 @@ class TestRunOnSave:
         assert runs[0]["dag_filter"] == "+a+,+b+"
 
 
+class TestExplorationRunIsolation:
+    """Explorations are workbench drafts, never DAG/YAML config — saving or
+    deleting one must never schedule a run (02-architecture.md §2, 07 S3
+    contract). What actually protects them is being absent from
+    RESOURCE_META/_RESOURCE_ROUTE_RE (run_views.py's hooks gate on
+    `request.method in ("POST", "DELETE")` and then consult that table) — so
+    the regression test asserts the real invariant, not just "the endpoint
+    works": a PUT-based test would pass vacuously since PUT isn't even in the
+    hook's method filter.
+    """
+
+    def test_explorations_absent_from_resource_meta(self):
+        assert "explorations" not in RESOURCE_META
+
+    def test_exploration_routes_do_not_match_resource_route_regex(self):
+        for path in [
+            "/api/explorations/exp_abc123/",
+            "/api/explorations/exp_abc123/consume-return-to/",
+        ]:
+            assert _RESOURCE_ROUTE_RE.match(path) is None, path
+
+    def test_create_exploration_schedules_no_run(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            resp = integration_client.post("/api/explorations/", json={"name": "Scratch"})
+            assert resp.status_code == 201
+            req.assert_not_called()
+
+    def test_update_exploration_schedules_no_run(self, integration_client):
+        created = integration_client.post("/api/explorations/", json={}).get_json()
+        with patch("visivo.server.views.run_views.request_run") as req:
+            resp = integration_client.post(
+                f"/api/explorations/{created['id']}/",
+                json={"draft": {"queries": [{"name": "q", "sql": "SELECT 1"}]}},
+            )
+            assert resp.status_code == 200
+            req.assert_not_called()
+
+    def test_delete_exploration_schedules_no_run(self, integration_client):
+        created = integration_client.post("/api/explorations/", json={}).get_json()
+        with patch("visivo.server.views.run_views.request_run") as req:
+            resp = integration_client.delete(f"/api/explorations/{created['id']}/")
+            assert resp.status_code == 204
+            req.assert_not_called()
+
+    def test_consume_return_to_schedules_no_run(self, integration_client):
+        created = integration_client.post(
+            "/api/explorations/", json={"return_to": {"dashboard": "kpis"}}
+        ).get_json()
+        with patch("visivo.server.views.run_views.request_run") as req:
+            resp = integration_client.post(f"/api/explorations/{created['id']}/consume-return-to/")
+            assert resp.status_code == 200
+            req.assert_not_called()
+
+
 class TestDataAffectingGate:
     """A save only triggers a run when it changed the DATA — presentation-only
     edits (an insight type/color, whose query leaves are unchanged) just update
