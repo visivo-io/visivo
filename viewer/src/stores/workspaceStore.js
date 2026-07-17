@@ -43,7 +43,12 @@ import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
 import { unwrapConfig, withConfig } from '../components/views/workspace/unwrapRecordConfig';
-import { workspaceTabUrl, WORKSPACE_BASE } from '../components/views/workspace/workspaceUrl';
+import { workspaceTabUrl, workspaceViewUrl, WORKSPACE_BASE } from '../components/views/workspace/workspaceUrl';
+import {
+  isWorkspaceView,
+  viewForDocumentType,
+  DEFAULT_WORKSPACE_VIEW,
+} from '../components/views/workspace/higherLevelViews';
 
 /**
  * Two `{ type, name }` selection descriptors identify the same object.
@@ -66,6 +71,16 @@ const createWorkspaceSlice = (set, get) => ({
   workspaceTabs: [],
   workspaceActiveTabId: null,
   workspaceActiveObject: null, // `{ type, name }` mirror of the active tab.
+
+  // The active DESTINATION (Project · Semantic Layer · Explorer — D1 in
+  // specs/plan/explorer-workspace-unification). Views left the tab model in
+  // Explore 2.0 Phase 0: they're never `workspaceTabs` records, never dirty,
+  // never closable. `workspaceActiveObject`/`workspaceActiveTabId` stay null
+  // while a view owns the center; opening any document tab sets THIS to that
+  // document's owning destination (see `activateWorkspaceTab`), so closing
+  // the last tab returns to the right Home instead of always resetting to
+  // Project. Persists to localStorage alongside the tab set (`Workspace.jsx`).
+  workspaceActiveView: DEFAULT_WORKSPACE_VIEW,
 
   // The active tab is URL-addressable (VIS thread: Back button + the URL as the
   // clean single loop). The Workspace registers the router's `navigate` here on
@@ -168,6 +183,15 @@ const createWorkspaceSlice = (set, get) => ({
    */
   openWorkspaceTab: (tab) => {
     if (!tab || !tab.type || !tab.name) return null;
+    // Views (project/semantic-layer/explorer) left the tab model in Phase 0 —
+    // route legacy `openWorkspaceTab({ type: 'semantic-layer', ... })`-shaped
+    // calls (several still exist, e.g. `ProjectEditor`'s "Semantic Layer"
+    // button) to the view action instead, so those call sites keep working
+    // unmodified.
+    if (isWorkspaceView(tab.type)) {
+      get().openWorkspaceView(tab.type);
+      return tab.type;
+    }
     const id = tab.id || `${tab.type}:${tab.name}`;
     const nav = get().workspaceUrlNavigate;
     if (nav) {
@@ -186,19 +210,34 @@ const createWorkspaceSlice = (set, get) => ({
    * URL→store write called by `useWorkspaceUrlSync` once the URL changes (and
    * the no-router fallback for `openWorkspaceTab`). Nothing else should call it
    * directly — UI goes through `openWorkspaceTab` so the URL stays the source.
+   *
+   * Sets `workspaceActiveView` to the document's OWNING DESTINATION as a side
+   * effect (01-ux-spec.md §1's deep-link rule) — this is the ONE write path
+   * every document open (Library, deep link, context menu, switcher) funnels
+   * through, so the rule can't be missed by a caller.
    */
   activateWorkspaceTab: (tab) => {
     if (!tab || !tab.type || !tab.name) return null;
+    if (isWorkspaceView(tab.type)) {
+      get().activateWorkspaceView(tab.type);
+      return null;
+    }
     const id = tab.id || `${tab.type}:${tab.name}`;
     const state = get();
     const existing = state.workspaceTabs.find((t) => t.id === id);
     const activeObject = { type: tab.type, name: tab.name };
     const keyReset = outlineKeyResetFor(state.workspaceActiveObject, activeObject);
+    const owningView = viewForDocumentType(tab.type);
     if (existing) {
       if (state.workspaceActiveTabId !== id) {
         emitWorkspaceEvent('tab_switched', { id, type: tab.type, name: tab.name, via: 'open' });
       }
-      set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject, ...keyReset });
+      set({
+        workspaceActiveTabId: id,
+        workspaceActiveObject: activeObject,
+        workspaceActiveView: owningView,
+        ...keyReset,
+      });
       return id;
     }
     emitWorkspaceEvent('tab_opened', { id, type: tab.type, name: tab.name, background: false });
@@ -206,16 +245,55 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: [...state.workspaceTabs, { id, type: tab.type, name: tab.name, dirty: !!tab.dirty }],
       workspaceActiveTabId: id,
       workspaceActiveObject: activeObject,
+      workspaceActiveView: owningView,
       ...keyReset,
     });
     return id;
   },
 
   /**
+   * Activate a workspace VIEW — the store write for the three destinations
+   * (Project / Semantic Layer / Explorer, D1). Parks any active document tab:
+   * it stays open in the strip, just not focused (01-ux-spec.md §1 — "clicking
+   * a view sets `workspaceActiveView` and releases the center from the active
+   * document tab"). This is the URL→store write (mirrors `activateWorkspaceTab`);
+   * UI should call `openWorkspaceView` so the URL stays the source of truth.
+   */
+  activateWorkspaceView: (view) => {
+    if (!isWorkspaceView(view)) return;
+    const state = get();
+    if (state.workspaceActiveView !== view || state.workspaceActiveTabId) {
+      emitWorkspaceEvent('view_activated', { view });
+    }
+    set({ workspaceActiveView: view, workspaceActiveTabId: null, workspaceActiveObject: null });
+  },
+
+  /**
+   * UI entry point for switching views — routes the selection through the URL
+   * (single clean loop, mirrors `openWorkspaceTab`); falls back to the direct
+   * store write when no router is registered (unit tests / non-Workspace
+   * mounts).
+   */
+  openWorkspaceView: (view) => {
+    if (!isWorkspaceView(view)) return;
+    const state = get();
+    const nav = state.workspaceUrlNavigate;
+    if (nav) {
+      nav(workspaceViewUrl(view, state.workspaceUrlBase));
+      return;
+    }
+    state.activateWorkspaceView(view);
+  },
+
+  /**
    * Restore the OPEN-TAB SET from persistence (VIS thread: "if you refresh you
    * lose all the open tabs"). Replaces the strip WITHOUT focusing anything — the
    * active tab is restored separately from the URL. Sanitizes + de-dupes the
-   * saved payload (dirty flags don't survive a reload).
+   * saved payload (dirty flags don't survive a reload) and SCRUBS any
+   * `project`/`semantic-layer`/`explorer` records a pre-Phase-0 session may
+   * have persisted — those types left the tab model entirely (01-ux-spec.md
+   * §1's migration note), so a stale record must never resurrect as a
+   * document tab.
    */
   restoreWorkspaceTabs: (tabs) => {
     if (!Array.isArray(tabs)) return;
@@ -223,6 +301,7 @@ const createWorkspaceSlice = (set, get) => ({
     const restored = [];
     for (const t of tabs) {
       if (!t || !t.type || !t.name) continue;
+      if (isWorkspaceView(t.type)) continue; // one-time scrub — see docstring
       const id = t.id || `${t.type}:${t.name}`;
       if (seen.has(id)) continue;
       seen.add(id);
@@ -290,9 +369,16 @@ const createWorkspaceSlice = (set, get) => ({
     const newActive = wasActive && remaining.length ? remaining[Math.max(0, idx - 1)] : null;
     let activeId = state.workspaceActiveTabId;
     let activeObject = state.workspaceActiveObject;
+    let activeView = state.workspaceActiveView;
     if (wasActive) {
       activeId = newActive ? newActive.id : null;
       activeObject = newActive ? { type: newActive.type, name: newActive.name } : null;
+      // A remaining tab re-takes the center under ITS owning destination.
+      // Closing the LAST tab leaves the view exactly where it was —
+      // `workspaceActiveView` already holds the closed tab's destination, so
+      // "closing a freshly deep-linked exploration returns you to Explorer
+      // Home, not Project" (01-ux-spec.md §1) falls out for free.
+      if (newActive) activeView = viewForDocumentType(newActive.type);
     }
     // Removing from the open set + shifting active is one store update (the
     // active id must never dangle at a removed tab). We set active here rather
@@ -302,6 +388,7 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: remaining,
       workspaceActiveTabId: activeId,
       workspaceActiveObject: activeObject,
+      workspaceActiveView: activeView,
       ...outlineKeyResetFor(state.workspaceActiveObject, activeObject),
       // A tab closed by any path can't stay parked in the confirm dialog.
       workspacePendingCloseTabId:
