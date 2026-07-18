@@ -46,6 +46,15 @@ async function newExploration(page) {
   return new URL(page.url()).pathname.split('/').pop();
 }
 
+/**
+ * The actual chip row locator — NOT `[data-testid^="query-chip-"]` alone.
+ * That prefix also matches other real elements inside/beside each chip
+ * (`query-chip-status-dot`, `query-chip-<name>-menu-trigger` on the active
+ * chip, and the `query-chip-add` button), so counting it directly over-counts
+ * by 3 for a single chip. Only the chip row itself carries `data-active`.
+ */
+const chips = page => page.locator('[data-testid^="query-chip-"][data-active]');
+
 test.describe('Exploration query chips (Explore 2.0 Phase 3a)', () => {
   let idsBeforeTest = [];
 
@@ -66,11 +75,11 @@ test.describe('Exploration query chips (Explore 2.0 Phase 3a)', () => {
     await gotoExplorerHome(page);
     await newExploration(page);
 
-    await expect(page.locator('[data-testid^="query-chip-"]')).toHaveCount(1);
+    await expect(chips(page)).toHaveCount(1);
     const firstName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
 
     await page.getByTestId('query-chip-add').click();
-    await expect(page.locator('[data-testid^="query-chip-"]')).toHaveCount(2);
+    await expect(chips(page)).toHaveCount(2);
     const secondName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
     expect(secondName).not.toBe(firstName);
     await expect(page.getByTestId(`query-chip-${secondName}`)).toHaveAttribute('data-active', 'true');
