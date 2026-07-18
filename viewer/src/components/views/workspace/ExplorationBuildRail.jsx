@@ -4,7 +4,7 @@ import useStore from '../../../stores/store';
 import { selectHasModifications } from '../../../stores/explorerStore';
 import InsightBuildSection from './InsightBuildSection';
 import ChartBuildSection from './ChartBuildSection';
-import ExplorerSaveModal from '../../explorer/ExplorerSaveModal';
+import ExplorationPromoteModal from './ExplorationPromoteModal';
 import { recordOnboardingAction } from '../../onboarding/onboardingState';
 
 // A single stable reference for the "no promoted entries" case — a fresh `[]`
@@ -13,29 +13,23 @@ import { recordOnboardingAction } from '../../onboarding/onboardingState';
 const EMPTY_PROMOTED = [];
 
 /**
- * ExplorationBuildRail — Explore 2.0 Phase 3b (VIS-1059, 03-delivery-plan.md
- * Phase 3b: "RightRail exploration Build branch... rebuilt onto
- * TracePropsEditor/FieldGroupList"). Replaces `ExplorerRightPanel` for the
+ * ExplorationBuildRail — Explore 2.0 Phase 3b (VIS-1059) + Phase 4 (VIS-1062–
+ * 1066, promote-gate rebuild). Replaces `ExplorerRightPanel` for the
  * exploration surface — same overall composition (Chart section always on
  * top, stacked Insight sections below, Add Insight, Save to Project) but the
  * CRUD sections are rebuilt onto `TracePropsEditor`/`FieldGroupList`
  * (`InsightBuildSection`/`ChartBuildSection`) instead of `SchemaEditor`.
  *
- * `ExplorerSaveModal`/`saveExplorerObjects` are UNCHANGED — 03's delivery
- * plan keeps them until Phase 4's promote-gate rebuild; this rail keeps the
- * exact "Save to Project" button + modal the legacy right panel used.
+ * `ExplorerSaveModal`/`saveExplorerObjects` (all-or-nothing, no per-object
+ * gate) are DELETED — "Save to Project" now opens `ExplorationPromoteModal`,
+ * the per-object checklist (01-ux-spec.md §3, 02-architecture.md §3).
  *
- * The promoted-trail section is a Phase 4 PLACEHOLDER (03's Phase 3b scope:
- * "+ the promoted trail" as a rail section, not a working deep-link flow —
- * that arrives with the promote gate). It reads the exploration's real
- * `promoted[]` list (empty until Phase 4 exists) so the section becomes
- * live automatically once promoting is wired up, with no further changes to
- * this component.
+ * The promoted trail links each entry to its real, now-published object
+ * (01 §3b) via `openWorkspaceTab`.
  *
  * @param {object} props
  * @param {string} [props.explorationId] - the current exploration's backend
- *   id (threaded from `ExplorationPane` -> `ExplorationWorkbench`), used only
- *   to read the promoted-trail placeholder's `promoted[]` list.
+ *   id (threaded from `ExplorationPane` -> `ExplorationWorkbench`).
  */
 const ExplorationBuildRail = ({ explorationId }) => {
   const chartInsightNames = useStore(s => s.explorerChartInsightNames);
@@ -43,12 +37,20 @@ const ExplorationBuildRail = ({ explorationId }) => {
   const setActiveInsight = useStore(s => s.setActiveInsight);
   const createInsight = useStore(s => s.createInsight);
   const hasChanges = useStore(selectHasModifications);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const promoted = useStore(s =>
     explorationId ? s.workspaceExplorations?.byId?.[explorationId]?.promoted || EMPTY_PROMOTED : EMPTY_PROMOTED
   );
 
   const [chartExpanded, setChartExpanded] = useState(true);
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  const handleOpenPromoted = useCallback(
+    p => {
+      openWorkspaceTab?.({ id: `${p.type}:${p.name}`, type: p.type, name: p.name });
+    },
+    [openWorkspaceTab]
+  );
 
   const handleToggleInsight = useCallback(
     insightName => {
@@ -99,9 +101,8 @@ const ExplorationBuildRail = ({ explorationId }) => {
           Add Insight
         </button>
 
-        {/* Promoted trail (Phase 4 placeholder — 01-ux-spec.md §3's "promoted
-            count arrives in Phase 4" note). Renders real entries once
-            promote is wired up; today `promoted` is always empty. */}
+        {/* Promoted trail (01-ux-spec.md §3b) — each entry links to its real,
+            now-published object. */}
         <div data-testid="exploration-promoted-trail" className="border-t border-gray-100 pt-2">
           <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wide">
             Promoted
@@ -113,15 +114,18 @@ const ExplorationBuildRail = ({ explorationId }) => {
           ) : (
             <ul className="space-y-1">
               {promoted.map((p, i) => (
-                <li
-                  key={`${p.type}:${p.name}:${i}`}
-                  data-testid={`exploration-promoted-item-${p.type}-${p.name}`}
-                  className="flex items-center gap-1.5 text-xs text-gray-600"
-                >
-                  <PiCheckCircle size={12} className="text-green-500 flex-shrink-0" />
-                  <span className="truncate">{p.name}</span>
-                  <span className="text-gray-300">·</span>
-                  <span className="text-gray-400">{p.type}</span>
+                <li key={`${p.type}:${p.name}:${i}`}>
+                  <button
+                    type="button"
+                    data-testid={`exploration-promoted-item-${p.type}-${p.name}`}
+                    onClick={() => handleOpenPromoted(p)}
+                    className="flex w-full items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 hover:underline text-left"
+                  >
+                    <PiCheckCircle size={12} className="text-green-500 flex-shrink-0" />
+                    <span className="truncate">{p.name}</span>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-gray-400">{p.type}</span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -141,7 +145,12 @@ const ExplorationBuildRail = ({ explorationId }) => {
           Save to Project
         </button>
       </div>
-      {showSaveModal && <ExplorerSaveModal onClose={() => setShowSaveModal(false)} />}
+      {showSaveModal && (
+        <ExplorationPromoteModal
+          explorationId={explorationId}
+          onClose={() => setShowSaveModal(false)}
+        />
+      )}
     </div>
   );
 };

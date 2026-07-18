@@ -12,6 +12,7 @@ import {
   updateExploration,
   deleteExploration,
   consumeReturnTo,
+  recordPromotion,
 } from './explorations';
 import { apiFetch } from './utils';
 
@@ -24,7 +25,9 @@ jest.mock('../contexts/URLContext', () => ({
         ? `/api/explorations/${params.id}/`
         : key === 'explorationConsumeReturnTo'
           ? `/api/explorations/${params.id}/consume-return-to/`
-          : `/api/${key}/`,
+          : key === 'explorationRecordPromotion'
+            ? `/api/explorations/${params.id}/record-promotion/`
+            : `/api/${key}/`,
 }));
 
 const ok = (data, status = 200) => ({ status, json: async () => data });
@@ -157,5 +160,36 @@ describe('consumeReturnTo', () => {
   it('throws on 404', async () => {
     apiFetch.mockResolvedValueOnce(fail(404, { error: 'Exploration not found' }));
     await expect(consumeReturnTo('exp_missing')).rejects.toThrow('Exploration not found');
+  });
+});
+
+describe('recordPromotion', () => {
+  it('POSTs {type, name} to the record-promotion endpoint and returns the updated record', async () => {
+    apiFetch.mockResolvedValueOnce(
+      ok({ id: 'exp_1', promoted: [{ type: 'model', name: 'orders_q' }] })
+    );
+    await expect(recordPromotion('exp_1', 'model', 'orders_q')).resolves.toEqual({
+      id: 'exp_1',
+      promoted: [{ type: 'model', name: 'orders_q' }],
+    });
+    expect(apiFetch).toHaveBeenCalledWith('/api/explorations/exp_1/record-promotion/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'model', name: 'orders_q' }),
+    });
+  });
+
+  it('throws on 404', async () => {
+    apiFetch.mockResolvedValueOnce(fail(404, { error: 'Exploration not found' }));
+    await expect(recordPromotion('exp_missing', 'model', 'x')).rejects.toThrow(
+      'Exploration not found'
+    );
+  });
+
+  it('throws a fallback message when the error body is unparseable', async () => {
+    apiFetch.mockResolvedValueOnce(failUnparseable(500));
+    await expect(recordPromotion('exp_1', 'model', 'x')).rejects.toThrow(
+      'Failed to record promotion'
+    );
   });
 });

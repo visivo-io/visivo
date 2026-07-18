@@ -31,12 +31,13 @@ import ExplorationQueryChips from './ExplorationQueryChips';
  *     NEW `property-zone` branch (S5/D10) hands insight-prop-slot drops
  *     straight to each `PropertyRow`'s own `onDropField` — no nested DnD
  *     context, no global "active insight" indirection.
- *   - `ExplorationBuildRail` (Phase 3b, VIS-1059) replaces the retired
- *     `ExplorerRightPanel`: Chart + stacked Insight sections rebuilt onto
- *     `TracePropsEditor`/`FieldGroupList` (typed D8/D10 pills, advisory
- *     ref-target validation), a promoted-trail placeholder, and the
- *     UNCHANGED `ExplorerSaveModal`/"Save to Project" flow (kept until
- *     Phase 4's promote-gate rebuild).
+ *   - `ExplorationBuildRail` (Phase 3b, VIS-1059; Phase 4, VIS-1062–1066)
+ *     replaces the retired `ExplorerRightPanel`: Chart + stacked Insight
+ *     sections rebuilt onto `TracePropsEditor`/`FieldGroupList` (typed D8/D10
+ *     pills, advisory ref-target validation), a live promoted trail, and
+ *     "Save to Project" opening `ExplorationPromoteModal` — the per-object
+ *     gated promote checklist that replaced the deleted `ExplorerSaveModal`/
+ *     `saveExplorerObjects` (all-or-nothing, no per-object gate).
  *   - `useExplorerWorkbenchInit()` (the shared init hook) is unchanged.
  *   - No return-bar / `?return_to=` handling here — that's the dashboard
  *     round-trip intent, consumed at the Phase 3b cutover's redirect route,
@@ -45,7 +46,7 @@ import ExplorationQueryChips from './ExplorationQueryChips';
  * The HOST (`ExplorationPane`) is responsible for gating this component's
  * mount on the per-exploration state restore having already landed — see
  * `useExplorerWorkbenchInit`'s docstring — and passes down the exploration's
- * own `id` (purely for the Build rail's promoted-trail placeholder).
+ * own `id` (used by the Build rail's promoted trail + promote checklist).
  *
  * @param {object} props
  * @param {string} [props.id] - the current exploration's backend id.

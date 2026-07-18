@@ -293,6 +293,45 @@ describe('workspace store slice', () => {
     expect(s.workspaceActiveTabId).toBe('dashboard:d1');
   });
 
+  // VIS-1081: "Close without saving" on a dirty EXPLORATION tab must actually
+  // discard, not just close (an exploration autosaves in the background —
+  // see workspaceExplorationsStore.js's discardExploration docstring).
+  test('confirmCloseWorkspaceTab calls discardExploration for a dirty exploration tab, before closing it', () => {
+    const discardExploration = jest.fn();
+    act(() => {
+      useStore.setState({ discardExploration });
+      useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_a1' });
+      useStore.getState().setWorkspaceTabDirty('exploration:exp_a1', true);
+      useStore.getState().requestCloseWorkspaceTab('exploration:exp_a1');
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    expect(discardExploration).toHaveBeenCalledWith('exp_a1');
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
+  test('confirmCloseWorkspaceTab never calls discardExploration for a non-exploration tab', () => {
+    const discardExploration = jest.fn();
+    act(() => {
+      useStore.setState({ discardExploration });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    expect(discardExploration).not.toHaveBeenCalled();
+  });
+
+  test('confirmCloseWorkspaceTab still closes the tab even if discardExploration is missing/undefined', () => {
+    act(() => {
+      useStore.setState({ discardExploration: undefined });
+      useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_a1' });
+      useStore.getState().setWorkspaceTabDirty('exploration:exp_a1', true);
+      useStore.getState().requestCloseWorkspaceTab('exploration:exp_a1');
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
   test('confirmCloseWorkspaceTab with nothing pending is a no-op', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });

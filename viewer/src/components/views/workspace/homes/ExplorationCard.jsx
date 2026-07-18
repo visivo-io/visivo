@@ -13,15 +13,19 @@ import { draftSummary } from '../explorationLegacyBridge';
  * a provenance chip when `seededFrom` is set, and Open / ⋮ (rename ·
  * duplicate · delete).
  *
- * Promotion count + staleness badge are explicitly OUT of this card per 03's
- * phasing note ("promotion count arrives in Phase 4, staleness badge in
- * Phase 5") — the mock depicts the end state, this is v1.
+ * Promotion count (Explore 2.0 Phase 4, 01-ux-spec.md §2's "promotion count
+ * arrives in Phase 4" note): read straight off the exploration's real
+ * `promoted[]` trail (empty for an exploration that's never promoted
+ * anything) — no separate fetch, `workspaceExplorationsStore.js` already
+ * mirrors it locally after every `promoteExploration` call. Staleness badge
+ * stays out of this card (Phase 5).
  */
 const ExplorationCard = ({ exploration, onOpen, onRename, onDuplicate, onDelete }) => {
   // B16 (04-bug-inventory.md): the shared "am I editing this name" toggle —
   // see useInlineRename's docstring for why this hook exists.
   const rename = useInlineRename({ onCommit: nextName => onRename(exploration.id, nextName) });
   const { queryCount, insightCount } = draftSummary(exploration.draft);
+  const promotedCount = (exploration.promoted || []).length;
   const editedLabel = exploration.updatedAt
     ? `edited ${formatDistanceToNowStrict(new Date(exploration.updatedAt), { addSuffix: true })}`
     : null;
@@ -102,8 +106,16 @@ const ExplorationCard = ({ exploration, onOpen, onRename, onDuplicate, onDelete 
         </Dropdown>
       </div>
 
-      <div className="mb-3 text-[12px] text-gray-500">
-        {[editedLabel, `${queryCount} ${queryCount === 1 ? 'query' : 'queries'}`, `${insightCount} ${insightCount === 1 ? 'insight' : 'insights'}`]
+      <div
+        data-testid={`exploration-card-${exploration.id}-summary`}
+        className="mb-3 text-[12px] text-gray-500"
+      >
+        {[
+          editedLabel,
+          `${queryCount} ${queryCount === 1 ? 'query' : 'queries'}`,
+          `${insightCount} ${insightCount === 1 ? 'insight' : 'insights'}`,
+          promotedCount > 0 ? `${promotedCount} promoted` : null,
+        ]
           .filter(Boolean)
           .join(' · ')}
       </div>

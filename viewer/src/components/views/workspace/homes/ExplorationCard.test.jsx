@@ -13,6 +13,7 @@ const exploration = overrides => ({
   updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2h ago
   seededFrom: null,
   draft: { queries: [{ name: 'q' }], insights: [{ name: 'i' }], chart: null, computedColumns: [] },
+  promoted: [],
   ...overrides,
 });
 
@@ -31,6 +32,38 @@ describe('ExplorationCard', () => {
     expect(screen.getByText(/2 hours ago/i)).toBeInTheDocument();
     expect(screen.getByText(/1 quer(y|ies)/i)).toBeInTheDocument();
     expect(screen.getByText(/1 insight/i)).toBeInTheDocument();
+  });
+
+  // Explore 2.0 Phase 4 (01-ux-spec.md §2): "promotion count arrives in Phase 4".
+  test('omits the promoted count when nothing has been promoted yet', () => {
+    render(
+      <ExplorationCard
+        exploration={exploration({ promoted: [] })}
+        onOpen={jest.fn()}
+        onRename={jest.fn()}
+        onDuplicate={jest.fn()}
+        onDelete={jest.fn()}
+      />
+    );
+    expect(screen.getByTestId('exploration-card-exp_1-summary')).not.toHaveTextContent('promoted');
+  });
+
+  test('shows the promoted count once the exploration has real promotions', () => {
+    render(
+      <ExplorationCard
+        exploration={exploration({
+          promoted: [
+            { type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:00:00Z' },
+            { type: 'insight', name: 'churn_by_cohort', promoted_at: '2026-01-01T00:00:01Z' },
+          ],
+        })}
+        onOpen={jest.fn()}
+        onRename={jest.fn()}
+        onDuplicate={jest.fn()}
+        onDelete={jest.fn()}
+      />
+    );
+    expect(screen.getByTestId('exploration-card-exp_1-summary')).toHaveTextContent('2 promoted');
   });
 
   test('renders a provenance chip when seededFrom is set', () => {

@@ -40,8 +40,8 @@ jest.mock('./ChartBuildSection', () => {
   };
 });
 
-jest.mock('../../explorer/ExplorerSaveModal', () => {
-  return function MockExplorerSaveModal({ onClose }) {
+jest.mock('./ExplorationPromoteModal', () => {
+  return function MockExplorationPromoteModal({ onClose }) {
     return (
       <div data-testid="explorer-save-modal">
         SaveModal
@@ -119,7 +119,7 @@ describe('ExplorationBuildRail', () => {
     expect(screen.getByTestId('explorer-save-button')).not.toBeDisabled();
   });
 
-  it('clicking save opens the (unchanged) ExplorerSaveModal; closing hides it', () => {
+  it('clicking save opens ExplorationPromoteModal (the Phase 4 promote checklist); closing hides it', () => {
     render(<ExplorationBuildRail />);
     expect(screen.queryByTestId('explorer-save-modal')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('explorer-save-button'));
@@ -211,6 +211,29 @@ describe('ExplorationBuildRail', () => {
       expect(
         screen.queryByText('Objects you Save to Project will appear here.')
       ).not.toBeInTheDocument();
+    });
+
+    it('clicking a promoted entry deep-links to the real object via openWorkspaceTab (01 §3b)', () => {
+      const openWorkspaceTab = jest.fn();
+      useStore.setState({
+        openWorkspaceTab,
+        workspaceExplorations: {
+          byId: {
+            exp_a1: {
+              id: 'exp_a1',
+              promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:00:00Z' }],
+            },
+          },
+          order: ['exp_a1'],
+        },
+      });
+      render(<ExplorationBuildRail explorationId="exp_a1" />);
+      fireEvent.click(screen.getByTestId('exploration-promoted-item-model-orders_q'));
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'model:orders_q',
+        type: 'model',
+        name: 'orders_q',
+      });
     });
   });
 });

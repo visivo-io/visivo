@@ -494,12 +494,26 @@ const createWorkspaceSlice = (set, get) => ({
     state.closeWorkspaceTab(tabId);
   },
 
-  /** Confirm the pending dirty close — closes the tab and clears the pending id. */
+  /**
+   * Confirm the pending dirty close — closes the tab and clears the pending
+   * id. VIS-1081: for an `exploration` tab specifically, this is "Close
+   * without saving"'s ONLY chance to make that promise true — an exploration
+   * autosaves in the background while its tab is open, so closing it
+   * through the generic path alone would let the very edits the dialog just
+   * offered to discard finish persisting moments later anyway. `discardExploration`
+   * (workspaceExplorationsStore.js) reverts to the tab-open snapshot FIRST;
+   * best-effort — a failed/absent discard never blocks the close.
+   */
   confirmCloseWorkspaceTab: () => {
     const state = get();
     const tabId = state.workspacePendingCloseTabId;
     if (!tabId) return;
     set({ workspacePendingCloseTabId: null });
+    const tab = state.workspaceTabs.find((t) => t.id === tabId);
+    if (tab?.type === 'exploration' && tabId.startsWith('exploration:')) {
+      const explorationId = tabId.slice('exploration:'.length);
+      state.discardExploration?.(explorationId);
+    }
     state.closeWorkspaceTab(tabId);
   },
 
