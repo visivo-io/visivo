@@ -21,6 +21,10 @@ import { FieldGroup } from './FieldGroup';
  *   render-function map threaded to each FieldGroup (VIS-996; see FieldGroup).
  * @param {string} props.revealPath - optional field dot-path to jump to
  *   (VIS-1021 Field Finder); threaded to each FieldGroup.
+ * @param {boolean} [props.droppable] - Explore 2.0 Phase 3b (S5 §2): pure
+ *   pass-through to every `FieldGroup`/`PropertyRow`. Default false.
+ * @param {(path: string, dragData: object) => void} [props.onDropField] -
+ *   per-field drop callback, threaded straight through to `FieldGroup`.
  */
 export function FieldGroupList({
   groupSpec = [],
@@ -31,6 +35,8 @@ export function FieldGroupList({
   errors = {},
   overrides = {},
   revealPath = null,
+  droppable = false,
+  onDropField,
 }) {
   if (!Array.isArray(groupSpec) || groupSpec.length === 0) {
     return (
@@ -53,6 +59,8 @@ export function FieldGroupList({
           errors={errors}
           overrides={overrides}
           revealPath={revealPath}
+          droppable={droppable}
+          onDropField={onDropField}
         />
       ))}
     </div>

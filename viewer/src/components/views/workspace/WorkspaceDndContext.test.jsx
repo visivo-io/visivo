@@ -364,6 +364,75 @@ describe('routeWorkspaceDragEnd — pivot field branch (VIS-1008)', () => {
   });
 });
 
+describe('routeWorkspaceDragEnd — property-zone branch (Explore 2.0 Phase 3b, S5 §1/D10)', () => {
+  test('a Library drag dropped on a property-zone invokes the ROW-OWNED onDropField with the full drag payload', () => {
+    const onDropField = jest.fn();
+    const emit = jest.fn();
+    const dragData = { source: 'library', type: 'sourceColumn', name: 'amount', columnType: 'DOUBLE' };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: dragData } },
+        over: { data: { current: { kind: 'property-zone', path: 'x', schema: {}, onDropField } } },
+      },
+      { emit }
+    );
+    expect(result).toBe('property_zone_accepted');
+    expect(onDropField).toHaveBeenCalledWith(dragData);
+    expect(emit).toHaveBeenCalledWith(
+      'property_zone_drop',
+      expect.objectContaining({ path: 'x', type: 'sourceColumn', name: 'amount' })
+    );
+  });
+
+  test('two stacked property-zone droppables each resolve to THEIR OWN onDropField — no global "active insight" indirection', () => {
+    const onDropFieldA = jest.fn();
+    const onDropFieldB = jest.fn();
+    const dragData = { source: 'library', type: 'model', name: 'orders_q', property: 'region' };
+
+    routeWorkspaceDragEnd(
+      {
+        active: { data: { current: dragData } },
+        over: { data: { current: { kind: 'property-zone', path: 'x', onDropField: onDropFieldA } } },
+      },
+      {}
+    );
+    routeWorkspaceDragEnd(
+      {
+        active: { data: { current: dragData } },
+        over: { data: { current: { kind: 'property-zone', path: 'y', onDropField: onDropFieldB } } },
+      },
+      {}
+    );
+
+    expect(onDropFieldA).toHaveBeenCalledTimes(1);
+    expect(onDropFieldB).toHaveBeenCalledTimes(1);
+  });
+
+  test('a non-library drag on a property-zone is a noop', () => {
+    const onDropField = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'item' } } },
+        over: { data: { current: { kind: 'property-zone', path: 'x', onDropField } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+    expect(onDropField).not.toHaveBeenCalled();
+  });
+
+  test('a property-zone with no onDropField callback is a noop (never throws)', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'model', name: 'orders_q' } } },
+        over: { data: { current: { kind: 'property-zone', path: 'x' } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+  });
+});
+
 describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)', () => {
   test('a Library model dropped on the ERD canvas adds the model', () => {
     const onAddModel = jest.fn();

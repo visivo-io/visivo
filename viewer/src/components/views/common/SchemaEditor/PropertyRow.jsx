@@ -1,7 +1,11 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PiTrash, PiCode, PiSliders } from 'react-icons/pi';
+import useStore from '../../../../stores/store';
 import RefTextArea from '../RefTextArea';
+import FieldPill from '../FieldPill';
+import PillMenu from '../PillMenu';
+import * as pillGrammar from '../pillGrammar';
 import {
   isQueryStringValue,
   parseQueryString,
@@ -33,6 +37,14 @@ import { SliceBanner } from './SliceBanner';
  * @param {string} props.description - Property description
  * @param {boolean} props.disabled - Whether the field is disabled
  * @param {boolean} props.droppable - Whether this row is a DnD drop target
+ * @param {(dragData: object) => void} [props.onDropField] - Explore 2.0
+ *   Phase 3b (S5 §1/§2): per-slot drop callback, mirroring the `pivot-field`
+ *   shelf pattern (`PivotShelf.jsx`'s `onDropField`) rather than resolving
+ *   against a single global "active insight" — every `PropertyRow` handles
+ *   its OWN drop independent of which/how-many sibling rows are also
+ *   droppable. Only meaningful when `droppable` is true; the caller (the
+ *   Build rail's per-insight section) builds the ref expression from the
+ *   drag payload and calls its own `onChange`.
  * @param {string} props.error - Optional inline validation message (AJV) for this path
  */
 export function PropertyRow({
@@ -45,17 +57,24 @@ export function PropertyRow({
   description,
   disabled = false,
   droppable = false,
+  onDropField,
   error,
 }) {
   const queryStringSupported = useMemo(() => supportsQueryString(schema), [schema]);
   const slotShape = useMemo(() => getSlotShape(schema, defs), [schema, defs]);
   const slotPolicy = useMemo(() => menuPolicyFor(slotShape), [slotShape]);
 
-  // DnD drop target (only when droppable + query-string supported)
+  // DnD drop target (only when droppable + query-string supported).
+  // D8/D10 (Explore 2.0 Phase 3b, S5 §1): the data key is `kind`, not `type`
+  // — matching every OTHER zone kind in `WorkspaceDndContext`'s router
+  // (`ref-slot`/`erd-canvas`/`pivot-field`/`canvas-drop` all discriminate on
+  // `kind`). `onDropField` rides on the droppable data itself (the
+  // `pivot-field` pattern) so the router hands the drop straight back to
+  // THIS row without any "which insight is active" indirection.
   const dropEnabled = droppable && queryStringSupported;
   const { isOver, setNodeRef } = useDroppable({
     id: `property-${path}`,
-    data: { path, type: 'property-zone', schema },
+    data: { path, kind: 'property-zone', schema, onDropField },
     disabled: !dropEnabled,
   });
 
@@ -72,6 +91,45 @@ export function PropertyRow({
   const staticSchema = useMemo(() => getStaticSchema(schema, defs), [schema, defs]);
   const fieldType = useMemo(() => resolveFieldType(schema, defs), [schema, defs]);
   const FieldComponent = getFieldComponent(fieldType);
+
+  // D8/D10 pill rendering (Explore 2.0 Phase 3b, S5 §3): a recognized
+  // expression renders as a typed `<FieldPill>` (+`<PillMenu>` for
+  // dimension<->aggregate toggling) instead of the raw `RefTextArea` chip
+  // editor. Deliberately GATED ON `droppable` rather than made universal —
+  // `droppable` is already the signal that distinguishes the new exploration
+  // Build rail from every pre-existing `PropertyRow` consumer (right-rail
+  // InsightEditForm/ChartEditForm, canvas item edit forms, SchemaLeafForm —
+  // all pass `droppable=false`/omit it, mirroring S5 §2's identical
+  // reasoning for the DnD wiring itself: turning this on everywhere is a
+  // reasonable follow-up, but doing it here would silently change untested
+  // surfaces this phase's gate doesn't cover). `RefTextArea` remains the
+  // fallback for opaque/custom expressions on the Build rail too — this is
+  // additive, not a replacement.
+  const metrics = useStore(s => s.metrics);
+  const dimensions = useStore(s => s.dimensions);
+  const pillFieldOpts = useMemo(() => {
+    const toField = f => ({
+      name: f.name,
+      parentModel: f.parentModel || (typeof f.config?.model === 'string' ? f.config.model : null),
+    });
+    // Array.isArray, not just truthy — some consumers' test doubles mock the
+    // WHOLE store module to a fixed non-array object regardless of selector
+    // (e.g. SchemaLeafForm.test.jsx's `default: () => mockActions`), and this
+    // computation runs unconditionally (hooks can't be gated on `droppable`).
+    return {
+      metricFields: Array.isArray(metrics) ? metrics.map(toField) : [],
+      dimensionFields: Array.isArray(dimensions) ? dimensions.map(toField) : [],
+    };
+  }, [metrics, dimensions]);
+
+  // Escape hatch back to raw-text editing ("Custom aggregation…", 06 §4/§5) —
+  // per-row local state so switching one pill to raw edit never affects its
+  // siblings. Resets whenever the row's OWN path changes (a different field
+  // entirely) so a stale escape-hatch flag can't leak across fields.
+  const [forceRawEdit, setForceRawEdit] = useState(false);
+  useEffect(() => {
+    setForceRawEdit(false);
+  }, [path]);
 
   // Parsed body/slice from the current value. parseQueryString returns
   // null when the value isn't `?{...}` shaped; in that case the value
@@ -158,6 +216,41 @@ export function PropertyRow({
   const currentMode = forceQueryMode || isQueryMode ? 'query' : 'static';
 
   const isDropTarget = isOver && dropEnabled;
+
+  const pillState = useMemo(
+    () => pillGrammar.parse(body, pillFieldOpts),
+    [body, pillFieldOpts]
+  );
+  const showPill =
+    droppable &&
+    currentMode === 'query' &&
+    isQueryFormValue &&
+    pillState.kind !== 'opaque' &&
+    pillState.kind !== 'custom' &&
+    !forceRawEdit;
+
+  const pillType = pillState.kind === 'aggregate' || pillState.kind === 'metricRef' ? 'metric' : 'dimension';
+  const pillLabel =
+    pillState.kind === 'aggregate'
+      ? `${(pillState.agg || '').toUpperCase()} · ${pillState.ref} ▸ ${pillState.column}`
+      : pillState.kind === 'dimension'
+        ? `${pillState.ref} ▸ ${pillState.column}`
+        : pillState.ref;
+
+  const handleSelectPreset = useCallback(
+    preset => {
+      const nextState =
+        preset === 'dimension'
+          ? { kind: 'dimension', ref: pillState.ref, column: pillState.column }
+          : { kind: 'aggregate', agg: preset, ref: pillState.ref, column: pillState.column };
+      handleQueryChange(pillGrammar.serialize(nextState));
+    },
+    [pillState, handleQueryChange]
+  );
+
+  const handlePillRemove = useCallback(() => {
+    handleQueryChange('');
+  }, [handleQueryChange]);
 
   // Slice badge is rendered when ALL of:
   //  - The current value is a `?{...}` query-string (a chip is present
@@ -250,16 +343,33 @@ export function PropertyRow({
           // layouts) instead of overflowing past the panel edge.
           <div className="flex items-start gap-1.5 flex-wrap">
             <div className="flex-1 min-w-[180px]">
-              <RefTextArea
-                value={body}
-                onChange={handleQueryChange}
-                label=""
-                rows={2}
-                helperText={description}
-                disabled={disabled}
-                allowedTypes={['model', 'dimension', 'metric', 'input']}
-                restrictBrackets
-              />
+              {showPill ? (
+                <FieldPill
+                  type={pillType}
+                  label={pillLabel}
+                  data-testid={`property-pill-${path}`}
+                  extra={
+                    <PillMenu
+                      state={pillState}
+                      onSelectPreset={handleSelectPreset}
+                      onCustomAggregation={() => setForceRawEdit(true)}
+                      onRemove={handlePillRemove}
+                      disabled={disabled}
+                    />
+                  }
+                />
+              ) : (
+                <RefTextArea
+                  value={body}
+                  onChange={handleQueryChange}
+                  label=""
+                  rows={2}
+                  helperText={description}
+                  disabled={disabled}
+                  allowedTypes={['model', 'dimension', 'metric', 'input']}
+                  restrictBrackets
+                />
+              )}
             </div>
             {showSliceBadge && (
               <div className="flex-shrink-0 mt-1">

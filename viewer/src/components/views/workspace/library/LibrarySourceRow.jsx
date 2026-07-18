@@ -16,6 +16,7 @@ import useStore from '../../../../stores/store';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import useSourceOutline from '../useSourceOutline';
 import { StatusDot } from './LibraryRow';
+import { isNumericColumnType } from '../../../../utils/columnType';
 
 /**
  * LibrarySourceRow — Explore 2.0 Phase 3a (D9 / VIS-1052).
@@ -77,7 +78,7 @@ import { StatusDot } from './LibraryRow';
 const glyphForColumnType = type => {
   const t = (type || '').toLowerCase();
   if (!t) return { Icon: PiTextAa, label: null };
-  if (/int|numeric|float|double|decimal|real|serial/.test(t)) return { Icon: PiHash, label: '#' };
+  if (isNumericColumnType(t)) return { Icon: PiHash, label: '#' };
   if (/bool/.test(t)) return { Icon: PiToggleLeft, label: 'B' };
   if (/date|time/.test(t)) return { Icon: PiCalendarBlank, label: null };
   return { Icon: PiTextAa, label: 'T' };

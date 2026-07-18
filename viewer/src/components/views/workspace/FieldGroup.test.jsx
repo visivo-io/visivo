@@ -14,8 +14,8 @@ import useFieldGroupCollapseStore, { collapseKey } from './fieldGroupCollapseSto
 // without exercising the whole typed-field engine.
 jest.mock('../common/SchemaEditor/PropertyRow', () => ({
   __esModule: true,
-  PropertyRow: ({ path, value, onChange, onRemove }) => (
-    <div data-testid={`prop-${path}`}>
+  PropertyRow: ({ path, value, onChange, onRemove, droppable, onDropField }) => (
+    <div data-testid={`prop-${path}`} data-droppable={droppable ? 'true' : 'false'}>
       <input
         data-testid={`input-${path}`}
         value={value || ''}
@@ -24,6 +24,11 @@ jest.mock('../common/SchemaEditor/PropertyRow', () => ({
       {onRemove && (
         <button data-testid={`remove-${path}`} onClick={onRemove}>
           remove
+        </button>
+      )}
+      {onDropField && (
+        <button data-testid={`drop-${path}`} onClick={() => onDropField({ type: 'model', name: 'orders_q' })}>
+          simulate drop
         </button>
       )}
     </div>
@@ -137,5 +142,27 @@ describe('FieldGroup', () => {
     render(<FieldGroup group={essentialsGroup} value={{ expression: 'x' }} onChange={() => {}} />);
     // expression is required → no remove.
     expect(screen.queryByTestId('remove-expression')).not.toBeInTheDocument();
+  });
+
+  // Explore 2.0 Phase 3b (S5 §2): `droppable`/`onDropField` pure pass-through.
+  test('defaults droppable to false when omitted (no-op for pre-existing callers)', () => {
+    render(<FieldGroup group={essentialsGroup} value={{ expression: 'a' }} onChange={() => {}} />);
+    expect(screen.getByTestId('prop-expression')).toHaveAttribute('data-droppable', 'false');
+  });
+
+  test('forwards droppable=true and curries onDropField with the field name', () => {
+    const onDropField = jest.fn();
+    render(
+      <FieldGroup
+        group={essentialsGroup}
+        value={{ expression: 'a' }}
+        onChange={() => {}}
+        droppable
+        onDropField={onDropField}
+      />
+    );
+    expect(screen.getByTestId('prop-expression')).toHaveAttribute('data-droppable', 'true');
+    fireEvent.click(screen.getByTestId('drop-expression'));
+    expect(onDropField).toHaveBeenCalledWith('expression', { type: 'model', name: 'orders_q' });
   });
 });

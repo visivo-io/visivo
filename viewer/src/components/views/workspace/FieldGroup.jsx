@@ -67,6 +67,14 @@ const GROUP_ICONS = {
  *   (VIS-1021 Field Finder). When this group owns `revealPath`, the group
  *   force-expands (overriding its persisted collapse AND the "+ N more" fold),
  *   scrolls the target row into view, and flashes a highlight ring.
+ * @param {boolean} [props.droppable] - Explore 2.0 Phase 3b (S5 §2): pure
+ *   pass-through to every `PropertyRow`, mirroring `SchemaEditor.jsx`'s
+ *   existing `droppable` forwarding exactly. Default false — a no-op for
+ *   every pre-existing caller (`TracePropsEditor` in `InsightEditForm`/
+ *   `ChartEditForm`); only the new exploration Build rail passes true.
+ * @param {(path: string, dragData: object) => void} [props.onDropField] -
+ *   per-field drop callback, curried with `field.name` before being handed to
+ *   `PropertyRow` (the same currying `onChange`/`onRemove` already use here).
  */
 export function FieldGroup({
   group,
@@ -77,6 +85,8 @@ export function FieldGroup({
   errors = {},
   overrides = {},
   revealPath = null,
+  droppable = false,
+  onDropField,
 }) {
   const { id, label, icon, objectType, alwaysOpen, defaultOpen = true, fields = [] } = group || {};
 
@@ -204,6 +214,10 @@ export function FieldGroup({
                   defs={defs}
                   description={field.schema?.description || ''}
                   disabled={disabled}
+                  droppable={droppable}
+                  onDropField={
+                    onDropField ? dragData => onDropField(field.name, dragData) : undefined
+                  }
                   error={errors[field.name]}
                 />
               </div>
