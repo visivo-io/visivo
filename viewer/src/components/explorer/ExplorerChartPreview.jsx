@@ -1,92 +1,54 @@
 import { useMemo } from 'react';
+import { PiCircleNotch } from 'react-icons/pi';
 import ChartPreview from '../views/common/ChartPreview';
-import { useChartPreviewJob } from '../../hooks/usePreviewData';
-import { useInputsData } from '../../hooks/useInputsData';
+import useDraftInsightPreview from '../../hooks/useDraftInsightPreview';
+import { usePreviewInputDependencies } from '../views/workspace/usePreviewInputDependencies';
+import PreviewInputControls from '../views/workspace/PreviewInputControls';
 import useStore from '../../stores/store';
-import { useShallow } from 'zustand/react/shallow';
-import {
-  expandDotNotationProps,
-  selectDerivedInputNames,
-} from '../../stores/explorerStore';
 
+/**
+ * ExplorerChartPreview — Explore 2.0 Phase 4 (S2's resolved design, VIS-1026's
+ * ExplorerChartPreview half). Live, client-side chart preview for the
+ * exploration surface's UNSAVED draft — REPLACES the dead `context_objects`
+ * overlay this component used to build (B6): that payload was constructed
+ * (`insightOverrides`/`modelOverrides`/`inputOverrides`) and sent as part of
+ * `useChartPreviewJob`'s `previewRequest`, but `usePreviewData.js`'s
+ * `useChartPreviewJob` only ever reads `previewRequest.insight_names` — the
+ * `context_objects` half was 100% dead compute (confirmed by direct read of
+ * `usePreviewData.js`).
+ *
+ * `useDraftInsightPreview` now does the real work: debounced compile-draft
+ * calls -> synthetic draft-namespaced `insightJobs` entries -> the same
+ * `<ChartPreview>`/`<Chart>` renderer real (main-run) data already uses (S2
+ * Q1 — Chart.jsx is shape-agnostic about how an entry got populated).
+ */
 const ExplorerChartPreview = () => {
-  const insightStates = useStore(s => s.explorerInsightStates);
-  const modelStates = useStore(s => s.explorerModelStates);
   const chartLayout = useStore(s => s.explorerChartLayout);
   const chartName = useStore(s => s.explorerChartName);
   const syncPlotlyEdits = useStore(s => s.setChartLayout);
   const projectId = useStore(s => s.project?.id);
   const chartInsightNames = useStore(s => s.explorerChartInsightNames);
-  const derivedInputNames = useStore(useShallow(selectDerivedInputNames));
-  const storeInputs = useStore(s => s.inputs || []);
+  const insightStates = useStore(s => s.explorerInsightStates);
 
-  // Load input data (parquet, options, defaults) for dynamically referenced inputs
-  useInputsData(projectId, derivedInputNames);
+  const draftPreview = useDraftInsightPreview();
 
-  // Build the batched preview request: every insight on the chart + every
-  // edited object in the explorer's working stores. The backend overlays them
-  // onto the published project and runs all insights in one DAG invocation.
-  const previewRequest = useMemo(() => {
-    if (!chartInsightNames || chartInsightNames.length === 0) return null;
+  // Config-fallback source for `usePreviewInputDependencies` (02 §6):
+  // extracts referenced input names from props/interactions text directly —
+  // works identically whether or not the insight has ever been compiled.
+  const configForFallback = useMemo(
+    () => ({
+      insights: chartInsightNames.map(name => ({
+        props: insightStates[name]?.props,
+        interactions: insightStates[name]?.interactions,
+      })),
+    }),
+    [chartInsightNames, insightStates]
+  );
 
-    const insightOverrides = chartInsightNames
-      .map(name => {
-        const state = insightStates?.[name];
-        if (!state) return null;
-        const props = { type: state.type, ...state.props };
-        const hasDataProps = Object.keys(props).some(k => k !== 'type');
-        if (!hasDataProps) return null;
-        const backendInteractions = (state.interactions || [])
-          .filter(i => i.value)
-          .map(i => ({ [i.type]: i.value }));
-        return {
-          name,
-          props: expandDotNotationProps(props),
-          ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
-        };
-      })
-      .filter(Boolean);
-
-    if (insightOverrides.length === 0) return null;
-
-    const modelOverrides = Object.entries(modelStates || {})
-      .map(([name, state]) => {
-        if (!state?.sql || !state?.sourceName) return null;
-        const modelConfig = {
-          name,
-          sql: state.sql,
-          source: `\${ref(${state.sourceName})}`,
-        };
-        const dims = (state.computedColumns || [])
-          .filter(c => c.type === 'dimension')
-          .map(c => ({ name: c.name, expression: c.expression }));
-        const mets = (state.computedColumns || [])
-          .filter(c => c.type === 'metric')
-          .map(c => ({ name: c.name, expression: c.expression }));
-        if (dims.length) modelConfig.dimensions = dims;
-        if (mets.length) modelConfig.metrics = mets;
-        return modelConfig;
-      })
-      .filter(Boolean);
-
-    const inputOverrides = (storeInputs || [])
-      .filter(i => derivedInputNames.includes(i.name))
-      .map(i => {
-        const { name_hash, structure, ...cleanConfig } = i.config || {};
-        return { ...cleanConfig, name: i.name };
-      });
-
-    const context_objects = { insights: insightOverrides };
-    if (modelOverrides.length) context_objects.models = modelOverrides;
-    if (inputOverrides.length) context_objects.inputs = inputOverrides;
-
-    return {
-      insight_names: chartInsightNames,
-      context_objects,
-    };
-  }, [chartInsightNames, insightStates, modelStates, storeInputs, derivedInputNames]);
-
-  const previewJob = useChartPreviewJob(previewRequest, { projectId });
+  const { inputConfigs, unresolvedNames } = usePreviewInputDependencies(projectId, {
+    insightNames: draftPreview.previewInsightKeys,
+    configForFallback,
+  });
 
   const chartConfig = useMemo(
     () => ({
@@ -107,18 +69,52 @@ const ExplorerChartPreview = () => {
     );
   }
 
+  // Graceful "run the query first" state (S2's one known sub-gap): a raw-
+  // column ref names a never-run scratch model with no schema anywhere —
+  // neither a real schemas/<model>/schema.json NOR a client-supplied
+  // model_schemas override (no cached query result yet).
+  if (draftPreview.blockedReason === 'model_not_run') {
+    return (
+      <div
+        className="flex flex-col items-center justify-center h-full bg-gray-50 gap-2 p-6 text-center"
+        data-testid="chart-preview-run-first"
+      >
+        <PiCircleNotch className="h-5 w-5 text-secondary-300" aria-hidden="true" />
+        <span className="text-sm font-medium text-secondary-600">
+          Run the query{draftPreview.blockedModel ? ` for "${draftPreview.blockedModel}"` : ''}{' '}
+          to preview this chart
+        </span>
+        <span className="text-xs text-secondary-400 max-w-sm">
+          This insight references a column on a model that hasn&apos;t returned any rows yet.
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <ChartPreview
-      chartConfig={chartConfig}
-      insightKeys={previewJob.previewInsightKeys}
-      projectId={projectId}
-      onLayoutChange={syncPlotlyEdits}
-      editableLayout={true}
-      isLoading={previewJob.isLoading}
-      error={previewJob.error}
-      progress={previewJob.progress}
-      progressMessage={previewJob.progressMessage}
-    />
+    <div className="flex flex-1 min-h-0 flex-col">
+      <PreviewInputControls inputConfigs={inputConfigs} projectId={projectId} />
+      {unresolvedNames.length > 0 && (
+        <div
+          data-testid="chart-preview-unresolved-inputs"
+          className="px-3 py-1.5 text-xs text-highlight-700 bg-highlight-50 border-b border-highlight-200"
+        >
+          References input{unresolvedNames.length === 1 ? '' : 's'}{' '}
+          {unresolvedNames.map(n => `"${n}"`).join(', ')} — not yet promoted.
+        </div>
+      )}
+      <div className="flex-1 min-h-0">
+        <ChartPreview
+          chartConfig={chartConfig}
+          insightKeys={draftPreview.previewInsightKeys}
+          projectId={projectId}
+          onLayoutChange={syncPlotlyEdits}
+          editableLayout={true}
+          isLoading={draftPreview.isLoading}
+          error={draftPreview.error}
+        />
+      </div>
+    </div>
   );
 };
 
