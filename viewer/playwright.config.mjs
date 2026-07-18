@@ -42,6 +42,13 @@ export default defineConfig({
         // the 'exploration-mutations' project below.
         '**/explorer-home.spec.mjs',
         '**/exploration-lifecycle.spec.mjs',
+        // Phase 3a (VIS-1053/1054): both create/delete real backend
+        // exploration records via the same shared `.visivo/explorations/`
+        // repository (query-chip CRUD mutates the draft directly; the DnD
+        // pull-in specs each mint + clean up an exploration) — same
+        // isolation need as the two specs above, same project.
+        '**/exploration-dnd-pull-in.spec.mjs',
+        '**/exploration-query-chips.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -108,7 +115,14 @@ export default defineConfig({
       // not reproducible across 7+ repeated runs and wasn't worth the
       // dependency's cost.
       name: 'exploration-mutations',
-      testMatch: ['**/explorer-home.spec.mjs', '**/exploration-lifecycle.spec.mjs'],
+      testMatch: [
+        '**/explorer-home.spec.mjs',
+        '**/exploration-lifecycle.spec.mjs',
+        // Phase 3a additions (VIS-1053/1054) — see the 'parallel' project's
+        // testIgnore entry for the same two files for why.
+        '**/exploration-dnd-pull-in.spec.mjs',
+        '**/exploration-query-chips.spec.mjs',
+      ],
       fullyParallel: false,
       workers: 1,
       retries: 0,

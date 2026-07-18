@@ -28,6 +28,17 @@
 
 import { test, expect } from '@playwright/test';
 
+// A tall viewport keeps the Build rail's insight properties in view without
+// scrolling (mirrors canvas-dnd.spec.mjs's `test.use({ viewport: ... })`):
+// dnd-kit's built-in auto-scroll triggers when the pointer lingers near a
+// scrollable container's edge, and a target row near the DEFAULT viewport's
+// bottom edge was observed to drift ~200px mid-drag as the panel
+// auto-scrolled — by the time the drop resolved, the row that started under
+// the cursor had moved, and an ADJACENT row (or nothing) was under it
+// instead. A generously tall viewport keeps every drop target comfortably
+// away from any edge for the whole gesture.
+test.use({ viewport: { width: 1280, height: 1600 } });
+
 const BASE_URL =
   process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
 const apiBase = (() => {
@@ -42,10 +53,23 @@ const apiBase = (() => {
 const SOURCE = 'local-duckdb';
 const TABLE = 'test_table';
 
-/** Manual mouse-driven drag, matching the established dnd-kit PointerSensor
- * activation pattern (>8px movement) used by the (now-superseded)
- * `explorer-dnd.spec.mjs`. Library rows + the SQL editor / prop slots are
- * plain, unoccluded DOM nodes — no overlay hit-testing workaround needed. */
+/**
+ * Manual mouse-driven drag, matching the established dnd-kit PointerSensor
+ * activation pattern (>8px movement — see `workspace-tabs-shortcuts.spec.mjs`'s
+ * `drag-to-reorder tabs with a real cursor`, the reference green DnD story
+ * this mirrors, including its "settle at the same final point twice" move).
+ * Library rows + the SQL editor / prop slots are plain, unoccluded DOM
+ * nodes — no overlay hit-testing workaround needed.
+ *
+ * Root-caused via a mid-drag DOM inspection (temporary instrumentation, not
+ * kept): a drop aimed at the "x" prop row's box center landed on "y" (the
+ * next row down) instead. The row's LIVE rect during the drag had shifted
+ * ~200px from where `boundingBox()` measured it just before — dnd-kit's
+ * built-in auto-scroll was firing because that row sat near the (default,
+ * 720px-tall) viewport's bottom edge, scrolling the panel while the pointer
+ * lingered nearby. Fixed at the source with a tall viewport (this file's
+ * `test.use`), not by chasing the target's position mid-gesture.
+ */
 async function dragAndDrop(page, sourceLocator, targetLocator) {
   const sourceBox = await sourceLocator.boundingBox();
   const targetBox = await targetLocator.boundingBox();
@@ -60,8 +84,12 @@ async function dragAndDrop(page, sourceLocator, targetLocator) {
   await page.mouse.down();
   await page.mouse.move(sourceX + 10, sourceY, { steps: 3 });
   await page.waitForTimeout(100);
-  await page.mouse.move(targetX, targetY, { steps: 10 });
-  await page.waitForTimeout(50);
+  await page.mouse.move(targetX, targetY, { steps: 12 });
+  // Settle at the exact same final point (mirrors the reference green
+  // story's double-move) so dnd-kit's continuous re-measurement resolves
+  // against the pointer's RESTING position, not one still mid-interpolation.
+  await page.mouse.move(targetX, targetY, { steps: 4 });
+  await page.waitForTimeout(150);
   await page.mouse.up();
   await page.waitForTimeout(300);
 }
@@ -81,6 +109,15 @@ async function newExploration(page) {
   await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
   return new URL(page.url()).pathname.split('/').pop();
 }
+
+/**
+ * The actual chip row locator — NOT `[data-testid^="query-chip-"]` alone.
+ * That prefix also matches other real elements (`query-chip-status-dot`,
+ * `query-chip-<name>-menu-trigger` on the active chip, and the
+ * `query-chip-add` button), so counting it directly over-counts. Only the
+ * chip row itself carries `data-active`.
+ */
+const chips = page => page.locator('[data-testid^="query-chip-"][data-active]');
 
 async function expandSourceTable(page) {
   const sourceHeader = page.getByTestId('library-subsection-source-header');
@@ -128,20 +165,31 @@ test.describe('Exploration DnD pull-in (Explore 2.0 Phase 3a — D9)', () => {
   }) => {
     await gotoExplorerHome(page);
     const id = await newExploration(page);
-    const existingChips = await page.locator('[data-testid^="query-chip-"]').count();
+    const existingChips = await chips(page).count();
 
     const tableRow = await expandSourceTable(page);
     const dropZone = page.getByTestId('sql-editor-drop-zone');
     await dragAndDrop(page, tableRow, dropZone);
 
     // A new chip appears (one more than before) and becomes active.
-    await expect(page.locator('[data-testid^="query-chip-"]')).toHaveCount(existingChips + 1, {
+    await expect(chips(page)).toHaveCount(existingChips + 1, {
       timeout: 10000,
     });
     await expect(page.locator('.view-lines').first()).toContainText(`SELECT * FROM ${TABLE}`, {
       timeout: 10000,
     });
 
+    // Wait for the client-side debounced sync to settle (mirrors
+    // exploration-lifecycle.spec.mjs's dirty-dot check) BEFORE polling the
+    // backend — a generous timeout absorbs a cold sandbox's first-request
+    // warm-up cost (observed when this is the first test to hit the backend
+    // in a fresh run: the debounce itself is the same ~1.6s always, but the
+    // very first `/api/explorations/` round-trip in a run can take
+    // noticeably longer). Polling the backend directly with only a flat
+    // timeout raced that warm-up instead of waiting it out.
+    await expect(page.getByTestId(`workspace-tab-dirty-exploration:${id}`)).not.toBeVisible({
+      timeout: 25000,
+    });
     await waitForBackendDraft(page, id, draft =>
       (draft.queries || []).some(q => (q.sql || '').includes(`SELECT * FROM ${TABLE}`))
     );
@@ -152,7 +200,7 @@ test.describe('Exploration DnD pull-in (Explore 2.0 Phase 3a — D9)', () => {
   }) => {
     await gotoExplorerHome(page);
     await newExploration(page);
-    const existingChips = await page.locator('[data-testid^="query-chip-"]').count();
+    const existingChips = await chips(page).count();
 
     const tableRow = await expandSourceTable(page);
     await tableRow.getByTestId(`library-source-table-${SOURCE}-${TABLE}-toggle`).click();
@@ -169,7 +217,7 @@ test.describe('Exploration DnD pull-in (Explore 2.0 Phase 3a — D9)', () => {
     await dragAndDrop(page, firstColumn, page.getByTestId('sql-editor-drop-zone'));
 
     // No new chip — the drop targeted the ACTIVE query's editor, not a seed.
-    await expect(page.locator('[data-testid^="query-chip-"]')).toHaveCount(existingChips);
+    await expect(chips(page)).toHaveCount(existingChips);
     await expect(page.locator('.view-lines').first()).toContainText(columnName, { timeout: 10000 });
   });
 
