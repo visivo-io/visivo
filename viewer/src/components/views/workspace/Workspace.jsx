@@ -61,6 +61,10 @@ const Workspace = () => {
   const fetchRelations = useStore(s => s.fetchRelations);
   const fetchInsights = useStore(s => s.fetchInsights);
   const fetchDashboards = useStore(s => s.fetchDashboards);
+  // Explore 2.0 Phase 2: the exploration list backs both Explorer Home's
+  // gallery and a deep-linked `/workspace/exploration/:id`'s not-found check
+  // (ExplorationPane) — fetched here so it's populated before either mounts.
+  const fetchExplorations = useStore(s => s.fetchExplorations);
 
   const projectName = project?.project_json?.name || project?.name || 'project';
 
@@ -82,6 +86,7 @@ const Workspace = () => {
       fetchRelations(),
       fetchInsights(),
       fetchDashboards(),
+      fetchExplorations(),
     ]).catch(() => {});
   }, [
     fetchCharts,
@@ -97,6 +102,7 @@ const Workspace = () => {
     fetchRelations,
     fetchInsights,
     fetchDashboards,
+    fetchExplorations,
   ]);
 
   // The mount prefix for this Workspace. Studio serves it at the root

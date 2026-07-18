@@ -123,6 +123,7 @@ const resetWorkspaceStore = () => {
       fetchRelations: jest.fn(),
       fetchInsights: jest.fn(),
       fetchDashboards: jest.fn(),
+      fetchExplorations: jest.fn(),
       // Right-rail Edit routing (VIS-802) reads the scoped dashboard's draft
       // config from `dashboards` and auto-saves via `saveDashboard`.
       dashboards: [
@@ -297,6 +298,7 @@ describe('VIS-775 Workspace shell', () => {
       fetchMetrics: jest.fn(),
       fetchRelations: jest.fn(),
       fetchInsights: jest.fn(),
+      fetchExplorations: jest.fn(),
     };
     act(() => { useStore.setState(fetchers); });
     renderAt('/workspace');
@@ -311,6 +313,7 @@ describe('VIS-775 Workspace shell', () => {
       fetchers.fetchCsvScriptModels,
       fetchers.fetchLocalMergeModels,
       fetchers.fetchInsights,
+      fetchers.fetchExplorations,
     ].forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
     // The semantic-layer collections (relations/metrics/dimensions) are also
     // self-fetched by the ProjectEditor governance surface (VIS-1013) when they
