@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { useDroppable } from '@dnd-kit/core';
 import SQLEditor from './SQLEditor';
 
 // Mock Monaco editor — selection state is configurable per-test
@@ -13,7 +14,16 @@ const mockEditor = {
   }),
   addCommand: jest.fn(),
   focus: jest.fn(),
+  trigger: jest.fn(),
 };
+
+// Explore 2.0 Phase 3a (D9): wrap the real dnd-kit so the drop-zone tests can
+// inspect the `useDroppable` call (id/data/disabled) without simulating a
+// real dnd-kit pointer drag (jsdom can't do that — Playwright covers it).
+jest.mock('@dnd-kit/core', () => {
+  const actual = jest.requireActual('@dnd-kit/core');
+  return { __esModule: true, ...actual, useDroppable: jest.fn(actual.useDroppable) };
+});
 
 const mockMonaco = {
   KeyMod: { CtrlCmd: 2048 },
@@ -662,6 +672,49 @@ describe('SQLEditor', () => {
 
       fireEvent.click(screen.getByTestId('close-profile'));
       expect(screen.queryByTestId('column-profile-panel')).not.toBeInTheDocument();
+    });
+  });
+
+  // Explore 2.0 Phase 3a (D9, 02-architecture.md §4): Library column drag →
+  // SQL editor cursor insert. The actual drag/drop can't run in jsdom, so
+  // these tests capture the `useDroppable` call the router
+  // (`WorkspaceDndContext.routeExplorationDragEnd`) would invoke and drive
+  // it directly.
+  describe('library drop target (D9)', () => {
+    beforeEach(() => {
+      useDroppable.mockClear();
+      mockEditor.trigger.mockClear();
+    });
+
+    it('registers the sql-editor-drop zone DISABLED by default (dropInsertEnabled not passed)', () => {
+      render(<SQLEditor sourceName="test_source" />);
+      const call = useDroppable.mock.calls.find(([opts]) => opts.id === 'sql-editor-drop');
+      expect(call[0].disabled).toBe(true);
+      // Still renders the container — ModelPreview's plain usage is simply
+      // inert, not absent.
+      expect(screen.getByTestId('sql-editor-drop-zone')).toBeInTheDocument();
+    });
+
+    it('enables the drop zone when dropInsertEnabled is true', () => {
+      render(<SQLEditor sourceName="test_source" dropInsertEnabled />);
+      const call = useDroppable.mock.calls.find(([opts]) => opts.id === 'sql-editor-drop');
+      expect(call[0].disabled).toBe(false);
+    });
+
+    it('the droppable data carries an onInsertText callback that types at the Monaco cursor', async () => {
+      render(<SQLEditor sourceName="test_source" dropInsertEnabled />);
+      // Wait for the mocked Editor's onMount (fired via setTimeout) so
+      // editorRef.current is populated.
+      await screen.findByTestId('monaco-editor');
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
+      const call = useDroppable.mock.calls.find(([opts]) => opts.id === 'sql-editor-drop');
+      act(() => call[0].data.onInsertText('region'));
+
+      expect(mockEditor.focus).toHaveBeenCalled();
+      expect(mockEditor.trigger).toHaveBeenCalledWith('library-drop', 'type', { text: 'region' });
     });
   });
 });

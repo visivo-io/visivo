@@ -16,9 +16,19 @@ jest.mock('./DraggableColumnHeader', () => {
 // and the completion buttons deliver results with that captured context.
 jest.mock('./SQLEditor', () => {
   let capturedContext;
-  return function MockSQLEditor({ sourceName, initialValue, onSave, onQueryComplete, hideResults, queryContext, toolbarExtra, toolbarRight }) {
+  return function MockSQLEditor({
+    sourceName,
+    initialValue,
+    onSave,
+    onQueryComplete,
+    hideResults,
+    queryContext,
+    toolbarExtra,
+    toolbarRight,
+    dropInsertEnabled,
+  }) {
     return (
-      <div data-testid="sql-editor">
+      <div data-testid="sql-editor" data-drop-insert-enabled={String(!!dropInsertEnabled)}>
         <span data-testid="editor-source">{sourceName || 'no-source'}</span>
         <span data-testid="editor-value">{initialValue}</span>
         <span data-testid="editor-hide-results">{String(hideResults)}</span>
@@ -199,6 +209,28 @@ describe('CenterPanel', () => {
     render(<CenterPanel />);
 
     expect(screen.getByTestId('model-tab-bar')).toBeInTheDocument();
+  });
+
+  // Explore 2.0 Phase 3a: CenterPanel is shared between the standalone
+  // `/explorer` route (ExplorerPage, no props — keeps ModelTabBar
+  // untouched) and the new exploration surface (ExplorationWorkbench, which
+  // passes its own query chips + opts into the Library SQL-editor drop
+  // target). Both branches must coexist behind these opt-in props.
+  it('renders a custom modelTabBar when provided, instead of ModelTabBar', () => {
+    render(<CenterPanel modelTabBar={<div data-testid="custom-tab-bar">chips</div>} />);
+
+    expect(screen.getByTestId('custom-tab-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId('model-tab-bar')).not.toBeInTheDocument();
+  });
+
+  it('defaults enableLibraryDrop to false — the SQL editor is not a drop target unless opted in', () => {
+    render(<CenterPanel />);
+    expect(screen.getByTestId('sql-editor')).toHaveAttribute('data-drop-insert-enabled', 'false');
+  });
+
+  it('forwards enableLibraryDrop to the SQL editor as dropInsertEnabled', () => {
+    render(<CenterPanel enableLibraryDrop />);
+    expect(screen.getByTestId('sql-editor')).toHaveAttribute('data-drop-insert-enabled', 'true');
   });
 
   it('renders SQL Editor and chart preview in wide mode', () => {
