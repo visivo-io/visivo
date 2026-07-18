@@ -36,6 +36,12 @@ export default defineConfig({
         // VIS-993 regression: canvas edits must persist to the DRAFT CACHE
         // (backend), so this story writes state and runs serially.
         '**/canvas-editing.spec.mjs',
+        // Phase 2 e2e gate (VIS-1050): explorations live in ONE file-backed
+        // repository shared by every worker (`.visivo/explorations/`, no
+        // per-worker isolation like localStorage-scoped Phase 0 state) — see
+        // the 'exploration-mutations' project below.
+        '**/explorer-home.spec.mjs',
+        '**/exploration-lifecycle.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -76,6 +82,33 @@ export default defineConfig({
       // sandbox via VIS_PUBLISH_BASE.
       name: 'workspace-publish',
       testMatch: ['**/build-mode-publish.spec.mjs', '**/external-edit-banner.spec.mjs'],
+      fullyParallel: false,
+      workers: 1,
+      retries: 0,
+    },
+    {
+      // Explore 2.0 Phase 2 e2e gate: explorations are S3'd to ONE JSON
+      // repository under `.visivo/explorations/` (ExplorationRepository),
+      // shared by every worker against the same :3001 sandbox — unlike Phase
+      // 0's tab/view-switcher stories, which only ever touch per-worker
+      // in-memory Zustand state. Running these concurrently means one
+      // worker's create/rename/delete races another's list fetch (e.g. a
+      // fresh page's "lazily seed Scratch" firing against a directory another
+      // worker just emptied), so — same precedent as 'publish' /
+      // 'workspace-publish' — they get their own serial, no-retry project.
+      //
+      // Deliberately NO `dependencies: ['parallel']` here (unlike
+      // 'state-mutating'): a Playwright project dependency always runs the
+      // ENTIRE dependency project, ignoring any file-name filter on the CLI
+      // invocation — `npx playwright test explorer-home.spec.mjs` would
+      // silently balloon into running all ~150 'parallel' spec files first.
+      // 'exploration-mutations' runs CONCURRENTLY with 'parallel' (same as
+      // 'publish'/'workspace-publish'); a single observed flake under
+      // combined 5-worker load (a slow round-trip missing a 15s timeout) was
+      // not reproducible across 7+ repeated runs and wasn't worth the
+      // dependency's cost.
+      name: 'exploration-mutations',
+      testMatch: ['**/explorer-home.spec.mjs', '**/exploration-lifecycle.spec.mjs'],
       fullyParallel: false,
       workers: 1,
       retries: 0,

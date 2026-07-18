@@ -59,19 +59,33 @@ const ExplorerHomePane = () => {
   // that just hasn't landed yet). Guarded so it only ever fires once per
   // mount even if this effect re-runs before the created record lands in
   // `order`.
+  //
+  // `seedPromiseRef` additionally guards a SEPARATE race: a user (or a fast
+  // automated click) triggering "+ New exploration" / a source tile WHILE
+  // this seed's own `createExploration()` call is still in flight — both
+  // read the list as empty and would otherwise fire concurrent creates. The
+  // repository names by `count(existing)` (`_default_name`,
+  // exploration_repository.py) with no lock between the read and the write,
+  // so two requests landing before either has persisted can even mint the
+  // SAME name. Manual creates await this ref first — harmless once the seed
+  // has resolved (an awaited resolved promise is a no-op) — so the seed's
+  // write always lands before any manual create's read.
   const seedingRef = useRef(false);
+  const seedPromiseRef = useRef(null);
   useEffect(() => {
     if (!fetched || orderedExplorations.length > 0 || seedingRef.current) return;
     seedingRef.current = true;
-    createExploration();
+    seedPromiseRef.current = createExploration();
   }, [fetched, orderedExplorations.length, createExploration]);
 
   const handleNew = async () => {
+    if (seedPromiseRef.current) await seedPromiseRef.current;
     const result = await createExploration();
     if (result?.success) openExploration(result.id);
   };
 
   const handleSourceTile = async sourceName => {
+    if (seedPromiseRef.current) await seedPromiseRef.current;
     const result = await createExploration({ type: 'source', name: sourceName });
     if (result?.success) openExploration(result.id);
   };

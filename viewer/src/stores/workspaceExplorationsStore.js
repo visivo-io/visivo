@@ -37,6 +37,10 @@
  */
 
 import * as explorationsApi from '../api/explorations';
+import {
+  legacyStateForSeed,
+  legacyStateToDraft,
+} from '../components/views/workspace/explorationLegacyBridge';
 
 const SYNC_DEBOUNCE_MS = 1000;
 
@@ -188,10 +192,17 @@ const createWorkspaceExplorationsSlice = (set, get) => {
     },
 
     /** Create a new exploration. `seed` (optional) is a durable provenance
-     * ref — `{ type, name }` — e.g. from an "Explore this" action. */
+     * ref — `{ type, name }` — e.g. from an "Explore this" action. A
+     * `{type: 'source', name}` seed also pre-wires one empty model tab to
+     * that source (`legacyStateForSeed`, ExplorerHomePane's "Start from a
+     * source" tiles, 01-ux-spec.md §2) so the SQL editor opens ready to
+     * query it instead of blank with no source selected. */
     createExploration: async (seed = null) => {
       try {
-        const created = await explorationsApi.createExploration(seed ? { seeded_from: seed } : {});
+        const payload = seed ? { seeded_from: seed } : {};
+        const seedLegacyState = seed ? legacyStateForSeed(seed) : null;
+        if (seedLegacyState) payload.draft = mapDraftToApi(legacyStateToDraft(seedLegacyState));
+        const created = await explorationsApi.createExploration(payload);
         const mapped = mapExplorationFromApi(created);
         set(state => insertExploration(state, mapped));
         return { success: true, id: mapped.id, exploration: mapped };

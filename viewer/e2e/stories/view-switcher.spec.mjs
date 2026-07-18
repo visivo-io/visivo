@@ -61,7 +61,12 @@ test.describe('Destination view switcher (D1, Explore 2.0 Phase 0)', () => {
     await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/workspace');
 
-    // Semantic Layer.
+    // Semantic Layer. `openWorkspaceView` (workspaceStore.js) activates the
+    // store AND navigates the URL — activation causes the pane's own
+    // immediate re-render, but the URL (`history.pushState`, routed through
+    // the data router's own navigation pipeline) can lag behind under real
+    // load (concurrent Chromium instances). Wait for the URL itself before
+    // asserting on it, same as every other destination switch below.
     const semanticRow = page.getByTestId('workspace-view-switcher-semantic-layer');
     await expect(semanticRow).toHaveText('Semantic Layer');
     await semanticRow.hover();
@@ -69,6 +74,7 @@ test.describe('Destination view switcher (D1, Explore 2.0 Phase 0)', () => {
     await expect(semanticRow).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('workspace-middle-semantic-layer')).toBeVisible();
     await expect(page.getByTestId('semantic-layer-erd')).toBeVisible({ timeout: 20000 });
+    await page.waitForURL('**/workspace/semantic-layer', { timeout: 10000 });
     expect(new URL(page.url()).pathname).toBe('/workspace/semantic-layer');
 
     // Explorer (Explore 2.0 Phase 2 — the real Home gallery replaces the
@@ -80,6 +86,7 @@ test.describe('Destination view switcher (D1, Explore 2.0 Phase 0)', () => {
     await expect(explorerRow).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible();
     await expect(page.getByTestId('explorer-home-new-exploration')).toBeVisible();
+    await page.waitForURL('**/workspace/exploration', { timeout: 10000 });
     expect(new URL(page.url()).pathname).toBe('/workspace/exploration');
 
     // Back to Project.
@@ -88,6 +95,7 @@ test.describe('Destination view switcher (D1, Explore 2.0 Phase 0)', () => {
     await projectRow.click();
     await expect(projectRow).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
+    await page.waitForURL('**/workspace', { timeout: 10000 });
     expect(new URL(page.url()).pathname).toBe('/workspace');
   });
 

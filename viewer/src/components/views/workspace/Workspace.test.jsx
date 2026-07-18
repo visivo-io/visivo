@@ -438,6 +438,35 @@ describe('VIS-775 Workspace shell', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('closing the ACTIVE route tab then immediately reopening the SAME document reopens it (VIS-1050 gate)', () => {
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(
+      screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
+    ).toHaveAttribute('data-active', 'true');
+
+    // Close the ACTIVE tab (navigates the URL to its owning Home) and
+    // immediately reopen the SAME document (navigates back to the exact URL
+    // string it had before — ids are stable) inside ONE synchronous batch,
+    // exactly what a real click handler does. `closeWorkspaceTab` writes the
+    // store directly and then separately navigates; the URL→store sync
+    // effect (Workspace.jsx, keyed on a `syncedTargetRef` derived from
+    // `location.pathname`) has no ordering guarantee against that, so its
+    // memory of "already synced" can end up matching the reopen's URL even
+    // though the store no longer has the tab — before the fix,
+    // `activateWorkspaceTab` never re-fired and the tab stayed closed
+    // forever (the actual observed "reopen a parked exploration" hang).
+    // `openWorkspaceTab`/`openWorkspaceView` now activate the store
+    // directly instead of depending on that effect.
+    act(() => {
+      useStore.getState().closeWorkspaceTab('dashboard:simple-dashboard');
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'simple-dashboard' });
+    });
+
+    expect(
+      screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
+    ).toHaveAttribute('data-active', 'true');
+  });
+
   test('routes the active tab through the URL so the Back button walks tab history', async () => {
     const router = createMemoryRouter(
       createRoutesFromElements(

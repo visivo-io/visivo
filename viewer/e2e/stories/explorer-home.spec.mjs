@@ -20,20 +20,67 @@
  *   VISIVO_SANDBOX_NAME=explorerHome VISIVO_SANDBOX_BACKEND_PORT=8043 \
  *   VISIVO_SANDBOX_FRONTEND_PORT=3043 bash scripts/sandbox.sh start
  *   PLAYWRIGHT_BASE_URL=http://localhost:3043 npx playwright test explorer-home
+ *
+ * Runs in playwright.config.mjs's `exploration-mutations` project (serial,
+ * no retries) CONCURRENTLY with `parallel`'s many workers against the same
+ * :8001 Flask dev server — the `workspace-middle-exploration`/
+ * `workspace-middle-explorer`/`explorer-home-gallery` visibility waits use a
+ * 30s (not 15s) timeout to absorb that combined-load contention (CPU +
+ * network, since re-opening an ALREADY-fetched exploration needs no new
+ * request but still got slow under 5 concurrent Chromium instances) — it's
+ * a real latency margin, not a correctness dependency;
+ * `test.describe.configure({ timeout: 60000 })` below gives the
+ * surrounding multi-step test enough room to match.
  */
 
 import { test, expect } from '@playwright/test';
 
 const BASE_URL =
   process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
+// Explorations are S3'd to a single file-backed repository shared by every
+// test in this suite (`.visivo/explorations/` — see ExplorationRepository).
+// Runs serially (playwright.config.mjs's `exploration-mutations` project)
+// so tests never race each other, but each test still mints real backend
+// records; belt-and-suspenders cleanup keeps the directory from growing
+// across repeated runs — diff the id list before/after and delete whatever
+// a test created, regardless of which UI path (seed / new / duplicate)
+// minted it.
+const API = BASE_URL.replace(':3001', ':8001');
+
+async function listExplorationIds(page) {
+  const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);
+  if (!res || !res.ok()) return [];
+  const data = await res.json().catch(() => []);
+  return (data || []).map(e => e.id);
+}
 
 async function gotoExplorerHome(page) {
   await page.goto(`${BASE_URL}/workspace/exploration`);
   await page.waitForLoadState('networkidle');
-  await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible({ timeout: 30000 });
 }
 
 test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
+  // The global 30s default (playwright.config.mjs) is tight for these
+  // multi-step flows once combined-load contention (this project runs
+  // concurrently with `parallel`'s many workers, see the file-header note)
+  // stretches out every round-trip.
+  test.describe.configure({ timeout: 60000 });
+
+  let idsBeforeTest = [];
+
+  test.beforeEach(async ({ page }) => {
+    idsBeforeTest = await listExplorationIds(page);
+  });
+
+  test.afterEach(async ({ page }) => {
+    const idsAfterTest = await listExplorationIds(page);
+    const createdIds = idsAfterTest.filter(id => !idsBeforeTest.includes(id));
+    for (const id of createdIds) {
+      await page.request.delete(`${API}/api/explorations/${id}/`).catch(() => {});
+    }
+  });
+
   test('renders the header, New-exploration button, and source tiles', async ({ page }) => {
     await gotoExplorerHome(page);
     await expect(page.getByText('Explore your data')).toBeVisible();
@@ -45,7 +92,7 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
     page,
   }) => {
     await gotoExplorerHome(page);
-    await expect(page.getByTestId('explorer-home-gallery')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('explorer-home-gallery')).toBeVisible({ timeout: 30000 });
     const cardCount = await page.locator('[data-testid^="exploration-card-"][data-testid$="-name"]').count();
     expect(cardCount).toBeGreaterThanOrEqual(1);
   });
@@ -55,9 +102,21 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
     await page.getByTestId('explorer-home-new-exploration').click();
 
     // A new exploration tab is now active — the SubBar shows its (default)
-    // name and the legacy workbench mounts.
-    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('[role="tab"][data-active="true"]')).toHaveCount(1);
+    // name and the legacy workbench mounts. Scoped to the workspace tab strip
+    // — `[role="tab"]` isn't unique to it (the Right Rail's Outline/Edit
+    // switcher, RightRail.jsx, also renders `role="tab"` + `data-active`, and
+    // the legacy workbench auto-selects an object that surfaces it).
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.getByTestId('workspace-tab-strip').locator('[role="tab"][data-active="true"]')
+    ).toHaveCount(1);
+    // `openWorkspaceTab` (workspaceStore.js) activates the store AND
+    // navigates the URL — activation causes the pane's own immediate
+    // re-render, but the URL (`history.pushState`, routed through the data
+    // router's own navigation pipeline) can lag behind under real load
+    // (concurrent Chromium instances). Wait for the URL itself before
+    // asserting on it.
+    await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
     expect(new URL(page.url()).pathname).toMatch(/^\/workspace\/exploration\/exp_/);
   });
 
@@ -67,16 +126,21 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
     await gotoExplorerHome(page);
     await page.getByTestId('explorer-home-source-tile-local-sqlite').click();
 
-    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
-    // The seeded model tab's source select reflects the tile's source.
-    const sourceSelect = page.locator('select').first();
-    await expect(sourceSelect).toHaveValue(/local-sqlite/, { timeout: 10000 });
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    // The seeded model tab's source select reflects the tile's source. Every
+    // native `<select>` in the app was replaced by the shared react-select-
+    // backed `<Select>` (src/components/common/Select.jsx —
+    // scripts/check-no-native-select.sh guards this), so the selected value
+    // is asserted as rendered text, not a native `<select>` element/value.
+    await expect(page.getByTestId('source-selector')).toContainText('local-sqlite', {
+      timeout: 10000,
+    });
   });
 
   test('rename via the card ⋮ menu updates the card AND the open tab label', async ({ page }) => {
     await gotoExplorerHome(page);
     await page.getByTestId('explorer-home-new-exploration').click();
-    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
 
     // Back to Home to rename from the gallery.
     await page.getByTestId('workspace-view-switcher-explorer').click();
@@ -98,7 +162,12 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
 
   test('duplicate opens a sibling exploration tab', async ({ page }) => {
     await gotoExplorerHome(page);
-    const initialTabCount = await page.locator('[role="tab"]').count();
+    // Scoped to the workspace tab strip — `[role="tab"]` isn't unique to it
+    // (the Right Rail's Outline/Edit switcher, RightRail.jsx, also renders
+    // `role="tab"`, and the legacy workbench opened below auto-selects an
+    // object that surfaces it, which would otherwise inflate this count).
+    const tabStripTabs = page.getByTestId('workspace-tab-strip').locator('[role="tab"]');
+    const initialTabCount = await tabStripTabs.count();
 
     const card = page.locator('[data-testid^="exploration-card-"][data-testid$="-open"]').first();
     const cardTestId = await card.getAttribute('data-testid');
@@ -106,8 +175,8 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
     await page.getByTestId(`${cardPrefix}-menu`).click();
     await page.getByTestId(`${cardPrefix}-duplicate-action`).click();
 
-    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('[role="tab"]')).toHaveCount(initialTabCount + 1);
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await expect(tabStripTabs).toHaveCount(initialTabCount + 1);
   });
 
   test('delete removes the card after confirming', async ({ page }) => {
@@ -141,7 +210,14 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
   }) => {
     await gotoExplorerHome(page);
     await page.getByTestId('explorer-home-new-exploration').click();
-    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    // `openWorkspaceTab` (workspaceStore.js) activates the store AND
+    // navigates the URL — activation causes THIS pane's own immediate
+    // re-render, but the URL (`history.pushState`, routed through the data
+    // router's own navigation pipeline) can lag behind under real load
+    // (concurrent Chromium instances). Wait for the URL itself, not just the
+    // pane, before reading an id out of it.
+    await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
     const openedUrl = new URL(page.url());
     const explorationId = openedUrl.pathname.split('/').pop();
     const tabTestId = `workspace-tab-exploration:${explorationId}`;
