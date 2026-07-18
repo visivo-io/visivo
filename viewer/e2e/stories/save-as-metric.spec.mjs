@@ -88,15 +88,29 @@ async function expandSourceTable(page) {
   if (!(await sourceBody.isVisible().catch(() => false))) await sourceHeader.click();
   await expect(sourceBody).toBeVisible({ timeout: 5000 });
 
-  await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
   const tableRow = page.getByTestId(`library-source-table-${SOURCE}-${TABLE}`);
+  // Conditional, not unconditional: the dedup tests call this a SECOND time
+  // within the SAME exploration (a fresh drag for the sibling insight's y
+  // slot) — the source row is already expanded from the first call, and an
+  // unconditional click would COLLAPSE it instead, hiding `tableRow` and
+  // hanging the next locator. Root-caused via live reproduction against the
+  // sandbox (integration-gate fix cycle). Mirrors the `sourceBody` check
+  // just above.
+  if (!(await tableRow.isVisible().catch(() => false))) {
+    await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
+  }
   await expect(tableRow).toBeVisible({ timeout: 15000 });
   return tableRow;
 }
 
 async function firstNumericColumn(page, tableRow) {
-  await tableRow.getByTestId(`library-source-table-${SOURCE}-${TABLE}-toggle`).click();
   const col = page.locator('[data-testid^="library-source-column-"]').first();
+  // Same conditional-toggle reasoning as `expandSourceTable` above: a second
+  // call within the same test would otherwise collapse the already-expanded
+  // column list.
+  if (!(await col.isVisible().catch(() => false))) {
+    await tableRow.getByTestId(`library-source-table-${SOURCE}-${TABLE}-toggle`).click();
+  }
   await expect(col).toBeVisible({ timeout: 10000 });
   const name = await col
     .getAttribute('data-testid')
@@ -114,6 +128,26 @@ async function bindSlotToNumericColumn(page, slotTestIdFragment) {
   await dragAndDrop(page, column, slot);
   await expect(slot.getByTestId('pill-menu-trigger')).toBeVisible({ timeout: 10000 });
   return { slot, columnName };
+}
+
+/** Read a draft insight's raw prop value straight from the store. Used for
+ * the dedup-offer assertions instead of the DOM: `ExplorationBuildRail`
+ * only ever expands ONE insight section at a time
+ * (`isExpanded={name === activeInsightName}`), so by the time the offer
+ * banner (rendered inside the PROMOTING insight's OWN section, since
+ * `handleSubmitSaveAsMetric`/`dedupOffers` are `InsightBuildSection`-local
+ * state) is interactable, the SIBLING insight whose slot the offer targets
+ * is necessarily collapsed and its DOM content unobservable. Root-caused via
+ * live reproduction against the sandbox (integration-gate fix cycle). A
+ * store-state read is a strictly more direct check anyway — it verifies the
+ * actual data, not a rendering side effect of which accordion panel happens
+ * to be open. */
+async function readInsightProp(page, insightName, propKey) {
+  return page.evaluate(
+    ({ insightName, propKey }) =>
+      window.useStore.getState().explorerInsightStates[insightName]?.props?.[propKey],
+    { insightName, propKey }
+  );
 }
 
 async function waitForMetricPublished(page, name, timeout = 20000) {
@@ -200,6 +234,14 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
       data: { expression: 'COUNT(*)' },
     });
     createdMetrics.push(collisionName);
+    // The collision check (`saveAsMetricFlow.js`) reads the frontend's OWN
+    // cached `state.metrics`, which a raw `page.request.post` never
+    // refreshes — without this, the client-side check sees a stale list,
+    // misses the collision, and falls through to the backend's plain
+    // upsert-by-name save, which just overwrites the pre-created metric
+    // instead of failing — no error ever renders. Root-caused via live
+    // reproduction against the sandbox (integration-gate fix cycle).
+    await page.evaluate(() => window.useStore.getState().fetchMetrics());
 
     const nameInput = page.getByTestId('save-as-metric-name-input');
     await nameInput.fill(collisionName);
@@ -237,7 +279,12 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
       () => window.useStore.getState().explorerChartInsightNames
     );
     const secondInsightName = insightNames[insightNames.length - 1];
-    await page.getByTestId(`insight-toggle-${secondInsightName}`).click();
+    // No toggle click needed: `createInsight` (explorerStore.js) sets the
+    // new insight as the ACTIVE one, and `ExplorationBuildRail` expands a
+    // section iff `name === activeInsightName` — it's already open.
+    // Root-caused via live reproduction against the sandbox (integration-
+    // gate fix cycle): clicking `insight-toggle-${secondInsightName}`
+    // COLLAPSED the already-open section instead of opening it.
     const secondYSlot = page
       .locator(
         `[data-testid="insight-build-section-${secondInsightName}"] [data-testid*="droppable-property-y"]`
@@ -247,7 +294,15 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     const { locator: sameColumn } = await firstNumericColumn(page, tableRow);
     await dragAndDrop(page, sameColumn, secondYSlot);
     await expect(secondYSlot).toContainText('SUM');
-    void firstInsightName;
+
+    // Adding the second insight made IT active, which collapsed the first
+    // insight's section (`isExpanded={name === activeInsightName}` in
+    // ExplorationBuildRail.jsx) — `xSlot`'s `pill-menu-trigger` is inside
+    // that now-hidden section (`{isExpanded && (...)}` in
+    // InsightBuildSection.jsx) and never becomes visible without
+    // re-expanding it first. Root-caused via live reproduction against the
+    // sandbox (integration-gate fix cycle).
+    await page.getByTestId(`insight-toggle-${firstInsightName}`).click();
 
     // Save the FIRST slot as a metric.
     await xSlot.getByTestId('pill-menu-trigger').click();
@@ -263,11 +318,20 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     await expect(page.getByTestId('field-swap-offer-banner')).toBeVisible({ timeout: 15000 });
     const offer = page.getByTestId(`field-swap-offer-${metricName}`);
     await expect(offer).toBeVisible();
-    await expect(secondYSlot).toContainText('SUM'); // untouched until the user acts
+    // Untouched until the user acts — the second insight's section is
+    // collapsed right now (see `readInsightProp`'s docstring), so check the
+    // store directly rather than the DOM.
+    expect(await readInsightProp(page, secondInsightName, 'y')).toContain('sum(');
 
     await offer.getByTestId(`field-swap-offer-${metricName}-apply`).click();
-    await expect(secondYSlot).toContainText(metricName, { timeout: 10000 });
+    await expect
+      .poll(async () => readInsightProp(page, secondInsightName, 'y'), { timeout: 10000 })
+      .toContain(metricName);
     await expect(page.getByTestId('field-swap-offer-banner')).not.toBeVisible();
+
+    // Confirm the swap ALSO reflects in the DOM once its section is visible.
+    await page.getByTestId(`insight-toggle-${secondInsightName}`).click();
+    await expect(secondYSlot).toContainText(metricName);
   });
 
   test('declining a dedup offer leaves the sibling slot untouched', async ({ page }) => {
@@ -275,13 +339,21 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     await newExploration(page);
 
     const { slot: xSlot, columnName } = await bindSlotToNumericColumn(page, 'x');
+    const firstInsightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
 
     await page.getByTestId('right-panel-add-insight').click();
     const insightNames = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames
     );
     const secondInsightName = insightNames[insightNames.length - 1];
-    await page.getByTestId(`insight-toggle-${secondInsightName}`).click();
+    // No toggle click needed: `createInsight` (explorerStore.js) sets the
+    // new insight as the ACTIVE one, and `ExplorationBuildRail` expands a
+    // section iff `name === activeInsightName` — it's already open.
+    // Root-caused via live reproduction against the sandbox (integration-
+    // gate fix cycle): clicking `insight-toggle-${secondInsightName}`
+    // COLLAPSED the already-open section instead of opening it.
     const secondYSlot = page
       .locator(
         `[data-testid="insight-build-section-${secondInsightName}"] [data-testid*="droppable-property-y"]`
@@ -291,6 +363,9 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     const { locator: sameColumn } = await firstNumericColumn(page, tableRow);
     await dragAndDrop(page, sameColumn, secondYSlot);
 
+    // Re-expand the first insight's section — see the sibling dedup test
+    // above for why adding the second insight collapsed it.
+    await page.getByTestId(`insight-toggle-${firstInsightName}`).click();
     await xSlot.getByTestId('pill-menu-trigger').click();
     await page.getByTestId('pill-menu-save-as-metric').click();
     const metricName = `e2e_dedup_decline_${columnName}_${Date.now()}`;
@@ -304,6 +379,13 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     await offer.getByTestId(`field-swap-offer-${metricName}-dismiss`).click();
 
     await expect(page.getByTestId('field-swap-offer-banner')).not.toBeVisible();
+    // The second insight's section is collapsed right now (see
+    // `readInsightProp`'s docstring) — check the store directly, then
+    // confirm the DOM agrees once its section is visible.
+    const yProp = await readInsightProp(page, secondInsightName, 'y');
+    expect(yProp).toContain('sum(');
+    expect(yProp).not.toContain(metricName);
+    await page.getByTestId(`insight-toggle-${secondInsightName}`).click();
     await expect(secondYSlot).toContainText('SUM');
     await expect(secondYSlot).not.toContainText(metricName);
   });

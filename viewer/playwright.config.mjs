@@ -56,6 +56,16 @@ export default defineConfig({
         '**/exploration-build-rail.spec.mjs',
         '**/pill-aggregation.spec.mjs',
         '**/post-cutover-redirects.spec.mjs',
+        // Phase 4 (VIS-1062-1066/VIS-1081): same shared-repository isolation
+        // need — each promotes real backend objects (models/insights/charts/
+        // metrics) via the same shared per-project collections a concurrent
+        // 'parallel' worker's own spec run could observe/collide with (gate-1
+        // finding: run under 'parallel' with retries masked genuine
+        // interference into flaky-looking failures across three unrelated
+        // specs, plus 3 singles in already-serial specs).
+        '**/exploration-promote.spec.mjs',
+        '**/exploration-preview.spec.mjs',
+        '**/save-as-metric.spec.mjs',
         // B14 part 2: its exploration-workbench anchor check now mints a
         // real exploration too (the old standalone /explorer route let it
         // assume anchors render eagerly with no open document; the new
@@ -127,6 +137,11 @@ export default defineConfig({
         '**/pill-aggregation.spec.mjs',
         '**/post-cutover-redirects.spec.mjs',
         '**/onboarding-coach-anchors.spec.mjs',
+        // Phase 4 additions (VIS-1062-1066/VIS-1081) — see the 'parallel'
+        // project's testIgnore entry for the same three files for why.
+        '**/exploration-promote.spec.mjs',
+        '**/exploration-preview.spec.mjs',
+        '**/save-as-metric.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

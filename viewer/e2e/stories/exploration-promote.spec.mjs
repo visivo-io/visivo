@@ -119,8 +119,24 @@ async function firstNumericColumn(page, tableRow) {
 /** Drop a numeric column onto the active insight's `x` prop slot, producing
  * a real (valid, promotable) SUM pill — the minimal "this insight has data
  * props" shape the promote checklist requires (`buildPromoteChecklist.js`
- * skips insights with no data props beyond `type`). */
+ * skips insights with no data props beyond `type`).
+ *
+ * Runs the active model's query FIRST: a property-zone column drop builds a
+ * bare `${ref(activeModelName).column}` expression (`WorkspaceDndContext.js`'s
+ * `routeExplorationDragEnd` — `buildRefExpr`'s generic/`sourceColumn` branch)
+ * assuming that model already has real SQL; it never seeds one as a side
+ * effect (only a `sql-editor-drop` onto the Monaco editor does that, via
+ * `seedModelTabFromTable`). Without running the query first, the model's
+ * `explorerModelStates[name].sql` stays empty and `buildPromoteChecklist`'s
+ * `if (!ms.sql) continue` silently drops the ENTIRE model tier from the
+ * checklist — root-caused via live reproduction against the sandbox
+ * (integration-gate fix cycle): every promote-row assertion in this file
+ * failed with "element(s) not found" because the MODELS section never
+ * rendered at all. Matches `exploration-preview.spec.mjs`'s already-working
+ * `typeSql`+`runQuery`-before-drag pattern. */
 async function bindXSlotToNumericColumn(page) {
+  await typeSql(page, `SELECT * FROM ${TABLE}`);
+  await runQuery(page);
   const tableRow = await expandSourceTable(page);
   const { locator: column, name: columnName } = await firstNumericColumn(page, tableRow);
   const xSlot = page.locator('[data-testid*="droppable-property-x"]').first();
@@ -146,6 +162,41 @@ async function renameInsight(page, insightName, newName) {
   await input.press('Enter');
 }
 
+/** Seed a draft's insight+chart names to match an ALREADY-PROMOTED pair,
+ * bypassing the rename UI. Root-caused via live reproduction against the
+ * sandbox (integration-gate fix cycle): both `renameInsight` and
+ * `setChartName` (explorerStore.js) hard-block via `assertNameUnique` —
+ * confirmed intentional and covered by their OWN passing unit tests
+ * (`explorerStore.test.js`'s "throws NameCollisionError when new name
+ * collides with cached object"/"...cached model"). Driving the UPDATE-BY-
+ * NAME scenario through the real rename UI (as this test originally did) is
+ * therefore unreachable — the collision guard that's supposed to protect
+ * against ACCIDENTAL collisions also blocks the INTENTIONAL one this test
+ * exercises. The test's own docstring already anticipates this: the "real"
+ * path is "Explore this" (opening an existing object into a fresh,
+ * already-same-named draft), explicitly out of scope until Phase 5. This
+ * helper is what that future flow would produce — a draft born with the
+ * target names already set — without touching the (correct, tested) rename
+ * guard. */
+async function seedDraftWithExistingNames(page, oldInsightName, insightName, chartName) {
+  await page.evaluate(
+    ({ oldInsightName, insightName, chartName }) => {
+      const state = window.useStore.getState();
+      const { [oldInsightName]: insightState, ...restInsightStates } = state.explorerInsightStates;
+      window.useStore.setState({
+        explorerInsightStates: { ...restInsightStates, [insightName]: insightState },
+        explorerChartInsightNames: state.explorerChartInsightNames.map(n =>
+          n === oldInsightName ? insightName : n
+        ),
+        explorerActiveInsightName:
+          state.explorerActiveInsightName === oldInsightName ? insightName : state.explorerActiveInsightName,
+        explorerChartName: chartName,
+      });
+    },
+    { oldInsightName, insightName, chartName }
+  );
+}
+
 async function openPromoteModal(page) {
   await page.getByTestId('explorer-save-button').click();
   await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
@@ -153,6 +204,18 @@ async function openPromoteModal(page) {
 
 async function clickPromote(page) {
   await page.getByTestId('exploration-promote-submit').click();
+}
+
+/** The modal deliberately never auto-closes after a promote (product fix,
+ * integration-gate cycle: `ExplorationPromoteModal.handlePromote` used to
+ * call `onClose()` in the same tick as `setPromotedThisRun`, so the
+ * "Promoted N objects" confirmation could never actually paint). The user
+ * dismisses it via the button, whose label switches to "Close" once a
+ * result exists — call this before interacting with anything the modal's
+ * full-screen overlay would otherwise intercept clicks for. */
+async function closePromoteModal(page) {
+  await page.getByTestId('exploration-promote-cancel').click();
+  await expect(page.getByTestId('exploration-promote-modal')).not.toBeVisible({ timeout: 5000 });
 }
 
 async function waitForObjectPublished(page, segment, name, timeout = 20000) {
@@ -275,7 +338,20 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     await runQuery(page);
     const tableRow = await expandSourceTable(page);
     await tableRow.getByTestId(`library-source-table-${SOURCE}-${TABLE}-toggle`).click();
-    const columns = page.locator('[data-testid^="library-source-column-"]');
+    // Each column row renders a `library-source-column-...-<COL>` container
+    // PLUS a nested `library-source-column-...-<COL>-drag-handle` child that
+    // ALSO matches the `^=` prefix selector (`firstNumericColumn`'s `.first()`
+    // dodges this since a container always sorts before its own handle in
+    // document order — `.nth(1)` does not: it lands on the FIRST column's
+    // drag-handle, not the second column's container). Root-caused via live
+    // reproduction against the sandbox (integration-gate fix cycle):
+    // `columnNameB` came out as "X-drag-handle" and the dropped ref was
+    // `model.X` — identical to exploration A's, defeating the "genuinely
+    // differs" assertion below. Exclude `-drag-handle` matches so `.nth(1)`
+    // lands on the real second column.
+    const columns = page.locator(
+      '[data-testid^="library-source-column-"]:not([data-testid$="-drag-handle"])'
+    );
     // Pick the SECOND numeric-looking column so the expression genuinely
     // differs from exploration A's — proves the update actually landed
     // new content, not a no-op re-save of identical config.
@@ -290,8 +366,11 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     const draftInsightNameB = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames[0]
     );
-    await renameInsight(page, draftInsightNameB, sharedInsightName);
-    await renameChart(page, sharedChartName);
+    // NOT `renameInsight`/`renameChart` here — both names already belong to
+    // exploration A's just-promoted objects, and the rename UI's collision
+    // guard (intentionally) blocks renaming INTO an existing name. See
+    // `seedDraftWithExistingNames`'s docstring for the full root cause.
+    await seedDraftWithExistingNames(page, draftInsightNameB, sharedInsightName, sharedChartName);
 
     await openPromoteModal(page);
     // The checklist recognizes this as an UPDATE, not a new object.
@@ -328,10 +407,16 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     );
 
     // Add a SECOND insight with a dangling ref (never resolves) — invalid.
+    // `createInsight` (explorerStore.js) sets the new insight as the ACTIVE
+    // one, and `ExplorationBuildRail` expands a section iff
+    // `name === activeInsightName` — the new section is already expanded, so
+    // no toggle click is needed. Root-caused via live reproduction against
+    // the sandbox (integration-gate fix cycle): clicking
+    // `insight-toggle-${badInsightName}` COLLAPSED the already-open section
+    // instead of opening it, hiding the y-slot and hanging the next locator.
     await page.getByTestId('right-panel-add-insight').click();
     const insightNames = await page.evaluate(() => window.useStore.getState().explorerChartInsightNames);
     const badInsightName = insightNames[insightNames.length - 1];
-    await page.getByTestId(`insight-toggle-${badInsightName}`).click();
     const ySlot = page
       .locator(`[data-testid="insight-build-section-${badInsightName}"] [data-testid*="droppable-property-y"]`)
       .first();
@@ -339,7 +424,11 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     const editable = ySlot.locator('[data-testid="ref-textarea-editable"]');
     await editable.click();
     await page.keyboard.type('${ref(totally_made_up_model_xyz).amount}', { delay: 5 });
-    await editable.blur();
+    // No blur/commit step afterward — a syntactically complete single ref
+    // swaps RefTextArea for a pill mid-keystroke (PropertyRow.jsx's
+    // `showPill`), so `.blur()` on the by-then-unmounted node hangs for the
+    // full test timeout. Same race `exploration-preview.spec.mjs` and
+    // `exploration-build-rail.spec.mjs` already document and avoid.
 
     await openPromoteModal(page);
     await expect(page.getByTestId(`promote-row-insight-${insightName}-checkbox`)).toBeChecked();
@@ -376,6 +465,7 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
     createdObjects.push({ segment: 'models', name: queryName }, { segment: 'insights', name: insightName });
     await waitForObjectPublished(page, 'insights', insightName);
+    await closePromoteModal(page);
 
     // Promoted trail deep-links.
     const trailItem = page.getByTestId(`exploration-promoted-item-insight-${insightName}`);
