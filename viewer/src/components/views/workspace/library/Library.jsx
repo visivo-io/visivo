@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PiPlus, PiSidebar } from 'react-icons/pi';
 import LibrarySearch from './LibrarySearch';
 import LibraryFilter from './LibraryFilter';
@@ -59,13 +58,13 @@ const routeType = obj => obj.canonicalType || obj.type;
 
 const Library = () => {
   const data = useLibraryData();
-  const navigate = useNavigate();
   const scope = useWorkspaceScope();
 
   // Workspace actions — read from the store directly so the Library has no
   // required props (the parent LeftRail mounts it as `<Library />`).
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
+  const createExploration = useStore(s => s.createExploration);
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
   const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
 
@@ -240,18 +239,28 @@ const Library = () => {
   const handleCreate = useCallback(
     (typeKey, source = 'library') => {
       emitWorkspaceEvent('inline_create_used', { source, kind: typeKey });
-      // J-2 (VIS-778): "+ New Chart" inside a scoped dashboard opens the
-      // Explorer round-trip overlay (build the insight there, it gets wrapped
-      // in a chart and placed back on the dashboard). Outside a dashboard
-      // scope there's no slot to return to, so draft an empty chart instead.
+      // J-2 (VIS-778) → Explore 2.0 Phase 3b cutover (B5)/delta-review fix:
+      // "+ New Chart" inside a scoped dashboard used to build the dead
+      // pre-cutover `/workspace/dashboard/:name/explorer?return_to=…` QUERY
+      // STRING — `DashboardExplorerRedirect` (LocalRouter.jsx) only ever read
+      // the PATH segment, so `slot=new` silently dropped and the redirect's
+      // own `return_to: {dashboard}` (no querystring parsing) did the real
+      // work anyway. Mint the return_to-carrying exploration directly instead
+      // — the SAME call `CanvasAddRow.jsx`'s "+ New Chart" and the dashboard-
+      // scoped redirect route both use — so both entry points behave
+      // identically. Outside a dashboard scope there's no slot to return to,
+      // so draft an empty chart instead (unchanged).
       if (typeKey === 'chart' && scope.dashboardName) {
-        navigate(
-          `/workspace/dashboard/${encodeURIComponent(
-            scope.dashboardName
-          )}/explorer?return_to=workspace&dashboard=${encodeURIComponent(
-            scope.dashboardName
-          )}&slot=new`
-        );
+        if (!createExploration || !openWorkspaceTab) return;
+        createExploration(null, { dashboard: scope.dashboardName }).then(result => {
+          if (result?.success) {
+            openWorkspaceTab({
+              id: `exploration:${result.id}`,
+              type: 'exploration',
+              name: result.id,
+            });
+          }
+        });
         return;
       }
       if (!createWorkspaceObject) return;
@@ -265,7 +274,7 @@ const Library = () => {
         }
       });
     },
-    [createWorkspaceObject, openWorkspaceTab, navigate, scope.dashboardName]
+    [createWorkspaceObject, openWorkspaceTab, createExploration, scope.dashboardName]
   );
 
   // "+ New" menu pick. Everything templatable goes through `handleCreate`; a

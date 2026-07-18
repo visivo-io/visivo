@@ -13,6 +13,7 @@ beforeEach(() => {
     metrics: [],
     dimensions: [],
     explorerModelStates: {},
+    explorerSources: [],
   });
 });
 
@@ -129,6 +130,49 @@ describe('PillMenu', () => {
       openMenu();
       expect(screen.getByTestId('pill-menu-preset-median')).toBeInTheDocument();
     });
+
+    // Delta-review fix (HIGH): a fresh, unpromoted scratch query chip has no
+    // entry in `models`/`sources` yet — before the fix, that fell through to
+    // "unresolved" and silently showed MEDIAN even on a MySQL/SQLite draft
+    // source. `withDraftSourceType` sets up the draft-only path
+    // (`explorerModelStates`/`explorerSources`), never touching the promoted
+    // `models`/`sources` collections, so these tests fail on the old code.
+    const withDraftSourceType = type => {
+      useStore.setState({
+        explorerModelStates: {
+          orders_q: { sourceName: 'warehouse' },
+        },
+        explorerSources: [{ source_name: 'warehouse', type }],
+      });
+    };
+
+    test('draft (unpromoted) query chip: hides MEDIAN for mysql', () => {
+      withDraftSourceType('mysql');
+      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }} />);
+      openMenu();
+      expect(screen.queryByTestId('pill-menu-preset-median')).not.toBeInTheDocument();
+    });
+
+    test('draft (unpromoted) query chip: hides MEDIAN for sqlite', () => {
+      withDraftSourceType('sqlite');
+      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }} />);
+      openMenu();
+      expect(screen.queryByTestId('pill-menu-preset-median')).not.toBeInTheDocument();
+    });
+
+    test('draft (unpromoted) query chip: shows MEDIAN for a supported dialect (snowflake)', () => {
+      withDraftSourceType('snowflake');
+      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }} />);
+      openMenu();
+      expect(screen.getByTestId('pill-menu-preset-median')).toBeInTheDocument();
+    });
+
+    test('draft (unpromoted) query chip on duckdb: shows MEDIAN (control)', () => {
+      withDraftSourceType('duckdb');
+      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }} />);
+      openMenu();
+      expect(screen.getByTestId('pill-menu-preset-median')).toBeInTheDocument();
+    });
   });
 
   test('metricRef/dimensionRef pills hide the "Use as" preset section entirely', () => {
@@ -142,12 +186,47 @@ describe('PillMenu', () => {
     expect(screen.getByTestId('pill-menu-remove')).toBeInTheDocument();
   });
 
-  test('"Save as metric…" always renders disabled with the Phase 4 tooltip', () => {
-    render(<PillMenu state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }} />);
-    openMenu();
-    const saveAsMetric = screen.getByTestId('pill-menu-save-as-metric');
-    expect(saveAsMetric).toBeDisabled();
-    expect(saveAsMetric).toHaveAttribute('title', 'arrives with promote (Phase 4)');
+  describe('"Save as metric…" (Explore 2.0 Phase 4, 06 §4)', () => {
+    test('disabled with no onSaveAsMetric handler, even on an aggregate pill', () => {
+      render(<PillMenu state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }} />);
+      openMenu();
+      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+    });
+
+    test('disabled on a dimension pill even WITH a handler — only aggregate/custom qualify', () => {
+      const onSaveAsMetric = jest.fn();
+      render(
+        <PillMenu
+          state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
+          onSaveAsMetric={onSaveAsMetric}
+        />
+      );
+      openMenu();
+      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+    });
+
+    test('disabled on a metricRef/dimensionRef pill (already durable, nothing to promote)', () => {
+      const onSaveAsMetric = jest.fn();
+      render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} onSaveAsMetric={onSaveAsMetric} />);
+      openMenu();
+      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+    });
+
+    test('enabled on an aggregate pill WITH a handler; clicking calls it and closes the menu', () => {
+      const onSaveAsMetric = jest.fn();
+      render(
+        <PillMenu
+          state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
+          onSaveAsMetric={onSaveAsMetric}
+        />
+      );
+      openMenu();
+      const button = screen.getByTestId('pill-menu-save-as-metric');
+      expect(button).not.toBeDisabled();
+      fireEvent.click(button);
+      expect(onSaveAsMetric).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+    });
   });
 
   test('"Custom aggregation…" calls onCustomAggregation and closes the menu', () => {

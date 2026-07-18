@@ -6,6 +6,7 @@ import { getTypeColors, getTypeIcon } from './objectTypeConfigs';
 import { PRESET_AGGREGATIONS, isMedianSupported } from './pillGrammar';
 import { parseRefValue } from '../../../utils/refString';
 import { inferColumnTypes } from '../../../utils/inferColumnTypes';
+import { getSourceDialect } from '../../../stores/explorerStore';
 
 const AGG_LABELS = {
   sum: 'SUM',
@@ -61,14 +62,29 @@ function useColumnIsNumeric(modelName, columnName) {
  *      model's source dialect.
  *   2. metricRef/dimensionRef — no model is named; resolve the Metric/
  *      Dimension's OWN `parentModel` first, then the same chain.
- * Fails open (`undefined` -> full preset list) for duckdb/unresolved,
- * mirroring `SchemaLeafForm.jsx`'s exact resolution + fail-open contract.
+ * Fails open (`undefined` -> full preset list) for duckdb/genuinely
+ * unresolved, mirroring `SchemaLeafForm.jsx`'s exact resolution + fail-open
+ * contract.
+ *
+ * DRAFT FALLBACK (delta-review fix, HIGH): a fresh, unpromoted scratch query
+ * chip is never in the promoted `models` collection, so the promoted-model
+ * lookup above always misses for it — which used to fall all the way through
+ * to "unresolved" and silently show MEDIAN even on a MySQL/SQLite draft
+ * source (S5 verified those two dialects transpile `MEDIAN` into
+ * plausible-looking but WRONG SQL, never erroring). Before giving up, this
+ * also checks the draft's own `explorerModelStates[modelName].sourceName`
+ * against `explorerSources` — the exact resolution
+ * `getSourceDialect`/`selectActiveModelSourceDialect` already use for the SQL
+ * editor's own expression validation (`explorerStore.js`) — so an unpromoted
+ * draft gets the same dialect gate a promoted model would.
  */
-function usePillDialect(state) {
+export function usePillDialect(state) {
   const models = useStore(s => s.models);
   const sources = useStore(s => s.sources);
   const metrics = useStore(s => s.metrics);
   const dimensions = useStore(s => s.dimensions);
+  const explorerModelStates = useStore(s => s.explorerModelStates);
+  const explorerSources = useStore(s => s.explorerSources);
 
   return useMemo(() => {
     if (!state) return undefined;
@@ -82,14 +98,20 @@ function usePillDialect(state) {
       modelName = raw ? parseRefValue(raw) : null;
     }
     if (!modelName) return undefined;
+
     const model = (models || []).find(m => m.name === modelName);
-    const sourceRef = model?.config?.source ?? model?.source;
-    const sourceName = sourceRef ? parseRefValue(sourceRef) : null;
-    const src = (sources || []).find(s => s.name === sourceName || s.source_name === sourceName);
-    const t = (src?.type || src?.config?.type || '').toLowerCase();
-    if (!t || t === 'duckdb') return undefined;
-    return t === 'postgresql' ? 'postgres' : t;
-  }, [state, models, sources, metrics, dimensions]);
+    if (model) {
+      const sourceRef = model?.config?.source ?? model?.source;
+      const sourceName = sourceRef ? parseRefValue(sourceRef) : null;
+      const src = (sources || []).find(s => s.name === sourceName || s.source_name === sourceName);
+      const t = (src?.type || src?.config?.type || '').toLowerCase();
+      if (t) return t === 'postgresql' ? 'postgres' : t;
+    }
+
+    // Not (yet) a promoted model — resolve via the draft's own source binding.
+    const draftSourceName = explorerModelStates?.[modelName]?.sourceName;
+    return getSourceDialect(draftSourceName, explorerSources) || undefined;
+  }, [state, models, sources, metrics, dimensions, explorerModelStates, explorerSources]);
 }
 
 function MenuRow({ label, selected, onClick, testId, disabled, disabledReason }) {
@@ -129,12 +151,18 @@ function Divider() {
  * `extra` slot (the pivot shelf's exact precedent, `PivotShelf.jsx`) as a
  * small chevron trigger + a `SliceMenu`-shaped portal popover.
  *
- * Phase 3b scope is PRESETS-ONLY (S5 §5 item 6): dimension ↔ preset
+ * Phase 3b shipped PRESETS-ONLY (S5 §5 item 6): dimension ↔ preset
  * aggregation toggling, dialect-gated MEDIAN, "Custom aggregation…" (switches
  * the slot back to raw `RefTextArea` editing — reuses the existing widget,
  * 06 §5), and a preflight warning for the global-name-first ref-collision
- * case. "Save as metric…" always renders disabled — its flow (server-side
- * aggregate validation, name-collision UX, dedup offers) is Phase 4.
+ * case. Phase 4 (06 §4) enables "Save as metric…" — for `kind: 'aggregate'`
+ * pills only ("state is aggregate/custom" per 06 §4; `custom` isn't
+ * reachable via `parse()` yet, see `pillGrammar.js`'s docstring) — when the
+ * caller supplies `onSaveAsMetric` (the Build rail's `InsightBuildSection`
+ * owns the actual flow: name prompt, collision + server aggregate-ness
+ * checks, born-bound `saveMetric`, slot swap, match-and-replace dedup
+ * offer). Undefined `onSaveAsMetric` keeps the action disabled, matching
+ * every OTHER `TracePropsEditor` consumer that isn't an Insight prop slot.
  *
  * @param {object} props
  * @param {object} props.state - a `pillGrammar.parse()` result for the
@@ -144,10 +172,20 @@ function Divider() {
  *   `PRESET_AGGREGATIONS`; the caller rebuilds + serializes the new state.
  * @param {() => void} props.onCustomAggregation - switch this slot to raw
  *   `RefTextArea` editing, pre-filled with the current body.
+ * @param {() => void} [props.onSaveAsMetric] - Explore 2.0 Phase 4: promote
+ *   this slot's aggregate expression to a named Metric. Enables the action
+ *   only for `kind: 'aggregate'` pills; undefined keeps it disabled.
  * @param {() => void} props.onRemove - clear this slot's value.
  * @param {boolean} [props.disabled]
  */
-const PillMenu = ({ state, onSelectPreset, onCustomAggregation, onRemove, disabled = false }) => {
+const PillMenu = ({
+  state,
+  onSelectPreset,
+  onCustomAggregation,
+  onSaveAsMetric,
+  onRemove,
+  disabled = false,
+}) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
 
@@ -157,6 +195,11 @@ const PillMenu = ({ state, onSelectPreset, onCustomAggregation, onRemove, disabl
   const medianAllowed = isMedianSupported(dialect);
 
   const hasCollisionWarning = !!(state?.statedModel && state?.resolvedParent);
+  // 06 §4: "Save-as-metric only when state is aggregate/custom" — `custom`
+  // isn't reachable via `parse()` today (see pillGrammar.js's docstring), so
+  // in practice this is exactly the `aggregate` kind.
+  const saveAsMetricEnabled =
+    (state?.kind === 'aggregate' || state?.kind === 'custom') && typeof onSaveAsMetric === 'function';
 
   const presetIsSelected = preset => {
     if (preset === 'dimension') return state?.kind === 'dimension';
@@ -209,6 +252,11 @@ const PillMenu = ({ state, onSelectPreset, onCustomAggregation, onRemove, disabl
               onCustomAggregation?.();
               setOpen(false);
             }}
+            saveAsMetricEnabled={saveAsMetricEnabled}
+            onSaveAsMetric={() => {
+              onSaveAsMetric?.();
+              setOpen(false);
+            }}
             onRemove={() => {
               onRemove?.();
               setOpen(false);
@@ -232,6 +280,8 @@ const PillMenuPopover = ({
   presetIsSelected,
   onSelectPreset,
   onCustomAggregation,
+  saveAsMetricEnabled,
+  onSaveAsMetric,
   onRemove,
   triggerRef,
 }) => {
@@ -343,12 +393,21 @@ const PillMenuPopover = ({
       <button
         type="button"
         role="menuitem"
-        disabled
-        title="arrives with promote (Phase 4)"
+        disabled={!saveAsMetricEnabled}
+        title={saveAsMetricEnabled ? undefined : 'Only an aggregate pill can be saved as a metric'}
+        onClick={saveAsMetricEnabled ? onSaveAsMetric : undefined}
         data-testid="pill-menu-save-as-metric"
-        className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 text-gray-300 cursor-not-allowed"
+        className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 ${
+          saveAsMetricEnabled
+            ? 'hover:bg-primary-50 text-gray-700'
+            : 'text-gray-300 cursor-not-allowed'
+        }`}
       >
-        <span className="inline-block h-3 w-3 rounded-full border border-gray-300 text-center leading-3 text-[9px]">
+        <span
+          className={`inline-block h-3 w-3 rounded-full border text-center leading-3 text-[9px] ${
+            saveAsMetricEnabled ? 'border-primary-400 text-primary-600' : 'border-gray-300'
+          }`}
+        >
           Σ
         </span>
         Save as metric…

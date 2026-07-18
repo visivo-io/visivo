@@ -104,6 +104,7 @@ const seedStore = (extra = {}) => {
       openWorkspaceTab: jest.fn(),
       // Stub the shared inline-create flow so handleCreate doesn't hit the API.
       createWorkspaceObject: jest.fn().mockResolvedValue({ success: true, name: 'stub' }),
+      createExploration: jest.fn().mockResolvedValue({ success: true, id: 'exp_stub' }),
       ...extra,
     });
   });
@@ -417,18 +418,38 @@ describe('Library', () => {
     );
   });
 
-  test('"+ New" → Chart opens the Explorer round-trip overlay when scoped to a dashboard (J-2)', () => {
+  test('"+ New" → Chart mints a return_to-carrying exploration when scoped to a dashboard (J-2, delta-review fix)', async () => {
+    // Delta-review fix: this used to `navigate()` to the dead pre-cutover
+    // `/workspace/dashboard/:name/explorer?return_to=…` QUERY STRING that
+    // `DashboardExplorerRedirect` (LocalRouter.jsx) never reads (it only
+    // consumes the path segment) — silently dropping `slot=new`. It now mints
+    // the return_to-carrying exploration directly, the same call
+    // `CanvasAddRow.jsx`'s "+ New Chart" and the dashboard-scoped redirect
+    // route both use, and opens its tab (no navigation to `/explorer` at all).
     const createWorkspaceObject = jest.fn();
-    seedStore({ createWorkspaceObject });
+    const createExploration = jest
+      .fn()
+      .mockResolvedValue({ success: true, id: 'exp_new1' });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, createExploration, openWorkspaceTab });
     renderLibrary('/workspace/dashboard/overview');
     openNewMenu();
     fireEvent.click(screen.getByTestId('library-new-object-chart'));
     expect(createWorkspaceObject).not.toHaveBeenCalled();
-    expect(screen.getByTestId('location-probe')).toHaveTextContent(
-      '/workspace/dashboard/overview/explorer'
+    await waitFor(() =>
+      expect(createExploration).toHaveBeenCalledWith(null, { dashboard: 'overview' })
     );
-    expect(screen.getByTestId('location-probe')).toHaveTextContent('return_to=workspace');
-    expect(screen.getByTestId('location-probe')).toHaveTextContent('slot=new');
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'exploration:exp_new1',
+        type: 'exploration',
+        name: 'exp_new1',
+      })
+    );
+    // No navigation to the dead `/explorer` route.
+    expect(screen.getByTestId('location-probe')).toHaveTextContent(
+      '/workspace/dashboard/overview'
+    );
   });
 
   test('"+ New" → Model drafts a model and opens its tab', async () => {

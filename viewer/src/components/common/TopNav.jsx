@@ -490,9 +490,22 @@ const TopNav = ({
   const resolvedStage = currentStage || stages[0];
   const resolvedProjects = projects && projects.length ? projects : currentProject ? [currentProject] : [{ id: 'project', name: 'Project' }];
   const resolvedProject = currentProject || resolvedProjects[0];
-  // Active tool: explicit prop wins; otherwise match the current route's tail.
+  // Active tool: explicit prop wins; otherwise match the current route's
+  // tail — OR any path NESTED under a tool's route (delta-review fix: the
+  // Explorer pill went dark while inside an open exploration tab, since
+  // `/workspace/exploration/:id` doesn't END WITH `/workspace/exploration`,
+  // it merely starts with it + a trailing segment). `tools.find` returns the
+  // first match, and `explorer` (`/workspace/exploration`) is declared before
+  // `workspace` (`/workspace`) in `DEFAULT_TOOLS`, so a exploration path
+  // resolves to Explorer rather than the coarser Workspace match.
   const resolvedActive =
-    activeTool || (tools.find(t => location.pathname === t.to || location.pathname.endsWith(t.to)) || {}).id;
+    activeTool ||
+    (tools.find(
+      t =>
+        location.pathname === t.to ||
+        location.pathname.endsWith(t.to) ||
+        location.pathname.startsWith(`${t.to}/`)
+    ) || {}).id;
 
   // Bar variant by depth — one component, three shapes. Project depth is
   // signalled by having tools (account/stage bars pass tools=[]; local + cloud

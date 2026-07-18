@@ -50,4 +50,37 @@ describe('FieldPill (shared field/column pill)', () => {
     );
     expect(screen.getByTestId('agg')).toBeInTheDocument();
   });
+
+  // Delta-review fix (HIGH, e2e-gap-review): a dangling ref must render as an
+  // explicit warning pill, never the type's normal (healthy-looking) palette.
+  describe('warning (dangling-ref) state', () => {
+    test('overrides the type palette with the highlight warning treatment', () => {
+      render(<FieldPill type="dimension" name="orders_q" label="orders_q ▸ region" warning data-testid="fp" />);
+      const pill = screen.getByTestId('fp');
+      const { bg, text } = getTypeColors('dimension');
+      expect(pill).not.toHaveClass(bg);
+      expect(pill).not.toHaveClass(text);
+      expect(pill).toHaveAttribute('data-warning', 'true');
+      expect(screen.getByTestId('field-pill-warning-icon')).toBeInTheDocument();
+    });
+
+    test('warningMessage becomes the tooltip', () => {
+      render(
+        <FieldPill
+          type="dimension"
+          name="orders_q"
+          warning
+          warningMessage="orders_q no longer exists"
+          data-testid="fp"
+        />
+      );
+      expect(screen.getByTestId('fp')).toHaveAttribute('title', 'orders_q no longer exists');
+    });
+
+    test('a non-warning pill never carries the warning attribute or icon', () => {
+      render(<FieldPill type="dimension" name="orders_q" data-testid="fp" />);
+      expect(screen.getByTestId('fp')).not.toHaveAttribute('data-warning');
+      expect(screen.queryByTestId('field-pill-warning-icon')).not.toBeInTheDocument();
+    });
+  });
 });
