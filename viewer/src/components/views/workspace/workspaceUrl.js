@@ -21,6 +21,13 @@
  * base so tab navigation stays inside the mount instead of escaping to the
  * root. The Workspace derives that base from the URL and registers it on the
  * store (see `registerWorkspaceUrlBase`).
+ *
+ * Explore 2.0 Phase 2: `exploration` gets its own per-instance path segment
+ * (`/workspace/exploration/:id`, like `dashboard`) instead of the `?edit=`
+ * grammar — addressed by its STABLE backend id, never its (renamable) display
+ * name. Tab actions pass `tab.name` = the exploration id for this type;
+ * `ExplorationPane`/`TabStrip` resolve the display name from
+ * `workspaceExplorations` separately.
  */
 import { HIGHER_LEVEL_VIEWS, DEFAULT_WORKSPACE_VIEW, getViewDescriptor, isWorkspaceView } from './higherLevelViews';
 
@@ -48,6 +55,9 @@ export const workspaceTabUrl = (tab, base = WORKSPACE_BASE) => {
   if (tab.type === 'dashboard') {
     return `${base}/dashboard/${encodeURIComponent(tab.name)}`;
   }
+  if (tab.type === 'exploration') {
+    return `${base}/exploration/${encodeURIComponent(tab.name)}`;
+  }
   return `${base}?edit=${encodeURIComponent(`${tab.type}:${tab.name}`)}`;
 };
 
@@ -66,6 +76,19 @@ export const workspaceTargetFromUrl = (pathname, searchParams, base = WORKSPACE_
   const dashMatch = pathname.match(new RegExp(`^${escapeRegExp(base)}/dashboard/([^/]+)/?$`));
   if (dashMatch) {
     return { kind: 'tab', tab: { type: 'dashboard', name: decodeURIComponent(dashMatch[1]) } };
+  }
+  // `/workspace/exploration/:id` — a document instance path (like dashboard),
+  // distinct from the bare `/workspace/exploration` Explorer Home matched by
+  // the view loop below (that path has no trailing segment, so the two never
+  // collide). `:id` is the exploration's stable backend id.
+  const explorationMatch = pathname.match(
+    new RegExp(`^${escapeRegExp(base)}/exploration/([^/]+)/?$`)
+  );
+  if (explorationMatch) {
+    return {
+      kind: 'tab',
+      tab: { type: 'exploration', name: decodeURIComponent(explorationMatch[1]) },
+    };
   }
   for (const view of HIGHER_LEVEL_VIEWS) {
     if (!view.urlPath) continue; // the project view's '' is the bare-base fallthrough below

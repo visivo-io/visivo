@@ -49,6 +49,14 @@ describe('workspaceTabUrl (documents)', () => {
     );
   });
 
+  // Explore 2.0 Phase 2: exploration gets its own per-instance path (like
+  // dashboard) addressed by the STABLE backend id (`tab.name` for this type).
+  test('exploration → its dedicated path, keyed by id', () => {
+    expect(workspaceTabUrl({ type: 'exploration', name: 'exp_a1b2c3d4' })).toBe(
+      '/workspace/exploration/exp_a1b2c3d4'
+    );
+  });
+
   test('every other document type → ?edit=<type>:<name> (encoded)', () => {
     expect(workspaceTabUrl({ type: 'chart', name: 'revenue' })).toBe(
       '/workspace?edit=chart%3Arevenue'
@@ -103,6 +111,18 @@ describe('workspaceTargetFromUrl', () => {
     });
   });
 
+  test('an exploration-instance path resolves to a TAB target, distinct from the bare Explorer Home view path', () => {
+    expect(workspaceTargetFromUrl('/workspace/exploration/exp_a1b2c3d4', params(''))).toEqual({
+      kind: 'tab',
+      tab: { type: 'exploration', name: 'exp_a1b2c3d4' },
+    });
+    // The bare path (no id segment) still resolves to the Explorer Home VIEW.
+    expect(workspaceTargetFromUrl('/workspace/exploration', params(''))).toEqual({
+      kind: 'view',
+      view: 'explorer',
+    });
+  });
+
   test('?edit=<type>:<name> resolves to a TAB target', () => {
     expect(workspaceTargetFromUrl('/workspace', params('?edit=chart:revenue'))).toEqual({
       kind: 'tab',
@@ -141,6 +161,12 @@ describe('workspaceTargetFromUrl', () => {
     expect(
       workspaceTargetFromUrl(pathname, params(search ? `?${search}` : ''))
     ).toEqual({ kind: 'tab', tab });
+  });
+
+  test('round-trips an exploration tab through workspaceTabUrl', () => {
+    const tab = { type: 'exploration', name: 'exp_a1b2c3d4' };
+    const url = workspaceTabUrl(tab);
+    expect(workspaceTargetFromUrl(url, params(''))).toEqual({ kind: 'tab', tab });
   });
 
   test('round-trips every view through workspaceViewUrl', () => {

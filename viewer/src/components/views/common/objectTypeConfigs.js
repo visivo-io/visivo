@@ -15,6 +15,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HomeIcon from '@mui/icons-material/Home';
 import HubIcon from '@mui/icons-material/Hub';
 import ExploreIcon from '@mui/icons-material/Explore';
+import CompassCalibrationIcon from '@mui/icons-material/CompassCalibration';
 
 /**
  * Centralized object type definitions
@@ -369,6 +370,34 @@ export const OBJECT_TYPES = [
       node: 'bg-stone-50 border-stone-200',
       nodeSelected: 'bg-stone-100 border-stone-400',
       connectionHandle: '#78716c', // stone-500
+    },
+  },
+  // `exploration` — the DOCUMENT type (Explore 2.0 Phase 2), distinct from
+  // the chrome `explorer` DESTINATION above: an exploration is a real object
+  // (a tab, a Home gallery card) with its own backend record, so it gets a
+  // vivid color like every other data object rather than a muted chrome
+  // tone. Teal + a compass-dial icon per the design mock
+  // (specs/plan/explorer-workspace-unification/design/1-explorer-home.html —
+  // a circle + needle, closest built-in match is CompassCalibration).
+  // `enabled: false` because explorations are never created via the
+  // Library's "New object" menu — they're minted from Explorer Home
+  // ("+ New exploration" / a source tile) or "Explore this" (Phase 5).
+  {
+    value: 'exploration',
+    label: 'Explorations',
+    singularLabel: 'Exploration',
+    icon: CompassCalibrationIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-teal-50',
+      text: 'text-teal-600',
+      border: 'border-teal-200',
+      bgHover: 'hover:bg-teal-50',
+      bgSelected: 'bg-teal-100',
+      borderSelected: 'border-teal-300',
+      node: 'bg-teal-50 border-teal-200',
+      nodeSelected: 'bg-teal-100 border-teal-400',
+      connectionHandle: '#0d9488', // teal-600
     },
   },
 ];
