@@ -201,7 +201,7 @@ describe('Library', () => {
     );
   });
 
-  test('Layout-Items rows expose drag handles; Data-Layer rows do not', () => {
+  test('Layout-Items rows expose drag handles; model/relation Data-Layer rows do not', () => {
     renderLibrary();
     fireEvent.mouseEnter(screen.getByTestId('library-row-chart-waterfall'));
     expect(screen.getByTestId('library-row-chart-waterfall-drag-handle')).toBeInTheDocument();
@@ -211,10 +211,14 @@ describe('Library', () => {
     expect(
       screen.queryByTestId('library-row-model-monthly_revenue-drag-handle')
     ).not.toBeInTheDocument();
-    fireEvent.mouseEnter(screen.getByTestId('library-row-source-local-duck'));
-    expect(
-      screen.queryByTestId('library-row-source-local-duck-drag-handle')
-    ).not.toBeInTheDocument();
+  });
+
+  // Explore 2.0 Phase 3a (D9 / 02-architecture.md §4): source rows are now an
+  // exploration drag source (via LibrarySourceRow, the new drill-down row) —
+  // this is a deliberate capability ADD, not a leftover Layout-Items check.
+  test('source rows (the D9 drill-down) expose a drag handle', () => {
+    renderLibrary();
+    expect(screen.getByTestId('library-row-source-local-duck-drag-handle')).toBeInTheDocument();
   });
 
   test('clicking a chart row delegates to openWorkspaceTab', () => {

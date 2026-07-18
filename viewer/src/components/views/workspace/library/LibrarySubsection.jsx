@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { PiCaretDown } from 'react-icons/pi';
 import LibraryRow from './LibraryRow';
 import { getTypeDef } from './LibraryRow';
+import LibrarySourceRow from './LibrarySourceRow';
 import useStore from '../../../../stores/store';
 import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsStore';
 
@@ -98,17 +99,31 @@ const LibrarySubsection = ({
               className="flex flex-col gap-px"
               data-testid={`library-subsection-${typeKey}-rows`}
             >
-              {rows.map(obj => (
-                <li key={obj.id} className="relative">
-                  <LibraryRow
-                    obj={obj}
-                    selected={selectedRowId === obj.id}
-                    draggable={def.droppable}
-                    onClick={onRowClick}
-                    onContextAction={onContextAction}
-                  />
-                </li>
-              ))}
+              {rows.map(obj =>
+                // Sources get the D9 source → table → column drill-down
+                // (Explore 2.0 Phase 3a) instead of the plain flat row — see
+                // LibrarySourceRow's docstring.
+                typeKey === 'source' ? (
+                  <li key={obj.id} className="relative">
+                    <LibrarySourceRow
+                      obj={obj}
+                      selected={selectedRowId === obj.id}
+                      onClick={onRowClick}
+                      onContextAction={onContextAction}
+                    />
+                  </li>
+                ) : (
+                  <li key={obj.id} className="relative">
+                    <LibraryRow
+                      obj={obj}
+                      selected={selectedRowId === obj.id}
+                      draggable={def.droppable || def.explorationDragSource}
+                      onClick={onRowClick}
+                      onContextAction={onContextAction}
+                    />
+                  </li>
+                )
+              )}
             </ul>
           )}
         </div>
