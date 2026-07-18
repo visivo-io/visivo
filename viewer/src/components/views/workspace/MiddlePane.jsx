@@ -3,6 +3,7 @@ import SubBar, { PreviewLensPicker } from './SubBar';
 import ProjectCanvas from '../project/canvas/ProjectCanvas';
 import LineageCanvas from '../lineage/LineageCanvas';
 import ObjectCanvasFrame from './ObjectCanvasFrame';
+import ExplorationPane from './ExplorationPane';
 import useStore from '../../../stores/store';
 import { getViewDescriptor, DEFAULT_WORKSPACE_VIEW } from './higherLevelViews';
 
@@ -18,6 +19,10 @@ import { getViewDescriptor, DEFAULT_WORKSPACE_VIEW } from './higherLevelViews';
  *                are gone, along with the per-file special-casing they invited.
  *   dashboard  → ProjectCanvas (render-only Dashboard wrapper, VIS-767) when
  *                scoped, placeholder otherwise; the Lineage lens mounts <LineageCanvas>
+ *   exploration → <ExplorationPane> (Explore 2.0 Phase 2) — explorations
+ *                mount OUTSIDE the object-canvas registry entirely (D5: no
+ *                Library-row collection to resolve through `useCanvasRecord`),
+ *                so this is its own branch, ahead of the generic dispatch below.
  *   _          → <ObjectCanvasFrame> (VIS-1001) — the shared per-object canvas
  *                shell. It resolves the type's descriptor from the object-canvas
  *                registry and mounts the right body / lens / canonical state.
@@ -137,6 +142,10 @@ const MiddlePane = () => {
         projectId={projectId}
       />
     );
+  }
+  // Explorations mount outside ObjectCanvasFrame (D5) — see docstring above.
+  if (activeObject.type === 'exploration') {
+    return <ExplorationPane id={activeObject.name} />;
   }
   return <PerObjectPane activeObject={activeObject} projectId={projectId} />;
 };
