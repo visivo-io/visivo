@@ -1,13 +1,12 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import useStore from '../../stores/store';
+import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
 
 /**
  * useExplorerWorkbenchInit — the mount-time + reactive init/lifecycle effects
- * shared by every host of the legacy Explorer 3-panel bundle (LeftPanel +
- * CenterPanel + RightPanel under ExplorerDndContext): the standalone
+ * shared by every host of the legacy Explorer bundle: the standalone
  * `/explorer` route (`ExplorerPage`) AND the Explore 2.0 in-shell exploration
- * pane (`ExplorationWorkbench`, `/workspace/exploration/:id` — Phase 2,
- * specs/plan/explorer-workspace-unification/03-delivery-plan.md).
+ * pane (`ExplorationWorkbench`, `/workspace/exploration/:id`).
  *
  * Extracted verbatim from `ExplorerPage.jsx` so both hosts run IDENTICAL init
  * logic — a second, independently-evolving copy is exactly the "fork" the
@@ -16,6 +15,9 @@ import useStore from '../../stores/store';
  * fork logic").
  *
  * Runs:
+ *   - fetch `explorerSources` on mount if empty (see the dedicated note
+ *     below — this is a Phase 3a addition, not part of the original
+ *     extraction);
  *   - a debounced (300ms) backend diff fetch whenever the working explorer
  *     state changes (`/api/explorer/diff/`);
  *   - fetch project defaults on mount (default source selection);
@@ -30,6 +32,21 @@ import useStore from '../../stores/store';
  * transient empty state that's about to be overwritten by the restore. The
  * Workspace host gates mounting `ExplorationWorkbench` (and therefore this
  * hook) on that restore having completed for the current exploration id.
+ *
+ * Phase 3a regression fix (VIS-1053): `explorerSources` used to be populated
+ * ONLY as a side effect of `ExplorerLeftPanel`'s nested `SourceBrowser`
+ * mounting (`SourceBrowser.onSourcesLoaded` -> `ExplorerLeftPanel`'s
+ * `handleSourcesLoaded` -> `setExplorerSources`) — true for the standalone
+ * route (still mounts `ExplorerLeftPanel`), but Phase 3a's DnD unification
+ * removed `ExplorerLeftPanel` from `ExplorationWorkbench` entirely (the
+ * Library is now the browse surface). That silently starved
+ * `explorerSources` to `[]` forever in the new surface, which in turn starved
+ * the auto-create-model-tab effect below (its `explorerSources.length > 0`
+ * guard never became true) — no query ever auto-created, `CenterPanel`'s
+ * source selector stuck on "Select source." Fetching directly in this
+ * SHARED init hook (rather than depending on a browse-panel component
+ * happening to be mounted) fixes both hosts at once and removes that
+ * component-render dependency entirely.
  */
 export default function useExplorerWorkbenchInit() {
   const modelTabs = useStore(s => s.explorerModelTabs);
@@ -39,6 +56,28 @@ export default function useExplorerWorkbenchInit() {
   const createInsight = useStore(s => s.createInsight);
   const fetchDefaults = useStore(s => s.fetchDefaults);
   const fetchExplorerDiff = useStore(s => s.fetchExplorerDiff);
+  const setExplorerSources = useStore(s => s.setExplorerSources);
+
+  // Populate explorerSources on mount if not already loaded — see the Phase
+  // 3a regression note above. Guarded on length so re-mounting this hook for
+  // a DIFFERENT exploration (switching tabs) doesn't keep re-fetching once a
+  // session already has sources cached; the sandbox's project sources don't
+  // change mid-session.
+  const explorerSourcesLength = explorerSources.length;
+  useEffect(() => {
+    if (explorerSourcesLength > 0) return undefined;
+    let cancelled = false;
+    fetchSourceSchemaJobs()
+      .then(data => {
+        if (!cancelled) setExplorerSources(data || []);
+      })
+      .catch(() => {
+        /* best-effort — mirrors SourceBrowser's own console-only error handling */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [explorerSourcesLength, setExplorerSources]);
 
   // Watch explorer state changes to trigger backend diff (debounced).
   const explorerModelStates = useStore(s => s.explorerModelStates);
