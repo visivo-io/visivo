@@ -63,7 +63,7 @@ test.describe('Destination view switcher (D1, Explore 2.0 Phase 0)', () => {
 
     // Semantic Layer.
     const semanticRow = page.getByTestId('workspace-view-switcher-semantic-layer');
-    await expect(semanticRow).toHaveTextContent('Semantic Layer');
+    await expect(semanticRow).toHaveText('Semantic Layer');
     await semanticRow.hover();
     await semanticRow.click();
     await expect(semanticRow).toHaveAttribute('data-active', 'true');
@@ -73,7 +73,7 @@ test.describe('Destination view switcher (D1, Explore 2.0 Phase 0)', () => {
 
     // Explorer (Phase 0 placeholder Home).
     const explorerRow = page.getByTestId('workspace-view-switcher-explorer');
-    await expect(explorerRow).toHaveTextContent('Explorer');
+    await expect(explorerRow).toHaveText('Explorer');
     await explorerRow.hover();
     await explorerRow.click();
     await expect(explorerRow).toHaveAttribute('data-active', 'true');

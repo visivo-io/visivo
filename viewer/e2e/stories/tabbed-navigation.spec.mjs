@@ -120,6 +120,14 @@ test.describe('Tabbed navigation — open / close / switch (VIS-810; Explore 2.0
   test('a dirty tab shows the unsaved-changes dot', async ({ page }) => {
     await gotoWorkspace(page);
     await openLibraryObject(page, 'chart', 'simple-scatter-chart');
+    // Wait for the tab to actually land in the store before flipping its dirty
+    // flag — `openLibraryObject`'s click routes through the URL round-trip
+    // (`openWorkspaceTab` -> navigate -> `Workspace`'s URL-sync effect ->
+    // `activateWorkspaceTab`), so evaluating immediately after the click can
+    // race the store write and silently no-op (VIS-810 flake).
+    await expect(
+      page.getByTestId('workspace-tab-chart:simple-scatter-chart')
+    ).toBeVisible();
     // Dirty wiring is Track H's job (auto-save); flip the store flag directly
     // as state setup — the assertion is about the strip's rendering.
     await page.evaluate(() => {
