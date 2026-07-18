@@ -12,9 +12,9 @@ jest.mock('@mui/material', () => {
   return { ...actual, useMediaQuery: jest.fn(() => false) };
 });
 
-const renderNav = (props = {}) =>
+const renderNav = (props = {}, initialEntries = ['/workspace']) =>
   render(
-    <MemoryRouter initialEntries={['/workspace']} future={futureFlags}>
+    <MemoryRouter initialEntries={initialEntries} future={futureFlags}>
       <TopNav {...props} />
     </MemoryRouter>
   );
@@ -32,6 +32,28 @@ describe('TopNav', () => {
     // The legacy Editor / Lineage tools are gone — folded into Workspace.
     expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Lineage')).not.toBeInTheDocument();
+  });
+
+  // Delta-review fix: the Explorer pill went dark while inside an open
+  // exploration tab — `/workspace/exploration/:id` doesn't END WITH
+  // `/workspace/exploration` (the old matcher), it merely starts with it plus
+  // a trailing id segment. Only the ACTIVE tool renders its label text
+  // alongside the icon (`ToolSwitch`'s `{on && t.label}`), so asserting the
+  // label is visible is the same signal the component itself uses for "on".
+  it('the Explorer pill stays active on a nested exploration-detail route', () => {
+    renderNav({}, ['/workspace/exploration/exp_a1b2c3']);
+    expect(screen.getByText('Explorer')).toBeInTheDocument();
+  });
+
+  it('the Explorer pill is active on the Explorer home route too', () => {
+    renderNav({}, ['/workspace/exploration']);
+    expect(screen.getByText('Explorer')).toBeInTheDocument();
+  });
+
+  it('the Workspace pill (not Explorer) is active on a plain workspace document route', () => {
+    renderNav({}, ['/workspace?edit=chart:revenue']);
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.queryByText('Explorer')).not.toBeInTheDocument();
   });
 
   it('defaults to the single Local stage (the viewer has no real stages)', () => {

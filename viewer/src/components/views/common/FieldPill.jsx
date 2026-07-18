@@ -1,4 +1,5 @@
 import React from 'react';
+import { PiWarningCircle } from 'react-icons/pi';
 import { getTypeColors, getTypeIcon } from './objectTypeConfigs';
 
 /**
@@ -14,6 +15,12 @@ import { getTypeColors, getTypeIcon } from './objectTypeConfigs';
  * the pill draggable; the visual treatment stays the same. `extra` renders
  * trailing controls inside the pill (e.g. the Values aggregation picker (brand
  * Select) + remove ✕ on a pivot chip).
+ *
+ * `warning` (delta-review fix, HIGH — 05-e2e-ledger.md gap review): renders
+ * an explicit dangling-ref indicator (highlight ring + warning glyph) instead
+ * of the type's normal palette, so a pill whose ref target no longer resolves
+ * (e.g. its query chip was deleted) never looks like a silently-healthy field.
+ * `warningMessage` overrides the tooltip when `warning` is set.
  */
 const FieldPill = React.forwardRef(
   (
@@ -26,6 +33,8 @@ const FieldPill = React.forwardRef(
       title,
       extra = null,
       children,
+      warning = false,
+      warningMessage,
       'data-testid': dataTestId,
       ...rest
     },
@@ -38,11 +47,25 @@ const FieldPill = React.forwardRef(
       <Tag
         ref={ref}
         data-testid={dataTestId}
-        title={title ?? `${type}: ${display}`}
-        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${colors.bg} ${colors.text} ${colors.border} ${className}`}
+        data-warning={warning ? 'true' : undefined}
+        title={warning ? warningMessage || title || `${type}: ${display}` : title ?? `${type}: ${display}`}
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+          warning
+            ? 'bg-highlight-50 text-highlight-700 border-highlight-300 ring-2 ring-highlight-300'
+            : `${colors.bg} ${colors.text} ${colors.border}`
+        } ${className}`}
         {...rest}
       >
-        {Icon && <Icon style={{ fontSize: 12 }} aria-hidden="true" className="shrink-0" />}
+        {warning ? (
+          <PiWarningCircle
+            data-testid="field-pill-warning-icon"
+            style={{ fontSize: 12 }}
+            className="shrink-0"
+            aria-hidden="true"
+          />
+        ) : (
+          Icon && <Icon style={{ fontSize: 12 }} aria-hidden="true" className="shrink-0" />
+        )}
         <span className="truncate">{display}</span>
         {extra}
         {children}
