@@ -19,16 +19,16 @@ export default defineConfig({
   // Three projects:
   //   parallel        — read-only specs, sandbox on :3001 (integration project)
   //   state-mutating  — in-memory save specs, sandbox on :3001, runs after parallel
-  //   publish         — file-mutating specs, isolated sandbox on :3002
-  //                     (test-projects/explorer-publish-e2e) — runs serially
-  //                     within itself but concurrently with the others.
+  //   (the isolated file-mutating 'publish' project is currently EMPTY — the
+  //   Phase 3b cutover deleted its one file, explorer-publish-to-files.spec.mjs,
+  //   whose mount (the standalone /explorer route) no longer exists; Phase 4's
+  //   exploration-promote.spec.mjs is the named successor for its YAML
+  //   round-trip coverage and should recreate an equivalent isolated-sandbox
+  //   project — test-projects/explorer-publish-e2e — when it lands)
   projects: [
     {
       name: 'parallel',
       testIgnore: [
-        '**/explorer-crud-save.spec.mjs',
-        '**/explorer-library-reactivity.spec.mjs',
-        '**/explorer-publish-to-files.spec.mjs',
         '**/build-mode-publish.spec.mjs',
         '**/external-edit-banner.spec.mjs',
         '**/library-inline-create.spec.mjs',
@@ -49,6 +49,18 @@ export default defineConfig({
         // isolation need as the two specs above, same project.
         '**/exploration-dnd-pull-in.spec.mjs',
         '**/exploration-query-chips.spec.mjs',
+        // Phase 3b (VIS-1057/1058/1059/1060): same shared-repository
+        // isolation need — the Build rail / pill grammar specs each mint
+        // (and the cutover-redirect spec's dashboard-scoped-route test
+        // mints) a real exploration record.
+        '**/exploration-build-rail.spec.mjs',
+        '**/pill-aggregation.spec.mjs',
+        '**/post-cutover-redirects.spec.mjs',
+        // B14 part 2: its exploration-workbench anchor check now mints a
+        // real exploration too (the old standalone /explorer route let it
+        // assume anchors render eagerly with no open document; the new
+        // Explorer Home doesn't).
+        '**/onboarding-coach-anchors.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -57,9 +69,6 @@ export default defineConfig({
     {
       name: 'state-mutating',
       testMatch: [
-        '**/explorer-crud-save.spec.mjs',
-        // J-4: saves a chart from Explorer, asserts the Library reflects it.
-        '**/explorer-library-reactivity.spec.mjs',
         // Drafts objects into the backend cache via the Library create flow.
         '**/library-inline-create.spec.mjs',
         // VIS-993: the valid-save step drafts a dimension into the cache.
@@ -69,16 +78,6 @@ export default defineConfig({
         '**/canvas-editing.spec.mjs',
       ],
       dependencies: ['parallel'],
-    },
-    {
-      name: 'publish',
-      testMatch: ['**/explorer-publish-to-files.spec.mjs'],
-      use: { baseURL: 'http://localhost:3002' },
-      fullyParallel: false,
-      workers: 1,
-      // Retries would run against polluted backend cache from the failed
-      // attempt, so they give no useful signal. Fail fast instead.
-      retries: 0,
     },
     {
       // Track H stories (VIS-806/808) — both mutate the integration project's
@@ -122,6 +121,12 @@ export default defineConfig({
         // testIgnore entry for the same two files for why.
         '**/exploration-dnd-pull-in.spec.mjs',
         '**/exploration-query-chips.spec.mjs',
+        // Phase 3b additions (VIS-1057/1058/1059/1060) — same shared-
+        // repository isolation need, from the START per this phase's gate.
+        '**/exploration-build-rail.spec.mjs',
+        '**/pill-aggregation.spec.mjs',
+        '**/post-cutover-redirects.spec.mjs',
+        '**/onboarding-coach-anchors.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

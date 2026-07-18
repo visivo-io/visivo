@@ -8,10 +8,28 @@
  * Stops the Coach from going stale silently: if a host component is
  * renamed or the marker is removed, this test fails before users hit
  * a no-op coach.
+ *
+ * Explore 2.0 Phase 3b cutover (B14 part 2): the exploration-workbench
+ * anchors (`sql-editor`/`query-chip-add`/`sql-run-button`/
+ * `chart-crud-section`/`right-panel-add-insight`/`explorer-save-button`)
+ * only render inside an OPEN exploration tab, not on the bare Explorer
+ * Home route (`/workspace/exploration`) the old `/explorer` standalone
+ * route's "always in a workbench" model let this file assume — a real
+ * exploration is minted + opened first. `model-tab-bar` (the retired
+ * ModelTabBar's "+") is replaced by `query-chip-add`
+ * (ExplorationQueryChips' "+").
  */
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
+const apiBase = (() => {
+  try {
+    const u = new URL(BASE);
+    return `${u.protocol}//${u.hostname}:8001`;
+  } catch {
+    return 'http://localhost:8001';
+  }
+})();
 
 // Anchors that mount eagerly when the user lands on the route. The Coach
 // guarantees a graceful no-op when a target isn't on the page yet, so
@@ -19,16 +37,20 @@ const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 // and only renders after the user has run a query) are intentionally
 // excluded from this eager-existence sweep — they're verified as part
 // of phase 5 when DataSectionToolbar mounts in user-flow e2e specs.
-const ANCHORS = [
+const ROUTE_ANCHORS = [
   { id: 'top-nav-deploy', route: '/editor' },
   { id: 'top-nav-project', route: '/editor' },
   { id: 'source-create-button', route: '/editor' },
-  { id: 'sql-editor', route: '/explorer' },
-  { id: 'model-tab-bar', route: '/explorer' },
-  { id: 'sql-run-button', route: '/explorer' },
-  { id: 'chart-crud-section', route: '/explorer' },
-  { id: 'right-panel-add-insight', route: '/explorer' },
-  { id: 'explorer-save-button', route: '/explorer' },
+];
+
+// Anchors that only exist inside an OPEN exploration tab (see file header).
+const EXPLORATION_ANCHORS = [
+  'sql-editor',
+  'query-chip-add',
+  'sql-run-button',
+  'chart-crud-section',
+  'right-panel-add-insight',
+  'explorer-save-button',
 ];
 
 async function setupOnboarded(page, role = 'analytics_engineer') {
@@ -49,7 +71,7 @@ async function setupOnboarded(page, role = 'analytics_engineer') {
 }
 
 test.describe('OnboardingCoach — anchor markers exist on every advertised route', () => {
-  for (const anchor of ANCHORS) {
+  for (const anchor of ROUTE_ANCHORS) {
     test(`[data-onb-target="${anchor.id}"] is rendered on ${anchor.route}`, async ({ page }) => {
       await setupOnboarded(page);
       await page.goto(`${BASE}${anchor.route}`);
@@ -58,4 +80,39 @@ test.describe('OnboardingCoach — anchor markers exist on every advertised rout
       await expect(el).toBeAttached();
     });
   }
+
+  test('exploration-workbench anchors are rendered inside an OPEN exploration tab', async ({
+    page,
+  }) => {
+    let idsBeforeTest = [];
+    const res = await page.request.get(`${apiBase}/api/explorations/`).catch(() => null);
+    idsBeforeTest = res && res.ok() ? (await res.json()).map(e => e.id) : [];
+
+    await setupOnboarded(page);
+    await page.goto(`${BASE}/workspace/exploration`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible({ timeout: 30000 });
+
+    await page.getByTestId('explorer-home-new-exploration').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await page.waitForFunction(() => !!window.useStore.getState().explorerActiveModelName, {
+      timeout: 10000,
+    });
+
+    for (const id of EXPLORATION_ANCHORS) {
+      await expect(
+        page.locator(`[data-onb-target="${id}"]`).first(),
+        `[data-onb-target="${id}"] should be attached inside an open exploration`
+      ).toBeAttached({ timeout: 10000 });
+    }
+
+    const idsAfter = await page.request
+      .get(`${apiBase}/api/explorations/`)
+      .then(r => r.json())
+      .then(list => list.map(e => e.id))
+      .catch(() => []);
+    for (const id of idsAfter.filter(i => !idsBeforeTest.includes(i))) {
+      await page.request.delete(`${apiBase}/api/explorations/${id}/`).catch(() => {});
+    }
+  });
 });
