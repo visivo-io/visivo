@@ -87,6 +87,13 @@ jest.mock('./relations/SemanticLayerCanvas', () => ({
   __esModule: true,
   default: () => <div data-testid="semantic-layer-canvas-mock" />,
 }));
+// Explore 2.0 Phase 2: exploration mounts outside ObjectCanvasFrame (D5) via
+// its own dedicated branch — mocked here so this stays a focused DISPATCH
+// test (ExplorationPane's own state-bridge behavior has its own test file).
+jest.mock('./ExplorationPane', () => ({
+  __esModule: true,
+  default: ({ id }) => <div data-testid="exploration-pane-mock" data-id={id} />,
+}));
 
 const seed = (extra = {}) => {
   act(() => {
@@ -121,12 +128,20 @@ describe('MiddlePane destination Home panes (VIS-805; Explore 2.0 Phase 0 D1)', 
     expect(screen.queryByTestId('workspace-middle-project')).not.toBeInTheDocument();
   });
 
-  test('mounts the Explorer Home placeholder when that view is active and no document tab is focused', () => {
+  test('mounts the real Explorer Home gallery when that view is active and no document tab is focused', () => {
     seed({ workspaceActiveObject: null, workspaceActiveView: 'explorer' });
     render(<MiddlePane />);
     expect(screen.getByTestId('workspace-middle-explorer')).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-middle-explorer-empty')).toBeInTheDocument();
-    expect(screen.getByText(/Explorer arrives with explorations/i)).toBeInTheDocument();
+    // Explore 2.0 Phase 2 replaced the placeholder with the real gallery —
+    // its own behavior (cards, seeding, source tiles) is pinned in
+    // ExplorerHomePane.test.jsx; this dispatch test only checks IT mounts.
+    expect(screen.getByTestId('explorer-home-new-exploration')).toBeInTheDocument();
+  });
+
+  test('an active exploration document tab dispatches to ExplorationPane (D5 — outside ObjectCanvasFrame)', () => {
+    seed({ workspaceActiveObject: { type: 'exploration', name: 'exp_123' } });
+    render(<MiddlePane />);
+    expect(screen.getByTestId('exploration-pane-mock')).toHaveAttribute('data-id', 'exp_123');
   });
 
   test('an active document tab wins over the active view — the view is never a tab in Phase 0', async () => {

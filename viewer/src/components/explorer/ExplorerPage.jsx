@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import LeftPanel from './ExplorerLeftPanel';
 import CenterPanel from './CenterPanel';
@@ -8,52 +8,15 @@ import ExplorerReturnChip from './ExplorerReturnChip';
 import VerticalDivider from '../common/VerticalDivider';
 import useStore from '../../stores/store';
 import { usePanelResize } from '../../hooks/usePanelResize';
+import useExplorerWorkbenchInit from './useExplorerWorkbenchInit';
 
 const ExplorerPage = () => {
   const leftNavCollapsed = useStore((s) => s.explorerLeftNavCollapsed);
-  const modelTabs = useStore((s) => s.explorerModelTabs);
-  const explorerSources = useStore((s) => s.explorerSources);
-  const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
-  const createModelTab = useStore((s) => s.createModelTab);
-  const createInsight = useStore((s) => s.createInsight);
-  const fetchDefaults = useStore((s) => s.fetchDefaults);
-  const fetchExplorerDiff = useStore((s) => s.fetchExplorerDiff);
 
-  // Watch explorer state changes to trigger backend diff (debounced)
-  const explorerModelStates = useStore((s) => s.explorerModelStates);
-  const explorerInsightStates = useStore((s) => s.explorerInsightStates);
-  const explorerChartName = useStore((s) => s.explorerChartName);
-  const explorerChartLayout = useStore((s) => s.explorerChartLayout);
-
-  const diffTimerRef = useRef(null);
-  useEffect(() => {
-    if (diffTimerRef.current) clearTimeout(diffTimerRef.current);
-    diffTimerRef.current = setTimeout(() => {
-      fetchExplorerDiff();
-    }, 300);
-    return () => clearTimeout(diffTimerRef.current);
-  }, [explorerModelStates, explorerInsightStates, explorerChartName, explorerChartLayout, chartInsightNames, fetchExplorerDiff]);
-
-  // Fetch project defaults on mount (needed for default source selection)
-  useEffect(() => {
-    fetchDefaults();
-  }, [fetchDefaults]);
-
-  // Auto-create a model tab when the page loads with no tabs and sources are available
-  useEffect(() => {
-    if (modelTabs.length === 0 && explorerSources.length > 0) {
-      createModelTab();
-    }
-  }, [modelTabs.length, explorerSources.length, createModelTab]);
-
-  // Auto-create an insight on initial page load only (not when user removes all insights)
-  const insightAutoCreated = useRef(false);
-  useEffect(() => {
-    if (modelTabs.length > 0 && chartInsightNames.length === 0 && !insightAutoCreated.current) {
-      insightAutoCreated.current = true;
-      createInsight();
-    }
-  }, [modelTabs.length, chartInsightNames.length, createInsight]);
+  // The diff-debounce / auto-create-model-tab / auto-create-insight /
+  // fetch-defaults init effects are shared with the Explore 2.0
+  // ExplorationWorkbench (Phase 2) via this hook — see its docstring.
+  useExplorerWorkbenchInit();
 
   // J-3 (VIS-782): show a "Back to dashboard" return bar only when Explorer was
   // entered from Build mode (`?return_to=workspace`).
