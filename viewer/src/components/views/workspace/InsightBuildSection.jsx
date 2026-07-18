@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../../stores/store';
-import { selectInsightStatus } from '../../../stores/explorerStore';
+import { getSourceDialect, selectInsightStatus } from '../../../stores/explorerStore';
 import { CHART_TYPES } from '../../../schemas/schemas';
 import TracePropsEditor from '../common/TracePropsEditor';
 import RefTextArea from '../common/RefTextArea';
@@ -10,6 +10,9 @@ import Select from '../../common/Select';
 import { checkRefTargets } from './refPreflight';
 import { formatRefExpression } from '../../../utils/refString';
 import { isNumericColumnType } from '../../../utils/columnType';
+import SaveAsMetricPrompt from './SaveAsMetricPrompt';
+import FieldSwapOfferBanner from './FieldSwapOfferBanner';
+import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
 
 const INTERACTION_TYPES = [
   { value: 'filter', label: 'Filter' },
@@ -112,10 +115,21 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const renameInsight = useStore(s => s.renameInsight);
   const activeModelName = useStore(s => s.explorerActiveModelName) || 'preview_model';
   const modelTabs = useStore(s => s.explorerModelTabs);
+  const modelStates = useStore(s => s.explorerModelStates);
+  const sources = useStore(s => s.sources);
+  const explorerSources = useStore(s => s.explorerSources);
+  const models = useStore(s => s.models);
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState(null);
+
+  // Explore 2.0 Phase 4 (06 §4): "Save as metric…" prompt state — at most
+  // one slot's flow is in progress at a time per insight section.
+  const [saveAsMetricTarget, setSaveAsMetricTarget] = useState(null); // {path, pillState}
+  const [saveAsMetricSubmitting, setSaveAsMetricSubmitting] = useState(false);
+  const [saveAsMetricError, setSaveAsMetricError] = useState(null);
+  const [dedupOffers, setDedupOffers] = useState([]);
 
   const status = useStore(selectInsightStatus(insightName));
 
@@ -188,6 +202,71 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
     },
     [activeModelName, insightName, setInsightProp]
   );
+
+  // Explore 2.0 Phase 4 (06 §4): opens the name-prompt for a slot's
+  // aggregate pill. `PillMenu` (via `PropertyRow`) only calls this for
+  // `kind: 'aggregate'` states — see `saveAsMetricFlow.js` for the flow.
+  const handleOpenSaveAsMetric = useCallback((path, pillState) => {
+    setSaveAsMetricError(null);
+    setSaveAsMetricTarget({ path, pillState });
+  }, []);
+
+  const handleCancelSaveAsMetric = useCallback(() => {
+    setSaveAsMetricTarget(null);
+    setSaveAsMetricError(null);
+  }, []);
+
+  // Resolves the source dialect governing the pill's model — the SAME
+  // promoted-model-first, draft-fallback resolution `PillMenu.usePillDialect`
+  // uses for the MEDIAN gate, generalized here since this runs OUTSIDE a
+  // hook (inside an event handler, not render).
+  const resolveSourceDialect = useCallback(
+    modelName => {
+      const model = (models || []).find(m => m.name === modelName);
+      if (model) {
+        const sourceRef = model?.config?.source ?? model?.source;
+        const sourceName = sourceRef ? sourceRef.replace(/^ref\(([^)]+)\)$/, '$1') : null;
+        const src = (sources || []).find(
+          s => s.name === sourceName || s.source_name === sourceName
+        );
+        const t = (src?.type || src?.config?.type || '').toLowerCase();
+        if (t) return t === 'postgresql' ? 'postgres' : t;
+      }
+      const draftSourceName = modelStates?.[modelName]?.sourceName;
+      return getSourceDialect(draftSourceName, explorerSources) || undefined;
+    },
+    [models, sources, modelStates, explorerSources]
+  );
+
+  const handleSubmitSaveAsMetric = useCallback(
+    async name => {
+      if (!saveAsMetricTarget) return;
+      setSaveAsMetricSubmitting(true);
+      setSaveAsMetricError(null);
+      const result = await saveAsMetric({
+        pillState: saveAsMetricTarget.pillState,
+        name,
+        insightName,
+        path: saveAsMetricTarget.path,
+        sourceDialect: resolveSourceDialect(saveAsMetricTarget.pillState.ref),
+        getState: () => useStore.getState(),
+      });
+      setSaveAsMetricSubmitting(false);
+      if (!result.success) {
+        setSaveAsMetricError(result.error);
+        return;
+      }
+      setSaveAsMetricTarget(null);
+      if (result.dedupOffer) {
+        setDedupOffers(prev => [...prev, result.dedupOffer]);
+      }
+    },
+    [saveAsMetricTarget, insightName, resolveSourceDialect]
+  );
+
+  const handleDismissDedupOffer = useCallback(index => {
+    setDedupOffers(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
   // Advisory ref-target check (02 §2): real store collections UNION this
   // exploration's own scratch query names, so a valid in-draft ref (a
@@ -368,8 +447,14 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
               onChange={handleTracePropsChange}
               droppable
               onDropField={handleDropField}
+              onSaveAsMetric={handleOpenSaveAsMetric}
               externalErrors={advisoryErrors}
             />
+            {dedupOffers.length > 0 && (
+              <div className="mt-2">
+                <FieldSwapOfferBanner offers={dedupOffers} onDismiss={handleDismissDedupOffer} />
+              </div>
+            )}
           </div>
 
           <div>
@@ -396,6 +481,15 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
             </button>
           </div>
         </div>
+      )}
+      {saveAsMetricTarget && (
+        <SaveAsMetricPrompt
+          suggestedName={suggestMetricName(saveAsMetricTarget.pillState)}
+          onSubmit={handleSubmitSaveAsMetric}
+          onCancel={handleCancelSaveAsMetric}
+          submitting={saveAsMetricSubmitting}
+          error={saveAsMetricError}
+        />
       )}
     </div>
   );

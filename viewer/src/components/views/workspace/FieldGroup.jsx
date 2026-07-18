@@ -75,6 +75,10 @@ const GROUP_ICONS = {
  * @param {(path: string, dragData: object) => void} [props.onDropField] -
  *   per-field drop callback, curried with `field.name` before being handed to
  *   `PropertyRow` (the same currying `onChange`/`onRemove` already use here).
+ * @param {(path: string, pillState: object) => void} [props.onSaveAsMetric] -
+ *   Explore 2.0 Phase 4: per-field "Save as metric…" callback, curried with
+ *   `field.name` the same way `onDropField` is. Undefined everywhere except
+ *   the Build rail's `InsightBuildSection`.
  */
 export function FieldGroup({
   group,
@@ -87,6 +91,7 @@ export function FieldGroup({
   revealPath = null,
   droppable = false,
   onDropField,
+  onSaveAsMetric,
 }) {
   const { id, label, icon, objectType, alwaysOpen, defaultOpen = true, fields = [] } = group || {};
 
@@ -217,6 +222,11 @@ export function FieldGroup({
                   droppable={droppable}
                   onDropField={
                     onDropField ? dragData => onDropField(field.name, dragData) : undefined
+                  }
+                  onSaveAsMetric={
+                    onSaveAsMetric
+                      ? pillState => onSaveAsMetric(field.name, pillState)
+                      : undefined
                   }
                   error={errors[field.name]}
                 />

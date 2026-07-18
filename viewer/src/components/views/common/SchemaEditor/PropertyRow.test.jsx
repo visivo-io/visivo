@@ -480,6 +480,39 @@ describe('PropertyRow', () => {
       expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
     });
 
+    test('a dangling ref (advisory `error` set) renders the pill in its explicit warning state, not the normal palette (delta-review fix)', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          error="Reference to 'orders_q' not found in models, ..."
+        />
+      );
+      const pill = screen.getByTestId('property-pill-x');
+      expect(pill).toHaveAttribute('data-warning', 'true');
+      expect(screen.getByTestId('field-pill-warning-icon')).toBeInTheDocument();
+      // The advisory text below the pill still renders too (unchanged behavior).
+      expect(screen.getByTestId('property-error-x')).toBeInTheDocument();
+    });
+
+    test('no `error` -> the pill renders normally, no warning treatment', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      expect(screen.getByTestId('property-pill-x')).not.toHaveAttribute('data-warning');
+    });
+
     test('the SAME recognized value falls back to RefTextArea when NOT droppable (fork is gated, not universal)', () => {
       render(
         <PropertyRow
@@ -524,6 +557,42 @@ describe('PropertyRow', () => {
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
       fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
       expect(onChange).toHaveBeenCalledWith('?{sum(${ref(orders_q).amount})}');
+    });
+
+    test('onSaveAsMetric threads through to PillMenu, called with the parsed pill state (Explore 2.0 Phase 4)', () => {
+      const onSaveAsMetric = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="y"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount})}"
+          droppable
+          onSaveAsMetric={onSaveAsMetric}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      expect(screen.getByTestId('pill-menu-save-as-metric')).not.toBeDisabled();
+      fireEvent.click(screen.getByTestId('pill-menu-save-as-metric'));
+      expect(onSaveAsMetric).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' })
+      );
+    });
+
+    test('without onSaveAsMetric, PillMenu renders the action disabled even on an aggregate pill', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="y"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount})}"
+          droppable
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
     });
 
     test('PillMenu Remove clears the slot value (never the whole property)', () => {

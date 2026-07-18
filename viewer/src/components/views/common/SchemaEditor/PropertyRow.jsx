@@ -46,6 +46,14 @@ import { SliceBanner } from './SliceBanner';
  *   Build rail's per-insight section) builds the ref expression from the
  *   drag payload and calls its own `onChange`.
  * @param {string} props.error - Optional inline validation message (AJV) for this path
+ * @param {(pillState: object) => void} [props.onSaveAsMetric] - Explore 2.0
+ *   Phase 4 (06 §4): enables PillMenu's "Save as metric…" action for this
+ *   slot's CURRENT pill state (only meaningful for `kind: 'aggregate'`
+ *   pills — PillMenu itself gates on that). Undefined everywhere except the
+ *   Build rail's `InsightBuildSection`, which owns the actual promote flow
+ *   (name prompt, collision + aggregate-ness checks, `saveMetric`, slot
+ *   swap, match-and-replace dedup offer) — mirrors `onDropField`'s identical
+ *   "undefined by default, wired only where it's meaningful" convention.
  */
 export function PropertyRow({
   path,
@@ -58,6 +66,7 @@ export function PropertyRow({
   disabled = false,
   droppable = false,
   onDropField,
+  onSaveAsMetric,
   error,
 }) {
   const queryStringSupported = useMemo(() => supportsQueryString(schema), [schema]);
@@ -348,11 +357,23 @@ export function PropertyRow({
                   type={pillType}
                   label={pillLabel}
                   data-testid={`property-pill-${path}`}
+                  // Delta-review fix (HIGH): a dangling ref (e.g. its query
+                  // chip was deleted, or the model it names no longer
+                  // resolves) must render as an explicit warning pill, never
+                  // a silently-healthy-looking one — `error` is this row's
+                  // advisory `checkRefTargets` verdict (02-architecture.md §2),
+                  // already computed one level up; previously it only ever
+                  // rendered as easy-to-miss text below the pill.
+                  warning={!!error}
+                  warningMessage={error}
                   extra={
                     <PillMenu
                       state={pillState}
                       onSelectPreset={handleSelectPreset}
                       onCustomAggregation={() => setForceRawEdit(true)}
+                      onSaveAsMetric={
+                        onSaveAsMetric ? () => onSaveAsMetric(pillState) : undefined
+                      }
                       onRemove={handlePillRemove}
                       disabled={disabled}
                     />

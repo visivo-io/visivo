@@ -25,6 +25,9 @@ import { FieldGroup } from './FieldGroup';
  *   pass-through to every `FieldGroup`/`PropertyRow`. Default false.
  * @param {(path: string, dragData: object) => void} [props.onDropField] -
  *   per-field drop callback, threaded straight through to `FieldGroup`.
+ * @param {(path: string, pillState: object) => void} [props.onSaveAsMetric] -
+ *   Explore 2.0 Phase 4: per-field "Save as metric…" callback, threaded
+ *   straight through to `FieldGroup`.
  */
 export function FieldGroupList({
   groupSpec = [],
@@ -37,6 +40,7 @@ export function FieldGroupList({
   revealPath = null,
   droppable = false,
   onDropField,
+  onSaveAsMetric,
 }) {
   if (!Array.isArray(groupSpec) || groupSpec.length === 0) {
     return (
@@ -61,6 +65,7 @@ export function FieldGroupList({
           revealPath={revealPath}
           droppable={droppable}
           onDropField={onDropField}
+          onSaveAsMetric={onSaveAsMetric}
         />
       ))}
     </div>
