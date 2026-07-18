@@ -4,277 +4,157 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorerChartPreview from './ExplorerChartPreview';
 import useStore from '../../stores/store';
+import useDraftInsightPreview from '../../hooks/useDraftInsightPreview';
 
-// Capture the chart preview job hook args across renders so we can assert on payload shape.
-let lastPreviewRequest = null;
+// Explore 2.0 Phase 4: ExplorerChartPreview no longer builds the dead
+// context_objects preview-job request — it drives `useDraftInsightPreview`
+// (the client-side compile-draft + DuckDB lane) directly. Mocked here since
+// its own behavior is unit-tested in `hooks/useDraftInsightPreview.test.js`.
+jest.mock('../../hooks/useDraftInsightPreview', () => jest.fn());
 
-jest.mock('../../hooks/usePreviewData', () => ({
-  useChartPreviewJob: jest.fn((previewRequest) => {
-    lastPreviewRequest = previewRequest;
-    return {
-      isLoading: false,
-      isCompleted: false,
-      isFailed: false,
-      error: null,
-      progress: 0,
-      progressMessage: '',
-      runId: null,
-      previewRunId: null,
-      previewInsightKeys: (previewRequest?.insight_names || []).map(n => `__preview__${n}`),
-      status: null,
-      resetPreview: jest.fn(),
-    };
-  }),
+jest.mock('../views/workspace/usePreviewInputDependencies', () => ({
+  usePreviewInputDependencies: jest.fn(() => ({ inputConfigs: [], unresolvedNames: [] })),
 }));
 
-jest.mock('../../hooks/useInputsData', () => ({
-  useInputsData: jest.fn(),
-}));
+jest.mock('../views/workspace/PreviewInputControls', () => {
+  return function MockPreviewInputControls({ inputConfigs }) {
+    return <div data-testid="preview-input-controls">{JSON.stringify(inputConfigs)}</div>;
+  };
+});
 
 jest.mock('../views/common/ChartPreview', () => {
-  return function MockChartPreview({ chartConfig, insightKeys, projectId }) {
+  return function MockChartPreview({ chartConfig, insightKeys, projectId, isLoading, error }) {
     return (
       <div data-testid="chart-preview-component">
         <span data-testid="cp-chart-name">{chartConfig?.name}</span>
         <span data-testid="cp-insight-keys">{JSON.stringify(insightKeys)}</span>
         <span data-testid="cp-project-id">{projectId}</span>
         <span data-testid="cp-layout">{JSON.stringify(chartConfig?.layout)}</span>
+        <span data-testid="cp-is-loading">{String(isLoading)}</span>
+        <span data-testid="cp-error">{error || ''}</span>
       </div>
     );
   };
 });
 
-const makeModelState = (overrides = {}) => ({
-  sql: '',
-  sourceName: null,
-  queryResult: null,
-  queryError: null,
-  computedColumns: [],
-  enrichedResult: null,
-  isNew: true,
-  ...overrides,
-});
+const { usePreviewInputDependencies } = jest.requireMock(
+  '../views/workspace/usePreviewInputDependencies'
+);
+
+const defaultDraftPreview = {
+  previewInsightKeys: ['__draft__:ins_1'],
+  isLoading: false,
+  error: null,
+  blockedReason: null,
+  blockedModel: null,
+};
 
 const defaultState = {
-  explorerModelStates: {},
-  explorerModelTabs: [],
-  explorerActiveModelName: null,
-  explorerInsightStates: {},
-  explorerActiveInsightName: null,
-  explorerChartInsightNames: [],
+  explorerInsightStates: {
+    ins_1: {
+      type: 'scatter',
+      props: { x: '?{${ref(sales).date}}', y: '?{${ref(sales).amount}}' },
+      interactions: [],
+    },
+  },
+  explorerChartInsightNames: ['ins_1'],
   explorerChartName: 'test_chart',
   explorerChartLayout: {},
   project: { id: 'proj-1' },
-  inputs: [],
   setChartLayout: layout => useStore.setState({ explorerChartLayout: layout }),
 };
 
 describe('ExplorerChartPreview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    lastPreviewRequest = null;
+    useDraftInsightPreview.mockReturnValue(defaultDraftPreview);
+    usePreviewInputDependencies.mockReturnValue({ inputConfigs: [], unresolvedNames: [] });
     useStore.setState(defaultState);
   });
 
   it('shows empty state when no insights attached to chart', () => {
+    useStore.setState({ explorerChartInsightNames: [] });
     render(<ExplorerChartPreview />);
     expect(screen.getByTestId('chart-empty-no-insights')).toBeInTheDocument();
-    expect(lastPreviewRequest).toBeNull();
   });
 
-  it('renders ChartPreview when at least one insight has data props', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: {
-          type: 'scatter',
-          props: { x: '?{${ref(sales).date}}', y: '?{${ref(sales).amount}}' },
-          interactions: [],
-          typePropsCache: {},
-          isNew: true,
-        },
-      },
-    });
-
+  it('renders ChartPreview with the draft-namespaced insight keys from useDraftInsightPreview', () => {
     render(<ExplorerChartPreview />);
     expect(screen.getByTestId('chart-preview-component')).toBeInTheDocument();
+    expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+      JSON.stringify(['__draft__:ins_1'])
+    );
   });
 
-  it('uses raw insight names in insight_names (no concatenation)', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['my_insight'],
-      explorerInsightStates: {
-        my_insight: {
-          type: 'scatter',
-          props: { x: '?{${ref(sales).date}}', y: '?{${ref(sales).amount}}' },
-          interactions: [],
-          typePropsCache: {},
-          isNew: true,
-        },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(lastPreviewRequest.insight_names).toEqual(['my_insight']);
-    expect(lastPreviewRequest.context_objects.insights[0].name).toBe('my_insight');
-  });
-
-  it('sends one request containing every chart insight', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['a', 'b', 'c'],
-      explorerInsightStates: {
-        a: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-        b: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-        c: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(lastPreviewRequest.insight_names).toEqual(['a', 'b', 'c']);
-    expect(lastPreviewRequest.context_objects.insights).toHaveLength(3);
-  });
-
-  it('includes every explorerModelStates entry as a model override', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: {
-          type: 'scatter',
-          props: { x: '?{${ref(sales).date}}' },
-          interactions: [],
-        },
-      },
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM sales', sourceName: 'pg' }),
-        orders_model: makeModelState({ sql: 'SELECT * FROM orders', sourceName: 'pg' }),
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(lastPreviewRequest.context_objects.models).toHaveLength(2);
-    const modelNames = lastPreviewRequest.context_objects.models.map(m => m.name);
-    expect(modelNames).toContain('sales_model');
-    expect(modelNames).toContain('orders_model');
-  });
-
-  it('attaches computed columns as dimensions/metrics', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-      },
-      explorerModelStates: {
-        sales: makeModelState({
-          sql: 'SELECT * FROM sales',
-          sourceName: 'pg',
-          computedColumns: [
-            { name: 'order_month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
-            { name: 'total_rev', expression: 'SUM(amount)', type: 'metric' },
-          ],
-        }),
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    const model = lastPreviewRequest.context_objects.models[0];
-    expect(model.dimensions).toEqual([
-      { name: 'order_month', expression: "DATE_TRUNC('month', date)" },
-    ]);
-    expect(model.metrics).toEqual([{ name: 'total_rev', expression: 'SUM(amount)' }]);
-  });
-
-  it('builds preview request with no model tab open', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-      },
-      explorerModelStates: {},
-      explorerModelTabs: [],
-      explorerActiveModelName: null,
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(lastPreviewRequest).not.toBeNull();
-    expect(lastPreviewRequest.insight_names).toEqual(['ins_1']);
-    // No models in context_objects when nothing is being edited
-    expect(lastPreviewRequest.context_objects.models).toBeUndefined();
-  });
-
-  it('passes chart name from store', () => {
+  it('passes chart name and layout from the store', () => {
     useStore.setState({
       explorerChartName: 'my_cool_chart',
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-    expect(screen.getByTestId('cp-chart-name')).toHaveTextContent('my_cool_chart');
-  });
-
-  it('passes chart layout from store', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-      },
       explorerChartLayout: { title: { text: 'My Chart' } },
     });
-
     render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('cp-chart-name')).toHaveTextContent('my_cool_chart');
     const layout = JSON.parse(screen.getByTestId('cp-layout').textContent);
     expect(layout.title.text).toBe('My Chart');
   });
 
-  it('passes projectId', () => {
-    useStore.setState({
-      project: { id: 'my-project-123' },
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
-      },
-    });
-
+  it('passes projectId through', () => {
+    useStore.setState({ project: { id: 'my-project-123' } });
     render(<ExplorerChartPreview />);
     expect(screen.getByTestId('cp-project-id')).toHaveTextContent('my-project-123');
   });
 
-  it('forwards backend-format interactions', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: {
-          type: 'scatter',
-          props: { x: '?{${ref(m).x}}' },
-          interactions: [{ type: 'filter', value: '?{${ref(m).x} > 5}' }],
-        },
-      },
+  it('forwards isLoading/error from useDraftInsightPreview', () => {
+    useDraftInsightPreview.mockReturnValue({
+      ...defaultDraftPreview,
+      isLoading: true,
+      error: 'boom',
     });
-
     render(<ExplorerChartPreview />);
-
-    const insight = lastPreviewRequest.context_objects.insights[0];
-    expect(insight.interactions).toEqual([{ filter: '?{${ref(m).x} > 5}' }]);
+    expect(screen.getByTestId('cp-is-loading')).toHaveTextContent('true');
+    expect(screen.getByTestId('cp-error')).toHaveTextContent('boom');
   });
 
-  it('drops insights with no data props beyond type', () => {
-    useStore.setState({
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: {}, interactions: [] },
-      },
+  it('renders the graceful "run the query first" state instead of ChartPreview on a model_not_run block', () => {
+    useDraftInsightPreview.mockReturnValue({
+      ...defaultDraftPreview,
+      blockedReason: 'model_not_run',
+      blockedModel: 'cohort_q',
     });
-
     render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('chart-preview-run-first')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-preview-run-first')).toHaveTextContent('cohort_q');
+    expect(screen.queryByTestId('chart-preview-component')).not.toBeInTheDocument();
+  });
 
-    // No data props → insight is dropped → request is null
-    expect(lastPreviewRequest).toBeNull();
+  it('renders PreviewInputControls above the chart, driven by usePreviewInputDependencies', () => {
+    usePreviewInputDependencies.mockReturnValue({
+      inputConfigs: [{ name: 'region' }],
+      unresolvedNames: [],
+    });
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('preview-input-controls')).toHaveTextContent('region');
+  });
+
+  it('surfaces an explicit banner for a draft referencing a not-yet-promoted input (never a silent drop)', () => {
+    usePreviewInputDependencies.mockReturnValue({
+      inputConfigs: [],
+      unresolvedNames: ['not_yet_promoted'],
+    });
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('chart-preview-unresolved-inputs')).toHaveTextContent(
+      'not_yet_promoted'
+    );
+  });
+
+  it('passes previewInsightKeys as the insightNames usePreviewInputDependencies resolves against', () => {
+    useDraftInsightPreview.mockReturnValue({
+      ...defaultDraftPreview,
+      previewInsightKeys: ['__draft__:ins_1', '__draft__:ins_2'],
+    });
+    render(<ExplorerChartPreview />);
+    expect(usePreviewInputDependencies).toHaveBeenCalledWith(
+      'proj-1',
+      expect.objectContaining({ insightNames: ['__draft__:ins_1', '__draft__:ins_2'] })
+    );
   });
 });

@@ -142,6 +142,35 @@ describe('usePreviewInputDependencies', () => {
     expect(lastInputsDataCall()).toEqual(['p1', ['region']]);
   });
 
+  // Explore 2.0 Phase 4 (02-architecture.md §6): a draft referencing a
+  // not-yet-promoted input must surface explicitly, never silently drop.
+  it('surfaces unresolved names via unresolvedNames instead of silently dropping them', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      insightJobs: { sales: { inputDependencies: ['region', 'not_yet_promoted_input'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
+    expect(result.current.unresolvedNames).toEqual(['not_yet_promoted_input']);
+  });
+
+  it('unresolvedNames is empty when every referenced name resolves', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      insightJobs: { sales: { inputDependencies: ['region'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
   it('returns no configs and loads no inputs for a no-dependency object', () => {
     seedStore({
       inputs: [{ name: 'region', config: { name: 'region' } }],
