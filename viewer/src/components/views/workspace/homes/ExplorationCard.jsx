@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { PiDotsThreeVertical, PiPencilSimple, PiCopy, PiTrash } from 'react-icons/pi';
 import Dropdown from '../../../common/Dropdown';
 import FieldPill from '../../common/FieldPill';
 import InlineRenameInput from '../InlineRenameInput';
+import useInlineRename from '../../../../hooks/useInlineRename';
 import { draftSummary } from '../explorationLegacyBridge';
 
 /**
@@ -17,7 +18,9 @@ import { draftSummary } from '../explorationLegacyBridge';
  * Phase 5") — the mock depicts the end state, this is v1.
  */
 const ExplorationCard = ({ exploration, onOpen, onRename, onDuplicate, onDelete }) => {
-  const [renaming, setRenaming] = useState(false);
+  // B16 (04-bug-inventory.md): the shared "am I editing this name" toggle —
+  // see useInlineRename's docstring for why this hook exists.
+  const rename = useInlineRename({ onCommit: nextName => onRename(exploration.id, nextName) });
   const { queryCount, insightCount } = draftSummary(exploration.draft);
   const editedLabel = exploration.updatedAt
     ? `edited ${formatDistanceToNowStrict(new Date(exploration.updatedAt), { addSuffix: true })}`
@@ -29,15 +32,12 @@ const ExplorationCard = ({ exploration, onOpen, onRename, onDuplicate, onDelete 
       className="rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:shadow-md"
     >
       <div className="mb-2 flex items-start justify-between gap-2">
-        {renaming ? (
+        {rename.editing ? (
           <InlineRenameInput
             name={exploration.name}
             testIdPrefix={`exploration-card-${exploration.id}-rename`}
-            onCommit={nextName => {
-              setRenaming(false);
-              onRename(exploration.id, nextName);
-            }}
-            onCancel={() => setRenaming(false)}
+            onCommit={rename.commit}
+            onCancel={rename.cancel}
           />
         ) : (
           <span
@@ -67,7 +67,7 @@ const ExplorationCard = ({ exploration, onOpen, onRename, onDuplicate, onDelete 
               <button
                 type="button"
                 onClick={() => {
-                  setRenaming(true);
+                  rename.start();
                   close();
                 }}
                 data-testid={`exploration-card-${exploration.id}-rename-action`}

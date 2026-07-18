@@ -4,6 +4,7 @@ import useStore from '../../../stores/store';
 import SubBar from './SubBar';
 import ExplorationWorkbench from './ExplorationWorkbench';
 import InlineRenameInput from './InlineRenameInput';
+import useInlineRename from '../../../hooks/useInlineRename';
 import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import { legacyStateToDraft, draftToLegacyState } from './explorationLegacyBridge';
 
@@ -39,18 +40,17 @@ const FrameState = ({ testId, title, body, icon: Icon = PiCircleNotch, spin = fa
  * `InlineRenameInput`.
  */
 const RenameField = ({ name, onCommit }) => {
-  const [editing, setEditing] = useState(false);
+  // B16 (04-bug-inventory.md): the shared "am I editing this name" toggle —
+  // see useInlineRename's docstring for why this hook exists.
+  const rename = useInlineRename({ onCommit });
 
-  if (editing) {
+  if (rename.editing) {
     return (
       <InlineRenameInput
         name={name}
         testIdPrefix="exploration-rename"
-        onCommit={nextName => {
-          setEditing(false);
-          onCommit(nextName);
-        }}
-        onCancel={() => setEditing(false)}
+        onCommit={rename.commit}
+        onCancel={rename.cancel}
       />
     );
   }
@@ -60,7 +60,7 @@ const RenameField = ({ name, onCommit }) => {
       <span className="truncate font-semibold text-gray-900">{name}</span>
       <button
         type="button"
-        onClick={() => setEditing(true)}
+        onClick={rename.start}
         title="Rename"
         aria-label="Rename exploration"
         data-testid="exploration-rename-start"
