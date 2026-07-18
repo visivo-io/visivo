@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import useStore from '../../stores/store';
 
 /**
@@ -68,8 +68,18 @@ export default function useExplorerWorkbenchInit() {
   }, [fetchDefaults]);
 
   // Auto-create a model tab when the workbench mounts with none open and
-  // sources are available.
-  useEffect(() => {
+  // sources are available. `useLayoutEffect` (not `useEffect`): this closes a
+  // real data-loss race (Explore 2.0 Phase 2) — `setActiveModelSql` /
+  // `setActiveModelSource` (explorerStore.js) silently no-op an edit when
+  // there's no active model yet, so any interaction landing in the window
+  // between mount and this effect firing was SILENTLY DROPPED. A layout
+  // effect runs synchronously before the browser paints, so whenever sources
+  // are already available (the common case — a prior fetch this session), a
+  // model tab exists before the workbench is ever interactable, closing the
+  // window entirely. It doesn't help the very first cold load (sources
+  // haven't arrived over the network yet regardless of effect timing), but
+  // no real user — or test — can interact with the UI before it paints.
+  useLayoutEffect(() => {
     if (modelTabs.length === 0 && explorerSources.length > 0) {
       createModelTab();
     }

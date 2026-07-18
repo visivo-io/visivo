@@ -44,16 +44,23 @@ describe('workspace store slice', () => {
     expect(s.workspaceActiveTabId).toBe('dashboard:simple-dashboard');
   });
 
-  test('openWorkspaceTab routes the active selection through the registered URL navigator', () => {
+  test('openWorkspaceTab routes the active selection through the registered URL navigator AND activates immediately (VIS-1050 gate)', () => {
     const nav = jest.fn();
     act(() => {
       useStore.getState().registerWorkspaceUrlNavigate(nav);
       useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
     });
-    // It navigates to the tab's URL; the URL→store sync (in Workspace) then sets
-    // it active — it is NOT activated in-store directly here.
+    // It navigates to the tab's URL (shareable links / Back-button history /
+    // reload still read the URL as the source of truth) AND activates in the
+    // store IMMEDIATELY — it does NOT wait for the separate URL→store sync
+    // effect (Workspace.jsx), which is racy: `closeWorkspaceTab` also writes
+    // the store directly and separately navigates, so the store and the URL
+    // are independently-updating signals with no ordering guarantee between
+    // them (VIS-1050 gate: closing then reopening the SAME document could
+    // leave the effect's "already synced" memory matching the reopen even
+    // though the store no longer had the tab, hanging the reopen forever).
     expect(nav).toHaveBeenCalledWith('/workspace?edit=chart%3Arevenue');
-    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
     // The id is still returned synchronously for callers that need it.
     let id;
     act(() => {
@@ -1044,16 +1051,17 @@ describe('workspace VIEWS — the three destinations (D1, Explore 2.0 Phase 0)',
     expect(useStore.getState().workspaceActiveView).toBe('project');
   });
 
-  test('openWorkspaceView routes through the registered URL navigator; falls back to the direct write with none registered', () => {
+  test('openWorkspaceView routes through the registered URL navigator AND activates immediately (VIS-1050 gate); falls back to the direct write with none registered', () => {
     const nav = jest.fn();
     act(() => {
       useStore.getState().registerWorkspaceUrlNavigate(nav);
       useStore.getState().openWorkspaceView('semantic-layer');
     });
     expect(nav).toHaveBeenCalledWith('/workspace/semantic-layer');
-    // Routed through the URL — the URL→store sync (Workspace.jsx) would set it
-    // active; it is NOT activated in-store directly here.
-    expect(useStore.getState().workspaceActiveView).toBe('project');
+    // Routed through the URL (shareable links / Back-button history / reload
+    // still read it) AND activated in the store IMMEDIATELY — see
+    // `openWorkspaceTab`'s test for the full VIS-1050 rationale.
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
 
     act(() => {
       useStore.getState().registerWorkspaceUrlNavigate(null);

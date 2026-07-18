@@ -197,6 +197,30 @@ const createWorkspaceSlice = (set, get) => ({
    *
    * `tab` shape: `{ id?, type, name, dirty? }`. `id` defaults to
    * `<type>:<name>` so opening the same object twice focuses the existing tab.
+   *
+   * Navigates the URL AND activates in the store SYNCHRONOUSLY, in that
+   * order. This used to ONLY navigate and rely on `Workspace.jsx`'s separate
+   * URL→store sync `useEffect` (keyed on a `syncedTargetRef` value derived
+   * from `location.pathname`) to actually add/focus the tab. That guard is
+   * fundamentally racy: `closeWorkspaceTab` ALSO writes the store directly
+   * and then separately navigates, so the store and the URL are two
+   * independently-updating signals with no ordering guarantee between them
+   * — closing a tab and immediately reopening the SAME document (the URL
+   * returns to the exact string it had before, since ids are stable) can
+   * leave the effect's memory of "already synced" matching the reopen's URL
+   * even though the store no longer has the tab, so `activateWorkspaceTab`
+   * never re-fires and the reopen hangs forever (VIS-1050 gate — observed
+   * under real load: several concurrent browser instances competing for the
+   * main thread). Activating here removes the dependency on that effect
+   * entirely for the interactive path; `activateWorkspaceTab` is
+   * idempotent, so the effect harmlessly re-confirms the same state
+   * whenever it does run (still needed for browser back/forward and deep
+   * links, which never call this function). Navigate BEFORE activating —
+   * `history.pushState` (what the router's `navigate` calls under the hood)
+   * updates `window.location` before React's own re-render of anything
+   * reading it via `useLocation()`; activating first would let the document
+   * finish mounting while a caller reading the URL synchronously (e.g. a
+   * test's `page.url()`) still saw the PREVIOUS one.
    */
   openWorkspaceTab: (tab) => {
     if (!tab || !tab.type || !tab.name) return null;
@@ -209,16 +233,12 @@ const createWorkspaceSlice = (set, get) => ({
       get().openWorkspaceView(tab.type);
       return tab.type;
     }
-    const id = tab.id || `${tab.type}:${tab.name}`;
     const nav = get().workspaceUrlNavigate;
     if (nav) {
-      // Route the active selection THROUGH the URL: navigate to the tab's URL
-      // and let `useWorkspaceUrlSync` set it active (single clean loop). The id
-      // is returned synchronously so callers keep their contract.
+      // Still route the URL — shareable links, the Back button's history,
+      // and a fresh reload all read the URL as the source of truth.
       nav(workspaceTabUrl({ type: tab.type, name: tab.name }, get().workspaceUrlBase));
-      return id;
     }
-    // No router mounted — activate in-store directly (synchronous fallback).
     return get().activateWorkspaceTab(tab);
   },
 
@@ -286,10 +306,11 @@ const createWorkspaceSlice = (set, get) => ({
   },
 
   /**
-   * UI entry point for switching views — routes the selection through the URL
-   * (single clean loop, mirrors `openWorkspaceTab`); falls back to the direct
-   * store write when no router is registered (unit tests / non-Workspace
-   * mounts).
+   * UI entry point for switching views — navigates the URL AND activates in
+   * the store synchronously (mirrors `openWorkspaceTab`'s comment for the
+   * full rationale: don't depend entirely on the separate, racy URL→store
+   * sync effect ever getting a correct-conclusion run for this transition;
+   * navigate before activating so a synchronous URL read never lags).
    */
   openWorkspaceView: (view) => {
     if (!isWorkspaceView(view)) return;
@@ -297,7 +318,6 @@ const createWorkspaceSlice = (set, get) => ({
     const nav = state.workspaceUrlNavigate;
     if (nav) {
       nav(workspaceViewUrl(view, state.workspaceUrlBase));
-      return;
     }
     state.activateWorkspaceView(view);
   },
@@ -351,16 +371,19 @@ const createWorkspaceSlice = (set, get) => ({
     return id;
   },
 
-  /** Focus a tab by id without opening anything new. No-op if id unknown. */
+  /**
+   * Focus a tab by id without opening anything new. No-op if id unknown.
+   * Navigates the URL AND activates in the store synchronously — see
+   * `openWorkspaceTab`'s comment for the full VIS-1050 rationale (don't
+   * depend entirely on the separate, racy URL→store sync effect).
+   */
   switchWorkspaceTab: (tabId) => {
     const state = get();
     const tab = state.workspaceTabs.find((t) => t.id === tabId);
     if (!tab) return;
-    // Route the selection through the URL (Back button + single loop); the
-    // no-router fallback focuses in-store directly.
+    // Route the selection through the URL (Back button + single loop).
     if (state.workspaceUrlNavigate) {
       state.workspaceUrlNavigate(workspaceTabUrl(tab, state.workspaceUrlBase));
-      return;
     }
     state.activateWorkspaceTab(tab);
   },
