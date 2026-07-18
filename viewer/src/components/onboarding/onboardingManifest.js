@@ -37,10 +37,14 @@ export const CHECKLIST_ITEMS = [
     id: 'connect_source',
     label: 'Connect a data source',
     why: 'A Source is the connection to where your data already lives.',
-    route: '/editor',                       // the Editor FAB is the canonical
-                                            // add-source surface; SourceBrowser
-                                            // in /explorer lists existing
-                                            // sources but doesn't create them.
+    route: '/editor',                       // /editor redirects into the
+                                            // Workspace (`/workspace`), where
+                                            // the Library's "New" button is
+                                            // this target's live anchor
+                                            // (B14 part 1, Explore 2.0 Phase 2
+                                            // — `library-new-object-button`
+                                            // in Library.jsx carries
+                                            // `data-onb-target="source-create-button"`).
     target: 'source-create-button',
     weight: 10,
     predicate: ({ project, sources, persisted }) =>
@@ -127,6 +131,8 @@ export const CHECKLIST_ITEMS = [
     steps: [
       {
         id: 'open_dashboard_editor',
+        // Same live anchor as `connect_source` above — the Library's "New"
+        // button creates any object type, dashboards included.
         target: 'source-create-button',
         label: 'Open a new Dashboard',
         tip: 'Click + and pick Dashboard to start arranging widgets.',
@@ -146,6 +152,9 @@ export const CHECKLIST_ITEMS = [
     label: 'View your Project',
     why: 'See the dashboard your code produces.',
     route: '/project',
+    // Live anchor: TopNav's "Dashboards" tool-switch Link carries
+    // `data-onb-target="top-nav-project"` (B14 part 1, Explore 2.0 Phase 2 —
+    // TopNav.jsx's `DEFAULT_TOOLS`).
     target: 'top-nav-project',
     weight: 50,
     // Real signal now: user has to actually navigate to /project after
@@ -158,6 +167,9 @@ export const CHECKLIST_ITEMS = [
     label: 'Connect Visivo Cloud',
     why: 'Sign in to push your dashboard out so a teammate can open it.',
     route: '/editor',
+    // Live anchor: TopNav's Commit/Deploy buttons both carry
+    // `data-onb-target="top-nav-deploy"` (B14 part 1, Explore 2.0 Phase 2) —
+    // they're mutually exclusive by dirty state so either covers this.
     target: 'top-nav-deploy',
     weight: 55,
     // Set by the onboarding flow's Cloud screen on a successful

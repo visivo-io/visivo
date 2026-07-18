@@ -308,6 +308,12 @@ const Library = () => {
               aria-label="New object"
               aria-expanded={newMenuOpen}
               data-testid="library-new-object-button"
+              // B14 part 1 (Explore 2.0 Phase 2): the onboarding manifest's
+              // `connect_source`/`build_dashboard` items target
+              // `source-create-button` — the old Editor FAB this pointed at
+              // no longer exists; the Library's "New" menu is its live
+              // equivalent (creates a source, dashboard, or any other type).
+              data-onb-target="source-create-button"
               className="inline-flex h-6 items-center gap-0.5 rounded px-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary-100/60"
             >
               <PiPlus className="h-3.5 w-3.5" /> New
