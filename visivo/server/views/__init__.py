@@ -28,6 +28,7 @@ from visivo.server.views.telemetry_views import register_telemetry_views
 from visivo.server.views.explorer_views import register_explorer_views
 from visivo.server.views.exploration_views import register_exploration_views
 from visivo.server.views.expression_views import register_expression_views
+from visivo.server.views.insight_compile_views import register_insight_compile_views
 from visivo.server.views.model_data_views import register_model_data_views
 from visivo.server.views.run_views import register_run_views
 from visivo.server.views.model_schema_jobs_views import register_model_schema_jobs_views
@@ -65,6 +66,7 @@ def register_views(app, flask_app, output_dir):
     register_explorer_views(app, flask_app, output_dir)
     register_exploration_views(app, flask_app, output_dir)
     register_expression_views(app, flask_app, output_dir)
+    register_insight_compile_views(app, flask_app, output_dir)
     register_model_data_views(app, flask_app, output_dir)
     register_run_views(app, flask_app, output_dir)
     register_model_schema_jobs_views(app, flask_app, output_dir)

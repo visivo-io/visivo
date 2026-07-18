@@ -35,7 +35,13 @@ class FieldResolver:
     and sqlglot's identify_column_references function.
     """
 
-    def __init__(self, dag: ProjectDag, output_dir: str, native_dialect: str):
+    def __init__(
+        self,
+        dag: ProjectDag,
+        output_dir: str,
+        native_dialect: str,
+        schema_overrides: Optional[Dict[str, dict]] = None,
+    ):
         """
         Initialize the FieldResolver.
 
@@ -43,13 +49,23 @@ class FieldResolver:
             dag: Project DAG containing all models, metrics, and dimensions
             output_dir: Directory where schema files are stored
             native_dialect: SQLGlot dialect name for proper SQL formatting
+            schema_overrides: Optional ``{model_name: schema_dict}`` pre-seed for
+                ``_schema_cache`` (same shape ``_load_model_schema`` returns —
+                ``{model_hash: {column: type_string}, ...}``). Used by the
+                Explore 2.0 compile-draft endpoint to supply a scratch model's
+                columns (learned client-side, never written to
+                ``schemas/<model>/schema.json`` on disk) so
+                ``_qualify_expression``/``_is_implicit_dimension`` resolve
+                without ever touching disk. ``None`` (the default, every real
+                run pipeline caller) preserves today's disk-read-only behavior
+                exactly.
         """
         self.dag = dag
         self.output_dir = output_dir
         self.native_dialect = native_dialect
 
         # Caches to avoid repeated file reads and detect cycles
-        self._schema_cache: Dict[str, dict] = {}
+        self._schema_cache: Dict[str, dict] = dict(schema_overrides) if schema_overrides else {}
         self._resolution_cache: Dict[str, str] = {}
         self._resolution_stack: list = []  # Track current resolution path for cycle detection
 

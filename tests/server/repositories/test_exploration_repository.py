@@ -267,6 +267,62 @@ class TestConsumeReturnTo:
         assert consumed.name == "Keep"
 
 
+class TestRecordPromotion:
+    """Explore 2.0 Phase 4 — the append-only ``record-promotion`` sub-action
+    (07-exploration-api-contract.md). ``promoted[]`` stays immutable via the
+    generic ``update`` route (see ``TestImmutability`` above); this is the
+    ONLY way to append to it."""
+
+    def test_appends_a_promotion_record(self, repo):
+        created = repo.create()
+        updated = repo.record_promotion(created.id, "model", "orders_q")
+        assert len(updated.promoted) == 1
+        assert updated.promoted[0].type == "model"
+        assert updated.promoted[0].name == "orders_q"
+        assert updated.promoted[0].promoted_at is not None
+
+    def test_appends_rather_than_replaces_on_a_second_call(self, repo):
+        created = repo.create()
+        repo.record_promotion(created.id, "model", "orders_q")
+        updated = repo.record_promotion(created.id, "insight", "churn_by_cohort")
+        assert [p.name for p in updated.promoted] == ["orders_q", "churn_by_cohort"]
+
+    def test_re_promoting_the_same_object_appends_a_new_entry_not_a_dedupe(self, repo):
+        created = repo.create()
+        repo.record_promotion(created.id, "model", "orders_q")
+        updated = repo.record_promotion(created.id, "model", "orders_q")
+        assert len(updated.promoted) == 2
+
+    def test_persists_to_disk(self, repo):
+        created = repo.create()
+        repo.record_promotion(created.id, "chart", "churn_chart")
+        reloaded = repo.get(created.id)
+        assert len(reloaded.promoted) == 1
+        assert reloaded.promoted[0].name == "churn_chart"
+
+    def test_bumps_updated_at(self, repo):
+        created = repo.create()
+        updated = repo.record_promotion(created.id, "model", "orders_q")
+        assert updated.updated_at >= created.updated_at
+
+    def test_leaves_other_fields_untouched(self, repo):
+        created = repo.create(name="Keep")
+        updated = repo.record_promotion(created.id, "model", "orders_q")
+        assert updated.name == "Keep"
+
+    def test_unknown_id_returns_none(self, repo):
+        assert repo.record_promotion("exp_nope", "model", "orders_q") is None
+
+    def test_not_reachable_via_the_generic_update_route(self, repo):
+        """Immutability guarantee, restated from the other direction: even
+        after a real promotion, a client can't further mutate `promoted` by
+        PUTting it through `update`."""
+        created = repo.create()
+        repo.record_promotion(created.id, "model", "orders_q")
+        updated = repo.update(created.id, {"promoted": [], "name": "x"})
+        assert len(updated.promoted) == 1
+
+
 class TestAtomicWrites:
     def test_write_leaves_no_tmp_files_behind(self, repo, explorations_dir):
         repo.create()

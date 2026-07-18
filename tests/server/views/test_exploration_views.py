@@ -238,3 +238,88 @@ class TestConsumeReturnTo:
         resp = client.post(f"/api/explorations/{created['id']}/consume-return-to/")
         assert resp.status_code == 200
         assert resp.get_json()["return_to"] is None
+
+
+class TestRecordPromotion:
+    """Explore 2.0 Phase 4 (07-exploration-api-contract.md): append-only
+    promotion trail, server-stamped ``promoted_at``. Promotion itself is NOT
+    an exploration endpoint — the client promotes through the real per-type
+    object-save endpoints, then records each success here."""
+
+    def test_records_a_promotion(self, client):
+        created = client.post("/api/explorations/", json={}).get_json()
+        resp = client.post(
+            f"/api/explorations/{created['id']}/record-promotion/",
+            json={"type": "model", "name": "orders_q"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["promoted"]) == 1
+        assert data["promoted"][0]["type"] == "model"
+        assert data["promoted"][0]["name"] == "orders_q"
+        assert "promoted_at" in data["promoted"][0]
+
+    def test_appends_across_multiple_calls(self, client):
+        created = client.post("/api/explorations/", json={}).get_json()
+        client.post(
+            f"/api/explorations/{created['id']}/record-promotion/",
+            json={"type": "model", "name": "orders_q"},
+        )
+        resp = client.post(
+            f"/api/explorations/{created['id']}/record-promotion/",
+            json={"type": "insight", "name": "churn_by_cohort"},
+        )
+        names = [p["name"] for p in resp.get_json()["promoted"]]
+        assert names == ["orders_q", "churn_by_cohort"]
+
+    def test_persists_across_reload(self, client):
+        created = client.post("/api/explorations/", json={}).get_json()
+        client.post(
+            f"/api/explorations/{created['id']}/record-promotion/",
+            json={"type": "chart", "name": "churn_chart"},
+        )
+        refetched = client.get(f"/api/explorations/{created['id']}/").get_json()
+        assert refetched["promoted"][0]["name"] == "churn_chart"
+
+    def test_missing_type_is_400(self, client):
+        created = client.post("/api/explorations/", json={}).get_json()
+        resp = client.post(
+            f"/api/explorations/{created['id']}/record-promotion/", json={"name": "orders_q"}
+        )
+        assert resp.status_code == 400
+
+    def test_missing_name_is_400(self, client):
+        created = client.post("/api/explorations/", json={}).get_json()
+        resp = client.post(
+            f"/api/explorations/{created['id']}/record-promotion/", json={"type": "model"}
+        )
+        assert resp.status_code == 400
+
+    def test_no_body_is_400(self, client):
+        created = client.post("/api/explorations/", json={}).get_json()
+        resp = client.post(
+            f"/api/explorations/{created['id']}/record-promotion/",
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+
+    def test_missing_exploration_is_404(self, client):
+        resp = client.post(
+            "/api/explorations/exp_missing/record-promotion/",
+            json={"type": "model", "name": "orders_q"},
+        )
+        assert resp.status_code == 404
+
+    def test_not_reachable_via_the_generic_update_route(self, client):
+        """`promoted` stays immutable via the generic update route even
+        after a real promotion via record-promotion."""
+        created = client.post("/api/explorations/", json={}).get_json()
+        client.post(
+            f"/api/explorations/{created['id']}/record-promotion/",
+            json={"type": "model", "name": "orders_q"},
+        )
+        resp = client.post(
+            f"/api/explorations/{created['id']}/",
+            json={"promoted": [], "name": "x"},
+        )
+        assert len(resp.get_json()["promoted"]) == 1
