@@ -6,6 +6,7 @@ import MiddlePane from './MiddlePane';
 import DragHandle from './DragHandle';
 import WorkspaceDndContext from './WorkspaceDndContext';
 import ExternalEditBanner from './ExternalEditBanner';
+import WorkspaceToast from './WorkspaceToast';
 import useWorkspaceTabShortcuts from './useWorkspaceTabShortcuts';
 import useStore from '../../../stores/store';
 
@@ -99,6 +100,7 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
       {/* Commit / Deploy live in Home's shared <TopNav>; the commit confirm
           (and Discard) flow is Home's layout-level <CommitModal>. The shell
           mounts neither a top bar nor a second modal. */}
+      <WorkspaceToast />
     </div>
   );
 };

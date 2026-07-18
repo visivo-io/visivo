@@ -64,6 +64,9 @@ const mapDraftFromApi = draft => ({
   insights: draft?.insights || [],
   chart: draft?.chart ?? null,
   computedColumns: draft?.computed_columns || [],
+  // The Phase 2 legacy-explorer-state escape hatch (02 §5 / exploration.py's
+  // `legacy_state` field) — opaque here, mapped by `explorationLegacyBridge.js`.
+  legacyState: draft?.legacy_state ?? null,
 });
 
 const mapDraftToApi = draft => ({
@@ -71,6 +74,7 @@ const mapDraftToApi = draft => ({
   insights: draft?.insights || [],
   chart: draft?.chart ?? null,
   computed_columns: draft?.computedColumns || [],
+  legacy_state: draft?.legacyState ?? null,
 });
 
 const mapExplorationFromApi = record => ({
@@ -155,6 +159,14 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       order: [],
     },
 
+    // Explore 2.0 Phase 2: distinguishes "still loading" from "genuinely
+    // unknown id" for `ExplorationPane`'s not-found state — an empty `byId`
+    // is otherwise ambiguous (a fresh project with zero explorations is a
+    // real, valid state; Explorer Home lazily seeds "Scratch" for it, but a
+    // deep link can still land before that seed/fetch resolves). Flips to
+    // `true` once `fetchExplorations` settles, success or failure alike.
+    workspaceExplorationsFetched: false,
+
     /** Hydrate the slice from `GET /api/explorations/` (reload rehydrates
      * from the backend — localStorage is not a source of truth). */
     fetchExplorations: async () => {
@@ -167,9 +179,10 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           byId[mapped.id] = mapped;
           order.push(mapped.id);
         });
-        set({ workspaceExplorations: { byId, order } });
+        set({ workspaceExplorations: { byId, order }, workspaceExplorationsFetched: true });
         return { success: true };
       } catch (error) {
+        set({ workspaceExplorationsFetched: true });
         return { success: false, error: error.message };
       }
     },
@@ -224,16 +237,24 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       }
     },
 
-    /** Delete `id` — force-closes a bound open workspace tab (01 §4) and
-     * drops any armed debounced sync so it can't fire against a gone record. */
+    /** Delete `id` — force-closes a bound open workspace tab (01 §4, EVEN
+     * PARKED — `closeWorkspaceTab` doesn't care whether it's active) with a
+     * toast ("<name> was deleted"), and drops any armed debounced sync so it
+     * can't fire against a gone record. */
     deleteExploration: async id => {
+      const existing = get().workspaceExplorations.byId[id];
       try {
         await explorationsApi.deleteExploration(id);
       } catch (error) {
         return { success: false, error: error.message };
       }
       clearPendingSyncTimer(id);
-      get().closeWorkspaceTab?.(`exploration:${id}`);
+      const tabId = `exploration:${id}`;
+      const wasOpen = (get().workspaceTabs || []).some(t => t.id === tabId);
+      get().closeWorkspaceTab?.(tabId);
+      if (wasOpen) {
+        get().showWorkspaceToast?.(`${existing?.name || 'Exploration'} was deleted`);
+      }
       set(state => {
         const nextById = { ...state.workspaceExplorations.byId };
         delete nextById[id];
@@ -245,6 +266,29 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         };
       });
       return { success: true };
+    },
+
+    /** Rename `id` — persists immediately (not debounced; a rename is a
+     * deliberate one-gesture commit, not exploratory typing) via the generic
+     * update route (`name` is a mutable field, 07-exploration-api-contract.md).
+     * Optimistic write first so the Home card / SubBar / tab label reflect the
+     * new name instantly; rolls back on failure. */
+    renameExploration: async (id, name) => {
+      const existing = get().workspaceExplorations.byId[id];
+      if (!existing) return { success: false, error: 'Exploration not found' };
+      const trimmed = (name || '').trim();
+      if (!trimmed || trimmed === existing.name) return { success: true, exploration: existing };
+      const previousName = existing.name;
+      set(state => patchExploration(state, id, { name: trimmed }));
+      try {
+        const updated = await explorationsApi.updateExploration(id, { name: trimmed });
+        const mapped = mapExplorationFromApi(updated);
+        set(state => patchExploration(state, id, mapped));
+        return { success: true, exploration: mapped };
+      } catch (error) {
+        set(state => patchExploration(state, id, { name: previousName }));
+        return { success: false, error: error.message };
+      }
     },
   };
 };

@@ -103,6 +103,23 @@ const createWorkspaceSlice = (set, get) => ({
   // confirm/cancel in the close dialog, or null when no close is pending.
   workspacePendingCloseTabId: null,
 
+  // A lightweight global toast queue (Explore 2.0 Phase 2): one-off notices
+  // that must be visible regardless of which pane/tab is active — e.g.
+  // "Churn dig was deleted" when Home's delete force-closes an open (even
+  // parked) exploration tab (01-ux-spec.md §4). `{ message, key } | null`;
+  // `key` re-triggers the Snackbar's appear animation for back-to-back toasts
+  // with the same message. Rendered once, at WorkspaceShell.
+  workspaceToast: null,
+
+  showWorkspaceToast: (message) => {
+    if (!message) return;
+    set({ workspaceToast: { message, key: Date.now() } });
+  },
+
+  dismissWorkspaceToast: () => {
+    set({ workspaceToast: null });
+  },
+
   // Rails -------------------------------------------------------------------
   workspaceLeftCollapsed: false,
   workspaceRightCollapsed: false,
