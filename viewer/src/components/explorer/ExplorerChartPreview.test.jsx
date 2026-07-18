@@ -10,7 +10,19 @@ import useDraftInsightPreview from '../../hooks/useDraftInsightPreview';
 // context_objects preview-job request — it drives `useDraftInsightPreview`
 // (the client-side compile-draft + DuckDB lane) directly. Mocked here since
 // its own behavior is unit-tested in `hooks/useDraftInsightPreview.test.js`.
-jest.mock('../../hooks/useDraftInsightPreview', () => jest.fn());
+jest.mock('../../hooks/useDraftInsightPreview', () => ({
+  __esModule: true,
+  default: jest.fn(),
+  draftInsightKey: name => `__draft__:${name}`,
+}));
+
+// The promoted-lane poll (integration-gate fix cycle): mocked here since its
+// own behavior is unit-tested in `hooks/useInsightsData.test.js` — this
+// suite only cares that ExplorerChartPreview calls it with the right
+// promoted-name subset and switches `insightKeys` once real data lands.
+jest.mock('../../hooks/useInsightsData', () => ({
+  useInsightsData: jest.fn(() => ({})),
+}));
 
 jest.mock('../views/workspace/usePreviewInputDependencies', () => ({
   usePreviewInputDependencies: jest.fn(() => ({ inputConfigs: [], unresolvedNames: [] })),
@@ -62,6 +74,10 @@ const defaultState = {
   explorerChartLayout: {},
   project: { id: 'proj-1' },
   setChartLayout: layout => useStore.setState({ explorerChartLayout: layout }),
+  // Neither promoted yet by default — every test starts on the pure draft
+  // lane unless it explicitly opts into the promoted-lane-switch scenario.
+  insights: [],
+  insightJobs: {},
 };
 
 describe('ExplorerChartPreview', () => {
@@ -156,5 +172,55 @@ describe('ExplorerChartPreview', () => {
       'proj-1',
       expect.objectContaining({ insightNames: ['__draft__:ins_1', '__draft__:ins_2'] })
     );
+  });
+
+  // Integration-gate fix cycle: `insightJobs['ins_1']` (the real,
+  // un-namespaced key) never populated after a promote — nothing on the
+  // Explorer route ever asked `useInsightsData` for it. These lock in the
+  // fix: ExplorerChartPreview now polls for real data once an insight is
+  // promoted (present in `state.insights`), and only SWITCHES the chart's
+  // insightKeys over once that real data has actually landed.
+  describe('promoted-lane switch', () => {
+    it('stays on the draft-namespaced key while promoted but real data has not landed yet', () => {
+      useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: {} });
+      render(<ExplorerChartPreview />);
+      expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+        JSON.stringify(['__draft__:ins_1'])
+      );
+    });
+
+    it('switches to the real name once insightJobs holds real data for the promoted insight', () => {
+      useStore.setState({
+        insights: [{ name: 'ins_1' }],
+        insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } },
+      });
+      render(<ExplorerChartPreview />);
+      expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+    });
+
+    it('requests real data only for the promoted subset of chart insights', () => {
+      const { useInsightsData } = jest.requireMock('../../hooks/useInsightsData');
+      useDraftInsightPreview.mockReturnValue({
+        ...defaultDraftPreview,
+        previewInsightKeys: ['__draft__:ins_1', '__draft__:ins_2'],
+      });
+      useStore.setState({
+        explorerChartInsightNames: ['ins_1', 'ins_2'],
+        insights: [{ name: 'ins_1' }], // ins_2 is still a draft-only insight
+        insightJobs: {},
+      });
+      render(<ExplorerChartPreview />);
+      expect(useInsightsData).toHaveBeenCalledWith('proj-1', ['ins_1'], undefined, {
+        cacheKey: 0,
+      });
+    });
+
+    it('never treats an unpromoted insight as real, even if some other insight of the same name exists elsewhere', () => {
+      useStore.setState({ insights: [{ name: 'some_other_insight' }], insightJobs: {} });
+      render(<ExplorerChartPreview />);
+      expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+        JSON.stringify(['__draft__:ins_1'])
+      );
+    });
   });
 });
