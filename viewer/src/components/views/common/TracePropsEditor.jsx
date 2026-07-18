@@ -48,6 +48,17 @@ import { isMacPlatform, isEditableTarget } from '../workspace/useWorkspaceTabSho
  * @param {(isValid: boolean, errorMap: Object<string,string>) => void} [props.onValidityChange]
  *   - VIS-993 gate wiring: reports every validation outcome so the composing
  *     form can hold its save while the props are invalid.
+ * @param {boolean} [props.droppable] - Explore 2.0 Phase 3b (S5 §2): pure
+ *   pass-through to `FieldGroupList`/`FieldGroup`/`PropertyRow`, mirroring
+ *   `SchemaEditor.jsx`'s existing `droppable` forwarding. Default false — a
+ *   no-op for the two pre-existing call sites (`InsightEditForm`/
+ *   `ChartEditForm`, both right-rail, non-Explorer forms); only the new
+ *   exploration Build rail passes true. Gated deliberately (not universal):
+ *   `WorkspaceDndContext` is mounted at the whole Workspace shell, so
+ *   flipping this default would make those forms' prop rows real, live drop
+ *   targets as an untested side effect of this retrofit.
+ * @param {(path: string, dragData: object) => void} [props.onDropField] -
+ *   per-field drop callback threaded straight through to `FieldGroupList`.
  */
 const TracePropsEditor = ({
   ownerName,
@@ -56,6 +67,8 @@ const TracePropsEditor = ({
   disabled = false,
   onOpenFieldFinder,
   onValidityChange,
+  droppable = false,
+  onDropField,
 }) => {
   const type = traceProps?.type || '';
 
@@ -331,6 +344,8 @@ const TracePropsEditor = ({
           disabled={disabled}
           errors={errorMap}
           revealPath={revealPath}
+          droppable={droppable}
+          onDropField={onDropField}
         />
       )}
 

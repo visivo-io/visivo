@@ -1,6 +1,8 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PropertyRow } from './PropertyRow';
+import useStore from '../../../../stores/store';
 
 // Mock the RefTextArea component
 jest.mock('../RefTextArea', () => {
@@ -18,6 +20,21 @@ jest.mock('../RefTextArea', () => {
     );
   };
 });
+
+// Explore 2.0 Phase 3b (S5 §1): mock `useDroppable` (mirroring
+// `PivotShelf.test.jsx`'s established pattern) purely to capture/invoke the
+// droppable `data` payload — jsdom can't simulate a real dnd-kit pointer
+// drag, and `isOver` is always false here (fine — none of these tests assert
+// the drop-hover ring). Declared at module scope (not nested in a describe)
+// so babel's jest.mock hoisting resolves the closure over `droppableData`
+// unambiguously.
+const droppableData = {};
+jest.mock('@dnd-kit/core', () => ({
+  useDroppable: ({ id, data, disabled }) => {
+    droppableData[id] = { data, disabled };
+    return { setNodeRef: () => {}, isOver: false };
+  },
+}));
 
 describe('PropertyRow', () => {
   const defs = {
@@ -399,6 +416,165 @@ describe('PropertyRow', () => {
         <PropertyRow {...defaultProps} schema={queryNumberSchema} value="" onChange={onChange} />
       );
       expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+    });
+  });
+
+  // Explore 2.0 Phase 3b (S5 §1/§3, 06 §5): the `property-zone` DnD retrofit
+  // + the D8/D10 pill-rendering fork. `useDroppable` is mocked (matching
+  // `PivotShelf.test.jsx`'s established pattern) purely to capture/invoke the
+  // droppable `data` payload — jsdom can't simulate a real dnd-kit pointer drag.
+  describe('property-zone DnD retrofit + D8/D10 pill rendering', () => {
+    beforeEach(() => {
+      for (const k of Object.keys(droppableData)) delete droppableData[k];
+      useStore.setState({ metrics: [], dimensions: [] });
+    });
+
+    const queryStringDef = { 'query-string': { type: 'string', pattern: '^\\?\\{.*\\}$' } };
+
+    test('the droppable data key is `kind` (not `type`) and carries the per-slot onDropField callback', () => {
+      const onDropField = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+          droppable
+          onDropField={onDropField}
+        />
+      );
+      const entry = droppableData['property-x'];
+      expect(entry.data.kind).toBe('property-zone');
+      expect(entry.data.path).toBe('x');
+      expect(entry.data.onDropField).toBe(onDropField);
+      expect(entry.data.type).toBeUndefined();
+    });
+
+    test('not droppable when the `droppable` prop is false (default) — matches SchemaEditor/InsightEditForm/ChartEditForm call sites', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+        />
+      );
+      expect(droppableData['property-x'].disabled).toBe(true);
+    });
+
+    test('a recognized dimension ref renders a FieldPill + PillMenu instead of RefTextArea when droppable', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      expect(screen.getByText('orders_q ▸ amount')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-trigger')).toBeInTheDocument();
+      expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+    });
+
+    test('the SAME recognized value falls back to RefTextArea when NOT droppable (fork is gated, not universal)', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+        />
+      );
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+      expect(screen.queryByTestId('pill-menu-trigger')).not.toBeInTheDocument();
+    });
+
+    test('an opaque/unparseable expression always falls back to RefTextArea, even when droppable', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{count(distinct ${ref(orders_q).id})}"
+          droppable
+        />
+      );
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+    });
+
+    test('selecting a preset via PillMenu rewrites the serialized value through onChange', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+      expect(onChange).toHaveBeenCalledWith('?{sum(${ref(orders_q).amount})}');
+    });
+
+    test('PillMenu Remove clears the slot value (never the whole property)', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-remove'));
+      expect(onChange).toHaveBeenCalledWith('');
+    });
+
+    test('"Custom aggregation…" switches the slot back to RefTextArea, pre-filled with the current body', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+      expect(screen.getByTestId('ref-input')).toHaveValue('${ref(orders_q).amount}');
+    });
+
+    test('a bare ref matching a known Metric renders a metricRef pill (Σ-style, plain name)', () => {
+      useStore.setState({ metrics: [{ name: 'churn_rate', parentModel: 'orders_q' }] });
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(churn_rate)}}"
+          droppable
+        />
+      );
+      expect(screen.getByText('churn_rate')).toBeInTheDocument();
+      expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
     });
   });
 });

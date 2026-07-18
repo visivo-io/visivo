@@ -313,6 +313,32 @@ export const routeWorkspaceDragEnd = (
     return 'noop';
   }
 
+  // ── Branch 2c: Library field/column → an exploration Build-rail insight
+  // prop slot (Explore 2.0 Phase 3b — S5 §1/§5, D8/D10 pill grammar). Mirrors
+  // the pivot-field branch immediately above verbatim: the callback lives on
+  // the droppable itself (`onDropField`), never resolved through a global
+  // "active insight" pointer — the Build rail can stack many Insight
+  // sections at once (each with its own `TracePropsEditor`/`FieldGroupList`),
+  // and every `PropertyRow` in every section handles its OWN drop
+  // independent of the others. `PropertyRow.jsx`'s droppable data key is
+  // `kind` (S5 §1 renamed it from `type` — nothing else consumed the old key)
+  // so this branch is unambiguous even though the now-legacy
+  // `axis-zone`/`property-zone`/etc. zone kinds below (still keyed on `type`,
+  // ported from the deleted `ExplorerDndContext`) used the same string value.
+  if (dragData.source === 'library' && dropData.kind === 'property-zone') {
+    emit &&
+      emit('property_zone_drop', {
+        path: dropData.path,
+        type: dragData.type,
+        name: dragData.name,
+      });
+    if (typeof dropData.onDropField === 'function') {
+      dropData.onDropField(dragData);
+      return 'property_zone_accepted';
+    }
+    return 'noop';
+  }
+
   // ── Branch 3: Canvas drop zones (VIS-771 / D-3) ──────────────────────────
   // Canvas droppables carry `{ kind: 'canvas-drop', target, dashboardName,
   // config }`. `target` is the normalised insertion / reorder descriptor (see
