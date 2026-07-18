@@ -1,69 +1,56 @@
 import React from 'react';
 import CenterPanel from '../../explorer/CenterPanel';
-import ExplorerRightPanel from '../../explorer/ExplorerRightPanel';
+import ExplorationBuildRail from './ExplorationBuildRail';
 import useExplorerWorkbenchInit from '../../explorer/useExplorerWorkbenchInit';
 import ExplorationQueryChips from './ExplorationQueryChips';
 
 /**
- * ExplorationWorkbench — the legacy Explorer bundle (now CenterPanel +
- * ExplorerRightPanel), sized to fill an `ExplorationPane` inside the
- * Workspace shell rather than the standalone `/explorer` route's full
- * viewport (Explore 2.0 Phase 2 origin; SURGICALLY REDUCED in Phase 3a per
- * 03-delivery-plan.md's Phase 3a scope: "Delete ExplorerLeftPanel... delete
- * ExplorerDndContext").
+ * ExplorationWorkbench — CenterPanel + ExplorationBuildRail, sized to fill an
+ * `ExplorationPane` inside the Workspace shell rather than a standalone
+ * full-viewport route (Explore 2.0 Phase 2 origin; the Phase 3a DnD
+ * unification + Phase 3b Build-rail rebuild both landed here since).
  *
- * What changed in Phase 3a (D9 / DnD unification), and — just as
- * importantly — what did NOT:
+ * Current composition (post Phase 3b cutover, 03-delivery-plan.md):
  *
- *   - `ExplorerLeftPanel` (+ its nested `SourceBrowser`) is REMOVED from
- *     this composition. The Workspace's own Library (the shell's persistent
- *     left rail, one level up from this component) is now the ONE browse
- *     surface for the exploration surface too — its new source → schema →
- *     table → column drill-down (`LibrarySourceRow.jsx`) replaces
- *     `SourceBrowser`, and its existing model/metric/dimension/insight/input
- *     rows keep their drag semantics (`LibraryRow.jsx`'s
- *     `EXPLORATION_DRAG_TYPES`). Both files stay ALIVE in the tree —
- *     `ExplorerPage.jsx` (the standalone `/explorer` route) still renders
- *     `ExplorerLeftPanel` directly and must keep passing its existing e2e
- *     stories untouched until the Phase 3b cutover deletes that route
- *     entirely (per this task's explicit test-compat directive — the
- *     03-delivery-plan.md phrasing "Delete ExplorerLeftPanel" describes the
- *     Phase 3b END STATE, not a Phase 3a file deletion). Only THIS
- *     component's use of it is removed.
- *   - `ExplorerDndContext` is likewise REMOVED from this nesting — it stays
- *     alive as a component + its own DndContext for `ExplorerPage.jsx`'s
- *     standalone route (same reasoning as above). Deleting it here is what
- *     "DnD unification" means concretely: this pane now mounts INSIDE the
- *     shell's single `WorkspaceDndContext` (`WorkspaceShell.jsx`), whose
- *     router (`routeExplorationDragEnd`) has the SAME resolution logic
- *     `ExplorerDndContext.handleDragEnd` had, ported verbatim — see that
- *     function's docstring. Nested dnd-kit contexts don't compose, so this
- *     was the only way a Library drag (now sourced from the OUTER rail, not
- *     a nested one) could ever reach the exploration surface's drop targets
- *     (SQL editor, insight prop slots, interactions, the chart's insight
- *     zone) in the first place.
- *   - `CenterPanel` gets two new opt-in props (both default OFF, so
- *     `ExplorerPage`'s call site is unaffected): `modelTabBar` (this pane
- *     passes `<ExplorationQueryChips/>`, replacing the horizontal
- *     `ModelTabBar` with compact chips, 01-ux-spec.md §3) and
- *     `enableLibraryDrop` (turns the SQL editor into a Library table/column
- *     drop target, D9).
- *   - `ExplorerRightPanel` is UNCHANGED — its existing droppable prop slots
- *     (`property-zone`/`axis-zone`/`interaction-zone`/`insight-zone`) keep
- *     working exactly as before; rebuilding that rail is explicitly Phase
- *     3b's job (S5), not this phase's.
- *   - `useExplorerWorkbenchInit()` (the shared init hook) is unchanged —
- *     still the SAME hook `ExplorerPage` uses, per its own docstring on why
- *     a second copy would be a forbidden fork.
+ *   - The Library (the shell's persistent left rail) is the ONE browse
+ *     surface — its source → schema → table → column drill-down
+ *     (`LibrarySourceRow.jsx`) + model/metric/dimension/insight/input rows
+ *     (`LibraryRow.jsx`'s `EXPLORATION_DRAG_TYPES`) are the only way to pull
+ *     an object or column into the surface. The standalone `/explorer`
+ *     route + its own `ExplorerLeftPanel`/`SourceBrowser`/`ExplorerDndContext`
+ *     bundle are DELETED — `/explorer` is now a permanent redirect here.
+ *   - `CenterPanel` gets two opt-in props (both default OFF elsewhere — no
+ *     other consumer remains, but the props stay optional so a future
+ *     CenterPanel caller isn't forced into this surface's behavior):
+ *     `modelTabBar` (`<ExplorationQueryChips/>`, compact query-chip switcher
+ *     replacing the retired horizontal `ModelTabBar`) and `enableLibraryDrop`
+ *     (SQL editor as a Library table/column drop target, D9).
+ *   - This pane mounts INSIDE the shell's single `WorkspaceDndContext`
+ *     (`WorkspaceShell.jsx`); `routeExplorationDragEnd` carries the ported
+ *     SQL-editor/interaction/chart-insight-zone resolution logic, and the
+ *     NEW `property-zone` branch (S5/D10) hands insight-prop-slot drops
+ *     straight to each `PropertyRow`'s own `onDropField` — no nested DnD
+ *     context, no global "active insight" indirection.
+ *   - `ExplorationBuildRail` (Phase 3b, VIS-1059) replaces the retired
+ *     `ExplorerRightPanel`: Chart + stacked Insight sections rebuilt onto
+ *     `TracePropsEditor`/`FieldGroupList` (typed D8/D10 pills, advisory
+ *     ref-target validation), a promoted-trail placeholder, and the
+ *     UNCHANGED `ExplorerSaveModal`/"Save to Project" flow (kept until
+ *     Phase 4's promote-gate rebuild).
+ *   - `useExplorerWorkbenchInit()` (the shared init hook) is unchanged.
  *   - No return-bar / `?return_to=` handling here — that's the dashboard
- *     round-trip intent, out of scope until Phase 5's `return_to`
- *     placement-intent work (02-architecture.md §5).
+ *     round-trip intent, consumed at the Phase 3b cutover's redirect route,
+ *     not this pane (02-architecture.md §5).
  *
  * The HOST (`ExplorationPane`) is responsible for gating this component's
  * mount on the per-exploration state restore having already landed — see
- * `useExplorerWorkbenchInit`'s docstring.
+ * `useExplorerWorkbenchInit`'s docstring — and passes down the exploration's
+ * own `id` (purely for the Build rail's promoted-trail placeholder).
+ *
+ * @param {object} props
+ * @param {string} [props.id] - the current exploration's backend id.
  */
-const ExplorationWorkbench = () => {
+const ExplorationWorkbench = ({ id }) => {
   useExplorerWorkbenchInit();
 
   return (
@@ -72,7 +59,7 @@ const ExplorationWorkbench = () => {
       data-testid="exploration-workbench"
     >
       <CenterPanel modelTabBar={<ExplorationQueryChips />} enableLibraryDrop />
-      <ExplorerRightPanel />
+      <ExplorationBuildRail explorationId={id} />
     </div>
   );
 };
