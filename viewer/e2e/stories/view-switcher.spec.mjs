@@ -71,14 +71,15 @@ test.describe('Destination view switcher (D1, Explore 2.0 Phase 0)', () => {
     await expect(page.getByTestId('semantic-layer-erd')).toBeVisible({ timeout: 20000 });
     expect(new URL(page.url()).pathname).toBe('/workspace/semantic-layer');
 
-    // Explorer (Phase 0 placeholder Home).
+    // Explorer (Explore 2.0 Phase 2 — the real Home gallery replaces the
+    // Phase 0 placeholder; see explorer-home.spec.mjs for its own coverage).
     const explorerRow = page.getByTestId('workspace-view-switcher-explorer');
     await expect(explorerRow).toHaveText('Explorer');
     await explorerRow.hover();
     await explorerRow.click();
     await expect(explorerRow).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible();
-    await expect(page.getByText(/Explorer arrives with explorations/i)).toBeVisible();
+    await expect(page.getByTestId('explorer-home-new-exploration')).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/workspace/exploration');
 
     // Back to Project.
