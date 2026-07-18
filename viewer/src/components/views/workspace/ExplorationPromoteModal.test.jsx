@@ -117,7 +117,7 @@ describe('ExplorationPromoteModal', () => {
     expect(screen.getByTestId('exploration-promote-submit')).toBeDisabled();
   });
 
-  test('clicking Promote calls promoteExploration with the selection and closes on full success', async () => {
+  test('clicking Promote calls promoteExploration with the selection, shows the success message, and stays open until the user clicks Close', async () => {
     buildPromoteChecklist.mockResolvedValue([row()]);
     const promoteExploration = jest
       .fn()
@@ -132,7 +132,17 @@ describe('ExplorationPromoteModal', () => {
     await waitFor(() =>
       expect(promoteExploration).toHaveBeenCalledWith('exp_1', [{ type: 'model', name: 'orders_q' }])
     );
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    // Deliberately does NOT auto-close on the common all-valid, no-collision
+    // path: `setPromotedThisRun` and a same-tick `onClose()` would land in
+    // the same React commit, so the "Promoted N objects" confirmation would
+    // never actually paint. The user reviews it and dismisses via "Close".
+    expect(await screen.findByTestId('exploration-promote-success')).toHaveTextContent(
+      'Promoted 1 object.'
+    );
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('exploration-promote-cancel')).toHaveTextContent('Close');
+    fireEvent.click(screen.getByTestId('exploration-promote-cancel'));
+    expect(onClose).toHaveBeenCalled();
   });
 
   test('a partial failure stays open and shows the error, does not auto-close', async () => {
