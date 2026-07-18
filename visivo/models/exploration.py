@@ -43,6 +43,19 @@ class ExplorationDraft(BaseModel):
     insights: List[dict] = Field(default_factory=list)
     chart: Optional[dict] = None
     computed_columns: List[dict] = Field(default_factory=list)
+    # Explore 2.0 Phase 2 (viewer/src/components/views/workspace/
+    # explorationLegacyBridge.js): the legacy `explorerStore.js` working-state
+    # shape (multi-model/multi-insight tabs, chart layout, UI prefs) doesn't
+    # cleanly round-trip through the four typed fields above — this is
+    # exactly the sanctioned escape hatch documented in
+    # specs/plan/explorer-workspace-unification/02-architecture.md §5's
+    # contract note ("if the legacy shape can't round-trip cleanly through
+    # the contract's fields, carry the remainder under a draft key like
+    # `legacy_state`"). Opaque to the backend — never read or validated here,
+    # just persisted verbatim. A plain (non-`extra=forbid`) BaseModel field,
+    # not visivo's `models.base.BaseModel`, so this file stays independent of
+    # the project DAG base classes.
+    legacy_state: Optional[dict] = None
 
 
 class PromotionRecord(BaseModel):

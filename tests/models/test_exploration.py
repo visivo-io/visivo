@@ -116,6 +116,24 @@ class TestExplorationDraftLooseValidation:
         query = ExplorationQueryDraftFactory(source=None)
         assert query.source is None
 
+    def test_legacy_state_defaults_to_none(self):
+        assert ExplorationDraft().legacy_state is None
+
+    def test_legacy_state_round_trips_arbitrary_shape(self):
+        # Phase 2's explorationLegacyBridge stuffs the legacy explorerStore
+        # working state (model tabs, insight states, chart layout, UI prefs)
+        # in here verbatim — must never be dropped or reshaped by validation.
+        legacy = {
+            "modelTabs": ["orders_q"],
+            "modelStates": {"orders_q": {"sql": "SELECT 1", "sourceName": "warehouse"}},
+            "chartName": "chart_1",
+            "leftNavCollapsed": True,
+        }
+        draft = ExplorationDraft(legacy_state=legacy)
+        assert draft.legacy_state == legacy
+        payload = json.loads(draft.model_dump_json())
+        assert ExplorationDraft.model_validate(payload).legacy_state == legacy
+
 
 class TestSeedRefAndReturnTo:
     def test_seed_ref_shape(self):
