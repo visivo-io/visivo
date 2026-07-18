@@ -45,6 +45,15 @@ export const tabDragEndToReorder = event => {
  */
 const WorkspaceTab = ({ tab, active, onSelect, onClose, isDragging }) => {
   const TypeIcon = getTabIcon(tab.type);
+  // Explorations are the one document type whose STABLE identity (`tab.name`
+  // = the backend id, so URLs/lookups survive a rename) differs from its
+  // DISPLAYED name (the renamable `record.name` — 01-ux-spec.md §4's inline
+  // rename). Every other type's `tab.name` already IS its display name, so
+  // this lookup only ever engages for `exploration` tabs.
+  const explorationDisplayName = useStore(s =>
+    tab.type === 'exploration' ? s.workspaceExplorations.byId[tab.name]?.name : null
+  );
+  const displayName = explorationDisplayName || tab.name;
   return (
     <div
       role="tab"
@@ -64,11 +73,11 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose, isDragging }) => {
         type="button"
         onClick={() => onSelect && onSelect(tab.id)}
         className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-        title={tab.name}
+        title={displayName}
         data-testid={`workspace-tab-select-${tab.id}`}
       >
         <TypeIcon aria-hidden="true" style={{ fontSize: 14 }} className="shrink-0 text-gray-500" />
-        <span className="truncate">{tab.name}</span>
+        <span className="truncate">{displayName}</span>
         {tab.dirty && (
           <span
             title="Unsaved changes"
@@ -85,7 +94,7 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose, isDragging }) => {
           onClose && onClose(tab.id);
         }}
         title="Close tab"
-        aria-label={`Close ${tab.name}`}
+        aria-label={`Close ${displayName}`}
         data-testid={`workspace-tab-close-${tab.id}`}
         className={[
           'ml-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-gray-400 transition-opacity',

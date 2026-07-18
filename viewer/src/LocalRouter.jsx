@@ -103,6 +103,22 @@ const LocalRouter = createBrowserRouter(
             crumb: () => <BreadcrumbLink to="/workspace/exploration">Explorer</BreadcrumbLink>,
           }}
         />
+        {/* Explore 2.0 Phase 2: a single exploration's document-instance path
+            (like /workspace/dashboard/:dashboardName). `:id` is the
+            exploration's stable backend id, not its display name. */}
+        <Route
+          id="workspace-exploration-detail"
+          path="/workspace/exploration/:id"
+          element={<Workspace />}
+          loader={loadProject}
+          handle={{
+            crumb: match => (
+              <BreadcrumbLink to={`/workspace/exploration/${match.params.id}`}>
+                Explorer
+              </BreadcrumbLink>
+            ),
+          }}
+        />
         <Route
           id="workspace-dashboard"
           path="/workspace/dashboard/:dashboardName"

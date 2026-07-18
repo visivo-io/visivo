@@ -64,6 +64,39 @@ describe('TabStrip', () => {
     ).toHaveAttribute('data-active', 'false');
   });
 
+  // Explore 2.0 Phase 2: an exploration tab's STABLE identity (`tab.name`)
+  // is its backend id, not its (renamable) display name — the strip must
+  // resolve the real name from `workspaceExplorations`, not print the id.
+  test('an exploration tab displays the record name, not its raw id', () => {
+    seedStore({
+      workspaceTabs: [
+        ...sampleTabs,
+        { id: 'exploration:exp_a1b2c3d4', type: 'exploration', name: 'exp_a1b2c3d4' },
+      ],
+      workspaceExplorations: {
+        byId: { exp_a1b2c3d4: { id: 'exp_a1b2c3d4', name: 'Churn dig' } },
+        order: ['exp_a1b2c3d4'],
+      },
+    });
+    render(<TabStrip />);
+    const tab = screen.getByTestId('workspace-tab-exploration:exp_a1b2c3d4');
+    expect(tab).toHaveTextContent('Churn dig');
+    expect(tab).not.toHaveTextContent('exp_a1b2c3d4');
+  });
+
+  test('an exploration tab falls back to the raw id if the record is not (yet) loaded', () => {
+    seedStore({
+      workspaceTabs: [
+        { id: 'exploration:exp_missing', type: 'exploration', name: 'exp_missing' },
+      ],
+      workspaceExplorations: { byId: {}, order: [] },
+    });
+    render(<TabStrip />);
+    expect(screen.getByTestId('workspace-tab-exploration:exp_missing')).toHaveTextContent(
+      'exp_missing'
+    );
+  });
+
   test('renders the dirty dot on tabs marked dirty', () => {
     seedStore();
     render(<TabStrip />);
