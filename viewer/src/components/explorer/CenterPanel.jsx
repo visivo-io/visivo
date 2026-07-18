@@ -28,7 +28,20 @@ import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
 
 const NARROW_THRESHOLD = 600;
 
-const CenterPanel = () => {
+const CenterPanel = ({
+  // Explore 2.0 Phase 3a: the exploration surface (`ExplorationWorkbench`)
+  // replaces the horizontal `ModelTabBar` with compact query chips
+  // (`ExplorationQueryChips`); the standalone `/explorer` route
+  // (`ExplorerPage`) passes nothing and keeps `ModelTabBar` exactly as it
+  // was — `CenterPanel` is shared between the two, so the swap is a prop,
+  // never a hardcoded import change.
+  modelTabBar,
+  // Explore 2.0 Phase 3a (D9): opts the SQL editor into being a Library
+  // column/table drop target. Default false — only the exploration surface
+  // passes true; the standalone route's editor (and any other CenterPanel
+  // consumer) stays exactly as it was.
+  enableLibraryDrop = false,
+}) => {
   const activeModelName = useStore((s) => s.explorerActiveModelName);
   const sourceName = useStore(selectActiveModelSourceName);
   const setSourceName = useStore((s) => s.setActiveModelSource);
@@ -219,6 +232,7 @@ const CenterPanel = () => {
             onQueryComplete={handleQueryComplete}
             toolbarExtra={sourceSelector}
             toolbarRight={editorToggleButton}
+            dropInsertEnabled={enableLibraryDrop}
           />
         </div>
       ) : (
@@ -247,8 +261,8 @@ const CenterPanel = () => {
       data-testid="center-panel"
       ref={containerRef}
     >
-      {/* Model Tab Bar */}
-      <ModelTabBar />
+      {/* Model Tab Bar (standalone /explorer) or query chips (exploration surface) */}
+      {modelTabBar !== undefined ? modelTabBar : <ModelTabBar />}
 
       {/* Top row: Editor + Chart */}
       <div style={{ flex: topFlex }} className="overflow-hidden min-h-0" ref={topRowRef}>

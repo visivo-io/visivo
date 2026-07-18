@@ -10,12 +10,14 @@
  *      pointer drags can't run in jsdom, so we unit-test the router directly;
  *      the real drag is exercised by the Playwright stories.
  */
+/* eslint-disable no-template-curly-in-string -- fixtures use literal Visivo ref-string syntax, not JS template interpolation */
 import React from 'react';
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import { useDraggable } from '@dnd-kit/core';
 import WorkspaceDndContext, {
   useWorkspaceDrag,
   routeWorkspaceDragEnd,
+  routeExplorationDragEnd,
   mapDragStartData,
   workspaceCollisionDetection,
   useCommitCanvasConfig,
@@ -1042,5 +1044,408 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
     render(<OrphanProbe />);
     // Invoking the fallback never throws and touches nothing.
     expect(() => fireEvent.click(screen.getByTestId('orphan-probe'))).not.toThrow();
+  });
+});
+
+// ── Explore 2.0 Phase 3a: canvas-insert guard (02-architecture.md §4) ───────
+describe('routeWorkspaceDragEnd — canvas-insert type guard (Explore 2.0 Phase 3a)', () => {
+  const overCanvasDrop = target => ({
+    data: { current: { kind: 'canvas-drop', dashboardName: 'dash', config: { rows: [] }, target } },
+  });
+
+  // Library's exploration drag sources (source/metric/dimension/insight) are
+  // NOT canvas items — without this guard, making them draggable (so they
+  // can reach the exploration surface's new drop targets) would let a
+  // dashboard-canvas drop build a bogus item shape.
+  test.each(['source', 'sourceTable', 'sourceColumn', 'metric', 'dimension', 'insight'])(
+    'library drag of type %s onto the canvas is rejected (no commit)',
+    type => {
+      const commitCanvasConfig = jest.fn();
+      const result = routeWorkspaceDragEnd(
+        {
+          active: { data: { current: { source: 'library', type, name: 'x' } } },
+          over: overCanvasDrop({ kind: 'between-rows', index: 0 }),
+        },
+        { commitCanvasConfig }
+      );
+      expect(result).toBe('noop');
+      expect(commitCanvasConfig).not.toHaveBeenCalled();
+    }
+  );
+
+  // Unchanged behavior for the types that WERE always canvas-insertable.
+  test.each(['chart', 'table', 'markdown', 'input'])(
+    'library drag of type %s onto the canvas still inserts (unchanged)',
+    type => {
+      const commitCanvasConfig = jest.fn();
+      const result = routeWorkspaceDragEnd(
+        {
+          active: { data: { current: { source: 'library', type, name: 'x' } } },
+          over: overCanvasDrop({ kind: 'between-rows', index: 0 }),
+        },
+        { commitCanvasConfig }
+      );
+      expect(result).toBe('canvas_library_insert');
+      expect(commitCanvasConfig).toHaveBeenCalled();
+    }
+  );
+});
+
+// ── Explore 2.0 Phase 3a: exploration surface DnD (D9 / 02-architecture.md
+// §4). `ExplorerDndContext.jsx`'s onDragEnd is deleted from the
+// ExplorationWorkbench nesting; these zone kinds now route through this
+// shared context via `routeExplorationDragEnd`, ported verbatim from that
+// file's resolution logic (see its own still-passing test suite,
+// `components/explorer/ExplorerDndContext.test.jsx`, for the standalone
+// route's copy of this same logic). ────────────────────────────────────────
+describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
+  const baseDeps = () => ({
+    activeModelName: 'preview_model',
+    activeInsightName: 'ins_1',
+    setInsightProp: jest.fn(),
+    addComputedColumn: jest.fn(),
+    setActiveModelSource: jest.fn(),
+    updateInsightInteraction: jest.fn(),
+    addExistingInsightToChart: jest.fn(),
+    seedModelTabFromTable: jest.fn(),
+  });
+
+  test('returns noop when there is no drop target', () => {
+    expect(routeExplorationDragEnd({ active: { data: { current: {} } }, over: null }, baseDeps())).toBe(
+      'noop'
+    );
+  });
+
+  describe('axis-zone / property-zone', () => {
+    test('a plain column drop resolves against the active model (preview_model fallback)', () => {
+      const deps = baseDeps();
+      routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'col_a', type: 'column' } } },
+          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
+        },
+        deps
+      );
+      expect(deps.setInsightProp).toHaveBeenCalledWith(
+        'ins_1',
+        'x',
+        '?{${ref(preview_model).col_a}}'
+      );
+    });
+
+    test('a sourceColumn (D9 schema drill-down) resolves the same way a plain column does', () => {
+      const deps = { ...baseDeps(), activeModelName: 'orders_q' };
+      routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region', type: 'sourceColumn', sourceName: 'warehouse' } } },
+          over: { data: { current: { path: 'marker.color', type: 'property-zone' } } },
+        },
+        deps
+      );
+      expect(deps.setInsightProp).toHaveBeenCalledWith(
+        'ins_1',
+        'marker.color',
+        '?{${ref(orders_q).region}}'
+      );
+    });
+
+    test('a sourceTable drop is rejected — a whole table is not a scalar ref', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'orders', type: 'sourceTable', sourceName: 'warehouse' } } },
+          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
+        },
+        deps
+      );
+      expect(result).toBe('noop');
+      expect(deps.setInsightProp).not.toHaveBeenCalled();
+    });
+
+    test('a model-scoped metric drop qualifies the ref with parentModel', () => {
+      const deps = baseDeps();
+      routeExplorationDragEnd(
+        {
+          active: {
+            data: { current: { name: 'total_revenue', type: 'metric', parentModel: 'orders_model' } },
+          },
+          over: { data: { current: { fieldName: 'y', type: 'axis-zone' } } },
+        },
+        deps
+      );
+      expect(deps.setInsightProp).toHaveBeenCalledWith(
+        'ins_1',
+        'y',
+        '?{${ref(orders_model).total_revenue}}'
+      );
+    });
+
+    test('an unscoped metric drop is a bare ref (no parentModel)', () => {
+      const deps = baseDeps();
+      routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'composite_metric', type: 'metric' } } },
+          over: { data: { current: { fieldName: 'y', type: 'axis-zone' } } },
+        },
+        deps
+      );
+      expect(deps.setInsightProp).toHaveBeenCalledWith('ins_1', 'y', '?{${ref(composite_metric)}}');
+    });
+
+    test('a multi-select input drop yields the .values accessor', () => {
+      const deps = baseDeps();
+      routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region_filter', type: 'input', inputType: 'multi-select' } } },
+          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
+        },
+        deps
+      );
+      expect(deps.setInsightProp).toHaveBeenCalledWith(
+        'ins_1',
+        'x',
+        '?{${ref(region_filter).values}}'
+      );
+    });
+
+    test('a single-select input drop yields the .value accessor', () => {
+      const deps = baseDeps();
+      routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region_filter', type: 'input', inputType: 'single-select' } } },
+          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
+        },
+        deps
+      );
+      expect(deps.setInsightProp).toHaveBeenCalledWith('ins_1', 'x', '?{${ref(region_filter).value}}');
+    });
+
+    test('inserts at cursor instead of replacing the whole value when the drop target has an active cursor', () => {
+      const listener = jest.fn();
+      render(
+        <div data-testid="droppable-property-x">
+          <span
+            data-has-cursor="true"
+            ref={el => el && el.addEventListener('ref-insert-at-cursor', listener)}
+          />
+        </div>
+      );
+
+      const deps = baseDeps();
+      routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'col_a', type: 'column' } } },
+          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
+        },
+        deps
+      );
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener.mock.calls[0][0].detail.refExpr).toBe('${ref(preview_model).col_a}');
+      expect(deps.setInsightProp).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('data-table-drop (computed column)', () => {
+    test('a metric drop adds a computed column with its expression', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'churn_rate', type: 'metric', expression: 'sum(x)/count(x)' } } },
+          over: { data: { current: { type: 'data-table-drop' } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_computed_column_drop');
+      expect(deps.addComputedColumn).toHaveBeenCalledWith({
+        name: 'churn_rate',
+        expression: 'sum(x)/count(x)',
+        type: 'metric',
+      });
+    });
+
+    test('a non metric/dimension drop is a noop', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'orders', type: 'sourceTable' } } },
+          over: { data: { current: { type: 'data-table-drop' } } },
+        },
+        deps
+      );
+      expect(result).toBe('noop');
+      expect(deps.addComputedColumn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('interaction-zone', () => {
+    test('sets the interaction value from a dropped field', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region', type: 'dimension', parentModel: 'orders_q' } } },
+          over: { data: { current: { type: 'interaction-zone', insightName: 'ins_1', index: 0 } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_interaction_drop');
+      expect(deps.updateInsightInteraction).toHaveBeenCalledWith('ins_1', 0, {
+        value: '?{${ref(orders_q).region}}',
+      });
+    });
+
+    test('a sourceTable drop is rejected', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'orders', type: 'sourceTable' } } },
+          over: { data: { current: { type: 'interaction-zone', insightName: 'ins_1', index: 0 } } },
+        },
+        deps
+      );
+      expect(result).toBe('noop');
+      expect(deps.updateInsightInteraction).not.toHaveBeenCalled();
+    });
+
+    test('missing insightName is a noop', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region', type: 'dimension' } } },
+          over: { data: { current: { type: 'interaction-zone', index: 0 } } },
+        },
+        deps
+      );
+      expect(result).toBe('noop');
+    });
+  });
+
+  describe('source-zone', () => {
+    test('a source drop sets the active model source', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'warehouse', type: 'source' } } },
+          over: { data: { current: { type: 'source-zone' } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_source_drop');
+      expect(deps.setActiveModelSource).toHaveBeenCalledWith('warehouse');
+    });
+
+    test('a non-source drop is a noop', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'x', type: 'metric' } } },
+          over: { data: { current: { type: 'source-zone' } } },
+        },
+        deps
+      );
+      expect(result).toBe('noop');
+      expect(deps.setActiveModelSource).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('insight-zone', () => {
+    test('an insight drop adds it to the chart', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'churn_by_cohort', type: 'insight' } } },
+          over: { data: { current: { type: 'insight-zone' } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_insight_drop');
+      expect(deps.addExistingInsightToChart).toHaveBeenCalledWith('churn_by_cohort');
+    });
+
+    test('a non-insight drop is a noop', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'x', type: 'model' } } },
+          over: { data: { current: { type: 'insight-zone' } } },
+        },
+        deps
+      );
+      expect(result).toBe('noop');
+      expect(deps.addExistingInsightToChart).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── sql-editor-drop (D9, new) ──────────────────────────────────────────
+  describe('sql-editor-drop', () => {
+    test('a sourceTable drop seeds a new query chip bound to that table + source', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'orders', type: 'sourceTable', sourceName: 'warehouse' } } },
+          over: { data: { current: { type: 'sql-editor-drop' } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_seed_query_from_table');
+      expect(deps.seedModelTabFromTable).toHaveBeenCalledWith({
+        tableName: 'orders',
+        sourceName: 'warehouse',
+      });
+    });
+
+    test('a sourceColumn drop inserts the bare column name via the droppable-supplied callback', () => {
+      const deps = baseDeps();
+      const onInsertText = jest.fn();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region', type: 'sourceColumn' } } },
+          over: { data: { current: { type: 'sql-editor-drop', onInsertText } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_sql_cursor_insert');
+      expect(onInsertText).toHaveBeenCalledWith('region');
+    });
+
+    test('a plain results-grid column drop also inserts (generalizes DraggableColumnHeader)', () => {
+      const deps = baseDeps();
+      const onInsertText = jest.fn();
+      routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'amount', type: 'column' } } },
+          over: { data: { current: { type: 'sql-editor-drop', onInsertText } } },
+        },
+        deps
+      );
+      expect(onInsertText).toHaveBeenCalledWith('amount');
+    });
+
+    test('an unrecognized type is a noop', () => {
+      const deps = baseDeps();
+      const onInsertText = jest.fn();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'x', type: 'model' } } },
+          over: { data: { current: { type: 'sql-editor-drop', onInsertText } } },
+        },
+        deps
+      );
+      expect(result).toBe('noop');
+      expect(onInsertText).not.toHaveBeenCalled();
+    });
+  });
+
+  test('routeWorkspaceDragEnd dispatches exploration zone kinds through routeExplorationDragEnd', () => {
+    const setActiveModelSource = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { name: 'warehouse', type: 'source' } } },
+        over: { data: { current: { type: 'source-zone' } } },
+      },
+      { exploration: { setActiveModelSource } }
+    );
+    expect(result).toBe('exploration_source_drop');
+    expect(setActiveModelSource).toHaveBeenCalledWith('warehouse');
   });
 });

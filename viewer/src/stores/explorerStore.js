@@ -519,6 +519,43 @@ const createExplorerSlice = (set, get) => ({
     });
   },
 
+  /**
+   * Explore 2.0 Phase 3a (D9): a Library schema-table row dropped on the SQL
+   * editor seeds a brand-new query chip bound to that table's source, with
+   * `SELECT * FROM <table>` pre-filled — 01-ux-spec.md §3a's "Table →
+   * canvas/editor: seeds a new scratch query." Mirrors `createModelTab`'s
+   * auto-naming; the only difference is the pre-filled sql + source (which
+   * `createModelTab` has no way to accept in one call).
+   */
+  seedModelTabFromTable: ({ tableName, sourceName } = {}) => {
+    if (!tableName) return;
+    const state = get();
+    const existing = new Set([
+      ...state.explorerModelTabs,
+      ...Object.keys(state.explorerModelStates || {}),
+    ]);
+    const finalName = generateUniqueName('model', Array.from(existing));
+
+    const projectDefaultSource = state.defaults?.source_name || null;
+    const firstAvailableSource = (state.explorerSources || [])[0]?.source_name || null;
+    const resolvedSource = sourceName || projectDefaultSource || firstAvailableSource;
+
+    const newModelState = {
+      ...createEmptyModelState(true),
+      sourceName: resolvedSource,
+      sql: `SELECT * FROM ${tableName}`,
+    };
+
+    set({
+      explorerModelTabs: [...state.explorerModelTabs, finalName],
+      explorerActiveModelName: finalName,
+      explorerModelStates: {
+        ...state.explorerModelStates,
+        [finalName]: newModelState,
+      },
+    });
+  },
+
   switchModelTab: (modelName) => {
     set({
       explorerActiveModelName: modelName,

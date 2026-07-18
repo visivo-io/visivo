@@ -240,6 +240,45 @@ describe('explorerStore', () => {
     });
   });
 
+  // Explore 2.0 Phase 3a (D9): a Library schema-table row dropped on the SQL
+  // editor seeds a new query chip — 01-ux-spec.md §3a's "Table → canvas/
+  // editor: seeds a new scratch query."
+  describe('seedModelTabFromTable', () => {
+    it('creates a new tab pre-filled with SELECT * FROM <table> bound to the given source', () => {
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders', sourceName: 'warehouse' });
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toHaveLength(1);
+      const name = state.explorerModelTabs[0];
+      expect(state.explorerActiveModelName).toBe(name);
+      expect(state.explorerModelStates[name].sql).toBe('SELECT * FROM orders');
+      expect(state.explorerModelStates[name].sourceName).toBe('warehouse');
+      expect(state.explorerModelStates[name].isNew).toBe(true);
+    });
+
+    it('auto-disambiguates the new tab name against existing tabs', () => {
+      useStore.getState().createModelTab(); // 'model'
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders', sourceName: 'warehouse' });
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toHaveLength(2);
+      expect(state.explorerModelTabs[1]).not.toBe('model');
+    });
+
+    it('falls back to the project default source when none is given', () => {
+      useStore.setState({ defaults: { source_name: 'default-src' } });
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders' });
+
+      const name = useStore.getState().explorerActiveModelName;
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('default-src');
+    });
+
+    it('is a no-op without a tableName', () => {
+      useStore.getState().seedModelTabFromTable({ sourceName: 'warehouse' });
+      expect(useStore.getState().explorerModelTabs).toEqual([]);
+    });
+  });
+
   describe('switchModelTab', () => {
     it('sets the active model name', () => {
       useStore.getState().createModelTab('model_a');

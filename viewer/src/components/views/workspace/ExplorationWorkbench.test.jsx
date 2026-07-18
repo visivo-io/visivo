@@ -1,28 +1,23 @@
 /**
- * ExplorationWorkbench — the legacy Explorer 3-panel bundle re-parented for
- * `ExplorationPane` (Explore 2.0 Phase 2). Same composition as `ExplorerPage`
- * (the standalone route), just re-sized — pinned here as a light structural
- * test; the shared init lifecycle is `useExplorerWorkbenchInit`'s own
- * concern (mirrored, not duplicated, from `ExplorerPage.test.jsx`).
+ * ExplorationWorkbench — the legacy Explorer bundle re-parented for
+ * `ExplorationPane` (Explore 2.0 Phase 2, SURGICALLY REDUCED in Phase 3a —
+ * see the component's own docstring for exactly what changed and why
+ * `ExplorerLeftPanel`/`ExplorerDndContext` stay alive as files for the
+ * still-untouched standalone `/explorer` route).
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ExplorationWorkbench from './ExplorationWorkbench';
 import useStore from '../../../stores/store';
 
-jest.mock('../../explorer/ExplorerDndContext', () => {
-  return function MockExplorerDndContext({ children }) {
-    return <div data-testid="dnd-context">{children}</div>;
-  };
-});
-jest.mock('../../explorer/ExplorerLeftPanel', () => {
-  return function MockExplorerLeftPanel() {
-    return <div data-testid="left-panel">ExplorerLeftPanel</div>;
-  };
-});
 jest.mock('../../explorer/CenterPanel', () => {
-  return function MockCenterPanel() {
-    return <div data-testid="center-panel">CenterPanel</div>;
+  return function MockCenterPanel({ modelTabBar, enableLibraryDrop }) {
+    return (
+      <div data-testid="center-panel" data-enable-library-drop={enableLibraryDrop ? 'true' : 'false'}>
+        CenterPanel
+        {modelTabBar}
+      </div>
+    );
   };
 });
 jest.mock('../../explorer/ExplorerRightPanel', () => {
@@ -30,23 +25,15 @@ jest.mock('../../explorer/ExplorerRightPanel', () => {
     return <div data-testid="right-panel">ExplorerRightPanel</div>;
   };
 });
-jest.mock('../../common/VerticalDivider', () => {
-  return function MockVerticalDivider({ handleMouseDown }) {
-    return (
-      <div data-testid="vertical-divider" onMouseDown={handleMouseDown}>
-        VD
-      </div>
-    );
+jest.mock('./ExplorationQueryChips', () => {
+  return function MockExplorationQueryChips() {
+    return <div data-testid="exploration-query-chips-mock">chips</div>;
   };
 });
-jest.mock('../../../hooks/usePanelResize', () => ({
-  usePanelResize: () => ({ ratio: 0.18, isResizing: false, handleMouseDown: jest.fn() }),
-}));
 
 describe('ExplorationWorkbench', () => {
   beforeEach(() => {
     useStore.setState({
-      explorerLeftNavCollapsed: false,
       explorerModelTabs: [],
       explorerActiveModelName: null,
       explorerChartInsightNames: [],
@@ -58,24 +45,27 @@ describe('ExplorationWorkbench', () => {
     });
   });
 
-  test('renders all three legacy panels under the DnD context', () => {
+  test('renders CenterPanel + ExplorerRightPanel — NO nested DnD context, NO ExplorerLeftPanel', () => {
     render(<ExplorationWorkbench />);
     expect(screen.getByTestId('exploration-workbench')).toBeInTheDocument();
-    expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
-    expect(screen.getByTestId('left-panel')).toBeInTheDocument();
     expect(screen.getByTestId('center-panel')).toBeInTheDocument();
     expect(screen.getByTestId('right-panel')).toBeInTheDocument();
+    // Phase 3a: DnD unifies onto the shell's WorkspaceDndContext — this
+    // component no longer wraps a nested one, and the Library (the
+    // Workspace's own left rail, not a component this pane mounts) replaces
+    // the old ExplorerLeftPanel as the browse surface.
+    expect(screen.queryByTestId('dnd-context')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('left-panel')).not.toBeInTheDocument();
   });
 
-  test('hides the vertical divider when the left nav is collapsed', () => {
-    useStore.setState({ explorerLeftNavCollapsed: true });
+  test('passes the new query chips as CenterPanel.modelTabBar (replaces ModelTabBar)', () => {
     render(<ExplorationWorkbench />);
-    expect(screen.queryByTestId('vertical-divider')).not.toBeInTheDocument();
+    expect(screen.getByTestId('exploration-query-chips-mock')).toBeInTheDocument();
   });
 
-  test('shows the vertical divider when the left nav is expanded', () => {
+  test('opts CenterPanel into the Library SQL-editor drop target (D9)', () => {
     render(<ExplorationWorkbench />);
-    expect(screen.getByTestId('vertical-divider')).toBeInTheDocument();
+    expect(screen.getByTestId('center-panel')).toHaveAttribute('data-enable-library-drop', 'true');
   });
 
   test('sizes to fill its container (no fixed viewport height, unlike the standalone route)', () => {
