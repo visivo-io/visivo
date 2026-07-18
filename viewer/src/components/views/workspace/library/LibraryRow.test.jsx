@@ -53,6 +53,29 @@ describe('LibraryRow', () => {
     expect(dashboardDef.droppable).toBe(false);
   });
 
+  // Explore 2.0 Phase 3a (D9 / 02-architecture.md §4): source/metric/
+  // dimension/insight are exploration drag sources (SQL editor, prop slots,
+  // interactions, the chart insight zone) even though they are NOT
+  // canvas-droppable dashboard items — kept independent of `droppable` so
+  // the dashboard canvas-insert path (WorkspaceDndContext) can still reject
+  // them.
+  test('getTypeDef flags source/metric/dimension/insight as exploration drag sources, independent of droppable', () => {
+    ['source', 'metric', 'dimension', 'insight'].forEach(t => {
+      const def = getTypeDef(t);
+      expect(def.explorationDragSource).toBe(true);
+      expect(def.droppable).toBe(false); // unchanged — not a canvas item
+    });
+    ['model', 'relation'].forEach(t => {
+      expect(getTypeDef(t).explorationDragSource).toBe(false);
+    });
+    ['chart', 'table', 'markdown', 'input'].forEach(t => {
+      // Already draggable via `droppable` — explorationDragSource is simply
+      // not needed for these (LibrarySubsection ORs the two flags).
+      expect(getTypeDef(t).explorationDragSource).toBe(false);
+      expect(getTypeDef(t).droppable).toBe(true);
+    });
+  });
+
   test('getTypeDef derives icon + label + plural from the canonical objectTypeConfigs', () => {
     // The Library must not fork per-type metadata — every type's icon, label
     // and plural come from the app-wide canonical `objectTypeConfigs.js` so
@@ -178,6 +201,39 @@ describe('LibraryRow', () => {
     expect(
       screen.getByTestId('library-row-chart-waterfall-drag-handle')
     ).toBeInTheDocument();
+  });
+
+  // Explore 2.0 Phase 3a payload extension (02-architecture.md §4): the
+  // drop side (WorkspaceDndContext) needs parentModel/expression/inputType
+  // on the drag payload to resolve ref scoping and input accessors.
+  test('drag payload carries parentModel/expression/inputType when the row has them', () => {
+    useDraggable.mockClear();
+    const METRIC = {
+      id: 'metric:churn_rate',
+      type: 'metric',
+      name: 'churn_rate',
+      parentModel: 'orders_q',
+      expression: 'sum(churned) / count(*)',
+    };
+    render(withDnd(<LibraryRow obj={METRIC} draggable />));
+    const call = useDraggable.mock.calls.find(([opts]) => opts.id === 'library:metric:churn_rate');
+    expect(call[0].data).toEqual(
+      expect.objectContaining({
+        source: 'library',
+        type: 'metric',
+        name: 'churn_rate',
+        parentModel: 'orders_q',
+        expression: 'sum(churned) / count(*)',
+      })
+    );
+  });
+
+  test('drag payload carries inputType for input rows', () => {
+    useDraggable.mockClear();
+    const INPUT = { id: 'input:region', type: 'input', name: 'region', inputType: 'multi-select' };
+    render(withDnd(<LibraryRow obj={INPUT} draggable />));
+    const call = useDraggable.mock.calls.find(([opts]) => opts.id === 'library:input:region');
+    expect(call[0].data.inputType).toBe('multi-select');
   });
 
   // VIS-836: the source row must NOT translate with the cursor during a drag —
