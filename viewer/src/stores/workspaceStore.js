@@ -183,6 +183,28 @@ const createWorkspaceSlice = (set, get) => ({
   // it. Session-only (schema can change between sessions). (VIS-1004 caching.)
   workspaceSourceOutlineDataCache: {},
 
+  // Library source drill-down (Explore 2.0 Phase 3a / D9): does the Library's
+  // "Sources" subsection have THIS source's row expanded at all (source →
+  // schema → table → columns)? A DIFFERENT concept from
+  // `workspaceSourceOutlineExpanded` above (which tracks expand state of
+  // individual db/schema/table NODES once a source's tree is already being
+  // shown) — this is the top-level gate that decides whether
+  // `useSourceOutline(sourceName)` mounts at all for a given Library row, so
+  // the drill-down is genuinely lazy: collapsed sources never fetch their
+  // cached schema. Keyed by source name → boolean. Session-only, same
+  // rationale as its sibling above (schema can change between sessions).
+  librarySourceRowExpanded: {},
+
+  toggleLibrarySourceRowExpanded: sourceName => {
+    if (!sourceName) return;
+    set(state => ({
+      librarySourceRowExpanded: {
+        ...state.librarySourceRowExpanded,
+        [sourceName]: !state.librarySourceRowExpanded[sourceName],
+      },
+    }));
+  },
+
   // Resize state (Phase 0 visual stub; actual resizing comes later) --------
   workspaceLeftWidth: 320,
   workspaceRightWidth: 360,
