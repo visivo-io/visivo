@@ -35,7 +35,12 @@ describe('getDefNameForType', () => {
     expect(getDefNameForType('dimension')).toBe('Dimension');
     expect(getDefNameForType('metric')).toBe('Metric');
     expect(getDefNameForType('relation')).toBe('Relation');
-    expect(getDefNameForType('model')).toBe('Model');
+    // 'model' -> the CONCRETE `SqlModel` def (has `sql`/`source`), not the
+    // abstract `Model` base ($defs `Model` is just {path, name, file_path} —
+    // validating a real model config against it always fails). See
+    // projectSchema.js's OBJECT_TYPE_TO_DEF comment for the full root cause
+    // (Explore 2.0 Phase 4 integration-gate fix cycle).
+    expect(getDefNameForType('model')).toBe('SqlModel');
   });
 
   test('is case-insensitive (camelCase / PascalCase / lowercase)', () => {

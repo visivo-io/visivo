@@ -130,6 +130,17 @@ export const buildPromoteChecklist = async getState => {
       parentModel: null,
       isNew: is.isNew !== false,
       config: {
+        // Unlike Model/Metric/Dimension/Chart, Insight's $defs schema
+        // REQUIRES `name` (`Insight.required === ['name']`) — established
+        // callers (useRecordSave's `readCurrentConfig`) always validate a
+        // BARE collection entry that already carries `name` alongside its
+        // other fields (`unwrapConfig` only strips an ENVELOPE `.config`
+        // wrapper, never `name` itself). Root-caused via live reproduction
+        // against the sandbox (integration-gate fix cycle): omitting it here
+        // made `validateRecordConfig` reject every insight row with "must
+        // have required property 'name'", so nothing was ever pre-checked
+        // in the promote checklist.
+        name,
         props: { type: is.type, ...expandedProps },
         ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
       },
