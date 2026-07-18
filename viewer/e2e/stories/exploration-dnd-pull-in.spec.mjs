@@ -15,10 +15,11 @@
  *   2. Library schema column → SQL editor: inserts the bare column name at
  *      the Monaco cursor (does NOT create a new query).
  *   3. Library schema column → an insight prop slot (`droppable-property-x`,
- *      live via `InsightCRUDSection`'s `SchemaEditor` — the legacy right
- *      panel, unchanged by this phase): serializes `?{${ref(query).col}}`
- *      underneath while rendering a resolved pill/text, never raw `?{`/`${`
- *      syntax (D8).
+ *      post-cutover live via the rebuilt Build rail's
+ *      `TracePropsEditor`/`PropertyRow` — Phase 3b retired the standalone
+ *      `/explorer` route + `InsightCRUDSection`/legacy `SchemaEditor` this
+ *      file originally targeted, S5): serializes a resolved ref underneath
+ *      while rendering a resolved pill/text, never raw `?{`/`${` syntax (D8).
  *
  * Precondition: sandbox running (integration project), e.g.
  *   VISIVO_SANDBOX_NAME=explorationDndPullIn VISIVO_SANDBOX_BACKEND_PORT=8046 \
@@ -248,7 +249,18 @@ test.describe('Exploration DnD pull-in (Explore 2.0 Phase 3a — D9)', () => {
 
     // The real assertion: the SERIALIZED value underneath, through the
     // backend record after the draft debounce settles.
-    const expectedSerialized = `?{\${ref(${queryName}).${columnName}}}`;
+    //
+    // Integration-gate note (Explore 2.0 Phase 3b, D10 upgrade — intentional,
+    // not a regression): this file predates the pill-aggregation grammar
+    // (06-pill-aggregation-grammar.md), so it originally expected a bare ref
+    // here. `test_table`'s two columns (X, Y) are both BIGINT, and
+    // `InsightBuildSection.handleDropField`'s v1 drop-default heuristic (06
+    // §3) now wraps any "confidently numeric" source-column drop in `sum(...)`
+    // — the exact behavior `pill-aggregation.spec.mjs`'s first test asserts
+    // directly. `firstColumn` here has no non-numeric alternative in this
+    // fixture table, so the fix is updating the expectation to match D10's
+    // real default rather than picking around it.
+    const expectedSerialized = `?{sum(\${ref(${queryName}).${columnName}})}`;
     await waitForBackendDraft(page, id, draft =>
       (draft.insights || []).some(insight =>
         Object.values(insight.props || {}).includes(expectedSerialized)

@@ -240,14 +240,23 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     const xSlot = page.locator('[data-testid*="droppable-property-x"]').first();
     await expect(xSlot).toBeVisible({ timeout: 15000 });
 
-    // The slot starts empty — RefTextArea is the active widget. Type a ref
-    // to a name that exists in NEITHER the store collections NOR this
-    // exploration's own draft queries, then blur to commit (RefTextArea
-    // serializes on blur).
+    // The slot starts in STATIC mode (the schema's oneOf offers a plain
+    // static fallback alongside the query-string form, and nothing has been
+    // dropped/typed yet) — switch to query mode via the toggle so RefTextArea
+    // mounts. Advisory validation (checkRefTargets) is LIVE off the store
+    // value — no blur/commit step needed, and none is safe to wait on here:
+    // `${ref(does_not_exist_anywhere).amount}` is syntactically a perfectly
+    // well-formed single-ref (pillGrammar doesn't validate real EXISTENCE,
+    // only shape), so the instant the full string lands, PropertyRow
+    // recognizes it as a 'dimension' pill and swaps AWAY from RefTextArea —
+    // the advisory error is what flags that the pill points nowhere. Typing
+    // char-by-char and then trying to re-query the (by-then-unmounted)
+    // RefTextArea node would be racy.
+    await xSlot.getByRole('button', { name: 'query string' }).click();
     const editable = xSlot.locator('[data-testid="ref-textarea-editable"]');
     await editable.click();
+    await expect(editable).toBeFocused();
     await page.keyboard.type('${ref(does_not_exist_anywhere).amount}', { delay: 10 });
-    await page.getByTestId(`insight-header-${insightName}`).click({ position: { x: 5, y: 5 } });
 
     // The advisory error renders (non-blocking red text below the field) —
     // whether the slot now displays as a recognized D8 pill (this body DOES
