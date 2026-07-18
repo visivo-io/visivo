@@ -60,6 +60,10 @@ import { isMacPlatform, isEditableTarget } from '../workspace/useWorkspaceTabSho
  *   targets as an untested side effect of this retrofit.
  * @param {(path: string, dragData: object) => void} [props.onDropField] -
  *   per-field drop callback threaded straight through to `FieldGroupList`.
+ * @param {(path: string, pillState: object) => void} [props.onSaveAsMetric] -
+ *   Explore 2.0 Phase 4: per-field "Save as metric…" callback threaded
+ *   straight through to `FieldGroupList`. Undefined everywhere except the
+ *   Build rail's `InsightBuildSection`.
  * @param {Record<string,string>} [props.externalErrors] - Explore 2.0 Phase
  *   3b (02-architecture.md §2's "advisory as-you-type feedback"): an optional
  *   dot-path -> message map from a validation layer OUTSIDE this editor's own
@@ -78,6 +82,7 @@ const TracePropsEditor = ({
   onValidityChange,
   droppable = false,
   onDropField,
+  onSaveAsMetric,
   externalErrors,
 }) => {
   const type = traceProps?.type || '';
@@ -378,6 +383,7 @@ const TracePropsEditor = ({
           revealPath={revealPath}
           droppable={droppable}
           onDropField={onDropField}
+          onSaveAsMetric={onSaveAsMetric}
         />
       )}
 

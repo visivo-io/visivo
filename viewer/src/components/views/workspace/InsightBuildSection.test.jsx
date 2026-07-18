@@ -1,9 +1,10 @@
 /* eslint-disable no-template-curly-in-string -- literal Visivo `${ref(...)}` strings */
 import React from 'react';
-import { render, screen, fireEvent, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InsightBuildSection from './InsightBuildSection';
 import useStore from '../../../stores/store';
+import { saveAsMetric } from './saveAsMetricFlow';
 
 async function renderSettled(ui) {
   // eslint-disable-next-line testing-library/no-unnecessary-act
@@ -19,11 +20,19 @@ function openSelectMenu(testId) {
 let mockCaptured = {};
 
 jest.mock('../common/TracePropsEditor', () => {
-  return function MockTracePropsEditor({ props, onChange, droppable, onDropField, externalErrors }) {
+  return function MockTracePropsEditor({
+    props,
+    onChange,
+    droppable,
+    onDropField,
+    onSaveAsMetric,
+    externalErrors,
+  }) {
     mockCaptured.props = props;
     mockCaptured.onChange = onChange;
     mockCaptured.droppable = droppable;
     mockCaptured.onDropField = onDropField;
+    mockCaptured.onSaveAsMetric = onSaveAsMetric;
     mockCaptured.externalErrors = externalErrors;
     return (
       <div data-testid="trace-props-editor-mock" data-droppable={droppable ? 'true' : 'false'}>
@@ -44,6 +53,11 @@ jest.mock('../common/RefTextArea', () => {
     );
   };
 });
+
+jest.mock('./saveAsMetricFlow', () => ({
+  ...jest.requireActual('./saveAsMetricFlow'),
+  saveAsMetric: jest.fn(),
+}));
 
 jest.mock('../../../schemas/schemas', () => ({
   CHART_TYPES: [
@@ -372,6 +386,126 @@ describe('InsightBuildSection', () => {
       await screen.findByTestId('insight-interaction-0');
       fireEvent.click(screen.getByTestId('insight-remove-interaction-0'));
       expect(removeInsightInteraction).toHaveBeenCalledWith('test_insight', 0);
+    });
+  });
+
+  // Explore 2.0 Phase 4 (06 §4): "Save as metric…" orchestration. The actual
+  // flow logic (collision/aggregate-ness/saveMetric/slot-swap/dedup) is unit-
+  // tested in isolation in saveAsMetricFlow.test.js — these tests only pin
+  // that InsightBuildSection wires the prompt + `saveAsMetric` + the
+  // resulting dedup-offer banner correctly.
+  describe('Save as metric orchestration', () => {
+    beforeEach(() => {
+      saveAsMetric.mockReset();
+    });
+
+    it('onSaveAsMetric is wired to TracePropsEditor and opens the prompt, pre-filled with the suggested name', async () => {
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+      expect(mockCaptured.onSaveAsMetric).toBeInstanceOf(Function);
+
+      act(() => {
+        mockCaptured.onSaveAsMetric('y', { kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' });
+      });
+
+      expect(screen.getByTestId('save-as-metric-prompt')).toBeInTheDocument();
+      expect(screen.getByTestId('save-as-metric-name-input')).toHaveValue('orders_q_amount_sum');
+    });
+
+    it('submitting calls saveAsMetric with the pill state, insightName, path, and getState', async () => {
+      saveAsMetric.mockResolvedValue({ success: true, dedupOffer: null });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+      const pillState = { kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' };
+      act(() => {
+        mockCaptured.onSaveAsMetric('y', pillState);
+      });
+      fireEvent.click(screen.getByTestId('save-as-metric-submit'));
+
+      await screen.findByTestId('trace-props-editor-mock'); // settle
+      expect(saveAsMetric).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pillState,
+          name: 'orders_q_amount_sum',
+          insightName: 'test_insight',
+          path: 'y',
+          getState: expect.any(Function),
+        })
+      );
+    });
+
+    it('a successful submit closes the prompt (never re-shows a stale error)', async () => {
+      saveAsMetric.mockResolvedValue({ success: true, dedupOffer: null });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+      act(() => {
+        mockCaptured.onSaveAsMetric('y', { kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' });
+      });
+      fireEvent.click(screen.getByTestId('save-as-metric-submit'));
+
+      await waitFor(() =>
+        expect(screen.queryByTestId('save-as-metric-prompt')).not.toBeInTheDocument()
+      );
+    });
+
+    it('a failed submit (e.g. name collision) shows the inline error and keeps the prompt open', async () => {
+      saveAsMetric.mockResolvedValue({
+        success: false,
+        error: 'A metric named "orders_q_amount_sum" already exists — choose another name.',
+      });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+      act(() => {
+        mockCaptured.onSaveAsMetric('y', { kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' });
+      });
+      fireEvent.click(screen.getByTestId('save-as-metric-submit'));
+
+      await screen.findByTestId('save-as-metric-error');
+      expect(screen.getByTestId('save-as-metric-error')).toHaveTextContent('already exists');
+      expect(screen.getByTestId('save-as-metric-prompt')).toBeInTheDocument();
+    });
+
+    it('Cancel closes the prompt without calling saveAsMetric', async () => {
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+      act(() => {
+        mockCaptured.onSaveAsMetric('y', { kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' });
+      });
+      fireEvent.click(screen.getByTestId('save-as-metric-cancel'));
+      expect(screen.queryByTestId('save-as-metric-prompt')).not.toBeInTheDocument();
+      expect(saveAsMetric).not.toHaveBeenCalled();
+    });
+
+    it('a dedupOffer on success renders the FieldSwapOfferBanner (never a silent match-and-replace)', async () => {
+      saveAsMetric.mockResolvedValue({
+        success: true,
+        dedupOffer: {
+          promotedType: 'metric',
+          promotedName: 'orders_q_amount_sum',
+          slots: [{ insightName: 'other', location: 'prop', key: 'y', swapTo: { kind: 'metricRef', ref: 'orders_q_amount_sum' } }],
+        },
+      });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+      act(() => {
+        mockCaptured.onSaveAsMetric('y', { kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' });
+      });
+      fireEvent.click(screen.getByTestId('save-as-metric-submit'));
+
+      await screen.findByTestId('field-swap-offer-banner');
+      expect(screen.getByTestId('field-swap-offer-orders_q_amount_sum')).toBeInTheDocument();
     });
   });
 });

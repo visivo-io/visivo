@@ -14,7 +14,7 @@ import useFieldGroupCollapseStore, { collapseKey } from './fieldGroupCollapseSto
 // without exercising the whole typed-field engine.
 jest.mock('../common/SchemaEditor/PropertyRow', () => ({
   __esModule: true,
-  PropertyRow: ({ path, value, onChange, onRemove, droppable, onDropField }) => (
+  PropertyRow: ({ path, value, onChange, onRemove, droppable, onDropField, onSaveAsMetric }) => (
     <div data-testid={`prop-${path}`} data-droppable={droppable ? 'true' : 'false'}>
       <input
         data-testid={`input-${path}`}
@@ -29,6 +29,14 @@ jest.mock('../common/SchemaEditor/PropertyRow', () => ({
       {onDropField && (
         <button data-testid={`drop-${path}`} onClick={() => onDropField({ type: 'model', name: 'orders_q' })}>
           simulate drop
+        </button>
+      )}
+      {onSaveAsMetric && (
+        <button
+          data-testid={`save-as-metric-${path}`}
+          onClick={() => onSaveAsMetric({ kind: 'aggregate', agg: 'sum' })}
+        >
+          simulate save as metric
         </button>
       )}
     </div>
@@ -164,5 +172,25 @@ describe('FieldGroup', () => {
     expect(screen.getByTestId('prop-expression')).toHaveAttribute('data-droppable', 'true');
     fireEvent.click(screen.getByTestId('drop-expression'));
     expect(onDropField).toHaveBeenCalledWith('expression', { type: 'model', name: 'orders_q' });
+  });
+
+  // Explore 2.0 Phase 4 (06 §4): `onSaveAsMetric` pass-through, curried by field name.
+  test('onSaveAsMetric is undefined when omitted (no-op for pre-existing callers)', () => {
+    render(<FieldGroup group={essentialsGroup} value={{ expression: 'a' }} onChange={() => {}} />);
+    expect(screen.queryByTestId('save-as-metric-expression')).not.toBeInTheDocument();
+  });
+
+  test('curries onSaveAsMetric with the field name', () => {
+    const onSaveAsMetric = jest.fn();
+    render(
+      <FieldGroup
+        group={essentialsGroup}
+        value={{ expression: 'a' }}
+        onChange={() => {}}
+        onSaveAsMetric={onSaveAsMetric}
+      />
+    );
+    fireEvent.click(screen.getByTestId('save-as-metric-expression'));
+    expect(onSaveAsMetric).toHaveBeenCalledWith('expression', { kind: 'aggregate', agg: 'sum' });
   });
 });
