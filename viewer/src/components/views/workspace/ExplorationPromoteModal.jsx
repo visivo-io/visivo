@@ -97,12 +97,17 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     if (result.reclassificationOffers?.length > 0) {
       setReclassificationOffers(result.reclassificationOffers);
     }
-    // Stay open when there's something to show the user (a failure or an
-    // offer); otherwise close — the common all-valid, no-collision path.
-    if (failed.length === 0 && (result.reclassificationOffers || []).length === 0) {
-      onClose?.();
-    }
-  }, [selected, promoteExploration, explorationId, onClose]);
+    // Deliberately NEVER auto-close here, even on the common all-valid,
+    // no-collision path: `setPromotedThisRun` and a same-tick `onClose()`
+    // land in the SAME React commit, so the "Promoted N objects" success
+    // message (and its `exploration-promote-success` testid) would never
+    // actually paint — the modal would just vanish, giving the user no
+    // confirmation of what was promoted. Root-caused via live reproduction
+    // against the sandbox (integration-gate fix cycle). The "Close" button's
+    // own label already switches to "Close" once `promotedThisRun` is set
+    // (see the JSX below) — that affordance is how the user dismisses after
+    // reviewing the result, for both the success and failure/offer cases.
+  }, [selected, promoteExploration, explorationId]);
 
   const dismissOffer = useCallback(index => {
     setReclassificationOffers(prev => prev.filter((_, i) => i !== index));
