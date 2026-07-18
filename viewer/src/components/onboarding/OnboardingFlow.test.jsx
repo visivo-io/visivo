@@ -353,7 +353,7 @@ describe('OnboardingFlow', () => {
       expect(persisted.destination).toBe('/project');
     });
 
-    test('connected-source path hands off to /explorer', async () => {
+    test('connected-source path hands off to /workspace/exploration', async () => {
       renderFlow();
       goToDataStep();
       fireEvent.click(screen.getByTestId('onb-data-connect'));
@@ -366,7 +366,7 @@ describe('OnboardingFlow', () => {
         jest.advanceTimersByTime(1400);
       });
       await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith('/explorer', { replace: true })
+        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
       );
       expect(readOnboardingState().source_connected).toBe(true);
     });

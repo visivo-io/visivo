@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../stores/store';
 import { parseRefValue } from '../../../../utils/refString';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
@@ -145,7 +144,6 @@ const MenuItem = ({ testid, label, hint, onClick, danger }) => (
 );
 
 const CanvasContextMenu = ({ rootRef, dashboardName }) => {
-  const navigate = useNavigate();
   const dashboards = useStore(s => s.dashboards);
   const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
   // Selection routed through the unified action (VIS-994). No revealEdit:
@@ -229,26 +227,6 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
     [dashboardName, commitCanvasConfig, dashboardConfig]
   );
 
-  const openInExplorer = useCallback(
-    subject => {
-      if (!subject) return;
-      const params = new URLSearchParams();
-      // The deep-load target — Explorer reads `?insight=` / engineering routing
-      // hydrates the chart's model + insight (out of scope for J-3 framing).
-      params.set(subject.type === 'table' ? 'table' : 'insight', subject.name);
-      params.set('return_to', 'workspace');
-      if (dashboardName) params.set('dashboard', dashboardName);
-      emitWorkspaceEvent('open_in_explorer', {
-        dashboardName,
-        subjectType: subject.type,
-        subjectName: subject.name,
-      });
-      setMenu(null);
-      navigate(`/explorer?${params.toString()}`);
-    },
-    [navigate, dashboardName]
-  );
-
   // VIS-811 / O-2: open the right-clicked leaf's object as a workspace tab.
   // "Open" replaces the current context (focus moves); "Open in new tab"
   // background-opens so the dashboard tab keeps focus.
@@ -314,12 +292,6 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
             label="Open in new tab"
             hint="⌘↵"
             onClick={() => openAsTab(explorerSubject, true)}
-          />
-          <MenuItem
-            testid="canvas-ctx-open-in-explorer"
-            label="Open in Explorer"
-            hint="↗"
-            onClick={() => openInExplorer(explorerSubject)}
           />
           <div className="my-1 h-px bg-primary-50" />
         </>

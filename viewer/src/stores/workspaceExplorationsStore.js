@@ -196,10 +196,17 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      * `{type: 'source', name}` seed also pre-wires one empty model tab to
      * that source (`legacyStateForSeed`, ExplorerHomePane's "Start from a
      * source" tiles, 01-ux-spec.md §2) so the SQL editor opens ready to
-     * query it instead of blank with no source selected. */
-    createExploration: async (seed = null) => {
+     * query it instead of blank with no source selected.
+     *
+     * `returnTo` (optional, Explore 2.0 Phase 3b cutover — 02-architecture.md
+     * §5) is a one-shot placement intent `{ dashboard, slot? }`: the
+     * `/workspace/dashboard/:name/explorer` composed route mints a fresh
+     * exploration carrying it so "Place in <dashboard>" can consume it later
+     * (Phase 4/5) via the existing `consumeReturnTo` endpoint. */
+    createExploration: async (seed = null, returnTo = null) => {
       try {
         const payload = seed ? { seeded_from: seed } : {};
+        if (returnTo) payload.return_to = returnTo;
         const seedLegacyState = seed ? legacyStateForSeed(seed) : null;
         if (seedLegacyState) payload.draft = mapDraftToApi(legacyStateToDraft(seedLegacyState));
         const created = await explorationsApi.createExploration(payload);

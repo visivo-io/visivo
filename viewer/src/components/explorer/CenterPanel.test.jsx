@@ -100,13 +100,6 @@ jest.mock('./ExplorerChartPreview', () => {
   };
 });
 
-// Mock ModelTabBar
-jest.mock('./ModelTabBar', () => {
-  return function MockModelTabBar() {
-    return <div data-testid="model-tab-bar">ModelTabBar</div>;
-  };
-});
-
 // Mock VerticalDivider and Divider
 jest.mock('../common/VerticalDivider', () => {
   return function MockVerticalDivider({ handleMouseDown }) {
@@ -205,22 +198,19 @@ describe('CenterPanel', () => {
     });
   });
 
-  it('renders ModelTabBar at the top', () => {
+  // Explore 2.0 Phase 3b cutover: the standalone `/explorer` route (and its
+  // horizontal ModelTabBar) is retired — CenterPanel's only remaining
+  // consumer is the exploration surface (ExplorationWorkbench), which always
+  // passes its own query chips. `modelTabBar` defaults to null (renders
+  // nothing) rather than a hardcoded fallback component.
+  it('renders nothing where the tab bar goes when modelTabBar is omitted', () => {
     render(<CenterPanel />);
-
-    expect(screen.getByTestId('model-tab-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId('model-tab-bar')).not.toBeInTheDocument();
   });
 
-  // Explore 2.0 Phase 3a: CenterPanel is shared between the standalone
-  // `/explorer` route (ExplorerPage, no props — keeps ModelTabBar
-  // untouched) and the new exploration surface (ExplorationWorkbench, which
-  // passes its own query chips + opts into the Library SQL-editor drop
-  // target). Both branches must coexist behind these opt-in props.
-  it('renders a custom modelTabBar when provided, instead of ModelTabBar', () => {
+  it('renders the modelTabBar node when provided (ExplorationQueryChips)', () => {
     render(<CenterPanel modelTabBar={<div data-testid="custom-tab-bar">chips</div>} />);
-
     expect(screen.getByTestId('custom-tab-bar')).toBeInTheDocument();
-    expect(screen.queryByTestId('model-tab-bar')).not.toBeInTheDocument();
   });
 
   it('defaults enableLibraryDrop to false — the SQL editor is not a drop target unless opted in', () => {

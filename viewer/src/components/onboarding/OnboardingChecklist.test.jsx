@@ -57,7 +57,7 @@ describe('OnboardingChecklist', () => {
     writeOnboardingState({ completed_at: '2026-01-01' });
     renderChecklist();
     fireEvent.click(screen.getByTestId('onb-checklist-build_model'));
-    expect(mockNavigate).toHaveBeenCalledWith('/explorer');
+    expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration');
     const events = getEventBuffer().map(e => e.event);
     expect(events).toContain('onboarding_checklist_item_clicked');
   });

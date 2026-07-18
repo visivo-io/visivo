@@ -8,7 +8,6 @@ import ExplorerErrorBoundary from './ExplorerErrorBoundary';
 import ExplorerInputsToolbar from './ExplorerInputsToolbar';
 import DataSectionToolbar from './DataSectionToolbar';
 import DraggableColumnHeader from './DraggableColumnHeader';
-import ModelTabBar from './ModelTabBar';
 import VerticalDivider from '../common/VerticalDivider';
 import Divider from '../common/Divider';
 import Select from '../common/Select';
@@ -29,17 +28,15 @@ import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
 const NARROW_THRESHOLD = 600;
 
 const CenterPanel = ({
-  // Explore 2.0 Phase 3a: the exploration surface (`ExplorationWorkbench`)
-  // replaces the horizontal `ModelTabBar` with compact query chips
-  // (`ExplorationQueryChips`); the standalone `/explorer` route
-  // (`ExplorerPage`) passes nothing and keeps `ModelTabBar` exactly as it
-  // was — `CenterPanel` is shared between the two, so the swap is a prop,
-  // never a hardcoded import change.
-  modelTabBar,
+  // Explore 2.0 Phase 3a/3b: the exploration surface (`ExplorationWorkbench`)
+  // is CenterPanel's only remaining consumer post-cutover (the standalone
+  // `/explorer` route + its horizontal `ModelTabBar` are retired) — it always
+  // passes `<ExplorationQueryChips/>` here. The prop stays optional (rather
+  // than hardcoding the import) so CenterPanel doesn't hardcode a dependency
+  // on the exploration surface's own chip component.
+  modelTabBar = null,
   // Explore 2.0 Phase 3a (D9): opts the SQL editor into being a Library
-  // column/table drop target. Default false — only the exploration surface
-  // passes true; the standalone route's editor (and any other CenterPanel
-  // consumer) stays exactly as it was.
+  // column/table drop target. Default false.
   enableLibraryDrop = false,
 }) => {
   const activeModelName = useStore((s) => s.explorerActiveModelName);
@@ -262,7 +259,7 @@ const CenterPanel = ({
       ref={containerRef}
     >
       {/* Model Tab Bar (standalone /explorer) or query chips (exploration surface) */}
-      {modelTabBar !== undefined ? modelTabBar : <ModelTabBar />}
+      {modelTabBar}
 
       {/* Top row: Editor + Chart */}
       <div style={{ flex: topFlex }} className="overflow-hidden min-h-0" ref={topRowRef}>

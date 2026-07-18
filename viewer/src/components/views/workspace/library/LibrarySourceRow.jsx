@@ -33,11 +33,9 @@ import { isNumericColumnType } from '../../../../utils/columnType';
  * `useSourceOutline` hook the right-rail source Data tab
  * (`SourceOutlineTreePanel.jsx`) already uses — the one cached
  * `/api/source-schema-jobs/*` feed, not a second re-implementation. The
- * standalone `/explorer` route's `SourceBrowser.jsx` keeps its own
- * independent fetch for now (kept alive deliberately — see
- * `ExplorationWorkbench.jsx`'s docstring — because the standalone route must
- * keep passing its existing e2e stories untouched until the Phase 3b
- * cutover deletes that route entirely); no NEW code depends on it.
+ * standalone `/explorer` route's `SourceBrowser.jsx` (its own independent
+ * fetch) is deleted at the Phase 3b cutover — this row is now the only
+ * source-schema drill-down in the tree.
  *
  * LAZY by construction: `useSourceOutline(sourceName)` only mounts (and
  * therefore only fetches) once this row's `expanded` flag

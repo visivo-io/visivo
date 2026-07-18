@@ -10,11 +10,11 @@ import { countReferencingInsights } from '../../../utils/refWalk';
 /**
  * ExplorationQueryChips — Explore 2.0 Phase 3a (01-ux-spec.md §3).
  *
- * Replaces the legacy `ModelTabBar` (horizontal bordered tabs) on the
- * EXPLORATION surface only — the standalone `/explorer` route keeps
- * `ModelTabBar` exactly as it was (`CenterPanel`'s `modelTabBar` prop is how
- * the two surfaces diverge; see that component's docstring). Same
- * underlying store — `explorerModelTabs`/`explorerActiveModelName`/
+ * Replaces the retired `ModelTabBar` (horizontal bordered tabs) — the
+ * standalone `/explorer` route that used to keep `ModelTabBar` alive is
+ * deleted at the Phase 3b cutover, so this is now `CenterPanel`'s only
+ * `modelTabBar` (see that component's docstring). Same underlying store —
+ * `explorerModelTabs`/`explorerActiveModelName`/
  * `switchModelTab`/`createModelTab`/`closeModelTab`/`renameModelTab` (a
  * "model tab" IS a scratch query) — just a compact chip anatomy instead of
  * bordered tabs:
@@ -249,6 +249,11 @@ const ExplorationQueryChips = () => {
         title="New query"
         aria-label="New query"
         data-testid="query-chip-add"
+        // B14 part 2 (Explore 2.0 Phase 3b cutover): retargets the
+        // onboarding manifest's `build_model` item, whose old anchor
+        // (`model-tab-bar`, the retired horizontal ModelTabBar's "+") has
+        // zero remaining producers now that this chip row replaces it.
+        data-onb-target="query-chip-add"
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-300 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-500"
       >
         <PiPlus className="h-3 w-3" />

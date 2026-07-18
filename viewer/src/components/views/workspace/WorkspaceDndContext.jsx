@@ -504,16 +504,20 @@ export const routeWorkspaceDragEnd = (
 
   // ── Branch 4: Exploration surface drop zones (Explore 2.0 Phase 3a's DnD
   // unification, 02-architecture.md §4) ────────────────────────────────────
-  // `ExplorerDndContext` is deleted from the ExplorationWorkbench nesting
-  // (it stays alive as a component + its own DndContext for the standalone
-  // `/explorer` route, which keeps running its own nested context — see
-  // `ExplorationWorkbench.jsx`'s docstring for why). These zone kinds
-  // (`axis-zone`/`property-zone`/`interaction-zone`/`source-zone`/
-  // `insight-zone`/`data-table-drop`) are the legacy right panel's EXISTING
-  // droppables, ported here verbatim (same resolution logic, same `type` key
-  // — renaming that to `kind` is S5/Phase 3b's job for the not-yet-built
-  // Build rail). `sql-editor-drop` is new (D9): Library table → seeds a new
-  // scratch query; Library column → inserts at the SQL editor's cursor.
+  // `ExplorerDndContext` (+ the standalone `/explorer` route it served) is
+  // fully deleted at the Phase 3b cutover. Of the legacy right panel's
+  // `type`-keyed zone kinds ported here verbatim in Phase 3a, only
+  // `interaction-zone` (InsightBuildSection's InteractionRow) and
+  // `insight-zone` (ChartBuildSection's insight drop zone) still have live
+  // producers post-cutover — both components were carried into the rebuilt
+  // Build rail unchanged. `axis-zone`, the OLD `type`-keyed `property-zone`
+  // (superseded by S5/Phase 3b's `kind`-keyed branch above, Branch 2c),
+  // `source-zone`, and `data-table-drop` have ZERO remaining producers
+  // (verified) — inert, not broken; left in place (with their unit tests)
+  // as a scoped-out cleanup rather than folded into this already-large
+  // cutover. `sql-editor-drop` is D9 (still alive, `SQLEditor.jsx`): Library
+  // table → seeds a new scratch query; Library column → inserts at the SQL
+  // editor's cursor.
   if (
     dropData.type === 'axis-zone' ||
     dropData.type === 'property-zone' ||
@@ -531,20 +535,20 @@ export const routeWorkspaceDragEnd = (
 
 /**
  * Pure router for the exploration surface's drop zones (Explore 2.0 Phase 3a
- * DnD unification, D9 / 02-architecture.md §4). Ported verbatim from
- * `components/explorer/ExplorerDndContext.jsx`'s `handleDragEnd` — same
- * resolution logic, same zone `type` values — just re-homed onto this shared
- * router so a Library drag started outside the exploration pane (the Library
- * now lives in the outer Workspace rail, not nested inside the exploration
- * like the old `ExplorerLeftPanel`) can reach these targets at all (dnd-kit
- * contexts don't compose). Exported + pure so it's unit-testable without a
- * real dnd-kit pointer drag, mirroring `routeWorkspaceDragEnd`'s own pattern.
+ * DnD unification, D9 / 02-architecture.md §4). Originally ported verbatim
+ * from the now-deleted `components/explorer/ExplorerDndContext.jsx`'s
+ * `handleDragEnd` — same resolution logic, same zone `type` values — so a
+ * Library drag started outside the exploration pane (the Library lives in
+ * the outer Workspace rail, not nested inside the exploration like the old
+ * `ExplorerLeftPanel`) can reach these targets at all (dnd-kit contexts
+ * don't compose). Exported + pure so it's unit-testable without a real
+ * dnd-kit pointer drag, mirroring `routeWorkspaceDragEnd`'s own pattern.
  *
  * @param {object} event dnd-kit drag-end event `{ active, over }`.
  * @param {object} deps
  * @param {string} deps.activeModelName - the exploration's active query/model
  *   name (already resolved with its `'preview_model'` fallback by the
- *   caller — mirrors `ExplorerDndContext`'s own `useStore` selector).
+ *   caller).
  * @param {string|null} deps.activeInsightName
  * @param {Function} deps.setInsightProp
  * @param {Function} deps.addComputedColumn
@@ -827,8 +831,8 @@ const WorkspaceDndContext = ({ children }) => {
   // rather than in the exploration pane itself, since that's what "DnD
   // unification" means: one DndContext, one place that knows how to reach
   // every drop target's store actions. `explorerActiveModelName` falls back
-  // to `'preview_model'` exactly like the (still-alive, standalone-only)
-  // `ExplorerDndContext.jsx` does.
+  // to `'preview_model'` (matching the resolution the now-deleted
+  // `ExplorerDndContext.jsx` used to do for the standalone route).
   const explorerActiveModelName = useStore(s => s.explorerActiveModelName) || 'preview_model';
   const explorerActiveInsightName = useStore(s => s.explorerActiveInsightName);
   const setInsightProp = useStore(s => s.setInsightProp);
