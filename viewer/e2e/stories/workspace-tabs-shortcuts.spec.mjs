@@ -198,6 +198,12 @@ test.describe('Tab shortcuts + reorder + overflow + dirty-close (VIS-812)', () =
     await gotoWorkspace(page);
     await openLibraryObject(page, 'chart', 'simple-scatter-chart');
     const tabId = 'chart:simple-scatter-chart';
+    // Wait for the tab to actually land in the store before flipping its dirty
+    // flag — `openLibraryObject`'s click routes through the URL round-trip
+    // (`openWorkspaceTab` -> navigate -> `Workspace`'s URL-sync effect ->
+    // `activateWorkspaceTab`), so evaluating immediately after the click can
+    // race the store write and silently no-op (VIS-812 flake).
+    await expect(page.getByTestId(`workspace-tab-${tabId}`)).toBeVisible();
     // Dirty wiring belongs to Track H (auto-save) — flip the flag as setup.
     await page.evaluate(id => {
       window.useStore.getState().setWorkspaceTabDirty(id, true);
