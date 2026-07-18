@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../stores/store';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
@@ -27,8 +26,11 @@ import RowTemplateMenu from './RowTemplateMenu';
  * target index (insertRowAtIndex), committing through the shell's shared
  * `commitCanvasConfig` (optimistic → validate → save) — the SAME path the DnD
  * router uses. It also exposes the inline-create entry points (+ New Chart /
- * Table / Markdown) that route to the Explorer (the full round-trip is VIS-J2;
- * here we fire `inline_create_used` + navigate).
+ * Table / Markdown): Explore 2.0 Phase 3b cutover (B5) replaced the old dead
+ * `/explorer?create=<type>` navigation with the return_to placement-intent
+ * mechanism — a fresh exploration is minted carrying `{dashboard}` and its
+ * tab opens. Consuming the intent to place a promoted chart back into this
+ * dashboard is Phase 4/5 (02-architecture.md §5); this only persists it.
  *
  * Mulberry (`primary`) is the active/CTA colour (NOT a type colour).
  */
@@ -64,7 +66,8 @@ const INLINE_CREATE_TYPES = [
 const CanvasAddRow = ({ rootRef, dashboardName }) => {
   const dashboards = useStore(s => s.dashboards);
   const commitCanvasConfig = useWorkspaceCommit();
-  const navigate = useNavigate();
+  const createExploration = useStore(s => s.createExploration);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
 
   // openMenu: which trigger's menu is open. null | { kind: 'end' } |
   // { kind: 'between', index } | { kind: 'empty' }.
@@ -185,17 +188,30 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
   );
 
   const handleInlineCreate = useCallback(
-    type => {
+    async type => {
       // §3.4 payload convention: `source` (where the create was initiated) +
       // `kind` (the object type), matching the Library / broken-ref /
       // project-editor inline-create sites.
       emitWorkspaceEvent('inline_create_used', { source: 'canvas', kind: type, dashboardName });
       setOpenMenu(null);
-      // The full Explorer round-trip (author → return to canvas slot) is VIS-J2;
-      // for now route to the Explorer so the create flow is reachable.
-      if (navigate) navigate(`/explorer?create=${type}`);
+      // Explore 2.0 Phase 3b cutover (B5): the old `/explorer?create=<type>`
+      // dead param (Explorer never read it) is replaced by the SAME
+      // return_to placement-intent mechanism the dashboard-scoped
+      // `/workspace/dashboard/:name/explorer` route uses — mint a fresh
+      // exploration carrying `{ dashboard: dashboardName }` and open its
+      // tab. Consuming the intent ("Place in <dashboard>") is Phase 4/5;
+      // this only persists it via the existing field.
+      if (!createExploration || !openWorkspaceTab) return;
+      const result = await createExploration(null, { dashboard: dashboardName });
+      if (result?.success) {
+        openWorkspaceTab({
+          id: `exploration:${result.id}`,
+          type: 'exploration',
+          name: result.id,
+        });
+      }
     },
-    [navigate, dashboardName]
+    [createExploration, openWorkspaceTab, dashboardName]
   );
 
   if (!dashboardConfig) return null;

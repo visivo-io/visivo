@@ -38,8 +38,12 @@ const LOCAL_STAGE = {
 // for a tool's nav Link (see `ToolSwitch` below) — B14 part 1, Explore 2.0
 // Phase 2. Only `project` carries one today (`onboardingManifest.js`'s
 // `view_project` item); the others have their own anchors elsewhere.
+// Explore 2.0 Phase 3b cutover: the `explorer` pill repoints into the
+// Workspace shell's own Explorer destination — `/explorer` still exists as a
+// permanent redirect (old links, onboarding), but the live pill goes
+// straight to the real route.
 const DEFAULT_TOOLS = [
-  { id: 'explorer', label: 'Explorer', to: '/explorer', icon: PiMagnifyingGlass },
+  { id: 'explorer', label: 'Explorer', to: '/workspace/exploration', icon: PiMagnifyingGlass },
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
   { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate, onbTarget: 'top-nav-project' },

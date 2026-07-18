@@ -8,15 +8,10 @@
  * inline-create telemetry.
  */
 import React, { useRef } from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import CanvasAddRow from './CanvasAddRow';
 import useStore from '../../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../../workspace/telemetry';
-
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate,
-}));
 
 const mockCommit = jest.fn();
 // Controllable context value so tests can also exercise the "no commit
@@ -61,10 +56,21 @@ const setDashboards = dashboards => {
   });
 };
 
+const mockCreateExploration = jest.fn();
+const mockOpenWorkspaceTab = jest.fn();
+
 beforeEach(() => {
-  mockNavigate.mockClear();
   mockCommit.mockClear();
   mockCommitValue = mockCommit;
+  mockCreateExploration.mockClear();
+  mockOpenWorkspaceTab.mockClear();
+  mockCreateExploration.mockResolvedValue({ success: true, id: 'exp_new1' });
+  act(() => {
+    useStore.setState({
+      createExploration: mockCreateExploration,
+      openWorkspaceTab: mockOpenWorkspaceTab,
+    });
+  });
 });
 
 describe('CanvasAddRow — empty canvas (D-8)', () => {
@@ -103,11 +109,15 @@ describe('CanvasAddRow — empty canvas (D-8)', () => {
     expect(addRow.payload).toMatchObject({ kind: 'add_row', template: 'blank' });
   });
 
-  test('inline-create fires inline_create_used and routes to the Explorer', () => {
+  // Explore 2.0 Phase 3b cutover (B5): the old dead `/explorer?create=<type>`
+  // navigation is replaced by the return_to placement-intent mechanism —
+  // mint a fresh exploration carrying `{dashboard}` and open its tab.
+  test('inline-create fires inline_create_used and mints a return_to-carrying exploration tab', async () => {
     const events = [];
     const unsub = setWorkspaceTelemetryListener(e => events.push(e));
     render(<Harness dashboardName="empty-dash" />);
     fireEvent.click(screen.getByTestId('canvas-inline-create-chart'));
+    await waitFor(() => expect(mockOpenWorkspaceTab).toHaveBeenCalled());
     unsub();
     // §3.4 payload convention: source (initiating surface) + kind (object type).
     expect(events.find(e => e.eventName === 'inline_create_used')?.payload).toEqual({
@@ -115,7 +125,20 @@ describe('CanvasAddRow — empty canvas (D-8)', () => {
       kind: 'chart',
       dashboardName: 'empty-dash',
     });
-    expect(mockNavigate).toHaveBeenCalledWith('/explorer?create=chart');
+    expect(mockCreateExploration).toHaveBeenCalledWith(null, { dashboard: 'empty-dash' });
+    expect(mockOpenWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_new1',
+      type: 'exploration',
+      name: 'exp_new1',
+    });
+  });
+
+  test('inline-create does not open a tab when minting the exploration fails', async () => {
+    mockCreateExploration.mockResolvedValueOnce({ success: false });
+    render(<Harness dashboardName="empty-dash" />);
+    fireEvent.click(screen.getByTestId('canvas-inline-create-chart'));
+    await waitFor(() => expect(mockCreateExploration).toHaveBeenCalled());
+    expect(mockOpenWorkspaceTab).not.toHaveBeenCalled();
   });
 });
 

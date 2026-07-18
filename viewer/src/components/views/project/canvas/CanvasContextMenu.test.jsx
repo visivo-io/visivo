@@ -23,13 +23,6 @@ jest.mock('../../workspace/telemetry', () => ({
   emitWorkspaceEvent: jest.fn(),
 }));
 
-// Capture navigation (J-3 "Open in Explorer").
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
-
 const LEAF_DASH = {
   name: 'dash',
   config: {
@@ -92,7 +85,6 @@ const rightClick = testid =>
 describe('CanvasContextMenu (VIS-781)', () => {
   beforeEach(() => {
     emitWorkspaceEvent.mockClear();
-    mockNavigate.mockClear();
     useStore.setState({ dashboards: [LEAF_DASH], workspaceOutlineSelectedKey: 'dashboard' });
     // jsdom getBoundingClientRect is zeroed; the menu only needs a root rect.
   });
@@ -196,48 +188,6 @@ describe('CanvasContextMenu (VIS-781)', () => {
       addSpy.mockRestore();
       removeSpy.mockRestore();
     }
-  });
-
-  // ------------------------------------------------------------------
-  // J-3 / VIS-782 — "Open in Explorer"
-  // ------------------------------------------------------------------
-  describe('Open in Explorer (J-3)', () => {
-    test('chart leaf shows Open in Explorer and navigates with return_to + dashboard', () => {
-      renderHost({ commit: jest.fn() });
-      rightClick('r0i0');
-      const item = screen.getByTestId('canvas-ctx-open-in-explorer');
-      expect(item).toBeInTheDocument();
-      fireEvent.click(item);
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/explorer?insight=a&return_to=workspace&dashboard=dash'
-      );
-      expect(emitWorkspaceEvent).toHaveBeenCalledWith(
-        'open_in_explorer',
-        expect.objectContaining({ dashboardName: 'dash', subjectType: 'chart', subjectName: 'a' })
-      );
-    });
-
-    test('table leaf navigates with a table param', () => {
-      renderHost({ commit: jest.fn() });
-      rightClick('r0i1');
-      fireEvent.click(screen.getByTestId('canvas-ctx-open-in-explorer'));
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/explorer?table=b&return_to=workspace&dashboard=dash'
-      );
-    });
-
-    test('a container item does not offer Open in Explorer', () => {
-      useStore.setState({ dashboards: [CONTAINER_DASH] });
-      renderHost({ commit: jest.fn(), structure: 'container' });
-      rightClick('r0i0');
-      expect(screen.queryByTestId('canvas-ctx-open-in-explorer')).not.toBeInTheDocument();
-    });
-
-    test('a row right-click does not offer Open in Explorer', () => {
-      renderHost({ commit: jest.fn() });
-      rightClick('r0');
-      expect(screen.queryByTestId('canvas-ctx-open-in-explorer')).not.toBeInTheDocument();
-    });
   });
 
   // ------------------------------------------------------------------

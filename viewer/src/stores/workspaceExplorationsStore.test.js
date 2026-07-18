@@ -167,6 +167,34 @@ describe('createExploration', () => {
     });
   });
 
+  // Explore 2.0 Phase 3b cutover (02-architecture.md §5): the dashboard-scoped
+  // `/workspace/dashboard/:name/explorer` route mints a fresh exploration
+  // carrying a return_to placement intent.
+  test('passes a returnTo placement intent through as return_to', async () => {
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({ return_to: { dashboard: 'sales' } })
+    );
+
+    await act(async () => {
+      await useStore.getState().createExploration(null, { dashboard: 'sales' });
+    });
+
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith({
+      return_to: { dashboard: 'sales' },
+    });
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.returnTo).toEqual({
+      dashboard: 'sales',
+    });
+  });
+
+  test('omits return_to entirely when neither seed nor returnTo is given', async () => {
+    explorationsApi.createExploration.mockResolvedValueOnce(wireExploration());
+    await act(async () => {
+      await useStore.getState().createExploration();
+    });
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith({});
+  });
+
   test('newer creations land ahead of older ones in order', async () => {
     explorationsApi.createExploration.mockResolvedValueOnce(wireExploration({ id: 'exp_a' }));
     await act(async () => {

@@ -4,15 +4,14 @@ import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
 
 /**
  * useExplorerWorkbenchInit — the mount-time + reactive init/lifecycle effects
- * shared by every host of the legacy Explorer bundle: the standalone
- * `/explorer` route (`ExplorerPage`) AND the Explore 2.0 in-shell exploration
- * pane (`ExplorationWorkbench`, `/workspace/exploration/:id`).
+ * for the Explore 2.0 in-shell exploration pane (`ExplorationWorkbench`,
+ * `/workspace/exploration/:id`).
  *
- * Extracted verbatim from `ExplorerPage.jsx` so both hosts run IDENTICAL init
- * logic — a second, independently-evolving copy is exactly the "fork" the
- * delivery plan's Phase 2 scoping note forbids ("study how ExplorerPage
- * composes them and what init/lifecycle it runs; reuse via a wrapper, do not
- * fork logic").
+ * Originally extracted verbatim from the standalone `/explorer` route's
+ * `ExplorerPage.jsx` (retired at the Phase 3b cutover — `/explorer` is now a
+ * permanent redirect into the Workspace shell) so both hosts ran IDENTICAL
+ * init logic during the phases both surfaces coexisted. `ExplorationWorkbench`
+ * is this hook's only consumer now.
  *
  * Runs:
  *   - fetch `explorerSources` on mount if empty (see the dedicated note

@@ -56,8 +56,13 @@ export const CHECKLIST_ITEMS = [
     id: 'build_model',
     label: 'Create and run a model',
     why: "A Model is a re-usable SQL definition you'll chart from.",
-    route: '/explorer',
-    target: 'model-tab-bar',
+    // Explore 2.0 Phase 3b cutover (B14 part 2): `/explorer` still exists as
+    // a permanent redirect, but the manifest points at the live route
+    // directly. The old anchor (`model-tab-bar`, the retired horizontal
+    // ModelTabBar's "+") has zero remaining producers — retargeted to the
+    // exploration surface's query-chip "+" (`ExplorationQueryChips.jsx`).
+    route: '/workspace/exploration',
+    target: 'query-chip-add',
     weight: 20,
     // Multi-step flow: the Coach walks the user through creating a tab,
     // typing SQL, and running the query before the row checks off.
@@ -67,9 +72,9 @@ export const CHECKLIST_ITEMS = [
     steps: [
       {
         id: 'create_tab',
-        target: 'model-tab-bar',
-        label: 'Open a new model tab',
-        tip: 'Click + on the tab bar to start a Model. Rename it so your team knows what it does.',
+        target: 'query-chip-add',
+        label: 'Open a new query',
+        tip: 'Click + on the query chips to start a scratch query. Rename it so your team knows what it does.',
         done: ({ persisted }) => !!persisted?.actions?.model_tab_created,
       },
       {
@@ -92,7 +97,7 @@ export const CHECKLIST_ITEMS = [
     id: 'create_insight',
     label: 'Create an Insight in Explorer',
     why: 'An Insight is a chart on top of a Model.',
-    route: '/explorer',
+    route: '/workspace/exploration',
     target: 'right-panel-add-insight',
     weight: 30,
     // Multi-step flow: the Coach walks the user from "create the insight"
@@ -221,7 +226,7 @@ export const ROLE_OVERRIDES = {
         id: 'define_metric',
         label: 'Define a Metric on a Model',
         why: 'A re-usable measure every Insight + chart agrees on.',
-        route: '/explorer',
+        route: '/workspace/exploration',
         target: 'metric-add-button',
         weight: 25,
         // Action-based: AddComputedColumnPopover taps
