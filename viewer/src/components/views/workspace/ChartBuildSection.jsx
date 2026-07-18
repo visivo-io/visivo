@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
-import EmbeddedPill from '../views/lineage/EmbeddedPill';
-import useStore from '../../stores/store';
-import { selectInsightStatus } from '../../stores/explorerStore';
-import { getSchema } from '../../schemas/schemas';
-import { SchemaEditor } from '../views/common/SchemaEditor/SchemaEditor';
-import { recordOnboardingAction } from '../onboarding/onboardingState';
+import EmbeddedPill from '../lineage/EmbeddedPill';
+import useStore from '../../../stores/store';
+import { selectInsightStatus } from '../../../stores/explorerStore';
+import { getSchema } from '../../../schemas/schemas';
+import { SchemaEditor } from '../common/SchemaEditor/SchemaEditor';
+import { recordOnboardingAction } from '../../onboarding/onboardingState';
 
 const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
   const status = useStore(selectInsightStatus(name));
@@ -24,18 +24,28 @@ const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
   );
 };
 
-const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
-  const isLoadedChart = useStore((s) => (s.charts || []).some((c) => c.name === s.explorerChartName));
-  const chartName = useStore((s) => s.explorerChartName);
-  const chartLayout = useStore((s) => s.explorerChartLayout);
-  const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
-  const activeInsightName = useStore((s) => s.explorerActiveInsightName);
-  const setChartName = useStore((s) => s.setChartName);
-  const replaceChartLayout = useStore((s) => s.replaceChartLayout);
-  const createInsight = useStore((s) => s.createInsight);
-  const removeInsightFromChart = useStore((s) => s.removeInsightFromChart);
-  const setActiveInsight = useStore((s) => s.setActiveInsight);
-  const closeChart = useStore((s) => s.closeChart);
+/**
+ * ChartBuildSection — Explore 2.0 Phase 3b (VIS-1059). Replaces
+ * `ChartCRUDSection` on the exploration Build rail. Behaviorally identical
+ * to the retired component (chart name/rename, insight list + drop zone,
+ * Layout Properties) — this section's own body has no ref-valued/pillable
+ * slots (chart Layout properties are static Plotly layout knobs, not query
+ * expressions), so it stays on `SchemaEditor` with `droppable={false}`
+ * exactly as before; the D8/D10 pill + `property-zone` DnD rebuild's target
+ * is `InsightBuildSection`'s per-insight props, not this section.
+ */
+const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
+  const isLoadedChart = useStore(s => (s.charts || []).some(c => c.name === s.explorerChartName));
+  const chartName = useStore(s => s.explorerChartName);
+  const chartLayout = useStore(s => s.explorerChartLayout);
+  const chartInsightNames = useStore(s => s.explorerChartInsightNames);
+  const activeInsightName = useStore(s => s.explorerActiveInsightName);
+  const setChartName = useStore(s => s.setChartName);
+  const replaceChartLayout = useStore(s => s.replaceChartLayout);
+  const createInsight = useStore(s => s.createInsight);
+  const removeInsightFromChart = useStore(s => s.removeInsightFromChart);
+  const setActiveInsight = useStore(s => s.setActiveInsight);
+  const closeChart = useStore(s => s.closeChart);
 
   const [layoutSchema, setLayoutSchema] = useState(null);
   const [renameValue, setRenameValue] = useState('');
@@ -43,8 +53,6 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   const [isEditing, setIsEditing] = useState(false);
   const skipNextCommitRef = useRef(false);
 
-  // Keep the local editing value in sync with the chart name when we're not
-  // actively typing, so switching charts updates the displayed text.
   useEffect(() => {
     if (!isEditing) {
       setRenameValue(chartName || 'Untitled');
@@ -59,7 +67,7 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
 
   useEffect(() => {
     let cancelled = false;
-    getSchema('layout').then((s) => {
+    getSchema('layout').then(s => {
       if (!cancelled) setLayoutSchema(s);
     });
     return () => {
@@ -68,7 +76,7 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   }, []);
 
   const handleLayoutChange = useCallback(
-    (newValue) => {
+    newValue => {
       if (!newValue || typeof newValue !== 'object') return;
       replaceChartLayout(newValue);
     },
@@ -89,14 +97,14 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   );
 
   const handleInsightClick = useCallback(
-    (name) => {
+    name => {
       setActiveInsight(name);
     },
     [setActiveInsight]
   );
 
   const handleToggle = useCallback(
-    (e) => {
+    e => {
       e.stopPropagation();
       onToggleExpand();
     },
@@ -104,7 +112,7 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   );
 
   const handleClose = useCallback(
-    (e) => {
+    e => {
       e.stopPropagation();
       closeChart?.();
     },
@@ -112,9 +120,6 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   );
 
   const commitRename = useCallback(() => {
-    // Escape handler sets this to cancel the onBlur commit that immediately
-    // follows .blur(). Without this, commitRename reads stale renameValue
-    // before React flushes Escape's state resets.
     if (skipNextCommitRef.current) {
       skipNextCommitRef.current = false;
       return;
@@ -132,7 +137,6 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
     } catch (err) {
       if (err?.code === 'NAME_COLLISION') {
         setRenameError(err.message);
-        // Stay in editing mode so the user can correct
         setIsEditing(true);
         return;
       }
@@ -142,11 +146,10 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
 
   return (
     <div
-      data-testid="chart-crud-section"
+      data-testid="chart-build-section"
       data-onb-target="chart-crud-section"
       className="border border-gray-200 rounded-lg overflow-hidden"
     >
-      {/* Header — name integrated, matching insight pattern */}
       <div
         data-testid="chart-header"
         onClick={onToggleExpand}
@@ -168,12 +171,12 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
             value={renameValue}
             disabled={isLoadedChart}
             onFocus={() => setIsEditing(true)}
-            onChange={(e) => {
+            onChange={e => {
               setRenameValue(e.target.value);
               if (renameError) setRenameError(null);
             }}
             onBlur={() => commitRename()}
-            onKeyDown={(e) => {
+            onKeyDown={e => {
               if (e.key === 'Enter') e.target.blur();
               if (e.key === 'Escape') {
                 skipNextCommitRef.current = true;
@@ -183,16 +186,13 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
                 e.target.blur();
               }
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
             className={`text-sm font-medium text-pink-800 bg-transparent border-0 border-b border-transparent px-0 py-0 outline-none focus:border-pink-400 disabled:cursor-default ${
-              renameError ? 'border-red-400 focus:border-red-400' : ''
+              renameError ? 'border-highlight-400 focus:border-highlight-400' : ''
             }`}
           />
           {renameError && (
-            <span
-              data-testid="chart-rename-error"
-              className="text-xs text-red-600 mt-0.5"
-            >
+            <span data-testid="chart-rename-error" className="text-xs text-highlight-600 mt-0.5">
               {renameError}
             </span>
           )}
@@ -201,17 +201,15 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
         <button
           data-testid="chart-close"
           onClick={handleClose}
-          className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+          className="flex-shrink-0 text-gray-400 hover:text-highlight-500 transition-colors"
           title="Close chart"
         >
           <PiX size={14} />
         </button>
       </div>
 
-      {/* Expanded Content */}
       {isExpanded && (
         <div className="px-3 py-3 space-y-4 border-l-4 border-pink-400">
-          {/* Insight List (drop zone for existing insights from left nav) */}
           <div
             ref={setInsightDropRef}
             data-testid="chart-insight-drop-zone"
@@ -222,17 +220,17 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
             <label className="block text-xs font-medium text-gray-600 mb-1">Insights</label>
             {chartInsightNames.length === 0 ? (
               <p className="text-xs text-gray-400 py-2">
-                No insights added yet. Drag from left nav or click below.
+                No insights added yet. Drag from the Library or click below.
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {chartInsightNames.map((name) => (
+                {chartInsightNames.map(name => (
                   <InsightPillItem
                     key={name}
                     name={name}
                     isActive={name === activeInsightName}
                     onClick={() => handleInsightClick(name)}
-                    onRemove={(e) => handleRemoveInsight(e, name)}
+                    onRemove={e => handleRemoveInsight(e, name)}
                   />
                 ))}
               </div>
@@ -247,11 +245,8 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
             </button>
           </div>
 
-          {/* Layout Properties */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Layout Properties
-            </label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Layout Properties</label>
             <SchemaEditor
               schema={layoutSchema}
               value={chartLayout}
@@ -267,4 +262,4 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   );
 };
 
-export default ChartCRUDSection;
+export default ChartBuildSection;

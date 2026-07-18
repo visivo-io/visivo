@@ -59,6 +59,14 @@ import { isMacPlatform, isEditableTarget } from '../workspace/useWorkspaceTabSho
  *   targets as an untested side effect of this retrofit.
  * @param {(path: string, dragData: object) => void} [props.onDropField] -
  *   per-field drop callback threaded straight through to `FieldGroupList`.
+ * @param {Record<string,string>} [props.externalErrors] - Explore 2.0 Phase
+ *   3b (02-architecture.md §2's "advisory as-you-type feedback"): an optional
+ *   dot-path -> message map from a validation layer OUTSIDE this editor's own
+ *   AJV schema check (the Build rail's `checkRefTargets` dangling-ref advisory,
+ *   resolved against real store collections UNION the exploration's own
+ *   draft.queries). Merged into the same `errors` map FieldGroupList/
+ *   PropertyRow already render (red text, never blocking) — a real AJV
+ *   invalidity on a path wins over an advisory one if both fire.
  */
 const TracePropsEditor = ({
   ownerName,
@@ -69,6 +77,7 @@ const TracePropsEditor = ({
   onValidityChange,
   droppable = false,
   onDropField,
+  externalErrors,
 }) => {
   const type = traceProps?.type || '';
 
@@ -342,7 +351,7 @@ const TracePropsEditor = ({
           onChange={handleFieldsChange}
           defs={schema?.$defs || {}}
           disabled={disabled}
-          errors={errorMap}
+          errors={externalErrors ? { ...externalErrors, ...errorMap } : errorMap}
           revealPath={revealPath}
           droppable={droppable}
           onDropField={onDropField}

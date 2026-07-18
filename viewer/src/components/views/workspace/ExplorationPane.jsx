@@ -275,7 +275,7 @@ const ExplorationPane = ({ id }) => {
           </button>
         }
       />
-      <ExplorationWorkbench />
+      <ExplorationWorkbench id={id} />
     </section>
   );
 };
