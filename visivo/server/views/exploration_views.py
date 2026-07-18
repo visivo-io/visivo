@@ -108,3 +108,30 @@ def register_exploration_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error consuming return_to: {str(e)}")
             return jsonify({"error": str(e)}), 500
+
+    # Explore 2.0 Phase 4 (07-exploration-api-contract.md): append-only
+    # promotion trail. Promotion itself is NOT an exploration endpoint — the
+    # client promotes through the real per-type object-save endpoints
+    # (models/metrics/dimensions/insights/charts), then records each success
+    # here. `promoted[]` stays immutable via the generic update route.
+    @app.route("/api/explorations/<exploration_id>/record-promotion/", methods=["POST"])
+    def record_promotion(exploration_id):
+        body = _as_body_dict(request.get_json(silent=True))
+        if body is None:
+            return jsonify({"error": "Request body must be a JSON object"}), 400
+        promotion_type = body.get("type")
+        name = body.get("name")
+        if not promotion_type or not name:
+            return jsonify({"error": "'type' and 'name' are required"}), 400
+        try:
+            exploration = flask_app.exploration_repo.record_promotion(
+                exploration_id, promotion_type, name
+            )
+            if exploration is None:
+                return jsonify({"error": "Exploration not found"}), 404
+            return jsonify(exploration.model_dump(mode="json"))
+        except ValidationError as e:
+            return jsonify({"error": f"Invalid promotion payload: {e}"}), 400
+        except Exception as e:
+            Logger.instance().error(f"Error recording promotion: {str(e)}")
+            return jsonify({"error": str(e)}), 500

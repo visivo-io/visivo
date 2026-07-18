@@ -23,7 +23,7 @@ import tempfile
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from visivo.models.exploration import Exploration
+from visivo.models.exploration import Exploration, PromotionRecord
 
 
 class ExplorationRepository:
@@ -152,6 +152,27 @@ class ExplorationRepository:
         if existing.return_to is None:
             return existing
         existing.return_to = None
+        existing.updated_at = datetime.now(timezone.utc)
+        self._write(existing)
+        return existing
+
+    def record_promotion(
+        self, exploration_id: str, promotion_type: str, name: str
+    ) -> Optional[Exploration]:
+        """Append-only promotion record (07-exploration-api-contract.md's
+        ``record-promotion`` sub-action). ``promoted[]`` is otherwise
+        immutable via the generic ``update`` route — a promotion trail is a
+        fact log, never client-rewritable wholesale. Server stamps
+        ``promoted_at``; always appends (never dedupes/replaces an existing
+        entry for the same type+name) so re-promoting the same object after
+        an edit leaves a full history, matching a run's append-only log."""
+        existing = self._read(exploration_id)
+        if existing is None:
+            return None
+        existing.promoted = [
+            *existing.promoted,
+            PromotionRecord(type=promotion_type, name=name, promoted_at=datetime.now(timezone.utc)),
+        ]
         existing.updated_at = datetime.now(timezone.utc)
         self._write(existing)
         return existing

@@ -237,6 +237,40 @@ class TestExplorationRunIsolation:
             req.assert_not_called()
 
 
+class TestPhase4RunIsolation:
+    """Explore 2.0 Phase 4: neither the stateless compile-draft endpoint nor
+    the promotion-trail sub-action may ever schedule a run — same regression
+    shape as TestExplorationRunIsolation above, extended to the two new
+    routes. `/api/insight-compile-draft/` is deliberately its OWN top-level
+    segment (not nested under `/api/insights/`) precisely so it can never
+    match `_RESOURCE_ROUTE_RE` — that segment IS a monitored resource, so any
+    `/api/insights/<anything>/` sub-path would otherwise risk tripping the
+    run-on-save hook for a "resource" literally named `compile-draft`.
+    """
+
+    def test_compile_draft_route_does_not_match_resource_route_regex(self):
+        assert _RESOURCE_ROUTE_RE.match("/api/insight-compile-draft/") is None
+
+    def test_record_promotion_route_does_not_match_resource_route_regex(self):
+        assert _RESOURCE_ROUTE_RE.match("/api/explorations/exp_abc123/record-promotion/") is None
+
+    def test_compile_draft_schedules_no_run_even_on_a_failing_request(self, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            resp = integration_client.post("/api/insight-compile-draft/", json={})
+            assert resp.status_code == 400
+            req.assert_not_called()
+
+    def test_record_promotion_schedules_no_run(self, integration_client):
+        created = integration_client.post("/api/explorations/", json={}).get_json()
+        with patch("visivo.server.views.run_views.request_run") as req:
+            resp = integration_client.post(
+                f"/api/explorations/{created['id']}/record-promotion/",
+                json={"type": "model", "name": "orders_q"},
+            )
+            assert resp.status_code == 200
+            req.assert_not_called()
+
+
 class TestDataAffectingGate:
     """A save only triggers a run when it changed the DATA — presentation-only
     edits (an insight type/color, whose query leaves are unchanged) just update
