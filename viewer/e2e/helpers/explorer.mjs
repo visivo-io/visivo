@@ -42,9 +42,18 @@ export async function typeSql(page, sql) {
 
 /**
  * Run the current SQL query via the Run button.
+ *
+ * Scoped to `[data-onb-target="sql-run-button"]` (SQLEditor.jsx's stable
+ * anchor) rather than `getByRole('button', { name: 'Run' })` — the latter's
+ * default substring+case-insensitive name match also resolves a not-yet-run
+ * query chip whose accessible name is "Not yet run <query> Options for
+ * <query>" (ExplorationQueryChips.jsx), which contains "run" too. Integration
+ * gate regression (Explore 2.0 Phase 3b): fine for the old standalone
+ * `/explorer` route (no chip row existed there), but a real ambiguity once a
+ * fresh exploration's query chip is on the same page as the Run button.
  */
 export async function runQuery(page) {
-  const runButton = page.getByRole('button', { name: 'Run' });
+  const runButton = page.locator('[data-onb-target="sql-run-button"]');
   await runButton.click();
   // Wait for either query results (row count) or error state
   await Promise.race([

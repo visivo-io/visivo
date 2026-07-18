@@ -168,6 +168,25 @@ describe('TracePropsEditor', () => {
     expect(finder).toHaveTextContent('⌘K');
   });
 
+  // Integration-gate regression (Explore 2.0 Phase 3b): a BRAND NEW insight
+  // has empty props, so x/y are neither JSON-schema `required` nor `present`
+  // — buildTraceGroupSpec's own `expanded` flag alone would hide them behind
+  // "+N more" (this broke `exploration-build-rail.spec.mjs`'s drop-target
+  // tests AND regressed the pre-existing `exploration-dnd-pull-in.spec.mjs`
+  // prop-slot-drop story once InsightCRUDSection's `initiallyExpanded`
+  // override was retired). x/y must render up-front with NO fields hidden.
+  test('semantically-required fields (x/y) render up-front on a BRAND NEW insight with empty props — no "+N more" needed', async () => {
+    render(
+      <TracePropsEditor ownerName="my_insight" props={{ type: 'scatter' }} onChange={() => {}} />
+    );
+
+    await screen.findByTestId('field-group-essentials');
+    expect(screen.getByTestId('prop-x')).toBeInTheDocument();
+    expect(screen.getByTestId('prop-y')).toBeInTheDocument();
+    // Nothing left to reveal in Essentials — x/y were the only two fields.
+    expect(screen.queryByTestId('field-group-more-essentials')).not.toBeInTheDocument();
+  });
+
   test('field-finder affordance calls onOpenFieldFinder', async () => {
     const onOpenFieldFinder = jest.fn();
     render(

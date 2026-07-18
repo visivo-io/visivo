@@ -209,7 +209,22 @@ const SQLEditor = ({
         }
       });
 
-      editor.focus();
+      // Auto-focus on mount (nice default when a model tab first opens),
+      // but never steal focus from something the user is already editing.
+      // Monaco's chunk + mount is async, so it can settle a beat *after* a
+      // fresh exploration's build rail (e.g. a RefTextArea property field)
+      // has already been focused and is mid-keystroke — an unconditional
+      // `editor.focus()` here would yank keystrokes away from that field.
+      const activeEl = document.activeElement;
+      const isEditingElsewhere =
+        activeEl &&
+        activeEl !== document.body &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('contenteditable') === 'true');
+      if (!isEditingElsewhere) {
+        editor.focus();
+      }
     },
     [tables, tableColumns]
   );

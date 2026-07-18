@@ -431,6 +431,27 @@ describe('routeWorkspaceDragEnd — property-zone branch (Explore 2.0 Phase 3b, 
     );
     expect(result).toBe('noop');
   });
+
+  // Integration-gate fix: `DraggableColumnHeader` (the live query-RESULTS-grid
+  // column header — `data: { name, type: 'column', sourceType: 'data-table' }`,
+  // no `source` key at all) fell through this branch's old `source ===
+  // 'library'`-only guard and every other branch too, so dropping a results-grid
+  // column onto a Build-rail property slot silently no-op'd (11-failure
+  // integration gate, pill-aggregation.spec.mjs's non-numeric-column test).
+  test('a results-grid column drag (DraggableColumnHeader, no `source` key) dropped on a property-zone still invokes onDropField', () => {
+    const onDropField = jest.fn();
+    const emit = jest.fn();
+    const dragData = { name: 'x_str', type: 'column', sourceType: 'data-table' };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: dragData } },
+        over: { data: { current: { kind: 'property-zone', path: 'y', onDropField } } },
+      },
+      { emit }
+    );
+    expect(result).toBe('property_zone_accepted');
+    expect(onDropField).toHaveBeenCalledWith(dragData);
+  });
 });
 
 describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)', () => {

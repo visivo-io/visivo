@@ -325,7 +325,20 @@ export const routeWorkspaceDragEnd = (
   // so this branch is unambiguous even though the now-legacy
   // `axis-zone`/`property-zone`/etc. zone kinds below (still keyed on `type`,
   // ported from the deleted `ExplorerDndContext`) used the same string value.
-  if (dragData.source === 'library' && dropData.kind === 'property-zone') {
+  //
+  // `dragData.type === 'column'` (integration-gate fix): `DraggableColumnHeader`
+  // — the live query-RESULTS-grid column header, `sourceType: 'data-table'` —
+  // never carried `source: 'library'`, so a results-grid column dropped on a
+  // property-zone slot fell through EVERY branch (this one on the `source`
+  // guard, the legacy `type`-keyed branch below on the `kind`-vs-`type` key
+  // mismatch) and silently no-op'd. `handleDropField` (InsightBuildSection.jsx)
+  // already has a generic non-metric/dimension/input fallback that resolves a
+  // bare `column` against the active model correctly, so admitting it here is
+  // the fix rather than adding a second parallel handler.
+  if (
+    (dragData.source === 'library' || dragData.type === 'column') &&
+    dropData.kind === 'property-zone'
+  ) {
     emit &&
       emit('property_zone_drop', {
         path: dropData.path,

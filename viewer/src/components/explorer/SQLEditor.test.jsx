@@ -675,6 +675,64 @@ describe('SQLEditor', () => {
     });
   });
 
+  // Integration-gate fix (Explore 2.0 Phase 3b): Monaco's mount is async
+  // (a chunk-load + `onMount` callback), so it can settle a beat after a
+  // fresh exploration's Build rail has already focused something else (e.g.
+  // a RefTextArea property field mid-keystroke). An unconditional
+  // `editor.focus()` in `handleEditorDidMount` would yank keystrokes away
+  // from whatever the user is already typing into.
+  describe('mount focus guard', () => {
+    it('focuses the editor on mount when nothing else is focused', async () => {
+      render(<SQLEditor sourceName="test_source" />);
+      await screen.findByTestId('monaco-editor');
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+      expect(mockEditor.focus).toHaveBeenCalled();
+    });
+
+    it('does NOT steal focus on mount from an already-focused text input', async () => {
+      render(
+        <div>
+          <input data-testid="other-input" />
+          <SQLEditor sourceName="test_source" />
+        </div>
+      );
+      const input = screen.getByTestId('other-input');
+      act(() => {
+        input.focus();
+      });
+      expect(input).toHaveFocus();
+
+      await screen.findByTestId('monaco-editor');
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+      expect(mockEditor.focus).not.toHaveBeenCalled();
+      expect(input).toHaveFocus();
+    });
+
+    it('does NOT steal focus on mount from an already-focused contentEditable (e.g. RefTextArea)', async () => {
+      render(
+        <div>
+          <div data-testid="other-editable" contentEditable="true" suppressContentEditableWarning />
+          <SQLEditor sourceName="test_source" />
+        </div>
+      );
+      const editable = screen.getByTestId('other-editable');
+      act(() => {
+        editable.focus();
+      });
+      expect(editable).toHaveFocus();
+
+      await screen.findByTestId('monaco-editor');
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+      expect(mockEditor.focus).not.toHaveBeenCalled();
+    });
+  });
+
   // Explore 2.0 Phase 3a (D9, 02-architecture.md §4): Library column drag →
   // SQL editor cursor insert. The actual drag/drop can't run in jsdom, so
   // these tests capture the `useDroppable` call the router

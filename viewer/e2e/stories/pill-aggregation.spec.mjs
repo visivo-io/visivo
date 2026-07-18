@@ -229,11 +229,17 @@ test.describe('Pill aggregation grammar (Explore 2.0 Phase 3b — D10)', () => {
 
     const xSlot = page.locator('[data-testid*="droppable-property-x"]').first();
     await expect(xSlot).toBeVisible({ timeout: 15000 });
+    // The slot starts in STATIC mode (the schema's oneOf offers a plain
+    // static fallback, and nothing has been dropped/typed yet) — switch to
+    // query mode via the toggle so RefTextArea mounts.
+    await xSlot.getByRole('button', { name: 'query string' }).click();
     const editable = xSlot.locator('[data-testid="ref-textarea-editable"]');
     await editable.click();
     await page.keyboard.type(raw, { delay: 5 });
-    // Blur to commit.
-    await page.getByTestId('chart-build-section').click({ position: { x: 5, y: 5 } });
+    // Blur directly to commit — clicking some other rail element risks
+    // toggling ITS collapse state as a side effect (header rows cover most
+    // of their container's clickable area).
+    await editable.blur();
 
     // Never recognized as a pill — the raw RefTextArea chip editor stays,
     // and the expression is never silently rewritten into a different shape.
@@ -247,11 +253,20 @@ test.describe('Pill aggregation grammar (Explore 2.0 Phase 3b — D10)', () => {
     await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
     const xSlotAfterReload = page.locator('[data-testid*="droppable-property-x"]').first();
     await expect(xSlotAfterReload).toBeVisible({ timeout: 15000 });
-    await expect(xSlotAfterReload.locator('[data-testid="ref-textarea-editable"]')).toContainText(
-      raw,
-      { timeout: 10000 }
-    );
     await expect(xSlotAfterReload.getByTestId('pill-menu-trigger')).not.toBeVisible();
+
+    // "Survives unmodified" is a backend-serialization claim, not a DOM-text
+    // one — RefTextArea always renders any embedded `${ref(...)}` as a pill
+    // (e.g. "model.x") inline with the surrounding literal text, on both the
+    // initial render and after reload alike. Asserting the raw `${ref(...)}`
+    // syntax literally appears in the widget's rendered text would fail even
+    // when nothing was rewritten, since that's simply never what gets
+    // displayed. The project's own convention (never diff frontend strings
+    // for modification tracking) applies here too: re-fetch the draft and
+    // confirm `props.x` still matches the exact string we typed.
+    await waitForBackendDraft(page, id, draft =>
+      (draft.insights || []).some(insight => insight.props?.x === `?{${raw}}`)
+    );
   });
 
   test('no raw ?{ or ${ syntax ever appears in the rendered Build rail, even after several drops', async ({

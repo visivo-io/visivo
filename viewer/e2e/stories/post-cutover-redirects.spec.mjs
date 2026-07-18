@@ -71,9 +71,10 @@ test.describe('Explore 2.0 Phase 3b cutover redirects', () => {
   }) => {
     // Discover a real dashboard name from the running project rather than
     // hardcoding one that might not exist in every sandbox seed.
+    // `/api/dashboards/` responds `{ dashboards: [...] }`, not a bare array.
     const res = await page.request.get(`${apiBase}/api/dashboards/`);
     expect(res.ok()).toBe(true);
-    const dashboards = await res.json();
+    const { dashboards } = await res.json();
     expect(dashboards.length).toBeGreaterThan(0);
     const dashboardName = dashboards[0].name;
 

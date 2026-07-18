@@ -6,6 +6,7 @@ import FieldGroupList from '../workspace/FieldGroupList';
 import { getSchema } from '../../../schemas/schemas';
 import { loadCatalog, loadTraceGroups } from '../../../schemas/traceCatalogLoader';
 import { buildTraceGroupSpec } from './buildTraceGroupSpec';
+import { getRequiredFields } from './insightRequiredFields';
 import { preserveTraceProps } from './preserveTraceProps';
 import { validateProps } from '../../../schemas/plotlyValidator';
 import FieldFinderPalette from './fieldFinder/FieldFinderPalette';
@@ -194,6 +195,19 @@ const TracePropsEditor = ({
   // Build the ordered group spec, then re-key each group's collapse persistence to
   // the OWNER (insight) rather than the chart type, so collapse is remembered per
   // insight. The "Key fields (<type>)" title still derives from the chart type.
+  //
+  // buildTraceGroupSpec's own `expanded` flag is `!!required || present` —
+  // required per the Plotly JSON SCHEMA (structural), not "the field a user
+  // needs to fill in to get a chart" (semantic). Plotly's schema doesn't mark
+  // x/y required for scatter/bar/etc, so on a BRAND NEW insight (empty props)
+  // they'd stay hidden behind the group's "+N more" toggle — the retired
+  // `InsightCRUDSection` avoided this by passing `initiallyExpanded={
+  // getRequiredFields(type).map(f => f.name)}` straight to `SchemaEditor`.
+  // `TracePropsEditor` has no equivalent knob, so force those same
+  // semantically-required paths (`insightRequiredFields.js` — the single
+  // source of truth both this and the old code read) open here, regardless
+  // of the schema-required/present computation. This is a general fix (every
+  // TracePropsEditor consumer benefits, not just the exploration Build rail).
   const groupSpec = useMemo(() => {
     if (!schema) return [];
     const spec = buildTraceGroupSpec({
@@ -203,7 +217,16 @@ const TracePropsEditor = ({
       groupsMap,
       value: traceProps || {},
     });
-    return spec.map(group => ({ ...group, objectType: ownerName || group.objectType }));
+    const alwaysExpandPaths = new Set(getRequiredFields(type).map(f => f.name));
+    return spec.map(group => ({
+      ...group,
+      objectType: ownerName || group.objectType,
+      fields: (group.fields || []).map(field =>
+        alwaysExpandPaths.has(field.name) && !field.expanded
+          ? { ...field, expanded: true }
+          : field
+      ),
+    }));
   }, [schema, type, catalogEntries, groupsMap, traceProps, ownerName]);
 
   // FieldGroupList edits a value object WITHOUT `type`; re-attach the current type
