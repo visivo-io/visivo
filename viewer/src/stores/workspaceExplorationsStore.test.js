@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 /**
  * workspaceExplorations store slice (Explore 2.0 Phase 1 — backend + slice,
  * no visible UI yet).
@@ -12,9 +13,17 @@ import * as explorationsApi from '../api/explorations';
 import {
   _pendingSyncTimers,
   _resetExplorationSyncTimersForTests,
+  _openDraftSnapshots,
+  _resetExplorationSnapshotsForTests,
 } from './workspaceExplorationsStore';
+import { buildPromoteChecklist } from './promoteChecklist';
+import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 
 jest.mock('../api/explorations');
+jest.mock('./promoteChecklist', () => ({ buildPromoteChecklist: jest.fn() }));
+jest.mock('../components/views/common/pillFieldSwap', () => ({
+  findReclassifiedSlots: jest.fn(() => []),
+}));
 
 const wireExploration = overrides => ({
   id: 'exp_1',
@@ -56,12 +65,15 @@ const seedRecord = (overrides = {}) => {
 
 const reset = () => {
   _resetExplorationSyncTimersForTests();
+  _resetExplorationSnapshotsForTests();
   act(() => {
     useStore.setState({
       workspaceExplorations: { byId: {}, order: [] },
       workspaceTabs: [],
       workspaceToast: null,
       closeWorkspaceTab: jest.fn(),
+      restoreExplorerWorkingState: jest.fn(),
+      explorerInsightStates: {},
     });
   });
 };
@@ -78,6 +90,7 @@ afterEach(() => {
   });
   jest.useRealTimers();
   _resetExplorationSyncTimersForTests();
+  _resetExplorationSnapshotsForTests();
 });
 
 describe('fetchExplorations', () => {
@@ -564,5 +577,339 @@ describe('renameExploration', () => {
       result = await useStore.getState().renameExploration('exp_missing', 'X');
     });
     expect(result).toEqual({ success: false, error: 'Exploration not found' });
+  });
+});
+
+describe('VIS-1081 discard mechanics', () => {
+  test('snapshotExplorationForDiscard captures the CURRENT persisted draft', () => {
+    seedRecord({ draft: { queries: [{ name: 'q1', sql: 'SELECT 1' }], insights: [], chart: null, computedColumns: [] } });
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    expect(_openDraftSnapshots.get('exp_1').queries[0].name).toBe('q1');
+  });
+
+  test('clearExplorationDiscardSnapshot removes the bookkeeping', () => {
+    seedRecord();
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+      useStore.getState().clearExplorationDiscardSnapshot('exp_1');
+    });
+    expect(_openDraftSnapshots.has('exp_1')).toBe(false);
+  });
+
+  test('discardExploration reverts the local draft to the open-time snapshot and POSTs it', async () => {
+    const openSnapshot = { queries: [{ name: 'q1', sql: 'SELECT 1' }], insights: [], chart: null, computedColumns: [] };
+    seedRecord({ draft: openSnapshot });
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    // Simulate edits made during the session (what the tab is discarding).
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [{ name: 'q1', sql: 'SELECT 1 -- edited' }],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration({ draft: { queries: [{ name: 'q1', sql: 'SELECT 1' }], insights: [], chart: null, computed_columns: [] } }));
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().discardExploration('exp_1');
+    });
+
+    expect(result).toEqual({ success: true, reverted: true });
+    // The pending debounce (armed by updateExplorationDraft above) must be
+    // cancelled — the discard POST is the only persist, not the debounce.
+    expect(_pendingSyncTimers.has('exp_1')).toBe(false);
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.draft.queries[0].sql).toBe('SELECT 1');
+    // Reverts the legacy explorerStore working state too (so the pane's own
+    // unmount cleanup doesn't re-persist the discarded edit right after).
+    expect(useStore.getState().restoreExplorerWorkingState).toHaveBeenCalled();
+    expect(explorationsApi.updateExploration).toHaveBeenCalledWith('exp_1', {
+      draft: {
+        queries: [{ name: 'q1', sql: 'SELECT 1' }],
+        insights: [],
+        chart: null,
+        computed_columns: [],
+        legacy_state: null,
+      },
+    });
+  });
+
+  test('discardExploration cancels a pending debounce even when the fire-time POST would have raced it', async () => {
+    seedRecord();
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+      useStore.getState().updateExplorationDraft('exp_1', { queries: [], insights: [], chart: null, computedColumns: [{ x: 1 }] });
+    });
+    explorationsApi.updateExploration.mockResolvedValue(wireExploration());
+
+    await act(async () => {
+      await useStore.getState().discardExploration('exp_1');
+    });
+
+    // Advance past the 1s debounce window — if the timer weren't cancelled,
+    // this would fire a SECOND (discarded-content) update.
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+  });
+
+  test('discardExploration with no snapshot (never activated) is a graceful no-op', async () => {
+    seedRecord();
+    let result;
+    await act(async () => {
+      result = await useStore.getState().discardExploration('exp_1');
+    });
+    expect(result).toEqual({ success: true, reverted: false });
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+  });
+
+  test('discardExploration deletes the snapshot after use (one-shot per session)', async () => {
+    seedRecord();
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration());
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    await act(async () => {
+      await useStore.getState().discardExploration('exp_1');
+    });
+    expect(_openDraftSnapshots.has('exp_1')).toBe(false);
+  });
+
+  test('discardExploration reports failure but still reports reverted:true when the revert POST fails (local revert already happened)', async () => {
+    seedRecord();
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    explorationsApi.updateExploration.mockRejectedValueOnce(new Error('offline'));
+    let result;
+    await act(async () => {
+      result = await useStore.getState().discardExploration('exp_1');
+    });
+    expect(result).toEqual({ success: false, reverted: true, error: 'offline' });
+  });
+});
+
+describe('recordExplorationPromotion', () => {
+  test('appends the promotion and mirrors the updated record locally', async () => {
+    seedRecord();
+    explorationsApi.recordPromotion.mockResolvedValueOnce(
+      wireExploration({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] })
+    );
+    let result;
+    await act(async () => {
+      result = await useStore.getState().recordExplorationPromotion('exp_1', 'model', 'orders_q');
+    });
+    expect(result).toEqual({ success: true });
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith('exp_1', 'model', 'orders_q');
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.promoted).toEqual([
+      { type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' },
+    ]);
+  });
+
+  test('returns success:false on failure', async () => {
+    seedRecord();
+    explorationsApi.recordPromotion.mockRejectedValueOnce(new Error('boom'));
+    let result;
+    await act(async () => {
+      result = await useStore.getState().recordExplorationPromotion('exp_1', 'model', 'orders_q');
+    });
+    expect(result).toEqual({ success: false, error: 'boom' });
+  });
+});
+
+describe('promoteExploration', () => {
+  const checklistRow = overrides => ({
+    tier: 'model',
+    type: 'model',
+    name: 'orders_q',
+    parentModel: null,
+    status: 'new',
+    valid: true,
+    error: null,
+    config: { sql: 'select 1' },
+    ...overrides,
+  });
+
+  test('promotes only selected + valid rows, via the REAL saveX store action (not raw api calls)', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow(),
+      checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: { props: { type: 'scatter' } } }),
+    ]);
+    const saveModel = jest.fn().mockResolvedValue({ success: true });
+    const saveInsight = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveModel, saveInsight });
+    });
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(saveModel).toHaveBeenCalledWith('orders_q', { sql: 'select 1' });
+    expect(saveInsight).not.toHaveBeenCalled(); // not in selection
+    expect(result.success).toBe(true);
+    expect(result.results).toEqual([
+      { type: 'model', name: 'orders_q', tier: 'model', success: true, error: null },
+    ]);
+  });
+
+  test('never promotes a row the checklist marked invalid, even if it is in the selection', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow({ valid: false, error: 'bad expression' })]);
+    const saveModel = jest.fn();
+    seedRecord();
+    act(() => useStore.setState({ saveModel }));
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(saveModel).not.toHaveBeenCalled();
+  });
+
+  test('promotes in dependency order: model before insight before chart, regardless of selection array order', async () => {
+    const order = [];
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ type: 'chart', tier: 'chart', name: 'c' }),
+      checklistRow({ type: 'insight', tier: 'insight', name: 'i' }),
+      checklistRow({ type: 'model', tier: 'model', name: 'm' }),
+    ]);
+    seedRecord();
+    act(() =>
+      useStore.setState({
+        saveChart: jest.fn(async () => { order.push('chart'); return { success: true }; }),
+        saveInsight: jest.fn(async () => { order.push('insight'); return { success: true }; }),
+        saveModel: jest.fn(async () => { order.push('model'); return { success: true }; }),
+      })
+    );
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [
+        { type: 'chart', name: 'c' },
+        { type: 'insight', name: 'i' },
+        { type: 'model', name: 'm' },
+      ]);
+    });
+
+    expect(order).toEqual(['model', 'insight', 'chart']);
+  });
+
+  test('a failed row blocks only itself — partial promotion continues', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ name: 'good_model' }),
+      checklistRow({ name: 'bad_model' }),
+    ]);
+    seedRecord();
+    const saveModel = jest.fn(async name =>
+      name === 'bad_model' ? { success: false, error: 'server rejected it' } : { success: true }
+    );
+    act(() => useStore.setState({ saveModel }));
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'good_model' },
+        { type: 'model', name: 'bad_model' },
+      ]);
+    });
+
+    expect(saveModel).toHaveBeenCalledTimes(2);
+    expect(result.success).toBe(false);
+    expect(result.results).toEqual(
+      expect.arrayContaining([
+        { type: 'model', name: 'good_model', tier: 'model', success: true, error: null },
+        { type: 'model', name: 'bad_model', tier: 'model', success: false, error: 'server rejected it' },
+      ])
+    );
+  });
+
+  test('records a promotion for each successfully-saved row, never for a failed one', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ name: 'good_model' }),
+      checklistRow({ name: 'bad_model' }),
+    ]);
+    seedRecord();
+    const saveModel = jest.fn(async name =>
+      name === 'bad_model' ? { success: false } : { success: true }
+    );
+    act(() => useStore.setState({ saveModel }));
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'good_model' },
+        { type: 'model', name: 'bad_model' },
+      ]);
+    });
+
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledTimes(1);
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith('exp_1', 'model', 'good_model');
+  });
+
+  test('surfaces reclassification offers when a promoted metric/dimension collides with a sibling bare-column ref (delta-review fix)', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ type: 'metric', tier: 'field', name: 'region', config: { expression: 'x', parentModel: 'orders_q' } }),
+    ]);
+    findReclassifiedSlots.mockReturnValueOnce([
+      { insightName: 'other_insight', location: 'prop', key: 'x', swapTo: { kind: 'metricRef', ref: 'region' } },
+    ]);
+    seedRecord();
+    act(() =>
+      useStore.setState({
+        saveMetric: jest.fn().mockResolvedValue({ success: true }),
+        explorerInsightStates: { other_insight: { props: { x: '?{${ref(orders_q).region}}' }, interactions: [] } },
+      })
+    );
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [{ type: 'metric', name: 'region' }]);
+    });
+
+    expect(findReclassifiedSlots).toHaveBeenCalledWith('region', 'metric', expect.any(Object));
+    expect(result.reclassificationOffers).toEqual([
+      {
+        promotedType: 'metric',
+        promotedName: 'region',
+        slots: [{ insightName: 'other_insight', location: 'prop', key: 'x', swapTo: { kind: 'metricRef', ref: 'region' } }],
+      },
+    ]);
+  });
+
+  test('no reclassification offers for a promoted model/insight/chart (only metric/dimension trigger the scan)', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    act(() => useStore.setState({ saveModel: jest.fn().mockResolvedValue({ success: true }) }));
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(findReclassifiedSlots).not.toHaveBeenCalled();
+    expect(result.reclassificationOffers).toEqual([]);
+  });
+
+  test('an empty selection promotes nothing and reports success:false (nothing to do is not a success)', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', []);
+    });
+    expect(result).toEqual({ success: false, results: [], reclassificationOffers: [] });
   });
 });

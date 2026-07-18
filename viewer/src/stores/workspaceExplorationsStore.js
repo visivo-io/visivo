@@ -32,15 +32,29 @@
  * It only fires a network request when a timer was actually armed (a clean
  * record unmounting is a no-op), and is safe to call without awaiting.
  *
- * PROMOTION IS OUT OF SCOPE for Phase 1 (arrives in Phase 4, 03-delivery-
- * plan.md) — there is no `promoteExploration` here.
+ * PROMOTE (Explore 2.0 Phase 4, 02-architecture.md §3): `promoteExploration`
+ * dependency-orders a user-selected subset of `buildPromoteChecklist`'s rows
+ * (models -> model-scoped fields -> insights -> chart), persists each through
+ * the REAL per-type `saveX` store actions (never raw `api/*.js` calls —
+ * refetch/checkCommitStatus/run-on-save/Library-refresh all need to fire),
+ * and records each success on the exploration's append-only `promoted[]`
+ * trail via `record-promotion`. A failed row blocks only itself.
+ *
+ * DISCARD (VIS-1081): `snapshotExplorationForDiscard`/`discardExploration`
+ * implement TRUE discard for "Close without saving" on a dirty exploration
+ * tab — see their docstrings below for why a naive close used to silently
+ * re-persist the very draft the user asked to discard.
  */
 
 import * as explorationsApi from '../api/explorations';
 import {
   legacyStateForSeed,
   legacyStateToDraft,
+  draftToLegacyState,
 } from '../components/views/workspace/explorationLegacyBridge';
+import { buildPromoteChecklist } from './promoteChecklist';
+import { SAVE_ACTION } from '../components/views/workspace/collectionKeys';
+import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 
 const SYNC_DEBOUNCE_MS = 1000;
 
@@ -53,6 +67,19 @@ export const _pendingSyncTimers = new Map();
 export const _resetExplorationSyncTimersForTests = () => {
   _pendingSyncTimers.forEach(timer => clearTimeout(timer));
   _pendingSyncTimers.clear();
+};
+
+// Exploration id -> the persisted `draft` (internal-slice shape) as of the
+// moment the tab was last (re)activated (`snapshotExplorationForDiscard`).
+// VIS-1081's discard target: "Close without saving" reverts to exactly this,
+// not to whatever was persisted a moment ago. Module-level for the same
+// reason `_pendingSyncTimers` is — ephemeral, non-serializable, per-record
+// session bookkeeping, not reactive state.
+export const _openDraftSnapshots = new Map();
+
+/** Test-only: clear all open-draft snapshots so state doesn't leak across test files. */
+export const _resetExplorationSnapshotsForTests = () => {
+  _openDraftSnapshots.clear();
 };
 
 const clearPendingSyncTimer = id => {
@@ -307,6 +334,186 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         set(state => patchExploration(state, id, { name: previousName }));
         return { success: false, error: error.message };
       }
+    },
+
+    /** VIS-1081 — call from the exploration pane's activate effect (mount, or
+     * `id` changing), alongside `restoreExplorerWorkingState`. Captures the
+     * CURRENT persisted draft as the "opening snapshot" a later
+     * `discardExploration` reverts to. Re-snapshotting on every activation
+     * (not just the first ever) is deliberate: re-opening a parked
+     * exploration starts a NEW editing session, and the prior session's own
+     * deactivate-flush already persisted its edits — this session's discard
+     * target is that just-persisted state, not some earlier one. */
+    snapshotExplorationForDiscard: id => {
+      const record = get().workspaceExplorations.byId[id];
+      if (!record) return;
+      _openDraftSnapshots.set(id, record.draft);
+    },
+
+    /** VIS-1081 — cleanup counterpart, call from the pane's deactivate
+     * cleanup on a NORMAL (non-discard) close/switch. `discardExploration`
+     * clears its own entry; this just avoids leaking one for the (much more
+     * common) lossless-park path. */
+    clearExplorationDiscardSnapshot: id => {
+      _openDraftSnapshots.delete(id);
+    },
+
+    /**
+     * VIS-1081 — true discard for "Close without saving" on a dirty
+     * exploration tab.
+     *
+     * THE BUG: an exploration autosaves via a ~1s debounce while its tab is
+     * open (`updateExplorationDraft`/`ExplorationPane`'s live-sync effect) —
+     * the tab's dirty dot is driven by `syncStatus === 'saving'`, i.e. it is
+     * ONLY ever dirty while a sync is armed or in flight. `TabCloseConfirmDialog`
+     * ("Close without saving") used to just call the generic
+     * `closeWorkspaceTab`, which neither cancels that armed timer nor reverts
+     * anything — so the very edits the dialog promised to discard would
+     * finish persisting moments later regardless, a silently broken promise.
+     *
+     * THE FIX (chosen per the S2/VIS-1081 brief's option (b) — true discard,
+     * since it fits cleanly atop the existing record model: a revert IS just
+     * one POST update with the opening snapshot):
+     *   1. Cancel any pending debounced sync — nothing further leaks out.
+     *   2. Revert the LOCAL slice record's draft to the opening snapshot
+     *      (`snapshotExplorationForDiscard`, captured at tab-open) and POST
+     *      that same snapshot back to the backend, so the persisted record
+     *      matches what the user saw when they opened this session.
+     *   3. Reset the legacy `explorerStore.js` WORKING STATE to the same
+     *      snapshot — required because `ExplorationPane`'s own unmount
+     *      cleanup (which fires right after this, as part of the SAME
+     *      `closeWorkspaceTab` React commit) unconditionally re-snapshots
+     *      whatever the legacy store currently holds and re-persists it. If
+     *      step 3 didn't happen, that cleanup would silently re-apply the
+     *      discarded edits on top of this revert.
+     *
+     * Best-effort: a missing snapshot (discard invoked before the pane ever
+     * activated) or a failed revert POST never blocks the tab from closing —
+     * "Close without saving" always closes; the discard itself degrades
+     * gracefully.
+     */
+    discardExploration: async id => {
+      clearPendingSyncTimer(id);
+      const snapshot = _openDraftSnapshots.get(id);
+      if (snapshot === undefined) return { success: true, reverted: false };
+      _openDraftSnapshots.delete(id);
+
+      set(state => patchExploration(state, id, { draft: snapshot, syncStatus: 'synced' }));
+      get().restoreExplorerWorkingState?.(draftToLegacyState(snapshot));
+
+      try {
+        await explorationsApi.updateExploration(id, { draft: mapDraftToApi(snapshot) });
+        return { success: true, reverted: true };
+      } catch (error) {
+        return { success: false, reverted: true, error: error.message };
+      }
+    },
+
+    /** Append-only promotion record (07-exploration-api-contract.md's
+     * record-promotion sub-action) — call after a `saveX` action succeeds
+     * for a promoted object. */
+    recordExplorationPromotion: async (id, type, name) => {
+      try {
+        const updated = await explorationsApi.recordPromotion(id, type, name);
+        const mapped = mapExplorationFromApi(updated);
+        set(state => patchExploration(state, id, mapped));
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+
+    /**
+     * promoteExploration(id, selection) — the gated promote (02-architecture.md
+     * §3, 01-ux-spec.md §3's "Save to Project" checklist).
+     *
+     * `selection`: `Array<{type, name}>` — the checklist rows the user
+     * checked (typically every currently-valid row, per the "all valid
+     * objects pre-checked" default). Recomputes `buildPromoteChecklist`
+     * FRESH here (never trusts whatever the checklist UI rendered a moment
+     * ago — "Fresh get() per object"), filters to selected+valid rows, and
+     * persists them in dependency order through the real per-type `saveX`
+     * store actions (update-by-name is intrinsic to those actions — a draft
+     * seeded from an existing object keeps its name, so promoting it simply
+     * updates the original; no special-casing needed).
+     *
+     * A row's save failure blocks ONLY that row — the loop continues so
+     * partial promotion (01 §3) is normal. After each successful
+     * metric/dimension promotion, scans the draft for OTHER slots whose bare
+     * column ref now collides with the newly-promoted name (the backend's
+     * verified "global-name-first" ref resolution silently reclassifies
+     * them, delta-review finding) and returns them as explicit
+     * `reclassificationOffers` — never a silent rendering change.
+     *
+     * @returns {Promise<{
+     *   success: boolean,
+     *   results: Array<{type, name, tier, success: boolean, error: string|null}>,
+     *   reclassificationOffers: Array<{promotedType, promotedName, slots}>,
+     * }>}
+     */
+    promoteExploration: async (id, selection) => {
+      const selectedKeys = new Set((selection || []).map(s => `${s.type}:${s.name}`));
+      const checklist = await buildPromoteChecklist(get);
+      // Re-sort by tier defensively — dependency order is THE invariant this
+      // gate exists to guarantee (02 §3), so it must not silently depend on
+      // buildPromoteChecklist's own sort never regressing.
+      const tierOrder = { model: 0, field: 1, insight: 2, chart: 3 };
+      const toPromote = checklist
+        .filter(row => row.valid && selectedKeys.has(`${row.type}:${row.name}`))
+        .sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
+
+      const results = [];
+      const reclassificationOffers = [];
+
+      for (const row of toPromote) {
+        const saveActionName = SAVE_ACTION[row.type];
+        const saveFn = saveActionName ? get()[saveActionName] : null;
+        if (typeof saveFn !== 'function') {
+          results.push({
+            type: row.type,
+            name: row.name,
+            tier: row.tier,
+            success: false,
+            error: `No save action registered for type "${row.type}"`,
+          });
+          continue;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        const saveResult = await saveFn(row.name, row.config);
+        const saveSucceeded = !(saveResult && saveResult.success === false);
+        results.push({
+          type: row.type,
+          name: row.name,
+          tier: row.tier,
+          success: saveSucceeded,
+          error: saveSucceeded ? null : saveResult?.error || 'Save failed',
+        });
+        if (!saveSucceeded) continue;
+
+        // eslint-disable-next-line no-await-in-loop
+        await get().recordExplorationPromotion?.(id, row.type, row.name);
+
+        if (row.type === 'metric' || row.type === 'dimension') {
+          const hits = findReclassifiedSlots(
+            row.name,
+            row.type,
+            get().explorerInsightStates || {}
+          );
+          if (hits.length > 0) {
+            reclassificationOffers.push({
+              promotedType: row.type,
+              promotedName: row.name,
+              slots: hits,
+            });
+          }
+        }
+      }
+
+      return {
+        success: results.length > 0 && results.every(r => r.success),
+        results,
+        reclassificationOffers,
+      };
     },
   };
 };

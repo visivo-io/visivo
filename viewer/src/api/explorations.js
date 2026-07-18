@@ -101,3 +101,21 @@ export const consumeReturnTo = async id => {
   }
   throw new Error(await parseErrorOr(response, 'Failed to consume return_to'));
 };
+
+/**
+ * Append-only promotion record (Explore 2.0 Phase 4,
+ * 07-exploration-api-contract.md's record-promotion sub-action). Server
+ * stamps `promoted_at`. `type`/`name` are the promoted object's kind
+ * ('model'|'metric'|'dimension'|'insight'|'chart') and name.
+ */
+export const recordPromotion = async (id, type, name) => {
+  const response = await apiFetch(getUrl('explorationRecordPromotion', { id }), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, name }),
+  });
+  if (response.status === 200) {
+    return await response.json();
+  }
+  throw new Error(await parseErrorOr(response, 'Failed to record promotion'));
+};

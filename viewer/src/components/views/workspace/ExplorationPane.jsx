@@ -112,6 +112,12 @@ const ExplorationPane = ({ id }) => {
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const restoreExplorerWorkingState = useStore(s => s.restoreExplorerWorkingState);
   const snapshotExplorerWorkingState = useStore(s => s.snapshotExplorerWorkingState);
+  // VIS-1081 (true discard): snapshot the persisted draft on every activate
+  // so a later "Close without saving" has an honest revert target; clear the
+  // bookkeeping on a normal deactivate (discardExploration clears it itself
+  // on the discard path — see workspaceExplorationsStore.js).
+  const snapshotExplorationForDiscard = useStore(s => s.snapshotExplorationForDiscard);
+  const clearExplorationDiscardSnapshot = useStore(s => s.clearExplorationDiscardSnapshot);
 
   // The legacy working-state fields this pane watches to know "something
   // changed, go persist it" — the same set `explorerStore.js` snapshots.
@@ -138,6 +144,9 @@ const ExplorationPane = ({ id }) => {
   useLayoutEffect(() => {
     if (!record) return undefined;
     restoreExplorerWorkingState(draftToLegacyState(record.draft));
+    // VIS-1081: capture THIS session's discard target — the draft exactly as
+    // persisted at the moment we restored it above.
+    snapshotExplorationForDiscard?.(id);
     // The restore above changes the exact fields the live-sync effect below
     // watches; that effect would otherwise immediately re-persist the
     // draft it just read. Not incorrect (idempotent), just wasted traffic.
@@ -148,6 +157,11 @@ const ExplorationPane = ({ id }) => {
       const snapshot = snapshotExplorerWorkingState();
       updateExplorationDraft(id, legacyStateToDraft(snapshot));
       flushExplorationSync(id);
+      // Normal deactivate (park/switch) — nothing to discard, drop the
+      // bookkeeping. A discard-triggered close already cleared this itself
+      // (discardExploration) before this cleanup ever runs; deleting an
+      // already-deleted map entry is a no-op.
+      clearExplorationDiscardSnapshot?.(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, !!record]);
