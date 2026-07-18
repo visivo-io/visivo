@@ -59,6 +59,8 @@ const reset = () => {
   act(() => {
     useStore.setState({
       workspaceExplorations: { byId: {}, order: [] },
+      workspaceTabs: [],
+      workspaceToast: null,
       closeWorkspaceTab: jest.fn(),
     });
   });
@@ -115,6 +117,7 @@ describe('fetchExplorations', () => {
       insights: [{ x: 1 }],
       chart: { y: 2 },
       computedColumns: [{ expression: 'a+b' }],
+      legacyState: null,
     });
   });
 
@@ -220,7 +223,13 @@ describe('updateExplorationDraft', () => {
     });
 
     expect(explorationsApi.updateExploration).toHaveBeenCalledWith('exp_1', {
-      draft: { queries: [], insights: [], chart: null, computed_columns: [{ expression: 'a' }] },
+      draft: {
+        queries: [],
+        insights: [],
+        chart: null,
+        computed_columns: [{ expression: 'a' }],
+        legacy_state: null,
+      },
     });
     expect(useStore.getState().workspaceExplorations.byId.exp_1.syncStatus).toBe('synced');
   });
@@ -255,7 +264,13 @@ describe('updateExplorationDraft', () => {
 
     expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
     expect(explorationsApi.updateExploration).toHaveBeenCalledWith('exp_1', {
-      draft: { queries: [{ name: 'v3', sql: 'x' }], insights: [], chart: null, computed_columns: [] },
+      draft: {
+        queries: [{ name: 'v3', sql: 'x' }],
+        insights: [],
+        chart: null,
+        computed_columns: [],
+        legacy_state: null,
+      },
     });
   });
 
@@ -364,7 +379,13 @@ describe('duplicateExploration', () => {
     expect(explorationsApi.createExploration).toHaveBeenCalledWith({
       name: 'Churn dig copy',
       seeded_from: { type: 'model', name: 'orders' },
-      draft: { queries: [{ name: 'q', sql: 'x' }], insights: [], chart: null, computed_columns: [] },
+      draft: {
+        queries: [{ name: 'q', sql: 'x' }],
+        insights: [],
+        chart: null,
+        computed_columns: [],
+        legacy_state: null,
+      },
     });
     expect(result).toMatchObject({ success: true, id: 'exp_2' });
     expect(useStore.getState().workspaceExplorations.order).toEqual(['exp_2', 'exp_1']);
@@ -432,5 +453,88 @@ describe('deleteExploration', () => {
     expect(result).toEqual({ success: false, error: 'locked' });
     expect(useStore.getState().workspaceExplorations.byId.exp_1).toBeDefined();
     expect(useStore.getState().closeWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  // 01-ux-spec.md §4: "if that exploration's tab is open (even parked), the
+  // tab force-closes with a toast."
+  test('toasts when a bound tab was open (even parked/inactive)', async () => {
+    seedRecord({ name: 'Churn dig' });
+    act(() => {
+      useStore.setState({ workspaceTabs: [{ id: 'exploration:exp_1', type: 'exploration', name: 'exp_1' }] });
+    });
+    explorationsApi.deleteExploration.mockResolvedValueOnce(true);
+
+    await act(async () => {
+      await useStore.getState().deleteExploration('exp_1');
+    });
+
+    expect(useStore.getState().closeWorkspaceTab).toHaveBeenCalledWith('exploration:exp_1');
+    expect(useStore.getState().workspaceToast).toMatchObject({ message: 'Churn dig was deleted' });
+  });
+
+  test('does not toast when no tab was bound', async () => {
+    seedRecord({ name: 'Churn dig' });
+    act(() => {
+      useStore.setState({ workspaceTabs: [] });
+    });
+    explorationsApi.deleteExploration.mockResolvedValueOnce(true);
+
+    await act(async () => {
+      await useStore.getState().deleteExploration('exp_1');
+    });
+
+    expect(useStore.getState().workspaceToast).toBeNull();
+  });
+});
+
+describe('renameExploration', () => {
+  test('optimistically renames, then persists via the generic update route', async () => {
+    seedRecord({ name: 'Scratch' });
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration({ name: 'Churn dig' }));
+
+    let renamePromise;
+    act(() => {
+      renamePromise = useStore.getState().renameExploration('exp_1', 'Churn dig');
+    });
+    // Optimistic write lands synchronously, before the API call resolves.
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.name).toBe('Churn dig');
+
+    const result = await act(async () => renamePromise);
+
+    expect(explorationsApi.updateExploration).toHaveBeenCalledWith('exp_1', { name: 'Churn dig' });
+    expect(result).toMatchObject({ success: true });
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.name).toBe('Churn dig');
+  });
+
+  test('rolls back the optimistic name on failure', async () => {
+    seedRecord({ name: 'Scratch' });
+    explorationsApi.updateExploration.mockRejectedValueOnce(new Error('offline'));
+
+    await act(async () => {
+      await useStore.getState().renameExploration('exp_1', 'Churn dig');
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.name).toBe('Scratch');
+  });
+
+  test('is a no-op (no API call) when the name is unchanged or blank', async () => {
+    seedRecord({ name: 'Scratch' });
+
+    await act(async () => {
+      await useStore.getState().renameExploration('exp_1', 'Scratch');
+    });
+    await act(async () => {
+      await useStore.getState().renameExploration('exp_1', '   ');
+    });
+
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+  });
+
+  test('returns success:false for an unknown id', async () => {
+    let result;
+    await act(async () => {
+      result = await useStore.getState().renameExploration('exp_missing', 'X');
+    });
+    expect(result).toEqual({ success: false, error: 'Exploration not found' });
   });
 });

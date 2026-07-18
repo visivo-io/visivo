@@ -2703,4 +2703,98 @@ describe('explorerStore', () => {
       });
     });
   });
+
+  // ====================================================================
+  // Workspace bridge (Explore 2.0 Phase 2) — snapshot/restore isolation
+  // ====================================================================
+  describe('snapshotExplorerWorkingState / restoreExplorerWorkingState', () => {
+    it('snapshots the persistable subset of a model state, dropping ephemeral query results', () => {
+      useStore.getState().createModelTab('orders_q');
+      useStore.getState().setActiveModelSql('SELECT * FROM orders');
+      useStore.getState().setModelQueryResult('orders_q', { columns: ['a'], rows: [[1]] });
+
+      const snapshot = useStore.getState().snapshotExplorerWorkingState();
+
+      expect(snapshot.modelTabs).toEqual(['orders_q']);
+      expect(snapshot.modelStates.orders_q.sql).toBe('SELECT * FROM orders');
+      expect(snapshot.modelStates.orders_q.queryResult).toBeUndefined();
+    });
+
+    it('snapshots chart + insight working state', () => {
+      useStore.getState().createModelTab('orders_q');
+      useStore.getState().createInsight('insight_1');
+      useStore.getState().setChartName('chart_1');
+
+      const snapshot = useStore.getState().snapshotExplorerWorkingState();
+
+      expect(snapshot.chartName).toBe('chart_1');
+      expect(snapshot.chartInsightNames).toContain('insight_1');
+      expect(snapshot.insightStates.insight_1).toBeDefined();
+    });
+
+    it('restore fully replaces working state (no leakage from a prior exploration)', () => {
+      useStore.getState().createModelTab('leftover_model');
+      useStore.getState().createInsight('leftover_insight');
+      useStore.getState().setChartName('leftover_chart');
+
+      useStore.getState().restoreExplorerWorkingState({
+        modelTabs: ['fresh_model'],
+        activeModelName: 'fresh_model',
+        modelStates: { fresh_model: { sql: 'SELECT 1', sourceName: null, isNew: true } },
+        chartName: null,
+        chartLayout: {},
+        chartInsightNames: [],
+        activeInsightName: null,
+        insightStates: {},
+        leftNavCollapsed: false,
+        centerMode: 'split',
+        isEditorCollapsed: false,
+      });
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['fresh_model']);
+      expect(state.explorerModelStates.leftover_model).toBeUndefined();
+      expect(state.explorerChartName).toBeNull();
+      expect(state.explorerInsightStates.leftover_insight).toBeUndefined();
+    });
+
+    it('restore resets ephemeral/derived fields regardless of the snapshot', () => {
+      useStore.setState({
+        explorerDiffResult: { modified: true },
+        explorerDuckDBLoading: true,
+        explorerFailedComputedColumns: { x: 'err' },
+      });
+
+      useStore.getState().restoreExplorerWorkingState(null);
+
+      const state = useStore.getState();
+      expect(state.explorerDiffResult).toBeNull();
+      expect(state.explorerDuckDBLoading).toBe(false);
+      expect(state.explorerFailedComputedColumns).toEqual({});
+    });
+
+    it('restore(null) resets to a clean empty slate (a brand-new exploration)', () => {
+      useStore.getState().createModelTab('m');
+      useStore.getState().restoreExplorerWorkingState(null);
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual([]);
+      expect(state.explorerModelStates).toEqual({});
+      expect(state.explorerChartName).toBeNull();
+    });
+
+    it('a snapshot -> restore round-trip is idempotent for the persistable fields', () => {
+      useStore.getState().createModelTab('orders_q');
+      useStore.getState().setActiveModelSql('SELECT 1');
+      useStore.getState().createInsight('insight_1');
+      useStore.getState().setChartName('chart_1');
+
+      const snapshot = useStore.getState().snapshotExplorerWorkingState();
+      resetState();
+      useStore.getState().restoreExplorerWorkingState(snapshot);
+
+      const restoredSnapshot = useStore.getState().snapshotExplorerWorkingState();
+      expect(restoredSnapshot).toEqual(snapshot);
+    });
+  });
 });

@@ -1388,6 +1388,91 @@ const createExplorerSlice = (set, get) => ({
   },
 
   // ====================================================================
+  // Workspace bridge (Explore 2.0 Phase 2)
+  // ====================================================================
+  // explorerStore is a SINGLETON slice on the global store, but Explore 2.0
+  // gives every exploration its own backend-persisted working state
+  // (workspaceExplorationsStore.js). Only ONE exploration tab's pane is ever
+  // mounted at a time (MiddlePane dispatches on the single active document
+  // tab), so per-exploration isolation comes from snapshot-on-deactivate +
+  // restore-on-activate around this singleton, not from N independent store
+  // instances — see `ExplorationPane.jsx` for the switch/park/resume wiring
+  // and `explorationLegacyBridge.js` for the draft (wire-shape) mapping.
+  //
+  // Deliberately EXCLUDED from both snapshot and restore (re-derived / re-run,
+  // never persisted): `queryResult` / `queryError` / `enrichedResult` per model
+  // (large, ephemeral query results — re-running is cheap and the backend
+  // draft is meant to stay a small JSON document), `explorerDiffResult`,
+  // `explorerDuckDBLoading/Error`, `explorerFailedComputedColumns`,
+  // `explorerSources` (project-wide, re-fetched independently),
+  // `explorerProfileColumn` (transient UI selection, not meaningful across a
+  // park/resume).
+
+  /** Read the current CURRENT working state into a plain, JSON-serializable
+   * snapshot — the shape `explorationLegacyBridge.js` projects into an
+   * exploration's `draft`. Model states are trimmed to their persistable
+   * subset (dropping the ephemeral query-result fields above). */
+  snapshotExplorerWorkingState: () => {
+    const state = get();
+    const modelStates = {};
+    for (const [name, modelState] of Object.entries(state.explorerModelStates || {})) {
+      modelStates[name] = {
+        sql: modelState.sql,
+        sourceName: modelState.sourceName,
+        sourceEdited: !!modelState.sourceEdited,
+        computedColumns: modelState.computedColumns || [],
+        isNew: modelState.isNew,
+      };
+    }
+    return {
+      modelTabs: [...(state.explorerModelTabs || [])],
+      activeModelName: state.explorerActiveModelName,
+      modelStates,
+      chartName: state.explorerChartName,
+      chartLayout: state.explorerChartLayout || {},
+      chartInsightNames: [...(state.explorerChartInsightNames || [])],
+      activeInsightName: state.explorerActiveInsightName,
+      insightStates: state.explorerInsightStates || {},
+      leftNavCollapsed: !!state.explorerLeftNavCollapsed,
+      centerMode: state.explorerCenterMode || 'split',
+      isEditorCollapsed: !!state.explorerIsEditorCollapsed,
+    };
+  },
+
+  /** Fully REPLACE the working-state fields from a snapshot (or reset to a
+   * clean slate when `snapshot` is null/undefined — a brand-new exploration
+   * with no prior legacy state). This is a hard reset, not a merge: every
+   * mutable field this slice owns is set explicitly so a previous
+   * exploration's state can never leak into the next one (the two-tab
+   * isolation guarantee — 02-architecture.md §1). */
+  restoreExplorerWorkingState: (snapshot) => {
+    const snap = snapshot || {};
+    const modelStates = {};
+    for (const [name, modelState] of Object.entries(snap.modelStates || {})) {
+      modelStates[name] = { ...createEmptyModelState(modelState.isNew !== false), ...modelState };
+    }
+    set({
+      explorerModelTabs: [...(snap.modelTabs || [])],
+      explorerActiveModelName: snap.activeModelName || null,
+      explorerModelStates: modelStates,
+      explorerChartName: snap.chartName || null,
+      explorerChartLayout: snap.chartLayout || {},
+      explorerChartInsightNames: [...(snap.chartInsightNames || [])],
+      explorerActiveInsightName: snap.activeInsightName || null,
+      explorerInsightStates: snap.insightStates || {},
+      explorerLeftNavCollapsed: !!snap.leftNavCollapsed,
+      explorerCenterMode: snap.centerMode || 'split',
+      explorerIsEditorCollapsed: !!snap.isEditorCollapsed,
+      // Always reset — never carried in a snapshot (see docstring above).
+      explorerDiffResult: null,
+      explorerDuckDBLoading: false,
+      explorerDuckDBError: null,
+      explorerFailedComputedColumns: {},
+      explorerProfileColumn: null,
+    });
+  },
+
+  // ====================================================================
   // Backend Diff — Modification Tracking
   // ====================================================================
 
