@@ -95,6 +95,15 @@ const LocalRouter = createBrowserRouter(
           }}
         />
         <Route
+          id="workspace-exploration"
+          path="/workspace/exploration"
+          element={<Workspace />}
+          loader={loadProject}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/workspace/exploration">Explorer</BreadcrumbLink>,
+          }}
+        />
+        <Route
           id="workspace-dashboard"
           path="/workspace/dashboard/:dashboardName"
           element={<Workspace />}

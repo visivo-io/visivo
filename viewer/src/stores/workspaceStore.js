@@ -394,11 +394,23 @@ const createWorkspaceSlice = (set, get) => ({
       workspacePendingCloseTabId:
         state.workspacePendingCloseTabId === tabId ? null : state.workspacePendingCloseTabId,
     });
-    // Sync the URL to the new active tab. Closing the LAST tab leaves an empty
-    // workspace (active null) — navigating to `/workspace` there would resurrect
-    // the project tab, so we skip it.
-    if (wasActive && newActive && state.workspaceUrlNavigate) {
-      state.workspaceUrlNavigate(workspaceTabUrl(newActive, state.workspaceUrlBase));
+    // Sync the URL to the new active surface. A remaining tab routes to ITS
+    // url (`?edit=...`/`/dashboard/:name`); closing the LAST tab leaves a VIEW
+    // owning the center (`activeView`, already resolved above), so we route
+    // to THAT view's url instead of leaving the closed tab's `?edit=`/
+    // dashboard path dangling in the address bar. Phase 0 removed the
+    // "navigating to /workspace resurrects the project tab" concern this used
+    // to guard against (views are no longer tab records — `activateWorkspaceView`
+    // never hydrates a tab) — and a dangling `?edit=` was actively harmful:
+    // `useWorkspaceScope`'s `?edit=` fallback (used once no tab is active)
+    // kept resolving the CLOSED document as the selection, so the right rail
+    // kept rendering its Edit tab and `[role="tab"]` never reached 0.
+    if (wasActive && state.workspaceUrlNavigate) {
+      if (newActive) {
+        state.workspaceUrlNavigate(workspaceTabUrl(newActive, state.workspaceUrlBase));
+      } else {
+        state.workspaceUrlNavigate(workspaceViewUrl(activeView, state.workspaceUrlBase));
+      }
     }
   },
 
