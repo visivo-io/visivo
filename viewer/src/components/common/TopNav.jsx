@@ -34,11 +34,15 @@ const LOCAL_STAGE = {
 // surfaces (both `/editor` and `/lineage` now redirect into `/workspace`), so
 // the switcher is four: explore (Explorer), build (Workspace), the local
 // run-on-save history (Runs), and view (Dashboards).
+// `onbTarget` (optional): the onboarding coach's `data-onb-target` anchor id
+// for a tool's nav Link (see `ToolSwitch` below) — B14 part 1, Explore 2.0
+// Phase 2. Only `project` carries one today (`onboardingManifest.js`'s
+// `view_project` item); the others have their own anchors elsewhere.
 const DEFAULT_TOOLS = [
   { id: 'explorer', label: 'Explorer', to: '/explorer', icon: PiMagnifyingGlass },
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
   { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
-  { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate },
+  { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate, onbTarget: 'top-nav-project' },
 ];
 
 /* ---------------------------------------------------------------- menu row */
@@ -273,6 +277,7 @@ function ToolSwitch({ tools, activeTool }) {
             key={t.id}
             to={t.to}
             title={t.label}
+            data-onb-target={t.onbTarget}
             style={{
               display: 'flex', alignItems: 'center', gap: 7, padding: on ? '6px 14px' : '6px 11px', borderRadius: 99,
               textDecoration: 'none', background: on ? '#fff' : 'transparent', color: on ? '#432334' : LT,
@@ -323,6 +328,12 @@ function CommitButton({ onClick, compact, count = 0 }) {
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       title="Commit changes"
+      // B14 part 1 (Explore 2.0 Phase 2): the onboarding manifest's
+      // `connect_cloud`/`deploy` items target `top-nav-deploy` — Commit and
+      // Deploy are mutually exclusive by dirty state (only one of these two
+      // buttons ever renders, see `action` below), so both carry the same
+      // anchor id to cover either state.
+      data-onb-target="top-nav-deploy"
       style={{
         display: 'flex', alignItems: 'center', gap: 7, background: h ? '#15803d' : SUCCESS, color: '#fff',
         border: 'none', fontSize: 13, fontWeight: 600, padding: compact ? '7px 9px' : '7px 13px',
@@ -352,6 +363,7 @@ function DeployButton({ onClick, compact }) {
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       title="Deploy"
+      data-onb-target="top-nav-deploy"
       style={{
         display: 'flex', alignItems: 'center', gap: 7, background: h ? '#5A2F46' : PRIMARY, color: '#fff',
         border: 'none', fontSize: 13, fontWeight: 600, padding: compact ? '7px 9px' : '7px 14px',
