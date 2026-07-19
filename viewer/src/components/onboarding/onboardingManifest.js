@@ -111,6 +111,17 @@ export const CHECKLIST_ITEMS = [
     route: '/workspace/exploration',
     target: 'right-panel-add-insight',
     weight: 30,
+    // P6-D5 (e2e-gap-review.md "Phase 6 delta pass"): `right-panel-add-insight`
+    // ALSO only mounts inside an open exploration tab, never on the bare
+    // `route` above — the same D8 symptom `build_model` was fixed for, left
+    // open here. Unlike `build_model` (the first step, no exploration exists
+    // yet), by the time a user reaches this row an exploration usually
+    // already exists — the one `build_model` minted, holding the model this
+    // Insight should chart from. `OnboardingChecklist.handleItemClick`
+    // therefore routes into the active/most-recently-touched exploration
+    // (falling back to minting a fresh one only if none exists yet at all),
+    // rather than `mintsExploration`'s always-mint-a-new-one behavior.
+    routeToActiveExploration: true,
     // Multi-step flow: the Coach walks the user from "create the insight"
     // (an in-memory record on the active chart) through "save it to the
     // project" (round-trips through saveInsight → backend). Both steps
@@ -240,6 +251,10 @@ export const ROLE_OVERRIDES = {
         route: '/workspace/exploration',
         target: 'metric-add-button',
         weight: 25,
+        // P6-D5 — same gap as `create_insight` above: `metric-add-button`
+        // only mounts inside an open exploration tab. Routes into the
+        // active/most-recent exploration rather than the bare gallery route.
+        routeToActiveExploration: true,
         // Action-based: AddComputedColumnPopover taps
         // recordOnboardingAction('metric_defined') on save. A computed
         // column on a Model is exactly the "re-usable measure" the
