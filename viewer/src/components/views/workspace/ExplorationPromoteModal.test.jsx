@@ -458,6 +458,40 @@ describe('ExplorationPromoteModal', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
+    // P6-D10 (e2e-gap-review.md "Phase 6 delta pass") — the ACCEPT path
+    // (unlike decline, P5-D5) never checked consumeExplorationReturnTo's
+    // `{success: false}` return. A consume failure after a successful
+    // placement must surface an error and NOT navigate/close — closing here
+    // would hide that `return_to` is still persisted, letting the offer
+    // resurface on a later promote and risk a duplicate dashboard slot.
+    test('a consume-return-to failure AFTER a successful placement surfaces an error and does not navigate or close', async () => {
+      seedReturnTo(
+        { dashboard: 'sales', slot: 'r1-i1' },
+        { consumeExplorationReturnTo: jest.fn().mockResolvedValue({ success: false, error: 'write conflict' }) }
+      );
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-place-in-dashboard'));
+
+      // The chart WAS placed — that call still fires and succeeds.
+      await waitFor(() =>
+        expect(useStore.getState().placeChartInDashboardSlot).toHaveBeenCalledTimes(1)
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('exploration-promote-place-error')).toHaveTextContent(
+          'write conflict'
+        )
+      );
+      expect(useStore.getState().openWorkspaceTab).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
     // P5-D4 — a real double-click can dispatch both events before React
     // re-renders the button `disabled`; the synchronous `placingRef` guard
     // must stop the second call regardless (mirrors ExplorationPane's
@@ -479,6 +513,28 @@ describe('ExplorationPromoteModal', () => {
         expect(useStore.getState().consumeExplorationReturnTo).toHaveBeenCalledTimes(1)
       );
       expect(useStore.getState().placeChartInDashboardSlot).toHaveBeenCalledTimes(1);
+    });
+
+    // P6-D11 (e2e-gap-review.md "Phase 6 delta pass") — handleDeclinePlacement
+    // was made async in the same P5-D5 pass that added `placingRef` to the
+    // adjacent "Place" button, but never got its own in-flight guard. Mirrors
+    // the double-click test above for the decline button.
+    test('rapid double-click on Not-now fires exactly one consume call', async () => {
+      seedReturnTo({ dashboard: 'sales' });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+
+      const button = screen.getByTestId('exploration-promote-decline-placement');
+      fireEvent.click(button);
+      fireEvent.click(button);
+
+      await waitFor(() =>
+        expect(useStore.getState().consumeExplorationReturnTo).toHaveBeenCalledTimes(1)
+      );
     });
   });
 

@@ -181,7 +181,26 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         setPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
         return;
       }
-      await consumeExplorationReturnTo?.(explorationId);
+      // P6-D10 (e2e-gap-review.md "Phase 6 delta pass") — the store method
+      // catches its own errors and returns `{success: false}` rather than
+      // throwing (see its docstring's unlocked read-modify-write note), so
+      // this MUST be checked, not just awaited. The chart above was already
+      // placed successfully; if only clearing the placement intent fails,
+      // `return_to` stays persisted on the record and this SAME offer would
+      // re-render on a later promote run — a second "Place" click would then
+      // call `placeChartInDashboardSlot` again for a chart already sitting
+      // in the dashboard, adding a duplicate slot. Surface the failure (the
+      // same treatment the placement failure above gets) and deliberately
+      // do NOT close/navigate — closing here would hide that the intent is
+      // still live.
+      const consumeResult = await consumeExplorationReturnTo?.(explorationId);
+      if (consumeResult && consumeResult.success === false) {
+        setPlaceError(
+          consumeResult.error ||
+            'Chart placed, but could not clear the placement prompt — try again.'
+        );
+        return;
+      }
       openWorkspaceTab?.({
         id: `dashboard:${returnTo.dashboard}`,
         type: 'dashboard',
@@ -202,6 +221,16 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     onClose,
   ]);
 
+  // P6-D11 (e2e-gap-review.md "Phase 6 delta pass") — the same synchronous
+  // in-flight ref guard `placingRef` above exists for exactly this reason
+  // (`disabled={...}` alone cannot stop a real double-click — the second
+  // click's event dispatches before React re-renders the button disabled).
+  // `handleDeclinePlacement` below was made async in the same P5-D5 pass
+  // that added `placingRef` to the adjacent button, but never got its own
+  // guard — a double-click on "Not now" could enqueue `consumeReturnTo`
+  // twice.
+  const decliningRef = useRef(false);
+
   // "Declining also consumes" (01-ux-spec.md §5) — an explicit choice, never
   // silent accretion of an ever-growing pile of dead placement intents.
   //
@@ -214,12 +243,18 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // with none of the accept path's rigor. Mirrors `handlePlaceInDashboard`'s
   // own async/error-surfacing shape.
   const handleDeclinePlacement = useCallback(async () => {
+    if (decliningRef.current) return;
+    decliningRef.current = true;
     setDeclining(true);
     setDeclineError(null);
-    const result = await consumeExplorationReturnTo?.(explorationId);
-    setDeclining(false);
-    if (!result?.success) {
-      setDeclineError(result?.error || 'Could not dismiss the placement offer');
+    try {
+      const result = await consumeExplorationReturnTo?.(explorationId);
+      if (!result?.success) {
+        setDeclineError(result?.error || 'Could not dismiss the placement offer');
+      }
+    } finally {
+      decliningRef.current = false;
+      setDeclining(false);
     }
   }, [consumeExplorationReturnTo, explorationId]);
 
