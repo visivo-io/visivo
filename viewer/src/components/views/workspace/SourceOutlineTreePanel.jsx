@@ -436,7 +436,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
             {generating ? 'Generating…' : 'Generate schema'}
           </button>
           {error && (
-            <p className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-red-600">
+            <p className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-highlight-600">
               <PiWarningCircle aria-hidden="true" className="h-3.5 w-3.5" />
               {error}
             </p>
