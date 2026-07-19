@@ -233,6 +233,66 @@ describe('explorerStore', () => {
 
       expect(useStore.getState().explorerActiveModelName).toBe('second');
     });
+
+    it('returns the resolved tab name (VIS-1082 — callers rebind against it later)', () => {
+      expect(useStore.getState().createModelTab()).toBe('model');
+      expect(useStore.getState().createModelTab('explicit')).toBe('explicit');
+    });
+  });
+
+  // ====================================================================
+  // applyResolvedDefaultSource (VIS-1082 — cold-session default-source race)
+  // ====================================================================
+  describe('applyResolvedDefaultSource', () => {
+    it('rebinds a tab created before defaults arrived', () => {
+      useStore.setState({ defaults: null, explorerSources: [{ source_name: 'first-source' }] });
+      const name = useStore.getState().createModelTab();
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('first-source');
+
+      useStore.getState().applyResolvedDefaultSource(name, 'the-real-default');
+
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('the-real-default');
+    });
+
+    it('does not mark the tab sourceEdited (still a resolved default, not a user edit)', () => {
+      const name = useStore.getState().createModelTab();
+      useStore.getState().applyResolvedDefaultSource(name, 'the-real-default');
+      expect(useStore.getState().explorerModelStates[name].sourceEdited).toBeFalsy();
+    });
+
+    it('is a no-op once the user has explicitly picked a source (sourceEdited)', () => {
+      const name = useStore.getState().createModelTab();
+      useStore.getState().setActiveModelSource('user-chosen-source');
+
+      useStore.getState().applyResolvedDefaultSource(name, 'the-real-default');
+
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('user-chosen-source');
+    });
+
+    it('is a no-op when the tab already has the resolved source', () => {
+      useStore.setState({ defaults: { source_name: 'already-right' } });
+      const name = useStore.getState().createModelTab();
+      const before = useStore.getState().explorerModelStates[name];
+
+      useStore.getState().applyResolvedDefaultSource(name, 'already-right');
+
+      expect(useStore.getState().explorerModelStates[name]).toBe(before); // same reference — no set() fired
+    });
+
+    it('is a no-op for an unknown model name (no crash)', () => {
+      expect(() =>
+        useStore.getState().applyResolvedDefaultSource('exp_nope', 'some-source')
+      ).not.toThrow();
+    });
+
+    it('is a no-op when sourceName is falsy (no configured project default)', () => {
+      const name = useStore.getState().createModelTab();
+      const before = useStore.getState().explorerModelStates[name];
+
+      useStore.getState().applyResolvedDefaultSource(name, null);
+
+      expect(useStore.getState().explorerModelStates[name]).toBe(before);
+    });
   });
 
   // Explore 2.0 Phase 3a (D9): a Library schema-table row dropped on the SQL
