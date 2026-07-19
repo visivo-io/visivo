@@ -608,6 +608,30 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       }
     },
 
+    /**
+     * consumeExplorationReturnTo(id) — VIS-1068 dashboard round-trip
+     * completion. Calls the consume-return-to endpoint (server nulls
+     * `return_to`, idempotently) and mirrors the result into the local
+     * record. Enqueued alongside every other write for this id (draft sync /
+     * rename / discard revert / record-promotion) — see the file docstring's
+     * "WRITE SERIALIZATION" note; consuming return_to is one more unlocked
+     * read-modify-write against the same on-disk document.
+     *
+     * Called BOTH when the user accepts "Place in <dashboard>" (after the
+     * chart has actually been placed) and when they decline it (01-ux-spec.md
+     * §5: "Declining also consumes — explicit choice, no accretion").
+     */
+    consumeExplorationReturnTo: async id => {
+      try {
+        const updated = await enqueueWrite(id, () => explorationsApi.consumeReturnTo(id));
+        const mapped = mapExplorationFromApi(updated);
+        set(state => patchExploration(state, id, { returnTo: mapped.returnTo }));
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+
     /** Append-only promotion record (07-exploration-api-contract.md's
      * record-promotion sub-action) — call after a `saveX` action succeeds
      * for a promoted object.

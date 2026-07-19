@@ -215,4 +215,147 @@ describe('ExplorationPromoteModal', () => {
     expect(onClose).toHaveBeenCalled();
     expect(promoteExploration).not.toHaveBeenCalled();
   });
+
+  // VIS-1068 — dashboard round-trip completion ("Place in <dashboard>").
+  describe('return_to / "Place in <dashboard>"', () => {
+    const seedReturnTo = (returnTo, extra = {}) => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: { exp_1: { id: 'exp_1', returnTo } },
+          order: ['exp_1'],
+        },
+        dashboards: [{ name: 'sales' }],
+        openWorkspaceTab: jest.fn(),
+        placeChartInDashboardSlot: jest.fn().mockResolvedValue({ success: true }),
+        consumeExplorationReturnTo: jest.fn().mockResolvedValue({ success: true }),
+        ...extra,
+      });
+    };
+
+    const promoteChartResult = (extra = {}) => ({
+      success: true,
+      results: [{ type: 'chart', name: 'churn_chart', tier: 'chart', success: true, error: null }],
+      reclassificationOffers: [],
+      ...extra,
+    });
+
+    test('no offer without a return_to on the exploration', async () => {
+      seedReturnTo(null);
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-success');
+      expect(screen.queryByTestId('exploration-promote-return-to-offer')).not.toBeInTheDocument();
+    });
+
+    test('no offer when return_to is set but no chart was promoted this run', async () => {
+      seedReturnTo({ dashboard: 'sales' });
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue({
+          success: true,
+          results: [{ type: 'model', name: 'orders_q', success: true, error: null }],
+          reclassificationOffers: [],
+        }),
+      });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-success');
+      expect(screen.queryByTestId('exploration-promote-return-to-offer')).not.toBeInTheDocument();
+    });
+
+    test('accepting places the chart, consumes return_to, navigates to the dashboard tab, and closes', async () => {
+      seedReturnTo({ dashboard: 'sales', slot: 'r1-i1' });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+      const offer = await screen.findByTestId('exploration-promote-return-to-offer');
+      expect(offer).toHaveTextContent('churn_chart');
+      expect(offer).toHaveTextContent('sales');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-place-in-dashboard'));
+
+      await waitFor(() =>
+        expect(useStore.getState().placeChartInDashboardSlot).toHaveBeenCalledWith(
+          'sales',
+          'churn_chart',
+          'r1-i1'
+        )
+      );
+      await waitFor(() =>
+        expect(useStore.getState().consumeExplorationReturnTo).toHaveBeenCalledWith('exp_1')
+      );
+      await waitFor(() =>
+        expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'dashboard:sales',
+          type: 'dashboard',
+          name: 'sales',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    test('declining consumes return_to (explicit choice), does not place or navigate, and does not close', async () => {
+      seedReturnTo({ dashboard: 'sales' });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-decline-placement'));
+
+      await waitFor(() =>
+        expect(useStore.getState().consumeExplorationReturnTo).toHaveBeenCalledWith('exp_1')
+      );
+      expect(useStore.getState().placeChartInDashboardSlot).not.toHaveBeenCalled();
+      expect(useStore.getState().openWorkspaceTab).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    test('a return_to whose dashboard no longer exists renders the offer DISABLED with a tooltip', async () => {
+      seedReturnTo({ dashboard: 'deleted-dashboard' }, { dashboards: [{ name: 'sales' }] });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+      const placeButton = await screen.findByTestId('exploration-promote-place-in-dashboard');
+      expect(placeButton).toBeDisabled();
+      expect(placeButton).toHaveAttribute('title', '"deleted-dashboard" no longer exists');
+      // Still consumable via decline even though placement is disabled.
+      expect(screen.getByTestId('exploration-promote-decline-placement')).toBeEnabled();
+    });
+
+    test('a placement failure shows an inline error and does not consume return_to or close', async () => {
+      seedReturnTo({ dashboard: 'sales' }, {
+        placeChartInDashboardSlot: jest.fn().mockResolvedValue({ success: false, error: 'slot taken' }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-place-in-dashboard'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('exploration-promote-place-error')).toHaveTextContent('slot taken')
+      );
+      expect(useStore.getState().consumeExplorationReturnTo).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
 });

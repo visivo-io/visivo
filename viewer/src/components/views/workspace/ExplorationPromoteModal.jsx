@@ -30,8 +30,20 @@ const rowKey = row => `${row.type}:${row.name}`;
  * updates the original (05-e2e-ledger.md resolution #1), never creates a
  * duplicate.
  */
+const EMPTY_DASHBOARDS = [];
+
 const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const promoteExploration = useStore(s => s.promoteExploration);
+  // VIS-1068 — dashboard round-trip completion: read the exploration's own
+  // one-shot `return_to` intent + the live dashboard list (for the disabled-
+  // with-tooltip case when the target dashboard no longer exists).
+  const returnTo = useStore(s =>
+    explorationId ? s.workspaceExplorations?.byId?.[explorationId]?.returnTo || null : null
+  );
+  const dashboards = useStore(s => s.dashboards || EMPTY_DASHBOARDS);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const placeChartInDashboardSlot = useStore(s => s.placeChartInDashboardSlot);
+  const consumeExplorationReturnTo = useStore(s => s.consumeExplorationReturnTo);
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -40,6 +52,8 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const [error, setError] = useState(null);
   const [reclassificationOffers, setReclassificationOffers] = useState([]);
   const [promotedThisRun, setPromotedThisRun] = useState(null);
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,6 +128,56 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   }, []);
 
   const totalRows = rows.length;
+
+  // VIS-1068 — the chart promoted THIS RUN (return_to placement only makes
+  // sense for a run that actually promoted a chart; older promotes in a
+  // prior session don't retroactively offer placement).
+  const promotedChart = useMemo(
+    () => (promotedThisRun?.results || []).find(r => r.success && r.type === 'chart') || null,
+    [promotedThisRun]
+  );
+  const dashboardExists = useMemo(
+    () => !!returnTo?.dashboard && dashboards.some(d => d.name === returnTo.dashboard),
+    [returnTo, dashboards]
+  );
+
+  const handlePlaceInDashboard = useCallback(async () => {
+    if (!returnTo?.dashboard || !promotedChart || !placeChartInDashboardSlot) return;
+    setPlacing(true);
+    setPlaceError(null);
+    const placeResult = await placeChartInDashboardSlot(
+      returnTo.dashboard,
+      promotedChart.name,
+      returnTo.slot
+    );
+    if (!placeResult?.success) {
+      setPlacing(false);
+      setPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
+      return;
+    }
+    await consumeExplorationReturnTo?.(explorationId);
+    setPlacing(false);
+    openWorkspaceTab?.({
+      id: `dashboard:${returnTo.dashboard}`,
+      type: 'dashboard',
+      name: returnTo.dashboard,
+    });
+    onClose?.();
+  }, [
+    returnTo,
+    promotedChart,
+    placeChartInDashboardSlot,
+    consumeExplorationReturnTo,
+    explorationId,
+    openWorkspaceTab,
+    onClose,
+  ]);
+
+  // "Declining also consumes" (01-ux-spec.md §5) — an explicit choice, never
+  // silent accretion of an ever-growing pile of dead placement intents.
+  const handleDeclinePlacement = useCallback(() => {
+    consumeExplorationReturnTo?.(explorationId);
+  }, [consumeExplorationReturnTo, explorationId]);
 
   return (
     <div
@@ -229,6 +293,56 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
           >
             Promoted {promotedThisRun.results.filter(r => r.success).length} object
             {promotedThisRun.results.filter(r => r.success).length === 1 ? '' : 's'}.
+          </p>
+        )}
+
+        {/* VIS-1068 — dashboard round-trip completion. Only offered on a run
+            that actually promoted a chart while return_to is still set (a
+            reload between opening the intent-carrying exploration and
+            promoting preserves return_to — it's fetched from the backend on
+            every load, never derived from a mount-time snapshot here). A
+            return_to whose dashboard no longer exists renders the offer
+            DISABLED with a tooltip rather than hiding it (04-bug-inventory.md
+            D12's validation nit). */}
+        {promotedThisRun?.success && returnTo?.dashboard && promotedChart && (
+          <div
+            data-testid="exploration-promote-return-to-offer"
+            className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
+          >
+            <span className="text-xs text-primary-800">
+              Place <span className="font-medium">{promotedChart.name}</span> in{' '}
+              <span className="font-medium">{returnTo.dashboard}</span>?
+            </span>
+            <div className="flex shrink-0 gap-1.5">
+              <button
+                type="button"
+                data-testid="exploration-promote-decline-placement"
+                onClick={handleDeclinePlacement}
+                disabled={placing}
+                className="rounded-md px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+              >
+                Not now
+              </button>
+              <button
+                type="button"
+                data-testid="exploration-promote-place-in-dashboard"
+                onClick={handlePlaceInDashboard}
+                disabled={placing || !dashboardExists}
+                title={!dashboardExists ? `"${returnTo.dashboard}" no longer exists` : undefined}
+                className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {placing ? 'Placing…' : `Place in ${returnTo.dashboard}`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {placeError && (
+          <p
+            data-testid="exploration-promote-place-error"
+            className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
+          >
+            {placeError}
           </p>
         )}
 

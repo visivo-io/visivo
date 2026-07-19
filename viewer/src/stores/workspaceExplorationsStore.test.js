@@ -1128,6 +1128,69 @@ describe('recordExplorationPromotion', () => {
   });
 });
 
+// VIS-1068 — dashboard round-trip completion: consuming the one-shot
+// return_to intent (both on accept, after placement, and on decline).
+describe('consumeExplorationReturnTo', () => {
+  test('nulls return_to via the endpoint and mirrors it locally', async () => {
+    seedRecord({ returnTo: { dashboard: 'sales' } });
+    explorationsApi.consumeReturnTo.mockResolvedValueOnce(wireExploration({ return_to: null }));
+    let result;
+    await act(async () => {
+      result = await useStore.getState().consumeExplorationReturnTo('exp_1');
+    });
+    expect(result).toEqual({ success: true });
+    expect(explorationsApi.consumeReturnTo).toHaveBeenCalledWith('exp_1');
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.returnTo).toBeNull();
+  });
+
+  test('returns success:false on failure and leaves the local record untouched', async () => {
+    seedRecord({ returnTo: { dashboard: 'sales' } });
+    explorationsApi.consumeReturnTo.mockRejectedValueOnce(new Error('offline'));
+    let result;
+    await act(async () => {
+      result = await useStore.getState().consumeExplorationReturnTo('exp_1');
+    });
+    expect(result).toEqual({ success: false, error: 'offline' });
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.returnTo).toEqual({
+      dashboard: 'sales',
+    });
+  });
+
+  test('is enqueued alongside other writers for the same id (waits for an in-flight draft-sync)', async () => {
+    seedRecord({ returnTo: { dashboard: 'sales' } });
+    let resolveDraftSync;
+    explorationsApi.updateExploration.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveDraftSync = resolve;
+        })
+    );
+    explorationsApi.consumeReturnTo.mockResolvedValueOnce(wireExploration({ return_to: null }));
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', { queries: [], insights: [], chart: null });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+
+    let consumePromise;
+    act(() => {
+      consumePromise = useStore.getState().consumeExplorationReturnTo('exp_1');
+    });
+    // The draft-sync write is still in flight — consume-return-to must not
+    // have fired its POST yet.
+    expect(explorationsApi.consumeReturnTo).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveDraftSync(wireExploration());
+      await consumePromise;
+    });
+    expect(explorationsApi.consumeReturnTo).toHaveBeenCalledWith('exp_1');
+  });
+});
+
 // P4-D1 — a keyboard-driven tab switch mid-promote used to be able to race
 // recordExplorationPromotion's append against a concurrent draft-sync/rename/
 // discard write for the SAME id (both hit the same unlocked backend JSON
