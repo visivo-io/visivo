@@ -5,6 +5,7 @@ import SubBar from '../SubBar';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import { useConfirm } from '../../../common/ConfirmDialog';
 import ExplorationCard from './ExplorationCard';
+import { computeExplorationStaleness } from '../explorationStaleness';
 
 const ExplorerIcon = getTypeIcon('explorer');
 const EXPLORER_COLORS = getTypeColors('explorer');
@@ -30,8 +31,8 @@ const SOURCE_COLORS = getTypeColors('source');
  *     empty (after the fetch has settled — never race a real list) so the
  *     first visit is never empty.
  *
- * Promotion count (Phase 4) and the staleness badge (Phase 5) are
- * intentionally absent from the card — the mock depicts the end state.
+ * Promotion count (Phase 4) and the staleness badge (Phase 5,
+ * `computeExplorationStaleness`) are both wired now — the mock's end state.
  */
 const ExplorerHomePane = () => {
   const explorations = useStore(s => s.workspaceExplorations);
@@ -49,6 +50,19 @@ const ExplorerHomePane = () => {
     () => (explorations.order || []).map(id => explorations.byId[id]).filter(Boolean),
     [explorations]
   );
+
+  // VIS-1070 — staleness badge (01-ux-spec.md §2's "⚠ stale (orders
+  // changed)" end-state). Computed once per card here (not inside
+  // ExplorationCard itself) so the check runs against a SINGLE consistent
+  // state snapshot for the whole gallery rather than N independent reads.
+  const stalenessById = useMemo(() => {
+    const state = useStore.getState();
+    const map = {};
+    orderedExplorations.forEach(exploration => {
+      map[exploration.id] = computeExplorationStaleness(exploration, state);
+    });
+    return map;
+  }, [orderedExplorations]);
 
   const openExploration = id => {
     openWorkspaceTab({ id: `exploration:${id}`, type: 'exploration', name: id });
@@ -246,6 +260,8 @@ const ExplorerHomePane = () => {
                   onRename={handleRename}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
+                  stale={!!stalenessById[exploration.id]?.stale}
+                  danglingRefs={stalenessById[exploration.id]?.danglingRefs || []}
                 />
               ))}
             </div>

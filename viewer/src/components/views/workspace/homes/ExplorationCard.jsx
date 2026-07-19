@@ -1,6 +1,12 @@
 import React from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { PiDotsThreeVertical, PiPencilSimple, PiCopy, PiTrash } from 'react-icons/pi';
+import {
+  PiDotsThreeVertical,
+  PiPencilSimple,
+  PiCopy,
+  PiTrash,
+  PiWarningCircle,
+} from 'react-icons/pi';
 import Dropdown from '../../../common/Dropdown';
 import FieldPill from '../../common/FieldPill';
 import InlineRenameInput from '../InlineRenameInput';
@@ -10,17 +16,30 @@ import { draftSummary } from '../explorationLegacyBridge';
 /**
  * ExplorationCard — one "Recent explorations" gallery card (01-ux-spec.md
  * §2): name, relative edit time, draft summary ("n queries · n insights"),
- * a provenance chip when `seededFrom` is set, and Open / ⋮ (rename ·
- * duplicate · delete).
+ * a provenance chip when `seededFrom` is set, a staleness badge, and
+ * Open / ⋮ (rename · duplicate · delete).
  *
  * Promotion count (Explore 2.0 Phase 4, 01-ux-spec.md §2's "promotion count
  * arrives in Phase 4" note): read straight off the exploration's real
  * `promoted[]` trail (empty for an exploration that's never promoted
  * anything) — no separate fetch, `workspaceExplorationsStore.js` already
- * mirrors it locally after every `promoteExploration` call. Staleness badge
- * stays out of this card (Phase 5).
+ * mirrors it locally after every `promoteExploration` call.
+ *
+ * Staleness badge (Explore 2.0 Phase 5, VIS-1070, 01-ux-spec.md §2's
+ * "⚠ stale (orders changed)" end-state): `stale`/`danglingRefs` are computed
+ * by the PARENT (`ExplorerHomePane.jsx`, via `computeExplorationStaleness`)
+ * for every card at once, not per-card here — this component just renders
+ * whatever it's handed.
  */
-const ExplorationCard = ({ exploration, onOpen, onRename, onDuplicate, onDelete }) => {
+const ExplorationCard = ({
+  exploration,
+  onOpen,
+  onRename,
+  onDuplicate,
+  onDelete,
+  stale = false,
+  danglingRefs = [],
+}) => {
   // B16 (04-bug-inventory.md): the shared "am I editing this name" toggle —
   // see useInlineRename's docstring for why this hook exists.
   const rename = useInlineRename({ onCommit: nextName => onRename(exploration.id, nextName) });
@@ -108,16 +127,32 @@ const ExplorationCard = ({ exploration, onOpen, onRename, onDuplicate, onDelete 
 
       <div
         data-testid={`exploration-card-${exploration.id}-summary`}
-        className="mb-3 text-[12px] text-gray-500"
+        className="mb-3 flex flex-wrap items-center gap-1.5 text-[12px] text-gray-500"
       >
-        {[
-          editedLabel,
-          `${queryCount} ${queryCount === 1 ? 'query' : 'queries'}`,
-          `${insightCount} ${insightCount === 1 ? 'insight' : 'insights'}`,
-          promotedCount > 0 ? `${promotedCount} promoted` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
+        <span>
+          {[
+            editedLabel,
+            `${queryCount} ${queryCount === 1 ? 'query' : 'queries'}`,
+            `${insightCount} ${insightCount === 1 ? 'insight' : 'insights'}`,
+            promotedCount > 0 ? `${promotedCount} promoted` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
+        {stale && (
+          <span
+            data-testid={`exploration-card-${exploration.id}-stale`}
+            title={
+              danglingRefs.length > 0
+                ? `References that no longer resolve: ${danglingRefs.join(', ')}`
+                : 'This exploration references objects that may have changed'
+            }
+            className="inline-flex items-center gap-1 rounded-full bg-highlight-50 px-1.5 py-0.5 text-[10.5px] font-medium text-highlight-700"
+          >
+            <PiWarningCircle style={{ fontSize: 11 }} aria-hidden="true" />
+            stale
+          </span>
+        )}
       </div>
 
       {exploration.seededFrom && (

@@ -4,10 +4,12 @@ import useStore from '../../../stores/store';
 import SubBar from './SubBar';
 import ExplorationWorkbench from './ExplorationWorkbench';
 import ExplorationDeletedRemotelyBanner from './ExplorationDeletedRemotelyBanner';
+import ExplorationStalenessBanner from './ExplorationStalenessBanner';
 import InlineRenameInput from './InlineRenameInput';
 import useInlineRename from '../../../hooks/useInlineRename';
 import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import { legacyStateToDraft, draftToLegacyState } from './explorationLegacyBridge';
+import { computeExplorationStaleness } from './explorationStaleness';
 
 const ExplorationIcon = getTypeIcon('exploration');
 const EXPLORATION_COLORS = getTypeColors('exploration');
@@ -134,6 +136,12 @@ const ExplorationPane = ({ id }) => {
 
   const [readyId, setReadyId] = useState(null);
   const skipNextLiveSyncRef = useRef(false);
+  // VIS-1070 — resume-time staleness (02-architecture.md §8): computed ONCE
+  // per activation, not continuously (that's what the Build rail's own live
+  // advisory validation already does while editing) — see
+  // `explorationStaleness.js`'s docstring for what "stale" means here.
+  const [staleness, setStaleness] = useState(null);
+  const [stalenessDismissed, setStalenessDismissed] = useState(false);
 
   // Restore-on-activate / flush-on-deactivate. Deps are `[id, !!record]` —
   // NOT `record` itself: `record` is a fresh object on every optimistic
@@ -153,6 +161,12 @@ const ExplorationPane = ({ id }) => {
     // draft it just read. Not incorrect (idempotent), just wasted traffic.
     skipNextLiveSyncRef.current = true;
     setReadyId(id);
+    // VIS-1070 — re-run ref checks against CURRENT collections right at
+    // resume (a parked exploration may have sat while a referenced object
+    // was deleted elsewhere). A fresh activation always gets a fresh check —
+    // never carries over a previous session's dismissal.
+    setStaleness(computeExplorationStaleness(record, useStore.getState()));
+    setStalenessDismissed(false);
 
     return () => {
       const snapshot = snapshotExplorerWorkingState();
@@ -214,6 +228,17 @@ const ExplorationPane = ({ id }) => {
     },
     [id, renameExploration]
   );
+
+  // VIS-1070 — "Re-check references": re-runs the SAME staleness check
+  // against whatever the live store looks like RIGHT NOW (picks up an edit
+  // the user just made, or an object someone else just published) rather
+  // than only ever reflecting the moment-of-resume snapshot.
+  const handleRecheckStaleness = useCallback(() => {
+    const current = useStore.getState().workspaceExplorations?.byId?.[id];
+    if (!current) return;
+    setStaleness(computeExplorationStaleness(current, useStore.getState()));
+  }, [id]);
+  const handleDismissStaleness = useCallback(() => setStalenessDismissed(true), []);
 
   // VIS-1086: in-flight guard against a double-click on Duplicate — checked
   // synchronously INSIDE the handler (a real double-click can dispatch both
@@ -315,6 +340,13 @@ const ExplorationPane = ({ id }) => {
         }
       />
       {record.syncStatus === 'deleted-remotely' && <ExplorationDeletedRemotelyBanner id={id} />}
+      {!stalenessDismissed && staleness?.stale && (
+        <ExplorationStalenessBanner
+          danglingRefs={staleness.danglingRefs}
+          onRecheck={handleRecheckStaleness}
+          onDismiss={handleDismissStaleness}
+        />
+      )}
       <ExplorationWorkbench id={id} />
     </section>
   );

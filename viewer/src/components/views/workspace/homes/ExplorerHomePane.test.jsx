@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 /**
  * ExplorerHomePane (Explore 2.0 Phase 2 — replaces the Phase 0 placeholder):
  * header + "+ New exploration", "Start from a source" tiles, "Recent
@@ -390,5 +391,44 @@ describe('ExplorerHomePane — delete flow', () => {
     fireEvent.click(screen.getByTestId('exploration-delete-confirm-cancel'));
 
     expect(deleteExploration).not.toHaveBeenCalled();
+  });
+});
+
+// VIS-1070 — the gallery computes staleness once per card (via
+// computeExplorationStaleness) and passes it down; this pins the wiring,
+// not the detection logic itself (covered by explorationStaleness.test.js).
+describe('ExplorerHomePane — staleness badges (VIS-1070)', () => {
+  test('flags a card whose draft references a deleted object, leaves an unaffected card clean', () => {
+    seed({
+      models: [{ name: 'orders_q' }],
+      workspaceExplorations: {
+        byId: {
+          exp_1: explorationRecord({
+            id: 'exp_1',
+            name: 'Stale one',
+            draft: {
+              queries: [],
+              insights: [{ name: 'a', props: { x: '?{${ref(deleted_model).col}}' } }],
+              chart: null,
+              computedColumns: [],
+            },
+          }),
+          exp_2: explorationRecord({
+            id: 'exp_2',
+            name: 'Clean one',
+            draft: {
+              queries: [{ name: 'orders_q', sql: 'SELECT 1', source: 'warehouse' }],
+              insights: [{ name: 'b', props: { x: '?{${ref(orders_q).col}}' } }],
+              chart: null,
+              computedColumns: [],
+            },
+          }),
+        },
+        order: ['exp_1', 'exp_2'],
+      },
+    });
+    render(<ExplorerHomePane />);
+    expect(screen.getByTestId('exploration-card-exp_1-stale')).toBeInTheDocument();
+    expect(screen.queryByTestId('exploration-card-exp_2-stale')).not.toBeInTheDocument();
   });
 });
