@@ -323,3 +323,48 @@ class TestRecordPromotion:
             json={"promoted": [], "name": "x"},
         )
         assert len(resp.get_json()["promoted"]) == 1
+
+
+class TestReturnTo:
+    """e2e-gap-review.md D12 [LOW·PARTIAL]: `return_to.dashboard` is persisted
+    with ZERO existence validation against the project's real dashboards —
+    `ReturnToRef` (visivo/models/exploration.py) is pure shape typing (a dict
+    with a `dashboard: str` field), and neither `ExplorationRepository.create`/
+    `update` nor this view cross-checks it against any dashboard list. This is
+    documented-permissive by design (07-exploration-api-contract.md;
+    exploration_views.py's own module docstring: "draft CONTENT is
+    intentionally never validated at rest") — Phase 4/5's eventual
+    `dashboardExists` consumption (ExplorationPromoteModal.jsx) is what
+    actually reacts to a missing dashboard, not creation-time validation. These
+    tests lock in and document today's intentional permissiveness; they are
+    NOT a bug fix.
+    """
+
+    def test_create_with_nonexistent_dashboard_return_to_succeeds_and_persists_verbatim(
+        self, client
+    ):
+        resp = client.post(
+            "/api/explorations/",
+            json={"return_to": {"dashboard": "definitely-does-not-exist", "slot": "r1-i1"}},
+        )
+        assert resp.status_code == 201
+        data = resp.get_json()
+        assert data["return_to"] == {"dashboard": "definitely-does-not-exist", "slot": "r1-i1"}
+
+        # Survives a re-fetch — persisted, not just echoed in the response.
+        refetched = client.get(f"/api/explorations/{data['id']}/").get_json()
+        assert refetched["return_to"] == {"dashboard": "definitely-does-not-exist", "slot": "r1-i1"}
+
+    def test_update_to_a_nonexistent_dashboard_return_to_also_succeeds(self, client):
+        created = client.post("/api/explorations/", json={}).get_json()
+        assert created["return_to"] is None
+
+        resp = client.post(
+            f"/api/explorations/{created['id']}/",
+            json={"return_to": {"dashboard": "another-ghost-dashboard"}},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["return_to"] == {
+            "dashboard": "another-ghost-dashboard",
+            "slot": None,
+        }

@@ -12,6 +12,7 @@ __pycache__/
 env/
 venv/
 venv12/
+venv14/
 cli_venv/
 api_venv/
 ENV/
@@ -45,6 +46,9 @@ htmlcov/
 .netlify
 .qodo
 .visivo_cache
+# Exploration workbench repository (Explore 2.0) — runtime state under any
+# test-projects/*/.visivo/, never checked in (analogous to target/).
+test-projects/*/.visivo/
 mk_docs.log
 visivo.spec
 

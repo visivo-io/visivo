@@ -5,6 +5,12 @@ from flask import Flask
 from visivo.server.views.commit_views import register_commit_views
 from visivo.server.managers.object_manager import ObjectStatus
 
+# TestExplorationCommitExclusion below intentionally uses the REAL
+# integration_client/integration_app fixtures (tests/server/conftest.py) —
+# both commit_views and exploration_views are registered on that same real
+# FlaskApp, which is exactly the "is an exploration ever visible to the
+# commit surfaces" question this class pins.
+
 
 class TestCommitViews:
     """Test suite for commit API endpoints."""
@@ -357,3 +363,91 @@ class TestCommitViews:
         assert response.status_code == 200
         assert response.get_json()["discarded_count"] == 1
         app.flask_app.dashboard_manager.clear_cache.assert_called_once()
+
+
+class TestExplorationCommitExclusion:
+    """e2e-gap-review.md #14 [MEDIUM·CONFIRMED_GAP]: explorations are
+    deliberately NOT part of the Project DAG / commit surfaces
+    (02-architecture.md: "Deliberately NOT part of the Project DAG... must
+    not appear in... git diffs"), but that guarantee has only ever held by
+    OMISSION — commit_views.py's `change_managers` (get_project_changes) and
+    every pending/commit/discard loop hardcode exactly 13 non-exploration
+    managers and simply never reference an exploration_manager. Nothing
+    previously asserted this; a future "add exploration_manager for
+    consistency with every other object type" refactor could silently fold
+    explorations into the commit surfaces with no test catching it.
+
+    Mirrors tests/server/test_run_views.py's `TestExplorationRunIsolation`
+    pattern (the same "prove absence via the real integration app" shape for
+    a different surface) using the shared `integration_client`/`integration_app`
+    fixtures (tests/server/conftest.py) — both commit_views and
+    exploration_views are registered on that one real FlaskApp.
+    """
+
+    def test_exploration_type_never_appears_in_project_changes(self, integration_client):
+        # A dirty exploration (create + draft edit + rename) sits alongside a
+        # genuinely dirty model, so /changes/'s response is non-trivial and
+        # this isn't just "the endpoint returns an empty list either way".
+        integration_client.post("/api/models/exploration_gap_model/", json={"sql": "select 1"})
+
+        created = integration_client.post("/api/explorations/", json={"name": "Scratch"}).get_json()
+        integration_client.post(
+            f"/api/explorations/{created['id']}/",
+            json={"draft": {"queries": [{"name": "q", "sql": "SELECT 1"}]}},
+        )
+        integration_client.post(f"/api/explorations/{created['id']}/", json={"name": "Renamed"})
+
+        resp = integration_client.get("/api/projects/proj1/changes/")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        types = {entry["type"] for entry in data["to_publish"] + data["to_remove"]}
+        assert "exploration" not in types
+        # Sanity: the model IS present, so the exploration's absence above is
+        # a real exclusion, not an artifact of an empty response.
+        assert "model" in types
+
+        integration_client.delete(f"/api/explorations/{created['id']}/")
+
+    def test_create_update_rename_delete_exploration_leaves_pending_empty_throughout(
+        self, integration_client
+    ):
+        def pending_count():
+            resp = integration_client.get("/api/commit/pending/")
+            assert resp.status_code == 200
+            return resp.get_json()["count"]
+
+        assert pending_count() == 0
+
+        created = integration_client.post("/api/explorations/", json={"name": "Scratch"}).get_json()
+        assert pending_count() == 0
+
+        integration_client.post(
+            f"/api/explorations/{created['id']}/",
+            json={"draft": {"queries": [{"name": "q", "sql": "SELECT 1"}]}},
+        )
+        assert pending_count() == 0
+
+        integration_client.post(f"/api/explorations/{created['id']}/", json={"name": "Renamed"})
+        assert pending_count() == 0
+
+        integration_client.delete(f"/api/explorations/{created['id']}/")
+        assert pending_count() == 0
+
+    def test_commit_status_unaffected_by_exploration_mutations(self, integration_client):
+        assert (
+            integration_client.get("/api/commit/status/").get_json()["has_unpublished_changes"]
+            is False
+        )
+
+        created = integration_client.post("/api/explorations/", json={"name": "Scratch"}).get_json()
+        integration_client.post(
+            f"/api/explorations/{created['id']}/",
+            json={"draft": {"queries": [{"name": "q", "sql": "SELECT 1"}]}},
+        )
+
+        assert (
+            integration_client.get("/api/commit/status/").get_json()["has_unpublished_changes"]
+            is False
+        )
+
+        integration_client.delete(f"/api/explorations/{created['id']}/")
