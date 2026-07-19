@@ -67,6 +67,11 @@ async function typeSqlReliably(page, sql) {
   }
 }
 
+// Playwright runs on the same host as the browser, so process.platform picks
+// the right modifier for the page's navigator-based detection (mirrors
+// workspace-tabs-shortcuts.spec.mjs's own MOD constant).
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
+
 const BASE_URL =
   process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
 // Explorations are S3'd to a single file-backed repository shared by every
@@ -302,5 +307,212 @@ test.describe('Exploration lifecycle (Explore 2.0 Phase 2)', () => {
       timeout: 15000,
     });
     await expect(page.getByText(/doesn't exist/i)).toBeVisible();
+  });
+
+  // e2e-gap-review.md #3 [HIGH·PARTIAL]: the existing lossless-park test above
+  // deliberately waits for the dirty dot to CLEAR before closing (its own
+  // comment: "the contract is only that sync has SETTLED before we close") —
+  // it never drives a close while the REAL syncStatus pipeline (not a
+  // manually-flipped flag) is genuinely mid-debounce. `requestCloseWorkspaceTab`
+  // (workspaceStore.js) has exactly one behavior for a dirty tab: it ALWAYS
+  // raises TabCloseConfirmDialog — there is no "close directly while dirty"
+  // door in the UI, so driving a real close through this exact interruption
+  // means going through "Close without saving", which (VIS-1081,
+  // `discardExploration`) deliberately reverts to the pre-session snapshot
+  // BEFORE `ExplorationPane`'s own unmount-cleanup flush re-persists whatever
+  // the (now-reverted) legacy store holds. This test proves that interaction
+  // is safe even when the debounce is a REAL, in-flight one (not a
+  // synthetic/settled one): the discard-revert wins cleanly, the in-flight
+  // autosave never races back in to resurrect the discarded edit, and the tab
+  // reactivates cleanly afterward with no stuck 'saving'/'error' state.
+  test('closing a tab mid-debounce (real syncStatus, via the confirm dialog\'s "Close without saving") reverts cleanly and never resurrects the discarded edit', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+
+    await typeSqlReliably(page, 'SELECT 1 AS marker_v1');
+    // Poll the REAL store (not a manual flag) until the debounce has
+    // genuinely armed — `syncStatus` only flips to 'saving' once
+    // ExplorationPane's 600ms live-sync timer has ALREADY fired and called
+    // `updateExplorationDraft`, so catching it here guarantees a real
+    // backend POST is either in flight or about to be scheduled.
+    await page.waitForFunction(
+      id => window.useStore.getState().workspaceExplorations.byId[id]?.syncStatus === 'saving',
+      id,
+      { timeout: 5000 }
+    );
+
+    const closeBtn = page.getByTestId(`workspace-tab-close-exploration:${id}`);
+    await closeBtn.hover();
+    await closeBtn.click();
+
+    // Genuinely dirty at click time -> the confirm dialog, not a direct close.
+    const dialog = page.getByTestId('tab-close-confirm-dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('tab-close-confirm-close').click();
+
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).not.toBeVisible();
+    await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible();
+
+    // The discard reverted to the pre-session (empty SQL) snapshot — the
+    // in-flight autosave's own stale write must never race back in and
+    // resurrect 'marker_v1' server-side.
+    await expect(async () => {
+      const res = await page.request.get(`${API}/api/explorations/${id}/`);
+      expect(res.ok()).toBe(true);
+      const data = await res.json();
+      expect(data?.draft?.queries?.[0]?.sql || '').not.toContain('marker_v1');
+    }).toPass({ timeout: 10000 });
+
+    // Reopening reactivates cleanly — no stuck syncStatus, no crash, no
+    // duplicate tab.
+    await expect(async () => {
+      const card = page.getByTestId(`exploration-card-${id}-open`);
+      if (await card.isVisible()) await card.click();
+      await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 4000 });
+    }).toPass({ timeout: 30000 });
+    await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toHaveCount(1);
+    const syncStatus = await page.evaluate(
+      id => window.useStore.getState().workspaceExplorations.byId[id]?.syncStatus,
+      id
+    );
+    expect(syncStatus).not.toBe('error');
+  });
+
+  // e2e-gap-review.md #17 [MEDIUM·PARTIAL]: `activateWorkspaceView`
+  // (workspaceStore.js) unconditionally nulls `workspaceActiveTabId` on every
+  // view click — including re-clicking a document tab's OWN destination —
+  // parking it (still open, just unfocused) rather than closing it. Clicking
+  // back into Explorer's OWN view lands on ExplorerHomePane's gallery, never
+  // back on the parked tab directly; the only way back to the tab itself is
+  // its own Home card's "Open" action. This exercises exactly that path,
+  // deliberately WITHOUT waiting for the dirty dot to clear first (the gap
+  // the other two lifecycle tests in this file don't hit) — a real edit is
+  // still plausibly in flight when the reopen happens.
+  test("park via view-switch (not close), then reopen from Home's own card — reactivates the SAME tab, no duplicate, edit survives", async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+    await typeSqlReliably(page, 'SELECT 999 AS reopen_marker');
+
+    // Park via a VIEW SWITCH, not a close — no dirty-confirm dialog gates
+    // this path at all (activateWorkspaceView doesn't check `dirty`).
+    await page.getByTestId('workspace-view-switcher-project').click();
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible({ timeout: 15000 });
+    // Still open, just unfocused.
+    await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toBeVisible();
+
+    // Re-clicking Explorer's OWN view lands on the gallery, not the tab.
+    await page.getByTestId('workspace-view-switcher-explorer').click();
+    await expect(page.getByTestId('explorer-home-gallery')).toBeVisible({ timeout: 15000 });
+
+    // Reopen from the exploration's OWN Home card while it's still parked
+    // (and plausibly still mid-debounce) elsewhere in the strip.
+    await expect(async () => {
+      const card = page.getByTestId(`exploration-card-${id}-open`);
+      if (await card.isVisible()) await card.click();
+      await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 4000 });
+    }).toPass({ timeout: 30000 });
+
+    // The SAME tab reactivated — no duplicate tab was minted for it.
+    await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toHaveCount(1);
+    await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+    // The restore-on-activate effect never clobbered the in-flight edit.
+    await expect(page.locator('.view-lines').first()).toContainText('SELECT 999 AS reopen_marker', {
+      timeout: 10000,
+    });
+    await waitForBackendDraftSql(page, id, 'SELECT 999 AS reopen_marker');
+  });
+
+  // e2e-gap-review.md #21 [MEDIUM·PARTIAL]: reloading at a BARE view URL
+  // (e.g. /workspace/semantic-layer) while a document tab sits parked behind
+  // it in restored localStorage is never exercised — view-switcher.spec.mjs's
+  // own bare-URL-reload test opens zero tabs first, and this file's other
+  // reload test always reloads with the exploration tab itself ACTIVE. This
+  // drives the three-way race directly: the parked view must render from the
+  // URL (not resurrect onto the parked tab), and the parked tab must survive
+  // the reload with its content intact.
+  test('reload at a bare view URL restores that view (not the parked tab), and the parked exploration tab survives with its content intact', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+    await typeSqlReliably(page, 'SELECT 99 AS parked_marker');
+    const dirtyDot = page.getByTestId(`workspace-tab-dirty-exploration:${id}`);
+    await expect(dirtyDot).not.toBeVisible({ timeout: 10000 });
+    await waitForBackendDraftSql(page, id, 'SELECT 99 AS parked_marker');
+
+    // Park behind Semantic Layer (not Project — the reviewer's own example).
+    await page.getByTestId('workspace-view-switcher-semantic-layer').click();
+    await expect(page.getByTestId('workspace-middle-semantic-layer')).toBeVisible({
+      timeout: 15000,
+    });
+    expect(new URL(page.url()).pathname).toBe('/workspace/semantic-layer');
+    await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toBeVisible();
+
+    // Hard-reload AT this exact bare view URL.
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // The correct view renders straight from the URL — never resurrected
+    // onto the parked document tab.
+    await expect(page.getByTestId('workspace-middle-semantic-layer')).toBeVisible({
+      timeout: 30000,
+    });
+    expect(new URL(page.url()).pathname).toBe('/workspace/semantic-layer');
+    await expect(page.getByTestId('workspace-view-switcher-semantic-layer')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+
+    // The parked tab survived the reload (restored from localStorage) with
+    // its persisted content intact.
+    const parkedTab = page.getByTestId(`workspace-tab-exploration:${id}`);
+    await expect(parkedTab).toBeVisible({ timeout: 10000 });
+    await page.getByTestId(`workspace-tab-select-exploration:${id}`).click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.view-lines').first()).toContainText('SELECT 99 AS parked_marker', {
+      timeout: 10000,
+    });
+  });
+
+  // e2e-gap-review.md #29 [LOW·PARTIAL]: only the mouse-× path has ever been
+  // proven safe for a real exploration tab's lossless park/reopen guarantee —
+  // Cmd/Ctrl+W (`useWorkspaceTabShortcuts.js`) routes through the exact same
+  // `requestCloseWorkspaceTab` primitive, but no test ever drives the
+  // keyboard shortcut against a real, backend-synced exploration.
+  test(`${MOD}+W closes an exploration tab and reopening it is lossless, same as the mouse ×`, async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+    await typeSqlReliably(page, 'SELECT 999 AS kbd_marker');
+
+    const dirtyDot = page.getByTestId(`workspace-tab-dirty-exploration:${id}`);
+    await expect(dirtyDot).not.toBeVisible({ timeout: 10000 });
+    await waitForBackendDraftSql(page, id, 'SELECT 999 AS kbd_marker');
+
+    // Move focus OFF the Monaco editor first — `handleTabShortcut` suppresses
+    // every shortcut while an editable target has focus.
+    await page.getByTestId('workspace-tab-strip').click();
+    await page.keyboard.press(`${MOD}+w`);
+
+    await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).not.toBeVisible();
+    await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible();
+
+    await expect(async () => {
+      const card = page.getByTestId(`exploration-card-${id}-open`);
+      if (await card.isVisible()) await card.click();
+      await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 4000 });
+    }).toPass({ timeout: 30000 });
+    await expect(page.locator('.view-lines').first()).toContainText('SELECT 999 AS kbd_marker', {
+      timeout: 10000,
+    });
   });
 });

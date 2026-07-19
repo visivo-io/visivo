@@ -304,4 +304,67 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     await expect(page.getByTestId('slice-option-range')).toBeDisabled();
     await expect(page.getByTestId('slice-option-all')).toBeDisabled();
   });
+
+  // e2e-gap-review.md D4 [MEDIUM, Phase 3b delta]: toggling a PillMenu
+  // preset on a slot that already carries an authored slice is untested —
+  // `handleSelectPreset` -> `handleQueryChange` re-wraps the NEW aggregate
+  // body with the CURRENT `slice` closure value (PropertyRow.jsx), so `[0]`
+  // should survive an aggregate-function rewrite, but nothing asserts the
+  // resulting persisted value, nor that SliceBadge still reads correctly
+  // afterward. Extends the slice-on-drop test above with a SUM -> AVG
+  // preset toggle on the SAME pill.
+  test('toggling a preset (SUM -> AVG) on a slot with an authored slice preserves the slice, both in the persisted value and in SliceBadge', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+    const queryName = await page.evaluate(
+      () => window.useStore.getState().explorerActiveModelName
+    );
+
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+    await pickSelectOption(page, `insight-type-select-${insightName}`, 'Indicator');
+
+    const tableRow = await expandSourceTable(page);
+    const { locator: column, name: columnName } = await firstNumericColumn(page, tableRow);
+    const valueSlot = page.locator('[data-testid*="droppable-property-value"]').first();
+    await expect(valueSlot).toBeVisible({ timeout: 15000 });
+    await dragAndDrop(page, column, valueSlot);
+
+    // The scalar-only slot auto-applies the default slice on drop (same
+    // fixture as the test above).
+    await expect(page.getByTestId('slice-banner')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('slice-banner-first').click();
+    const badge = page.getByTestId('slice-badge');
+    await expect(badge).toBeVisible({ timeout: 5000 });
+    await expect(badge).toContainText('First (0)');
+
+    await waitForBackendDraft(page, id, draft =>
+      (draft.insights || []).some(
+        insight => insight.props?.value === `?{sum(\${ref(${queryName}).${columnName}})}[0]`
+      )
+    );
+
+    // Toggle the SAME pill's preset SUM -> AVG.
+    await valueSlot.getByTestId('pill-menu-trigger').click();
+    await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('pill-menu-preset-avg').click();
+
+    await expect(valueSlot).toContainText('AVG');
+    await expect(valueSlot).not.toContainText('SUM');
+
+    // The slice survives the aggregate-function rewrite in the persisted
+    // value...
+    await waitForBackendDraft(page, id, draft =>
+      (draft.insights || []).some(
+        insight => insight.props?.value === `?{avg(\${ref(${queryName}).${columnName}})}[0]`
+      )
+    );
+    // ...and SliceBadge still reads correctly afterward — never reset/blanked
+    // by the pill's own label/type change underneath it.
+    await expect(badge).toBeVisible();
+    await expect(badge).toContainText('First (0)');
+  });
 });

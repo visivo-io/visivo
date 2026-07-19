@@ -269,6 +269,56 @@ test.describe('Pill aggregation grammar (Explore 2.0 Phase 3b — D10)', () => {
     );
   });
 
+  // e2e-gap-review.md D11 [LOW, Phase 3b delta]: the opaque-expression
+  // "never silently rewritten" guarantee is only proven above via a
+  // same-exploration RELOAD — the Duplicate code path (a completely
+  // different server-side/client-side construction of the new record's
+  // draft) is never exercised. Extends the same fixture with a
+  // Duplicate-instead-of-reload variant, backend-asserted on the NEW
+  // exploration's own copy of the prop.
+  test('an opaque custom expression survives Duplicate byte-for-byte (not just a same-exploration reload)', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+    const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+    const raw = `count(distinct \${ref(${queryName}).x}) / count(*)`;
+
+    const xSlot = page.locator('[data-testid*="droppable-property-x"]').first();
+    await expect(xSlot).toBeVisible({ timeout: 15000 });
+    await xSlot.getByRole('button', { name: 'query string' }).click();
+    const editable = xSlot.locator('[data-testid="ref-textarea-editable"]');
+    await editable.click();
+    await page.keyboard.type(raw, { delay: 5 });
+    await editable.blur();
+
+    await expect(xSlot.getByTestId('pill-menu-trigger')).not.toBeVisible();
+    await waitForBackendDraft(page, id, draft =>
+      (draft.insights || []).some(insight => insight.props?.x === `?{${raw}}`)
+    );
+
+    // Duplicate — not reload.
+    await expect(page.getByTestId('exploration-duplicate-button')).toBeEnabled();
+    await page.getByTestId('exploration-duplicate-button').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 15000 })
+      .not.toBe(`/workspace/exploration/${id}`);
+    const duplicateId = new URL(page.url()).pathname.split('/').pop();
+    expect(duplicateId).not.toBe(id);
+
+    // The duplicate's OWN copy of the prop is byte-identical — never
+    // re-normalized, re-parsed, or rewritten by whatever constructs the
+    // duplicate's draft.
+    await waitForBackendDraft(page, duplicateId, draft =>
+      (draft.insights || []).some(insight => insight.props?.x === `?{${raw}}`)
+    );
+    // The source exploration's own copy is untouched by the duplication.
+    await waitForBackendDraft(page, id, draft =>
+      (draft.insights || []).some(insight => insight.props?.x === `?{${raw}}`)
+    );
+  });
+
   test('no raw ?{ or ${ syntax ever appears in the rendered Build rail, even after several drops', async ({
     page,
   }) => {
