@@ -1464,7 +1464,19 @@ const createExplorerSlice = (set, get) => ({
       if (!modelObj) return null;
       const base = buildModelStateFromObject(modelObj, state);
       return oneQuerySnapshot({
-        sql: `SELECT * FROM ${formatRefExpression(obj.name)}`,
+        // Reuse the model's OWN literal SQL — never a `${ref(...)}`
+        // context-string expression. The scratch SQL editor's execution
+        // pipeline (`SQLEditor.jsx` -> `useModelQueryJob` ->
+        // `/api/model-query-jobs/` -> `execute_model_query_job`) sends this
+        // text VERBATIM to the source with zero ref-resolution — it's a raw
+        // pass-through, not the full-project compile pipeline that resolves
+        // `${ref(...)}` via SQLGlot — so a `${ref(...)}` string here reaches
+        // DuckDB unresolved and fails to parse (root-caused via live
+        // reproduction against the sandbox, integration-gate fix cycle:
+        // `SELECT * FROM ${ref(model)}` sent verbatim errored with "syntax
+        // error at or near \"$\""). `base.sql` is the same already-runnable
+        // text `buildModelStateFromObject` loads for every other model tab.
+        sql: base.sql || '',
         sourceName: base.sourceName,
       });
     }
@@ -1481,7 +1493,9 @@ const createExplorerSlice = (set, get) => ({
       if (!modelObj) return null;
       const base = buildModelStateFromObject(modelObj, state);
       return oneQuerySnapshot({
-        sql: `SELECT * FROM ${formatRefExpression(parentModelName)}`,
+        // Same fix as the "model" branch above — reuse the parent model's
+        // own literal SQL, never an unresolved `${ref(...)}` expression.
+        sql: base.sql || '',
         sourceName: base.sourceName,
       });
     }
