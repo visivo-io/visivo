@@ -129,6 +129,33 @@ export default defineConfig({
       // race the file-watcher recompile triggered by the previous attempt's
       // YAML restore and see phantom pending changes). Targets its own
       // sandbox via VIS_PUBLISH_BASE.
+      //
+      // Phase 6 P6-D9 (e2e-gap-review.md "Phase 6 delta pass") —
+      // `cross-tab-soft-reload-project-runs.spec.mjs` was added here
+      // alongside the two original Track H files, but (unlike them) its
+      // default BASE falls back to the SHARED :3001/:8001 sandbox rather
+      // than the isolated :3051/:8051 one whenever VIS_PUBLISH_BASE isn't
+      // set — exactly how this repo's own documented full-suite invocation
+      // runs (the ':8001/:3001' sandbox). `workers: 1`/serial-WITHIN-this-
+      // project alone doesn't help there: with no `dependencies`, Playwright
+      // schedules 'workspace-publish' to run CONCURRENTLY (same wall-clock
+      // window) as 'parallel' and 'exploration-mutations' — so this spec's
+      // real `POST /api/commit/` (rewriting project.visivo.yml + an
+      // unscoped `reload` socket broadcast to every connected page) could
+      // fire mid-run against the same shared sandbox ~150 'parallel' specs
+      // and the 31-spec 'exploration-mutations' suite are using, risking
+      // nondeterministic interference with either. `dependencies` below
+      // makes Playwright fully finish 'parallel' and 'exploration-mutations'
+      // before this project starts — true serialization, not just an
+      // internal one. Same accepted CLI-ballooning tradeoff 'state-mutating'
+      // already makes for the same reason (a project dependency runs the
+      // ENTIRE dependency project regardless of any CLI file filter) — kept
+      // acceptable here by this project's file count staying small (3
+      // specs). `exploration-mutations` deliberately declines this same
+      // tradeoff for ITS OWN ~30-spec project (see its own comment below);
+      // that project only ever mutates the isolated `.visivo/explorations/`
+      // JSON repository, never `project.visivo.yml` or an unscoped socket
+      // broadcast, so it doesn't carry this project's specific risk.
       name: 'workspace-publish',
       testMatch: [
         '**/build-mode-publish.spec.mjs',
@@ -141,6 +168,7 @@ export default defineConfig({
       fullyParallel: false,
       workers: 1,
       retries: 0,
+      dependencies: ['parallel', 'exploration-mutations'],
     },
     {
       // Explore 2.0 Phase 2 e2e gate: explorations are S3'd to ONE JSON

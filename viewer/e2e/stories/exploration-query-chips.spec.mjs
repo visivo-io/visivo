@@ -316,9 +316,27 @@ test.describe('Exploration query chips (Explore 2.0 Phase 3a)', () => {
     // The delete's own (later-enqueued) write must win — the backend must
     // settle on the POST-delete (1-chip) state, never resurrecting the
     // deleted chip via the stale pre-delete write racing back in.
-    await waitForBackendDraft(page, id, draft => {
+    const finalDraftHasOnlySecond = draft => {
       const names = (draft.queries || []).map(q => q.name);
       return names.length === 1 && names[0] === secondName;
-    }, 15000);
+    };
+    await waitForBackendDraft(page, id, finalDraftHasOnlySecond, 15000);
+
+    // P6-D6 (e2e-gap-review.md "Phase 6 delta pass") — this specific poll IS
+    // deterministic on its own (the wait above, at the "2-chip" checkpoint,
+    // guarantees the stale pre-delete write already landed BEFORE the delete
+    // was confirmed, so no write carrying that stale payload can still be
+    // outstanding once the 1-chip state is first observed). Added anyway,
+    // for defense-in-depth and consistency with the same settle(2000)+
+    // re-assert pattern used everywhere else this class of "later write
+    // must not be resurrected" guard appears (exploration-cross-tab-
+    // concurrency.spec.mjs, exploration-lifecycle.spec.mjs) — a future edit
+    // to this test's setup shouldn't have to rediscover why the ordering
+    // matters.
+    await page.waitForTimeout(2000);
+    const settledRes = await page.request.get(`${apiBase}/api/explorations/${id}/`);
+    expect(settledRes.ok()).toBe(true);
+    const settledData = await settledRes.json();
+    expect(finalDraftHasOnlySecond(settledData?.draft || {})).toBe(true);
   });
 });

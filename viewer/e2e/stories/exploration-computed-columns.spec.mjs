@@ -96,9 +96,18 @@ test.describe('Exploration computed columns (P5-D6 ledger gap closure)', () => {
     await page.getByTestId('add-btn').click();
 
     await expect(page.getByTestId('computed-pill-total_ab')).toBeVisible({ timeout: 10000 });
-    // The new column must actually appear as data in the results grid, not
-    // just as a toolbar pill — the whole point of a computed column.
-    await expect(page.getByText('total_ab', { exact: false }).first()).toBeVisible();
+    // P6-D12 (e2e-gap-review.md "Phase 6 delta pass") — the new column must
+    // actually appear as data in the RESULTS GRID, not just as a toolbar
+    // pill — the whole point of a computed column. A page-wide `getByText`
+    // is satisfied by the pill above (DataSectionToolbar.jsx renders
+    // `label={col.name}` — the literal text "total_ab" — as its own visible
+    // node), so this test would still pass even if the column never
+    // materialized in the grid at all. Scope the locator to
+    // `explorer-results-grid` (the grid container, excluding the toolbar) so
+    // this is a genuine, discriminating check on the grid's own content.
+    await expect(
+      page.getByTestId('explorer-results-grid').getByText('total_ab', { exact: false }).first()
+    ).toBeVisible();
   });
 
   test('US-5/6: adding a dimension-shaped (non-aggregate) computed column detects "Dimension"', async ({

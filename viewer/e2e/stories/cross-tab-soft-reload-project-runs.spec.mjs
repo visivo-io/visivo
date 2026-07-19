@@ -38,13 +38,28 @@ import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { io as ioClient } from 'socket.io-client';
 
 const BASE =
   process.env.VIS_PUBLISH_BASE || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
+// P6-D14 (e2e-gap-review.md "Phase 6 delta pass") — derive the backend port
+// from BASE's OWN frontend port, never hardcode :8001. Every sandbox
+// invocation in this suite (including this spec's own header:
+// VISIVO_SANDBOX_BACKEND_PORT=8051 paired with FRONTEND_PORT=3051) pairs a
+// frontend port "3xxx" with a backend port "8xxx" sharing the same trailing
+// digits (:3001<->:8001, :3044<->:8044, :3047<->:8047, :3051<->:8051).
+// Hardcoding 8001 meant that under the documented isolated-sandbox
+// invocation (BASE=:3051), the dirty-model POST and the real commit this
+// test fires hit the SHARED :8001 backend instead of the isolated :8051 one
+// — committing a junk model into the shared sandbox's
+// project.visivo.yml and firing an unscoped reload broadcast at every
+// :8001-connected page, while this test's own marker-survival assertions
+// went vacuous for the (never-received) commit-broadcast path.
 const apiBase = (() => {
   try {
     const u = new URL(BASE);
-    return `${u.protocol}//${u.hostname}:8001`;
+    const backendPort = u.port ? u.port.replace(/^3/, '8') : '8001';
+    return `${u.protocol}//${u.hostname}:${backendPort}`;
   } catch {
     return 'http://localhost:8001';
   }
@@ -123,6 +138,50 @@ test.describe('Commit-broadcast reload symmetry across /workspace, /project, /ru
     const pageProject = await context.newPage();
     const pageRuns = await context.newPage();
 
+    // P6-D7 (e2e-gap-review.md "Phase 6 delta pass") — the marker-survival
+    // assertions below are a NEGATIVE control only: with the soft-reload
+    // flag set, a delivered 'reload' event and a completely DEAD broadcast
+    // (socketio.emit removed, socket never connects, hot-reload.js's handler
+    // deleted) produce identical page state — the marker "survives" either
+    // way. The POSITIVE control needs proof the 'reload' broadcast was
+    // actually emitted and delivered.
+    //
+    // NOT via a browser-side console.log assertion on hot_reload_server.py's
+    // injected "Soft reload handled by app…" line: that script is injected
+    // into the HTML Flask serves directly (see hot_reload_server.py's
+    // `/hot-reload.js` route docstring), which never happens against this
+    // suite's actual sandbox topology — `sandbox.sh`'s frontend
+    // (`yarn start:local` / plain `vite`) serves the viewer's OWN
+    // `index.html` (no hot-reload.js reference at all) and only proxies
+    // `/api`/`/socket.io` to Flask (vite.config.mjs); confirmed by direct
+    // reproduction (the console never contains that line under this
+    // topology, run in isolation, independent of anything this pass
+    // touches). `useProjectChangeListener.js` (the React-mounted hook that
+    // sets the flag this test already checks) also does NOT itself
+    // subscribe to 'reload' — only sets the flag `/hot-reload.js` reads.
+    //
+    // Instead: connect directly to the backend's own Socket.IO server from
+    // this test's Node context (independent of whatever the browser happens
+    // to be running) and assert the 'reload' event is genuinely broadcast —
+    // this is exactly the "socket-received counter" alternative
+    // e2e-gap-review.md's finding names, and it would fail if
+    // `commit_views.py`'s `socketio.emit("reload")` were ever deleted, where
+    // the marker-survival checks alone would not.
+    const reloadEventTimestamps = [];
+    const probeSocket = ioClient(apiBase, { transports: ['websocket', 'polling'] });
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('probe socket connect timeout')), WAIT);
+      probeSocket.once('connect', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      probeSocket.once('connect_error', err => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+    probeSocket.on('reload', () => reloadEventTimestamps.push(Date.now()));
+
     await pageWorkspace.goto(`${BASE}/workspace`);
     await pageWorkspace.waitForLoadState('networkidle');
     await expect(pageWorkspace.getByTestId('workspace-route-root')).toBeVisible({ timeout: WAIT });
@@ -162,6 +221,13 @@ test.describe('Commit-broadcast reload symmetry across /workspace, /project, /ru
     expect(await isStillAlive(pageProject)).toBe(true);
     expect(await isStillAlive(pageRuns)).toBe(true);
 
+    // P6-D7 — the POSITIVE control: the probe socket genuinely received the
+    // 'reload' broadcast, proving `commit_changes()` actually emitted it
+    // (not just that the three pages' markers happened to survive for some
+    // unrelated reason).
+    expect(reloadEventTimestamps.length).toBeGreaterThan(0);
+
+    probeSocket.close();
     await context.close();
   });
 });
