@@ -13,6 +13,7 @@ import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import ExplorationPane from './ExplorationPane';
 import useStore from '../../../stores/store';
+import { setWorkspaceTelemetryListener } from './telemetry';
 
 jest.mock('./ExplorationWorkbench', () => ({
   __esModule: true,
@@ -461,5 +462,36 @@ describe('ExplorationPane — duplicate', () => {
     await act(async () => {
       resolveDuplicate({ success: true, id: 'exp_3' });
     });
+  });
+});
+
+// VIS-1072 — flywheel telemetry.
+describe('ExplorationPane — exploration_opened telemetry (VIS-1072)', () => {
+  let events;
+  let unsubscribe;
+
+  beforeEach(() => {
+    events = [];
+    unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+  });
+  afterEach(() => unsubscribe());
+
+  test('fires exploration_opened on activation', () => {
+    seed({ workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] } });
+    render(<ExplorationPane id="exp_1" />);
+    expect(events.find(e => e.eventName === 'exploration_opened')?.payload).toEqual({ id: 'exp_1' });
+  });
+
+  test('fires again for a DIFFERENT exploration when switching tabs', () => {
+    seed({
+      workspaceExplorations: {
+        byId: { exp_1: record(), exp_2: record({ id: 'exp_2', name: 'Second' }) },
+        order: ['exp_1', 'exp_2'],
+      },
+    });
+    const { rerender } = render(<ExplorationPane id="exp_1" />);
+    rerender(<ExplorationPane id="exp_2" />);
+    const opened = events.filter(e => e.eventName === 'exploration_opened');
+    expect(opened.map(e => e.payload.id)).toEqual(['exp_1', 'exp_2']);
   });
 });

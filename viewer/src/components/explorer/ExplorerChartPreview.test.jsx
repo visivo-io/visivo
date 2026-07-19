@@ -5,6 +5,10 @@ import '@testing-library/jest-dom';
 import ExplorerChartPreview from './ExplorerChartPreview';
 import useStore from '../../stores/store';
 import useDraftInsightPreview from '../../hooks/useDraftInsightPreview';
+import {
+  markExplorationCreated,
+  setWorkspaceTelemetryListener,
+} from '../views/workspace/telemetry';
 
 // Explore 2.0 Phase 4: ExplorerChartPreview no longer builds the dead
 // context_objects preview-job request — it drives `useDraftInsightPreview`
@@ -382,6 +386,66 @@ describe('ExplorerChartPreview', () => {
         jest.advanceTimersByTime(15 * 2000 + 1000);
       });
       expect(screen.queryByTestId('chart-preview-promoted-poll-failed')).not.toBeInTheDocument();
+    });
+  });
+
+  // VIS-1072 — flywheel telemetry: time_to_first_chart fires the first time
+  // ANY chart insight (draft or promoted) actually has data on screen for
+  // the active exploration.
+  describe('time_to_first_chart telemetry (VIS-1072)', () => {
+    let events;
+    let unsubscribe;
+
+    beforeEach(() => {
+      events = [];
+      unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    });
+    afterEach(() => unsubscribe());
+
+    const chartEvents = () => events.filter(e => e.eventName === 'time_to_first_chart');
+
+    test('fires once real/draft data is on screen for the active (created-this-session) exploration', () => {
+      markExplorationCreated('exp_1');
+      useStore.setState({
+        insights: [{ name: 'ins_1' }],
+        insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } },
+      });
+      useStore.setState({
+        workspaceExplorations: {
+          byId: { exp_1: { id: 'exp_1', promoted: [{ type: 'insight', name: 'ins_1' }] } },
+          order: ['exp_1'],
+        },
+      });
+      render(<ExplorerChartPreview />);
+      expect(chartEvents()).toHaveLength(1);
+    });
+
+    test('does not fire while nothing has data yet', () => {
+      markExplorationCreated('exp_1');
+      render(<ExplorerChartPreview />);
+      expect(chartEvents()).toHaveLength(0);
+    });
+
+    test('does not fire for an exploration this session never saw created (e.g. resumed after reload)', () => {
+      // A fresh, never-marked-created id — distinct from the other tests in
+      // this describe block, since `markExplorationCreated` bookkeeping is
+      // module-level and not reset between tests.
+      useStore.setState({
+        workspaceActiveObject: { type: 'exploration', name: 'exp_resumed_after_reload' },
+        insights: [{ name: 'ins_1' }],
+        insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } },
+        workspaceExplorations: {
+          byId: {
+            exp_resumed_after_reload: {
+              id: 'exp_resumed_after_reload',
+              promoted: [{ type: 'insight', name: 'ins_1' }],
+            },
+          },
+          order: ['exp_resumed_after_reload'],
+        },
+      });
+      render(<ExplorerChartPreview />);
+      expect(chartEvents()).toHaveLength(0);
     });
   });
 });

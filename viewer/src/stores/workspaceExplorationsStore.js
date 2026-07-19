@@ -87,6 +87,7 @@ import {
 import { buildPromoteChecklist } from './promoteChecklist';
 import { SAVE_ACTION } from '../components/views/workspace/collectionKeys';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
+import { emitWorkspaceEvent, markExplorationCreated } from '../components/views/workspace/telemetry';
 
 const SYNC_DEBOUNCE_MS = 1000;
 
@@ -318,6 +319,13 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         const created = await explorationsApi.createExploration(payload);
         const mapped = mapExplorationFromApi(created);
         set(state => insertExploration(state, mapped));
+        // VIS-1072 — flywheel telemetry: the create moment + the
+        // time_to_first_chart clock start together.
+        markExplorationCreated(mapped.id);
+        emitWorkspaceEvent('exploration_created', {
+          seededFromType: seed?.type || null,
+          hasReturnTo: !!returnTo,
+        });
         return { success: true, id: mapped.id, exploration: mapped };
       } catch (error) {
         return { success: false, error: error.message };
@@ -365,6 +373,12 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         });
         const mapped = mapExplorationFromApi(created);
         set(state => insertExploration(state, mapped));
+        // VIS-1072 — "branch" gets its own time_to_first_chart clock too,
+        // same as a fresh create (the copy's own draft may still need its
+        // first successful preview render, even though the SOURCE
+        // exploration already had one).
+        markExplorationCreated(mapped.id);
+        emitWorkspaceEvent('exploration_branched', { sourceId: id });
         return { success: true, id: mapped.id, exploration: mapped };
       } catch (error) {
         return { success: false, error: error.message };
@@ -586,6 +600,10 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       const snapshot = _openDraftSnapshots.get(id);
       if (snapshot === undefined) return { success: true, reverted: false };
       _openDraftSnapshots.delete(id);
+      // VIS-1072 — fired once we know a real revert is happening (never for
+      // the no-op "discard invoked before the pane ever activated" case
+      // above, which returned early).
+      emitWorkspaceEvent('exploration_discarded', { id });
 
       set(state => patchExploration(state, id, { draft: snapshot, syncStatus: 'synced' }));
       get().restoreExplorerWorkingState?.(draftToLegacyState(snapshot));
@@ -743,6 +761,29 @@ const createWorkspaceExplorationsSlice = (set, get) => {
             });
           }
         }
+      }
+
+      // VIS-1072 — `object_counts` (per-type, successful promotions only) +
+      // `update_vs_new` (status is carried on the CHECKLIST row, not the
+      // result — re-key `toPromote` by "type:name" to look it up per
+      // successful result without a second buildPromoteChecklist pass).
+      const rowByKey = new Map(toPromote.map(row => [`${row.type}:${row.name}`, row]));
+      const objectCounts = {};
+      const updateVsNew = { updated: 0, new: 0 };
+      results
+        .filter(r => r.success)
+        .forEach(r => {
+          objectCounts[r.type] = (objectCounts[r.type] || 0) + 1;
+          const row = rowByKey.get(`${r.type}:${r.name}`);
+          if (row?.status === 'modified') updateVsNew.updated += 1;
+          else updateVsNew.new += 1;
+        });
+      if (results.length > 0) {
+        emitWorkspaceEvent('exploration_promoted', {
+          id,
+          objectCounts,
+          updateVsNew,
+        });
       }
 
       return {

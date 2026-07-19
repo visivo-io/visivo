@@ -1,6 +1,7 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
 import { translateExpressions } from '../../../api/expressions';
+import { setWorkspaceTelemetryListener } from './telemetry';
 
 jest.mock('../../../api/expressions', () => ({ translateExpressions: jest.fn() }));
 
@@ -213,5 +214,46 @@ describe('saveAsMetric', () => {
       ]),
     });
     expect(result.dedupOffer.slots).toHaveLength(2);
+  });
+
+  // VIS-1072 — flywheel telemetry.
+  describe('save_as_metric_used telemetry (VIS-1072)', () => {
+    let events;
+    let unsubscribe;
+
+    beforeEach(() => {
+      events = [];
+      unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    });
+    afterEach(() => unsubscribe());
+
+    test('fires on a successful save, with the dedup-offer slot count', async () => {
+      const state = baseState({
+        explorerInsightStates: {
+          other_chart: { props: { y: '?{sum(${ref(orders_q).amount})}' }, interactions: [] },
+        },
+      });
+      await saveAsMetric({
+        pillState: pillState(),
+        name: 'total_amount',
+        insightName: 'churn_by_cohort',
+        path: 'y',
+        getState: () => state,
+      });
+      const fired = events.find(e => e.eventName === 'save_as_metric_used');
+      expect(fired.payload).toEqual({ name: 'total_amount', dedupOfferSlots: 1 });
+    });
+
+    test('does not fire on a blocked/failed save', async () => {
+      const state = baseState({ saveMetric: jest.fn().mockResolvedValue({ success: false, error: 'boom' }) });
+      await saveAsMetric({
+        pillState: pillState(),
+        name: 'total_amount',
+        insightName: 'i',
+        path: 'y',
+        getState: () => state,
+      });
+      expect(events.find(e => e.eventName === 'save_as_metric_used')).toBeUndefined();
+    });
   });
 });

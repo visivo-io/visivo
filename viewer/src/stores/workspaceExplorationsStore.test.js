@@ -18,6 +18,7 @@ import {
   _resetExplorationWriteQueuesForTests,
 } from './workspaceExplorationsStore';
 import { buildPromoteChecklist } from './promoteChecklist';
+import { setWorkspaceTelemetryListener } from '../components/views/workspace/telemetry';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 
 jest.mock('../api/explorations');
@@ -1546,5 +1547,132 @@ describe('promoteExploration', () => {
       result = await useStore.getState().promoteExploration('exp_1', []);
     });
     expect(result).toEqual({ success: false, results: [], reclassificationOffers: [] });
+  });
+
+  // VIS-1072 — flywheel telemetry: exploration_promoted's object_counts
+  // (per-type, successes only) + update_vs_new (from the checklist row's
+  // OWN status, not re-derived).
+  describe('exploration_promoted telemetry (VIS-1072)', () => {
+    let events;
+    let unsubscribe;
+
+    beforeEach(() => {
+      events = [];
+      unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    });
+    afterEach(() => unsubscribe());
+
+    test('reports per-type object_counts and update_vs_new for successful rows only', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        checklistRow({ status: 'new' }),
+        checklistRow({
+          type: 'insight',
+          tier: 'insight',
+          name: 'churn',
+          status: 'modified',
+          config: { props: { type: 'scatter' } },
+        }),
+        checklistRow({ type: 'insight', tier: 'insight', name: 'flaky', status: 'new', config: {} }),
+      ]);
+      seedRecord();
+      act(() => {
+        useStore.setState({
+          saveModel: jest.fn().mockResolvedValue({ success: true }),
+          saveInsight: jest
+            .fn()
+            .mockImplementation(async name =>
+              name === 'flaky' ? { success: false, error: 'boom' } : { success: true }
+            ),
+        });
+      });
+      explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [
+          { type: 'model', name: 'orders_q' },
+          { type: 'insight', name: 'churn' },
+          { type: 'insight', name: 'flaky' },
+        ]);
+      });
+
+      const promoted = events.find(e => e.eventName === 'exploration_promoted');
+      expect(promoted.payload.id).toBe('exp_1');
+      // 'flaky' failed — excluded from every count.
+      expect(promoted.payload.objectCounts).toEqual({ model: 1, insight: 1 });
+      expect(promoted.payload.updateVsNew).toEqual({ updated: 1, new: 1 });
+    });
+
+    test('does not fire when nothing was actually attempted (empty selection)', async () => {
+      buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+      seedRecord();
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', []);
+      });
+      expect(events.find(e => e.eventName === 'exploration_promoted')).toBeUndefined();
+    });
+  });
+});
+
+// VIS-1072 — flywheel telemetry for createExploration/duplicateExploration/
+// discardExploration (promoteExploration's own event is covered above,
+// alongside the checklist fixtures it needs).
+describe('flywheel telemetry (VIS-1072)', () => {
+  let events;
+  let unsubscribe;
+
+  beforeEach(() => {
+    events = [];
+    unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+  });
+  afterEach(() => unsubscribe());
+
+  test('createExploration fires exploration_created with the seed type', async () => {
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({ seeded_from: { type: 'source', name: 'pg' } })
+    );
+    await act(async () => {
+      await useStore.getState().createExploration({ type: 'source', name: 'pg' });
+    });
+    const created = events.find(e => e.eventName === 'exploration_created');
+    expect(created.payload).toEqual({ seededFromType: 'source', hasReturnTo: false });
+  });
+
+  test('createExploration with no seed reports seededFromType: null', async () => {
+    explorationsApi.createExploration.mockResolvedValueOnce(wireExploration());
+    await act(async () => {
+      await useStore.getState().createExploration();
+    });
+    const created = events.find(e => e.eventName === 'exploration_created');
+    expect(created.payload.seededFromType).toBeNull();
+  });
+
+  test('duplicateExploration fires exploration_branched with the source id', async () => {
+    seedRecord();
+    explorationsApi.createExploration.mockResolvedValueOnce(wireExploration({ id: 'exp_2' }));
+    await act(async () => {
+      await useStore.getState().duplicateExploration('exp_1');
+    });
+    const branched = events.find(e => e.eventName === 'exploration_branched');
+    expect(branched.payload).toEqual({ sourceId: 'exp_1' });
+  });
+
+  test('discardExploration fires exploration_discarded only on a real revert', async () => {
+    seedRecord();
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration());
+    await act(async () => {
+      await useStore.getState().discardExploration('exp_1');
+    });
+    expect(events.find(e => e.eventName === 'exploration_discarded')?.payload).toEqual({ id: 'exp_1' });
+  });
+
+  test('discardExploration does NOT fire when there was never a snapshot to revert (no-op path)', async () => {
+    seedRecord();
+    await act(async () => {
+      await useStore.getState().discardExploration('exp_1');
+    });
+    expect(events.find(e => e.eventName === 'exploration_discarded')).toBeUndefined();
   });
 });

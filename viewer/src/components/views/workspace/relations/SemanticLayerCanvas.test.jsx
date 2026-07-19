@@ -5,6 +5,7 @@ import SemanticLayerCanvas from './SemanticLayerCanvas';
 import useStore from '../../../../stores/store';
 import { useRelationErdDag } from './useRelationErdDag';
 import { useModelColumns } from './useModelColumns';
+import { setWorkspaceTelemetryListener } from '../telemetry';
 
 jest.mock('../../../../stores/store');
 jest.mock('./useRelationErdDag', () => ({
@@ -211,6 +212,26 @@ describe('SemanticLayerCanvas', () => {
           name: 'exp_new',
         })
       );
+    });
+
+    // VIS-1072 — flywheel telemetry.
+    it('fires explore_this_used{source_type} on a successful mint', async () => {
+      const events = [];
+      const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+      const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new' });
+      const openWorkspaceTab = jest.fn();
+      mockStore({ ...modelWithFields(), createExploration, openWorkspaceTab });
+      useRelationErdDag.mockReturnValue(nodesWithFields());
+
+      render(<SemanticLayerCanvas />);
+      fireEvent.click(screen.getByTestId('erd-dimension-pill-status'));
+
+      await waitFor(() =>
+        expect(events.find(e => e.eventName === 'explore_this_used')?.payload).toEqual({
+          source_type: 'dimension',
+        })
+      );
+      unsubscribe();
     });
 
     it('does not open a tab when creation fails', async () => {
