@@ -161,4 +161,39 @@ describe('ExplorationCard', () => {
 
     expect(onRename).toHaveBeenCalledWith('exp_1', 'Renamed');
   });
+
+  // VIS-1070 — staleness badge (01-ux-spec.md §2's "⚠ stale (orders
+  // changed)" end-state). `stale`/`danglingRefs` are computed by the PARENT
+  // (ExplorerHomePane) and just rendered here.
+  describe('staleness badge (VIS-1070)', () => {
+    test('no badge by default', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      expect(screen.queryByTestId('exploration-card-exp_1-stale')).not.toBeInTheDocument();
+    });
+
+    test('renders the badge with dangling refs in the tooltip when stale', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+          stale
+          danglingRefs={['deleted_model']}
+        />
+      );
+      const badge = screen.getByTestId('exploration-card-exp_1-stale');
+      expect(badge).toHaveTextContent('stale');
+      expect(badge).toHaveAttribute('title', expect.stringContaining('deleted_model'));
+    });
+  });
 });

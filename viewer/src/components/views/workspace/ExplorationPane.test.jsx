@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 /**
  * ExplorationPane (Explore 2.0 Phase 2) — the MiddlePane branch for an
  * `exploration` document tab. Pins the not-found/loading states and the
@@ -170,6 +171,165 @@ describe('ExplorationPane — VIS-1083 deleted-remotely banner', () => {
     });
     render(<ExplorationPane id="exp_1" />);
     expect(screen.queryByTestId('exploration-deleted-remotely-banner')).not.toBeInTheDocument();
+  });
+});
+
+// VIS-1070 — resume-time staleness: re-runs ref checks against current
+// collections right at activation and offers a non-blocking "re-check"
+// banner (never a hard failure — the workbench keeps working regardless).
+describe('ExplorationPane — staleness banner (VIS-1070)', () => {
+  const withCollections = (extra = {}) => ({
+    models: [{ name: 'orders_q' }],
+    metrics: [],
+    dimensions: [],
+    sources: [{ name: 'warehouse' }],
+    insights: [],
+    charts: [],
+    tables: [],
+    markdowns: [],
+    inputs: [],
+    relations: [],
+    dashboards: [],
+    ...extra,
+  });
+
+  test('shows the banner + dangling ref when the draft references a deleted object', () => {
+    seed({
+      ...withCollections(),
+      workspaceExplorations: {
+        byId: {
+          exp_1: record({
+            draft: {
+              queries: [],
+              insights: [{ name: 'ins', props: { x: '?{${ref(deleted_model).col}}' }, interactions: [] }],
+              chart: null,
+              computedColumns: [],
+              legacyState: null,
+            },
+          }),
+        },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorationPane id="exp_1" />);
+    expect(screen.getByTestId('exploration-staleness-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('exploration-staleness-banner')).toHaveTextContent('deleted_model');
+  });
+
+  test('does NOT show the banner for a draft with no dangling refs', () => {
+    seed({
+      ...withCollections(),
+      workspaceExplorations: {
+        byId: {
+          exp_1: record({
+            draft: {
+              queries: [{ name: 'orders_q', sql: 'SELECT 1', source: 'warehouse' }],
+              insights: [{ name: 'ins', props: { x: '?{${ref(orders_q).col}}' }, interactions: [] }],
+              chart: null,
+              computedColumns: [],
+              legacyState: null,
+            },
+          }),
+        },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorationPane id="exp_1" />);
+    expect(screen.queryByTestId('exploration-staleness-banner')).not.toBeInTheDocument();
+  });
+
+  test('Dismiss hides the banner without touching the exploration draft', () => {
+    seed({
+      ...withCollections(),
+      workspaceExplorations: {
+        byId: {
+          exp_1: record({
+            draft: {
+              queries: [],
+              insights: [{ name: 'ins', props: { x: '?{${ref(gone).col}}' }, interactions: [] }],
+              chart: null,
+              computedColumns: [],
+              legacyState: null,
+            },
+          }),
+        },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorationPane id="exp_1" />);
+    expect(screen.getByTestId('exploration-staleness-banner')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('exploration-staleness-dismiss'));
+    expect(screen.queryByTestId('exploration-staleness-banner')).not.toBeInTheDocument();
+  });
+
+  test('"Re-check references" re-runs the check and clears the banner once the ref resolves again', () => {
+    seed({
+      ...withCollections(),
+      workspaceExplorations: {
+        byId: {
+          exp_1: record({
+            draft: {
+              queries: [],
+              insights: [{ name: 'ins', props: { x: '?{${ref(orders_q).col}}' }, interactions: [] }],
+              chart: null,
+              computedColumns: [],
+              legacyState: null,
+            },
+          }),
+        },
+        order: ['exp_1'],
+      },
+      // Simulate the ref being dangling AT RESUME TIME by starting `models`
+      // without `orders_q`, then "publishing" it before Re-check.
+      models: [],
+    });
+    render(<ExplorationPane id="exp_1" />);
+    expect(screen.getByTestId('exploration-staleness-banner')).toBeInTheDocument();
+
+    act(() => {
+      useStore.setState({ models: [{ name: 'orders_q' }] });
+    });
+    fireEvent.click(screen.getByTestId('exploration-staleness-recheck'));
+
+    expect(screen.queryByTestId('exploration-staleness-banner')).not.toBeInTheDocument();
+  });
+
+  test('switching to a DIFFERENT exploration gets its own fresh check, never carries over a dismissal', () => {
+    seed({
+      ...withCollections(),
+      workspaceExplorations: {
+        byId: {
+          exp_1: record({
+            draft: {
+              queries: [],
+              insights: [{ name: 'a', props: { x: '?{${ref(gone_1).col}}' }, interactions: [] }],
+              chart: null,
+              computedColumns: [],
+              legacyState: null,
+            },
+          }),
+          exp_2: record({
+            id: 'exp_2',
+            name: 'Second',
+            draft: {
+              queries: [],
+              insights: [{ name: 'b', props: { x: '?{${ref(gone_2).col}}' }, interactions: [] }],
+              chart: null,
+              computedColumns: [],
+              legacyState: null,
+            },
+          }),
+        },
+        order: ['exp_1', 'exp_2'],
+      },
+    });
+    const { rerender } = render(<ExplorationPane id="exp_1" />);
+    fireEvent.click(screen.getByTestId('exploration-staleness-dismiss'));
+    expect(screen.queryByTestId('exploration-staleness-banner')).not.toBeInTheDocument();
+
+    rerender(<ExplorationPane id="exp_2" />);
+    expect(screen.getByTestId('exploration-staleness-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('exploration-staleness-banner')).toHaveTextContent('gone_2');
   });
 });
 
