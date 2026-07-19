@@ -88,6 +88,7 @@ import { buildPromoteChecklist } from './promoteChecklist';
 import { SAVE_ACTION } from '../components/views/workspace/collectionKeys';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 import { emitWorkspaceEvent, markExplorationCreated } from '../components/views/workspace/telemetry';
+import { buildInsightFreshnessSignature } from '../utils/insightFreshnessSignature';
 
 const SYNC_DEBOUNCE_MS = 1000;
 
@@ -699,6 +700,24 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      * them, delta-review finding) and returns them as explicit
      * `reclassificationOffers` — never a silent rendering change.
      *
+     * PROMOTED-LANE FRESHNESS SIGNATURE (P6-D1/D2/D3/D8 closure —
+     * e2e-gap-review.md "Phase 6 delta pass"): for every insight row in
+     * `selection`, this captures `insightFreshnessSignature.js`'s signature
+     * SYNCHRONOUSLY, right here, BEFORE `buildPromoteChecklist`/any `saveX`
+     * await runs — i.e. "frozen" at the exact moment promote was invoked,
+     * never at data-arrival (the replaced ref-cache mechanism) or after a
+     * save/run completes. `ExplorerChartPreview.jsx`'s promoted lane only
+     * resolves to the real (un-namespaced) insightJobs key when the CURRENT
+     * signature still matches what got recorded here, via
+     * `recordPromotedInsightSignature` — so an edit made anywhere in this
+     * async flow (mid-save, mid subsequent run) is never silently absorbed
+     * as if it were part of the promoted snapshot; it just shows the draft
+     * lane until the user re-promotes. Recorded into `explorerStore.js`'s
+     * `explorerPromotedSignatures`, which round-trips through the SAME
+     * park/resume snapshot as `explorerInsightStates` — a tab switch can
+     * never resurrect a stale lock (P6-D1), unlike the old component-
+     * instance ref.
+     *
      * @returns {Promise<{
      *   success: boolean,
      *   results: Array<{type, name, tier, success: boolean, error: string|null}>,
@@ -707,6 +726,21 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      */
     promoteExploration: async (id, selection) => {
       const selectedKeys = new Set((selection || []).map(s => `${s.type}:${s.name}`));
+
+      // Capture BEFORE any await below — see the docstring's "PROMOTED-LANE
+      // FRESHNESS SIGNATURE" note. Reading `get()` here, not inside the loop
+      // after each row's `saveFn` await, is the entire fix: it freezes the
+      // insight/model config exactly as it was when the user clicked promote.
+      const frozenSignaturesByInsightName = {};
+      for (const sel of selection || []) {
+        if (sel?.type !== 'insight' || !sel.name) continue;
+        const stateAtInvoke = get();
+        frozenSignaturesByInsightName[sel.name] = buildInsightFreshnessSignature(
+          stateAtInvoke.explorerInsightStates?.[sel.name],
+          stateAtInvoke.explorerModelStates
+        );
+      }
+
       const checklist = await buildPromoteChecklist(get);
       // Re-sort by tier defensively — dependency order is THE invariant this
       // gate exists to guarantee (02 §3), so it must not silently depend on
@@ -746,6 +780,10 @@ const createWorkspaceExplorationsSlice = (set, get) => {
 
         // eslint-disable-next-line no-await-in-loop
         await get().recordExplorationPromotion?.(id, row.type, row.name);
+
+        if (row.type === 'insight' && frozenSignaturesByInsightName[row.name]) {
+          get().recordPromotedInsightSignature?.(row.name, frozenSignaturesByInsightName[row.name]);
+        }
 
         if (row.type === 'metric' || row.type === 'dimension') {
           const hits = findReclassifiedSlots(

@@ -7,6 +7,7 @@ import { processArrowResult } from '../duckdb/resultProcessing';
 import { compileDraftInsight } from '../api/insightCompile';
 import { inferColumnTypes } from '../utils/inferColumnTypes';
 import { expandDotNotationProps } from '../stores/explorerStore';
+import { buildModelsSignature } from '../utils/insightFreshnessSignature';
 
 /** Draft-namespaced insightJobs key (S2 draft-rendering-decision.md's
  * `__draft__:<insightName>` example) — never collides with a real published
@@ -129,17 +130,16 @@ const useDraftInsightPreview = () => {
   // props/interactions/type, or a referenced model's SQL/source/rows should
   // trigger a recompute. JSON-stringified once here so the effect below has a
   // single stable dependency instead of five churny object references.
+  // `modelsSig` is the shared `insightFreshnessSignature.js` helper — the
+  // promoted-lane freshness check (`ExplorerChartPreview.jsx`) must consider
+  // a model edit "changed" under the exact same rule this recompute trigger
+  // does (P6-D2), so the two are never allowed to drift apart.
   const signature = useMemo(() => {
     const insightsSig = chartInsightNames.map(name => {
       const s = insightStates[name];
       return { name, type: s?.type, props: s?.props, interactions: s?.interactions };
     });
-    const modelsSig = Object.entries(modelStates).map(([name, s]) => ({
-      name,
-      sql: s?.sql,
-      sourceName: s?.sourceName,
-      rowCount: s?.queryResult?.rows?.length || 0,
-    }));
+    const modelsSig = buildModelsSignature(modelStates);
     return JSON.stringify({ insightsSig, modelsSig });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartInsightNames, insightStates, modelStates]);

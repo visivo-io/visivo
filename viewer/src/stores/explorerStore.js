@@ -466,6 +466,17 @@ const createExplorerSlice = (set, get) => ({
   // --- Per-Insight State ---
   explorerInsightStates: {},
 
+  // --- Promoted-lane freshness signatures (P6-D1/D2/D3/D8 closure) ---
+  // `{ [insightName]: signature }` — the frozen `insightFreshnessSignature.js`
+  // signature captured by `promoteExploration` at the MOMENT an insight was
+  // (re-)promoted, never mutated by data arrival. Round-trips through
+  // `snapshotExplorerWorkingState`/`restoreExplorerWorkingState` exactly like
+  // `explorerInsightStates` does, so it survives a tab park/resume (and a
+  // reload, via `draft.legacyState`) instead of living in a component-
+  // instance ref that dies on remount. See `ExplorerChartPreview.jsx`'s
+  // `previewInsightKeys`.
+  explorerPromotedSignatures: {},
+
   // --- Diff Result (from backend /api/explorer/diff/) ---
   explorerDiffResult: null,
 
@@ -1728,6 +1739,7 @@ const createExplorerSlice = (set, get) => ({
       chartInsightNames: [...(state.explorerChartInsightNames || [])],
       activeInsightName: state.explorerActiveInsightName,
       insightStates: state.explorerInsightStates || {},
+      promotedSignatures: state.explorerPromotedSignatures || {},
       leftNavCollapsed: !!state.explorerLeftNavCollapsed,
       centerMode: state.explorerCenterMode || 'split',
       isEditorCollapsed: !!state.explorerIsEditorCollapsed,
@@ -1755,6 +1767,7 @@ const createExplorerSlice = (set, get) => ({
       explorerChartInsightNames: [...(snap.chartInsightNames || [])],
       explorerActiveInsightName: snap.activeInsightName || null,
       explorerInsightStates: snap.insightStates || {},
+      explorerPromotedSignatures: snap.promotedSignatures || {},
       explorerLeftNavCollapsed: !!snap.leftNavCollapsed,
       explorerCenterMode: snap.centerMode || 'split',
       explorerIsEditorCollapsed: !!snap.isEditorCollapsed,
@@ -1765,6 +1778,20 @@ const createExplorerSlice = (set, get) => ({
       explorerFailedComputedColumns: {},
       explorerProfileColumn: null,
     });
+  },
+
+  /** Record the frozen promoted-lane freshness signature for one insight
+   * (P6-D1/D2/D3/D8 closure) — called by `promoteExploration`
+   * (`workspaceExplorationsStore.js`) immediately after that insight's save
+   * succeeds, with the signature captured SYNCHRONOUSLY at promote-invoke
+   * time (before any save/checklist await), never at data-arrival. A merge,
+   * not a replace — re-promoting one insight must not disturb another
+   * insight's already-recorded signature. */
+  recordPromotedInsightSignature: (name, signature) => {
+    if (!name) return;
+    set(state => ({
+      explorerPromotedSignatures: { ...(state.explorerPromotedSignatures || {}), [name]: signature },
+    }));
   },
 
   // ====================================================================

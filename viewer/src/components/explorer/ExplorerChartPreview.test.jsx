@@ -9,6 +9,7 @@ import {
   markExplorationCreated,
   setWorkspaceTelemetryListener,
 } from '../views/workspace/telemetry';
+import { buildInsightFreshnessSignature } from '../../utils/insightFreshnessSignature';
 
 // Explore 2.0 Phase 4: ExplorerChartPreview no longer builds the dead
 // context_objects preview-job request — it drives `useDraftInsightPreview`
@@ -88,6 +89,38 @@ const defaultState = {
   // tab is active, so every test seeds one (with an empty trail by default).
   workspaceActiveObject: { type: 'exploration', name: 'exp_1' },
   workspaceExplorations: { byId: { exp_1: { id: 'exp_1', promoted: [] } }, order: ['exp_1'] },
+  // P6-D1/D2/D3/D8 — the durable, store-backed freshness signature. Empty by
+  // default: every test that wants the real (promoted) lane to resolve must
+  // go through `markPromoted` below, exactly like the real
+  // `promoteExploration` store action would.
+  explorerModelStates: {},
+  explorerPromotedSignatures: {},
+};
+
+// Simulates what `promoteExploration` (workspaceExplorationsStore.js) does at
+// promote-invoke time: records BOTH the exploration's promoted[] trail AND
+// the frozen `insightFreshnessSignature.js` signature for each name,
+// computed from whatever `explorerInsightStates`/`explorerModelStates`
+// currently look like — never hand-constructed, so a test can't accidentally
+// drift from what the real store action would actually capture.
+const markPromoted = (names, explorationId = 'exp_1') => {
+  const { explorerInsightStates, explorerModelStates } = useStore.getState();
+  const signatures = {};
+  names.forEach(name => {
+    signatures[name] = buildInsightFreshnessSignature(explorerInsightStates[name], explorerModelStates);
+  });
+  useStore.setState(state => ({
+    workspaceExplorations: {
+      byId: {
+        [explorationId]: {
+          id: explorationId,
+          promoted: names.map(name => ({ type: 'insight', name })),
+        },
+      },
+      order: [explorationId],
+    },
+    explorerPromotedSignatures: { ...(state.explorerPromotedSignatures || {}), ...signatures },
+  }));
 };
 
 describe('ExplorerChartPreview', () => {
@@ -165,11 +198,8 @@ describe('ExplorerChartPreview', () => {
         explorerChartInsightNames: ['promoted_ins', 'draft_ins'],
         insights: [{ name: 'promoted_ins' }],
         insightJobs: { promoted_ins: { name: 'promoted_ins', data: [{ x: 1 }] } },
-        workspaceExplorations: {
-          byId: { exp_1: { id: 'exp_1', promoted: [{ type: 'insight', name: 'promoted_ins' }] } },
-          order: ['exp_1'],
-        },
       });
+      markPromoted(['promoted_ins']);
       useDraftInsightPreview.mockReturnValue({
         previewInsightKeys: ['promoted_ins', '__draft__:draft_ins'],
         perInsight: {
@@ -231,19 +261,8 @@ describe('ExplorerChartPreview', () => {
     // Every "promoted" scenario below must seed BOTH a matching real
     // `state.insights` entry AND the ACTIVE exploration's own `promoted[]`
     // trail (VIS-1091) — a bare `state.insights` match alone is no longer
-    // sufficient.
-    const markPromoted = (names) =>
-      useStore.setState({
-        workspaceExplorations: {
-          byId: {
-            exp_1: {
-              id: 'exp_1',
-              promoted: names.map(name => ({ type: 'insight', name })),
-            },
-          },
-          order: ['exp_1'],
-        },
-      });
+    // sufficient. `markPromoted` (module-level, above) also records the
+    // frozen freshness signature `promoteExploration` would have captured.
 
     it('stays on the draft-namespaced key while promoted but real data has not landed yet', () => {
       useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: {} });
@@ -349,7 +368,14 @@ describe('ExplorerChartPreview', () => {
         );
       });
 
-      it('flips back to the real key once a fresh promote/run lands new data matching the current state', () => {
+      // P6-D8 (recurrence of P5-D1) — the OLD mechanism flipped back to the
+      // real key the instant ANY new `insightJobs[name].data` reference
+      // appeared, trusting whatever the CURRENT insight state was at that
+      // moment. The fix flips back ONLY on a fresh recorded promotion
+      // (`markPromoted` again here — a real re-promote) — a new data
+      // reference landing on its own must never be enough (see the
+      // "data landing alone never re-locks" test right after this one).
+      it('flips back to the real key once the insight is RE-PROMOTED after an edit (a fresh signature is recorded)', () => {
         const staleData = [{ x: 1 }];
         useStore.setState({
           insights: [{ name: 'ins_1' }],
@@ -372,14 +398,56 @@ describe('ExplorerChartPreview', () => {
           JSON.stringify(['__draft__:ins_1'])
         );
 
-        // Re-promote completes and a fresh run lands a NEW data reference —
-        // captured as representing the (current, just-repromoted) state.
+        // Re-promote: a fresh run lands a NEW data reference AND the store
+        // records a NEW signature matching the (current, just-edited) state
+        // — mirrors what `promoteExploration` actually does on every
+        // successful promote.
         const freshData = [{ x: 2 }];
         act(() => {
           useStore.setState({ insightJobs: { ins_1: { name: 'ins_1', data: freshData } } });
+          markPromoted(['ins_1']);
         });
         rerender(<ExplorerChartPreview />);
         expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+      });
+
+      // P6-D3/D8 — the exact defect the old ref-based mechanism had: it
+      // stamped a signature onto data the INSTANT a new data reference was
+      // seen, with no check that the data actually corresponds to the
+      // current state. The fix's contract is that ONLY a fresh
+      // `recordPromotedInsightSignature` write (i.e. an actual re-promote)
+      // can flip the lane back — never a bare new data reference.
+      it('a new data reference landing alone (no fresh re-promote) never re-locks the lane', () => {
+        const staleData = [{ x: 1 }];
+        useStore.setState({
+          insights: [{ name: 'ins_1' }],
+          insightJobs: { ins_1: { name: 'ins_1', data: staleData } },
+        });
+        markPromoted(['ins_1']);
+        const { rerender } = render(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+
+        act(() => {
+          useStore.setState({
+            explorerInsightStates: {
+              ins_1: { type: 'scatter', props: { x: '?{${ref(sales).new_col}}' }, interactions: [] },
+            },
+          });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
+
+        // A new data reference lands (e.g. some other run finishing) but
+        // NOTHING re-records the signature — must stay on the draft key.
+        act(() => {
+          useStore.setState({ insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 2 }] } } });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
       });
 
       it('never flickers to draft on a render where insightJobs is unchanged and the insight is untouched', () => {
@@ -396,6 +464,106 @@ describe('ExplorerChartPreview', () => {
         });
         rerender(<ExplorerChartPreview />);
         expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+      });
+
+      // P6-D1 (HIGH) — a component-instance ref dies on remount; the old
+      // mechanism's first render after resume would recapture the CURRENT
+      // (edited) signature as if it described the STALE data already
+      // sitting in insightJobs, silently reverting the user's edit. The
+      // durable store field must not.
+      it('a remount (tab park/resume) does not resurrect a stale lock — pre-existing store data + edited state stays on the draft lane', () => {
+        const data = [{ x: 1 }];
+        useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: { ins_1: { name: 'ins_1', data } } });
+        markPromoted(['ins_1']);
+        const { unmount } = render(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+
+        // Edit post-promote (still real data sitting in insightJobs, no new
+        // run) — then park/resume: unmount (tab switch away) and remount
+        // (tab switch back). `explorerPromotedSignatures` is a store field,
+        // not a component ref, so it is NOT reset across this cycle here —
+        // exactly like the real park (snapshotExplorerWorkingState) / resume
+        // (restoreExplorerWorkingState) round trip preserves it.
+        act(() => {
+          useStore.setState({
+            explorerInsightStates: {
+              ins_1: { type: 'scatter', props: { x: '?{${ref(sales).new_col}}' }, interactions: [] },
+            },
+          });
+        });
+        unmount();
+        render(<ExplorerChartPreview />);
+
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
+      });
+
+      // P6-D3/D8 — an edit made between clicking promote and the in-flight
+      // run's data landing must never be silently absorbed as if the
+      // (pre-edit) data represented the (post-edit) state.
+      it('an edit made between promote and the run landing data is never absorbed as fresh (mid-run edit)', () => {
+        useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: {} });
+        // Promote captures the signature for the PRE-edit config...
+        markPromoted(['ins_1']);
+
+        // ...then the user edits the insight WHILE the run is still in
+        // flight (no data has landed for it yet).
+        act(() => {
+          useStore.setState({
+            explorerInsightStates: {
+              ins_1: { type: 'scatter', props: { x: '?{${ref(sales).new_col}}' }, interactions: [] },
+            },
+          });
+        });
+
+        const { rerender } = render(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
+
+        // The in-flight run completes and lands data compiled from the
+        // PRE-edit (promote-moment) config. The recorded signature is frozen
+        // from promote-time and no longer matches the current (edited)
+        // state, so this must stay on the draft key — never silently show
+        // stale data as if it reflected the user's edit.
+        act(() => {
+          useStore.setState({ insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } } });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
+      });
+
+      // P6-D2 — the signature must cover referenced-model state, not just
+      // the insight's own props/interactions: a model-SQL edit changes the
+      // rendered result without touching the insight's own props text.
+      it('a promoted model SQL edit unlocks the lane even though the insight itself is untouched', () => {
+        useStore.setState({
+          explorerModelStates: {
+            sales: { sql: 'select 1', sourceName: 'src', queryResult: { rows: [] } },
+          },
+          insights: [{ name: 'ins_1' }],
+          insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } },
+        });
+        markPromoted(['ins_1']);
+        const { rerender } = render(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+
+        // Edit the MODEL's SQL post-promote — the insight's own
+        // props/interactions are completely untouched.
+        act(() => {
+          useStore.setState({
+            explorerModelStates: {
+              sales: { sql: 'select 2', sourceName: 'src', queryResult: { rows: [] } },
+            },
+          });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
       });
     });
   });
@@ -418,14 +586,6 @@ describe('ExplorerChartPreview', () => {
       });
       jest.useRealTimers();
     });
-
-    const markPromoted = (names) =>
-      useStore.setState({
-        workspaceExplorations: {
-          byId: { exp_1: { id: 'exp_1', promoted: names.map(name => ({ type: 'insight', name })) } },
-          order: ['exp_1'],
-        },
-      });
 
     it('surfaces useInsightsData\'s error via a banner instead of silently discarding it', () => {
       const { useInsightsData } = jest.requireMock('../../hooks/useInsightsData');
@@ -488,12 +648,7 @@ describe('ExplorerChartPreview', () => {
         insights: [{ name: 'ins_1' }],
         insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } },
       });
-      useStore.setState({
-        workspaceExplorations: {
-          byId: { exp_1: { id: 'exp_1', promoted: [{ type: 'insight', name: 'ins_1' }] } },
-          order: ['exp_1'],
-        },
-      });
+      markPromoted(['ins_1']);
       render(<ExplorerChartPreview />);
       expect(chartEvents()).toHaveLength(1);
     });
@@ -512,16 +667,12 @@ describe('ExplorerChartPreview', () => {
         workspaceActiveObject: { type: 'exploration', name: 'exp_resumed_after_reload' },
         insights: [{ name: 'ins_1' }],
         insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } },
-        workspaceExplorations: {
-          byId: {
-            exp_resumed_after_reload: {
-              id: 'exp_resumed_after_reload',
-              promoted: [{ type: 'insight', name: 'ins_1' }],
-            },
-          },
-          order: ['exp_resumed_after_reload'],
-        },
       });
+      // Real promoted data genuinely on screen (anyInsightAlreadyHasData is
+      // true) — the ONLY thing suppressing the event must be the
+      // never-created-this-session gate, not an accidental draft-lane
+      // fallback from a missing signature.
+      markPromoted(['ins_1'], 'exp_resumed_after_reload');
       render(<ExplorerChartPreview />);
       expect(chartEvents()).toHaveLength(0);
     });
