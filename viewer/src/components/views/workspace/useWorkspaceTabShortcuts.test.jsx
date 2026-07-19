@@ -12,6 +12,7 @@ import { render, fireEvent, act } from '@testing-library/react';
 import useWorkspaceTabShortcuts, {
   handleTabShortcut,
   isEditableTarget,
+  hasBlockingModal,
 } from './useWorkspaceTabShortcuts';
 import useStore from '../../../stores/store';
 
@@ -164,6 +165,86 @@ describe('handleTabShortcut (pure dispatcher)', () => {
     expect(isEditableTarget(document.createElement('select'))).toBe(true);
     expect(isEditableTarget(document.createElement('div'))).toBe(false);
     expect(isEditableTarget(null)).toBe(false);
+  });
+
+  // P4-D1: a keyboard-driven tab/view switch mid-promote (or mid any other
+  // blocking-modal flow) must never fire — closes the door the promote
+  // modal's mouse-backdrop guard already closes, that shortcuts used to
+  // bypass entirely.
+  describe('hasBlockingModal / P4-D1 shortcut suppression', () => {
+    let marker;
+
+    afterEach(() => {
+      if (marker) {
+        document.body.removeChild(marker);
+        marker = null;
+      }
+    });
+
+    const mountBlockingModal = () => {
+      marker = document.createElement('div');
+      marker.setAttribute('aria-modal', 'true');
+      document.body.appendChild(marker);
+    };
+
+    test('hasBlockingModal is false with nothing in the DOM', () => {
+      expect(hasBlockingModal()).toBe(false);
+    });
+
+    test('hasBlockingModal is true once any element carries aria-modal="true"', () => {
+      mountBlockingModal();
+      expect(hasBlockingModal()).toBe(true);
+    });
+
+    test('Cmd+1/2/3 (view switch) is suppressed while a blocking modal is open', () => {
+      mountBlockingModal();
+      const store = makeStore();
+      expect(handleTabShortcut(makeEvent({ key: '1', metaKey: true }), store, { mac: true })).toBe(
+        false
+      );
+      expect(store.openWorkspaceView).not.toHaveBeenCalled();
+    });
+
+    test('Cmd+4-9 (tab position) is suppressed while a blocking modal is open', () => {
+      mountBlockingModal();
+      const store = makeStore();
+      expect(handleTabShortcut(makeEvent({ key: '4', metaKey: true }), store, { mac: true })).toBe(
+        false
+      );
+      expect(store.switchWorkspaceTab).not.toHaveBeenCalled();
+    });
+
+    test('Cmd+W (close active tab) is suppressed while a blocking modal is open', () => {
+      mountBlockingModal();
+      const store = makeStore();
+      expect(handleTabShortcut(makeEvent({ key: 'w', metaKey: true }), store, { mac: true })).toBe(
+        false
+      );
+      expect(store.requestCloseWorkspaceTab).not.toHaveBeenCalled();
+    });
+
+    test('Cmd+T (new tab) is suppressed while a blocking modal is open', () => {
+      mountBlockingModal();
+      const store = makeStore();
+      expect(handleTabShortcut(makeEvent({ key: 't', metaKey: true }), store, { mac: true })).toBe(
+        false
+      );
+      expect(store.openWorkspaceTab).not.toHaveBeenCalled();
+    });
+
+    test('shortcuts resume normally once the modal is gone', () => {
+      mountBlockingModal();
+      const store = makeStore();
+      expect(handleTabShortcut(makeEvent({ key: '1', metaKey: true }), store, { mac: true })).toBe(
+        false
+      );
+      document.body.removeChild(marker);
+      marker = null;
+      expect(handleTabShortcut(makeEvent({ key: '1', metaKey: true }), store, { mac: true })).toBe(
+        true
+      );
+      expect(store.openWorkspaceView).toHaveBeenCalledWith('project');
+    });
   });
 });
 

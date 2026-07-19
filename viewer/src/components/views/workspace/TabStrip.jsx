@@ -8,7 +8,7 @@ import {
   useDroppable,
   closestCenter,
 } from '@dnd-kit/core';
-import { PiX, PiPlus } from 'react-icons/pi';
+import { PiX, PiPlus, PiWarningCircle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { getTypeIcon } from '../common/objectTypeConfigs';
 import TabCloseConfirmDialog from './TabCloseConfirmDialog';
@@ -54,6 +54,14 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose, isDragging }) => {
     tab.type === 'exploration' ? s.workspaceExplorations.byId[tab.name]?.name : null
   );
   const displayName = explorationDisplayName || tab.name;
+  // VIS-1083: a 404'd sync means the backend record for this exploration tab
+  // is gone (another session's delete, or an out-of-band removal) — the
+  // pane's own banner (`ExplorationDeletedRemotelyBanner`) carries the real
+  // recovery options, but a PARKED tab never shows the pane, so this is the
+  // only surface that can flag it before the user even switches to it.
+  const explorationDeletedRemotely = useStore(
+    s => tab.type === 'exploration' && s.workspaceExplorations.byId[tab.name]?.syncStatus === 'deleted-remotely'
+  );
   return (
     <div
       role="tab"
@@ -78,12 +86,21 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose, isDragging }) => {
       >
         <TypeIcon aria-hidden="true" style={{ fontSize: 14 }} className="shrink-0 text-gray-500" />
         <span className="truncate">{displayName}</span>
-        {tab.dirty && (
-          <span
-            title="Unsaved changes"
-            data-testid={`workspace-tab-dirty-${tab.id}`}
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+        {explorationDeletedRemotely ? (
+          <PiWarningCircle
+            title="This exploration was deleted — open it to recover"
+            data-testid={`workspace-tab-deleted-remotely-${tab.id}`}
+            aria-hidden="true"
+            className="h-3 w-3 shrink-0 text-highlight-600"
           />
+        ) : (
+          tab.dirty && (
+            <span
+              title="Unsaved changes"
+              data-testid={`workspace-tab-dirty-${tab.id}`}
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+            />
+          )
         )}
       </button>
       <button

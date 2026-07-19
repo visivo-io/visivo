@@ -34,6 +34,18 @@ describe('ExplorationPromoteModal', () => {
     expect(screen.getByText('Checking your draft…')).toBeInTheDocument();
   });
 
+  // P4-D1: `useWorkspaceTabShortcuts.js`'s `hasBlockingModal` guard finds
+  // blocking modals purely via `[aria-modal="true"]` in the DOM — this pins
+  // that the promote modal actually carries that marker (a regression here
+  // would silently reopen the keyboard-shortcut race the guard exists to
+  // close, with no test failure anywhere near this file to point at it).
+  test('renders with role="dialog" aria-modal="true" (required by the shortcut-suppression guard)', () => {
+    buildPromoteChecklist.mockReturnValue(new Promise(() => {}));
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    const dialog = screen.getByRole('dialog', { name: 'Save to Project' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+  });
+
   test('shows "No changes to save" when the checklist is empty', async () => {
     buildPromoteChecklist.mockResolvedValue([]);
     render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);

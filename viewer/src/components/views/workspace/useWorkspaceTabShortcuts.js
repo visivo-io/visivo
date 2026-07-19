@@ -31,6 +31,21 @@ import { HIGHER_LEVEL_VIEWS } from './higherLevelViews';
  * while focus is in an input / textarea / select / contenteditable so the
  * browser's own editing shortcuts are never clobbered, and any combo with
  * Alt or Shift is left alone (those are browser/system chords).
+ *
+ * Phase 4 delta (P4-D1): shortcuts are ALSO suppressed while a blocking
+ * modal is open (`hasBlockingModal`, below). `ExplorationPromoteModal`'s
+ * backdrop already blocks a MOUSE-driven close mid-promote (its own
+ * `onClick` checks `!promoting`), but every shortcut here (T/W/1-9) can
+ * navigate away from — and thereby unmount — the active exploration tab
+ * regardless: `ExplorationPane`'s deactivate cleanup fires a generic
+ * draft-sync flush that races `promoteExploration`'s in-flight
+ * `recordExplorationPromotion` POST on the same unlocked backend JSON
+ * document (see `workspaceExplorationsStore.js`'s "WRITE SERIALIZATION"
+ * docstring for the other half of this fix — the client-side write queue
+ * that makes surviving this race safe even when it isn't preventable, e.g.
+ * a mouse click on a different browser tab/window). Suppressing here closes
+ * off the KEYBOARD path entirely, matching the mouse backdrop's existing
+ * guarantee instead of leaving it as the only door.
  */
 
 /** Mac detection — exported for tests. `navigator.platform` is deprecated but
@@ -49,6 +64,21 @@ export const isEditableTarget = (el) => {
 };
 
 /**
+ * Is a blocking modal currently open? Checked via the DOM rather than a
+ * store flag — every blocking modal in this codebase already renders
+ * `aria-modal="true"` on its dialog element for a11y (`ConfirmDialog.jsx`,
+ * `TabCloseConfirmDialog.jsx`, `ExplorationPromoteModal.jsx`), so this
+ * generalizes to any FUTURE blocking modal for free with zero call-site
+ * wiring — no modal owner needs to remember to set/clear a store flag,
+ * mirroring `isEditableTarget`'s own DOM-based check just above. Exported
+ * for tests.
+ */
+export const hasBlockingModal = () => {
+  if (typeof document === 'undefined') return false;
+  return !!document.querySelector('[aria-modal="true"]');
+};
+
+/**
  * The pure keydown handler — exported so tests can drive it without
  * mounting a component. `store` is the zustand state (getState()).
  */
@@ -56,6 +86,9 @@ export const handleTabShortcut = (e, store, { mac = isMacPlatform() } = {}) => {
   const mod = mac ? e.metaKey : e.ctrlKey;
   if (!mod || e.altKey || e.shiftKey) return false;
   if (isEditableTarget(e.target)) return false;
+  // P4-D1: never navigate away from (and thereby unmount) the active tab
+  // while a blocking modal is open — see the file docstring.
+  if (hasBlockingModal()) return false;
 
   const key = typeof e.key === 'string' ? e.key.toLowerCase() : '';
 
