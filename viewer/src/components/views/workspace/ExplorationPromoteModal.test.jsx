@@ -180,6 +180,50 @@ describe('ExplorationPromoteModal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  // P5-D2 (e2e-gap-review.md "Final delta pass") — a partial-failure promote
+  // must not forfeit the succeeded rows' own success messaging: the error and
+  // success banners are independent, not mutually exclusive.
+  test('a partial failure still shows the success banner for the rows that DID succeed', async () => {
+    buildPromoteChecklist.mockResolvedValue([row(), row({ name: 'flaky' })]);
+    const promoteExploration = jest.fn().mockResolvedValue({
+      success: false,
+      results: [
+        { type: 'model', name: 'orders_q', success: true, error: null },
+        { type: 'model', name: 'flaky', success: false, error: 'server rejected it' },
+      ],
+      reclassificationOffers: [],
+    });
+    useStore.setState({ promoteExploration });
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+    await screen.findByTestId('exploration-promote-error');
+    // Both banners coexist — the failure of 'flaky' must never hide that
+    // 'orders_q' really did promote.
+    expect(screen.getByTestId('exploration-promote-success')).toHaveTextContent('Promoted 1 object');
+  });
+
+  // Overall success===false but zero rows actually succeeded — the success
+  // banner (which would otherwise read "Promoted 0 objects") must stay hidden.
+  test('a total failure (zero succeeded rows) shows only the error banner, never "Promoted 0 objects"', async () => {
+    buildPromoteChecklist.mockResolvedValue([row({ name: 'flaky' })]);
+    const promoteExploration = jest.fn().mockResolvedValue({
+      success: false,
+      results: [{ type: 'model', name: 'flaky', success: false, error: 'server rejected it' }],
+      reclassificationOffers: [],
+    });
+    useStore.setState({ promoteExploration });
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+    await screen.findByTestId('exploration-promote-error');
+    expect(screen.queryByTestId('exploration-promote-success')).not.toBeInTheDocument();
+  });
+
   test('a reclassification offer stays open and renders the FieldSwapOfferBanner', async () => {
     buildPromoteChecklist.mockResolvedValue([row({ tier: 'field', type: 'metric' })]);
     const promoteExploration = jest.fn().mockResolvedValue({
@@ -337,6 +381,62 @@ describe('ExplorationPromoteModal', () => {
       expect(screen.getByTestId('exploration-promote-decline-placement')).toBeEnabled();
     });
 
+    // P5-D2 — the offer must key on the CHART row's own success, never on
+    // whether every selected row promoted (a sibling model/metric failing is
+    // "normal" partial promotion, per handlePromote's own docstring).
+    test('a partial-failure promote that includes a successfully-promoted chart still renders the Place-in-dashboard offer', async () => {
+      seedReturnTo({ dashboard: 'sales', slot: 'r1-i1' });
+      buildPromoteChecklist.mockResolvedValue([
+        row({ tier: 'chart', type: 'chart', name: 'churn_chart' }),
+        row({ name: 'flaky' }),
+      ]);
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue({
+          success: false,
+          results: [
+            { type: 'chart', name: 'churn_chart', success: true, error: null },
+            { type: 'model', name: 'flaky', success: false, error: 'server rejected it' },
+          ],
+          reclassificationOffers: [],
+        }),
+      });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+      const offer = await screen.findByTestId('exploration-promote-return-to-offer');
+      expect(offer).toHaveTextContent('churn_chart');
+      // The error for the sibling failure coexists, not either/or.
+      expect(screen.getByTestId('exploration-promote-error')).toHaveTextContent('server rejected it');
+    });
+
+    // P5-D5 — declining is no longer a bare fire-and-forget: a failed
+    // consume-return-to must surface an error and keep the button re-clickable
+    // rather than silently letting the offer resurface with no feedback.
+    test('a failed decline surfaces an inline error and leaves the offer re-declinable', async () => {
+      seedReturnTo(
+        { dashboard: 'sales' },
+        { consumeExplorationReturnTo: jest.fn().mockResolvedValue({ success: false, error: 'network blip' }) }
+      );
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-decline-placement'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('exploration-promote-decline-error')).toHaveTextContent('network blip')
+      );
+      // The offer itself is still present (return_to was never actually
+      // cleared server-side) and the decline button is re-clickable, not
+      // stuck disabled.
+      expect(screen.getByTestId('exploration-promote-return-to-offer')).toBeInTheDocument();
+      expect(screen.getByTestId('exploration-promote-decline-placement')).toBeEnabled();
+    });
+
     test('a placement failure shows an inline error and does not consume return_to or close', async () => {
       seedReturnTo({ dashboard: 'sales' }, {
         placeChartInDashboardSlot: jest.fn().mockResolvedValue({ success: false, error: 'slot taken' }),
@@ -356,6 +456,29 @@ describe('ExplorationPromoteModal', () => {
       );
       expect(useStore.getState().consumeExplorationReturnTo).not.toHaveBeenCalled();
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    // P5-D4 — a real double-click can dispatch both events before React
+    // re-renders the button `disabled`; the synchronous `placingRef` guard
+    // must stop the second call regardless (mirrors ExplorationPane's
+    // `duplicatingRef`, VIS-1084/VIS-1086).
+    test('rapid double-click on Place-in-dashboard fires exactly one placement', async () => {
+      seedReturnTo({ dashboard: 'sales', slot: 'r1-i1' });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+
+      const button = screen.getByTestId('exploration-promote-place-in-dashboard');
+      fireEvent.click(button);
+      fireEvent.click(button);
+
+      await waitFor(() =>
+        expect(useStore.getState().consumeExplorationReturnTo).toHaveBeenCalledTimes(1)
+      );
+      expect(useStore.getState().placeChartInDashboardSlot).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -384,6 +507,31 @@ describe('ExplorationPromoteModal', () => {
       expect(
         screen.queryByTestId('exploration-promote-semantic-layer-offer')
       ).not.toBeInTheDocument();
+    });
+
+    // P5-D2 — same offer-keys-on-row-success fix as the dashboard offer above.
+    test('a partial-failure promote that includes a successfully-promoted field still renders the View-in-Semantic-Layer offer', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        row({ tier: 'field', type: 'metric', name: 'churn_rate' }),
+        row({ name: 'flaky' }),
+      ]);
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue({
+          success: false,
+          results: [
+            { type: 'metric', name: 'churn_rate', success: true, error: null },
+            { type: 'model', name: 'flaky', success: false, error: 'server rejected it' },
+          ],
+          reclassificationOffers: [],
+        }),
+      });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+      const offer = await screen.findByTestId('exploration-promote-semantic-layer-offer');
+      expect(offer).toHaveTextContent('churn_rate');
+      expect(screen.getByTestId('exploration-promote-error')).toHaveTextContent('server rejected it');
     });
 
     test('promoting a metric offers "View in Semantic Layer"; accepting sets the focus intent, opens the tab, and closes', async () => {

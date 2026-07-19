@@ -61,6 +61,32 @@ const MAX_PROMOTED_POLL_ATTEMPTS = 15;
  * own `promoted[]` trail (`workspaceExplorations.byId[activeExplorationId]`)
  * actually recorded promoting an insight of that name.
  *
+ * PROMOTED-DATA FRESHNESS (P5-D1, e2e-gap-review.md "Final delta pass"): the
+ * promoted-lane switch above was a ONE-WAY RATCHET — once `promotedNames`
+ * included a name and `insightJobs[name].data` existed, every future render
+ * kept preferring the real key forever, even after the user kept editing
+ * that insight's props/interactions post-promote ("promote early, keep
+ * refining" silently broke: the chart froze on the promote-moment snapshot).
+ * `promotedDataSignatureRef` below remembers, per name, the insight-state
+ * signature (type/props/interactions) that was live the LAST time we saw a
+ * given `insightJobs[name].data` reference — i.e. "what the real data is
+ * believed to represent." A promoted name only resolves to the real key when
+ * the CURRENT signature still matches that captured one; any edit since
+ * diverges the signature and falls back to the draft-namespaced key, which
+ * resumes the normal live draft-compile preview immediately (never waits on
+ * a re-run). Re-promoting and a fresh run completing lands a NEW `data`
+ * reference, which re-captures the (now current, unedited) signature and
+ * flips back to the real key — no stale lock survives a genuine edit, and no
+ * manual reset is needed on re-promote.
+ *
+ * (Residual, out of scope for this pass: two DIFFERENT explorations that
+ * both hold a draft insight literally named the same as a just-(re)promoted
+ * insight can still observe each other's fresh data for that name — real
+ * cross-exploration isolation would require scoping `insightJobs` itself per
+ * exploration, a larger change to the shared run/dashboard rendering
+ * pipeline. Tracked as a follow-up; this fix closes the reported "stuck
+ * forever" symptom, which is the common case.)
+ *
  * PER-INSIGHT LOADING/ERROR (VIS-1092): `isLoading`/`error` handed to
  * `<ChartPreview>` (which gates the WHOLE chart render on them) are computed
  * ONLY over the insights still in the draft lane — an already-promoted
@@ -141,18 +167,43 @@ const ExplorerChartPreview = () => {
     useInsightsData(projectId, promotedNames, undefined, { cacheKey: pollTick }) || {};
   const promotedPollFailed = hasPromotedWithoutRealData && (pollExhausted || !!promotedFetchError);
 
+  // P5-D1 — signature-freshness cache backing the promoted-lane switch below.
+  // Ref (not state): purely a "what did the current real data last look like
+  // for this name" memo, mutated in-render (an accepted pattern for this
+  // shape of derived comparison, matching `pollAttemptsRef` elsewhere in this
+  // file) — it never itself triggers a re-render, only informs this render's
+  // own key resolution.
+  const promotedDataSignatureRef = useRef({});
+  const insightSignature = name => {
+    const s = insightStates[name];
+    return JSON.stringify({ type: s?.type, props: s?.props, interactions: s?.interactions });
+  };
+
   // Per-insight lane: the REAL name once its real data has actually landed
-  // (never just because it's promoted — avoids a flash of empty/error chart
-  // state in the gap between promote and the run finishing); the draft-
-  // namespaced key otherwise.
+  // AND the insight hasn't been edited since that data was captured (never
+  // just because it's promoted — avoids both a flash of empty/error chart
+  // state in the gap between promote and the run finishing, and a stale
+  // snapshot surviving edits made after promotion); the draft-namespaced key
+  // otherwise.
   const previewInsightKeys = useMemo(
     () =>
-      chartInsightNames.map(name =>
-        promotedNames.includes(name) && storeInsightJobs?.[name]?.data
-          ? name
-          : draftInsightKey(name)
-      ),
-    [chartInsightNames, promotedNames, storeInsightJobs]
+      chartInsightNames.map(name => {
+        if (!promotedNames.includes(name)) return draftInsightKey(name);
+        const data = storeInsightJobs?.[name]?.data;
+        if (!data) return draftInsightKey(name);
+
+        const cache = promotedDataSignatureRef.current[name];
+        const currentSig = insightSignature(name);
+        if (!cache || cache.data !== data) {
+          // New (or first-seen) real data for this name — capture what the
+          // insight looks like right now as the signature it represents.
+          promotedDataSignatureRef.current[name] = { data, signature: currentSig };
+          return name;
+        }
+        return cache.signature === currentSig ? name : draftInsightKey(name);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chartInsightNames, promotedNames, storeInsightJobs, insightStates]
   );
 
   // VIS-1092 — `<ChartPreview>` (unlike `Chart.jsx`) gates its ENTIRE render
