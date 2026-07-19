@@ -31,6 +31,11 @@ export default defineConfig({
       testIgnore: [
         '**/build-mode-publish.spec.mjs',
         '**/external-edit-banner.spec.mjs',
+        // Phase 6 D7 (VIS-1087's remaining half): fires a real POST
+        // /api/commit/ against shared sandbox state — same isolation need
+        // as the two files above (registered in the 'workspace-publish'
+        // project's testMatch).
+        '**/cross-tab-soft-reload-project-runs.spec.mjs',
         '**/library-inline-create.spec.mjs',
         '**/validation-as-save.spec.mjs',
         // VIS-993 regression: canvas edits must persist to the DRAFT CACHE
@@ -86,6 +91,19 @@ export default defineConfig({
         '**/explore-this-flywheel.spec.mjs',
         '**/dashboard-newchart-roundtrip.spec.mjs',
         '**/exploration-staleness.spec.mjs',
+        // Phase 6 (VIS-1073-1076/VIS-1088-1090 armor + P5-D6/P5-D-final-
+        // delta gap closures): same shared `.visivo/explorations/`
+        // repository isolation need — each mints (and most delete) real
+        // backend exploration records.
+        '**/exploration-computed-columns.spec.mjs',
+        '**/workspace-tab-close-dialog-navigation.spec.mjs',
+        '**/workspace-back-forward-exploration.spec.mjs',
+        '**/workspace-dnd-mid-drag-destination-switch.spec.mjs',
+        '**/workspace-tab-phantom-exploration.spec.mjs',
+        '**/exploration-duplicate.spec.mjs',
+        '**/workspace-cross-tab-tabset.spec.mjs',
+        '**/exploration-cross-tab-concurrency.spec.mjs',
+        '**/exploration-cross-tab-dnd-isolation.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -112,7 +130,14 @@ export default defineConfig({
       // YAML restore and see phantom pending changes). Targets its own
       // sandbox via VIS_PUBLISH_BASE.
       name: 'workspace-publish',
-      testMatch: ['**/build-mode-publish.spec.mjs', '**/external-edit-banner.spec.mjs'],
+      testMatch: [
+        '**/build-mode-publish.spec.mjs',
+        '**/external-edit-banner.spec.mjs',
+        // Phase 6 D7 (VIS-1087's remaining half): fires a real POST
+        // /api/commit/ against shared sandbox state — same isolation need
+        // as the two files above.
+        '**/cross-tab-soft-reload-project-runs.spec.mjs',
+      ],
       fullyParallel: false,
       workers: 1,
       retries: 0,
@@ -174,6 +199,18 @@ export default defineConfig({
         '**/explore-this-flywheel.spec.mjs',
         '**/dashboard-newchart-roundtrip.spec.mjs',
         '**/exploration-staleness.spec.mjs',
+        // Phase 6 additions (VIS-1073-1076/VIS-1088-1090 armor + P5-D6/
+        // P5-D-final-delta gap closures) — see the 'parallel' project's
+        // testIgnore entry for the same files for why.
+        '**/exploration-computed-columns.spec.mjs',
+        '**/workspace-tab-close-dialog-navigation.spec.mjs',
+        '**/workspace-back-forward-exploration.spec.mjs',
+        '**/workspace-dnd-mid-drag-destination-switch.spec.mjs',
+        '**/workspace-tab-phantom-exploration.spec.mjs',
+        '**/exploration-duplicate.spec.mjs',
+        '**/workspace-cross-tab-tabset.spec.mjs',
+        '**/exploration-cross-tab-concurrency.spec.mjs',
+        '**/exploration-cross-tab-dnd-isolation.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

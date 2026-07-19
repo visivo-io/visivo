@@ -364,4 +364,108 @@ test.describe('Dashboard round-trip completion (Explore 2.0 Phase 5 — VIS-1068
     const dashboard = await fetchDashboard(page, dashboardName);
     expect(dashboardReferencesChart(dashboard, chartName)).toBe(false);
   });
+
+  // e2e-gap-review.md P5-D3 [MEDIUM · CONFIRMED_GAP]: `dashboardExists`
+  // (ExplorationPromoteModal.jsx) disables "Place in <dashboard>" with a
+  // tooltip once the return_to target is gone — but no test ever minted a
+  // real return_to, then actually removed the target dashboard, then reached
+  // promote success to observe the disabled state. This test drives exactly
+  // that, backend-asserted throughout.
+  //
+  // The target is a THROWAWAY, never-committed draft dashboard (created via
+  // the backend save-to-cache endpoint the app's own "+ New Dashboard" flow
+  // uses) rather than the shared `simple-dashboard` fixture every other test
+  // in this file reads — deleting a SHARED fixture mid-suite would corrupt
+  // concurrently-running specs against the same sandbox. Honest note: no
+  // live in-app UI currently exposes deleting a dashboard — grep confirms
+  // `DashboardEditForm.jsx` (the only component with a "Delete dashboard"
+  // affordance) is never rendered anywhere outside its own tests; the
+  // Workspace's Right Rail edit view for a dashboard (`RightRailEditPanel.jsx`)
+  // only supports row-level edits. This test drives the deletion through the
+  // same backend endpoint `deleteDashboard()` (dashboardStore.js) would call
+  // if that UI existed, which is the closest honest equivalent available today.
+  test('a dashboard deleted before promote disables "Place in <name>" with a tooltip; "Not now" still cleanly consumes return_to', async ({
+    page,
+  }) => {
+    const throwawayDashboard = `e2e_p5d3_throwaway_${Date.now()}`;
+    // A genuinely zero-row dashboard renders `project-canvas` at 0 height in
+    // this layout (a real, if unrelated, CSS quirk root-caused via live
+    // reproduction against the sandbox) — seed one empty row so the canvas
+    // has real size, matching every real (non-empty) dashboard the other
+    // tests in this file use.
+    const createRes = await page.request.post(
+      `${apiBase}/api/dashboards/${encodeURIComponent(throwawayDashboard)}/`,
+      { data: { name: throwawayDashboard, type: 'internal', rows: [{ height: 'medium', items: [] }] } }
+    );
+    expect(createRes.ok()).toBe(true);
+
+    await openDashboardCanvas(page, throwawayDashboard);
+
+    const id = await newChartFromLibrary(page);
+    await expect(async () => {
+      const exploration = await fetchExploration(page, id);
+      expect(exploration.return_to?.dashboard).toBe(throwawayDashboard);
+    }).toPass({ timeout: 15000 });
+
+    // Delete the target dashboard NOW, before promoting — see the file-level
+    // note above on why this goes through the backend endpoint directly.
+    // Never having been committed, this fully removes it from
+    // `/api/dashboards/` (mark-for-deletion on a purely-cached, never-
+    // published draft drops it from the listing entirely — see
+    // dashboard_manager.py's `get_all_dashboards_with_status`), rather than
+    // leaving a "deleted" stub entry a name-only lookup could still match.
+    const deleteRes = await page.request.delete(
+      `${apiBase}/api/dashboards/${encodeURIComponent(throwawayDashboard)}/delete/`
+    );
+    expect(deleteRes.ok()).toBe(true);
+
+    // Reload so the client's `dashboards` store state (fetched once at
+    // Workspace mount) genuinely reflects the deletion — mirrors the "hard
+    // reload between opening the intent-carrying exploration and promoting"
+    // test above, which already proves a reload here is safe for return_to.
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+
+    await bindXSlotToNumericColumn(page);
+    const chartName = `e2e_p5d3_chart_${Date.now()}`;
+    const nameInput = page.getByTestId('chart-name-input');
+    await nameInput.click();
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(`${modifier}+a`);
+    await page.keyboard.type(chartName, { delay: 5 });
+    await nameInput.blur();
+
+    const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+
+    await promoteEverything(page);
+    createdObjects.push(
+      { segment: 'models', name: queryName },
+      { segment: 'insights', name: insightName },
+      { segment: 'charts', name: chartName }
+    );
+
+    // The offer still renders (return_to is still set on the exploration
+    // record — deleting the dashboard never touches it), but "Place in
+    // <name>" is disabled with the explanatory tooltip once `dashboardExists`
+    // correctly resolves false.
+    const placeOffer = page.getByTestId('exploration-promote-return-to-offer');
+    await expect(placeOffer).toBeVisible({ timeout: 10000 });
+    const placeButton = page.getByTestId('exploration-promote-place-in-dashboard');
+    await expect(placeButton).toBeDisabled();
+    await expect(placeButton).toHaveAttribute('title', `"${throwawayDashboard}" no longer exists`);
+
+    // "Not now" still cleanly consumes return_to even though the dashboard
+    // is gone — the decline path never depended on the target existing.
+    await page.getByTestId('exploration-promote-decline-placement').click();
+    await expect(placeOffer).not.toBeVisible({ timeout: 10000 });
+
+    await expect(async () => {
+      const exploration = await fetchExploration(page, id);
+      expect(exploration.return_to).toBeNull();
+    }).toPass({ timeout: 15000 });
+  });
 });

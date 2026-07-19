@@ -238,4 +238,74 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
     await expect(page.getByTestId(tabTestId)).not.toBeVisible();
     await expect(page.getByText(/was deleted/i)).toBeVisible({ timeout: 5000 });
   });
+
+  // e2e-gap-review.md #23 [MEDIUM · PARTIAL]: the test above only ever has
+  // ONE exploration in play — this proves a SIBLING parked exploration
+  // survives untouched (tab strip presence, backend-persisted draft, and
+  // clean re-openability) when a DIFFERENT parked exploration is deleted
+  // from Home.
+  test("deleting one parked exploration from Home leaves a SIBLING parked exploration's tab and persisted draft untouched, and its own slot un-reactivatable", async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+
+    // Exploration A: create, park it (switch to Project without closing).
+    await page.getByTestId('explorer-home-new-exploration').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
+    const explorationIdA = new URL(page.url()).pathname.split('/').pop();
+    const tabTestIdA = `workspace-tab-exploration:${explorationIdA}`;
+    await expect(page.getByTestId(tabTestIdA)).toBeVisible();
+
+    await page.getByTestId('workspace-view-switcher-project').click();
+    await expect(page.getByTestId(tabTestIdA)).toHaveAttribute('data-active', 'false');
+
+    // Exploration B: a SIBLING, created and parked the same way, so BOTH
+    // sit parked in the strip simultaneously.
+    await page.getByTestId('workspace-view-switcher-explorer').click();
+    await expect(page.getByTestId('explorer-home-gallery')).toBeVisible();
+    await page.getByTestId('explorer-home-new-exploration').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
+    const explorationIdB = new URL(page.url()).pathname.split('/').pop();
+    const tabTestIdB = `workspace-tab-exploration:${explorationIdB}`;
+    await expect(page.getByTestId(tabTestIdB)).toBeVisible();
+
+    await page.getByTestId('workspace-view-switcher-project').click();
+    await expect(page.getByTestId(tabTestIdA)).toBeVisible();
+    await expect(page.getByTestId(tabTestIdA)).toHaveAttribute('data-active', 'false');
+    await expect(page.getByTestId(tabTestIdB)).toBeVisible();
+    await expect(page.getByTestId(tabTestIdB)).toHaveAttribute('data-active', 'false');
+
+    // Delete A from Home while BOTH A and B sit parked in the strip.
+    await page.getByTestId('workspace-view-switcher-explorer').click();
+    await page.getByTestId(`exploration-card-${explorationIdA}-menu`).click();
+    await page.getByTestId(`exploration-card-${explorationIdA}-delete-action`).click();
+    await page.getByTestId('exploration-delete-confirm-confirm').click();
+
+    // A's parked tab is force-closed with a toast, as the single-exploration
+    // test above already proves...
+    await expect(page.getByTestId(tabTestIdA)).not.toBeVisible();
+    await expect(page.getByText(/was deleted/i)).toBeVisible({ timeout: 5000 });
+
+    // ...but B's SIBLING parked tab is completely undisturbed — still
+    // present in the strip, unfocused (deleting A never re-fires B's
+    // restore or activates it).
+    await expect(page.getByTestId(tabTestIdB)).toBeVisible();
+    await expect(page.getByTestId(tabTestIdB)).toHaveAttribute('data-active', 'false');
+
+    // B's backend record survived untouched.
+    const backendCheckB = await page.request.get(`${API}/api/explorations/${explorationIdB}/`);
+    expect(backendCheckB.ok()).toBe(true);
+
+    // A's record is genuinely gone — its slot cannot be reactivated (no
+    // stray tab, no card) — while B still opens cleanly from its own tab.
+    const backendCheckA = await page.request.get(`${API}/api/explorations/${explorationIdA}/`);
+    expect(backendCheckA.status()).toBe(404);
+    await expect(page.getByTestId(`exploration-card-${explorationIdA}-name`)).not.toBeVisible();
+
+    await page.getByTestId(`workspace-tab-select-exploration:${explorationIdB}`).click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId(tabTestIdB)).toHaveAttribute('data-active', 'true');
+  });
 });

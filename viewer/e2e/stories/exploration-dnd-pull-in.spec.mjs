@@ -267,4 +267,57 @@ test.describe('Exploration DnD pull-in (Explore 2.0 Phase 3a — D9)', () => {
       )
     );
   });
+
+  // e2e-gap-review.md #27 [LOW·PARTIAL]: a query chip created via Library
+  // drag-and-drop, then immediately renamed before its own draft-sync
+  // round-trip lands, is never proven to serialize correctly under the
+  // RENAMED name. Chains the DnD-seeded chip creation directly into an
+  // immediate rename — faster than the ~1.6s live-sync + backend-POST
+  // window this file's other tests deliberately wait out — and verifies the
+  // FINAL persisted draft through the backend, not just the DOM.
+  test('a chip created via Library DnD, renamed before its own draft-sync settles, persists under the RENAMED name with its DnD-derived SQL intact', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+    const existingChips = await chips(page).count();
+
+    const tableRow = await expandSourceTable(page);
+    const dropZone = page.getByTestId('sql-editor-drop-zone');
+    await dragAndDrop(page, tableRow, dropZone);
+
+    await expect(chips(page)).toHaveCount(existingChips + 1, { timeout: 10000 });
+    const seededName = await page.evaluate(
+      () => window.useStore.getState().explorerActiveModelName
+    );
+    await expect(page.locator('.view-lines').first()).toContainText(`SELECT * FROM ${TABLE}`, {
+      timeout: 10000,
+    });
+
+    // Rename IMMEDIATELY — no wait for the dirty dot, no backend poll first —
+    // before the DnD-seeded chip's own draft-sync round trip has any chance
+    // to settle.
+    await page.getByTestId(`query-chip-${seededName}-menu-trigger`).click();
+    await page.getByTestId(`query-chip-${seededName}-rename-action`).click();
+    const input = page.getByTestId(`query-chip-${seededName}-rename-input`);
+    await input.fill('orders_from_dnd');
+    await input.press('Enter');
+
+    await expect(page.getByTestId('query-chip-orders_from_dnd')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId(`query-chip-${seededName}`)).not.toBeVisible();
+
+    // The FINAL persisted draft reflects the RENAMED chip, carrying the
+    // DnD-derived SQL — not a race between the DnD-creation's own draft-sync
+    // and the rename's effect on the same `explorerModelTabs` slice.
+    await waitForBackendDraft(page, id, draft =>
+      (draft.queries || []).some(
+        q => q.name === 'orders_from_dnd' && (q.sql || '').includes(`SELECT * FROM ${TABLE}`)
+      )
+    );
+    await waitForBackendDraft(
+      page,
+      id,
+      draft => !(draft.queries || []).some(q => q.name === seededName)
+    );
+  });
 });
