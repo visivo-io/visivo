@@ -7,6 +7,8 @@ import {
   PiPencil,
   PiArrowSquareOut,
   PiTrash,
+  PiCompass,
+  PiPlusCircle,
 } from 'react-icons/pi';
 import { ObjectStatus } from '../../../../stores/store';
 import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
@@ -58,6 +60,16 @@ export const DROPPABLE_TYPES = ['chart', 'table', 'markdown', 'input'];
 // these types — stay unchanged: a Library row being an exploration drag
 // source is orthogonal to it being a valid DASHBOARD canvas item.
 export const EXPLORATION_DRAG_TYPES = ['source', 'metric', 'dimension', 'insight'];
+
+// Explore 2.0 Phase 5 (VIS-1067): types a right-click "Explore this" can mint
+// a brand-new, pre-wired exploration from (`explorerStore.js`'s
+// `buildExplorationSeedState`) — broader than `EXPLORATION_DRAG_TYPES`
+// because minting a NEW exploration (rather than adding into an already-open
+// one) also makes sense for `model` and `chart`, which have no meaningful
+// "drop into an existing exploration" analog (a model is queried, not
+// bound to a slot; a chart already IS the top-level draft, not a value that
+// fits inside one).
+export const EXPLORE_THIS_TYPES = ['source', 'model', 'metric', 'dimension', 'insight', 'chart'];
 
 // Every type except `relation` supports inline create (a draft with a
 // minimal valid config — see stores/inlineCreateStore.js). A relation can't
@@ -148,8 +160,10 @@ const MenuDivider = () => (
   />
 );
 
-const ContextMenu = ({ obj, onAction, onDismiss }) => {
+const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) => {
   const isInsight = obj.type === 'insight';
+  const canExploreThis = EXPLORE_THIS_TYPES.includes(obj.type);
+  const canAddThisToExploration = canAddToExploration && EXPLORATION_DRAG_TYPES.includes(obj.type);
   const handle = action => () => {
     onAction && onAction(action, obj);
     onDismiss && onDismiss();
@@ -196,6 +210,25 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
             onClick={handle('showLineage')}
           />
         </li>
+        {(canExploreThis || canAddThisToExploration) && <MenuDivider />}
+        {canExploreThis && (
+          <li>
+            <ContextMenuItem
+              icon={PiCompass}
+              label="Explore this"
+              onClick={handle('exploreThis')}
+            />
+          </li>
+        )}
+        {canAddThisToExploration && (
+          <li>
+            <ContextMenuItem
+              icon={PiPlusCircle}
+              label="Add to exploration"
+              onClick={handle('addToExploration')}
+            />
+          </li>
+        )}
         <MenuDivider />
         <li>
           <ContextMenuItem
@@ -211,7 +244,15 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
   );
 };
 
-const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContextAction, testId }) => {
+const LibraryRow = ({
+  obj,
+  selected = false,
+  draggable = true,
+  onClick,
+  onContextAction,
+  canAddToExploration = false,
+  testId,
+}) => {
   const [hovered, setHovered] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -414,7 +455,12 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
         />
       )}
       {menuOpen && (
-        <ContextMenu obj={obj} onAction={onContextAction} onDismiss={handleMenuDismiss} />
+        <ContextMenu
+          obj={obj}
+          onAction={onContextAction}
+          onDismiss={handleMenuDismiss}
+          canAddToExploration={canAddToExploration}
+        />
       )}
     </div>
   );

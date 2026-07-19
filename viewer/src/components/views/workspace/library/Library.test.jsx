@@ -377,6 +377,64 @@ describe('Library', () => {
     unsubscribe();
   });
 
+  // VIS-1067 — "Explore this" / "Add to exploration" context-menu entries.
+  describe('Explore this / Add to exploration', () => {
+    test('"Explore this" mints an exploration seeded + pre-wired via buildExplorationSeedState, then opens its tab', async () => {
+      const openWorkspaceTab = jest.fn();
+      const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new' });
+      const buildExplorationSeedState = jest.fn().mockReturnValue({ modelTabs: ['query_1'] });
+      seedStore({ openWorkspaceTab, createExploration, buildExplorationSeedState });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      fireEvent.click(within(menu).getByText('Explore this'));
+
+      expect(buildExplorationSeedState).toHaveBeenCalledWith({ type: 'insight', name: 'revenue_growth' });
+      await waitFor(() =>
+        expect(createExploration).toHaveBeenCalledWith(
+          { type: 'insight', name: 'revenue_growth' },
+          null,
+          { modelTabs: ['query_1'] }
+        )
+      );
+      await waitFor(() =>
+        expect(openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'exploration:exp_new',
+          type: 'exploration',
+          name: 'exp_new',
+        })
+      );
+    });
+
+    test('"Add to exploration" is offered only when the active tab is an exploration, and calls addObjectToActiveExploration', () => {
+      const addObjectToActiveExploration = jest.fn();
+      seedStore({
+        workspaceActiveObject: { type: 'exploration', name: 'exp_1' },
+        addObjectToActiveExploration,
+      });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      fireEvent.click(within(menu).getByText('Add to exploration'));
+
+      expect(addObjectToActiveExploration).toHaveBeenCalledWith({
+        type: 'insight',
+        name: 'revenue_growth',
+        parentModel: undefined,
+      });
+    });
+
+    test('"Add to exploration" does not render when no exploration tab is active', () => {
+      seedStore({ workspaceActiveObject: { type: 'model', name: 'monthly_revenue' } });
+      renderLibrary();
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      expect(within(menu).queryByText('Add to exploration')).not.toBeInTheDocument();
+    });
+  });
+
   test('clicking a dashboard row scopes the workspace to that dashboard (VIS-824)', () => {
     const openWorkspaceTab = jest.fn();
     seedStore({ openWorkspaceTab });

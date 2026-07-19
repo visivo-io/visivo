@@ -36,6 +36,7 @@ const LibrarySubsection = ({
   selectedRowId = null,
   onRowClick,
   onContextAction,
+  canAddToExploration = false,
 }) => {
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
@@ -120,6 +121,7 @@ const LibrarySubsection = ({
                       draggable={def.droppable || def.explorationDragSource}
                       onClick={onRowClick}
                       onContextAction={onContextAction}
+                      canAddToExploration={canAddToExploration}
                     />
                   </li>
                 )

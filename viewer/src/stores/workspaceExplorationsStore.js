@@ -301,12 +301,19 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      * §5) is a one-shot placement intent `{ dashboard, slot? }`: the
      * `/workspace/dashboard/:name/explorer` composed route mints a fresh
      * exploration carrying it so "Place in <dashboard>" can consume it later
-     * (Phase 4/5) via the existing `consumeReturnTo` endpoint. */
-    createExploration: async (seed = null, returnTo = null) => {
+     * (Phase 4/5) via the existing `consumeReturnTo` endpoint.
+     *
+     * `legacyStateOverride` (optional, Explore 2.0 Phase 5 — VIS-1067) lets a
+     * caller hand in a fully-built legacy working-state snapshot (see
+     * `explorerStore.js`'s `buildExplorationSeedState`) instead of relying on
+     * `legacyStateForSeed`'s `type === 'source'`-only bridge — the "Explore
+     * this" context-menu action's pre-wired query for models/tables and its
+     * name-preserving copy for insights/charts both go through this. */
+    createExploration: async (seed = null, returnTo = null, legacyStateOverride = null) => {
       try {
         const payload = seed ? { seeded_from: seed } : {};
         if (returnTo) payload.return_to = returnTo;
-        const seedLegacyState = seed ? legacyStateForSeed(seed) : null;
+        const seedLegacyState = legacyStateOverride || (seed ? legacyStateForSeed(seed) : null);
         if (seedLegacyState) payload.draft = mapDraftToApi(legacyStateToDraft(seedLegacyState));
         const created = await explorationsApi.createExploration(payload);
         const mapped = mapExplorationFromApi(created);

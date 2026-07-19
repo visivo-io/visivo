@@ -5,6 +5,7 @@ import OpenObjectContextMenu from '../workspace/OpenObjectContextMenu';
 import useStore from '../../../stores/store';
 import { useWorkspaceScope } from '../workspace/useWorkspaceScope';
 import { emitWorkspaceEvent } from '../workspace/telemetry';
+import { EXPLORE_THIS_TYPES, EXPLORATION_DRAG_TYPES } from '../workspace/library/LibraryRow';
 
 /**
  * LineageCanvas — VIS-E1 (VIS-779 / Track E).
@@ -34,6 +35,12 @@ const LineageCanvas = () => {
   const openWorkspaceTab = useStore((s) => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore((s) => s.openWorkspaceTabBackground);
   const setWorkspaceLensIntent = useStore((s) => s.setWorkspaceLensIntent);
+  const createExploration = useStore((s) => s.createExploration);
+  const buildExplorationSeedState = useStore((s) => s.buildExplorationSeedState);
+  const addObjectToActiveExploration = useStore((s) => s.addObjectToActiveExploration);
+  // VIS-1067: only offer "Add to exploration" while an exploration tab is
+  // the ACTIVE one — see Library.jsx's identical gate for why.
+  const canAddToExploration = useStore((s) => s.workspaceActiveObject?.type === 'exploration');
 
   // Local "show full project" override. When active we force `*` regardless of
   // the derived scope — without touching the route. It auto-clears whenever the
@@ -138,6 +145,32 @@ const LineageCanvas = () => {
     [openWorkspaceTabBackground]
   );
 
+  // VIS-1067 — "Explore this" mints a new exploration seeded from the
+  // clicked DAG node (pre-wired per `buildExplorationSeedState`) and opens
+  // its tab; "Add to exploration" adds it into the currently active one.
+  const handleCtxExploreThis = useCallback(
+    (obj) => {
+      if (!createExploration || !openWorkspaceTab) return;
+      const seed = { type: obj.type, name: obj.name };
+      const legacyStateOverride = buildExplorationSeedState
+        ? buildExplorationSeedState(seed)
+        : null;
+      createExploration(seed, null, legacyStateOverride).then((result) => {
+        if (result?.success) {
+          openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+          emitWorkspaceEvent('explore_this_used', { source_type: obj.type });
+        }
+      });
+    },
+    [createExploration, openWorkspaceTab, buildExplorationSeedState]
+  );
+  const handleCtxAddToExploration = useCallback(
+    (obj) => {
+      addObjectToActiveExploration && addObjectToActiveExploration(obj);
+    },
+    [addObjectToActiveExploration]
+  );
+
   const chrome = (
     <div
       data-testid="lineage-canvas-scope-bar"
@@ -189,6 +222,14 @@ const LineageCanvas = () => {
           obj={ctxMenu.obj}
           onOpen={handleCtxOpen}
           onOpenInNewTab={handleCtxOpenInNewTab}
+          onExploreThis={
+            EXPLORE_THIS_TYPES.includes(ctxMenu.obj?.type) ? handleCtxExploreThis : undefined
+          }
+          onAddToExploration={
+            canAddToExploration && EXPLORATION_DRAG_TYPES.includes(ctxMenu.obj?.type)
+              ? handleCtxAddToExploration
+              : undefined
+          }
           onDismiss={dismissCtxMenu}
           testIdPrefix="lineage-node-ctx"
         />

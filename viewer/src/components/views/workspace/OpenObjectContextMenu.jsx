@@ -1,14 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PiArrowSquareOut, PiArrowRight } from 'react-icons/pi';
+import { PiArrowSquareOut, PiArrowRight, PiCompass, PiPlusCircle } from 'react-icons/pi';
 import { getTypeIcon } from '../common/objectTypeConfigs';
 
 /**
- * OpenObjectContextMenu — VIS-811 / Track O O-2.
+ * OpenObjectContextMenu — VIS-811 / Track O O-2 (+ VIS-1067 flywheel entries).
  *
  * The shared right-click menu for "openable" workspace objects. Mounted by
  * surfaces that don't already own a context menu (lineage nodes, Project
- * Editor tiles); the canvas and Library menus integrate the same two actions
+ * Editor tiles); the canvas and Library menus integrate the same actions
  * into their existing menus instead.
  *
  *   - Open             → replaces the current workspace context
@@ -18,6 +18,14 @@ import { getTypeIcon } from '../common/objectTypeConfigs';
  *                        joins the strip ready to click. This matches the
  *                        Track O spec ("creates a new tab; clicking the tab
  *                        switches the workspace context").
+ *   - Explore this     → (VIS-1067, optional — only rendered when the
+ *                        consumer passes `onExploreThis`) mints a new
+ *                        exploration seeded from this object and opens it.
+ *   - Add to exploration → (VIS-1067, optional — only rendered when the
+ *                        consumer passes `onAddToExploration`, which callers
+ *                        gate on an exploration tab actually being open)
+ *                        adds this object into the active exploration's
+ *                        draft without leaving the current tab.
  *
  * Rendered through a portal at a fixed viewport position (`x`/`y` are
  * clientX/clientY) so it escapes any overflow-clipping ancestor (the lineage
@@ -44,7 +52,17 @@ const MenuItem = ({ testid, icon: Icon, label, onClick }) => (
   </button>
 );
 
-const OpenObjectContextMenu = ({ x, y, obj, onOpen, onOpenInNewTab, onDismiss, testIdPrefix }) => {
+const OpenObjectContextMenu = ({
+  x,
+  y,
+  obj,
+  onOpen,
+  onOpenInNewTab,
+  onExploreThis,
+  onAddToExploration,
+  onDismiss,
+  testIdPrefix,
+}) => {
   const menuRef = useRef(null);
   const prefix = testIdPrefix || 'open-object-ctx';
   const TypeIcon = obj?.type ? getTypeIcon(obj.type) : null;
@@ -103,6 +121,28 @@ const OpenObjectContextMenu = ({ x, y, obj, onOpen, onOpenInNewTab, onDismiss, t
           onDismiss && onDismiss();
         }}
       />
+      {onExploreThis && (
+        <MenuItem
+          testid={`${prefix}-explore-this`}
+          icon={PiCompass}
+          label="Explore this"
+          onClick={() => {
+            onExploreThis(obj);
+            onDismiss && onDismiss();
+          }}
+        />
+      )}
+      {onAddToExploration && (
+        <MenuItem
+          testid={`${prefix}-add-to-exploration`}
+          icon={PiPlusCircle}
+          label="Add to exploration"
+          onClick={() => {
+            onAddToExploration(obj);
+            onDismiss && onDismiss();
+          }}
+        />
+      )}
       <span
         aria-hidden="true"
         className="pointer-events-none absolute -left-px top-2 h-4 w-[3px] rounded-r"

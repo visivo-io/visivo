@@ -184,6 +184,37 @@ describe('createExploration', () => {
     });
   });
 
+  // VIS-1067 — "Explore this" hands in a fully-built legacy snapshot
+  // (`explorerStore.js`'s `buildExplorationSeedState`) instead of relying on
+  // `legacyStateForSeed`'s `type === 'source'`-only bridge.
+  test('legacyStateOverride wins over legacyStateForSeed and is mapped into the draft', async () => {
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({ seeded_from: { type: 'model', name: 'orders' } })
+    );
+
+    const override = {
+      modelTabs: ['query_1'],
+      activeModelName: 'query_1',
+      modelStates: { query_1: { sql: 'SELECT * FROM ${ref(orders)}', sourceName: 'pg', isNew: true } },
+      chartName: null,
+      chartLayout: {},
+      chartInsightNames: [],
+      activeInsightName: null,
+      insightStates: {},
+    };
+
+    await act(async () => {
+      await useStore.getState().createExploration({ type: 'model', name: 'orders' }, null, override);
+    });
+
+    const payload = explorationsApi.createExploration.mock.calls[0][0];
+    expect(payload.seeded_from).toEqual({ type: 'model', name: 'orders' });
+    expect(payload.draft.queries).toEqual([
+      { name: 'query_1', sql: 'SELECT * FROM ${ref(orders)}', source: 'pg' },
+    ]);
+    expect(payload.draft.legacy_state).toEqual(override);
+  });
+
   // Explore 2.0 Phase 3b cutover (02-architecture.md §5): the dashboard-scoped
   // `/workspace/dashboard/:name/explorer` route mints a fresh exploration
   // carrying a return_to placement intent.
