@@ -320,6 +320,84 @@ describe('ExplorerChartPreview', () => {
         JSON.stringify(['__draft__:ins_1'])
       );
     });
+
+    // P5-D1 — the sticky promoted-lane lock: editing a promoted insight must
+    // resume live draft rendering immediately, never freeze on the
+    // promote-moment snapshot ("promote early, keep refining").
+    describe('promoted-data freshness (P5-D1)', () => {
+      it('falls back to the draft key once the promoted insight is edited after promotion', () => {
+        const data = [{ x: 1 }];
+        useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: { ins_1: { name: 'ins_1', data } } });
+        markPromoted(['ins_1']);
+        const { rerender } = render(<ExplorerChartPreview />);
+        // First render: real data just landed, current insight state is what
+        // it represents — resolves to the real key.
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+
+        // User edits the (still-promoted) insight's props post-promote — the
+        // SAME `data` object is still sitting in insightJobs (no new run yet).
+        act(() => {
+          useStore.setState({
+            explorerInsightStates: {
+              ins_1: { type: 'scatter', props: { x: '?{${ref(sales).new_col}}' }, interactions: [] },
+            },
+          });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
+      });
+
+      it('flips back to the real key once a fresh promote/run lands new data matching the current state', () => {
+        const staleData = [{ x: 1 }];
+        useStore.setState({
+          insights: [{ name: 'ins_1' }],
+          insightJobs: { ins_1: { name: 'ins_1', data: staleData } },
+        });
+        markPromoted(['ins_1']);
+        const { rerender } = render(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+
+        // Edit — falls back to draft, as proven above.
+        act(() => {
+          useStore.setState({
+            explorerInsightStates: {
+              ins_1: { type: 'scatter', props: { x: '?{${ref(sales).new_col}}' }, interactions: [] },
+            },
+          });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+          JSON.stringify(['__draft__:ins_1'])
+        );
+
+        // Re-promote completes and a fresh run lands a NEW data reference —
+        // captured as representing the (current, just-repromoted) state.
+        const freshData = [{ x: 2 }];
+        act(() => {
+          useStore.setState({ insightJobs: { ins_1: { name: 'ins_1', data: freshData } } });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+      });
+
+      it('never flickers to draft on a render where insightJobs is unchanged and the insight is untouched', () => {
+        const data = [{ x: 1 }];
+        useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: { ins_1: { name: 'ins_1', data } } });
+        markPromoted(['ins_1']);
+        const { rerender } = render(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+
+        // An unrelated re-render (e.g. chart layout edit) with no insight or
+        // data change must stay on the real key.
+        act(() => {
+          useStore.setState({ explorerChartLayout: { title: 'x' } });
+        });
+        rerender(<ExplorerChartPreview />);
+        expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(JSON.stringify(['ins_1']));
+      });
+    });
   });
 
   // VIS-1093 — the promoted-poll bridge's bounded lifetime + failure path.
