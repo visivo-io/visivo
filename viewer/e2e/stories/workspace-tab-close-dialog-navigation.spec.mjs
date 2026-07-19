@@ -103,6 +103,27 @@ async function newExploration(page) {
  * flag — mirrors the recommended story's own emphasis on a genuine
  * mid-debounce dirty tab). */
 async function armDirtyCloseDialog(page, id, sql) {
+  // Hold this exploration's draft-sync POST in-flight for as long as the
+  // dialog stays armed. The dirty dot mirrors `syncStatus === 'saving'`
+  // (ExplorationPane.jsx), so without the hold the debounced write can
+  // settle inside the hover→click gap below and the × then closes a CLEAN
+  // tab with no dialog at all (observed as a 1-in-N flake under gate load).
+  // The REAL pipeline stays live — the write is genuinely in flight, never
+  // a manually-flipped flag — and it also makes the callers' later
+  // "still dirty" assertions deterministic instead of debounce-window-
+  // dependent. Returns an async release(): lets the POST through and
+  // removes the route. Callers must await it before any step that needs
+  // the write to land, and by test end at the latest.
+  let releaseHold = () => {};
+  const held = new Promise(resolve => {
+    releaseHold = resolve;
+  });
+  const routePattern = `**/api/explorations/${id}/`;
+  await page.route(routePattern, async route => {
+    if (route.request().method() === 'POST') await held;
+    await route.fallback();
+  });
+
   await typeSqlReliably(page, sql);
   await expect(page.getByTestId(`workspace-tab-dirty-exploration:${id}`)).toBeVisible({
     timeout: 3000,
@@ -111,6 +132,11 @@ async function armDirtyCloseDialog(page, id, sql) {
   await closeBtn.hover();
   await closeBtn.click();
   await expect(page.getByTestId('tab-close-confirm-dialog')).toBeVisible();
+
+  return async () => {
+    releaseHold();
+    await page.unroute(routePattern);
+  };
 }
 
 /** Activate a control BEHIND the dialog's full-viewport backdrop via
@@ -147,7 +173,7 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
   }) => {
     await gotoExplorerHome(page);
     const id = await newExploration(page);
-    await armDirtyCloseDialog(page, id, 'SELECT 1 AS one');
+    const releaseArm = await armDirtyCloseDialog(page, id, 'SELECT 1 AS one');
 
     const semanticRow = page.getByTestId('workspace-view-switcher-semantic-layer');
     await focusAndActivate(semanticRow);
@@ -167,6 +193,8 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
     // was dismissed by navigation, not by "Close without saving").
     await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toBeVisible();
     await expect(page.getByTestId(`workspace-tab-dirty-exploration:${id}`)).toBeVisible();
+
+    await releaseArm();
   });
 
   test('activating a Library row (opening a different tab) behind the open dialog dismisses it, not orphans it', async ({
@@ -174,7 +202,7 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
   }) => {
     await gotoExplorerHome(page);
     const id = await newExploration(page);
-    await armDirtyCloseDialog(page, id, 'SELECT 2 AS two');
+    const releaseArm1 = await armDirtyCloseDialog(page, id, 'SELECT 2 AS two');
 
     // Navigate to Project first (behind the dialog) so the Library's chart
     // rows are on-screen underneath it.
@@ -188,7 +216,7 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
     // (see file header for why a literal click can't reach it).
     await focusAndActivate(page.getByTestId('workspace-view-switcher-explorer'));
     const id2 = await newExploration(page);
-    await armDirtyCloseDialog(page, id2, 'SELECT 3 AS three');
+    const releaseArm2 = await armDirtyCloseDialog(page, id2, 'SELECT 3 AS three');
 
     await focusAndActivate(page.getByTestId('workspace-view-switcher-project'));
     await expect(page.getByTestId('tab-close-confirm-dialog')).not.toBeVisible();
@@ -206,7 +234,7 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
     // onKeyDown handles Enter/Space directly, per LibraryRow.jsx).
     await focusAndActivate(page.getByTestId('workspace-view-switcher-explorer'));
     const id3 = await newExploration(page);
-    await armDirtyCloseDialog(page, id3, 'SELECT 4 AS four');
+    const releaseArm3 = await armDirtyCloseDialog(page, id3, 'SELECT 4 AS four');
     await focusAndActivate(row);
 
     await expect(page.getByTestId('workspace-tab-chart:simple-scatter-chart')).toHaveAttribute(
@@ -217,6 +245,10 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
     await expect(page.getByTestId('tab-close-confirm-backdrop')).not.toBeVisible();
     const pending = await page.evaluate(() => window.useStore.getState().workspacePendingCloseTabId);
     expect(pending).toBeNull();
+
+    await releaseArm1();
+    await releaseArm2();
+    await releaseArm3();
   });
 
   test('Cmd+2 while the dialog is open is suppressed entirely (hasBlockingModal) — documents the current, already-correct guard', async ({
@@ -224,7 +256,7 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
   }) => {
     await gotoExplorerHome(page);
     const id = await newExploration(page);
-    await armDirtyCloseDialog(page, id, 'SELECT 5 AS five');
+    const releaseArm = await armDirtyCloseDialog(page, id, 'SELECT 5 AS five');
 
     const isMac = process.platform === 'darwin';
     await page.keyboard.press(isMac ? 'Meta+2' : 'Control+2');
@@ -239,5 +271,7 @@ test.describe('Tab-close confirmation survives navigation away (cross-PR #518 x 
     // pending-close state behind.
     await page.getByTestId('tab-close-confirm-cancel').click();
     await expect(page.getByTestId('tab-close-confirm-dialog')).not.toBeVisible();
+
+    await releaseArm();
   });
 });

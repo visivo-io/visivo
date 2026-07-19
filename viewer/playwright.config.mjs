@@ -144,18 +144,31 @@ export default defineConfig({
       // unscoped `reload` socket broadcast to every connected page) could
       // fire mid-run against the same shared sandbox ~150 'parallel' specs
       // and the 31-spec 'exploration-mutations' suite are using, risking
-      // nondeterministic interference with either. `dependencies` below
-      // makes Playwright fully finish 'parallel' and 'exploration-mutations'
-      // before this project starts — true serialization, not just an
-      // internal one. Same accepted CLI-ballooning tradeoff 'state-mutating'
-      // already makes for the same reason (a project dependency runs the
-      // ENTIRE dependency project regardless of any CLI file filter) — kept
-      // acceptable here by this project's file count staying small (3
-      // specs). `exploration-mutations` deliberately declines this same
-      // tradeoff for ITS OWN ~30-spec project (see its own comment below);
-      // that project only ever mutates the isolated `.visivo/explorations/`
-      // JSON repository, never `project.visivo.yml` or an unscoped socket
-      // broadcast, so it doesn't carry this project's specific risk.
+      // nondeterministic interference with either.
+      //
+      // Serialization is BY INVOCATION, deliberately NOT by `dependencies`:
+      // a project dependency only runs its dependents after the dependency
+      // project fully PASSES, and 'parallel' contains specs that can only
+      // pass under their own dedicated-sandbox harness (per-spec ports —
+      // see e.g. project-canvas/canvas-* BASE fallbacks), so in the
+      // standard :8001/:3001 topology a dependency edge here means this
+      // project NEVER runs at all (verified: 3/3 full-directory runs, 73
+      // dependency failures, 0 workspace-publish tests executed). It also
+      // balloons any CLI file filter that touches this project into running
+      // the entire ~150-file 'parallel' project first.
+      //
+      // The canonical gate therefore runs TWO STAGES against the shared
+      // sandbox: stage A = the curated acceptance list (parallel +
+      // exploration-mutations, concurrently, no publish specs), then
+      // stage B = `npx playwright test --project=workspace-publish` alone
+      // once stage A has fully drained. Full-directory `npx playwright
+      // test e2e/stories/` is NOT a supported invocation on the shared
+      // sandbox (the dedicated-sandbox specs above fail environmentally).
+      // 'exploration-mutations' declines a dependency edge for the same
+      // reason (see its own comment below); it only ever mutates the
+      // isolated `.visivo/explorations/` JSON repository, never
+      // `project.visivo.yml` or an unscoped socket broadcast, so it does
+      // not carry this project's specific risk.
       name: 'workspace-publish',
       testMatch: [
         '**/build-mode-publish.spec.mjs',
@@ -168,7 +181,6 @@ export default defineConfig({
       fullyParallel: false,
       workers: 1,
       retries: 0,
-      dependencies: ['parallel', 'exploration-mutations'],
     },
     {
       // Explore 2.0 Phase 2 e2e gate: explorations are S3'd to ONE JSON
