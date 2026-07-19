@@ -142,6 +142,17 @@ export default defineConfig({
         '**/exploration-promote.spec.mjs',
         '**/exploration-preview.spec.mjs',
         '**/save-as-metric.spec.mjs',
+        // Gate Hardening (VIS-1082-1086 + Phase 4 delta P4-D1/P4-D4): same
+        // shared-repository isolation need — mints real backend exploration
+        // + promoted-object records, and P4-D1's story deliberately holds a
+        // real network request open via page.route(), which must never race
+        // another worker's own promote flow against the same sandbox.
+        '**/exploration-promote-tab-race.spec.mjs',
+        '**/exploration-cross-session-delete.spec.mjs',
+        '**/exploration-concurrent-rename-and-draft-sync.spec.mjs',
+        '**/explorer-create-race.spec.mjs',
+        '**/exploration-duplicate-race.spec.mjs',
+        '**/explorer-cold-session-default-source.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,
