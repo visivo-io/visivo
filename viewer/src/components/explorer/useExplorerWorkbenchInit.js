@@ -32,6 +32,22 @@ import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
  * Workspace host gates mounting `ExplorationWorkbench` (and therefore this
  * hook) on that restore having completed for the current exploration id.
  *
+ * VIS-1082 (cold-session default-source race): the auto-create-model-tab
+ * effect below is a `useLayoutEffect` gated only on sources being available —
+ * it has no dependency on `state.defaults`, which is fetched by a separate,
+ * later-declared, plain `useEffect` with no ordering guarantee relative to
+ * the sources fetch. On a cold session (nothing cached yet), sources can
+ * arrive before defaults do, so the very first auto-created model tab can
+ * silently resolve to "first available source" instead of the project's
+ * configured default — a WRONG source with no visible error. Rather than
+ * blocking tab creation on `fetchDefaults()` (which would reopen the exact
+ * data-loss race the layout effect exists to close, per the note on that
+ * effect below), this hook remembers whether `defaults` had already arrived
+ * at the moment it auto-created a tab; if not, a dedicated effect rebinds
+ * that tab's source once `defaults` actually lands (`applyResolvedDefaultSource`,
+ * explorerStore.js — a no-op if the user has since picked a source
+ * themselves).
+ *
  * Phase 3a regression fix (VIS-1053): `explorerSources` used to be populated
  * ONLY as a side effect of `ExplorerLeftPanel`'s nested `SourceBrowser`
  * mounting (`SourceBrowser.onSourcesLoaded` -> `ExplorerLeftPanel`'s
@@ -56,6 +72,8 @@ export default function useExplorerWorkbenchInit() {
   const fetchDefaults = useStore(s => s.fetchDefaults);
   const fetchExplorerDiff = useStore(s => s.fetchExplorerDiff);
   const setExplorerSources = useStore(s => s.setExplorerSources);
+  const defaults = useStore(s => s.defaults);
+  const applyResolvedDefaultSource = useStore(s => s.applyResolvedDefaultSource);
 
   // Populate explorerSources on mount if not already loaded — see the Phase
   // 3a regression note above. Guarded on length so re-mounting this hook for
@@ -117,11 +135,29 @@ export default function useExplorerWorkbenchInit() {
   // window entirely. It doesn't help the very first cold load (sources
   // haven't arrived over the network yet regardless of effect timing), but
   // no real user — or test — can interact with the UI before it paints.
+  // VIS-1082: remembers the auto-created tab's name ONLY when `defaults`
+  // hadn't arrived yet at creation time — the one case that needs a later
+  // rebind. `null` once resolved (or if defaults were already in by creation
+  // time, in which case createModelTab already picked the right source).
+  const pendingDefaultSourceTabRef = useRef(null);
   useLayoutEffect(() => {
     if (modelTabs.length === 0 && explorerSources.length > 0) {
-      createModelTab();
+      const defaultsAlreadyArrived = !!useStore.getState().defaults;
+      const createdName = createModelTab();
+      if (!defaultsAlreadyArrived) {
+        pendingDefaultSourceTabRef.current = createdName;
+      }
     }
   }, [modelTabs.length, explorerSources.length, createModelTab]);
+
+  // VIS-1082: once `defaults` lands, rebind the tab that was auto-created
+  // before it arrived (a no-op — see `applyResolvedDefaultSource` — if the
+  // user already picked a source themselves in the meantime).
+  useEffect(() => {
+    if (!defaults || !pendingDefaultSourceTabRef.current) return;
+    applyResolvedDefaultSource(pendingDefaultSourceTabRef.current, defaults.source_name);
+    pendingDefaultSourceTabRef.current = null;
+  }, [defaults, applyResolvedDefaultSource]);
 
   // Auto-create an insight on initial mount only (not when the user removes
   // every insight).

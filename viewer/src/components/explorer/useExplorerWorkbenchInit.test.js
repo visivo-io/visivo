@@ -11,7 +11,7 @@
  * hook now fetches sources itself so both hosts get them regardless of
  * whether a browse-panel component is mounted.
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import useStore from '../../stores/store';
 import useExplorerWorkbenchInit from './useExplorerWorkbenchInit';
 import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
@@ -29,11 +29,13 @@ const resetStore = () => {
     explorerInsightStates: {},
     explorerChartName: null,
     explorerChartLayout: {},
+    defaults: null,
     createModelTab: jest.fn(),
     createInsight: jest.fn(),
     fetchDefaults: jest.fn(),
     fetchExplorerDiff: jest.fn(),
     setExplorerSources: sources => useStore.setState({ explorerSources: sources }),
+    applyResolvedDefaultSource: jest.fn(),
   });
 };
 
@@ -87,5 +89,59 @@ describe('useExplorerWorkbenchInit', () => {
 
     await waitFor(() => expect(useStore.getState().explorerSources).toHaveLength(1));
     expect(createModelTab).not.toHaveBeenCalled();
+  });
+});
+
+// VIS-1082 — cold-session default-source race: sources can arrive (unblocking
+// the auto-create-model-tab effect above) before `defaults` does, since
+// `fetchDefaults()` is a separate, unordered effect. The auto-created tab
+// must get rebound to the real project default once it lands, rather than
+// silently keeping whatever "first available source" guess `createModelTab`
+// made at creation time.
+describe('useExplorerWorkbenchInit — VIS-1082 default-source rebind', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetStore();
+  });
+
+  test('rebinds the auto-created tab once defaults arrive AFTER it was created', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'local-duckdb' }]);
+    const createModelTab = jest.fn(() => 'model');
+    const applyResolvedDefaultSource = jest.fn();
+    useStore.setState({ createModelTab, applyResolvedDefaultSource, defaults: null });
+
+    renderHook(() => useExplorerWorkbenchInit());
+
+    // Sources land; defaults still haven't — the tab is auto-created with
+    // `defaults` still null at that moment.
+    await waitFor(() => expect(createModelTab).toHaveBeenCalledTimes(1));
+    expect(applyResolvedDefaultSource).not.toHaveBeenCalled();
+
+    // Defaults land afterward — the pending tab must be rebound.
+    act(() => {
+      useStore.setState({ defaults: { source_name: 'the-real-default' } });
+    });
+
+    await waitFor(() =>
+      expect(applyResolvedDefaultSource).toHaveBeenCalledWith('model', 'the-real-default')
+    );
+  });
+
+  test('does NOT rebind when defaults had already arrived before the tab was created', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'local-duckdb' }]);
+    const createModelTab = jest.fn(() => 'model');
+    const applyResolvedDefaultSource = jest.fn();
+    useStore.setState({
+      createModelTab,
+      applyResolvedDefaultSource,
+      defaults: { source_name: 'already-correct' },
+    });
+
+    renderHook(() => useExplorerWorkbenchInit());
+
+    await waitFor(() => expect(createModelTab).toHaveBeenCalledTimes(1));
+    // createModelTab itself already resolved the right source at creation
+    // time (defaults were present) — no rebind is ever needed or fired.
+    expect(applyResolvedDefaultSource).not.toHaveBeenCalled();
   });
 });

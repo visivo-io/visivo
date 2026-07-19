@@ -517,6 +517,38 @@ const createExplorerSlice = (set, get) => ({
         [finalName]: newModelState,
       },
     });
+
+    // Returned so callers that create a tab before `defaults` has necessarily
+    // arrived (useExplorerWorkbenchInit's cold-session auto-create,
+    // VIS-1082) can remember which tab to rebind once it does.
+    return finalName;
+  },
+
+  /**
+   * VIS-1082 — cold-session default-source race. `createModelTab` resolves
+   * its source at CREATE time from whatever `state.defaults` holds right
+   * then; on a cold session the auto-create-model-tab effect
+   * (useExplorerWorkbenchInit.js) can fire before `fetchDefaults()` (a
+   * separate, unordered effect) has landed, silently falling back to "first
+   * available source" instead of the project's configured default. Call this
+   * once `defaults` arrives to correct a tab that was minted before that —
+   * a no-op if the user already picked a source themselves (`sourceEdited`)
+   * or the tab's source already matches. Deliberately does NOT set
+   * `sourceEdited` — this is still a resolved default, not a user edit (same
+   * distinction `setActiveModelSource`'s own comment draws).
+   */
+  applyResolvedDefaultSource: (modelName, sourceName) => {
+    if (!modelName || !sourceName) return;
+    const state = get();
+    const modelState = state.explorerModelStates[modelName];
+    if (!modelState || modelState.sourceEdited) return;
+    if (modelState.sourceName === sourceName) return;
+    set({
+      explorerModelStates: {
+        ...state.explorerModelStates,
+        [modelName]: { ...modelState, sourceName },
+      },
+    });
   },
 
   /**
