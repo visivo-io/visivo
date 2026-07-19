@@ -89,12 +89,20 @@ const ExplorerHomePane = () => {
   // conditional on this instance still being mounted; the exploration itself
   // is still created and persisted either way — it just won't be forced open.
   const mountedRef = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Reset on EVERY effect run, not just at the `useRef(true)` initializer —
+    // React 18 StrictMode (index.jsx wraps the app in it) double-invokes
+    // mount effects in development: mount -> cleanup -> mount again. Without
+    // this reset, the cleanup's `mountedRef.current = false` from that
+    // simulated first "unmount" would stick permanently false even though
+    // the component is genuinely mounted and interactive — exactly the
+    // regression this comment is here to prevent from recurring. Same
+    // pattern as `useRecordSave.js`/`useDebouncedSave.js`.
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
-    },
-    []
-  );
+    };
+  }, []);
 
   // VIS-1086: guard every create door with an in-flight ref CHECKED INSIDE
   // THE HANDLER — a real double-click can dispatch both click events before
