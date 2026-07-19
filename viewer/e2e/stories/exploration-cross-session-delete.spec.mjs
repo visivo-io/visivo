@@ -70,6 +70,38 @@ async function deleteFromHome(page, id) {
   await page.getByTestId('exploration-delete-confirm-confirm').click();
 }
 
+async function waitForBackendDraftSql(page, id, expectedSql, timeout = 15000) {
+  await expect(async () => {
+    const res = await page.request.get(`${API}/api/explorations/${id}/`);
+    expect(res.ok()).toBe(true);
+    const data = await res.json();
+    expect(data?.draft?.queries?.[0]?.sql).toBe(expectedSql);
+  }).toPass({ timeout });
+}
+
+/**
+ * Deletes `id` from `pageB` (a different session than the one editing it),
+ * then forces `pageA`'s NEXT draft-sync attempt to actually fire against the
+ * now-dead id — the banner (`runSync`'s 404 catch, workspaceExplorationsStore.js)
+ * only ever appears once a REAL sync attempt 404s, and the FIRST edit's own
+ * sync (armed the moment `pageA` started editing, ~1.6s debounce) is very
+ * plausibly already settled successfully by the time `deleteFromHome`'s own
+ * multi-step UI navigation completes on `pageB` — leaving no subsequent
+ * failing attempt to trigger anything. Confirming the first edit's sync
+ * genuinely landed BEFORE deleting, then typing a SECOND edit to arm a fresh
+ * sync AFTER the delete is confirmed, removes that timing ambiguity: the
+ * second sync is guaranteed to fire against an id that is already gone.
+ */
+async function deleteAndForceSubsequentSyncAttempt(pageA, pageB, id, firstSql, retrySql) {
+  await waitForBackendDraftSql(pageA, id, firstSql);
+  await deleteFromHome(pageB, id);
+  await expect(async () => {
+    const res = await pageB.request.get(`${API}/api/explorations/${id}/`);
+    expect(res.status()).toBe(404);
+  }).toPass({ timeout: 10000 });
+  await typeSql(pageA, retrySql);
+}
+
 test.describe('Cross-session delete surfaces a deleted-remotely banner, never a silent forever-stuck sync (VIS-1083)', () => {
   test('actively-editing Tab A sees the deleted-remotely banner once Tab B deletes the same exploration, and the sync loop genuinely stops', async ({
     browser,
@@ -84,22 +116,22 @@ test.describe('Cross-session delete surfaces a deleted-remotely banner, never a 
     const pageB = await ctxB.newPage();
 
     try {
-      // Tab A: open the exploration and start editing — arms the 600ms
-      // legacy-sync -> 1s backend debounce chain.
+      // Tab A: open the exploration and edit it — the first edit's own sync
+      // must genuinely settle (proves the healthy baseline) BEFORE Tab B
+      // deletes it; a second edit afterward is what actually races the dead
+      // id (see deleteAndForceSubsequentSyncAttempt's docstring).
       await openExplorationTab(pageA, id);
       await typeSql(pageA, 'SELECT 1 AS marker');
+      await deleteAndForceSubsequentSyncAttempt(
+        pageA,
+        pageB,
+        id,
+        'SELECT 1 AS marker',
+        'SELECT 1 AS marker_v2'
+      );
 
-      // Tab B: delete the SAME exploration from Explorer Home.
-      await deleteFromHome(pageB, id);
-
-      // Confirm the backend record is genuinely gone.
-      await expect(async () => {
-        const res = await pageB.request.get(`${API}/api/explorations/${id}/`);
-        expect(res.status()).toBe(404);
-      }).toPass({ timeout: 10000 });
-
-      // Tab A's next debounced sync 404s — must surface a clear, actionable
-      // state, never stay silent.
+      // The second edit's debounced sync 404s — must surface a clear,
+      // actionable state, never stay silent.
       await expect(pageA.getByTestId('exploration-deleted-remotely-banner')).toBeVisible({
         timeout: 10000,
       });
@@ -142,28 +174,43 @@ test.describe('Cross-session delete surfaces a deleted-remotely banner, never a 
     try {
       await openExplorationTab(pageA, id);
       await typeSql(pageA, 'SELECT 999 AS recovered_marker');
-
-      await deleteFromHome(pageB, id);
+      await deleteAndForceSubsequentSyncAttempt(
+        pageA,
+        pageB,
+        id,
+        'SELECT 999 AS recovered_marker',
+        'SELECT 999 AS recovered_marker_v2'
+      );
       await expect(pageA.getByTestId('exploration-deleted-remotely-banner')).toBeVisible({
         timeout: 10000,
       });
 
       await pageA.getByTestId('exploration-deleted-remotely-recreate').click();
 
-      // Lands on a brand NEW exploration tab — never the dead id.
-      await pageA.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
+      // Lands on a brand NEW exploration tab — never the dead id. A bare
+      // `/\/workspace\/exploration\/exp_/` predicate would match the CURRENT
+      // (pre-click) URL too — it's already at `/workspace/exploration/${id}`
+      // — so `waitForURL` could resolve immediately without any navigation
+      // ever happening; require the pathname to actually differ from the
+      // dead id's URL.
+      await pageA.waitForURL(
+        url => /\/workspace\/exploration\/exp_/.test(url.pathname) && url.pathname !== `/workspace/exploration/${id}`,
+        { timeout: 10000 }
+      );
       newId = new URL(pageA.url()).pathname.split('/').pop();
       expect(newId).not.toBe(id);
       await expect(pageA.getByTestId('exploration-deleted-remotely-banner')).not.toBeVisible();
       await expect(pageA.getByTestId(`workspace-tab-exploration:${id}`)).not.toBeVisible();
 
       // Backend-asserted: the new record actually persisted the recovered
-      // draft — not just an optimistic client-only patch.
+      // draft (the SECOND edit — the one that armed the 404'd sync attempt,
+      // i.e. the freshest local state) — not just an optimistic client-only
+      // patch.
       await expect(async () => {
         const res = await pageA.request.get(`${API}/api/explorations/${newId}/`);
         expect(res.ok()).toBe(true);
         const data = await res.json();
-        expect(data.draft?.queries?.[0]?.sql).toBe('SELECT 999 AS recovered_marker');
+        expect(data.draft?.queries?.[0]?.sql).toBe('SELECT 999 AS recovered_marker_v2');
       }).toPass({ timeout: 15000 });
     } finally {
       await ctxA.close();
@@ -191,8 +238,13 @@ test.describe('Cross-session delete surfaces a deleted-remotely banner, never a 
     try {
       await openExplorationTab(pageA, id);
       await typeSql(pageA, 'SELECT 1 AS marker');
-
-      await deleteFromHome(pageB, id);
+      await deleteAndForceSubsequentSyncAttempt(
+        pageA,
+        pageB,
+        id,
+        'SELECT 1 AS marker',
+        'SELECT 1 AS marker_v2'
+      );
       await expect(pageA.getByTestId('exploration-deleted-remotely-banner')).toBeVisible({
         timeout: 10000,
       });
@@ -207,10 +259,11 @@ test.describe('Cross-session delete surfaces a deleted-remotely banner, never a 
       await pageA.getByTestId('exploration-deleted-remotely-close').click();
 
       await expect(pageA.getByTestId(`workspace-tab-exploration:${id}`)).not.toBeVisible();
-      // Lands back on a Home/other surface, not a crash or a stuck pane.
-      await expect(
-        pageA.getByTestId('workspace-middle-explorer').or(pageA.getByTestId('workspace-tab-strip'))
-      ).toBeVisible();
+      // Lands back on Explorer Home (the only open tab just closed), not a
+      // crash or a stuck pane. `workspace-tab-strip` is persistent chrome
+      // (always rendered regardless of tab count) so it isn't a meaningful
+      // assertion here — `workspace-middle-explorer` is the real signal.
+      await expect(pageA.getByTestId('workspace-middle-explorer')).toBeVisible();
       await pageA.waitForTimeout(1000);
       expect(postsToDeadId).toHaveLength(0);
     } finally {

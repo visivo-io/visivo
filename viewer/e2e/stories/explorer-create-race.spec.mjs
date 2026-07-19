@@ -104,8 +104,17 @@ test.describe('Explorer Home: switching destinations mid-create never yanks navi
     );
 
     // Release the gate — the create resolves NOW, after the user has
-    // already navigated away.
+    // already navigated away. Wait for the actual HTTP response (not a
+    // blind timeout) before unrouting — `release()` only resolves the gate
+    // promise, it doesn't wait for the still-suspended route handler's own
+    // `await route.continue()` to actually run; unrouting while that
+    // handler is mid-resolution races Playwright's own unroute cleanup
+    // against it ("Route is already handled").
+    const responsePromise = page.waitForResponse(
+      res => res.url().endsWith('/api/explorations/') && res.request().method() === 'POST'
+    );
     release();
+    await responsePromise;
     await page.unroute('**/api/explorations/');
 
     // The stale completion must NOT force-navigate back to the new
@@ -143,7 +152,11 @@ test.describe('Explorer Home: switching destinations mid-create never yanks navi
       'true'
     );
 
+    const responsePromise = page.waitForResponse(
+      res => res.url().endsWith('/api/explorations/') && res.request().method() === 'POST'
+    );
     release();
+    await responsePromise;
     await page.unroute('**/api/explorations/');
 
     await page.waitForTimeout(500);
