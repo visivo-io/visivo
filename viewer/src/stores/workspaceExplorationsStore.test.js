@@ -15,6 +15,7 @@ import {
   _resetExplorationSyncTimersForTests,
   _openDraftSnapshots,
   _resetExplorationSnapshotsForTests,
+  _resetExplorationWriteQueuesForTests,
 } from './workspaceExplorationsStore';
 import { buildPromoteChecklist } from './promoteChecklist';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
@@ -66,12 +67,14 @@ const seedRecord = (overrides = {}) => {
 const reset = () => {
   _resetExplorationSyncTimersForTests();
   _resetExplorationSnapshotsForTests();
+  _resetExplorationWriteQueuesForTests();
   act(() => {
     useStore.setState({
       workspaceExplorations: { byId: {}, order: [] },
       workspaceTabs: [],
       workspaceToast: null,
       closeWorkspaceTab: jest.fn(),
+      openWorkspaceTab: jest.fn(),
       restoreExplorerWorkingState: jest.fn(),
       explorerInsightStates: {},
     });
@@ -91,6 +94,7 @@ afterEach(() => {
   jest.useRealTimers();
   _resetExplorationSyncTimersForTests();
   _resetExplorationSnapshotsForTests();
+  _resetExplorationWriteQueuesForTests();
 });
 
 describe('fetchExplorations', () => {
@@ -340,6 +344,203 @@ describe('updateExplorationDraft', () => {
     });
     expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
   });
+
+  // VIS-1083: once a prior sync has 404'd (syncStatus 'deleted-remotely'),
+  // further edits must never re-arm the sync loop against a record that will
+  // 404 forever — but the local edit itself must still land (nothing lost).
+  test('does NOT re-arm the sync loop once syncStatus is deleted-remotely, but keeps the local edit', () => {
+    seedRecord({ syncStatus: 'deleted-remotely' });
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [{ name: 'q', sql: 'SELECT 2' }],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+
+    const record = useStore.getState().workspaceExplorations.byId.exp_1;
+    expect(record.draft.queries[0].sql).toBe('SELECT 2');
+    expect(record.syncStatus).toBe('deleted-remotely'); // never flipped to 'saving'
+    expect(_pendingSyncTimers.has('exp_1')).toBe(false);
+
+    // Even after the usual debounce window, still no network call.
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+  });
+});
+
+describe('runSync — VIS-1083 deleted-remotely (404 handling)', () => {
+  const notFoundError = () => {
+    const error = new Error('Exploration not found');
+    error.status = 404;
+    return error;
+  };
+
+  test('a 404 on the debounced sync sets syncStatus to deleted-remotely, not the generic error', async () => {
+    seedRecord();
+    explorationsApi.updateExploration.mockRejectedValueOnce(notFoundError());
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.syncStatus).toBe(
+      'deleted-remotely'
+    );
+  });
+
+  test('a non-404 failure still sets the generic error status (regression guard)', async () => {
+    seedRecord();
+    explorationsApi.updateExploration.mockRejectedValueOnce(new Error('offline'));
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.syncStatus).toBe('error');
+  });
+
+  test('flushExplorationSync surfaces deletedRemotely:true on a 404', async () => {
+    seedRecord();
+    explorationsApi.updateExploration.mockRejectedValueOnce(notFoundError());
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().flushExplorationSync('exp_1');
+    });
+    expect(result).toMatchObject({ success: false, deletedRemotely: true });
+  });
+});
+
+describe('recreateExplorationFromDeleted (VIS-1083)', () => {
+  test('mints a new exploration from the local draft, drops the dead record, force-closes its tab, and opens the new one', async () => {
+    seedRecord({
+      id: 'exp_1',
+      name: 'Churn dig',
+      syncStatus: 'deleted-remotely',
+      draft: { queries: [{ name: 'q1', sql: 'SELECT 1' }], insights: [], chart: null, computedColumns: [] },
+    });
+    const closeWorkspaceTab = jest.fn();
+    const openWorkspaceTab = jest.fn();
+    useStore.setState({ closeWorkspaceTab, openWorkspaceTab });
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({
+        id: 'exp_2',
+        name: 'Churn dig',
+        draft: { queries: [{ name: 'q1', sql: 'SELECT 1' }], insights: [], chart: null, computed_columns: [] },
+      })
+    );
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().recreateExplorationFromDeleted('exp_1');
+    });
+
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Churn dig' })
+    );
+    expect(result).toMatchObject({ success: true, id: 'exp_2' });
+    const state = useStore.getState().workspaceExplorations;
+    expect(state.byId.exp_1).toBeUndefined();
+    expect(state.byId.exp_2).toBeDefined();
+    expect(closeWorkspaceTab).toHaveBeenCalledWith('exploration:exp_1');
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_2',
+      type: 'exploration',
+      name: 'exp_2',
+    });
+  });
+
+  test('returns success:false for an unknown id', async () => {
+    let result;
+    await act(async () => {
+      result = await useStore.getState().recreateExplorationFromDeleted('exp_missing');
+    });
+    expect(result).toEqual({ success: false, error: 'Exploration not found' });
+  });
+
+  test('returns success:false when the create POST itself fails', async () => {
+    seedRecord({ syncStatus: 'deleted-remotely' });
+    explorationsApi.createExploration.mockRejectedValueOnce(new Error('offline'));
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().recreateExplorationFromDeleted('exp_1');
+    });
+    expect(result).toEqual({ success: false, error: 'offline' });
+    // The dead local record is left in place on failure — nothing to recover
+    // into otherwise.
+    expect(useStore.getState().workspaceExplorations.byId.exp_1).toBeDefined();
+  });
+});
+
+describe('discardDeletedExploration (VIS-1083)', () => {
+  test('drops the local record and force-closes its tab, without any network call', () => {
+    seedRecord({ syncStatus: 'deleted-remotely' });
+    const closeWorkspaceTab = jest.fn();
+    useStore.setState({ closeWorkspaceTab });
+
+    act(() => {
+      useStore.getState().discardDeletedExploration('exp_1');
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1).toBeUndefined();
+    expect(closeWorkspaceTab).toHaveBeenCalledWith('exploration:exp_1');
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+    expect(explorationsApi.deleteExploration).not.toHaveBeenCalled();
+  });
+
+  test('clears any still-pending sync timer so it can never fire after the tab is gone', () => {
+    seedRecord({ syncStatus: 'saving' });
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    expect(_pendingSyncTimers.has('exp_1')).toBe(true);
+
+    act(() => {
+      useStore.getState().discardDeletedExploration('exp_1');
+    });
+    expect(_pendingSyncTimers.has('exp_1')).toBe(false);
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+  });
 });
 
 describe('flushExplorationSync', () => {
@@ -578,6 +779,178 @@ describe('renameExploration', () => {
     });
     expect(result).toEqual({ success: false, error: 'Exploration not found' });
   });
+
+  test('a 404 marks the record deleted-remotely instead of rolling back the name (VIS-1083)', async () => {
+    seedRecord({ name: 'Scratch' });
+    const error = new Error('Exploration not found');
+    error.status = 404;
+    explorationsApi.updateExploration.mockRejectedValueOnce(error);
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().renameExploration('exp_1', 'Churn dig');
+    });
+
+    expect(result).toMatchObject({ success: false, deletedRemotely: true });
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.syncStatus).toBe(
+      'deleted-remotely'
+    );
+  });
+});
+
+describe('VIS-1085 — per-id write serialization (rename vs debounced draft-sync)', () => {
+  test('a rename fired while a draft-sync write is in flight for the SAME id waits for it (no concurrent update() calls)', async () => {
+    seedRecord();
+    let resolveDraftSync;
+    explorationsApi.updateExploration.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveDraftSync = resolve;
+        })
+    );
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration({ name: 'Renamed' }));
+
+    // Arm + fire the debounced draft-sync — its own updateExploration call is
+    // now in flight (deliberately left unresolved).
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [{ name: 'q', sql: 'x' }],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+
+    // Fire a rename WHILE that write is still unresolved — it must not
+    // dispatch its own network call yet (queued behind the in-flight write).
+    let renamePromise;
+    act(() => {
+      renamePromise = useStore.getState().renameExploration('exp_1', 'Renamed');
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+
+    // Resolving the draft-sync's write unblocks the queued rename write.
+    await act(async () => {
+      resolveDraftSync(wireExploration());
+      await renamePromise;
+    });
+
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(2);
+    expect(explorationsApi.updateExploration).toHaveBeenNthCalledWith(2, 'exp_1', {
+      name: 'Renamed',
+    });
+  });
+
+  test('a debounced draft-sync fired while a rename is in flight for the SAME id waits for it (reverse ordering)', async () => {
+    seedRecord();
+    let resolveRename;
+    explorationsApi.updateExploration.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveRename = resolve;
+        })
+    );
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration());
+
+    let renamePromise;
+    await act(async () => {
+      renamePromise = useStore.getState().renameExploration('exp_1', 'Renamed');
+      // Let the rename's own enqueueWrite microtask actually dispatch its
+      // network call before asserting on the mock's call count below.
+      await Promise.resolve();
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+
+    // Arm + fire the debounced draft-sync while the rename's write is still
+    // unresolved — it must queue behind it, not fire concurrently.
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [{ name: 'q', sql: 'x' }],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveRename(wireExploration({ name: 'Renamed' }));
+      await renamePromise;
+      // Let the now-unblocked draft-sync write's microtask actually dispatch.
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(2);
+    expect(explorationsApi.updateExploration).toHaveBeenNthCalledWith(2, 'exp_1', {
+      draft: {
+        queries: [{ name: 'q', sql: 'x' }],
+        insights: [],
+        chart: null,
+        computed_columns: [],
+        legacy_state: null,
+      },
+    });
+  });
+
+  test('writes for DIFFERENT ids are never serialized against each other', async () => {
+    seedRecord({ id: 'exp_1' });
+    act(() => {
+      useStore.setState(state => ({
+        workspaceExplorations: {
+          byId: { ...state.workspaceExplorations.byId, exp_2: mappedRecord({ id: 'exp_2' }) },
+          order: [...state.workspaceExplorations.order, 'exp_2'],
+        },
+      }));
+    });
+    let resolveFirst;
+    explorationsApi.updateExploration.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFirst = resolve;
+        })
+    );
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration({ id: 'exp_2' }));
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+
+    // A write for a DIFFERENT id must dispatch immediately, unblocked by
+    // exp_1's still-in-flight write.
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_2', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveFirst(wireExploration());
+    });
+  });
 });
 
 describe('VIS-1081 discard mechanics', () => {
@@ -721,6 +1094,174 @@ describe('recordExplorationPromotion', () => {
       result = await useStore.getState().recordExplorationPromotion('exp_1', 'model', 'orders_q');
     });
     expect(result).toEqual({ success: false, error: 'boom' });
+  });
+});
+
+// P4-D1 — a keyboard-driven tab switch mid-promote used to be able to race
+// recordExplorationPromotion's append against a concurrent draft-sync/rename/
+// discard write for the SAME id (both hit the same unlocked backend JSON
+// document). Pins that recordExplorationPromotion now shares the same per-id
+// write queue as every other writer — see the file docstring's "WRITE
+// SERIALIZATION" note.
+describe('recordExplorationPromotion — P4-D1 write serialization', () => {
+  test('queues behind an in-flight draft-sync write for the same id (no concurrent requests)', async () => {
+    seedRecord();
+    let resolveDraftSync;
+    explorationsApi.updateExploration.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveDraftSync = resolve;
+        })
+    );
+    explorationsApi.recordPromotion.mockResolvedValueOnce(
+      wireExploration({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] })
+    );
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [{ name: 'q', sql: 'x' }],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+    expect(explorationsApi.recordPromotion).not.toHaveBeenCalled();
+
+    let promotionPromise;
+    act(() => {
+      promotionPromise = useStore.getState().recordExplorationPromotion('exp_1', 'model', 'orders_q');
+    });
+    // Must NOT fire yet — the draft-sync write is still unresolved.
+    expect(explorationsApi.recordPromotion).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveDraftSync(wireExploration());
+      await promotionPromise;
+    });
+
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledTimes(1);
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith('exp_1', 'model', 'orders_q');
+  });
+
+  test('a draft-sync fired while a promotion is in flight for the same id waits for it (reverse ordering)', async () => {
+    seedRecord();
+    let resolvePromotion;
+    explorationsApi.recordPromotion.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolvePromotion = resolve;
+        })
+    );
+    explorationsApi.updateExploration.mockResolvedValueOnce(wireExploration());
+
+    let promotionPromise;
+    await act(async () => {
+      promotionPromise = useStore.getState().recordExplorationPromotion('exp_1', 'model', 'orders_q');
+      await Promise.resolve();
+    });
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [{ name: 'q', sql: 'x' }],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    // Queued behind the still-unresolved promotion write.
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolvePromotion(
+        wireExploration({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] })
+      );
+      await promotionPromise;
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(1);
+  });
+});
+
+// P4-D4 — "Close without saving" after a partial promote must never leave a
+// ghost entry (an entry that gets silently wiped) OR a stale one — the
+// discard revert's payload never mentions `promoted` (immutable via that
+// route regardless), and once serialized (P4-D1), the revert's OWN response
+// is the current server document, applied back so the Build-rail promoted
+// trail (ExplorationBuildRail.jsx) never lags server truth after a discard.
+describe('discardExploration — P4-D4 promoted[] integrity', () => {
+  test('the revert POST payload never includes `promoted` or `name`, only `draft`', async () => {
+    seedRecord({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] });
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    explorationsApi.updateExploration.mockResolvedValueOnce(
+      wireExploration({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] })
+    );
+
+    await act(async () => {
+      await useStore.getState().discardExploration('exp_1');
+    });
+
+    const payload = explorationsApi.updateExploration.mock.calls[0][1];
+    expect(Object.keys(payload)).toEqual(['draft']);
+  });
+
+  test('after a successful revert, local promoted[] reflects the server response (re-reads server state post-discard)', async () => {
+    seedRecord({ promoted: [] });
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    // The server's document already has a promotion recorded ahead of this
+    // revert in the write queue (e.g. a promote that landed just before the
+    // user chose "Close without saving") — the revert's own response is the
+    // CURRENT document, including it.
+    explorationsApi.updateExploration.mockResolvedValueOnce(
+      wireExploration({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] })
+    );
+
+    await act(async () => {
+      await useStore.getState().discardExploration('exp_1');
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.promoted).toEqual([
+      { type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' },
+    ]);
+  });
+
+  test('a promotion recorded, then a discard, leaves promoted[] intact (no ghost erasure)', async () => {
+    seedRecord({ promoted: [] });
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_1');
+    });
+    explorationsApi.recordPromotion.mockResolvedValueOnce(
+      wireExploration({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] })
+    );
+    await act(async () => {
+      await useStore.getState().recordExplorationPromotion('exp_1', 'model', 'orders_q');
+    });
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.promoted).toHaveLength(1);
+
+    // The server's document (as this revert's response echoes) still carries
+    // the promotion — because it's the SAME document the promotion just
+    // wrote, and the two writes are serialized (never overlapping _read()s).
+    explorationsApi.updateExploration.mockResolvedValueOnce(
+      wireExploration({ promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' }] })
+    );
+    await act(async () => {
+      await useStore.getState().discardExploration('exp_1');
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.promoted).toHaveLength(1);
   });
 });
 

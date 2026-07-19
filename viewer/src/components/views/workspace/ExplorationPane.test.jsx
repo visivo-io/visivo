@@ -147,6 +147,32 @@ describe('ExplorationPane — ready state', () => {
   });
 });
 
+// VIS-1083: a 404'd sync marks the record 'deleted-remotely' — the pane must
+// surface the recovery banner (never stay silent) while still rendering the
+// workbench underneath (the local draft is not lost).
+describe('ExplorationPane — VIS-1083 deleted-remotely banner', () => {
+  test('shows the banner when syncStatus is deleted-remotely', () => {
+    seed({
+      workspaceExplorations: {
+        byId: { exp_1: record({ syncStatus: 'deleted-remotely' }) },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorationPane id="exp_1" />);
+    expect(screen.getByTestId('exploration-deleted-remotely-banner')).toBeInTheDocument();
+    // The workbench keeps rendering underneath — nothing is lost, just unsaveable.
+    expect(screen.getByTestId('exploration-workbench-mock')).toBeInTheDocument();
+  });
+
+  test('does NOT show the banner for any other syncStatus', () => {
+    seed({
+      workspaceExplorations: { byId: { exp_1: record({ syncStatus: 'saving' }) }, order: ['exp_1'] },
+    });
+    render(<ExplorationPane id="exp_1" />);
+    expect(screen.queryByTestId('exploration-deleted-remotely-banner')).not.toBeInTheDocument();
+  });
+});
+
 describe('ExplorationPane — rename', () => {
   test('the pencil opens an inline input; committing calls renameExploration', () => {
     const renameExploration = jest.fn();
@@ -204,6 +230,76 @@ describe('ExplorationPane — duplicate', () => {
       id: 'exploration:exp_2',
       type: 'exploration',
       name: 'exp_2',
+    });
+  });
+
+  // VIS-1086: double-clicking Duplicate must never fire two duplicate
+  // round-trips.
+  test('double-clicking Duplicate only calls duplicateExploration once', async () => {
+    let resolveDuplicate;
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    const duplicateExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveDuplicate = resolve;
+        })
+    );
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      flushExplorationSync,
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorationPane id="exp_1" />);
+
+    const button = screen.getByTestId('exploration-duplicate-button');
+    fireEvent.click(button);
+    fireEvent.click(button); // fires before the first call resolves
+
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalledTimes(1));
+    expect(button).toBeDisabled();
+
+    await act(async () => {
+      resolveDuplicate({ success: true, id: 'exp_2' });
+    });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    expect(openWorkspaceTab).toHaveBeenCalledTimes(1);
+  });
+
+  test('the duplicate in-flight guard resets when the exploration id changes (switching tabs)', async () => {
+    let resolveDuplicate;
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    const duplicateExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveDuplicate = resolve;
+        })
+    );
+    seed({
+      workspaceExplorations: {
+        byId: { exp_1: record(), exp_2: record({ id: 'exp_2', name: 'Q3 refund spike' }) },
+        order: ['exp_1', 'exp_2'],
+      },
+      flushExplorationSync,
+      duplicateExploration,
+    });
+    const { rerender } = render(<ExplorationPane id="exp_1" />);
+
+    fireEvent.click(screen.getByTestId('exploration-duplicate-button'));
+    expect(screen.getByTestId('exploration-duplicate-button')).toBeDisabled();
+    // Let the handler's own awaited flushExplorationSync() microtask resolve
+    // so duplicateExploration (and its deferred promise) has actually fired
+    // before we switch tabs below.
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalledTimes(1));
+
+    // Switch to a DIFFERENT exploration WITHOUT the first duplicate ever
+    // resolving — its own Duplicate button must not be stuck disabled.
+    rerender(<ExplorationPane id="exp_2" />);
+    expect(screen.getByTestId('exploration-duplicate-button')).not.toBeDisabled();
+
+    await act(async () => {
+      resolveDuplicate({ success: true, id: 'exp_3' });
     });
   });
 });

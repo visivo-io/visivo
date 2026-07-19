@@ -44,6 +44,38 @@
  * implement TRUE discard for "Close without saving" on a dirty exploration
  * tab — see their docstrings below for why a naive close used to silently
  * re-persist the very draft the user asked to discard.
+ *
+ * WRITE SERIALIZATION (VIS-1085, extended by the Phase 4 delta P4-D1): every
+ * write that touches a given exploration's on-disk JSON document — the
+ * debounced draft sync (`runSync`), an immediate rename (`renameExploration`),
+ * a discard revert (`discardExploration`), AND an append-only promotion
+ * record (`recordExplorationPromotion`) — is enqueued onto a per-id promise
+ * chain (`_writeQueues`/`enqueueWrite`) rather than fired directly. The first
+ * three go through the backend's generic `ExplorationRepository.update()`;
+ * `recordExplorationPromotion` goes through the separate `record_promotion()`
+ * method — but BOTH are unlocked read-modify-writes on the exact same file
+ * (full `_read()` -> patch -> `_write()`, no lock, no version check), so two
+ * of ANY of these four requests landing concurrently for the SAME id — e.g. a
+ * rename firing the instant the draft-sync debounce also fires, or a
+ * keyboard-shortcut tab switch mid-promote unmounting `ExplorationPane` and
+ * firing its flush-on-deactivate while `promoteExploration`'s own
+ * `recordExplorationPromotion` call is still in flight — can each `_read()`
+ * before either `_write()` lands, so whichever writes last silently clobbers
+ * the other's field (including wiping a just-appended `promoted[]` entry).
+ * Serializing on the CLIENT guarantees at most one write for a given id is
+ * ever in flight, closing the race without needing any backend locking.
+ * `useWorkspaceTabShortcuts.js`'s `hasBlockingModal` guard closes the other
+ * half of P4-D1: it stops the keyboard-driven unmount from happening AT ALL
+ * while `ExplorationPromoteModal` (or any other blocking modal) is open, so
+ * the race this queue defends against becomes unreachable via that path,
+ * not just survivable.
+ *
+ * DELETED REMOTELY (VIS-1083): a 404 from `update()` means the record was
+ * removed out from under this session (another tab/session's delete, or an
+ * out-of-band `rm .visivo/explorations/<id>.json`) — see `runSync`'s catch
+ * and `recreateExplorationFromDeleted`/`discardDeletedExploration` below for
+ * how the slice stops silently retrying forever and instead surfaces a
+ * recoverable state (`syncStatus: 'deleted-remotely'`).
  */
 
 import * as explorationsApi from '../api/explorations';
@@ -88,6 +120,32 @@ const clearPendingSyncTimer = id => {
     clearTimeout(timer);
     _pendingSyncTimers.delete(id);
   }
+};
+
+// VIS-1085: id -> the tail of that id's serialized-write promise chain. Every
+// `explorationsApi.updateExploration` call for a given id is enqueued here
+// (`enqueueWrite`) so the debounced draft sync, an immediate rename, and a
+// discard revert never race each other against the backend's unlocked
+// read-modify-write. Module-level for the same reason `_pendingSyncTimers`
+// is — ephemeral, per-record bookkeeping, not reactive state.
+const _writeQueues = new Map();
+
+/** Test-only: clear all write queues so state doesn't leak across test files. */
+export const _resetExplorationWriteQueuesForTests = () => {
+  _writeQueues.clear();
+};
+
+/** Run `task` after every currently-queued write for `id` has settled
+ * (success or failure — one write's failure must never wedge the next write
+ * behind it forever), and become the new tail of that chain. */
+const enqueueWrite = (id, task) => {
+  const previous = _writeQueues.get(id) || Promise.resolve();
+  const next = previous.then(task, task);
+  // The tail stored for the NEXT enqueue must never be a rejected promise
+  // (an unhandled rejection on a value nothing else awaits) — callers still
+  // observe the real outcome via the `next` this function returns.
+  _writeQueues.set(id, next.catch(() => {}));
+  return next;
 };
 
 const mapDraftFromApi = draft => ({
@@ -158,9 +216,11 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       // `record` was read at the top of runSync (fire time), which — thanks to
       // scheduleSync always clearing/re-arming a single timer per id — already
       // reflects the LATEST optimistic draft, not a stale scheduling-time one.
-      const updated = await explorationsApi.updateExploration(id, {
-        draft: mapDraftToApi(record.draft),
-      });
+      // VIS-1085: enqueued (not fired directly) so this can never interleave
+      // with a concurrent rename/discard-revert write for the SAME id.
+      const updated = await enqueueWrite(id, () =>
+        explorationsApi.updateExploration(id, { draft: mapDraftToApi(record.draft) })
+      );
       set(state =>
         patchExploration(state, id, {
           draft: mapDraftFromApi(updated.draft),
@@ -170,6 +230,18 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       );
       return { success: true };
     } catch (error) {
+      // VIS-1083: a 404 means the record is gone (deleted from another
+      // session, or removed out-of-band) — the update() route will 404
+      // forever, so retrying (as every subsequent keystroke otherwise would,
+      // via updateExplorationDraft re-arming scheduleSync) is pointless and
+      // silent. Stop here with a distinct, recoverable status instead of the
+      // generic 'error' — `updateExplorationDraft` below checks for it and
+      // stops re-arming the sync loop; the UI (ExplorationPane) surfaces a
+      // banner with real options (recreate / close) rather than nothing.
+      if (error?.status === 404) {
+        set(state => patchExploration(state, id, { syncStatus: 'deleted-remotely' }));
+        return { success: false, error: error.message, deletedRemotely: true };
+      }
       set(state => patchExploration(state, id, { syncStatus: 'error' }));
       return { success: false, error: error.message };
     }
@@ -249,6 +321,16 @@ const createWorkspaceExplorationsSlice = (set, get) => {
     updateExplorationDraft: (id, nextDraft) => {
       const existing = get().workspaceExplorations.byId[id];
       if (!existing) return;
+      // VIS-1083: once the backend has told us this record is gone (a prior
+      // sync 404'd), never re-arm the sync loop — every further keystroke
+      // would otherwise schedule another doomed POST forever, silently
+      // failing on repeat with no way out. Keep the local edit (nothing is
+      // lost while the user decides what to do) but stop trying to persist
+      // it until they act on the banner (recreate / close).
+      if (existing.syncStatus === 'deleted-remotely') {
+        set(state => patchExploration(state, id, { draft: nextDraft }));
+        return;
+      }
       set(state => patchExploration(state, id, { draft: nextDraft, syncStatus: 'saving' }));
       scheduleSync(id);
     },
@@ -313,6 +395,74 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       return { success: true };
     },
 
+    /**
+     * VIS-1083 — "Recreate as new exploration" option on the
+     * deleted-remotely banner (`ExplorationPane`/`ExplorationDeletedRemotelyBanner`):
+     * the backend record for `id` is confirmed gone (a prior sync 404'd), but
+     * this session's local draft — everything typed since the last
+     * successful sync — is still sitting in `workspaceExplorations.byId[id]`.
+     * Mints a BRAND NEW exploration seeded from that local draft (never
+     * retries the dead id — it will 404 forever), drops the dead local
+     * record, force-closes its tab, and opens the new one in its place.
+     */
+    recreateExplorationFromDeleted: async id => {
+      const existing = get().workspaceExplorations.byId[id];
+      if (!existing) return { success: false, error: 'Exploration not found' };
+      try {
+        const created = await explorationsApi.createExploration({
+          name: existing.name,
+          seeded_from: existing.seededFrom || undefined,
+          draft: mapDraftToApi(existing.draft),
+        });
+        const mapped = mapExplorationFromApi(created);
+        set(state => insertExploration(state, mapped));
+        clearPendingSyncTimer(id);
+        _writeQueues.delete(id);
+        const tabId = `exploration:${id}`;
+        get().closeWorkspaceTab?.(tabId);
+        set(state => {
+          const nextById = { ...state.workspaceExplorations.byId };
+          delete nextById[id];
+          return {
+            workspaceExplorations: {
+              byId: nextById,
+              order: state.workspaceExplorations.order.filter(existingId => existingId !== id),
+            },
+          };
+        });
+        get().openWorkspaceTab?.({
+          id: `exploration:${mapped.id}`,
+          type: 'exploration',
+          name: mapped.id,
+        });
+        return { success: true, id: mapped.id, exploration: mapped };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+
+    /** VIS-1083 — "Close" option on the deleted-remotely banner: the backend
+     * record is already gone, so there's nothing left to persist or lose —
+     * just drop the dead local record and force-close its tab (no confirm
+     * dialog; a 404'd record can't have a meaningful "unsaved changes"
+     * guarantee to honor). */
+    discardDeletedExploration: id => {
+      clearPendingSyncTimer(id);
+      _writeQueues.delete(id);
+      const tabId = `exploration:${id}`;
+      get().closeWorkspaceTab?.(tabId);
+      set(state => {
+        const nextById = { ...state.workspaceExplorations.byId };
+        delete nextById[id];
+        return {
+          workspaceExplorations: {
+            byId: nextById,
+            order: state.workspaceExplorations.order.filter(existingId => existingId !== id),
+          },
+        };
+      });
+    },
+
     /** Rename `id` — persists immediately (not debounced; a rename is a
      * deliberate one-gesture commit, not exploratory typing) via the generic
      * update route (`name` is a mutable field, 07-exploration-api-contract.md).
@@ -326,11 +476,20 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       const previousName = existing.name;
       set(state => patchExploration(state, id, { name: trimmed }));
       try {
-        const updated = await explorationsApi.updateExploration(id, { name: trimmed });
+        // VIS-1085: enqueued so a rename landing in the same window as the
+        // debounced draft-sync can never interleave with it — see the file
+        // docstring's "WRITE SERIALIZATION" note.
+        const updated = await enqueueWrite(id, () =>
+          explorationsApi.updateExploration(id, { name: trimmed })
+        );
         const mapped = mapExplorationFromApi(updated);
         set(state => patchExploration(state, id, mapped));
         return { success: true, exploration: mapped };
       } catch (error) {
+        if (error?.status === 404) {
+          set(state => patchExploration(state, id, { syncStatus: 'deleted-remotely' }));
+          return { success: false, error: error.message, deletedRemotely: true };
+        }
         set(state => patchExploration(state, id, { name: previousName }));
         return { success: false, error: error.message };
       }
@@ -391,6 +550,29 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      * activated) or a failed revert POST never blocks the tab from closing —
      * "Close without saving" always closes; the discard itself degrades
      * gracefully.
+     *
+     * Phase 4 delta (P4-D4) — "ghost trail" fix: the discard SNAPSHOT is
+     * `draft`-only (`snapshotExplorationForDiscard`, above) and the revert
+     * POST's payload is deliberately `{ draft }` alone — `name`/`return_to`
+     * are never part of this operation, and `promoted[]` is immutable via
+     * the generic update route on the BACKEND regardless of payload (see
+     * `exploration_repository.py`'s `update()`/`TestImmutability`). So a
+     * partial-promote-then-discard can never have this call's OWN payload
+     * erase a promotion. The remaining risk was staleness, not payload
+     * shape: `update()` is a `_read()` -> patch -> `_write()`-the-FULL-
+     * document round trip, so if this revert's `_read()` landed before a
+     * concurrent `recordExplorationPromotion` write, this call's OWN
+     * `_write()` could persist a document based on that stale read —
+     * silently reverting the just-appended promotion even though this
+     * payload never mentioned it. `enqueueWrite` below closes that (both
+     * writers for one id are now strictly serialized — see the file
+     * docstring), so on success this always reflects the CURRENT server
+     * document, INCLUDING any promotion recorded ahead of it in the queue —
+     * applied back into local state so the Build-rail promoted trail
+     * (`ExplorationBuildRail.jsx`) never lags behind server truth after a
+     * discard. `draft` is deliberately excluded from that merge — the
+     * snapshot already reverted above IS the authoritative post-discard
+     * draft (byte-identical to what this POST just echoed back).
      */
     discardExploration: async id => {
       clearPendingSyncTimer(id);
@@ -402,19 +584,42 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       get().restoreExplorerWorkingState?.(draftToLegacyState(snapshot));
 
       try {
-        await explorationsApi.updateExploration(id, { draft: mapDraftToApi(snapshot) });
+        // VIS-1085: enqueued alongside every other write for this id — see
+        // the file docstring's "WRITE SERIALIZATION" note.
+        const updated = await enqueueWrite(id, () =>
+          explorationsApi.updateExploration(id, { draft: mapDraftToApi(snapshot) })
+        );
+        const mapped = mapExplorationFromApi(updated);
+        set(state => patchExploration(state, id, { promoted: mapped.promoted, updatedAt: mapped.updatedAt }));
         return { success: true, reverted: true };
       } catch (error) {
+        // A 404 here just means the record was ALSO deleted remotely in the
+        // same window — the tab is closing regardless (discard is
+        // best-effort, per the docstring above), so there's nothing further
+        // to surface; the record is gone either way.
         return { success: false, reverted: true, error: error.message };
       }
     },
 
     /** Append-only promotion record (07-exploration-api-contract.md's
      * record-promotion sub-action) — call after a `saveX` action succeeds
-     * for a promoted object. */
+     * for a promoted object.
+     *
+     * Phase 4 delta (P4-D1): enqueued alongside every other write for this
+     * id (draft sync / rename / discard revert). `record_promotion()`
+     * (exploration_repository.py) is a SEPARATE backend method from the
+     * generic `update()` route, but reads and rewrites the exact same
+     * on-disk JSON document with the exact same unlocked read-modify-write
+     * shape — so it needs the same client-side serialization to stay safe
+     * against a concurrent `update()` write for this id (e.g. a keyboard
+     * shortcut mid-`promoteExploration` unmounting `ExplorationPane`, whose
+     * deactivate cleanup fires a draft-sync flush). Without this, whichever
+     * write's `_read()` happened first can have its `_write()` land last and
+     * silently clobber the other's persisted field, INCLUDING wiping the
+     * just-appended `promoted[]` entry this call exists to record. */
     recordExplorationPromotion: async (id, type, name) => {
       try {
-        const updated = await explorationsApi.recordPromotion(id, type, name);
+        const updated = await enqueueWrite(id, () => explorationsApi.recordPromotion(id, type, name));
         const mapped = mapExplorationFromApi(updated);
         set(state => patchExploration(state, id, mapped));
         return { success: true };

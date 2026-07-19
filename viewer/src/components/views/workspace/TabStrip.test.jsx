@@ -97,6 +97,45 @@ describe('TabStrip', () => {
     );
   });
 
+  // VIS-1083: a PARKED exploration tab (not the active one, so
+  // ExplorationPane's own banner isn't rendered) still needs to flag that its
+  // backend record is gone — the strip is the only surface that can.
+  test('an exploration tab whose record is deleted-remotely shows a warning indicator instead of the dirty dot', () => {
+    seedStore({
+      workspaceTabs: [
+        { id: 'exploration:exp_gone', type: 'exploration', name: 'exp_gone', dirty: false },
+      ],
+      workspaceExplorations: {
+        byId: { exp_gone: { id: 'exp_gone', name: 'Gone', syncStatus: 'deleted-remotely' } },
+        order: ['exp_gone'],
+      },
+    });
+    render(<TabStrip />);
+    expect(
+      screen.getByTestId('workspace-tab-deleted-remotely-exploration:exp_gone')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('workspace-tab-dirty-exploration:exp_gone')
+    ).not.toBeInTheDocument();
+  });
+
+  test('a healthy (synced) exploration tab shows neither the dirty dot nor the deleted-remotely warning', () => {
+    seedStore({
+      workspaceTabs: [
+        { id: 'exploration:exp_ok', type: 'exploration', name: 'exp_ok', dirty: false },
+      ],
+      workspaceExplorations: {
+        byId: { exp_ok: { id: 'exp_ok', name: 'Fine', syncStatus: 'synced' } },
+        order: ['exp_ok'],
+      },
+    });
+    render(<TabStrip />);
+    expect(
+      screen.queryByTestId('workspace-tab-deleted-remotely-exploration:exp_ok')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-tab-dirty-exploration:exp_ok')).not.toBeInTheDocument();
+  });
+
   test('renders the dirty dot on tabs marked dirty', () => {
     seedStore();
     render(<TabStrip />);

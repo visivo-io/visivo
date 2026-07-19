@@ -3,6 +3,7 @@ import { PiPencilSimple, PiCopy, PiCircleNotch } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import SubBar from './SubBar';
 import ExplorationWorkbench from './ExplorationWorkbench';
+import ExplorationDeletedRemotelyBanner from './ExplorationDeletedRemotelyBanner';
 import InlineRenameInput from './InlineRenameInput';
 import useInlineRename from '../../../hooks/useInlineRename';
 import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
@@ -214,17 +215,40 @@ const ExplorationPane = ({ id }) => {
     [id, renameExploration]
   );
 
+  // VIS-1086: in-flight guard against a double-click on Duplicate — checked
+  // synchronously INSIDE the handler (a real double-click can dispatch both
+  // click events before React re-renders the button `disabled`, which is
+  // still set below as the visible affordance, not the actual guard).
+  // ExplorationPane isn't remounted when `id` changes (switching tabs is a
+  // prop change on the SAME instance, per MiddlePane's dispatch) — reset the
+  // guard on `id` change so a duplicate still in flight for the OLD
+  // exploration never leaves the button stuck disabled for a DIFFERENT one.
+  const duplicatingRef = useRef(false);
+  const [duplicating, setDuplicating] = useState(false);
+  useEffect(() => {
+    duplicatingRef.current = false;
+    setDuplicating(false);
+  }, [id]);
+
   const handleDuplicate = useCallback(async () => {
-    // Flush this exploration's own latest edits first so the duplicate seeds
-    // from up-to-date state, not a stale pre-debounce draft.
-    await flushExplorationSync(id);
-    const result = await duplicateExploration(id);
-    if (result?.success) {
-      openWorkspaceTab({
-        id: `exploration:${result.id}`,
-        type: 'exploration',
-        name: result.id,
-      });
+    if (duplicatingRef.current) return;
+    duplicatingRef.current = true;
+    setDuplicating(true);
+    try {
+      // Flush this exploration's own latest edits first so the duplicate
+      // seeds from up-to-date state, not a stale pre-debounce draft.
+      await flushExplorationSync(id);
+      const result = await duplicateExploration(id);
+      if (result?.success) {
+        openWorkspaceTab({
+          id: `exploration:${result.id}`,
+          type: 'exploration',
+          name: result.id,
+        });
+      }
+    } finally {
+      duplicatingRef.current = false;
+      setDuplicating(false);
     }
   }, [id, flushExplorationSync, duplicateExploration, openWorkspaceTab]);
 
@@ -281,14 +305,16 @@ const ExplorationPane = ({ id }) => {
           <button
             type="button"
             onClick={handleDuplicate}
+            disabled={duplicating}
             title="Duplicate this exploration"
             data-testid="exploration-duplicate-button"
-            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-gray-200 px-2.5 text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-gray-200 px-2.5 text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <PiCopy style={{ fontSize: 13 }} /> Duplicate
           </button>
         }
       />
+      {record.syncStatus === 'deleted-remotely' && <ExplorationDeletedRemotelyBanner id={id} />}
       <ExplorationWorkbench id={id} />
     </section>
   );

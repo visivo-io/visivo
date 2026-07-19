@@ -72,7 +72,14 @@ export const updateExploration = async (id, payload) => {
   if (response.status === 200) {
     return await response.json();
   }
-  throw new Error(await parseErrorOr(response, 'Failed to update exploration'));
+  const message = await parseErrorOr(response, 'Failed to update exploration');
+  const error = new Error(message);
+  // VIS-1083: lets callers (workspaceExplorationsStore.js's runSync)
+  // distinguish "the record was deleted out from under this session" (404 —
+  // exploration_repository.py's update() returns None for a vanished id)
+  // from any other transient failure, without re-parsing `message`.
+  error.status = response.status;
+  throw error;
 };
 
 /**

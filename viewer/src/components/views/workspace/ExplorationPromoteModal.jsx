@@ -123,7 +123,12 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         if (e.target === e.currentTarget && !promoting) onClose?.();
       }}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Save to Project"
+        className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto"
+      >
         <h3 className="text-lg font-medium text-secondary-900 mb-1">Save to Project</h3>
 
         {loading ? (
