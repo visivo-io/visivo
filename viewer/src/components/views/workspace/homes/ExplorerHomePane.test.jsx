@@ -66,6 +66,186 @@ describe('ExplorerHomePane — header + new exploration', () => {
   });
 });
 
+// VIS-1084: switching destinations while a create is in flight (unmounting
+// THIS pane) must never let the completion force-navigate afterward.
+describe('ExplorerHomePane — VIS-1084 stale create-completion navigation', () => {
+  test('"+ New exploration": does not navigate if the pane unmounted before the create resolved', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      createExploration,
+      openWorkspaceTab,
+    });
+    const { unmount } = render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('explorer-home-new-exploration'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+
+    // The user switches destinations before the create resolves — MiddlePane
+    // would unmount this pane in favor of a different Home/document.
+    unmount();
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_new' });
+      await Promise.resolve();
+    });
+
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('"+ New exploration": still navigates when the pane is still mounted (baseline, unchanged)', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('explorer-home-new-exploration'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_new' });
+    });
+
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_new',
+      type: 'exploration',
+      name: 'exp_new',
+    });
+  });
+
+  test('a source tile: does not navigate if the pane unmounted before the create resolved', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+      openWorkspaceTab,
+    });
+    const { unmount } = render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('explorer-home-source-tile-warehouse'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+
+    unmount();
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_seeded' });
+      await Promise.resolve();
+    });
+
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+});
+
+// VIS-1086: every create door needs an in-flight guard — a rapid double
+// click (or two different doors clicked in quick succession) must never
+// mint two records.
+describe('ExplorerHomePane — VIS-1086 double-click guard', () => {
+  test('double-clicking "+ New exploration" only calls createExploration once', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+
+    const button = screen.getByTestId('explorer-home-new-exploration');
+    fireEvent.click(button);
+    fireEvent.click(button); // fires before the first call resolves
+
+    expect(createExploration).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_new' });
+    });
+    expect(button).not.toBeDisabled();
+  });
+
+  test('double-clicking a source tile only calls createExploration once', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+    });
+    render(<ExplorerHomePane />);
+
+    const tile = screen.getByTestId('explorer-home-source-tile-warehouse');
+    fireEvent.click(tile);
+    fireEvent.click(tile);
+
+    expect(createExploration).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_seeded' });
+    });
+  });
+
+  test('clicking "+ New exploration" while a source-tile create is in flight is also blocked (shared guard across doors)', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('explorer-home-source-tile-warehouse'));
+    fireEvent.click(screen.getByTestId('explorer-home-new-exploration'));
+
+    expect(createExploration).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_seeded' });
+    });
+  });
+});
+
 describe('ExplorerHomePane — start from a source', () => {
   test('renders one tile per source', () => {
     seed({

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PiPlus, PiCircleNotch } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import SubBar from '../SubBar';
@@ -78,16 +78,62 @@ const ExplorerHomePane = () => {
     seedPromiseRef.current = createExploration();
   }, [fetched, orderedExplorations.length, createExploration]);
 
+  // VIS-1084: `handleNew`/`handleSourceTile` await a real network round-trip
+  // before navigating. If the user switches destinations (ViewSwitcher row,
+  // Cmd+2/3) while that's in flight, THIS component unmounts — MiddlePane
+  // renders a different destination's Home instead (or a document tab) — but
+  // the create's completion doesn't know that and used to force-navigate
+  // into the new exploration regardless, yanking the user back to a screen
+  // they'd already deliberately left. `mountedRef` (same pattern as
+  // `useRecordSave.js`/`useDebouncedSave.js`) makes the post-await navigate
+  // conditional on this instance still being mounted; the exploration itself
+  // is still created and persisted either way — it just won't be forced open.
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
+
+  // VIS-1086: guard every create door with an in-flight ref CHECKED INSIDE
+  // THE HANDLER — a real double-click can dispatch both click events before
+  // React has a chance to re-render the button `disabled` (that attribute
+  // is still set below, as the visible affordance, but it's a secondary
+  // defense, not the actual guard). `creatingRef` blocks a second call
+  // synchronously; `creating` state drives the disabled UI. Shared across
+  // "+ New exploration" AND every source tile — a fast double-click across
+  // TWO different doors races the exact same backend `_default_name()`
+  // window as two clicks of the same one.
+  const creatingRef = useRef(false);
+  const [creating, setCreating] = useState(false);
+
   const handleNew = async () => {
-    if (seedPromiseRef.current) await seedPromiseRef.current;
-    const result = await createExploration();
-    if (result?.success) openExploration(result.id);
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    setCreating(true);
+    try {
+      if (seedPromiseRef.current) await seedPromiseRef.current;
+      const result = await createExploration();
+      if (result?.success && mountedRef.current) openExploration(result.id);
+    } finally {
+      creatingRef.current = false;
+      if (mountedRef.current) setCreating(false);
+    }
   };
 
   const handleSourceTile = async sourceName => {
-    if (seedPromiseRef.current) await seedPromiseRef.current;
-    const result = await createExploration({ type: 'source', name: sourceName });
-    if (result?.success) openExploration(result.id);
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    setCreating(true);
+    try {
+      if (seedPromiseRef.current) await seedPromiseRef.current;
+      const result = await createExploration({ type: 'source', name: sourceName });
+      if (result?.success && mountedRef.current) openExploration(result.id);
+    } finally {
+      creatingRef.current = false;
+      if (mountedRef.current) setCreating(false);
+    }
   };
 
   const handleDuplicate = async id => {
@@ -131,8 +177,9 @@ const ExplorerHomePane = () => {
           <button
             type="button"
             onClick={handleNew}
+            disabled={creating}
             data-testid="explorer-home-new-exploration"
-            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <PiPlus style={{ fontSize: 13 }} /> New exploration
           </button>
@@ -153,8 +200,9 @@ const ExplorerHomePane = () => {
                   key={source.name}
                   type="button"
                   onClick={() => handleSourceTile(source.name)}
+                  disabled={creating}
                   data-testid={`explorer-home-source-tile-${source.name}`}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${SOURCE_COLORS.border} ${SOURCE_COLORS.text} hover:bg-orange-50`}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${SOURCE_COLORS.border} ${SOURCE_COLORS.text} hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   {SourceIcon && <SourceIcon style={{ fontSize: 14 }} />}
                   {source.name}
