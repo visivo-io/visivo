@@ -364,6 +364,43 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspacePendingCloseTabId).toBeNull();
   });
 
+  // Cross-PR gap fix (#5, e2e-gap-review.md): navigating away (a different
+  // tab, or a destination switch) while a tab-close confirmation is pending
+  // must dismiss the dialog too — previously ONLY confirm/cancel/the closed
+  // tab's own id-match guard ever cleared `workspacePendingCloseTabId`, so
+  // it stayed parked and the dialog kept rendering over whatever the user
+  // navigated to next.
+  test('activating a DIFFERENT tab while a close is pending clears the pending id (dialog does not orphan over the new tab)', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+    });
+    expect(useStore.getState().workspacePendingCloseTabId).toBe('chart:c1');
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'dashboard', name: 'd1' });
+    });
+    const s = useStore.getState();
+    expect(s.workspacePendingCloseTabId).toBeNull();
+    // The pending tab itself is untouched (still open, still dirty) — only
+    // the confirmation dialog's pending state is dismissed, not the tab.
+    expect(s.workspaceTabs.map((t) => t.id)).toContain('chart:c1');
+  });
+
+  test('activating a view (destination switch) while a close is pending clears the pending id', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+    });
+    expect(useStore.getState().workspacePendingCloseTabId).toBe('chart:c1');
+    act(() => {
+      useStore.getState().activateWorkspaceView('semantic-layer');
+    });
+    expect(useStore.getState().workspacePendingCloseTabId).toBeNull();
+  });
+
   test('setWorkspaceTabDirty toggles the dirty flag without touching others', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });

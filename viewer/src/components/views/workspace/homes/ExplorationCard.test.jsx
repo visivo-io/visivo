@@ -92,6 +92,56 @@ describe('ExplorationCard', () => {
     expect(screen.queryByText(/from /i)).not.toBeInTheDocument();
   });
 
+  // D10 (e2e-gap-review.md "Final delta pass"): a minted `return_to`
+  // placement intent was previously invisible everywhere in the UI — this
+  // card looked identical to a throwaway scratch exploration.
+  describe('return_to placement-intent chip (D10)', () => {
+    test('renders a "→ <dashboard>" chip when return_to is set', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration({ returnTo: { dashboard: 'sales', slot: 'r1-i1' } })}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      const chip = screen.getByTestId('exploration-card-exp_1-return-to');
+      expect(chip).toHaveTextContent('sales');
+      expect(chip).toHaveAttribute('title', expect.stringContaining('sales'));
+    });
+
+    test('does not render the return_to chip when return_to is null', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration({ returnTo: null })}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      expect(screen.queryByTestId('exploration-card-exp_1-return-to')).not.toBeInTheDocument();
+    });
+
+    test('renders BOTH the seededFrom and return_to chips together when both are set', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration({
+            seededFrom: { type: 'model', name: 'orders' },
+            returnTo: { dashboard: 'sales' },
+          })}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      expect(screen.getByText(/from model: orders/i)).toBeInTheDocument();
+      expect(screen.getByTestId('exploration-card-exp_1-return-to')).toHaveTextContent('sales');
+    });
+  });
+
   test('Open calls onOpen with the exploration id', () => {
     const onOpen = jest.fn();
     render(

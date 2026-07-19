@@ -630,6 +630,112 @@ describe('PropertyRow', () => {
       expect(screen.getByTestId('ref-input')).toHaveValue('${ref(orders_q).amount}');
     });
 
+    // D3 (e2e-gap-review.md delta pass): the "Custom aggregation…" escape
+    // hatch used to be a one-way ratchet — no way back to pill rendering
+    // short of an unrelated remount, even once the raw text re-parses as a
+    // clean, recognized shape. These three tests lock in the "Back to pill"
+    // affordance's exact contract.
+    describe('"Back to pill" return path (D3)', () => {
+      test('the affordance is ABSENT immediately after "Custom aggregation…" while the raw text is still opaque/custom-shaped', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{count(distinct ${ref(orders_q).id})}"
+            droppable
+          />
+        );
+        // This value is already opaque (never rendered as a pill at all),
+        // so RefTextArea is the fallback from the start — no custom-aggregation
+        // click needed to reach raw-edit mode here.
+        expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+        expect(screen.queryByTestId('property-x-back-to-pill')).not.toBeInTheDocument();
+      });
+
+      test('the affordance APPEARS once the raw text re-parses as a recognized (non-opaque/custom) shape', () => {
+        // PropertyRow is a controlled component (`body` derives from the
+        // `value` prop) — mirrors the slice-badge tests' `rerender()`
+        // pattern to simulate the parent pushing the edited value back in,
+        // rather than relying on the mocked RefTextArea's onChange to
+        // mutate anything itself.
+        const { rerender } = render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        // Still the exact original recognized shape — RefTextArea is showing
+        // (forceRawEdit is true) but the affordance should already be visible
+        // since the raw text re-parses as a clean 'dimension' pill.
+        expect(screen.getByTestId('property-x-back-to-pill')).toBeInTheDocument();
+
+        // Parent pushes an edited, OPAQUE value back in — the affordance
+        // must disappear (forceRawEdit stays true; only the affordance
+        // reacts to the reparse).
+        rerender(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{count(distinct ${ref(orders_q).id})}"
+            droppable
+          />
+        );
+        expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+        expect(screen.queryByTestId('property-x-back-to-pill')).not.toBeInTheDocument();
+
+        // Parent pushes an edited value back matching a recognized
+        // (aggregate) shape — the affordance returns.
+        rerender(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{sum(${ref(orders_q).amount})}"
+            droppable
+          />
+        );
+        expect(screen.getByTestId('property-x-back-to-pill')).toBeInTheDocument();
+      });
+
+      test('clicking the affordance returns to pill rendering with the value UNCHANGED', () => {
+        const onChange = jest.fn();
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+            onChange={onChange}
+          />
+        );
+        fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByTestId('property-x-back-to-pill'));
+
+        // Back to the pill — same dimension label as before the escape hatch.
+        expect(screen.getByText('orders_q ▸ amount')).toBeInTheDocument();
+        expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('property-x-back-to-pill')).not.toBeInTheDocument();
+        // Purely a view-mode toggle — onChange is never called by it.
+        expect(onChange).not.toHaveBeenCalled();
+      });
+    });
+
     test('a bare ref matching a known Metric renders a metricRef pill (Σ-style, plain name)', () => {
       useStore.setState({ metrics: [{ name: 'churn_rate', parentModel: 'orders_q' }] });
       render(

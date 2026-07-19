@@ -64,6 +64,17 @@ export const CHECKLIST_ITEMS = [
     route: '/workspace/exploration',
     target: 'query-chip-add',
     weight: 20,
+    // D8 (e2e-gap-review.md delta pass): `query-chip-add` only exists
+    // INSIDE an already-open exploration tab, never on the bare
+    // `/workspace/exploration` gallery `route` above points at — a
+    // first-time user clicking this row would land on an empty Home with
+    // no coach-mark and no indication anything was wrong.
+    // `OnboardingChecklist.handleItemClick` checks this flag and, instead
+    // of a bare `navigate(route)`, mints a fresh exploration first
+    // (mirroring `DashboardExplorerRedirect` in LocalRouter.jsx) and
+    // navigates straight to `/workspace/exploration/:id` — the one place
+    // `query-chip-add` is guaranteed to be mounted.
+    mintsExploration: true,
     // Multi-step flow: the Coach walks the user through creating a tab,
     // typing SQL, and running the query before the row checks off.
     // Each step's `done` reads a per-action flag tapped by the host

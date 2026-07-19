@@ -296,6 +296,18 @@ const createWorkspaceSlice = (set, get) => ({
     const activeObject = { type: tab.type, name: tab.name };
     const keyReset = outlineKeyResetFor(state.workspaceActiveObject, activeObject);
     const owningView = viewForDocumentType(tab.type);
+    // Cross-PR gap fix (#5, e2e-gap-review.md): ANY selection change must
+    // dismiss a pending tab-close confirmation — `requestCloseWorkspaceTab`
+    // parks `workspacePendingCloseTabId` so `TabCloseConfirmDialog` can ask
+    // first, but that dialog lives at the shell level (`TabStrip.jsx`), not
+    // inside the tab/view it was raised for. Before this fix, only
+    // `confirmCloseWorkspaceTab`/`cancelCloseWorkspaceTab`/
+    // `closeWorkspaceTab`'s own id-match guard ever cleared it — navigating
+    // away via ANY other path (a Library row, a switcher click, a keyboard
+    // shortcut) left the dialog mounted and rendered on top of whatever the
+    // user landed on next. Clearing it here (and in `activateWorkspaceView`
+    // below) makes every selection change dismiss the stale confirmation,
+    // exactly like actually closing the tab would have.
     if (existing) {
       if (state.workspaceActiveTabId !== id) {
         emitWorkspaceEvent('tab_switched', { id, type: tab.type, name: tab.name, via: 'open' });
@@ -304,6 +316,7 @@ const createWorkspaceSlice = (set, get) => ({
         workspaceActiveTabId: id,
         workspaceActiveObject: activeObject,
         workspaceActiveView: owningView,
+        workspacePendingCloseTabId: null,
         ...keyReset,
       });
       return id;
@@ -314,6 +327,7 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceActiveTabId: id,
       workspaceActiveObject: activeObject,
       workspaceActiveView: owningView,
+      workspacePendingCloseTabId: null,
       ...keyReset,
     });
     return id;
@@ -333,7 +347,16 @@ const createWorkspaceSlice = (set, get) => ({
     if (state.workspaceActiveView !== view || state.workspaceActiveTabId) {
       emitWorkspaceEvent('view_activated', { view });
     }
-    set({ workspaceActiveView: view, workspaceActiveTabId: null, workspaceActiveObject: null });
+    // See the matching comment in `activateWorkspaceTab` — a destination
+    // switch must dismiss a pending tab-close confirmation too (#5,
+    // e2e-gap-review.md), or the dialog is left floating over the
+    // just-activated destination's Home.
+    set({
+      workspaceActiveView: view,
+      workspaceActiveTabId: null,
+      workspaceActiveObject: null,
+      workspacePendingCloseTabId: null,
+    });
   },
 
   /**

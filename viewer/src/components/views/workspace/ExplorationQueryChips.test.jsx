@@ -94,6 +94,27 @@ describe('ExplorationQueryChips', () => {
     expect(screen.queryByTestId('query-chip-orders_q-ref-badge')).not.toBeInTheDocument();
   });
 
+  // P5-D7 (e2e-gap-review.md final delta pass): the badge must source its
+  // color from objectTypeConfigs' `model` token family (amber), never a
+  // hand-rolled teal/cyan class — the one hit the Phase 5 restyle sweep
+  // (befa20a4, B9) missed.
+  test('the referenced-by badge uses objectTypeConfigs "model" tokens, never hand-rolled teal/cyan classes', () => {
+    act(() => {
+      useStore.getState().createModelTab('orders_q');
+      useStore.setState({
+        explorerChartInsightNames: ['churn_by_cohort'],
+        explorerInsightStates: {
+          churn_by_cohort: { props: { x: '${ref(orders_q).cohort}' }, interactions: [] },
+        },
+      });
+    });
+    render(<ExplorationQueryChips />);
+    const badge = screen.getByTestId('query-chip-orders_q-ref-badge');
+    expect(badge.className).toContain('bg-amber-100');
+    expect(badge.className).toContain('text-amber-800');
+    expect(badge.className).not.toMatch(/\bteal-|\bcyan-/);
+  });
+
   describe('rename (active chip only)', () => {
     test('the ⋮ menu Rename action swaps the chip for an inline input; committing renames the tab', () => {
       act(() => {

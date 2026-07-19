@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import useStore from '../stores/store';
 import { fetchRuns, fetchRunLog } from '../api/branching';
 import AnsiText from './common/AnsiText';
+import useProjectChangeListener from './views/workspace/useProjectChangeListener';
 
 // queued/running are the only non-terminal states — while active a run is still
 // building, so the detail panel tail-polls the log.
@@ -75,10 +76,25 @@ function RunDetail({ run }) {
  * Shared shape with the cloud: backed by the same fetchRuns/fetchRunLog +
  * /api/projects/<id>/run/ + /api/runs/<id>/logs/ contract (local serve
  * implements it via RunManager).
+ *
+ * e2e-gap-review.md D7 ("VIS-1087's remaining half"): `/runs` mounts OUTSIDE
+ * the Workspace shell, so — before this hook was added here — a commit fired
+ * from any `/workspace/...` tab hard-reloaded a tab sitting on `/runs` too
+ * (the commit broadcast's `reload` socket event only skips
+ * `window.location.reload()` when `window.__VISIVO_SOFT_RELOAD__` is true,
+ * which only `useProjectChangeListener` sets, and only the Workspace called
+ * it). A hard reload here silently loses which run row was expanded
+ * (`expandedId`, purely local state) for no reason — mounting the same hook
+ * Workspace.jsx already uses is a small, mechanical fix that changes nothing
+ * else about this view's own behavior or data-fetching.
  */
 export default function RunsView() {
   const projectId = useStore(state => state.project?.id);
   const [expandedId, setExpandedId] = useState(null);
+
+  // D7: soft-refresh on backend `project_changed` events instead of a hard
+  // page reload — see the module docstring above.
+  useProjectChangeListener();
   const {
     data: runs = [],
     isLoading,
