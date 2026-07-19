@@ -65,6 +65,12 @@ const Library = () => {
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
   const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
+  const addObjectToActiveExploration = useStore(s => s.addObjectToActiveExploration);
+  // VIS-1067: "Add to exploration" is only offered while an exploration tab
+  // is the ACTIVE one — that's the exploration whose live legacy working
+  // state `addObjectToActiveExploration` actually mutates.
+  const canAddToExploration = useStore(s => s.workspaceActiveObject?.type === 'exploration');
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
   const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
 
@@ -220,8 +226,9 @@ const Library = () => {
         name: obj.name,
         action,
       });
-      // VIS-811 / O-2: the open actions are live; the rest (wrapInChart,
-      // showLineage, delete) stay telemetry-only until their tracks wire them.
+      // VIS-811 / O-2: the open actions are live; `wrapInChart`/`showLineage`/
+      // `delete` stay telemetry-only until their tracks wire them. VIS-1067
+      // wires `exploreThis`/`addToExploration`.
       const type = routeType(obj);
       if (action === 'edit' && openWorkspaceTab) {
         openWorkspaceTab({ id: `${type}:${obj.name}`, type, name: obj.name });
@@ -231,9 +238,28 @@ const Library = () => {
           type,
           name: obj.name,
         });
+      } else if (action === 'exploreThis' && createExploration && openWorkspaceTab) {
+        const seed = { type, name: obj.name };
+        const legacyStateOverride = buildExplorationSeedState
+          ? buildExplorationSeedState(seed)
+          : null;
+        createExploration(seed, null, legacyStateOverride).then(result => {
+          if (result?.success) {
+            openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+            emitWorkspaceEvent('explore_this_used', { source_type: type });
+          }
+        });
+      } else if (action === 'addToExploration' && addObjectToActiveExploration) {
+        addObjectToActiveExploration({ type, name: obj.name, parentModel: obj.parentModel });
       }
     },
-    [openWorkspaceTab, openWorkspaceTabBackground]
+    [
+      openWorkspaceTab,
+      openWorkspaceTabBackground,
+      createExploration,
+      buildExplorationSeedState,
+      addObjectToActiveExploration,
+    ]
   );
 
   const handleCreate = useCallback(
@@ -414,6 +440,7 @@ const Library = () => {
             selectedRowId={selectedRowId}
             onRowClick={handleRowClick}
             onContextAction={handleContextAction}
+            canAddToExploration={canAddToExploration}
           />
         ))}
         {renderedTypes.length === 0 && (

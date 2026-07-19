@@ -156,6 +156,60 @@ describe('LibraryRow', () => {
     expect(menu).toHaveTextContent('⌫');
   });
 
+  // VIS-1067 — "Explore this" / "Add to exploration" context-menu entries.
+  describe('Explore this / Add to exploration (VIS-1067)', () => {
+    test('a model row offers "Explore this" but never "Add to exploration" (model is not an EXPLORATION_DRAG_TYPE)', () => {
+      render(withDnd(<LibraryRow obj={MODEL} canAddToExploration />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
+      fireEvent.click(screen.getByTestId('library-row-model-monthly_revenue-kebab'));
+      const menu = screen.getByTestId('library-row-model-monthly_revenue-context-menu');
+      expect(menu).toHaveTextContent('Explore this');
+      expect(menu).not.toHaveTextContent('Add to exploration');
+    });
+
+    test('an insight row offers "Add to exploration" only when canAddToExploration is true', () => {
+      const { rerender } = render(withDnd(<LibraryRow obj={INSIGHT} canAddToExploration={false} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+      expect(
+        screen.getByTestId('library-row-insight-revenue_growth-context-menu')
+      ).not.toHaveTextContent('Add to exploration');
+
+      // Re-render with the flag flipped WITHOUT re-toggling the kebab — the
+      // menu (internal `menuOpen` state) stays open across the prop change,
+      // clicking the kebab again would just close it.
+      rerender(withDnd(<LibraryRow obj={INSIGHT} canAddToExploration />));
+      expect(
+        screen.getByTestId('library-row-insight-revenue_growth-context-menu')
+      ).toHaveTextContent('Add to exploration');
+    });
+
+    test('"Explore this" fires onContextAction("exploreThis", obj) and dismisses the menu', () => {
+      const onContextAction = jest.fn();
+      render(withDnd(<LibraryRow obj={INSIGHT} onContextAction={onContextAction} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+      fireEvent.click(screen.getByText('Explore this'));
+      expect(onContextAction).toHaveBeenCalledWith('exploreThis', INSIGHT);
+      expect(
+        screen.queryByTestId('library-row-insight-revenue_growth-context-menu')
+      ).not.toBeInTheDocument();
+    });
+
+    test('"Add to exploration" fires onContextAction("addToExploration", obj)', () => {
+      const onContextAction = jest.fn();
+      render(
+        withDnd(
+          <LibraryRow obj={INSIGHT} canAddToExploration onContextAction={onContextAction} />
+        )
+      );
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+      fireEvent.click(screen.getByText('Add to exploration'));
+      expect(onContextAction).toHaveBeenCalledWith('addToExploration', INSIGHT);
+    });
+  });
+
   test('right-click opens the context menu (preventing the native one)', () => {
     render(withDnd(<LibraryRow obj={CHART} />));
     const row = screen.getByTestId('library-row-chart-waterfall');

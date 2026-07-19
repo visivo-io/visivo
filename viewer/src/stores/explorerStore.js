@@ -1,5 +1,7 @@
 /* eslint-disable no-template-curly-in-string */
 import { generateUniqueName } from '../utils/uniqueName';
+import { legacyStateForSeed } from '../components/views/workspace/explorationLegacyBridge';
+import { formatRefExpression } from '../utils/refString';
 
 /**
  * Thrown by create/rename actions when the proposed name collides with any
@@ -1364,6 +1366,216 @@ const createExplorerSlice = (set, get) => ({
     for (const modelName of loadedModels) {
       autoLoadModelData(modelName, get, set);
     }
+  },
+
+  /**
+   * "Explore this" (VIS-1067) — build a legacy working-state snapshot seeded
+   * from a real project object, WITHOUT touching the live explorer working
+   * state (a PURE read of `get()`, unlike `addExistingInsightToChart`, which
+   * mutates the active exploration). Passed to `createExploration`'s
+   * `legacyStateOverride` param so a brand-new exploration opens pre-wired.
+   * Returns `null` when the object can't be resolved — the caller falls back
+   * to a bare `seeded_from`-only exploration (still records provenance).
+   *
+   *   - `source`   → one empty query tab bound to the source (existing
+   *                  `legacyStateForSeed` behavior, untouched).
+   *   - `table`    → one query tab with the given SQL/source (Source ERD's
+   *                  "Explore this" — `opts: {sql, source}`).
+   *   - `model`    → one query tab `SELECT * FROM ${ref(model)}`.
+   *   - `metric`/`dimension` → one query tab against the field's parent
+   *                  model (best-effort; `null` if unresolvable).
+   *   - `insight`  → copies the insight config into a draft insight of the
+   *                  SAME NAME (+ auto-loads its referenced models), so
+   *                  promoting it later updates the ORIGINAL insight via the
+   *                  ordinary update-by-name semantics `promoteExploration`
+   *                  already has (01-ux-spec.md §5).
+   *   - `chart`    → copies the chart (same name) + every one of its
+   *                  insights (same names) + their referenced models.
+   */
+  buildExplorationSeedState: (obj, opts = {}) => {
+    const state = get();
+    if (!obj || !obj.type || !obj.name) return null;
+
+    const blankSnapshot = () => ({
+      modelTabs: [],
+      activeModelName: null,
+      modelStates: {},
+      chartName: null,
+      chartLayout: {},
+      chartInsightNames: [],
+      activeInsightName: null,
+      insightStates: {},
+      leftNavCollapsed: false,
+      centerMode: 'split',
+      isEditorCollapsed: false,
+    });
+
+    const oneQuerySnapshot = ({ sql, sourceName, sourceEdited = false }) => {
+      const modelName = 'query_1';
+      return {
+        ...blankSnapshot(),
+        modelTabs: [modelName],
+        activeModelName: modelName,
+        modelStates: {
+          [modelName]: {
+            ...createEmptyModelState(true),
+            sql,
+            sourceName: sourceName || null,
+            sourceEdited,
+          },
+        },
+      };
+    };
+
+    const resolveModelsForInsights = insightObjs => {
+      const allInputNames = new Set((state.inputs || []).map(i => i.name));
+      const modelNames = new Set();
+      insightObjs.forEach(insight => {
+        const searchStr = JSON.stringify(insight.config || {});
+        for (const match of searchStr.matchAll(/ref\(([^.)]+)\)/g)) {
+          if (!allInputNames.has(match[1])) modelNames.add(match[1]);
+        }
+      });
+      const modelTabs = [];
+      const modelStates = {};
+      modelNames.forEach(modelName => {
+        const modelObj = (state.models || []).find(m => m.name === modelName);
+        if (!modelObj) return;
+        modelTabs.push(modelName);
+        modelStates[modelName] = buildModelStateFromObject(modelObj, state);
+      });
+      return { modelTabs, modelStates };
+    };
+
+    if (obj.type === 'source') {
+      return legacyStateForSeed({ type: 'source', name: obj.name });
+    }
+
+    if (obj.type === 'table') {
+      return oneQuerySnapshot({
+        sql: opts.sql || `SELECT * FROM ${obj.name}`,
+        sourceName: opts.source || null,
+        sourceEdited: !!opts.source,
+      });
+    }
+
+    if (obj.type === 'model') {
+      const modelObj = (state.models || []).find(m => m.name === obj.name);
+      if (!modelObj) return null;
+      const base = buildModelStateFromObject(modelObj, state);
+      return oneQuerySnapshot({
+        sql: `SELECT * FROM ${formatRefExpression(obj.name)}`,
+        sourceName: base.sourceName,
+      });
+    }
+
+    if (obj.type === 'metric' || obj.type === 'dimension') {
+      const collection = obj.type === 'metric' ? state.metrics : state.dimensions;
+      const fieldObj = (collection || []).find(f => f.name === obj.name);
+      const rawParent = fieldObj?.parentModel || fieldObj?.config?.model;
+      const parentModelName =
+        typeof rawParent === 'string' ? rawParent.replace(/^ref\((.+)\)$/, '$1') : null;
+      const modelObj = parentModelName
+        ? (state.models || []).find(m => m.name === parentModelName)
+        : null;
+      if (!modelObj) return null;
+      const base = buildModelStateFromObject(modelObj, state);
+      return oneQuerySnapshot({
+        sql: `SELECT * FROM ${formatRefExpression(parentModelName)}`,
+        sourceName: base.sourceName,
+      });
+    }
+
+    if (obj.type === 'insight') {
+      const insight = (state.insights || []).find(i => i.name === obj.name);
+      if (!insight) return null;
+      const { modelTabs, modelStates } = resolveModelsForInsights([insight]);
+      return {
+        ...blankSnapshot(),
+        modelTabs,
+        modelStates,
+        activeModelName: modelTabs[0] || null,
+        chartName: generateUniqueName('chart', []),
+        chartInsightNames: [obj.name],
+        activeInsightName: obj.name,
+        insightStates: { [obj.name]: transformInsightToUiState(insight) },
+      };
+    }
+
+    if (obj.type === 'chart') {
+      const chart = (state.charts || []).find(c => c.name === obj.name);
+      if (!chart) return null;
+      const insightRefs = chart.config?.insights || [];
+      const insightNames = insightRefs
+        .map(ref => {
+          const match = typeof ref === 'string' ? ref.match(/ref\(([^)]+)\)/) : null;
+          return match ? match[1].trim() : ref;
+        })
+        .filter(Boolean);
+      const insightObjs = insightNames
+        .map(name => (state.insights || []).find(i => i.name === name))
+        .filter(Boolean);
+      const { modelTabs, modelStates } = resolveModelsForInsights(insightObjs);
+      const insightStates = {};
+      insightObjs.forEach(insight => {
+        insightStates[insight.name] = transformInsightToUiState(insight);
+      });
+      return {
+        ...blankSnapshot(),
+        modelTabs,
+        modelStates,
+        activeModelName: modelTabs[0] || null,
+        chartName: obj.name,
+        chartLayout: chart.config?.layout ? JSON.parse(JSON.stringify(chart.config.layout)) : {},
+        chartInsightNames: insightNames,
+        activeInsightName: insightNames[0] || null,
+        insightStates,
+      };
+    }
+
+    return null;
+  },
+
+  /**
+   * "Add to exploration" (VIS-1067) — context-menu equivalent of dragging a
+   * Library row onto the active exploration (`routeExplorationDragEnd` in
+   * `WorkspaceDndContext.jsx`), for the same `EXPLORATION_DRAG_TYPES` set,
+   * when there's no specific drop target to aim at. Operates on the ACTIVE
+   * exploration's live legacy working state — callers must gate visibility
+   * on `workspaceActiveObject?.type === 'exploration'` first (the pane's
+   * mount effect keeps this state in sync with that exploration's draft).
+   */
+  addObjectToActiveExploration: obj => {
+    if (!obj || !obj.type || !obj.name) {
+      return { success: false, error: 'Invalid object' };
+    }
+
+    if (obj.type === 'insight') {
+      get().addExistingInsightToChart(obj.name);
+      return { success: true };
+    }
+
+    if (obj.type === 'source') {
+      if (!get().explorerActiveModelName) {
+        get().createModelTab();
+      }
+      get().setActiveModelSource(obj.name);
+      return { success: true };
+    }
+
+    if (obj.type === 'metric' || obj.type === 'dimension') {
+      const refExpr = obj.parentModel
+        ? formatRefExpression(obj.parentModel, obj.name)
+        : formatRefExpression(obj.name);
+      get().createInsight();
+      const newInsightName = get().explorerActiveInsightName;
+      if (newInsightName) {
+        get().setInsightProp(newInsightName, 'y', `?{${refExpr}}`);
+      }
+      return { success: true };
+    }
+
+    return { success: false, error: `Cannot add type "${obj.type}" to an exploration` };
   },
 
   handleTableSelect: ({ sourceName, table }) => {

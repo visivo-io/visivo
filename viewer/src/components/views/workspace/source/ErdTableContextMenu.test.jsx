@@ -35,16 +35,22 @@ describe('buildSelectStar / buildQualifiedName', () => {
 describe('ErdTableContextMenu', () => {
   let saveModel;
   let openWorkspaceTab;
+  let createExploration;
+  let buildExplorationSeedState;
   let state;
 
   beforeEach(() => {
     jest.clearAllMocks();
     saveModel = jest.fn().mockResolvedValue({ success: true });
     openWorkspaceTab = jest.fn();
+    createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_1' });
+    buildExplorationSeedState = jest.fn().mockReturnValue({ modelTabs: ['query_1'] });
     state = {
       models: [{ name: 'orders_model' }], // forces the unique-name suffix
       saveModel,
       openWorkspaceTab,
+      createExploration,
+      buildExplorationSeedState,
     };
     useStore.mockImplementation(selector =>
       typeof selector === 'function' ? selector(state) : state
@@ -62,10 +68,46 @@ describe('ErdTableContextMenu', () => {
       />
     );
 
-  test('renders both actions', () => {
+  test('renders all three actions', () => {
     renderMenu();
     expect(screen.getByTestId('erd-table-ctx-create-model')).toBeInTheDocument();
+    expect(screen.getByTestId('erd-table-ctx-explore-this')).toBeInTheDocument();
     expect(screen.getByTestId('erd-table-ctx-copy-name')).toBeInTheDocument();
+  });
+
+  // VIS-1067 — "Explore this" mints an exploration pre-wired with the same
+  // SELECT * FROM <schema>.<table> + source, then opens its tab.
+  describe('Explore this', () => {
+    test('mints an exploration with the qualified name as seed provenance and the SELECT/source as build hints', async () => {
+      renderMenu();
+      fireEvent.click(screen.getByTestId('erd-table-ctx-explore-this'));
+
+      await waitFor(() => expect(createExploration).toHaveBeenCalledTimes(1));
+      expect(buildExplorationSeedState).toHaveBeenCalledWith(
+        { type: 'table', name: 'public.orders' },
+        { sql: 'SELECT * FROM public.orders', source: 'analytics_db' }
+      );
+      const [seed, returnTo, legacyStateOverride] = createExploration.mock.calls[0];
+      expect(seed).toEqual({ type: 'table', name: 'public.orders' });
+      expect(returnTo).toBeNull();
+      expect(legacyStateOverride).toEqual({ modelTabs: ['query_1'] });
+
+      await waitFor(() =>
+        expect(openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'exploration:exp_1',
+          type: 'exploration',
+          name: 'exp_1',
+        })
+      );
+    });
+
+    test('does NOT open a tab when creation fails', async () => {
+      createExploration.mockResolvedValue({ success: false, error: 'boom' });
+      renderMenu();
+      fireEvent.click(screen.getByTestId('erd-table-ctx-explore-this'));
+      await waitFor(() => expect(createExploration).toHaveBeenCalled());
+      expect(openWorkspaceTab).not.toHaveBeenCalled();
+    });
   });
 
   test('create-model builds the SELECT, saves with a ref() source, and opens a tab', async () => {

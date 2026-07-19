@@ -1588,6 +1588,224 @@ describe('explorerStore', () => {
     });
   });
 
+  // VIS-1067 — "Explore this" seed-bridge extension: a pure state builder
+  // (no set() calls) so a caller can hand its result to
+  // `createExploration`'s `legacyStateOverride` param without touching the
+  // live explorer working state.
+  describe('buildExplorationSeedState', () => {
+    beforeEach(() => {
+      useStore.setState({
+        models: [],
+        insights: [],
+        charts: [],
+        metrics: [],
+        dimensions: [],
+        inputs: [],
+        explorerSources: [{ source_name: 'pg' }],
+      });
+    });
+
+    it('returns null for an unresolvable object', () => {
+      expect(useStore.getState().buildExplorationSeedState({ type: 'model', name: 'missing' })).toBeNull();
+      expect(useStore.getState().buildExplorationSeedState(null)).toBeNull();
+    });
+
+    it('source: mirrors legacyStateForSeed (one empty query tab bound to the source)', () => {
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'source', name: 'pg' });
+      expect(snapshot.modelTabs).toEqual(['query_1']);
+      expect(snapshot.modelStates.query_1).toMatchObject({ sql: '', sourceName: 'pg' });
+    });
+
+    it('table: seeds one query tab with the given SQL + source hints', () => {
+      const snapshot = useStore.getState().buildExplorationSeedState(
+        { type: 'table', name: 'public.orders' },
+        { sql: 'SELECT * FROM public.orders', source: 'pg' }
+      );
+      expect(snapshot.modelTabs).toEqual(['query_1']);
+      expect(snapshot.modelStates.query_1).toMatchObject({
+        sql: 'SELECT * FROM public.orders',
+        sourceName: 'pg',
+        sourceEdited: true,
+      });
+    });
+
+    it('model: seeds a query tab referencing the model via ${ref(model)}', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'model', name: 'orders' });
+      expect(snapshot.modelStates.query_1.sql).toBe('SELECT * FROM ${ref(orders)}');
+      expect(snapshot.modelStates.query_1.sourceName).toBe('pg');
+    });
+
+    it('metric/dimension: seeds a query against the field\'s parent model', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+        metrics: [{ name: 'revenue', parentModel: 'orders', config: { model: 'ref(orders)' } }],
+      });
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'metric', name: 'revenue' });
+      expect(snapshot.modelStates.query_1.sql).toBe('SELECT * FROM ${ref(orders)}');
+    });
+
+    it('metric with no resolvable parent model returns null', () => {
+      useStore.setState({ metrics: [{ name: 'orphan', config: {} }] });
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'metric', name: 'orphan' })
+      ).toBeNull();
+    });
+
+    it('insight: copies the insight config into a draft insight of the SAME name + auto-loads its model', () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'churn_by_cohort',
+            config: {
+              type: 'bar',
+              props: { x: '?{${ref(orders).month}}', y: '?{${ref(orders).total}}' },
+              interactions: [],
+            },
+          },
+        ],
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'insight', name: 'churn_by_cohort' });
+
+      // SAME name preserved — promoting it later updates the ORIGINAL via
+      // ordinary update-by-name semantics.
+      expect(snapshot.chartInsightNames).toEqual(['churn_by_cohort']);
+      expect(snapshot.activeInsightName).toBe('churn_by_cohort');
+      expect(snapshot.insightStates.churn_by_cohort.type).toBe('bar');
+      expect(snapshot.insightStates.churn_by_cohort.isNew).toBe(false);
+      expect(snapshot.modelTabs).toEqual(['orders']);
+      // A fresh chart name is fine — there's no original chart to preserve.
+      expect(snapshot.chartName).toBeTruthy();
+    });
+
+    it('chart: copies the chart (same name) + every insight (same names) + their models', () => {
+      useStore.setState({
+        charts: [
+          {
+            name: 'revenue_dashboard_chart',
+            config: { layout: { 'title.text': 'Revenue' }, insights: ['${ref(ins_a)}', '${ref(ins_b)}'] },
+          },
+        ],
+        insights: [
+          {
+            name: 'ins_a',
+            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
+          },
+          {
+            name: 'ins_b',
+            config: { type: 'line', props: { x: '?{${ref(revenue).date}}' }, interactions: [] },
+          },
+        ],
+        models: [
+          { name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } },
+          { name: 'revenue', config: { sql: 'SELECT 1', source: 'ref(pg)' } },
+        ],
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'chart', name: 'revenue_dashboard_chart' });
+
+      expect(snapshot.chartName).toBe('revenue_dashboard_chart');
+      expect(snapshot.chartLayout).toEqual({ 'title.text': 'Revenue' });
+      expect(snapshot.chartInsightNames).toEqual(['ins_a', 'ins_b']);
+      expect(Object.keys(snapshot.insightStates)).toEqual(['ins_a', 'ins_b']);
+      expect(snapshot.modelTabs.sort()).toEqual(['orders', 'revenue']);
+    });
+
+    it('chart: returns null for an unresolvable chart name', () => {
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'chart', name: 'missing' })
+      ).toBeNull();
+    });
+  });
+
+  // VIS-1067 — "Add to exploration": the context-menu equivalent of dragging
+  // a Library row onto the active exploration, for the same
+  // EXPLORATION_DRAG_TYPES set.
+  describe('addObjectToActiveExploration', () => {
+    beforeEach(() => {
+      useStore.setState({
+        explorerChartInsightNames: [],
+        explorerInsightStates: {},
+        explorerActiveInsightName: null,
+        explorerModelTabs: [],
+        explorerModelStates: {},
+        explorerActiveModelName: null,
+        insights: [],
+        models: [],
+        inputs: [],
+        metrics: [],
+        dimensions: [],
+        explorerSources: [{ source_name: 'pg' }],
+      });
+    });
+
+    it('insight: adds the existing insight to the active chart', () => {
+      useStore.setState({
+        insights: [{ name: 'ins', config: { type: 'bar', props: {}, interactions: [] } }],
+      });
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'insight', name: 'ins' });
+      expect(result).toEqual({ success: true });
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['ins']);
+    });
+
+    it('source: creates a query tab if none is active, then binds the source', () => {
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'source', name: 'pg' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      expect(state.explorerActiveModelName).toBeTruthy();
+      const activeModel = state.explorerModelStates[state.explorerActiveModelName];
+      expect(activeModel.sourceName).toBe('pg');
+    });
+
+    it('source: reuses the already-active query tab', () => {
+      useStore.getState().createModelTab('existing_q');
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'source', name: 'pg' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      expect(state.explorerActiveModelName).toBe('existing_q');
+      expect(state.explorerModelStates.existing_q.sourceName).toBe('pg');
+    });
+
+    it('metric/dimension: creates a new insight and binds the field into its y prop', () => {
+      const result = useStore
+        .getState()
+        .addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      const newInsightName = state.explorerActiveInsightName;
+      expect(newInsightName).toBeTruthy();
+      expect(state.explorerInsightStates[newInsightName].props.y).toBe(
+        '?{${ref(orders).revenue}}'
+      );
+    });
+
+    it('metric/dimension without a parentModel falls back to a bare ref', () => {
+      useStore.getState().addObjectToActiveExploration({ type: 'dimension', name: 'region' });
+      const state = useStore.getState();
+      const newInsightName = state.explorerActiveInsightName;
+      expect(state.explorerInsightStates[newInsightName].props.y).toBe('?{${ref(region)}}');
+    });
+
+    it('rejects a type with no meaningful "add to exploration" action', () => {
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'dashboard', name: 'kpis' });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Cannot add type/);
+    });
+
+    it('rejects an invalid object', () => {
+      expect(useStore.getState().addObjectToActiveExploration(null)).toEqual({
+        success: false,
+        error: 'Invalid object',
+      });
+    });
+  });
+
   describe('handleTableSelect', () => {
     it('sets SQL and source on the active model when SQL is empty', () => {
       useStore.getState().createModelTab('my_model');
