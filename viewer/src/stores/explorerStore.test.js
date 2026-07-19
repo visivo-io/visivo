@@ -1629,22 +1629,27 @@ describe('explorerStore', () => {
       });
     });
 
-    it('model: seeds a query tab referencing the model via ${ref(model)}', () => {
+    it('model: seeds a query tab with the model\'s OWN literal SQL (never an unresolved ${ref(...)} expression)', () => {
+      // The scratch SQL editor's execution pipeline (`useModelQueryJob` ->
+      // `/api/model-query-jobs/`) sends this text VERBATIM to the source
+      // with zero ref-resolution, so a `${ref(...)}` context string reaches
+      // DuckDB unresolved and fails to parse — root-caused via live
+      // reproduction against the sandbox (integration-gate fix cycle).
       useStore.setState({
         models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
       });
       const snapshot = useStore.getState().buildExplorationSeedState({ type: 'model', name: 'orders' });
-      expect(snapshot.modelStates.query_1.sql).toBe('SELECT * FROM ${ref(orders)}');
+      expect(snapshot.modelStates.query_1.sql).toBe('SELECT 1');
       expect(snapshot.modelStates.query_1.sourceName).toBe('pg');
     });
 
-    it('metric/dimension: seeds a query against the field\'s parent model', () => {
+    it('metric/dimension: seeds a query with the parent model\'s OWN literal SQL', () => {
       useStore.setState({
         models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
         metrics: [{ name: 'revenue', parentModel: 'orders', config: { model: 'ref(orders)' } }],
       });
       const snapshot = useStore.getState().buildExplorationSeedState({ type: 'metric', name: 'revenue' });
-      expect(snapshot.modelStates.query_1.sql).toBe('SELECT * FROM ${ref(orders)}');
+      expect(snapshot.modelStates.query_1.sql).toBe('SELECT 1');
     });
 
     it('metric with no resolvable parent model returns null', () => {
