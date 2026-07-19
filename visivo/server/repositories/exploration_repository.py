@@ -20,6 +20,7 @@ import json
 import os
 import secrets
 import tempfile
+import threading
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -29,6 +30,22 @@ from visivo.models.exploration import Exploration, PromotionRecord
 class ExplorationRepository:
     def __init__(self, explorations_dir: str):
         self.explorations_dir = explorations_dir
+        # VIS-1086: guards the "resolve a name (default or explicit,
+        # including the id mint) then persist" critical section in
+        # `create()`. `hot_reload_server.py` runs Flask with
+        # `async_mode="threading"`, so concurrent HTTP requests are real
+        # concurrent OS threads within this ONE process — a bare
+        # count(existing)->name computation (`_default_name`) has no
+        # serialization against a second thread doing the exact same read
+        # before either has written, so two requests racing the same narrow
+        # window (a double-click on "+ New exploration"/a source tile, or two
+        # browser windows both landing on a fresh empty project) could mint
+        # the SAME default name. This lock makes "pick a free name and
+        # reserve it by writing" atomic from this process's perspective; it
+        # intentionally does NOT protect against a second OS PROCESS writing
+        # into the same directory (not this bug's scenario — see module
+        # docstring).
+        self._create_lock = threading.Lock()
 
     def _ensure_dir(self) -> None:
         os.makedirs(self.explorations_dir, exist_ok=True)
@@ -55,8 +72,24 @@ class ExplorationRepository:
         # "Scratch" for the very first exploration, "Exploration N" after
         # (resolved question 3, 03-delivery-plan.md): a one-gesture create
         # with no naming prompt.
-        count = len(self._existing_ids())
-        return "Scratch" if count == 0 else f"Exploration {count + 1}"
+        #
+        # VIS-1086: the count-based candidate is cheap but blind — collision-
+        # checked against the CURRENT set of existing names (already resident
+        # from the read below, no extra I/O) and incremented until free
+        # rather than minted unconditionally. Must be called with
+        # `_create_lock` held (see `__init__`) for this to actually close the
+        # race rather than merely narrow it — the collision check alone,
+        # without the lock, still has a read-then-write gap two threads could
+        # both slip through.
+        existing_names = {e.name for e in self.list()}
+        count = len(existing_names)
+        candidate = "Scratch" if count == 0 else f"Exploration {count + 1}"
+        if candidate not in existing_names:
+            return candidate
+        n = count + 1
+        while f"Exploration {n}" in existing_names:
+            n += 1
+        return f"Exploration {n}"
 
     def _write(self, exploration: Exploration) -> None:
         self._ensure_dir()
@@ -95,17 +128,23 @@ class ExplorationRepository:
         draft: Optional[dict] = None,
     ) -> Exploration:
         now = datetime.now(timezone.utc)
-        exploration = Exploration(
-            id=self._mint_id(),
-            name=name or self._default_name(),
-            created_at=now,
-            updated_at=now,
-            seeded_from=seeded_from,
-            return_to=return_to,
-            draft=draft if draft is not None else {},
-            promoted=[],
-        )
-        self._write(exploration)
+        # VIS-1086: the whole "resolve id + name, then write" sequence is
+        # serialized per-process (`_create_lock`) so two concurrent creates
+        # (double-click on a create door, or two browser windows racing a
+        # fresh empty project) can never both observe the same "N existing"
+        # snapshot before either has written — see `__init__`'s comment.
+        with self._create_lock:
+            exploration = Exploration(
+                id=self._mint_id(),
+                name=name or self._default_name(),
+                created_at=now,
+                updated_at=now,
+                seeded_from=seeded_from,
+                return_to=return_to,
+                draft=draft if draft is not None else {},
+                promoted=[],
+            )
+            self._write(exploration)
         return exploration
 
     def get(self, exploration_id: str) -> Optional[Exploration]:

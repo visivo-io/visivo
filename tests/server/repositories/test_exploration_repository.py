@@ -8,6 +8,7 @@ JSON-document one (02-architecture.md §2).
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 
@@ -113,6 +114,54 @@ class TestDefaultNaming:
         repo.create(name="Churn dig")
         second = repo.create()
         assert second.name == "Exploration 2"
+
+
+class TestConcurrentCreate:
+    """VIS-1086: a double-click on '+ New exploration' (or a source tile), or
+    two browser windows racing a fresh empty project, both hit `create()`
+    with no name. `hot_reload_server.py` runs Flask with
+    `async_mode="threading"`, so concurrent HTTP requests are real concurrent
+    OS threads in one process — this drives that exact concurrency directly
+    against the repository (mirrors production threading, not a serialized
+    test double) and asserts the `_create_lock` + collision-checked
+    `_default_name()` fix actually closes the race, not just narrows it."""
+
+    def test_concurrent_no_name_creates_mint_unique_names(self, repo):
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(repo.create) for _ in range(8)]
+            results = [f.result() for f in as_completed(futures)]
+
+        names = [e.name for e in results]
+        assert len(set(names)) == len(names), f"duplicate default names minted: {names}"
+
+    def test_concurrent_no_name_creates_mint_unique_ids(self, repo):
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(repo.create) for _ in range(8)]
+            results = [f.result() for f in as_completed(futures)]
+
+        ids = [e.id for e in results]
+        assert len(set(ids)) == len(ids), f"duplicate ids minted: {ids}"
+
+    def test_concurrent_creates_each_persist_a_distinct_file(self, repo, explorations_dir):
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(repo.create) for _ in range(8)]
+            [f.result() for f in as_completed(futures)]
+
+        files = [f for f in os.listdir(explorations_dir) if f.endswith(".json")]
+        assert len(files) == 8
+
+    def test_concurrent_mixed_named_and_default_creates_stay_unique(self, repo):
+        # A more realistic mix: some requests carry an explicit name (a
+        # rename-on-create flow, if one ever exists), most don't.
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(repo.create) for _ in range(6)]
+            futures += [pool.submit(repo.create, name="Explicit") for _ in range(2)]
+            results = [f.result() for f in as_completed(futures)]
+
+        names = [e.name for e in results]
+        assert names.count("Explicit") == 2  # explicit names are never disambiguated
+        default_names = [n for n in names if n != "Explicit"]
+        assert len(set(default_names)) == len(default_names), f"duplicates: {default_names}"
 
 
 class TestGet:
