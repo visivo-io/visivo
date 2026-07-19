@@ -49,6 +49,8 @@ const extractInputDependencies = (query, staticProps) => {
   return [...names];
 };
 
+const EMPTY_INSIGHT_STATUS = { isLoading: false, error: null, blockedReason: null, blockedModel: null };
+
 /**
  * useDraftInsightPreview — Explore 2.0 Phase 4 (S2's resolved design). Live,
  * client-side preview for the exploration surface's UNSAVED chart/insight
@@ -61,8 +63,31 @@ const extractInputDependencies = (query, staticProps) => {
  * docstring) rather than taking props, so any Build-rail edit is picked up
  * automatically.
  *
+ * PER-INSIGHT STATE (VIS-1092, Phase 5 preview-lane fix): loading/error/
+ * blocked state is tracked PER CHART INSIGHT (`perInsight`, keyed by insight
+ * NAME), not as one flag shared across the whole debounce pass. A mixed-lane
+ * chart (one insight already promoted with real data, one still a draft)
+ * used to let the STILL-DRAFT insight's error/loading state blank the
+ * ENTIRE chart — including the already-rendering promoted insight — because
+ * the whole loop shared one `isLoading`/`error` pair that
+ * `ExplorerChartPreview.jsx` forwarded straight to `<ChartPreview>`'s
+ * whole-chart-gating props. The aggregate `isLoading`/`error`/`blockedReason`
+ * /`blockedModel` fields below are still returned for simple (single- or
+ * uniform-insight) callers, but a caller that needs mixed-lane correctness
+ * should read `perInsight[name]` instead — see `ExplorerChartPreview.jsx`.
+ *
+ * REQUEST-ORDERING GUARD (VIS-1094): each debounce fire is stamped with a
+ * monotonic generation number (`compileGenerationRef`). A rapid second edit
+ * arms a NEW debounce cycle whose fired pass increments the generation
+ * BEFORE the first pass's still-in-flight network/DuckDB chain can resolve;
+ * every write this hook makes (`updateInsightJob`/`removeInsightJob`/
+ * `setPerInsight`) is guarded by "is my generation still the current one" —
+ * a slower, stale pass's response is silently dropped rather than
+ * clobbering the faster, newer pass's already-applied result.
+ *
  * @returns {{
  *   previewInsightKeys: string[],
+ *   perInsight: Record<string, {isLoading: boolean, error: string|null, blockedReason: string|null, blockedModel: string|null}>,
  *   isLoading: boolean,
  *   error: string|null,
  *   blockedReason: 'model_not_run'|null,
@@ -78,13 +103,22 @@ const useDraftInsightPreview = () => {
   const updateInsightJob = useStore(s => s.updateInsightJob);
   const removeInsightJob = useStore(s => s.removeInsightJob);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [blocked, setBlocked] = useState({ reason: null, model: null });
+  // { [insightName]: { isLoading, error, blockedReason, blockedModel } }
+  const [perInsight, setPerInsight] = useState({});
+
+  const setInsightStatus = (name, patch) =>
+    setPerInsight(prev => ({
+      ...prev,
+      [name]: { ...EMPTY_INSIGHT_STATUS, ...prev[name], ...patch },
+    }));
 
   const debounceRef = useRef(null);
   const registeredTablesRef = useRef(new Map()); // model_hash -> row-count fingerprint
   const seenDraftKeysRef = useRef(new Set());
+  // VIS-1094 — bumped once per debounce FIRE (not per render); every write
+  // below checks its own captured generation against the current one before
+  // touching the store, so a stale (slower, out-of-order) pass never wins.
+  const compileGenerationRef = useRef(0);
 
   const previewInsightKeys = useMemo(
     () => chartInsightNames.map(draftInsightKey),
@@ -119,23 +153,41 @@ const useDraftInsightPreview = () => {
         seenDraftKeysRef.current.delete(key);
       }
     });
+    setPerInsight(prev => {
+      const currentNames = new Set(chartInsightNames);
+      const next = {};
+      let changed = false;
+      Object.keys(prev).forEach(name => {
+        if (currentNames.has(name)) next[name] = prev[name];
+        else changed = true;
+      });
+      return changed ? next : prev;
+    });
 
     if (!db || chartInsightNames.length === 0) return undefined;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      setIsLoading(true);
-      setError(null);
-      setBlocked({ reason: null, model: null });
-      let sawBlocked = null;
-      let sawError = null;
+      // VIS-1094 — this pass's identity. Any write below whose captured
+      // generation no longer matches `compileGenerationRef.current` (a
+      // NEWER debounce fire has since started) is stale and skipped.
+      const myGeneration = ++compileGenerationRef.current;
+      const isStale = () => compileGenerationRef.current !== myGeneration;
 
       for (const name of chartInsightNames) {
         const state = insightStates[name];
-        if (!state) continue;
         const draftKey = draftInsightKey(name);
+        if (!state) {
+          setInsightStatus(name, EMPTY_INSIGHT_STATUS);
+          continue;
+        }
         const hasDataProps = Object.keys(state.props || {}).some(k => state.props[k] !== undefined && state.props[k] !== '');
-        if (!hasDataProps) continue;
+        if (!hasDataProps) {
+          setInsightStatus(name, EMPTY_INSIGHT_STATUS);
+          continue;
+        }
+
+        setInsightStatus(name, { isLoading: true, error: null, blockedReason: null, blockedModel: null });
 
         const expandedProps = expandDotNotationProps(state.props);
         const backendInteractions = (state.interactions || [])
@@ -170,6 +222,7 @@ const useDraftInsightPreview = () => {
             draftModels,
             modelSchemas,
           });
+          if (isStale()) continue;
 
           // Register each dependent model's ALREADY-FETCHED rows (the
           // SQL/results lane, `modelStates[name].queryResult`) as a DuckDB
@@ -193,26 +246,32 @@ const useDraftInsightPreview = () => {
             await db.dropFile(tempFile);
             registeredTablesRef.current.set(model.name_hash, fingerprint);
           }
+          if (isStale()) continue;
 
           const requiredInputs = extractInputDependencies(compiled.post_query, compiled.static_props);
           const missingInputs = requiredInputs.filter(inputName => !inputJobs[inputName]);
 
           if (missingInputs.length > 0) {
-            updateInsightJob(draftKey, {
-              name: draftKey,
-              data: null,
-              props_mapping: compiled.props_mapping,
-              static_props: compiled.static_props,
-              props_slices: compiled.props_slices,
-              split_key: compiled.split_key,
-              type: compiled.type,
-              pendingInputs: missingInputs,
-              inputDependencies: requiredInputs,
-            });
+            if (!isStale()) {
+              updateInsightJob(draftKey, {
+                name: draftKey,
+                data: null,
+                props_mapping: compiled.props_mapping,
+                static_props: compiled.static_props,
+                props_slices: compiled.props_slices,
+                split_key: compiled.split_key,
+                type: compiled.type,
+                pendingInputs: missingInputs,
+                inputDependencies: requiredInputs,
+              });
+              seenDraftKeysRef.current.add(draftKey);
+              setInsightStatus(name, EMPTY_INSIGHT_STATUS);
+            }
           } else {
             const preparedQuery = prepPostQuery({ query: compiled.post_query }, inputJobs);
             // eslint-disable-next-line no-await-in-loop
             const arrowResult = await runDuckDBQuery(db, preparedQuery, 2, 300);
+            if (isStale()) continue;
             const rows = processArrowResult(arrowResult);
             updateInsightJob(draftKey, {
               name: draftKey,
@@ -225,24 +284,32 @@ const useDraftInsightPreview = () => {
               pendingInputs: null,
               inputDependencies: requiredInputs,
             });
+            seenDraftKeysRef.current.add(draftKey);
+            setInsightStatus(name, EMPTY_INSIGHT_STATUS);
           }
-          seenDraftKeysRef.current.add(draftKey);
         } catch (err) {
+          if (isStale()) continue;
           if (err?.errorType === 'model_not_run') {
-            sawBlocked = { reason: 'model_not_run', model: err.modelName || null };
             removeInsightJob(draftKey);
             seenDraftKeysRef.current.delete(draftKey);
+            setInsightStatus(name, {
+              isLoading: false,
+              error: null,
+              blockedReason: 'model_not_run',
+              blockedModel: err.modelName || null,
+            });
           } else {
-            sawError = err?.message || String(err);
             removeInsightJob(draftKey);
             seenDraftKeysRef.current.delete(draftKey);
+            setInsightStatus(name, {
+              isLoading: false,
+              error: err?.message || String(err),
+              blockedReason: null,
+              blockedModel: null,
+            });
           }
         }
       }
-
-      setIsLoading(false);
-      setError(sawError);
-      setBlocked(sawBlocked || { reason: null, model: null });
     }, COMPILE_DEBOUNCE_MS);
 
     return () => {
@@ -267,12 +334,22 @@ const useDraftInsightPreview = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Aggregate fields — backward-compatible for a single-insight (or uniform-
+  // status) caller. A caller on a MIXED-lane chart (VIS-1092) should read
+  // `perInsight[name]` per key instead of these, which collapse every
+  // insight's status into one shared flag again by construction.
+  const statuses = chartInsightNames.map(name => perInsight[name] || EMPTY_INSIGHT_STATUS);
+  const isLoading = statuses.some(s => s.isLoading);
+  const errorStatus = statuses.find(s => s.error);
+  const blockedStatus = statuses.find(s => s.blockedReason);
+
   return {
     previewInsightKeys,
+    perInsight,
     isLoading,
-    error,
-    blockedReason: blocked.reason,
-    blockedModel: blocked.model,
+    error: errorStatus?.error || null,
+    blockedReason: blockedStatus?.blockedReason || null,
+    blockedModel: blockedStatus?.blockedModel || null,
   };
 };
 

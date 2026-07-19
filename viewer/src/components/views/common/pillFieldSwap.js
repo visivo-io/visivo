@@ -84,6 +84,7 @@ export function findReclassifiedSlots(promotedName, promotedType, insightStates)
       location: slot.location,
       key: slot.key,
       previousRef: slot.state.ref,
+      previousColumn: slot.state.column,
       previousAgg: slot.state.agg || null,
       swapTo: { kind: promotedType === 'metric' ? 'metricRef' : 'dimensionRef', ref: promotedName },
     }));
@@ -123,6 +124,7 @@ export function findMatchingExpressionSlots(
       location: slot.location,
       key: slot.key,
       previousRef: slot.state.ref,
+      previousColumn: slot.state.column,
       previousAgg: slot.state.agg || null,
       swapTo: { kind: promotedType === 'metric' ? 'metricRef' : 'dimensionRef', ref: promotedName },
     }));
@@ -132,4 +134,30 @@ export function findMatchingExpressionSlots(
  * the `?{...}` query-string form a prop/interaction value expects. */
 export function serializeSwapTarget(swapTo) {
   return `?{${pillGrammar.serialize({ kind: swapTo.kind, ref: swapTo.ref })}}`;
+}
+
+/**
+ * Re-read a slot's CURRENT live value (VIS-1095, Phase 5 preview-lane/offer-
+ * staleness fix). An offer's `slots` are a SNAPSHOT captured the instant the
+ * offer was created (right after a promote / "Save as metric"); by the time
+ * the user actually clicks "Update N references", the target insight may
+ * have been renamed/removed, or the SAME slot may have been hand-edited to
+ * something else entirely underneath the banner (it's a non-blocking inline
+ * element, not a modal — nothing stops continued editing while it's open).
+ *
+ * Returns `null` when the insight is gone or the slot's current value no
+ * longer parses as a column-ref-shaped (dimension/aggregate) value at all —
+ * `FieldSwapOfferBanner.applyOffer` treats a `null` (or any ref/column/agg
+ * mismatch against the offer's captured `previousRef`/`previousColumn`/
+ * `previousAgg`) as "changed since the offer was made" and skips that slot
+ * rather than blindly overwriting whatever is there now.
+ */
+export function readCurrentSlotState(insightStates, slot) {
+  const insightState = insightStates?.[slot.insightName];
+  if (!insightState) return null;
+  const rawValue =
+    slot.location === 'prop'
+      ? insightState.props?.[slot.key]
+      : insightState.interactions?.[slot.key]?.value;
+  return parseQueryBody(rawValue);
 }
