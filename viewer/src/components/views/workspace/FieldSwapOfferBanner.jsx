@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { PiArrowsClockwise, PiX } from 'react-icons/pi';
 import useStore from '../../../stores/store';
-import { serializeSwapTarget } from '../common/pillFieldSwap';
+import { serializeSwapTarget, readCurrentSlotState } from '../common/pillFieldSwap';
 
 /**
  * FieldSwapOfferBanner — Explore 2.0 Phase 4 (06 §4/§8, delta-review's
@@ -18,26 +18,68 @@ import { serializeSwapTarget } from '../common/pillFieldSwap';
  * banner is the one-click "Update N reference(s)" / "Dismiss" surface for
  * either. `offers`: `Array<{ promotedType, promotedName, slots }>`, the
  * exact shape `promoteExploration`/the Save-as-metric flow return.
+ *
+ * ACCEPT-TIME RE-VALIDATION (VIS-1095, Phase 5 preview-lane/offer-staleness
+ * fix): `offer.slots` is a SNAPSHOT captured the instant the offer was
+ * created. This banner is a non-blocking inline element (not a modal), so
+ * nothing stops the user continuing to edit the SAME slot — or renaming/
+ * removing the target insight entirely — before clicking "Update N
+ * references". `applyOffer` now re-reads each slot's CURRENT live value
+ * (`readCurrentSlotState`) and compares it against the offer's captured
+ * `previousRef`/`previousColumn`/`previousAgg` right before writing; a
+ * slot whose live value no longer matches (edited underneath the banner,
+ * or its insight is gone) is SKIPPED rather than blindly overwritten, and a
+ * toast summarizes how many were skipped.
  */
 const FieldSwapOfferBanner = ({ offers = [], onDismiss }) => {
   const setInsightProp = useStore(s => s.setInsightProp);
   const updateInsightInteraction = useStore(s => s.updateInsightInteraction);
+  const explorerInsightStates = useStore(s => s.explorerInsightStates);
+  const showWorkspaceToast = useStore(s => s.showWorkspaceToast);
 
   const applyOffer = useCallback(
     offerIndex => {
       const offer = offers[offerIndex];
       if (!offer) return;
+      let appliedCount = 0;
+      let skippedCount = 0;
       offer.slots.forEach(slot => {
+        const current = readCurrentSlotState(explorerInsightStates, slot);
+        const unchanged =
+          !!current &&
+          current.ref === slot.previousRef &&
+          current.column === slot.previousColumn &&
+          (current.agg || null) === (slot.previousAgg || null);
+        if (!unchanged) {
+          skippedCount += 1;
+          return;
+        }
         const value = serializeSwapTarget(slot.swapTo);
         if (slot.location === 'prop') {
           setInsightProp(slot.insightName, slot.key, value);
         } else if (slot.location === 'interaction') {
           updateInsightInteraction(slot.insightName, slot.key, { value });
         }
+        appliedCount += 1;
       });
+      if (skippedCount > 0) {
+        const noun = `reference${skippedCount === 1 ? '' : 's'}`;
+        showWorkspaceToast?.(
+          appliedCount > 0
+            ? `Updated ${appliedCount} — ${skippedCount} ${noun} changed since this offer was made and ${skippedCount === 1 ? 'was' : 'were'} skipped`
+            : `Skipped — the ${noun} changed since this offer was made`
+        );
+      }
       onDismiss?.(offerIndex);
     },
-    [offers, setInsightProp, updateInsightInteraction, onDismiss]
+    [
+      offers,
+      explorerInsightStates,
+      setInsightProp,
+      updateInsightInteraction,
+      showWorkspaceToast,
+      onDismiss,
+    ]
   );
 
   if (offers.length === 0) return null;

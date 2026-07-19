@@ -201,6 +201,141 @@ describe('useDraftInsightPreview', () => {
     expect(useStore.getState().insightJobs[draftInsightKey('my_insight')]).toBeUndefined();
   });
 
+  // VIS-1092 — per-insight state: a mixed-lane chart (one insight succeeds,
+  // one errors) must never let the erroring insight's status contaminate
+  // the succeeding insight's status.
+  test('mixed-lane chart: one insight succeeding does not get contaminated by a sibling insight erroring', async () => {
+    seedState({
+      explorerChartInsightNames: ['ins_ok', 'ins_bad'],
+      explorerInsightStates: {
+        ins_ok: {
+          type: 'scatter',
+          props: { x: '?{${ref(orders_q).region}}' },
+          interactions: [],
+        },
+        ins_bad: {
+          type: 'scatter',
+          props: { x: '?{${ref(orders_q).region}}' },
+          interactions: [],
+        },
+      },
+    });
+    compileDraftInsight
+      .mockResolvedValueOnce({
+        post_query: 'SELECT 1',
+        static_props: {},
+        props_mapping: {},
+        props_slices: {},
+        split_key: null,
+        type: 'scatter',
+        models: [],
+      })
+      .mockRejectedValueOnce(new Error('ins_bad blew up'));
+    runDuckDBQuery.mockResolvedValueOnce({ fake: 'arrow-result' });
+    processArrowResult.mockReturnValueOnce([{ a: 1 }]);
+
+    const { result } = renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // ins_ok rendered fine — its own entry landed and its per-insight status
+    // carries no error/loading, regardless of ins_bad's fate.
+    expect(useStore.getState().insightJobs[draftInsightKey('ins_ok')]?.data).toEqual([{ a: 1 }]);
+    expect(result.current.perInsight.ins_ok).toMatchObject({
+      isLoading: false,
+      error: null,
+      blockedReason: null,
+    });
+
+    // ins_bad's OWN status carries the error — it never leaks onto ins_ok.
+    expect(result.current.perInsight.ins_bad).toMatchObject({
+      isLoading: false,
+      error: 'ins_bad blew up',
+    });
+    expect(useStore.getState().insightJobs[draftInsightKey('ins_bad')]).toBeUndefined();
+  });
+
+  // VIS-1094 — request-ordering guard: a slower FIRST compile chain must
+  // never clobber a faster SECOND chain's already-applied write, even
+  // though the first one was triggered earlier.
+  test('a slower first compile chain does not clobber a faster second chain (out-of-order resolution guard)', async () => {
+    let resolveFirstCompile;
+    let resolveSecondCompile;
+    compileDraftInsight
+      .mockImplementationOnce(() => new Promise(resolve => { resolveFirstCompile = resolve; }))
+      .mockImplementationOnce(() => new Promise(resolve => { resolveSecondCompile = resolve; }));
+
+    const compiledBase = {
+      post_query: 'SELECT 1',
+      static_props: {},
+      props_mapping: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [],
+    };
+    runDuckDBQuery.mockResolvedValue({ fake: 'arrow-result' });
+    processArrowResult.mockReturnValue([{ value: 'FRESH_SECOND' }]);
+
+    const { rerender } = renderHook(() => useDraftInsightPreview());
+
+    // Generation 1 fires; its compile call is left pending.
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(compileDraftInsight).toHaveBeenCalledTimes(1);
+
+    // A rapid second edit (still before generation 1 resolves) arms + fires
+    // generation 2.
+    act(() => {
+      useStore.setState(s => ({
+        explorerInsightStates: {
+          my_insight: {
+            ...s.explorerInsightStates.my_insight,
+            props: { ...s.explorerInsightStates.my_insight.props, x: '?{${ref(orders_q).other}}' },
+          },
+        },
+      }));
+    });
+    rerender();
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(compileDraftInsight).toHaveBeenCalledTimes(2);
+
+    // Generation 2 (the NEWER pass) resolves and completes its full chain
+    // FIRST — this is the realistic "second edit's response comes back
+    // faster" case.
+    await act(async () => {
+      resolveSecondCompile(compiledBase);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(useStore.getState().insightJobs[draftInsightKey('my_insight')]?.data).toEqual([
+      { value: 'FRESH_SECOND' },
+    ]);
+
+    // Generation 1 (the STALE, slower pass) FINALLY resolves — the guard
+    // must stop it BEFORE it ever writes: its own downstream pipeline
+    // short-circuits once it notices it's stale (processArrowResult/
+    // updateInsightJob are never called a second time), so generation 2's
+    // already-applied result is left untouched.
+    await act(async () => {
+      resolveFirstCompile(compiledBase);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(processArrowResult).toHaveBeenCalledTimes(1);
+    expect(useStore.getState().insightJobs[draftInsightKey('my_insight')]?.data).toEqual([
+      { value: 'FRESH_SECOND' },
+    ]);
+  });
+
   test('unmount cleans up every synthetic entry it wrote', async () => {
     compileDraftInsight.mockResolvedValue({
       post_query: 'SELECT 1',
