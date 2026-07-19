@@ -79,6 +79,13 @@ export default defineConfig({
         // assume anchors render eagerly with no open document; the new
         // Explorer Home doesn't).
         '**/onboarding-coach-anchors.spec.mjs',
+        // Phase 5 (VIS-1067–1072/VIS-1091-1095): same shared-repository
+        // isolation need — each mints real backend exploration records
+        // (and, for the flywheel/dashboard specs, real models/metrics/
+        // insights/charts and a real dashboard's config).
+        '**/explore-this-flywheel.spec.mjs',
+        '**/dashboard-newchart-roundtrip.spec.mjs',
+        '**/exploration-staleness.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -161,6 +168,12 @@ export default defineConfig({
         '**/explorer-create-race.spec.mjs',
         '**/exploration-duplicate-race.spec.mjs',
         '**/explorer-cold-session-default-source.spec.mjs',
+        // Phase 5 additions (VIS-1067-1072/VIS-1091-1095) — see the
+        // 'parallel' project's testIgnore entry for the same three files
+        // for why.
+        '**/explore-this-flywheel.spec.mjs',
+        '**/dashboard-newchart-roundtrip.spec.mjs',
+        '**/exploration-staleness.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

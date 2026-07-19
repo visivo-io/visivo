@@ -385,4 +385,257 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
       expect(realEntry?.data).toBeTruthy();
     }).toPass({ timeout: 20000 });
   });
+
+  // Explore 2.0 Phase 5 preview-lane fixes (VIS-1091–1095, absorbed from the
+  // Phase 4 delta review) ---------------------------------------------------
+
+  test('VIS-1091: a same-named real insight promoted by a DIFFERENT exploration is never treated as promoted by THIS one', async ({
+    page,
+  }) => {
+    // Exploration A: bind + promote its (default-auto-named) first insight.
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    await typeSql(page, `SELECT * FROM ${TABLE}`);
+    await runQuery(page);
+    const tableRowA = await expandSourceTable(page);
+    const { locator: columnA } = await firstNumericColumn(page, tableRowA);
+    const xSlotA = page.locator('[data-testid*="droppable-property-x"]').first();
+    await dragAndDrop(page, columnA, xSlotA);
+    const insightNameA = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+    const queryNameA = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+
+    await page.getByTestId('explorer-save-button').click();
+    await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('exploration-promote-submit').click();
+    await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
+    createdObjects.push(
+      { segment: 'models', name: queryNameA },
+      { segment: 'insights', name: insightNameA }
+    );
+
+    // Exploration B: a FRESH, UNRELATED exploration. `generateUniqueName`
+    // scopes auto-naming to each exploration's OWN state, so B's first
+    // insight is very likely named identically to A's — assert the
+    // collision precondition explicitly rather than assuming it.
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    await typeSql(page, `SELECT * FROM ${TABLE}`);
+    await runQuery(page);
+    const tableRowB = await expandSourceTable(page);
+    const { locator: columnB } = await firstNumericColumn(page, tableRowB);
+    const xSlotB = page.locator('[data-testid*="droppable-property-x"]').first();
+    await dragAndDrop(page, columnB, xSlotB);
+    const insightNameB = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+    expect(insightNameB).toBe(insightNameA);
+
+    // The SAME browser session/store still holds A's REAL data under
+    // `insightJobs[insightNameA]` (nothing clears it on tab switch) — this
+    // is exactly the precondition the bug needed. B must resolve its OWN
+    // lane regardless: replicate ExplorerChartPreview.jsx's exact
+    // exploration-scoped predicate against the live store.
+    await expect(async () => {
+      const treatedAsPromoted = await page.evaluate(name => {
+        const state = window.useStore.getState();
+        const activeId =
+          state.workspaceActiveObject?.type === 'exploration'
+            ? state.workspaceActiveObject.name
+            : null;
+        const promoted = state.workspaceExplorations?.byId?.[activeId]?.promoted || [];
+        const isRealInsight = (state.insights || []).some(i => i.name === name);
+        const isPromotedByThisExploration = promoted.some(
+          p => p.type === 'insight' && p.name === name
+        );
+        return isRealInsight && isPromotedByThisExploration;
+      }, insightNameB);
+      expect(treatedAsPromoted).toBe(false);
+    }).toPass({ timeout: 10000 });
+
+    // B's own draft still renders live, on its own draft-namespaced lane.
+    await ensureChartTabVisible(page);
+    const data = await waitForDraftInsightData(page, insightNameB);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  test('VIS-1092: an already-promoted insight is never blanked by a sibling DRAFT insight erroring', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    await typeSql(page, `SELECT * FROM ${TABLE}`);
+    await runQuery(page);
+
+    const tableRow = await expandSourceTable(page);
+    const { locator: column } = await firstNumericColumn(page, tableRow);
+    const xSlot = page.locator('[data-testid*="droppable-property-x"]').first();
+    await dragAndDrop(page, column, xSlot);
+    await ensureChartTabVisible(page);
+
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+    const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+    await waitForDraftInsightData(page, insightName);
+    await expect(page.getByTestId('chart-preview')).toBeVisible({ timeout: 15000 });
+
+    await page.getByTestId('explorer-save-button').click();
+    await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('exploration-promote-submit').click();
+    await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
+    createdObjects.push(
+      { segment: 'models', name: queryName },
+      { segment: 'insights', name: insightName }
+    );
+    await page.getByTestId('exploration-promote-cancel').click();
+
+    // Wait for the promoted insight's REAL data (the poll bridge) so the
+    // chart is genuinely in the "already rendering, promoted" state before
+    // introducing the erroring sibling.
+    await expect(async () => {
+      const real = await page.evaluate(
+        name => window.useStore.getState().insightJobs[name],
+        insightName
+      );
+      expect(real?.data).toBeTruthy();
+    }).toPass({ timeout: 20000 });
+    await expect(page.getByTestId('chart-preview')).toBeVisible({ timeout: 15000 });
+
+    // Add a SECOND insight with a permanently dangling ref — its compile
+    // pass will keep erroring.
+    await page.getByTestId('right-panel-add-insight').click();
+    const insightNames = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames
+    );
+    const badInsightName = insightNames[insightNames.length - 1];
+    const ySlot = page
+      .locator(
+        `[data-testid="insight-build-section-${badInsightName}"] [data-testid*="droppable-property-y"]`
+      )
+      .first();
+    await ySlot.getByRole('button', { name: 'query string' }).click();
+    const editable = ySlot.locator('[data-testid="ref-textarea-editable"]');
+    await editable.click();
+    await page.keyboard.type('${ref(totally_made_up_model_xyz).amount}', { delay: 5 });
+    // No blur/commit — see the sibling "not-yet-promoted input" test above
+    // for why that races the pill swap and hangs.
+
+    // The bad insight's compile pass fails after the debounce — give it
+    // room to settle, then assert the ALREADY-GOOD chart is untouched: never
+    // regressed to the whole-chart error/loading screens.
+    await page.waitForTimeout(2500);
+    await expect(page.getByTestId('chart-preview')).toBeVisible();
+    await expect(page.getByTestId('chart-preview-error')).not.toBeVisible();
+    await expect(page.getByTestId('chart-preview-loading')).not.toBeVisible();
+  });
+
+  test('VIS-1093: the promoted-poll bridge has a bounded lifetime — it surfaces a failure banner instead of spinning forever', async ({
+    page,
+  }) => {
+    test.setTimeout(75000);
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    await typeSql(page, `SELECT * FROM ${TABLE}`);
+    await runQuery(page);
+
+    const tableRow = await expandSourceTable(page);
+    const { locator: column } = await firstNumericColumn(page, tableRow);
+    const xSlot = page.locator('[data-testid*="droppable-property-x"]').first();
+    await dragAndDrop(page, column, xSlot);
+    await ensureChartTabVisible(page);
+
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+    const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+    await waitForDraftInsightData(page, insightName);
+
+    await page.getByTestId('explorer-save-button').click();
+    await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('exploration-promote-submit').click();
+    await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
+    createdObjects.push({ segment: 'models', name: queryName });
+    await page.getByTestId('exploration-promote-cancel').click();
+
+    // Delete the promoted insight IMMEDIATELY — its real data can now never
+    // land, so the poll bridge is chasing an object that's already gone.
+    // (Already removed from `createdObjects` since we're deleting it here.)
+    await page.request.delete(`${apiBase}/api/insights/${encodeURIComponent(insightName)}/`);
+
+    // ~30s (15 x 2s) polling budget, plus margin.
+    await expect(page.getByTestId('chart-preview-promoted-poll-failed')).toBeVisible({
+      timeout: 45000,
+    });
+  });
+
+  test('VIS-1095: a dedup-offer slot hand-edited before Apply is skipped, not blindly overwritten', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    await typeSql(page, `SELECT * FROM ${TABLE}`);
+    await runQuery(page);
+
+    const tableRow = await expandSourceTable(page);
+    const { locator: column } = await firstNumericColumn(page, tableRow);
+
+    // Insight A (active by default): bind x to a SUM(col) pill.
+    const xSlotA = page.locator('[data-testid*="droppable-property-x"]').first();
+    await dragAndDrop(page, column, xSlotA);
+    await expect(xSlotA).toContainText('SUM', { timeout: 10000 });
+
+    // Insight B: a SECOND insight whose OWN x slot gets the IDENTICAL
+    // SUM(col) expression (same source column, same drag) — the
+    // match-and-replace dedup detector's target.
+    await page.getByTestId('right-panel-add-insight').click();
+    const insightNames = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames
+    );
+    const insightB = insightNames[insightNames.length - 1];
+    const xSlotB = page
+      .locator(`[data-testid="insight-build-section-${insightB}"] [data-testid*="droppable-property-x"]`)
+      .first();
+    await dragAndDrop(page, column, xSlotB);
+    await expect(xSlotB).toContainText('SUM', { timeout: 10000 });
+
+    // Promote A's x-slot to a named metric via "Save as metric" — its
+    // match-and-replace dedup scan finds B's identical slot and offers a swap.
+    await xSlotA.getByTestId('pill-menu-trigger').click();
+    await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('pill-menu-save-as-metric').click();
+    await expect(page.getByTestId('save-as-metric-prompt')).toBeVisible({ timeout: 5000 });
+    const metricName = `e2e_dedup_stale_${Date.now()}`;
+    await page.getByTestId('save-as-metric-name-input').fill(metricName);
+    await page.getByTestId('save-as-metric-submit').click();
+    await expect(page.getByTestId('save-as-metric-prompt')).not.toBeVisible({ timeout: 15000 });
+    createdObjects.push({ segment: 'metrics', name: metricName });
+
+    const offerBanner = page.getByTestId('field-swap-offer-banner');
+    await expect(offerBanner).toBeVisible({ timeout: 10000 });
+
+    // BEFORE accepting, hand-edit B's slot to something else entirely —
+    // simulating the user continuing to work underneath the non-blocking
+    // (non-modal) banner.
+    const staleGuardValue = '?{${ref(totally_different_model).other_col}}';
+    await page.evaluate(
+      ({ insightB, staleGuardValue }) => {
+        window.useStore.getState().setInsightProp(insightB, 'x', staleGuardValue);
+      },
+      { insightB, staleGuardValue }
+    );
+
+    await offerBanner.getByRole('button', { name: /Update \d+ reference/ }).click();
+
+    // B's slot was NOT overwritten by the stale offer — the manual edit survived.
+    const finalValue = await page.evaluate(
+      name => window.useStore.getState().explorerInsightStates[name]?.props?.x,
+      insightB
+    );
+    expect(finalValue).toBe(staleGuardValue);
+
+    // A toast informed the user the reference had changed and was skipped.
+    await expect(page.getByText(/changed since this offer was made/i)).toBeVisible({ timeout: 5000 });
+  });
 });
