@@ -322,7 +322,14 @@ const CenterPanel = ({
             <>
               <div className="flex-1 flex flex-col min-w-0">
                 <DataSectionToolbar />
-                <div className="flex-1 min-h-0">
+                {/* P6-D12 (e2e-gap-review.md "Phase 6 delta pass") — a
+                    dedicated testid scoped to JUST the results grid (not
+                    `data-section`, which also contains `DataSectionToolbar`'s
+                    computed-column pills). Without this, an e2e assertion
+                    like "column X appears in the results grid" can be
+                    satisfied by the toolbar's own pill text instead of the
+                    grid actually materializing the column. */}
+                <div className="flex-1 min-h-0" data-testid="explorer-results-grid">
                   <DataTable
                     columns={dataTableColumns}
                     rows={paginatedRows}

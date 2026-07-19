@@ -366,6 +366,21 @@ test.describe('Exploration lifecycle (Explore 2.0 Phase 2)', () => {
       expect(data?.draft?.queries?.[0]?.sql || '').not.toContain('marker_v1');
     }).toPass({ timeout: 10000 });
 
+    // P6-D6 (e2e-gap-review.md "Phase 6 delta pass") — the poll above
+    // succeeds on the FIRST observation of "no marker_v1", which is
+    // indistinguishable from "the resurrection just hasn't happened YET" if
+    // the guarded write-queue-ordering regression returned and the stale
+    // in-flight autosave lands ~200ms-2s AFTER the discard's revert write.
+    // Give that window every chance to elapse, then re-assert the SAME
+    // final state (mirrors exploration-cross-tab-concurrency.spec.mjs's
+    // settle(2000)+re-assert pattern for exactly this class of guard) so a
+    // late resurrection can't escape green.
+    await page.waitForTimeout(2000);
+    const settledRes = await page.request.get(`${API}/api/explorations/${id}/`);
+    expect(settledRes.ok()).toBe(true);
+    const settledData = await settledRes.json();
+    expect(settledData?.draft?.queries?.[0]?.sql || '').not.toContain('marker_v1');
+
     // Reopening reactivates cleanly — no stuck syncStatus, no crash, no
     // duplicate tab.
     await expect(async () => {
