@@ -177,6 +177,26 @@ test.describe('Dashboard round-trip completion (Explore 2.0 Phase 5 — VIS-1068
     for (const { segment, name } of createdObjects.splice(0)) {
       await page.request.delete(`${apiBase}/api/${segment}/${encodeURIComponent(name)}/`).catch(() => {});
     }
+    // Root-caused via live reproduction against the sandbox (integration-gate
+    // fix cycle): the happy-path and hard-reload tests place the promoted
+    // chart into a REAL, SHARED dashboard (`placeChartInDashboardSlot`
+    // appends a brand-new row via its cache-level `saveDashboard`, per
+    // 04-bug-inventory.md D12's "first free slot" fallback). Deleting the
+    // chart above removes the object but NOT that dashboard row, leaving a
+    // permanently dangling `${ref(<deleted chart>)}` item cached on the
+    // dashboard — every subsequent test in the WHOLE gate run that resolves
+    // the full project DAG (e.g. `/api/insight-compile-draft/`'s
+    // `build_draft_overlay` -> `project.dag()`, which eagerly dereferences
+    // every ref in the project, not just the ones relevant to the insight
+    // being compiled) then 400s on an item that has nothing to do with it.
+    // This is exactly what corrupted the live sandbox and cascaded into
+    // `exploration-preview.spec.mjs`'s entire preview-lane cluster across
+    // an unrelated spec file. Discarding this story's own cached-but-never-
+    // published edits (mirrors `canvas-editing.spec.mjs` /
+    // `validation-as-save.spec.mjs`'s existing `/api/commit/discard/`
+    // cleanup precedent) reverts the dashboard back to its published state,
+    // undoing the placement along with everything else this test cached.
+    await page.request.post(`${apiBase}/api/commit/discard/`).catch(() => {});
   });
 
   test('happy path: promote → "Place in <dashboard>" → chart lands in the dashboard, return_to consumed', async ({

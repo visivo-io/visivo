@@ -552,17 +552,34 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
     const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
     await waitForDraftInsightData(page, insightName);
 
+    // The promoted-poll bridge's own data-fetch (`/api/insight-jobs/`) must
+    // never succeed for the rest of this test. Root-caused via live
+    // reproduction against the sandbox (integration-gate fix cycle): the
+    // ORIGINAL approach here — promote, then immediately DELETE the
+    // promoted Insight object — does NOT reliably reproduce "data can never
+    // land". The run-on-save pipeline promote triggers already finishes and
+    // writes real output files (per `ExplorerChartPreview.jsx`'s own
+    // docstring, "typically finishes in well under a second") well before
+    // even a single network round-trip to delete the object can land; a
+    // live trace showed the REAL (un-namespaced) `insightJobs` entry
+    // arriving with genuine data seconds after the delete request resolved.
+    // Deleting the object doesn't delete its already-produced job output.
+    // Forcing the fetch itself to fail is the only deterministic way to
+    // exercise the bounded-lifetime/failure path — mirrors
+    // `exploration-promote-tab-race.spec.mjs`'s `page.route()` precedent for
+    // gating a real in-flight request. Installed BEFORE promoting so it's in
+    // effect for every attempt the poll bridge makes once it starts.
+    await page.route('**/api/insight-jobs/**', route => route.abort('failed'));
+
     await page.getByTestId('explorer-save-button').click();
     await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
     await page.getByTestId('exploration-promote-submit').click();
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
-    createdObjects.push({ segment: 'models', name: queryName });
+    createdObjects.push(
+      { segment: 'models', name: queryName },
+      { segment: 'insights', name: insightName }
+    );
     await page.getByTestId('exploration-promote-cancel').click();
-
-    // Delete the promoted insight IMMEDIATELY — its real data can now never
-    // land, so the poll bridge is chasing an object that's already gone.
-    // (Already removed from `createdObjects` since we're deleting it here.)
-    await page.request.delete(`${apiBase}/api/insights/${encodeURIComponent(insightName)}/`);
 
     // ~30s (15 x 2s) polling budget, plus margin.
     await expect(page.getByTestId('chart-preview-promoted-poll-failed')).toBeVisible({
@@ -581,14 +598,37 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
     const tableRow = await expandSourceTable(page);
     const { locator: column } = await firstNumericColumn(page, tableRow);
 
-    // Insight A (active by default): bind x to a SUM(col) pill.
-    const xSlotA = page.locator('[data-testid*="droppable-property-x"]').first();
+    const insightA = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+
+    // Insight A (active by default): bind x to a SUM(col) pill. Scoped to
+    // A's OWN section testid (never a bare `.first()` across the whole
+    // page) — see the "Explore this" comment below for why.
+    const xSlotA = page
+      .locator(`[data-testid="insight-build-section-${insightA}"] [data-testid*="droppable-property-x"]`)
+      .first();
     await dragAndDrop(page, column, xSlotA);
     await expect(xSlotA).toContainText('SUM', { timeout: 10000 });
 
     // Insight B: a SECOND insight whose OWN x slot gets the IDENTICAL
     // SUM(col) expression (same source column, same drag) — the
-    // match-and-replace dedup detector's target.
+    // match-and-replace dedup detector's target. Creating it activates AND
+    // EXPANDS it, collapsing A (`ExplorationBuildRail.jsx`'s
+    // `isExpanded={name === activeInsightName}` — correct, intentional
+    // product behavior: a newly-added insight is focused). `InsightBuildSection.
+    // jsx`'s `{isExpanded && (...)}` UNMOUNTS a collapsed section's content
+    // entirely — its droppable-property-x/pill-menu-trigger simply leave the
+    // DOM, not just CSS-hidden. Root-caused via live reproduction against
+    // the sandbox (integration-gate fix cycle): the ORIGINAL test captured
+    // `xSlotA` via a bare page-wide `.first()` locator BEFORE B existed;
+    // once A collapsed, that lazily-re-evaluated locator silently
+    // re-resolved to B's OWN droppable/pill-menu-trigger, so the "Save as
+    // metric" flow below ran against B instead of A — the dedup/stale-guard
+    // logic itself behaved correctly for whichever insight it actually ran
+    // against, this was purely a test locator-scoping bug. Every reference
+    // to A's elements below is now scoped to A's own section testid, and A
+    // is explicitly re-expanded before being touched again.
     await page.getByTestId('right-panel-add-insight').click();
     const insightNames = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames
@@ -599,6 +639,11 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
       .first();
     await dragAndDrop(page, column, xSlotB);
     await expect(xSlotB).toContainText('SUM', { timeout: 10000 });
+
+    // Re-expand A (collapsed the instant B was created/activated above) —
+    // its droppable/pill-menu elements are unmounted until it is.
+    await page.getByTestId(`insight-toggle-${insightA}`).click();
+    await expect(xSlotA).toContainText('SUM', { timeout: 5000 });
 
     // Promote A's x-slot to a named metric via "Save as metric" — its
     // match-and-replace dedup scan finds B's identical slot and offers a swap.
@@ -614,6 +659,7 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
 
     const offerBanner = page.getByTestId('field-swap-offer-banner');
     await expect(offerBanner).toBeVisible({ timeout: 10000 });
+    await expect(offerBanner).toContainText(metricName);
 
     // BEFORE accepting, hand-edit B's slot to something else entirely —
     // simulating the user continuing to work underneath the non-blocking
