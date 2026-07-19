@@ -155,13 +155,31 @@ const ExplorationCard = ({
         )}
       </div>
 
-      {exploration.seededFrom && (
+      {(exploration.seededFrom || exploration.returnTo?.dashboard) && (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <FieldPill
-            type={exploration.seededFrom.type}
-            name={exploration.seededFrom.name}
-            label={`from ${exploration.seededFrom.type}: ${exploration.seededFrom.name}`}
-          />
+          {exploration.seededFrom && (
+            <FieldPill
+              type={exploration.seededFrom.type}
+              name={exploration.seededFrom.name}
+              label={`from ${exploration.seededFrom.type}: ${exploration.seededFrom.name}`}
+            />
+          )}
+          {/* D10 (e2e-gap-review.md "Final delta pass"): a minted `return_to`
+              placement intent was previously invisible everywhere in the UI —
+              this exploration's own card looked identical to a throwaway
+              scratch query. `type="dashboard"` pulls the same rose palette
+              every other dashboard surface uses (objectTypeConfigs.js), so
+              this reads as "destined for a dashboard", not a hand-rolled
+              color. */}
+          {exploration.returnTo?.dashboard && (
+            <FieldPill
+              type="dashboard"
+              name={exploration.returnTo.dashboard}
+              label={`→ ${exploration.returnTo.dashboard}`}
+              title={`Destined for dashboard: ${exploration.returnTo.dashboard}`}
+              data-testid={`exploration-card-${exploration.id}-return-to`}
+            />
+          )}
         </div>
       )}
 

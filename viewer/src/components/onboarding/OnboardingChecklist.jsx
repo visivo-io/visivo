@@ -5,6 +5,7 @@ import './onboarding.css';
 import { hasCompletedOnboarding, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { fireEvent } from './telemetry';
 import useChecklistProgress from './useChecklistProgress';
+import useStore from '../../stores/store';
 
 const CHECKLIST_WIDTH = 320;
 const VIEWPORT_PAD = 8;
@@ -34,6 +35,7 @@ function readPersistedPosition() {
 
 export default function OnboardingChecklist() {
   const navigate = useNavigate();
+  const createExploration = useStore(s => s.createExploration);
   const [collapsed, setCollapsed] = useState(false);
   const [dismissed, setDismissed] = useState(readDismissed());
 
@@ -136,7 +138,7 @@ export default function OnboardingChecklist() {
   if (!hasCompletedOnboarding()) return null;
   if (total > 0 && completed === total) return null;
 
-  const handleItemClick = it => {
+  const handleItemClick = async it => {
     if (it.done) return;
     fireEvent('onboarding_checklist_item_clicked', { item_id: it.id });
     // Clicking a checklist row is a reset for the Coach — even if the
@@ -147,6 +149,22 @@ export default function OnboardingChecklist() {
     const dismissed = (persisted.coach_dismissed || []).filter(id => id !== it.id);
     if (dismissed.length !== (persisted.coach_dismissed || []).length) {
       writeOnboardingState({ ...persisted, coach_dismissed: dismissed });
+    }
+    // D8 (e2e-gap-review.md delta pass): `it.route` for `mintsExploration`
+    // items (e.g. `build_model`) is the bare Explorer Home gallery — its
+    // first coach-mark target only exists INSIDE an open exploration tab.
+    // Mint one first (mirrors `DashboardExplorerRedirect` in
+    // LocalRouter.jsx: create via `createExploration`, then navigate
+    // straight to `/workspace/exploration/:id`) so the row always lands
+    // somewhere the target genuinely exists. Fails open to the bare route
+    // if the mint itself fails (network/API error), same contract as
+    // `DashboardExplorerRedirect`.
+    if (it.mintsExploration && typeof createExploration === 'function') {
+      const result = await createExploration();
+      if (result?.success && result.id) {
+        navigate(`/workspace/exploration/${result.id}`);
+        return;
+      }
     }
     navigate(it.route);
   };

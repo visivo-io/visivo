@@ -13,6 +13,14 @@ jest.mock('../api/branching', () => ({
   fetchRunLog: jest.fn(),
 }));
 
+// D7 (e2e-gap-review.md): RunsView now mounts the same H-2 project-change
+// socket listener the Workspace uses (useProjectChangeListener) — stub the
+// socket client so jsdom never attempts a real polling connection (mirrors
+// Workspace.test.jsx's identical stub).
+jest.mock('socket.io-client', () => ({
+  io: jest.fn(() => ({ on: jest.fn(), close: jest.fn() })),
+}));
+
 // RunsView and the expanded RunDetail each call useQuery; dispatch on the key so
 // the runs list and a run's log can be controlled independently.
 const mockQueries = ({ runs, log }) =>

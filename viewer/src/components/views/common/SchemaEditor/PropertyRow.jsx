@@ -238,6 +238,28 @@ export function PropertyRow({
     pillState.kind !== 'custom' &&
     !forceRawEdit;
 
+  // D3 (e2e-gap-review.md delta pass): "Custom aggregation…" is otherwise a
+  // ONE-WAY RATCHET into raw-text mode — `forceRawEdit` is only ever reset
+  // by the `useEffect` above, keyed on `path` (stable for the row's whole
+  // mount), so even retyping the EXACT original recognized shape (e.g.
+  // `sum(${ref(q).amount})`, which `pillGrammar.parse` reclassifies as a
+  // clean `aggregate` pill) left the slot stuck in raw text until an
+  // unrelated remount. `pillState` already re-parses the CURRENT raw body
+  // on every change regardless of `forceRawEdit` (it only gates whether the
+  // pill RENDERS, not whether it's computed) — so whenever the user is in
+  // raw-edit mode AND the current text re-parses as a recognized, non-
+  // opaque/custom shape, offer an explicit, safe way back: a pure view-mode
+  // toggle that never mutates the underlying value (the raw text is already
+  // valid; `onClick` just flips `forceRawEdit` back to `false` so the SAME
+  // value renders as a pill instead of text).
+  const canReturnToPill =
+    droppable &&
+    currentMode === 'query' &&
+    isQueryFormValue &&
+    forceRawEdit &&
+    pillState.kind !== 'opaque' &&
+    pillState.kind !== 'custom';
+
   const pillType = pillState.kind === 'aggregate' || pillState.kind === 'metricRef' ? 'metric' : 'dimension';
   const pillLabel =
     pillState.kind === 'aggregate'
@@ -380,16 +402,30 @@ export function PropertyRow({
                   }
                 />
               ) : (
-                <RefTextArea
-                  value={body}
-                  onChange={handleQueryChange}
-                  label=""
-                  rows={2}
-                  helperText={description}
-                  disabled={disabled}
-                  allowedTypes={['model', 'dimension', 'metric', 'input']}
-                  restrictBrackets
-                />
+                <>
+                  <RefTextArea
+                    value={body}
+                    onChange={handleQueryChange}
+                    label=""
+                    rows={2}
+                    helperText={description}
+                    disabled={disabled}
+                    allowedTypes={['model', 'dimension', 'metric', 'input']}
+                    restrictBrackets
+                  />
+                  {canReturnToPill && (
+                    <button
+                      type="button"
+                      onClick={() => setForceRawEdit(false)}
+                      disabled={disabled}
+                      data-testid={`property-${path}-back-to-pill`}
+                      title="This expression matches a recognized shape again — switch back to the pill view."
+                      className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ◂ Back to pill
+                    </button>
+                  )}
+                </>
               )}
             </div>
             {showSliceBadge && (

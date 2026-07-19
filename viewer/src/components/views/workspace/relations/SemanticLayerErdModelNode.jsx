@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Position } from 'reactflow';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import { NodeHandle } from '../../../styled/NodeHandle';
@@ -27,26 +27,57 @@ const FieldPills = ({ label, names, type }) => {
   const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
 
+  // P5-D4 (e2e-gap-review.md): a rapid double-click used to mint TWO
+  // exploration records — this pill had neither a `disabled` state nor an
+  // in-flight ref, unlike `ExplorationPane.jsx`'s `handleDuplicate`
+  // (`duplicatingRef`), which documents exactly why `disabled` alone is
+  // insufficient: a real double-click can dispatch both click events before
+  // React re-renders the button disabled. Mirrors that pattern here — a
+  // synchronous, per-field-name in-flight ref checked-and-set BEFORE the
+  // async `createExploration()` call, cleared in a `finally`. Keyed by name
+  // (not a single boolean) so exploring one field never blocks a DIFFERENT
+  // field's own pill in the same section. `disabled` state is layered on
+  // top purely as the visible affordance.
+  const exploringRef = useRef(new Set());
+  const [exploringNames, setExploringNames] = useState(() => new Set());
+
   const handleExploreField = useCallback(
     name => {
       if (!createExploration) return;
+      if (exploringRef.current.has(name)) return;
+      exploringRef.current.add(name);
+      setExploringNames(new Set(exploringRef.current));
       const seed = { type, name };
       const legacyStateOverride = buildExplorationSeedState
         ? buildExplorationSeedState(seed)
         : null;
-      createExploration(seed, null, legacyStateOverride).then(result => {
-        if (result?.success && openWorkspaceTab) {
-          openWorkspaceTab({
-            id: `exploration:${result.id}`,
-            type: 'exploration',
-            name: result.id,
-          });
-          emitWorkspaceEvent('explore_this_used', { source_type: type });
-        }
-      });
+      createExploration(seed, null, legacyStateOverride)
+        .then(result => {
+          if (result?.success && openWorkspaceTab) {
+            openWorkspaceTab({
+              id: `exploration:${result.id}`,
+              type: 'exploration',
+              name: result.id,
+            });
+            emitWorkspaceEvent('explore_this_used', { source_type: type });
+          }
+        })
+        .finally(() => {
+          exploringRef.current.delete(name);
+          setExploringNames(new Set(exploringRef.current));
+        });
     },
     [type, createExploration, buildExplorationSeedState, openWorkspaceTab]
   );
+
+  // A remount (e.g. the model's field list changing identity) must never
+  // leave a stale name stuck disabled forever.
+  useEffect(() => {
+    const inFlight = exploringRef.current;
+    return () => {
+      inFlight.clear();
+    };
+  }, []);
 
   if (!names || names.length === 0) return null;
   const colors = getTypeColors(type);
@@ -64,6 +95,7 @@ const FieldPills = ({ label, names, type }) => {
             type="button"
             data-testid={`erd-${type}-pill-${name}`}
             title={`Explore ${name}`}
+            disabled={exploringNames.has(name)}
             onPointerDown={e => e.stopPropagation()}
             onClick={e => {
               e.stopPropagation();
@@ -71,7 +103,7 @@ const FieldPills = ({ label, names, type }) => {
             }}
             className={[
               'inline-flex max-w-[120px] items-center truncate rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
-              'cursor-pointer hover:ring-1 hover:ring-inset',
+              'cursor-pointer hover:ring-1 hover:ring-inset disabled:cursor-not-allowed disabled:opacity-60',
               colors.bg,
               colors.text,
             ].join(' ')}

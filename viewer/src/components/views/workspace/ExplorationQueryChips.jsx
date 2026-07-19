@@ -6,6 +6,17 @@ import { useConfirm } from '../../common/ConfirmDialog';
 import InlineRenameInput from './InlineRenameInput';
 import useInlineRename from '../../../hooks/useInlineRename';
 import { countReferencingInsights } from '../../../utils/refWalk';
+import { getTypeColors } from '../common/objectTypeConfigs';
+
+// P5-D7 (e2e-gap-review.md final delta pass): the referenced-by badge is a
+// reference COUNT on a query/model object, so `model`'s token family (never
+// a hand-rolled `bg-teal-*`/`text-teal-*` pair) is the right source —
+// mirrors how `DraggableColumnHeader.jsx`/`AddComputedColumnPopover.jsx`
+// were migrated off hardcoded cyan/teal in the Phase 5 restyle sweep
+// (commit befa20a4, B9). `OBJECT_TYPES` is a module-scope constant, so this
+// lookup is stable and safe to hoist out of the component (matches
+// `WorkspaceDndContext.jsx`'s `DASH_COLORS` precedent).
+const REF_BADGE_COLORS = getTypeColors('model');
 
 /**
  * ExplorationQueryChips — Explore 2.0 Phase 3a (01-ux-spec.md §3).
@@ -145,7 +156,7 @@ const QueryChip = ({
         <span
           data-testid={`query-chip-${name}-ref-badge`}
           title={`${referencedCount} draft insight${referencedCount === 1 ? '' : 's'} reference this query`}
-          className="ml-0.5 inline-flex items-center gap-0.5 rounded bg-teal-100 px-1 py-0.5 text-[9px] font-semibold text-teal-700"
+          className={`ml-0.5 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-semibold ${REF_BADGE_COLORS.bg} ${REF_BADGE_COLORS.text}`}
         >
           <PiLink className="h-2.5 w-2.5" aria-hidden="true" />
           {referencedCount}
