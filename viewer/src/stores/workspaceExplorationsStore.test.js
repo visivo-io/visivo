@@ -20,6 +20,7 @@ import {
 import { buildPromoteChecklist } from './promoteChecklist';
 import { setWorkspaceTelemetryListener } from '../components/views/workspace/telemetry';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
+import { buildInsightFreshnessSignature } from '../utils/insightFreshnessSignature';
 
 jest.mock('../api/explorations');
 jest.mock('./promoteChecklist', () => ({ buildPromoteChecklist: jest.fn() }));
@@ -78,6 +79,8 @@ const reset = () => {
       openWorkspaceTab: jest.fn(),
       restoreExplorerWorkingState: jest.fn(),
       explorerInsightStates: {},
+      explorerModelStates: {},
+      explorerPromotedSignatures: {},
     });
   });
 };
@@ -1609,6 +1612,157 @@ describe('promoteExploration', () => {
         await useStore.getState().promoteExploration('exp_1', []);
       });
       expect(events.find(e => e.eventName === 'exploration_promoted')).toBeUndefined();
+    });
+  });
+
+  // P6-D1/D2/D3/D8 closure (e2e-gap-review.md "Phase 6 delta pass"): the
+  // promoted-lane freshness signature (ExplorerChartPreview.jsx) must be
+  // captured HERE — synchronously, before any save/checklist await — never
+  // at data-arrival (the replaced ref mechanism this closes out).
+  describe('promoted-lane freshness signature (P6-D1/D2/D3/D8)', () => {
+    test('records a frozen freshness signature for a promoted insight, keyed by name', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        checklistRow({
+          type: 'insight',
+          tier: 'insight',
+          name: 'churn',
+          config: { props: { type: 'scatter' } },
+        }),
+      ]);
+      seedRecord();
+      act(() => {
+        useStore.setState({
+          saveInsight: jest.fn().mockResolvedValue({ success: true }),
+          explorerInsightStates: { churn: { type: 'scatter', props: { x: 'a' }, interactions: [] } },
+          explorerModelStates: { m: { sql: 'select 1', sourceName: 'src', queryResult: { rows: [] } } },
+        });
+      });
+      explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [{ type: 'insight', name: 'churn' }]);
+      });
+
+      const expectedSig = buildInsightFreshnessSignature(
+        { type: 'scatter', props: { x: 'a' }, interactions: [] },
+        { m: { sql: 'select 1', sourceName: 'src', queryResult: { rows: [] } } }
+      );
+      expect(useStore.getState().explorerPromotedSignatures.churn).toBe(expectedSig);
+    });
+
+    test('captures the signature BEFORE any save await — a mid-save edit is never absorbed into the recorded signature', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        checklistRow({
+          type: 'insight',
+          tier: 'insight',
+          name: 'churn',
+          config: { props: { type: 'scatter' } },
+        }),
+      ]);
+      seedRecord();
+      act(() => {
+        useStore.setState({
+          explorerInsightStates: { churn: { type: 'scatter', props: { x: 'pre-edit' }, interactions: [] } },
+          explorerModelStates: {},
+        });
+      });
+      const preEditSignature = buildInsightFreshnessSignature(
+        { type: 'scatter', props: { x: 'pre-edit' }, interactions: [] },
+        {}
+      );
+
+      // saveInsight simulates an edit racing the save's own network await —
+      // exactly the P6-D3/D8 scenario (an edit between promote-click and the
+      // run/save completing).
+      act(() => {
+        useStore.setState({
+          saveInsight: jest.fn(async () => {
+            useStore.setState({
+              explorerInsightStates: {
+                churn: { type: 'scatter', props: { x: 'post-edit' }, interactions: [] },
+              },
+            });
+            return { success: true };
+          }),
+        });
+      });
+      explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [{ type: 'insight', name: 'churn' }]);
+      });
+
+      // Sanity: the mid-save edit really did land in the store...
+      expect(useStore.getState().explorerInsightStates.churn.props.x).toBe('post-edit');
+      // ...but the recorded signature reflects the PRE-edit config, frozen at
+      // promote-invoke time, never the post-edit one.
+      expect(useStore.getState().explorerPromotedSignatures.churn).toBe(preEditSignature);
+    });
+
+    test('never records a signature for a non-insight row (model/chart/metric/dimension)', async () => {
+      buildPromoteChecklist.mockResolvedValue([checklistRow()]); // a model row
+      seedRecord();
+      act(() => useStore.setState({ saveModel: jest.fn().mockResolvedValue({ success: true }) }));
+      explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+      });
+
+      expect(useStore.getState().explorerPromotedSignatures).toEqual({});
+    });
+
+    test('never records a signature for an insight row whose save FAILED', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        checklistRow({ type: 'insight', tier: 'insight', name: 'bad_insight', config: { props: {} } }),
+      ]);
+      seedRecord();
+      act(() => {
+        useStore.setState({
+          explorerInsightStates: { bad_insight: { type: 'scatter', props: {}, interactions: [] } },
+          saveInsight: jest.fn().mockResolvedValue({ success: false, error: 'server rejected it' }),
+        });
+      });
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [{ type: 'insight', name: 'bad_insight' }]);
+      });
+
+      expect(useStore.getState().explorerPromotedSignatures).toEqual({});
+    });
+
+    test('re-promoting the same insight OVERWRITES its previously-recorded signature, never accumulates stale entries', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: { props: {} } }),
+      ]);
+      seedRecord();
+      act(() => {
+        useStore.setState({
+          saveInsight: jest.fn().mockResolvedValue({ success: true }),
+          explorerInsightStates: { churn: { type: 'scatter', props: { x: 'v1' }, interactions: [] } },
+        });
+      });
+      explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [{ type: 'insight', name: 'churn' }]);
+      });
+      const firstSig = useStore.getState().explorerPromotedSignatures.churn;
+
+      act(() => {
+        useStore.setState({
+          explorerInsightStates: { churn: { type: 'scatter', props: { x: 'v2' }, interactions: [] } },
+        });
+      });
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [{ type: 'insight', name: 'churn' }]);
+      });
+
+      const secondSig = useStore.getState().explorerPromotedSignatures.churn;
+      expect(secondSig).not.toBe(firstSig);
+      expect(secondSig).toBe(
+        buildInsightFreshnessSignature({ type: 'scatter', props: { x: 'v2' }, interactions: [] }, {})
+      );
     });
   });
 });

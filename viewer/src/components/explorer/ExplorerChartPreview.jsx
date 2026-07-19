@@ -7,6 +7,7 @@ import { usePreviewInputDependencies } from '../views/workspace/usePreviewInputD
 import PreviewInputControls from '../views/workspace/PreviewInputControls';
 import useStore from '../../stores/store';
 import { emitTimeToFirstChart } from '../views/workspace/telemetry';
+import { buildInsightFreshnessSignature } from '../../utils/insightFreshnessSignature';
 
 // Stable empty-array reference (avoids a fresh `[]` literal defeating memoized
 // selectors/`useMemo` deps every render — see ExplorationBuildRail.jsx's
@@ -61,31 +62,59 @@ const MAX_PROMOTED_POLL_ATTEMPTS = 15;
  * own `promoted[]` trail (`workspaceExplorations.byId[activeExplorationId]`)
  * actually recorded promoting an insight of that name.
  *
- * PROMOTED-DATA FRESHNESS (P5-D1, e2e-gap-review.md "Final delta pass"): the
- * promoted-lane switch above was a ONE-WAY RATCHET — once `promotedNames`
- * included a name and `insightJobs[name].data` existed, every future render
- * kept preferring the real key forever, even after the user kept editing
- * that insight's props/interactions post-promote ("promote early, keep
- * refining" silently broke: the chart froze on the promote-moment snapshot).
- * `promotedDataSignatureRef` below remembers, per name, the insight-state
- * signature (type/props/interactions) that was live the LAST time we saw a
- * given `insightJobs[name].data` reference — i.e. "what the real data is
- * believed to represent." A promoted name only resolves to the real key when
- * the CURRENT signature still matches that captured one; any edit since
- * diverges the signature and falls back to the draft-namespaced key, which
- * resumes the normal live draft-compile preview immediately (never waits on
- * a re-run). Re-promoting and a fresh run completing lands a NEW `data`
- * reference, which re-captures the (now current, unedited) signature and
- * flips back to the real key — no stale lock survives a genuine edit, and no
- * manual reset is needed on re-promote.
+ * PROMOTED-DATA FRESHNESS (P5-D1 -> P6-D1/D2/D3/D8 closure,
+ * e2e-gap-review.md "Phase 6 delta pass"): the promoted-lane switch above
+ * was originally a ONE-WAY RATCHET — once `promotedNames` included a name
+ * and `insightJobs[name].data` existed, every future render kept preferring
+ * the real key forever, even after the user kept editing that insight's
+ * props/interactions post-promote ("promote early, keep refining" silently
+ * broke: the chart froze on the promote-moment snapshot). The FIRST fix
+ * (P5-D1) tried to repair this with a component-instance ref
+ * (`promotedDataSignatureRef`) that captured "what the insight looked like"
+ * the moment a new `data` reference was FIRST SEEN — but that mechanism was
+ * wrong in three ways the Phase 6 delta review (P6-D1/D2/D3/D8) confirmed:
+ *   1. A component-instance ref dies on remount — any tab park/resume (or
+ *      exploration switch) unmounts/remounts this component, so the ref was
+ *      always empty on resume and the FIRST post-resume render would
+ *      recapture whatever the CURRENT (possibly since-edited) insight state
+ *      was as if it described the STALE data already sitting in
+ *      `insightJobs` — resurrecting the exact "stuck on stale data" bug the
+ *      fix was supposed to have closed (P6-D1, HIGH).
+ *   2. The signature was captured at DATA-ARRIVAL time, not at
+ *      promote-invoke time — an edit made between clicking promote and the
+ *      run's data landing got silently absorbed as if the (pre-edit) data
+ *      represented the (post-edit) state (P6-D3/D8).
+ *   3. The signature only ever covered `insightStates[name]`
+ *      (type/props/interactions) — a promoted MODEL's SQL/row-count changing
+ *      post-promote left the insight signature untouched, so the real lane
+ *      never unlocked for a model-only edit (P6-D2).
+ *
+ * The fix: `explorerStore.js`'s `explorerPromotedSignatures` (a durable,
+ * per-exploration STORE field, not a component ref) records each promoted
+ * insight's full `insightFreshnessSignature.js` signature — type, props,
+ * interactions, AND every referenced model's SQL/source/row-count, the exact
+ * same fingerprint `useDraftInsightPreview.js`'s own recompute trigger uses —
+ * captured SYNCHRONOUSLY by `promoteExploration`
+ * (`workspaceExplorationsStore.js`) at the moment promote was invoked, frozen
+ * before any save/run async work runs. Because it lives in the same Zustand
+ * slice as `explorerInsightStates`, it round-trips through the exact same
+ * `snapshotExplorerWorkingState`/`restoreExplorerWorkingState` park/resume
+ * cycle — surviving a remount instead of resetting to empty. Below, a
+ * promoted name resolves to the real key ONLY when the CURRENT full
+ * signature still equals the recorded one; any divergence (an insight edit,
+ * OR a referenced model edit, at ANY point after promote) falls back to the
+ * draft-namespaced key, which resumes the normal live draft-compile preview
+ * immediately. There is no data-reference-triggered recapture at all — only
+ * a fresh `promoteExploration` call ever writes a new signature.
  *
  * (Residual, out of scope for this pass: two DIFFERENT explorations that
  * both hold a draft insight literally named the same as a just-(re)promoted
- * insight can still observe each other's fresh data for that name — real
+ * insight can still observe each other's fresh data for that name if BOTH
+ * happen to have recorded an identical signature for that name — real
  * cross-exploration isolation would require scoping `insightJobs` itself per
  * exploration, a larger change to the shared run/dashboard rendering
  * pipeline. Tracked as a follow-up; this fix closes the reported "stuck
- * forever" symptom, which is the common case.)
+ * forever"/"silently reverts" symptoms, which are the common case.)
  *
  * PER-INSIGHT LOADING/ERROR (VIS-1092): `isLoading`/`error` handed to
  * `<ChartPreview>` (which gates the WHOLE chart render on them) are computed
@@ -100,6 +129,10 @@ const ExplorerChartPreview = () => {
   const projectId = useStore(s => s.project?.id);
   const chartInsightNames = useStore(s => s.explorerChartInsightNames);
   const insightStates = useStore(s => s.explorerInsightStates);
+  const modelStates = useStore(s => s.explorerModelStates);
+  // P6-D1/D2/D3/D8 — the durable, store-backed promoted-lane freshness
+  // signature (replaces the component-instance ref; see the docstring above).
+  const promotedSignatures = useStore(s => s.explorerPromotedSignatures);
   const realInsights = useStore(s => s.insights);
   const storeInsightJobs = useStore(s => s.insightJobs);
   // VIS-1091 — the ACTIVE exploration's own promoted[] trail. This component
@@ -167,24 +200,20 @@ const ExplorerChartPreview = () => {
     useInsightsData(projectId, promotedNames, undefined, { cacheKey: pollTick }) || {};
   const promotedPollFailed = hasPromotedWithoutRealData && (pollExhausted || !!promotedFetchError);
 
-  // P5-D1 — signature-freshness cache backing the promoted-lane switch below.
-  // Ref (not state): purely a "what did the current real data last look like
-  // for this name" memo, mutated in-render (an accepted pattern for this
-  // shape of derived comparison, matching `pollAttemptsRef` elsewhere in this
-  // file) — it never itself triggers a re-render, only informs this render's
-  // own key resolution.
-  const promotedDataSignatureRef = useRef({});
-  const insightSignature = name => {
-    const s = insightStates[name];
-    return JSON.stringify({ type: s?.type, props: s?.props, interactions: s?.interactions });
-  };
+  // P6-D1/D2/D3/D8 — the shared signature (insight type/props/interactions
+  // PLUS every referenced model's SQL/source/row-count), computed the exact
+  // same way `useDraftInsightPreview.js`'s own recompute trigger is.
+  const insightSignature = name => buildInsightFreshnessSignature(insightStates[name], modelStates);
 
   // Per-insight lane: the REAL name once its real data has actually landed
-  // AND the insight hasn't been edited since that data was captured (never
-  // just because it's promoted — avoids both a flash of empty/error chart
-  // state in the gap between promote and the run finishing, and a stale
-  // snapshot surviving edits made after promotion); the draft-namespaced key
-  // otherwise.
+  // AND the CURRENT full signature still matches the one recorded at
+  // promote-invoke time (never just because it's promoted — avoids both a
+  // flash of empty/error chart state in the gap between promote and the run
+  // finishing, and a stale snapshot surviving an insight OR model edit made
+  // after promotion); the draft-namespaced key otherwise. No data-reference-
+  // triggered recapture here at all — `promotedSignatures` is only ever
+  // written by `promoteExploration` (see `explorerStore.js`'s
+  // `recordPromotedInsightSignature` and this file's docstring).
   const previewInsightKeys = useMemo(
     () =>
       chartInsightNames.map(name => {
@@ -192,18 +221,12 @@ const ExplorerChartPreview = () => {
         const data = storeInsightJobs?.[name]?.data;
         if (!data) return draftInsightKey(name);
 
-        const cache = promotedDataSignatureRef.current[name];
-        const currentSig = insightSignature(name);
-        if (!cache || cache.data !== data) {
-          // New (or first-seen) real data for this name — capture what the
-          // insight looks like right now as the signature it represents.
-          promotedDataSignatureRef.current[name] = { data, signature: currentSig };
-          return name;
-        }
-        return cache.signature === currentSig ? name : draftInsightKey(name);
+        const recordedSig = promotedSignatures?.[name];
+        if (!recordedSig) return draftInsightKey(name);
+        return recordedSig === insightSignature(name) ? name : draftInsightKey(name);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [chartInsightNames, promotedNames, storeInsightJobs, insightStates]
+    [chartInsightNames, promotedNames, storeInsightJobs, promotedSignatures, insightStates, modelStates]
   );
 
   // VIS-1092 — `<ChartPreview>` (unlike `Chart.jsx`) gates its ENTIRE render
