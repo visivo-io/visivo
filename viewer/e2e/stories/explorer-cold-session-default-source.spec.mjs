@@ -117,8 +117,16 @@ test.describe('Cold-session default-source race (VIS-1082)', () => {
 
     // Release the gate — defaults land. The fix's rebind effect
     // (applyResolvedDefaultSource, explorerStore.js) must correct the
-    // already-created tab's source to the real project default.
+    // already-created tab's source to the real project default. Wait for
+    // the actual HTTP response (not a blind timeout) before unrouting —
+    // `releaseDefaults()` only resolves the gate promise, it doesn't wait
+    // for the still-suspended route handler's own `await route.continue()`
+    // to actually run; unrouting while that handler is mid-resolution races
+    // Playwright's own unroute cleanup against it ("Route is already
+    // handled").
+    const responsePromise = page.waitForResponse(res => res.url().includes('/api/defaults/'));
     releaseDefaults();
+    await responsePromise;
     await page.unroute('**/api/defaults/**');
 
     await expect(page.getByTestId('source-selector')).toContainText('local-duckdb', {

@@ -66,6 +66,14 @@ export default defineConfig({
         '**/exploration-promote.spec.mjs',
         '**/exploration-preview.spec.mjs',
         '**/save-as-metric.spec.mjs',
+        // Gate Hardening (VIS-1082-1086 + P4-D1/P4-D4): race-inducing,
+        // route-intercepting, backend-state-mutating specs — serial only.
+        '**/exploration-promote-tab-race.spec.mjs',
+        '**/exploration-cross-session-delete.spec.mjs',
+        '**/exploration-concurrent-rename-and-draft-sync.spec.mjs',
+        '**/explorer-create-race.spec.mjs',
+        '**/exploration-duplicate-race.spec.mjs',
+        '**/explorer-cold-session-default-source.spec.mjs',
         // B14 part 2: its exploration-workbench anchor check now mints a
         // real exploration too (the old standalone /explorer route let it
         // assume anchors render eagerly with no open document; the new

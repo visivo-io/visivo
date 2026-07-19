@@ -197,7 +197,17 @@ test.describe('Double-click create doors mint exactly one record (VIS-1086)', ()
     await page.getByTestId('exploration-duplicate-button').click();
     await expect(page.getByTestId('exploration-duplicate-button')).toBeDisabled({ timeout: 3000 });
 
+    // Wait for the actual HTTP response (not a blind timeout) before
+    // unrouting — `release()` only resolves the gate promise, it doesn't
+    // wait for the still-suspended route handler's own `await route.continue()`
+    // to actually run. Unrouting while that handler is mid-resolution races
+    // Playwright's own unroute cleanup against our handler's continue() call
+    // ("Route is already handled").
+    const responsePromise = page.waitForResponse(
+      res => res.url().endsWith('/api/explorations/') && res.request().method() === 'POST'
+    );
     release();
+    await responsePromise;
     await page.unroute('**/api/explorations/');
     await expect(page.getByTestId('exploration-duplicate-button')).toBeEnabled({ timeout: 10000 });
   });

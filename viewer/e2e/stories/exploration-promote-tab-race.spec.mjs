@@ -218,10 +218,20 @@ test.describe('Keyboard shortcut suppression + write serialization mid-promote (
     );
     expect(new URL(page.url()).pathname).toBe(`/workspace/exploration/${id}`);
 
-    // Release the gate — let the promote loop actually finish.
+    // Release the gate — let the promote loop actually finish. Unroute only
+    // AFTER the success indicator confirms every record-promotion request
+    // (there are two — one per promoted row) has actually resolved through
+    // our handler's own `route.continue()` — `releaseRecordPromotion()`
+    // only resolves the gate promise, it doesn't wait for the handler(s)
+    // still suspended on it to actually resume and call `continue()`.
+    // Unrouting while one is still mid-resolution races Playwright's own
+    // unroute cleanup against our handler's continue() call ("Route is
+    // already handled"), which fails the promotion request and cascades
+    // into leaked, uncleaned-up backend objects for the next spec to trip
+    // over.
     releaseRecordPromotion();
-    await page.unroute('**/record-promotion/');
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
+    await page.unroute('**/record-promotion/');
     createdObjects.push(
       { segment: 'models', name: queryName },
       { segment: 'insights', name: insightName }
@@ -240,11 +250,26 @@ test.describe('Keyboard shortcut suppression + write serialization mid-promote (
   test('the shortcut resumes working normally once the promote modal is closed', async ({ page }) => {
     await gotoExplorerHome(page);
     await newExploration(page);
+    const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
     await bindXSlotToNumericColumn(page);
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
 
     await openPromoteModal(page);
     await page.getByTestId('exploration-promote-submit').click();
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
+    // This test promotes too (submit -> success, same as the first test) —
+    // without registering the promoted objects for cleanup, this leaks a
+    // real "model"/"insight" pair (the exploration's own default auto-names)
+    // that then collides with every OTHER spec's own fresh explorations,
+    // which auto-name their first query/insight the exact same way. Root-
+    // caused live: this exact leak cascaded into 3/4 of exploration-promote.spec.mjs's
+    // OWN tests failing on an unrelated run.
+    createdObjects.push(
+      { segment: 'models', name: queryName },
+      { segment: 'insights', name: insightName }
+    );
     await page.getByTestId('exploration-promote-cancel').click();
     await expect(page.getByTestId('exploration-promote-modal')).not.toBeVisible({ timeout: 5000 });
 
