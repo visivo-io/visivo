@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import SemanticLayerCanvas from './SemanticLayerCanvas';
 import useStore from '../../../../stores/store';
 import { useRelationErdDag } from './useRelationErdDag';
@@ -31,6 +31,7 @@ jest.mock('./JoinOperatorPopover', () => ({
 
 const rfProps = { current: null };
 const mockFitView = jest.fn();
+const mockSetCenter = jest.fn();
 
 jest.mock('reactflow', () => {
   const MockReactFlow = props => {
@@ -73,7 +74,7 @@ jest.mock('reactflow', () => {
         const change = changes.find(c => c.id === node.id && c.position);
         return change ? { ...node, position: change.position } : node;
       }),
-    useReactFlow: () => ({ fitView: mockFitView, screenToFlowPosition: p => p }),
+    useReactFlow: () => ({ fitView: mockFitView, setCenter: mockSetCenter, screenToFlowPosition: p => p }),
     useNodesInitialized: () => true,
     // RelationLinkEdge module-level imports (it's required transitively).
     BaseEdge: () => null,
@@ -157,6 +158,151 @@ describe('SemanticLayerCanvas', () => {
     expect(screen.getByTestId('semantic-erd-model-node-orders')).toBeInTheDocument();
     expect(screen.getByTestId('erd-metric-pill-total')).toBeInTheDocument();
     expect(screen.getByTestId('erd-dimension-pill-status')).toBeInTheDocument();
+  });
+
+  // VIS-1069 — Semantic Layer field pills gain "Explore this" back-links.
+  describe('"Explore this" field pills', () => {
+    const modelWithFields = () => ({
+      models: [
+        {
+          name: 'orders',
+          config: {
+            metrics: [{ name: 'total' }],
+            dimensions: [{ name: 'status' }],
+          },
+        },
+      ],
+    });
+
+    const nodesWithFields = () => ({
+      nodes: [
+        {
+          id: 'erd-model-orders',
+          type: 'erdModelNode',
+          position: { x: 0, y: 0 },
+          data: { name: 'orders', columns: ['id'], metrics: ['total'], dimensions: ['status'] },
+        },
+      ],
+      edges: [],
+    });
+
+    it('clicking a metric pill mints a pre-wired exploration and opens its tab', async () => {
+      const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new' });
+      const buildExplorationSeedState = jest.fn().mockReturnValue({ modelTabs: ['query_1'] });
+      const openWorkspaceTab = jest.fn();
+      mockStore({ ...modelWithFields(), createExploration, buildExplorationSeedState, openWorkspaceTab });
+      useRelationErdDag.mockReturnValue(nodesWithFields());
+
+      render(<SemanticLayerCanvas />);
+      fireEvent.click(screen.getByTestId('erd-metric-pill-total'));
+
+      expect(buildExplorationSeedState).toHaveBeenCalledWith({ type: 'metric', name: 'total' });
+      await waitFor(() =>
+        expect(createExploration).toHaveBeenCalledWith(
+          { type: 'metric', name: 'total' },
+          null,
+          { modelTabs: ['query_1'] }
+        )
+      );
+      await waitFor(() =>
+        expect(openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'exploration:exp_new',
+          type: 'exploration',
+          name: 'exp_new',
+        })
+      );
+    });
+
+    it('does not open a tab when creation fails', async () => {
+      const createExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+      const openWorkspaceTab = jest.fn();
+      mockStore({ ...modelWithFields(), createExploration, openWorkspaceTab });
+      useRelationErdDag.mockReturnValue(nodesWithFields());
+
+      render(<SemanticLayerCanvas />);
+      fireEvent.click(screen.getByTestId('erd-dimension-pill-status'));
+
+      await waitFor(() => expect(createExploration).toHaveBeenCalled());
+      expect(openWorkspaceTab).not.toHaveBeenCalled();
+    });
+  });
+
+  // VIS-1069 — one-shot ERD node-focus intent (mirrors workspaceLensIntent).
+  describe('workspaceSemanticLayerFocusIntent', () => {
+    const modelWithFields = () => ({
+      models: [
+        {
+          name: 'orders',
+          config: { metrics: [{ name: 'total' }], dimensions: [{ name: 'status' }] },
+        },
+      ],
+    });
+
+    const nodesWithFields = () => ({
+      nodes: [
+        {
+          id: 'erd-model-orders',
+          type: 'erdModelNode',
+          position: { x: 40, y: 20 },
+          data: { name: 'orders', columns: ['id'], metrics: ['total'], dimensions: ['status'] },
+        },
+      ],
+      edges: [],
+    });
+
+    it('a model-targeted intent centers on that node and self-clears', async () => {
+      const clearWorkspaceSemanticLayerFocusIntent = jest.fn();
+      mockStore({
+        ...modelWithFields(),
+        workspaceSemanticLayerFocusIntent: { objectKey: 'model:orders' },
+        clearWorkspaceSemanticLayerFocusIntent,
+      });
+      useRelationErdDag.mockReturnValue(nodesWithFields());
+
+      render(<SemanticLayerCanvas />);
+
+      await waitFor(() =>
+        expect(mockSetCenter).toHaveBeenCalledWith(40 + 130, 20 + 60, { zoom: 1, duration: 400 })
+      );
+      expect(clearWorkspaceSemanticLayerFocusIntent).toHaveBeenCalled();
+    });
+
+    it('a metric-targeted intent resolves to its PARENT MODEL node (fields have no node of their own)', async () => {
+      const clearWorkspaceSemanticLayerFocusIntent = jest.fn();
+      mockStore({
+        ...modelWithFields(),
+        workspaceSemanticLayerFocusIntent: { objectKey: 'metric:total' },
+        clearWorkspaceSemanticLayerFocusIntent,
+      });
+      useRelationErdDag.mockReturnValue(nodesWithFields());
+
+      render(<SemanticLayerCanvas />);
+
+      await waitFor(() => expect(mockSetCenter).toHaveBeenCalledWith(170, 80, { zoom: 1, duration: 400 }));
+      expect(clearWorkspaceSemanticLayerFocusIntent).toHaveBeenCalled();
+    });
+
+    it('an unresolvable intent still self-clears (never lingers)', async () => {
+      const clearWorkspaceSemanticLayerFocusIntent = jest.fn();
+      mockStore({
+        ...modelWithFields(),
+        workspaceSemanticLayerFocusIntent: { objectKey: 'metric:does_not_exist' },
+        clearWorkspaceSemanticLayerFocusIntent,
+      });
+      useRelationErdDag.mockReturnValue(nodesWithFields());
+
+      render(<SemanticLayerCanvas />);
+
+      await waitFor(() => expect(clearWorkspaceSemanticLayerFocusIntent).toHaveBeenCalled());
+      expect(mockSetCenter).not.toHaveBeenCalled();
+    });
+
+    it('no intent set never calls setCenter', () => {
+      mockStore(modelWithFields());
+      useRelationErdDag.mockReturnValue(nodesWithFields());
+      render(<SemanticLayerCanvas />);
+      expect(mockSetCenter).not.toHaveBeenCalled();
+    });
   });
 
   it('renders a relation as its own node + two link edges', () => {

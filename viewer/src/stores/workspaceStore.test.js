@@ -676,6 +676,27 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceLensIntent).toBeNull();
   });
 
+  test('workspaceSemanticLayerFocusIntent: set, validate, and clear (VIS-1069)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent({ objectKey: 'metric:revenue' });
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toEqual({
+      objectKey: 'metric:revenue',
+    });
+    // An invalid shape (no objectKey) is rejected without clobbering the
+    // current intent — mirrors `setWorkspaceLensIntent`'s guard.
+    act(() => {
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent({});
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toEqual({
+      objectKey: 'metric:revenue',
+    });
+    act(() => {
+      useStore.getState().clearWorkspaceSemanticLayerFocusIntent();
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toBeNull();
+  });
+
   // Outline tree (VIS-793 / Track F F-3) ------------------------------------
 
   test('setWorkspaceOutlineSelectedKey updates the selection key', () => {

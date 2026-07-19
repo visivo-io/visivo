@@ -358,4 +358,62 @@ describe('ExplorationPromoteModal', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
   });
+
+  // VIS-1069 — Semantic Layer reciprocal ("View in Semantic Layer").
+  describe('View in Semantic Layer', () => {
+    const promoteFieldResult = (extra = {}) => ({
+      success: true,
+      results: [{ type: 'metric', name: 'churn_rate', tier: 'field', success: true, error: null }],
+      reclassificationOffers: [],
+      ...extra,
+    });
+
+    test('no offer when nothing metric/dimension-shaped was promoted this run', async () => {
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue({
+          success: true,
+          results: [{ type: 'model', name: 'orders_q', success: true, error: null }],
+          reclassificationOffers: [],
+        }),
+      });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-success');
+      expect(
+        screen.queryByTestId('exploration-promote-semantic-layer-offer')
+      ).not.toBeInTheDocument();
+    });
+
+    test('promoting a metric offers "View in Semantic Layer"; accepting sets the focus intent, opens the tab, and closes', async () => {
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'field', type: 'metric', name: 'churn_rate' })]);
+      const setWorkspaceSemanticLayerFocusIntent = jest.fn();
+      const openWorkspaceTab = jest.fn();
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue(promoteFieldResult()),
+        setWorkspaceSemanticLayerFocusIntent,
+        openWorkspaceTab,
+      });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+      const offer = await screen.findByTestId('exploration-promote-semantic-layer-offer');
+      expect(offer).toHaveTextContent('churn_rate');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-view-in-semantic-layer'));
+
+      expect(setWorkspaceSemanticLayerFocusIntent).toHaveBeenCalledWith({
+        objectKey: 'metric:churn_rate',
+      });
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'semantic-layer:semantic-layer',
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
 });

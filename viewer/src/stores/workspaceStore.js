@@ -135,6 +135,15 @@ const createWorkspaceSlice = (set, get) => ({
   // so it can never leak to a later selection. The consuming pane clears it.
   workspaceLensIntent: null, // { objectKey: 'type:name', lens: 'lineage' } | null
 
+  // One-shot Semantic Layer ERD node-focus request (VIS-1069, mirrors
+  // `workspaceLensIntent`'s shape/lifecycle exactly). Promoting a
+  // metric/dimension's "View in Semantic Layer" offer sets this ONE
+  // statement before navigating to the semantic-layer view; the ERD
+  // (`SemanticLayerCanvas.jsx`) reads it once, pans/centers on the field's
+  // parent model node, and self-clears — never a lingering focus request
+  // that would hijack a later, unrelated ERD visit.
+  workspaceSemanticLayerFocusIntent: null, // { objectKey: 'type:name' } | null
+
   // Pivot playground draft (table `build` lens, VIS-1008) --------------------
   // The in-flight pivot config the drag-to-shelf builder owns while the user
   // composes it: `{ tableName, columns, rows, values }`. `columns`/`rows` are
@@ -599,6 +608,16 @@ const createWorkspaceSlice = (set, get) => ({
 
   clearWorkspaceLensIntent: () => {
     set({ workspaceLensIntent: null });
+  },
+
+  // VIS-1069 — see `workspaceSemanticLayerFocusIntent`'s declaration above.
+  setWorkspaceSemanticLayerFocusIntent: (intent) => {
+    if (intent && !intent.objectKey) return;
+    set({ workspaceSemanticLayerFocusIntent: intent || null });
+  },
+
+  clearWorkspaceSemanticLayerFocusIntent: () => {
+    set({ workspaceSemanticLayerFocusIntent: null });
   },
 
   // ------------------------------------------------------------------------
