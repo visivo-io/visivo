@@ -142,12 +142,22 @@ test.describe('The "Explore this" flywheel loop (Explore 2.0 Phase 5)', () => {
     await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
     const explorationId2 = new URL(page.url()).pathname.split('/').pop();
 
-    // Seed provenance + the pre-wired query referencing the model (the
-    // buildExplorationSeedState "model" branch — `SELECT * FROM ${ref(model)}`).
+    // Seed provenance + the pre-wired query. `buildExplorationSeedState`'s
+    // "model" branch reuses the model's OWN literal SQL (never a
+    // `${ref(model)}` context-string expression) — the scratch SQL editor's
+    // execution pipeline (`useModelQueryJob` -> `/api/model-query-jobs/`)
+    // sends the query text VERBATIM to the source with zero ref-resolution,
+    // so an unresolved `${ref(...)}` reaches DuckDB and fails to parse.
+    // Root-caused via live reproduction against the sandbox (integration-
+    // gate fix cycle): the model's own SQL (`SELECT * FROM ${TABLE}`) is
+    // exactly what the model was published with in Step 0 above, so
+    // asserting it contains the real table name proves the seed is both
+    // genuinely runnable AND tied to this model — `seeded_from` is the
+    // provenance record, not the query text.
     await expect(async () => {
       const exploration = await fetchExploration(page, explorationId2);
       expect(exploration.seeded_from).toEqual({ type: 'model', name: modelName });
-      expect((exploration.draft.queries || [])[0]?.sql || '').toContain(modelName);
+      expect((exploration.draft.queries || [])[0]?.sql || '').toContain(TABLE);
     }).toPass({ timeout: 15000 });
 
     // --- Step 2: run the seeded query, add a computed METRIC column, promote it. ---
