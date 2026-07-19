@@ -283,7 +283,7 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
         ) : error ? (
           <div
             data-testid="model-preview-error"
-            className="rounded bg-red-50 p-3 font-mono text-sm text-red-700"
+            className="rounded bg-highlight-50 p-3 font-mono text-sm text-highlight-700"
           >
             {typeof error === 'string' ? error : error?.message || String(error)}
           </div>

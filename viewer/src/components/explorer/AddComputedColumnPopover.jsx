@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { PiPlus, PiX, PiCheckCircle, PiWarningCircle, PiSpinner } from 'react-icons/pi';
 import { recordOnboardingAction } from '../onboarding/onboardingState';
+import { getTypeColors } from '../views/common/objectTypeConfigs';
 
 const DEBOUNCE_MS = 750;
 
@@ -237,11 +238,7 @@ const AddComputedColumnPopover = ({
                   Valid expression
                   {detectedType && (
                     <span
-                      className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        detectedType === 'metric'
-                          ? 'bg-cyan-100 text-cyan-700'
-                          : 'bg-teal-100 text-teal-700'
-                      }`}
+                      className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${getTypeColors(detectedType).bg} ${getTypeColors(detectedType).text}`}
                       data-testid="detected-type-badge"
                     >
                       {detectedType === 'metric' ? 'Metric' : 'Dimension'}

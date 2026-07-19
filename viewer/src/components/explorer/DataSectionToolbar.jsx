@@ -93,7 +93,7 @@ const DataSectionToolbar = () => {
                     : `Click to edit ${col.name}`
                 }
                 className={
-                  isFailed ? 'bg-red-50 text-red-800 border-red-200' : ''
+                  isFailed ? 'bg-highlight-50 text-highlight-800 border-highlight-200' : ''
                 }
               />
             </span>

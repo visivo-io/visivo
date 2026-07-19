@@ -10,6 +10,7 @@ import useInlineRename from '../../../hooks/useInlineRename';
 import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import { legacyStateToDraft, draftToLegacyState } from './explorationLegacyBridge';
 import { computeExplorationStaleness } from './explorationStaleness';
+import CenteredFrameState from '../common/CenteredFrameState';
 
 const ExplorationIcon = getTypeIcon('exploration');
 const EXPLORATION_COLORS = getTypeColors('exploration');
@@ -19,23 +20,6 @@ const EXPLORATION_COLORS = getTypeColors('exploration');
 // already re-arms that internally on every call); this one just throttles
 // how often we bother computing a snapshot from the legacy store at all.
 const LIVE_SYNC_DEBOUNCE_MS = 600;
-
-const FrameState = ({ testId, title, body, icon: Icon = PiCircleNotch, spin = false }) => (
-  <div data-testid={testId} className="flex flex-1 items-center justify-center bg-gray-50 p-12">
-    <div className="max-w-[420px] rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <Icon
-        className={`mx-auto mb-2 h-6 w-6 text-gray-300 ${spin ? 'animate-spin' : ''}`}
-        aria-hidden="true"
-      />
-      <h2 className="text-[15px] font-semibold text-gray-900">{title}</h2>
-      {body && (
-        <p className="mx-auto mt-1.5 max-w-[320px] text-[13px] leading-relaxed text-gray-500">
-          {body}
-        </p>
-      )}
-    </div>
-  </div>
-);
 
 /**
  * RenameField — the SubBar's persistent-pencil rename affordance
@@ -285,7 +269,12 @@ const ExplorationPane = ({ id }) => {
           className="flex h-full w-full flex-col bg-gray-50"
         >
           <SubBar testId="workspace-subbar-exploration" left={<span className="text-[12px] text-gray-400">Loading…</span>} />
-          <FrameState testId="exploration-pane-loading" title="Loading exploration…" spin />
+          <CenteredFrameState
+            testId="exploration-pane-loading"
+            title="Loading exploration…"
+            icon={PiCircleNotch}
+            spin
+          />
         </section>
       );
     }
@@ -298,10 +287,11 @@ const ExplorationPane = ({ id }) => {
           testId="workspace-subbar-exploration"
           left={<span className="text-[12px] font-semibold text-gray-900">Exploration not found</span>}
         />
-        <FrameState
+        <CenteredFrameState
           testId="exploration-pane-not-found"
           title="This exploration doesn't exist"
           body="It may have been deleted. Head back to Explorer Home to start a new one."
+          icon={PiCircleNotch}
         />
       </section>
     );

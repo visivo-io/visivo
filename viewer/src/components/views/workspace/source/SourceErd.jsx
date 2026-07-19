@@ -13,6 +13,7 @@ import { computeLayout } from '../../lineage/useLineageDag';
 import { useSourceErdDag } from './useSourceErdDag';
 import TableErdNode from './TableErdNode';
 import ErdTableContextMenu from './ErdTableContextMenu';
+import CenteredFrameState from '../../common/CenteredFrameState';
 
 /**
  * SourceErd — the Source object's Canvas lens (VIS-1005).
@@ -38,22 +39,8 @@ const NODE_BASE_HEIGHT = 44; // header
 const NODE_ROW_HEIGHT = 24; // per visible column row
 const MAX_LAYOUT_ROWS = 12; // matches TableErdNode's column cap
 
-const FrameMessage = ({ testId, title, body }) => (
-  <div
-    data-testid={testId}
-    className="flex flex-1 items-center justify-center bg-gray-50 p-12"
-  >
-    <div className="max-w-[420px] rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <PiGraph className="mx-auto mb-2 h-6 w-6 text-gray-300" aria-hidden="true" />
-      <h2 className="text-[15px] font-semibold text-gray-900">{title}</h2>
-      {body && (
-        <p className="mx-auto mt-1.5 max-w-[320px] text-[13px] leading-relaxed text-gray-500">
-          {body}
-        </p>
-      )}
-    </div>
-  </div>
-);
+// VIS-1071 (01-ux-spec.md §7): local FrameMessage replaced by the shared
+// CenteredFrameState (icon={PiGraph} at every call site below).
 
 const nodeTypes = { tableErdNode: TableErdNode };
 
@@ -196,43 +183,47 @@ const SourceErdCanvas = ({ activeObject }) => {
   // --- Non-graph states ---------------------------------------------------
   if (!available) {
     return (
-      <FrameMessage
+      <CenteredFrameState
         testId="source-erd-unavailable"
         title="Available with visivo serve"
         body="Run `visivo serve` locally to explore this source's tables as an ERD."
+        icon={PiGraph}
       />
     );
   }
   if (status === 'loading' && !entry) {
-    return <FrameMessage testId="source-erd-loading" title="Loading tables…" />;
+    return <CenteredFrameState testId="source-erd-loading" title="Loading tables…" icon={PiGraph} />;
   }
   if (status === 'connection_failed' || status === 'missing') {
     return (
-      <FrameMessage
+      <CenteredFrameState
         testId="source-erd-connection-failed"
         title="No tables to show"
         body={
           error ||
           "This source's schema hasn't been generated yet. Generate its schema from the Data tab to see its tables."
         }
+        icon={PiGraph}
       />
     );
   }
   if (status === 'error') {
     return (
-      <FrameMessage
+      <CenteredFrameState
         testId="source-erd-connection-failed"
         title="Couldn't load tables"
         body={error || "The source's cached schema could not be loaded."}
+        icon={PiGraph}
       />
     );
   }
   if (nodes.length === 0) {
     return (
-      <FrameMessage
+      <CenteredFrameState
         testId="source-erd-empty"
         title="No tables found"
         body="This source has no tables to diagram."
+        icon={PiGraph}
       />
     );
   }
