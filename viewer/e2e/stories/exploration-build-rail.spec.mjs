@@ -341,10 +341,18 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     await expect(badge).toBeVisible({ timeout: 5000 });
     await expect(badge).toContainText('First (0)');
 
-    await waitForBackendDraft(page, id, draft =>
-      (draft.insights || []).some(
-        insight => insight.props?.value === `?{sum(\${ref(${queryName}).${columnName}})}[0]`
-      )
+    await waitForBackendDraft(
+      page,
+      id,
+      draft =>
+        (draft.insights || []).some(
+          insight => insight.props?.value === `?{sum(\${ref(${queryName}).${columnName}})}[0]`
+        ),
+      // Same concurrent-project-load latency as this test's second poll
+      // below (62c870be): the 600ms+1s debounce chain plus the per-id write
+      // queue can exceed 15s while the 'parallel' project saturates the
+      // sandbox. Timeout only — the predicate is unchanged.
+      30000
     );
 
     // Toggle the SAME pill's preset SUM -> AVG.

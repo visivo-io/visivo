@@ -195,6 +195,24 @@ test.describe('Browser Back/Forward walks destinations + exploration tabs (Explo
   }) => {
     await gotoExplorerHome(page);
     const id = await newExploration(page);
+
+    // Hold the draft-sync POST in-flight while the dialog is armed: the
+    // dirty dot mirrors `syncStatus === 'saving'` (ExplorationPane.jsx), so
+    // without this the debounced write can settle in the hover→click gap
+    // and the × closes a CLEAN tab with no dialog (observed 1-in-N under
+    // gate load). Same pattern as armDirtyCloseDialog in
+    // workspace-tab-close-dialog-navigation.spec.mjs — real pipeline, no
+    // manually-flipped flags. Released before the test ends.
+    let releaseHold = () => {};
+    const held = new Promise(resolve => {
+      releaseHold = resolve;
+    });
+    const routePattern = `**/api/explorations/${id}/`;
+    await page.route(routePattern, async route => {
+      if (route.request().method() === 'POST') await held;
+      await route.fallback();
+    });
+
     await typeSql(page, 'SELECT 222 AS marker');
     await expect(page.getByTestId(`workspace-tab-dirty-exploration:${id}`)).toBeVisible({
       timeout: 3000,
