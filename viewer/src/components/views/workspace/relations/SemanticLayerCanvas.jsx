@@ -10,7 +10,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../../stores/store';
-import { useRelationErdDag } from './useRelationErdDag';
+import { useRelationErdDag, ERD_NODE_ID } from './useRelationErdDag';
 import { useModelColumns } from './useModelColumns';
 import { groupFieldsByModel } from './semanticFields';
 import SemanticLayerErdModelNode from './SemanticLayerErdModelNode';
@@ -65,7 +65,15 @@ const SemanticLayerCanvasInner = () => {
   const getRelationByName = useStore(s => s.getRelationByName);
   const savedPositions = erdLayout.nodes;
 
-  const { fitView } = useReactFlow();
+  // VIS-1069 — one-shot node-focus intent (mirrors `workspaceLensIntent`):
+  // promoting a metric/dimension's "View in Semantic Layer" offer sets this
+  // one statement before navigating here.
+  const focusIntent = useStore(s => s.workspaceSemanticLayerFocusIntent);
+  const clearWorkspaceSemanticLayerFocusIntent = useStore(
+    s => s.clearWorkspaceSemanticLayerFocusIntent
+  );
+
+  const { fitView, setCenter } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
 
   // Hydrate every collection the project ERD reads from.
@@ -162,6 +170,47 @@ const SemanticLayerCanvasInner = () => {
     // The version bump reseeds rfNodes; fit after the reseed settles.
     setTimeout(() => fitView({ padding: 0.2, maxZoom: 1.2 }), 0);
   }, [clearErdLayout, fitView]);
+
+  // VIS-1069 — metrics/dimensions have no ERD node of their own (they're
+  // folded into their parent model's card, `fieldsByModel`); resolve a
+  // field name to the model card it lives on.
+  const resolveFieldParentModel = useCallback(
+    (type, name) => {
+      const key = type === 'metric' ? 'metrics' : 'dimensions';
+      for (const [modelName, buckets] of Object.entries(fieldsByModel)) {
+        if (buckets[key]?.includes(name)) return modelName;
+      }
+      return null;
+    },
+    [fieldsByModel]
+  );
+
+  // Consume the one-shot focus intent once its target node is actually on
+  // the canvas — pans/centers on it, then self-clears (never lingers to
+  // hijack a later, unrelated visit). A `model` intent targets its own node
+  // directly; a `metric`/`dimension` intent targets its parent model's node
+  // (fields have no node of their own). An unresolvable target is still
+  // consumed (cleared) rather than left dangling forever.
+  useEffect(() => {
+    if (!focusIntent?.objectKey || rfNodes.length === 0) return;
+    const sepIndex = focusIntent.objectKey.indexOf(':');
+    const type = focusIntent.objectKey.slice(0, sepIndex);
+    const name = focusIntent.objectKey.slice(sepIndex + 1);
+    const targetModelName =
+      type === 'metric' || type === 'dimension' ? resolveFieldParentModel(type, name) : name;
+    const node = targetModelName
+      ? rfNodes.find(n => n.id === ERD_NODE_ID(targetModelName))
+      : null;
+    if (node) {
+      const width = node.width || node.layoutSize?.width || 260;
+      const height = node.height || node.layoutSize?.height || 120;
+      setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+        zoom: 1,
+        duration: 400,
+      });
+    }
+    clearWorkspaceSemanticLayerFocusIntent?.();
+  }, [focusIntent, rfNodes, resolveFieldParentModel, setCenter, clearWorkspaceSemanticLayerFocusIntent]);
 
   const hasEdits = Object.keys(savedPositions || {}).length > 0;
 

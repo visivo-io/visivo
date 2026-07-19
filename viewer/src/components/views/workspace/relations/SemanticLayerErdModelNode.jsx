@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Position } from 'reactflow';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import { NodeHandle } from '../../../styled/NodeHandle';
+import useStore from '../../../../stores/store';
 
 /**
  * SemanticLayerErdModelNode — the model card for the project-wide Semantic Layer
@@ -12,8 +13,39 @@ import { NodeHandle } from '../../../styled/NodeHandle';
  *
  * All colours/icons come from objectTypeConfigs (model = amber, metric = cyan,
  * dimension = teal); no hand-rolled tones.
+ *
+ * Pills are clickable "Explore this" back-links (VIS-1069, 01-ux-spec.md §5) —
+ * mints a new exploration seeded from that field, pre-wired against its
+ * parent model via `buildExplorationSeedState`, and opens its tab. Buttons
+ * (not spans) so the affordance is keyboard-reachable; `stopPropagation` on
+ * both mouse and pointer events keeps the click from also firing React
+ * Flow's node click/drag handling on the card underneath.
  */
 const FieldPills = ({ label, names, type }) => {
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+
+  const handleExploreField = useCallback(
+    name => {
+      if (!createExploration) return;
+      const seed = { type, name };
+      const legacyStateOverride = buildExplorationSeedState
+        ? buildExplorationSeedState(seed)
+        : null;
+      createExploration(seed, null, legacyStateOverride).then(result => {
+        if (result?.success && openWorkspaceTab) {
+          openWorkspaceTab({
+            id: `exploration:${result.id}`,
+            type: 'exploration',
+            name: result.id,
+          });
+        }
+      });
+    },
+    [type, createExploration, buildExplorationSeedState, openWorkspaceTab]
+  );
+
   if (!names || names.length === 0) return null;
   const colors = getTypeColors(type);
   const Icon = getTypeIcon(type);
@@ -25,18 +57,25 @@ const FieldPills = ({ label, names, type }) => {
       </div>
       <div className="flex flex-wrap gap-1">
         {names.map(name => (
-          <span
+          <button
             key={name}
+            type="button"
             data-testid={`erd-${type}-pill-${name}`}
-            title={name}
+            title={`Explore ${name}`}
+            onPointerDown={e => e.stopPropagation()}
+            onClick={e => {
+              e.stopPropagation();
+              handleExploreField(name);
+            }}
             className={[
-              'inline-flex max-w-[120px] items-center truncate rounded px-1.5 py-0.5 text-[10px] font-medium',
+              'inline-flex max-w-[120px] items-center truncate rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
+              'cursor-pointer hover:ring-1 hover:ring-inset',
               colors.bg,
               colors.text,
             ].join(' ')}
           >
             {name}
-          </span>
+          </button>
         ))}
       </div>
     </div>

@@ -44,6 +44,9 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const placeChartInDashboardSlot = useStore(s => s.placeChartInDashboardSlot);
   const consumeExplorationReturnTo = useStore(s => s.consumeExplorationReturnTo);
+  // VIS-1069 — Semantic Layer reciprocal: "View in Semantic Layer" after
+  // promoting a metric/dimension.
+  const setWorkspaceSemanticLayerFocusIntent = useStore(s => s.setWorkspaceSemanticLayerFocusIntent);
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -178,6 +181,29 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const handleDeclinePlacement = useCallback(() => {
     consumeExplorationReturnTo?.(explorationId);
   }, [consumeExplorationReturnTo, explorationId]);
+
+  // VIS-1069 — the first metric/dimension promoted THIS RUN (mirrors
+  // `promotedChart`'s "this run only" scoping above).
+  const promotedField = useMemo(
+    () =>
+      (promotedThisRun?.results || []).find(
+        r => r.success && (r.type === 'metric' || r.type === 'dimension')
+      ) || null,
+    [promotedThisRun]
+  );
+
+  const handleViewInSemanticLayer = useCallback(() => {
+    if (!promotedField) return;
+    setWorkspaceSemanticLayerFocusIntent?.({
+      objectKey: `${promotedField.type}:${promotedField.name}`,
+    });
+    openWorkspaceTab?.({
+      id: 'semantic-layer:semantic-layer',
+      type: 'semantic-layer',
+      name: 'semantic-layer',
+    });
+    onClose?.();
+  }, [promotedField, setWorkspaceSemanticLayerFocusIntent, openWorkspaceTab, onClose]);
 
   return (
     <div
@@ -344,6 +370,28 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
           >
             {placeError}
           </p>
+        )}
+
+        {/* VIS-1069 — Semantic Layer reciprocal: promoting a metric/dimension
+            offers a one-click jump to the ERD, focused on that field's
+            parent model node. */}
+        {promotedThisRun?.success && promotedField && (
+          <div
+            data-testid="exploration-promote-semantic-layer-offer"
+            className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
+          >
+            <span className="text-xs text-primary-800">
+              View <span className="font-medium">{promotedField.name}</span> in the Semantic Layer?
+            </span>
+            <button
+              type="button"
+              data-testid="exploration-promote-view-in-semantic-layer"
+              onClick={handleViewInSemanticLayer}
+              className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700"
+            >
+              View in Semantic Layer
+            </button>
+          </div>
         )}
 
         <div className="mt-4 pt-3 border-t border-secondary-100 flex justify-end gap-2">
