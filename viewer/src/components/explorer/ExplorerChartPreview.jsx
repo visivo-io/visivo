@@ -6,6 +6,7 @@ import { useInsightsData } from '../../hooks/useInsightsData';
 import { usePreviewInputDependencies } from '../views/workspace/usePreviewInputDependencies';
 import PreviewInputControls from '../views/workspace/PreviewInputControls';
 import useStore from '../../stores/store';
+import { emitTimeToFirstChart } from '../views/workspace/telemetry';
 
 // Stable empty-array reference (avoids a fresh `[]` literal defeating memoized
 // selectors/`useMemo` deps every render — see ExplorationBuildRail.jsx's
@@ -184,6 +185,18 @@ const ExplorerChartPreview = () => {
   const draftLaneBlockedStatus = anyInsightAlreadyHasData
     ? null
     : draftLaneNames.map(name => draftPreview.perInsight?.[name]).find(s => s?.blockedReason);
+
+  // VIS-1072 — `time_to_first_chart`: fires the FIRST time any chart insight
+  // (draft or promoted) actually has data on screen for THIS exploration.
+  // `emitTimeToFirstChart` itself is idempotent per exploration id (a no-op
+  // on every subsequent render once fired), so this effect can just keep
+  // re-checking the condition on every relevant state change with no extra
+  // bookkeeping here.
+  useEffect(() => {
+    if (activeExplorationId && anyInsightAlreadyHasData) {
+      emitTimeToFirstChart(activeExplorationId);
+    }
+  }, [activeExplorationId, anyInsightAlreadyHasData]);
 
   // Config-fallback source for `usePreviewInputDependencies` (02 §6):
   // extracts referenced input names from props/interactions text directly —

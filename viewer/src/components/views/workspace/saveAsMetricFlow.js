@@ -2,6 +2,7 @@ import { translateExpressions } from '../../../api/expressions';
 import * as pillGrammar from '../common/pillGrammar';
 import { findMatchingExpressionSlots } from '../common/pillFieldSwap';
 import { serializeQueryString } from '../../../utils/queryString';
+import { emitWorkspaceEvent } from './telemetry';
 
 /**
  * saveAsMetricFlow — Explore 2.0 Phase 4 (06-pill-aggregation-grammar.md §4
@@ -120,6 +121,9 @@ export const saveAsMetric = async ({
     getState().explorerInsightStates || {},
     { excludeInsightName: insightName, excludeLocation: 'prop', excludeKey: path }
   );
+
+  // VIS-1072 — flywheel telemetry.
+  emitWorkspaceEvent('save_as_metric_used', { name: trimmed, dedupOfferSlots: matches.length });
 
   return {
     success: true,

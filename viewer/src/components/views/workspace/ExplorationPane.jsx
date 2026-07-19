@@ -11,6 +11,7 @@ import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import { legacyStateToDraft, draftToLegacyState } from './explorationLegacyBridge';
 import { computeExplorationStaleness } from './explorationStaleness';
 import CenteredFrameState from '../common/CenteredFrameState';
+import { emitWorkspaceEvent } from './telemetry';
 
 const ExplorationIcon = getTypeIcon('exploration');
 const EXPLORATION_COLORS = getTypeColors('exploration');
@@ -151,6 +152,10 @@ const ExplorationPane = ({ id }) => {
     // never carries over a previous session's dismissal.
     setStaleness(computeExplorationStaleness(record, useStore.getState()));
     setStalenessDismissed(false);
+    // VIS-1072 — every activation (fresh create's immediate open, AND a
+    // later resume of a parked tab) counts as "opened"; `exploration_created`
+    // is the separate, narrower "minted a new record" signal.
+    emitWorkspaceEvent('exploration_opened', { id });
 
     return () => {
       const snapshot = snapshotExplorerWorkingState();

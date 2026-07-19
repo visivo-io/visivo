@@ -3,6 +3,7 @@ import { Position } from 'reactflow';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import { NodeHandle } from '../../../styled/NodeHandle';
 import useStore from '../../../../stores/store';
+import { emitWorkspaceEvent } from '../telemetry';
 
 /**
  * SemanticLayerErdModelNode — the model card for the project-wide Semantic Layer
@@ -40,6 +41,7 @@ const FieldPills = ({ label, names, type }) => {
             type: 'exploration',
             name: result.id,
           });
+          emitWorkspaceEvent('explore_this_used', { source_type: type });
         }
       });
     },
