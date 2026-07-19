@@ -39,9 +39,11 @@ import ExplorationQueryChips from './ExplorationQueryChips';
  *     gated promote checklist that replaced the deleted `ExplorerSaveModal`/
  *     `saveExplorerObjects` (all-or-nothing, no per-object gate).
  *   - `useExplorerWorkbenchInit()` (the shared init hook) is unchanged.
- *   - No return-bar / `?return_to=` handling here — that's the dashboard
- *     round-trip intent, consumed at the Phase 3b cutover's redirect route,
- *     not this pane (02-architecture.md §5).
+ *   - No `?return_to=` QUERY-PARAM handling here — that dead param form was
+ *     replaced at the Phase 3b cutover's redirect route (02-architecture.md
+ *     §5). The `return_to` RECORD FIELD itself is consumed inside
+ *     `ExplorationPromoteModal`'s success state (VIS-1068's "Place in
+ *     <dashboard>" offer) — this pane just renders that modal, unchanged.
  *
  * The HOST (`ExplorationPane`) is responsible for gating this component's
  * mount on the per-exploration state restore having already landed — see
