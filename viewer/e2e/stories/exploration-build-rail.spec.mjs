@@ -356,11 +356,24 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     await expect(valueSlot).not.toContainText('SUM');
 
     // The slice survives the aggregate-function rewrite in the persisted
-    // value...
-    await waitForBackendDraft(page, id, draft =>
-      (draft.insights || []).some(
-        insight => insight.props?.value === `?{avg(\${ref(${queryName}).${columnName}})}[0]`
-      )
+    // value... This is the SECOND sequential debounce+backend round trip in
+    // this test (the first already paid the ~1.6s debounce + real
+    // request/response cost above) — under concurrent-worker/shared-sandbox
+    // load (this project runs alongside 'parallel' and 'workspace-publish'),
+    // the default 15s budget was observed to occasionally run out here
+    // specifically (two full round trips compounding real backend latency),
+    // even though the underlying behavior is correct and settles quickly in
+    // isolation. A more generous timeout absorbs that queueing delay without
+    // loosening what's asserted — mirrors exploration-dnd-pull-in.spec.mjs's
+    // identical "generous timeout absorbs warm-up cost" precedent.
+    await waitForBackendDraft(
+      page,
+      id,
+      draft =>
+        (draft.insights || []).some(
+          insight => insight.props?.value === `?{avg(\${ref(${queryName}).${columnName}})}[0]`
+        ),
+      30000
     );
     // ...and SliceBadge still reads correctly afterward — never reset/blanked
     // by the pill's own label/type change underneath it.
