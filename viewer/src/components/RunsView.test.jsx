@@ -67,6 +67,52 @@ describe('RunsView scope column', () => {
   });
 });
 
+// 6c-T2 (shell-ia — "Runs view: dark-on-dark text on a shell-less page").
+// The view no longer depends on an ancestor for a readable background —
+// every entry point (loading / error / loaded) sets its own explicit light
+// surface, and destructive states use the shared `highlight` token.
+describe('RunsView is self-contained (6c-T2 dark-on-dark hardening)', () => {
+  test('the loading state sets its own light background', () => {
+    useQuery.mockImplementation(() => ({ data: undefined, isLoading: true, error: null }));
+    render(<RunsView />);
+    const loading = screen.getByTestId('runs-view-loading');
+    expect(loading.className).toContain('bg-gray-50');
+  });
+
+  test('the error state sets its own light background and uses the highlight token, not a hand-rolled red', () => {
+    useQuery.mockImplementation(() => ({
+      data: undefined,
+      isLoading: false,
+      error: new Error('nope'),
+    }));
+    render(<RunsView />);
+    const errorState = screen.getByTestId('runs-view-error');
+    expect(errorState.className).toContain('bg-gray-50');
+    expect(errorState.className).toContain('text-highlight');
+    expect(errorState.className).not.toContain('text-red');
+  });
+
+  test('the loaded state sets its own light background', () => {
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+    expect(screen.getByTestId('runs-view').className).toContain('bg-gray-50');
+  });
+
+  test("a failed run's badge and error label use the highlight token, not a hand-rolled red", () => {
+    mockQueries({
+      runs: [run({ state: 'failed', error_json: { phase: 'run' } })],
+      log: { state: 'failed', logs: 'boom', error_json: { phase: 'run' } },
+    });
+    render(<RunsView />);
+    expect(screen.getByText('failed').className).toContain('highlight');
+    expect(screen.getByText('failed').className).not.toContain('red');
+    expect(screen.getByText('error').className).toContain('text-highlight');
+
+    fireEvent.click(screen.getByRole('button', { name: /failed/i }));
+    expect(screen.getByText(/Error — run/).className).toContain('text-highlight');
+  });
+});
+
 describe('RunsView detail expansion', () => {
   test('expanding a run shows its captured log, labeled Logs', () => {
     mockQueries({
