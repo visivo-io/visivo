@@ -14,11 +14,14 @@ const EMPTY_PROMOTED = [];
 
 /**
  * ExplorationBuildRail — Explore 2.0 Phase 3b (VIS-1059) + Phase 4 (VIS-1062–
- * 1066, promote-gate rebuild). Replaces `ExplorerRightPanel` for the
- * exploration surface — same overall composition (Chart section always on
- * top, stacked Insight sections below, Add Insight, Save to Project) but the
- * CRUD sections are rebuilt onto `TracePropsEditor`/`FieldGroupList`
- * (`InsightBuildSection`/`ChartBuildSection`) instead of `SchemaEditor`.
+ * 1066, promote-gate rebuild); re-parented into the shell's single
+ * `<RightRail>` at 6c-T2 (D6 — the two-rails fix). Same overall composition
+ * (Chart section always on top, stacked Insight sections below, Add Insight,
+ * Save to Project) — the CRUD sections are built onto `TracePropsEditor`/
+ * `FieldGroupList` (`InsightBuildSection`/`ChartBuildSection`) instead of
+ * `SchemaEditor`; those internals (and the DnD they wire up) are OUT OF
+ * SCOPE for this component's own edits — see `InsightBuildSection.jsx`/
+ * `TracePropsEditor.jsx`/`PillMenu` for that half of the surface.
  *
  * `ExplorerSaveModal`/`saveExplorerObjects` (all-or-nothing, no per-object
  * gate) are DELETED — "Save to Project" now opens `ExplorationPromoteModal`,
@@ -27,9 +30,21 @@ const EMPTY_PROMOTED = [];
  * The promoted trail links each entry to its real, now-published object
  * (01 §3b) via `openWorkspaceTab`.
  *
+ * OUTER CONTAINER: this component no longer owns its own width/border —
+ * `RightRail` mounts it as the exploration scope's `Build` tab body inside
+ * the shell's single, resizable right rail (`WorkspaceShell`'s
+ * `workspaceRightWidth`/`DragHandle`), so the root element here just fills
+ * whatever the rail gives it (`flex-1 min-h-0`), matching every other
+ * `RightRailBody` branch (`RightRailEditPanel`, `OutlineTreePanel`, …).
+ * `ExplorationWorkbench` (the exploration's CENTER pane — SQL editor,
+ * results, chart preview) no longer mounts a sibling copy of this rail —
+ * that in-pane mount was the two-rails bug (shell-ia #1, code-grounding
+ * defect #1); this is the only place `ExplorationBuildRail` renders now.
+ *
  * @param {object} props
  * @param {string} [props.explorationId] - the current exploration's backend
- *   id (threaded from `ExplorationPane` -> `ExplorationWorkbench`).
+ *   id (threaded from `ExplorationPane` -> `RightRail`'s exploration
+ *   `selectedItem`).
  */
 const ExplorationBuildRail = ({ explorationId }) => {
   const chartInsightNames = useStore(s => s.explorerChartInsightNames);
@@ -75,7 +90,7 @@ const ExplorationBuildRail = ({ explorationId }) => {
   return (
     <div
       data-testid="exploration-build-rail"
-      className="w-96 flex-shrink-0 border-l border-secondary-200 bg-white flex flex-col h-full overflow-hidden"
+      className="flex flex-1 min-h-0 flex-col overflow-hidden bg-white"
     >
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         <ChartBuildSection isExpanded={chartExpanded} onToggleExpand={handleToggleChart} />

@@ -84,10 +84,12 @@ const RenameField = ({ name, onCommit }) => {
  *     store at a time, and it's never handed off without being persisted
  *     first.
  *
- * `ExplorationWorkbench` (the actual legacy 3-panel bundle) is gated on the
- * restore having landed for the CURRENT `id` — mounting it one tick early
- * would let `useExplorerWorkbenchInit`'s "auto-create when empty" fire
- * against a transient empty state that's about to be overwritten.
+ * `ExplorationWorkbench` (the center pane — SQL editor/results/chart preview;
+ * the Insight+Chart CRUD rail moved OUT to the shell's `<RightRail>` at
+ * 6c-T2, D6) is gated on the restore having landed for the CURRENT `id` —
+ * mounting it one tick early would let `useExplorerWorkbenchInit`'s
+ * "auto-create when empty" fire against a transient empty state that's about
+ * to be overwritten.
  */
 const ExplorationPane = ({ id }) => {
   const record = useStore(s => s.workspaceExplorations.byId[id]);
@@ -342,7 +344,7 @@ const ExplorationPane = ({ id }) => {
           onDismiss={handleDismissStaleness}
         />
       )}
-      <ExplorationWorkbench id={id} />
+      <ExplorationWorkbench />
     </section>
   );
 };

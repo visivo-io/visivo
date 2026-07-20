@@ -424,6 +424,84 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceRightCollapsed).toBe(true);
   });
 
+  // 6c-T2 responsive shell (BLOCKER at 1100px): applyWorkspaceAutoCollapse is
+  // a one-way NUDGE reconciled against current state, not a continuous
+  // override — see its docstring for the full contract.
+  describe('applyWorkspaceAutoCollapse (6c-T2 responsive shell)', () => {
+    test('collapses a rail that is not already collapsed, tagging it as shell-driven', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(true);
+      expect(s.workspaceLeftAutoCollapsedByShell).toBe(true);
+      expect(s.workspaceRightCollapsed).toBe(false);
+    });
+
+    test('re-expands a rail it previously auto-collapsed once space is available again', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(false);
+      expect(s.workspaceLeftAutoCollapsedByShell).toBe(false);
+    });
+
+    test('never auto-expands a rail the USER collapsed manually', () => {
+      act(() => {
+        useStore.getState().toggleWorkspaceLeftCollapsed(); // manual collapse
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+      act(() => {
+        // Plenty of room now — but this rail's collapse wasn't ours to undo.
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+    });
+
+    test('a manual toggle takes ownership back — clears the shell-driven bookkeeping', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      expect(useStore.getState().workspaceLeftAutoCollapsedByShell).toBe(true);
+      act(() => {
+        useStore.getState().toggleWorkspaceLeftCollapsed(); // user expands it
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(false);
+      expect(useStore.getState().workspaceLeftAutoCollapsedByShell).toBe(false);
+      // Now a later "still too narrow" measurement collapses it again, but a
+      // "fits now" measurement must NOT silently re-expand it — the user's
+      // last action (re-collapsing themselves would look identical) owns it
+      // until they touch the toggle again.
+      act(() => {
+        useStore.getState().toggleWorkspaceLeftCollapsed(); // user collapses again
+      });
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+    });
+
+    test('left and right reconcile independently in the same call', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: true });
+      });
+      let s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(true);
+      expect(s.workspaceRightCollapsed).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: true });
+      });
+      s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(false);
+      expect(s.workspaceRightCollapsed).toBe(true);
+    });
+  });
+
   test('reorderWorkspaceTabs moves a tab to the over slot', () => {
     act(() => {
       useStore.setState({
@@ -489,6 +567,14 @@ describe('workspace store slice', () => {
     });
     // unchanged
     expect(useStore.getState().workspaceRightTab).toBe('outline');
+  });
+
+  // 6c-T2 / D6: 'build' is the exploration scope's ONLY right-rail tab.
+  test('setWorkspaceRightTab accepts "build" (the exploration Insight+Chart CRUD tab)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceRightTab('build');
+    });
+    expect(useStore.getState().workspaceRightTab).toBe('build');
   });
 
   test('setWorkspaceLens only accepts preview | lineage', () => {

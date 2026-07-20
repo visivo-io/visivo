@@ -42,6 +42,20 @@ jest.mock('./SchemaLeafForm', () => ({
   __esModule: true,
   default: ({ type }) => <div data-testid={`${type}-edit-form-stub`} />,
 }));
+// 6c-T2 / D6: RightRail's exploration branch mounts ExplorationBuildRail
+// directly (no Edit/Outline tab at all). Stub it — its own internals
+// (InsightBuildSection/ChartBuildSection/PillMenu/TracePropsEditor) are a
+// different track's territory and have their own test coverage
+// (ExplorationBuildRail.test.jsx); this file only asserts RightRail's OWN
+// job — which tab set an exploration gets, and that the id is threaded.
+jest.mock('./ExplorationBuildRail', () => ({
+  __esModule: true,
+  default: ({ explorationId }) => (
+    <div data-testid="exploration-build-rail-stub" data-exploration-id={explorationId || ''}>
+      ExplorationBuildRail
+    </div>
+  ),
+}));
 
 const resetStore = (overrides = {}) => {
   act(() => {
@@ -270,6 +284,71 @@ describe('RightRail tab set per object type (Outline only for dashboards, Data f
     );
     expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-right-rail-outline')).not.toBeInTheDocument();
+  });
+});
+
+describe('RightRail exploration scope mounts ExplorationBuildRail — the D6 two-rails fix (6c-T2)', () => {
+  const resetForExploration = ({ id = 'exp_a1b2', rightTab = 'edit' } = {}) => {
+    act(() => {
+      useStore.setState({
+        workspaceRightCollapsed: false,
+        workspaceRightTab: rightTab,
+        workspaceTabs: [{ id: `exploration:${id}`, type: 'exploration', name: id }],
+        workspaceActiveTabId: `exploration:${id}`,
+        workspaceActiveObject: { type: 'exploration', name: id },
+        workspaceOutlineSelectedKey: 'dashboard',
+        dashboards: [],
+        saveDashboard: jest.fn(),
+      });
+    });
+  };
+
+  const renderAt = entry => {
+    const router = createMemoryRouter(
+      createRoutesFromElements(
+        <Route path="/workspace/exploration/:id" element={<RightRail />} />
+      ),
+      { initialEntries: [entry], future: futureFlags }
+    );
+    return render(<RouterProvider router={router} future={futureFlags} />);
+  };
+
+  test('exploration scope offers ONLY a Build tab — no Edit, no Outline', () => {
+    resetForExploration();
+    renderAt('/workspace/exploration/exp_a1b2');
+    expect(screen.getByTestId('workspace-right-rail-tab-build')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-right-rail-tab-edit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
+  });
+
+  test('mounts ExplorationBuildRail (not the "coming soon" placeholder), threading the exploration id', () => {
+    resetForExploration({ id: 'exp_thread_me' });
+    renderAt('/workspace/exploration/exp_thread_me');
+    const rail = screen.getByTestId('exploration-build-rail-stub');
+    expect(rail).toBeInTheDocument();
+    expect(rail).toHaveAttribute('data-exploration-id', 'exp_thread_me');
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('right-rail-edit-unsupported')).not.toBeInTheDocument();
+  });
+
+  test('a stale `edit` tab left over from a previous object still resolves to Build (no dead-blank rail)', () => {
+    // Regression for the hardcoded 'edit' fallback: an exploration's ONLY
+    // tab is 'build', so a stale `workspaceRightTab: 'edit'` (the default,
+    // or left over from viewing e.g. a chart) must fall back to the
+    // object's OWN first tab, not a tab it doesn't offer.
+    resetForExploration({ rightTab: 'edit' });
+    renderAt('/workspace/exploration/exp_a1b2');
+    expect(screen.getByTestId('workspace-right-rail-tab-build')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+    expect(screen.getByTestId('exploration-build-rail-stub')).toBeInTheDocument();
+  });
+
+  test('only ONE right rail ever renders for an exploration — a single workspace-right-rail node', () => {
+    resetForExploration();
+    renderAt('/workspace/exploration/exp_a1b2');
+    expect(screen.getAllByTestId('workspace-right-rail')).toHaveLength(1);
   });
 });
 
