@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -8,7 +8,7 @@ import {
   useDroppable,
   closestCenter,
 } from '@dnd-kit/core';
-import { PiX, PiPlus, PiWarningCircle } from 'react-icons/pi';
+import { PiX, PiPlus, PiWarningCircle, PiCaretLeft, PiCaretRight } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { getTypeIcon } from '../common/objectTypeConfigs';
 import TabCloseConfirmDialog from './TabCloseConfirmDialog';
@@ -218,6 +218,41 @@ const TabStrip = () => {
     }
   }, [activeId]);
 
+  // Overflow affordance (shell-ia #6 — "tabs clip off the left edge, + button
+  // disappears, no scroll affordance"): the scrollable tab track lives in its
+  // OWN container (not the same one the `+` button sits in — that button is
+  // persistent chrome per the docstring below and must never scroll away),
+  // and click-to-scroll chevrons appear at either edge exactly when there's
+  // more to see in that direction — the visible signal a scrollbar-less
+  // overflow region otherwise gives no hint of.
+  const scrollTrackRef = useRef(null);
+  const [scrollAffordance, setScrollAffordance] = useState({ left: false, right: false });
+  const updateScrollAffordance = useCallback(() => {
+    const el = scrollTrackRef.current;
+    if (!el) return;
+    setScrollAffordance({
+      left: el.scrollLeft > 1,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    });
+  }, []);
+  useEffect(() => {
+    updateScrollAffordance();
+  }, [tabs?.length, updateScrollAffordance]);
+  useEffect(() => {
+    const el = scrollTrackRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(updateScrollAffordance);
+    observer.observe(el);
+    el.addEventListener('scroll', updateScrollAffordance, { passive: true });
+    return () => {
+      observer.disconnect();
+      el.removeEventListener('scroll', updateScrollAffordance);
+    };
+  }, [updateScrollAffordance]);
+  const scrollTrackBy = useCallback(amount => {
+    scrollTrackRef.current?.scrollBy({ left: amount, behavior: 'smooth' });
+  }, []);
+
   // The strip is persistent chrome (01-ux-spec.md §1's `[+]` control lives here
   // regardless of the open-tab count) — it no longer disappears when the tab
   // list is empty. Before Phase 0 the project tab was ALWAYS hydrated, so an
@@ -265,42 +300,75 @@ const TabStrip = () => {
       aria-label="Workspace tabs"
       className="relative flex h-9 shrink-0 items-stretch border-b border-gray-200 bg-gray-50"
     >
-      <div className="flex flex-1 items-stretch overflow-x-auto overflow-y-hidden">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
+      <div className="relative flex min-w-0 flex-1 items-stretch">
+        {scrollAffordance.left && (
+          <button
+            type="button"
+            onClick={() => scrollTrackBy(-160)}
+            title="Scroll tabs left"
+            aria-label="Scroll tabs left"
+            data-testid="workspace-tab-scroll-left"
+            className="absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center bg-gradient-to-r from-gray-50 via-gray-50/90 to-transparent text-gray-500 hover:text-gray-900"
+          >
+            <PiCaretLeft className="h-3 w-3" />
+          </button>
+        )}
+        <div
+          ref={scrollTrackRef}
+          className="flex flex-1 items-stretch overflow-x-auto overflow-y-hidden scroll-smooth"
         >
-          {safeTabs.map(tab => (
-            <DraggableTab
-              key={tab.id}
-              tab={tab}
-              active={tab.id === activeId}
-              onSelect={switchWorkspaceTab}
-              onClose={requestCloseWorkspaceTab}
-              isDragging={tab.id === draggedId}
-              isDropTarget={tab.id === dragOverId && dragOverId !== draggedId}
-              scrollRef={el => {
-                if (el) tabElsRef.current.set(tab.id, el);
-                else tabElsRef.current.delete(tab.id);
-              }}
-            />
-          ))}
-        </DndContext>
-        <button
-          type="button"
-          onClick={handleNewTab}
-          title="New tab"
-          aria-label="New tab"
-          data-testid="workspace-tab-new"
-          className="ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-        >
-          <PiPlus className="h-3.5 w-3.5" />
-        </button>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            {safeTabs.map(tab => (
+              <DraggableTab
+                key={tab.id}
+                tab={tab}
+                active={tab.id === activeId}
+                onSelect={switchWorkspaceTab}
+                onClose={requestCloseWorkspaceTab}
+                isDragging={tab.id === draggedId}
+                isDropTarget={tab.id === dragOverId && dragOverId !== draggedId}
+                scrollRef={el => {
+                  if (el) tabElsRef.current.set(tab.id, el);
+                  else tabElsRef.current.delete(tab.id);
+                }}
+              />
+            ))}
+          </DndContext>
+        </div>
+        {scrollAffordance.right && (
+          <button
+            type="button"
+            onClick={() => scrollTrackBy(160)}
+            title="Scroll tabs right"
+            aria-label="Scroll tabs right"
+            data-testid="workspace-tab-scroll-right"
+            className="absolute inset-y-0 right-0 z-10 flex w-6 items-center justify-center bg-gradient-to-l from-gray-50 via-gray-50/90 to-transparent text-gray-500 hover:text-gray-900"
+          >
+            <PiCaretRight className="h-3 w-3" />
+          </button>
+        )}
       </div>
+      {/* Persistent chrome (01-ux-spec.md §1's `[+]` control) — lives OUTSIDE
+          the scrollable tab track so it can never scroll out of view (the
+          shell-ia #6 regression: it used to share the scroll container with
+          the tabs and would clip away with them). */}
+      <button
+        type="button"
+        onClick={handleNewTab}
+        title="New tab"
+        aria-label="New tab"
+        data-testid="workspace-tab-new"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center border-l border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+      >
+        <PiPlus className="h-3.5 w-3.5" />
+      </button>
       <TabCloseConfirmDialog />
     </div>
   );
