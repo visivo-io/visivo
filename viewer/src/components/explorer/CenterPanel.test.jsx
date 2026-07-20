@@ -440,6 +440,91 @@ describe('CenterPanel', () => {
     });
   });
 
+  // 6c-T2 (audit cold-start #7 / shell-ia — "editor consumes ~440px of dark
+  // dead space for a one-line query"). The default beforeEach fixture is
+  // already a ONE-LINE query ('SELECT 1') in wide mode (width 800 from
+  // MockResizeObserver) — exactly the reported scenario.
+  describe('SQL editor auto-height (6c-T2)', () => {
+    it('a one-line query gets the wide-mode floor (chart stays usable), NOT a fixed 65% ratio', () => {
+      render(<CenterPanel />);
+      const topRow = screen.getByTestId('center-panel-top-row');
+      expect(topRow).toHaveAttribute('data-auto-height', 'true');
+      // floor = CHART_MIN_HEIGHT (260) in wide mode; (1 + 2) * 19 = 57 loses.
+      expect(topRow.style.flex).toBe('0 0 260px');
+    });
+
+    it('a moderately long query still sits at the wide-mode floor', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({
+            sql: Array(10).fill('select 1').join('\n'),
+            sourceName: 'test_source',
+          }),
+        },
+      });
+      render(<CenterPanel />);
+      // (10 + 2) * 19 = 228, still under the 260 wide-mode floor.
+      expect(screen.getByTestId('center-panel-top-row').style.flex).toBe('0 0 260px');
+    });
+
+    it('a long query grows the row height, capped at the sensible max', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({
+            sql: Array(30).fill('select 1').join('\n'),
+            sourceName: 'test_source',
+          }),
+        },
+      });
+      render(<CenterPanel />);
+      // (30 + 2) * 19 = 608, clamped to the 420 ceiling.
+      expect(screen.getByTestId('center-panel-top-row').style.flex).toBe('0 0 420px');
+    });
+
+    it('an editor the user has collapsed falls back to the ratio-based split (nothing to auto-size)', () => {
+      useStore.setState({ explorerIsEditorCollapsed: true });
+      render(<CenterPanel />);
+      const topRow = screen.getByTestId('center-panel-top-row');
+      expect(topRow).toHaveAttribute('data-auto-height', 'false');
+      expect(topRow.style.flex).toBe('0.5'); // the mocked usePanelResize ratio
+    });
+
+    it('dragging the vertical divider hands control to the manual ratio from then on', () => {
+      render(<CenterPanel />);
+      expect(screen.getByTestId('center-panel-top-row')).toHaveAttribute('data-auto-height', 'true');
+      fireEvent.mouseDown(screen.getByTestId('horizontal-divider'));
+      expect(screen.getByTestId('center-panel-top-row')).toHaveAttribute('data-auto-height', 'false');
+      expect(screen.getByTestId('center-panel-top-row').style.flex).toBe('0.5');
+    });
+
+    it('narrow mode on the Chart tab (no editor in the row) uses the ratio split, not line-count', () => {
+      global.ResizeObserver = class {
+        constructor(callback) {
+          this.callback = callback;
+        }
+        observe() {
+          this.callback([{ contentRect: { width: 400 } }]);
+        }
+        disconnect() {}
+      };
+      try {
+        render(<CenterPanel />);
+        fireEvent.click(screen.getByTestId('toggle-chart'));
+        const topRow = screen.getByTestId('center-panel-top-row');
+        expect(topRow).toHaveAttribute('data-auto-height', 'false');
+        expect(topRow.style.flex).toBe('0.5');
+      } finally {
+        global.ResizeObserver = MockResizeObserver;
+      }
+    });
+
+    it('results get the reclaimed space — the bottom row is flex: 1 1 auto while auto-height is active', () => {
+      render(<CenterPanel />);
+      const bottomRow = screen.getByTestId('data-section');
+      expect(bottomRow.style.flex).toBe('1 1 auto');
+    });
+  });
+
   describe('DataSectionToolbar integration', () => {
     it('renders DataSectionToolbar when query result with computed columns exists', () => {
       useStore.setState({
