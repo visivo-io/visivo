@@ -104,6 +104,13 @@ export default defineConfig({
         '**/workspace-cross-tab-tabset.spec.mjs',
         '**/exploration-cross-tab-concurrency.spec.mjs',
         '**/exploration-cross-tab-dnd-isolation.spec.mjs',
+        // Phase 6c-T1 (ux-audit.md "post-promote offers never appear" /
+        // "no staleness indication" findings): each mints real backend
+        // exploration + model/insight/chart records via the same shared
+        // `.visivo/explorations/` repository — same isolation need as every
+        // other exploration-mutating spec above.
+        '**/exploration-promote-fallback-dashboard-offer.spec.mjs',
+        '**/exploration-staleness-drift.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -251,6 +258,10 @@ export default defineConfig({
         '**/workspace-cross-tab-tabset.spec.mjs',
         '**/exploration-cross-tab-concurrency.spec.mjs',
         '**/exploration-cross-tab-dnd-isolation.spec.mjs',
+        // Phase 6c-T1 additions — see the 'parallel' project's testIgnore
+        // entry for the same two files for why.
+        '**/exploration-promote-fallback-dashboard-offer.spec.mjs',
+        '**/exploration-staleness-drift.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,
