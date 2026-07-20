@@ -189,6 +189,23 @@ describe('ExplorerChartPreview', () => {
     expect(screen.queryByTestId('chart-preview-component')).not.toBeInTheDocument();
   });
 
+  // ux-audit.md "infinite spinner" finding (cold-start #2, pills #3): nothing
+  // mapped yet -> a guided empty state, never a spinner with no request in
+  // flight (Chart.jsx's own `hasAllInsightData` gate would otherwise spin
+  // forever waiting on data this hook never even tries to fetch).
+  it('renders a guided empty state instead of ChartPreview on a no_data_props block', () => {
+    useDraftInsightPreview.mockReturnValue({
+      ...defaultDraftPreview,
+      perInsight: {
+        ins_1: { isLoading: false, error: null, blockedReason: 'no_data_props', blockedModel: null },
+      },
+    });
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('chart-preview-empty-no-props')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-preview-component')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chart-preview-loading')).not.toBeInTheDocument();
+  });
+
   // VIS-1092 — the actual mixed-lane guarantee: a promoted insight with real
   // data must never be blanked by a DRAFT sibling's error/loading, because
   // the promoted one isn't even in the draft lane the aggregate is scoped to.
@@ -228,14 +245,30 @@ describe('ExplorerChartPreview', () => {
     expect(screen.getByTestId('preview-input-controls')).toHaveTextContent('region');
   });
 
-  it('surfaces an explicit banner for a draft referencing a not-yet-promoted input (never a silent drop)', () => {
+  it('surfaces an explicit banner for a draft referencing a genuinely undefined input (never a silent drop)', () => {
     usePreviewInputDependencies.mockReturnValue({
       inputConfigs: [],
-      unresolvedNames: ['not_yet_promoted'],
+      unresolvedNames: ['not_defined_yet'],
     });
     render(<ExplorerChartPreview />);
-    expect(screen.getByTestId('chart-preview-unresolved-inputs')).toHaveTextContent(
-      'not_yet_promoted'
+    const banner = screen.getByTestId('chart-preview-unresolved-inputs');
+    expect(banner).toHaveTextContent('not_defined_yet');
+    // D11 / ux-audit.md "unresolved-input misclassification": plain
+    // language, never the "promoted" pipeline jargon a MODEL banner used to
+    // leak onto a genuine input.
+    expect(banner).not.toHaveTextContent('promoted');
+  });
+
+  // ux-audit.md "unresolved-input misclassification" (cold-start #3): the
+  // component must hand its own known draft model tab names to
+  // usePreviewInputDependencies so a model ref (e.g. the auto-created
+  // 'model' tab) is never misclassified as an unresolved input.
+  it('passes draft model tab names as extraModelNames to usePreviewInputDependencies', () => {
+    useStore.setState({ explorerModelStates: { orders_q: {}, model: {} } });
+    render(<ExplorerChartPreview />);
+    expect(usePreviewInputDependencies).toHaveBeenCalledWith(
+      'proj-1',
+      expect.objectContaining({ extraModelNames: expect.arrayContaining(['orders_q', 'model']) })
     );
   });
 

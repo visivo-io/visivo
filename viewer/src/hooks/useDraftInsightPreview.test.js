@@ -148,6 +148,95 @@ describe('useDraftInsightPreview', () => {
     expect(entry.pendingInputs).toEqual(['region']);
   });
 
+  // ux-audit.md "draft-preview execution gap" (BLOCKER — cold-start #1,
+  // promote-roundtrip #1): compile can succeed (200) even when the model's
+  // rows were never actually loaded client-side. Executing post_query
+  // anyway used to hand DuckDB a query against a table this hook never
+  // created, surfacing a raw "Catalog Error: Table with name <hash> does
+  // not exist" — this must instead behave exactly like the server's own
+  // model_not_run 422 (the guided "run the query" empty state), and DuckDB
+  // must never even be asked.
+  test('a compiled model with no loaded rows never reaches DuckDB — blocked like model_not_run instead', async () => {
+    seedState({
+      explorerModelStates: {
+        orders_q: {
+          sql: 'select * from orders',
+          sourceName: 'warehouse',
+          queryResult: null, // never run — no rows
+        },
+      },
+    });
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      pre_query: null,
+      props_mapping: { 'props.x': 'a' },
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [{ name: 'orders_q', name_hash: 'mhash1' }],
+    });
+
+    const { result } = renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(result.current.blockedReason).toBe('model_not_run');
+    expect(result.current.blockedModel).toBe('orders_q');
+    expect(FAKE_DB.registerFileText).not.toHaveBeenCalled();
+    expect(runDuckDBQuery).not.toHaveBeenCalled();
+    expect(useStore.getState().insightJobs[draftInsightKey('my_insight')]).toBeUndefined();
+  });
+
+  // ux-audit.md "infinite spinner" finding (cold-start #2, pills #3): an
+  // insight with nothing mapped (no data-bearing props at all) has nothing
+  // to compile — the caller must be able to tell "nothing to preview" apart
+  // from "still loading" instead of spinning forever.
+  test('an insight with no data props at all is blocked as no_data_props, never compiled', async () => {
+    seedState({
+      explorerInsightStates: {
+        my_insight: { type: 'scatter', props: {}, interactions: [] },
+      },
+    });
+
+    const { result } = renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(compileDraftInsight).not.toHaveBeenCalled();
+    expect(result.current.blockedReason).toBe('no_data_props');
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  // Belt-and-braces (ux-audit.md's own fix direction): even if some other
+  // path still reaches DuckDB against an unregistered draft table, the raw
+  // hashed-table error must never surface as `error` — it maps to the same
+  // guided blocked state.
+  test('a hashed-table DuckDB catalog error is treated as model_not_run, never leaked as a raw error', async () => {
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      static_props: {},
+      props_mapping: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [], // empty models list bypasses the pre-execution guard on purpose
+    });
+    runDuckDBQuery.mockRejectedValueOnce(
+      new Error('Catalog Error: Table with name mfiawdybhqqkwzuxbjzfxqbvbaibc does not exist! Did you mean "pg_index"?')
+    );
+
+    const { result } = renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(result.current.blockedReason).toBe('model_not_run');
+    expect(result.current.error).toBeNull();
+  });
+
   test('a model_not_run 422 sets blockedReason and removes any stale draft entry', async () => {
     const err = new Error('Missing schema for model: orders_q.');
     err.errorType = 'model_not_run';

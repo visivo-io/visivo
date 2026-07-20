@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { PiCircleNotch } from 'react-icons/pi';
+import { PiCircleNotch, PiCursorClick } from 'react-icons/pi';
 import ChartPreview from '../views/common/ChartPreview';
 import useDraftInsightPreview, { draftInsightKey } from '../../hooks/useDraftInsightPreview';
 import { useInsightsData } from '../../hooks/useInsightsData';
@@ -285,9 +285,21 @@ const ExplorerChartPreview = () => {
     [chartInsightNames, insightStates]
   );
 
+  // ux-audit.md "unresolved-input misclassification" finding (cold-start #3,
+  // promote-roundtrip #3, pills #3): a model reference authored via the
+  // Build rail's own pill drops (`?{${ref(model).column}}`) is picked up by
+  // the SAME regex `extractInputDependenciesFromProps` uses to find real
+  // Input references — the two are textually indistinguishable without
+  // knowing what names are actually models. `usePreviewInputDependencies`
+  // excludes PUBLISHED model names on its own (`state.models`); draft/
+  // not-yet-promoted model tabs only exist here (`explorerModelStates`), so
+  // they're passed explicitly.
+  const extraModelNames = useMemo(() => Object.keys(modelStates || {}), [modelStates]);
+
   const { inputConfigs, unresolvedNames } = usePreviewInputDependencies(projectId, {
     insightNames: draftPreview.previewInsightKeys,
     configForFallback,
+    extraModelNames,
   });
 
   const chartConfig = useMemo(
@@ -323,11 +335,30 @@ const ExplorerChartPreview = () => {
       >
         <PiCircleNotch className="h-5 w-5 text-secondary-300" aria-hidden="true" />
         <span className="text-sm font-medium text-secondary-600">
-          Run the query{draftLaneBlockedStatus.blockedModel ? ` for "${draftLaneBlockedStatus.blockedModel}"` : ''}{' '}
-          to preview this chart
+          Run your query{draftLaneBlockedStatus.blockedModel ? ` for "${draftLaneBlockedStatus.blockedModel}"` : ''}{' '}
+          to see a preview
         </span>
         <span className="text-xs text-secondary-400 max-w-sm">
-          This insight references a column on a model that hasn&apos;t returned any rows yet.
+          This chart references a column on a model that hasn&apos;t returned any rows yet.
+        </span>
+      </div>
+    );
+  }
+
+  // ux-audit.md "infinite spinner" finding (cold-start #2, pills #3): nothing
+  // has been mapped to this insight yet (no x/y/etc.), so there is genuinely
+  // nothing to compile or load — a guided empty state, never a spinner that
+  // waits on a request that was never made.
+  if (draftLaneBlockedStatus?.blockedReason === 'no_data_props') {
+    return (
+      <div
+        className="flex flex-col items-center justify-center h-full bg-gray-50 gap-2 p-6 text-center"
+        data-testid="chart-preview-empty-no-props"
+      >
+        <PiCursorClick className="h-5 w-5 text-secondary-300" aria-hidden="true" />
+        <span className="text-sm font-medium text-secondary-600">Nothing to preview yet</span>
+        <span className="text-xs text-secondary-400 max-w-sm">
+          Drag a column from the results grid onto a field (like x or y) to see a chart preview.
         </span>
       </div>
     );
@@ -341,8 +372,9 @@ const ExplorerChartPreview = () => {
           data-testid="chart-preview-unresolved-inputs"
           className="px-3 py-1.5 text-xs text-highlight-700 bg-highlight-50 border-b border-highlight-200"
         >
-          References input{unresolvedNames.length === 1 ? '' : 's'}{' '}
-          {unresolvedNames.map(n => `"${n}"`).join(', ')} — not yet promoted.
+          Input{unresolvedNames.length === 1 ? '' : 's'}{' '}
+          {unresolvedNames.map(n => `"${n}"`).join(', ')}{' '}
+          {unresolvedNames.length === 1 ? "isn't" : "aren't"} defined in this project yet.
         </div>
       )}
       {/* VIS-1093 — the promoted-poll bridge's failure path: surfaced as a

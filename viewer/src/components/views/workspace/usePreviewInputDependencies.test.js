@@ -27,8 +27,8 @@ jest.mock('zustand/react/shallow', () => ({
   useShallow: fn => fn,
 }));
 
-const seedStore = ({ inputs = [], insightJobs = {} } = {}) => {
-  const state = { inputs, insightJobs, fetchInputs: jest.fn() };
+const seedStore = ({ inputs = [], insightJobs = {}, models = [] } = {}) => {
+  const state = { inputs, insightJobs, models, fetchInputs: jest.fn() };
   useStore.mockImplementation(selector =>
     typeof selector === 'function' ? selector(state) : state
   );
@@ -156,6 +156,60 @@ describe('usePreviewInputDependencies', () => {
 
     expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
     expect(result.current.unresolvedNames).toEqual(['not_yet_promoted_input']);
+  });
+
+  // ux-audit.md "unresolved-input misclassification" finding (cold-start #3,
+  // promote-roundtrip #3, pills #3): a MODEL ref (`?{${ref(model).column}}`)
+  // is harvested by the same extractor real input refs are, but a model name
+  // is never an input dependency — it must never end up in unresolvedNames.
+  it('excludes PUBLISHED model names from unresolvedNames — a model ref is never mistaken for an input', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      models: [{ name: 'orders_q' }],
+      insightJobs: { sales: { inputDependencies: ['region', 'orders_q'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  // A draft/not-yet-promoted model tab is never in `state.models` yet — the
+  // caller (ExplorerChartPreview) passes its own known draft names via
+  // `extraModelNames` so those are excluded too.
+  it('excludes caller-supplied extraModelNames (draft model tabs) from unresolvedNames', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      models: [], // 'model' is a draft tab, not yet published
+      insightJobs: { sales: { inputDependencies: ['region', 'model'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', {
+        insightNames: ['sales'],
+        extraModelNames: ['model'],
+      })
+    );
+
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  it('still surfaces a genuinely undefined name even alongside known model names', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      models: [{ name: 'orders_q' }],
+      insightJobs: { sales: { inputDependencies: ['region', 'orders_q', 'not_a_real_thing'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'], extraModelNames: [] })
+    );
+
+    expect(result.current.unresolvedNames).toEqual(['not_a_real_thing']);
   });
 
   it('unresolvedNames is empty when every referenced name resolves', () => {

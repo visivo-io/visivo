@@ -19,6 +19,15 @@ export const draftInsightKey = name => `__draft__:${name}`;
 
 const COMPILE_DEBOUNCE_MS = 1000;
 
+// Matches DuckDB's raw "Catalog Error: Table with name <hash> does not
+// exist!" — the internal draft-lane materialization table name this hook
+// itself mints (`draft_model_<name_hash>_<ts>` registered as `"<name_hash>"`
+// below). See the pre-execution guard's docstring for the primary fix; this
+// pattern is the belt-and-braces fallback ux-audit.md's fix direction calls
+// for so a leaked hash can never reach the user even from an unanticipated
+// path.
+const HASHED_TABLE_ERROR_PATTERN = /Table with name [0-9a-zA-Z_]{8,} does not exist/i;
+
 /** Extract `${name.accessor}` input dependencies from post_query + static_props
  * — byte-for-byte the same regex `useInsightsData.js`'s `processInsight` uses
  * for real insights, so a draft's `pendingInputs`/`inputDependencies` behave
@@ -183,7 +192,23 @@ const useDraftInsightPreview = () => {
         }
         const hasDataProps = Object.keys(state.props || {}).some(k => state.props[k] !== undefined && state.props[k] !== '');
         if (!hasDataProps) {
-          setInsightStatus(name, EMPTY_INSIGHT_STATUS);
+          // ux-audit.md "infinite spinner" finding (cold-start #2): an
+          // insight with nothing mapped yet has NOTHING to compile — no
+          // network call is ever made for it. Previously this reset to
+          // EMPTY_INSIGHT_STATUS (not loading, not blocked, not errored),
+          // which `ExplorerChartPreview` had no way to distinguish from "not
+          // yet checked" — it fell through to `<ChartPreview>` -> `<Chart>`,
+          // whose OWN `hasAllInsightData` gate then spun forever waiting for
+          // `insightJobs[draftKey].data` that nothing was ever going to
+          // populate (this hook correctly never even tries). Every terminal
+          // outcome now gets an explicit blockedReason so the caller can
+          // render a guided empty state instead of a dead spinner.
+          setInsightStatus(name, {
+            isLoading: false,
+            error: null,
+            blockedReason: 'no_data_props',
+            blockedModel: null,
+          });
           continue;
         }
 
@@ -224,11 +249,47 @@ const useDraftInsightPreview = () => {
           });
           if (isStale()) continue;
 
+          // ux-audit.md "draft-preview execution gap" (BLOCKER — cold-start
+          // #1, promote-roundtrip #1): a draft's props can compile to a
+          // valid `post_query` (200) even when FieldResolver never needed a
+          // schema lookup for the specific expression — see
+          // insight_compile_views.py's docstring. That `post_query` still
+          // qualifies columns against `compiled.models[].name_hash`
+          // table(s), which only get CREATEd below when this hook already
+          // has fetched rows for them. Executing anyway used to hand DuckDB
+          // a query against a table that was NEVER created, surfacing a raw
+          // "Catalog Error: Table with name <hash> does not exist!" — an
+          // internal identifier leaked straight to the user (see
+          // ChartPreview.jsx's error panel). Every dependent model must have
+          // actually-fetched rows (the SQL/results lane's own queryResult)
+          // BEFORE post_query is ever sent to DuckDB; otherwise this is
+          // exactly the same "run the query first" gap the server's 422
+          // already models — reuse that same guided state instead of
+          // executing a doomed query.
+          const unloadedModel = (compiled.models || []).find(model => {
+            const rows = modelStates[model.name]?.queryResult?.rows;
+            return !rows || !rows.length;
+          });
+          if (unloadedModel) {
+            if (!isStale()) {
+              removeInsightJob(draftKey);
+              seenDraftKeysRef.current.delete(draftKey);
+              setInsightStatus(name, {
+                isLoading: false,
+                error: null,
+                blockedReason: 'model_not_run',
+                blockedModel: unloadedModel.name,
+              });
+            }
+            continue;
+          }
+
           // Register each dependent model's ALREADY-FETCHED rows (the
           // SQL/results lane, `modelStates[name].queryResult`) as a DuckDB
           // table named by the model's hash — the exact table name
           // `compiled.post_query` qualifies columns against (S2 Q2's forced
-          // dynamic/duckdb build path).
+          // dynamic/duckdb build path). Every model reaching this point is
+          // already known (via the guard above) to have fetched rows.
           const conn = await getConnection(db);
           for (const model of compiled.models || []) {
             const rows = modelStates[model.name]?.queryResult?.rows || [];
@@ -297,6 +358,20 @@ const useDraftInsightPreview = () => {
               error: null,
               blockedReason: 'model_not_run',
               blockedModel: err.modelName || null,
+            });
+          } else if (HASHED_TABLE_ERROR_PATTERN.test(err?.message || '')) {
+            // Belt-and-braces (ux-audit.md's own fix direction): the guard
+            // above should make this unreachable in practice, but if ANY
+            // other path ever reaches DuckDB against an unregistered draft
+            // table, treat it the same as "run the query first" rather than
+            // leaking the raw hashed table name in `error`.
+            removeInsightJob(draftKey);
+            seenDraftKeysRef.current.delete(draftKey);
+            setInsightStatus(name, {
+              isLoading: false,
+              error: null,
+              blockedReason: 'model_not_run',
+              blockedModel: null,
             });
           } else {
             removeInsightJob(draftKey);
