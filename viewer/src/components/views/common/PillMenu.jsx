@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PiCaretDown, PiWarningCircle, PiTextAa, PiTrash } from 'react-icons/pi';
 import useStore from '../../../stores/store';
@@ -177,17 +177,25 @@ function Divider() {
  *   only for `kind: 'aggregate'` pills; undefined keeps it disabled.
  * @param {() => void} props.onRemove - clear this slot's value.
  * @param {boolean} [props.disabled]
+ *
+ * T4 (pills-buildrail #10): exposes an imperative `open()` (via `ref` +
+ * `useImperativeHandle`) so the pill BODY (not just this chevron) can also
+ * open the menu — `PropertyRow` holds a ref and calls it from the pill's own
+ * onClick. The chevron stays a real, independently-clickable trigger too
+ * (toggle open/closed); its own click handler stops propagation so a click
+ * on the 16px chevron doesn't ALSO fire the pill body's onClick underneath it
+ * (open, then immediately re-forced-open is harmless, but a toggle-closed
+ * immediately reopened would read as a broken click).
  */
-const PillMenu = ({
-  state,
-  onSelectPreset,
-  onCustomAggregation,
-  onSaveAsMetric,
-  onRemove,
-  disabled = false,
-}) => {
+const PillMenu = React.forwardRef(
+  (
+    { state, onSelectPreset, onCustomAggregation, onSaveAsMetric, onRemove, disabled = false },
+    ref
+  ) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({ open: () => setOpen(true) }), []);
 
   const isColumnBacked = state?.kind === 'dimension' || state?.kind === 'aggregate';
   const isNumeric = useColumnIsNumeric(isColumnBacked ? state.ref : null, state?.column);
@@ -211,13 +219,18 @@ const PillMenu = ({
     setOpen(false);
   };
 
+  // T4 (pills-buildrail #5): the INITIAL guess (open downward, anchored to
+  // the trigger's bottom edge) — `PillMenuPopover` measures its own actual
+  // rendered height after mount and flips to open UPWARD when it would
+  // overflow the viewport bottom (the common case: the pill row sits near
+  // the bottom of the Build rail by design).
   const menuStyle = useMemo(() => {
     if (!open || !triggerRef.current) return null;
     const rect = triggerRef.current.getBoundingClientRect();
     const MENU_WIDTH = 260;
     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
     const left = Math.max(8, Math.min(rect.left, viewportWidth - MENU_WIDTH - 8));
-    return { top: rect.bottom + 4, left };
+    return { top: rect.bottom + 4, left, triggerTop: rect.top, triggerBottom: rect.bottom };
   }, [open]);
 
   return (
@@ -225,7 +238,10 @@ const PillMenu = ({
       <button
         type="button"
         ref={triggerRef}
-        onClick={() => setOpen(o => !o)}
+        onClick={e => {
+          e.stopPropagation();
+          setOpen(o => !o);
+        }}
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -267,7 +283,9 @@ const PillMenu = ({
         )}
     </span>
   );
-};
+  }
+);
+PillMenu.displayName = 'PillMenu';
 
 const PillMenuPopover = ({
   state,
@@ -286,6 +304,32 @@ const PillMenuPopover = ({
   triggerRef,
 }) => {
   const containerRef = useRef(null);
+  // T4 (pills-buildrail #5): measured-then-flip. `style` is the DOWNWARD
+  // guess computed before the popover's actual content (a variable-length
+  // preset list + header + collision warning) has rendered anywhere, so its
+  // real height isn't knowable in advance. Render once at the guessed
+  // position, measure, and if the bottom edge would fall below the
+  // viewport, flip to open UPWARD from the trigger's top edge instead — this
+  // is the common case since the pill row is anchored near the Build rail's
+  // bottom by design (06 §4/§5's own mock).
+  const [resolvedTop, setResolvedTop] = useState(style.top);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const rect = el.getBoundingClientRect();
+    const overflowsBottom = rect.bottom > viewportHeight - 8;
+    if (overflowsBottom) {
+      const flippedTop = style.triggerTop - rect.height - 4;
+      setResolvedTop(Math.max(8, flippedTop));
+    } else {
+      setResolvedTop(style.top);
+    }
+    // Re-run only when the anchor itself moves (open/close, trigger reposition) —
+    // not on every render, which would fight the flip decision.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [style.top, style.triggerTop, style.left]);
 
   React.useEffect(() => {
     const handler = e => {
@@ -317,7 +361,7 @@ const PillMenuPopover = ({
     <div
       ref={containerRef}
       className="fixed bg-white border border-gray-200 rounded-lg shadow-xl w-64 py-1 text-xs text-gray-700 z-[9999]"
-      style={{ top: style.top, left: style.left }}
+      style={{ top: resolvedTop, left: style.left }}
       data-testid="pill-menu"
       role="menu"
     >
