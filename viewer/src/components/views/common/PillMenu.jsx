@@ -364,6 +364,14 @@ const PillMenuPopover = ({
       style={{ top: resolvedTop, left: style.left }}
       data-testid="pill-menu"
       role="menu"
+      // React portals bubble events through the REACT tree, not the DOM tree:
+      // without this, every click in here also reaches the pill body's
+      // open-the-menu handler (PropertyRow's handlePillBodyClick), which
+      // re-opened the menu in the same tick that selecting a preset closed
+      // it — leaving it stuck open, so the user's next chevron click only
+      // appeared to do nothing (it toggled the already-open menu shut).
+      onClick={e => e.stopPropagation()}
+      onKeyDown={e => e.stopPropagation()}
     >
       {/* Header — source/field + type (06 §4's anatomy) */}
       <div className="px-3 py-2 border-b border-gray-100">

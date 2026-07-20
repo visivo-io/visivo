@@ -31,6 +31,35 @@ describe('PillMenu', () => {
     expect(screen.getByText('orders_q ▸ region')).toBeInTheDocument();
   });
 
+  test('selecting a preset closes the popover, and a click inside it never re-opens it through a portal-bubbling ancestor handler', () => {
+    // Composed-gate regression (Wave 1): the popover renders through a React
+    // portal, and portal events bubble up the REACT tree — so every click
+    // inside it also reached the pill BODY's open-the-menu handler one level
+    // up, re-opening the menu in the same tick that selecting a preset closed
+    // it. The menu then stayed open forever and the next chevron click only
+    // appeared to do nothing (it toggled the already-open menu shut).
+    const onSelectPreset = jest.fn();
+    const reopen = jest.fn();
+    render(
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+      <div onClick={reopen} data-testid="pill-body-ancestor">
+        <PillMenu
+          state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }}
+          onSelectPreset={onSelectPreset}
+        />
+      </div>
+    );
+    openMenu();
+    expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+
+    expect(onSelectPreset).toHaveBeenCalledWith('sum');
+    expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+    // The ancestor never saw the in-menu click, so nothing re-opened it.
+    expect(reopen).not.toHaveBeenCalled();
+  });
+
   test('a dimension pill offers the Dimension + every non-restricted preset (unknown numeric-ness fails open)', () => {
     render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }} />);
     openMenu();
