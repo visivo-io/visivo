@@ -156,7 +156,12 @@ test.describe('The "Explore this" flywheel loop (Explore 2.0 Phase 5)', () => {
     // provenance record, not the query text.
     await expect(async () => {
       const exploration = await fetchExploration(page, explorationId2);
-      expect(exploration.seeded_from).toEqual({ type: 'model', name: modelName });
+      // 6c-T1 added `content_signature` to SeedRef (staleness drift detection),
+      // so the shape is no longer exactly these two keys — assert the
+      // identity fields exactly AND that the signature was captured.
+      expect(exploration.seeded_from).toMatchObject({ type: 'model', name: modelName });
+      expect(typeof exploration.seeded_from.content_signature).toBe('string');
+      expect(exploration.seeded_from.content_signature.length).toBeGreaterThan(0);
       expect((exploration.draft.queries || [])[0]?.sql || '').toContain(TABLE);
     }).toPass({ timeout: 15000 });
 
@@ -213,7 +218,12 @@ test.describe('The "Explore this" flywheel loop (Explore 2.0 Phase 5)', () => {
 
     await expect(async () => {
       const exploration = await fetchExploration(page, explorationId3);
-      expect(exploration.seeded_from).toEqual({ type: 'metric', name: metricName });
+      // 6c-T1 added `content_signature` to SeedRef (staleness drift detection),
+      // so the shape is no longer exactly these two keys — assert the
+      // identity fields exactly AND that the signature was captured.
+      expect(exploration.seeded_from).toMatchObject({ type: 'metric', name: metricName });
+      expect(typeof exploration.seeded_from.content_signature).toBe('string');
+      expect(exploration.seeded_from.content_signature.length).toBeGreaterThan(0);
     }).toPass({ timeout: 15000 });
 
     // The two round-trip explorations are genuinely distinct records.

@@ -249,8 +249,15 @@ test.describe('Post-promote fallback dashboard offer, reached through the ordina
     // directly (the empty-checklist path).
     await page.getByTestId('explorer-save-button').click();
     await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
-    // Nothing to save — the modal's own empty state; no fallback offer.
-    await expect(page.getByText('No changes to save.')).toBeVisible({ timeout: 10000 });
+    // NOTE (gate correction): the modal's "No changes to save." empty state is
+    // NOT reachable this way — a source-tile exploration is seeded with a
+    // query + insight + chart, so the checklist is never empty here. (That the
+    // untouched seed is offered for saving at all is its own finding, tracked
+    // for 6c-T5/T3.) The behavior under test is the OFFER, so drive the
+    // reachable negative path instead: dismiss without saving anything.
+    await page.getByTestId('exploration-promote-cancel').click();
+    await expect(page.getByTestId('exploration-promote-modal')).toBeHidden({ timeout: 10000 });
+    // Nothing was promoted this run -> no fallback dashboard offer anywhere.
     expect(await page.getByTestId('exploration-promote-fallback-dashboard-offer').count()).toBe(0);
     await page.request.delete(`${apiBase}/api/explorations/${id}/`).catch(() => {});
   });
