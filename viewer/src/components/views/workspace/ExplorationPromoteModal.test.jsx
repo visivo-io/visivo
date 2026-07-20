@@ -715,6 +715,34 @@ describe('ExplorationPromoteModal', () => {
       expect(screen.getByTestId('exploration-promote-error')).toHaveTextContent('server rejected it');
     });
 
+    test('a run that publishes BOTH a model and a metric names the METRIC, not the dependency-ordered model', async () => {
+      // Composed-gate regression: promote results are dependency-ordered, so a
+      // metric's own model is always first. A plain `find()` over "metric,
+      // dimension, or model" therefore named the incidental model rather than
+      // the field the user just built.
+      buildPromoteChecklist.mockResolvedValue([
+        row({ tier: 'model', type: 'model', name: 'orders_q' }),
+        row({ tier: 'field', type: 'metric', name: 'churn_rate' }),
+      ]);
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue({
+          success: true,
+          results: [
+            { type: 'model', name: 'orders_q', success: true, error: null },
+            { type: 'metric', name: 'churn_rate', success: true, error: null },
+          ],
+          reclassificationOffers: [],
+        }),
+      });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+      const offer = await screen.findByTestId('exploration-promote-semantic-layer-offer');
+      expect(offer).toHaveTextContent('churn_rate');
+      expect(offer).not.toHaveTextContent('orders_q');
+    });
+
     test('promoting a metric offers "View in Semantic Layer"; accepting sets the focus intent, opens the tab, and closes', async () => {
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'field', type: 'metric', name: 'churn_rate' })]);
       const setWorkspaceSemanticLayerFocusIntent = jest.fn();

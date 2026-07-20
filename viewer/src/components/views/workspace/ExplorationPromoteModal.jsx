@@ -323,13 +323,21 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // "go look at what you just published" offer applies to it too — this was
   // a too-narrow condition, not a discoverability gap in an otherwise-correct
   // trigger.
-  const promotedField = useMemo(
-    () =>
-      (promotedThisRun?.results || []).find(
-        r => r.success && (r.type === 'metric' || r.type === 'dimension' || r.type === 'model')
-      ) || null,
-    [promotedThisRun]
-  );
+  // Composed-gate correction: `find()` over the results scans them in PROMOTE
+  // order, which is dependency-ordered — the model a metric depends on is
+  // always promoted (and therefore found) first. Broadening to models above
+  // then meant a run that published a metric offered "View <its model> in the
+  // Semantic Layer", naming the incidental dependency instead of the thing
+  // the user just built. Prefer the most specific field, fall back to the
+  // model so the plain query -> chart flow still gets an offer.
+  const promotedField = useMemo(() => {
+    const succeeded = (promotedThisRun?.results || []).filter(r => r.success);
+    return (
+      succeeded.find(r => r.type === 'metric' || r.type === 'dimension') ||
+      succeeded.find(r => r.type === 'model') ||
+      null
+    );
+  }, [promotedThisRun]);
 
   const handleViewInSemanticLayer = useCallback(() => {
     if (!promotedField) return;
