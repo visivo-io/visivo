@@ -468,6 +468,13 @@ test.describe('Exploration lifecycle (Explore 2.0 Phase 2)', () => {
     await expect(page.getByTestId('workspace-middle-semantic-layer')).toBeVisible({
       timeout: 15000,
     });
+    // Wave-1 composed gate: the middle pane can commit a frame before the URL
+    // write lands under load (observed 1-in-3), so sampling `page.url()` at
+    // this exact instant is racy. Wait for the URL to BECOME the bare view
+    // route, then still assert the pathname exactly — same proof, not a
+    // weaker one. (That the pane can lead the URL at all is logged against
+    // 6c-T2 for a look at whether the write should be synchronous.)
+    await page.waitForURL('**/workspace/semantic-layer', { timeout: 10000 });
     expect(new URL(page.url()).pathname).toBe('/workspace/semantic-layer');
     await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toBeVisible();
 

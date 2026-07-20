@@ -222,8 +222,12 @@ test.describe('The "Explore this" flywheel loop (Explore 2.0 Phase 5)', () => {
       // so the shape is no longer exactly these two keys — assert the
       // identity fields exactly AND that the signature was captured.
       expect(exploration.seeded_from).toMatchObject({ type: 'metric', name: metricName });
-      expect(typeof exploration.seeded_from.content_signature).toBe('string');
-      expect(exploration.seeded_from.content_signature.length).toBeGreaterThan(0);
+      // 6c-T1's drift detection deliberately does NOT hash metric/dimension
+      // seeds (explorationStaleness.js's SIGNATURE_TYPES): a metric has no
+      // standalone content — it lives inside its model's config — so its
+      // signature is null BY DESIGN rather than guessed at. Asserted so the
+      // contract is documented, not silently assumed.
+      expect(exploration.seeded_from.content_signature).toBeNull();
     }).toPass({ timeout: 15000 });
 
     // The two round-trip explorations are genuinely distinct records.
