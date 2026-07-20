@@ -84,7 +84,7 @@ describe('ChartPreview (presentational)', () => {
     expect(screen.getByText('Running query')).toBeInTheDocument();
   });
 
-  it('shows error state when error prop is set', () => {
+  it('shows error state when error prop is set, with the raw message tucked behind technical details', () => {
     render(
       <ChartPreview
         chartConfig={chartConfig}
@@ -94,7 +94,61 @@ describe('ChartPreview (presentational)', () => {
       />
     );
     expect(screen.getByTestId('chart-preview-error')).toBeInTheDocument();
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText('This preview failed to run.')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-preview-error-technical')).toHaveTextContent(
+      'Something went wrong'
+    );
+  });
+
+  // ux-audit.md "error translation" finding (cold-start #1, promote-roundtrip
+  // #1/#2, pills #3): a hashed internal table name must never appear as the
+  // prominent headline — only inside the collapsed technical details.
+  it('translates a hashed-table catalog error to plain language, hiding the hash from the headline', () => {
+    render(
+      <ChartPreview
+        chartConfig={chartConfig}
+        insightKeys={['__preview__a']}
+        projectId="p"
+        error='Catalog Error: Table with name mfiawdybhqqkwzuxbjzfxqbvbaibc does not exist! Did you mean "pg_index"?'
+      />
+    );
+    // The headline and hint are exact, hash-free strings — the hash exists
+    // ONLY inside the collapsed technical-details block below.
+    expect(screen.getByText("This chart hasn't loaded any data yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText('Run your query, then come back to this tab to see a preview.')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('chart-preview-error-technical')).toHaveTextContent(
+      'mfiawdybhqqkwzuxbjzfxqbvbaibc'
+    );
+  });
+
+  it('translates "has no dependent models" jargon to a plain drag-a-column hint', () => {
+    render(
+      <ChartPreview
+        chartConfig={chartConfig}
+        insightKeys={['__preview__a']}
+        projectId="p"
+        error="Insight 'insight' has no dependent models"
+      />
+    );
+    const errorPanel = screen.getByTestId('chart-preview-error');
+    expect(errorPanel).toHaveTextContent("isn't connected to any data yet");
+    expect(errorPanel).toHaveTextContent('Drag a column from the Library');
+  });
+
+  it('accepts an Error-shaped object (not just a string) for the error prop', () => {
+    render(
+      <ChartPreview
+        chartConfig={chartConfig}
+        insightKeys={['__preview__a']}
+        projectId="p"
+        error={new Error('boom from an Error object')}
+      />
+    );
+    expect(screen.getByTestId('chart-preview-error-technical')).toHaveTextContent(
+      'boom from an Error object'
+    );
   });
 
   it('shows empty state when insightKeys is empty', () => {
