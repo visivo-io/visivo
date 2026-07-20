@@ -283,7 +283,13 @@ describe('ExplorationPromoteModal', () => {
       ...extra,
     });
 
-    test('no offer without a return_to on the exploration', async () => {
+    // ux-audit.md "post-promote offers never appear" finding (⚠
+    // conflicts-with-e2e — promote-roundtrip #9): without a return_to
+    // intent, the OLD offer stays absent, but the fix's fallback offer
+    // (reusing the same placement plumbing) now appears instead — the
+    // promote -> dashboard round-trip is never a dead end just because the
+    // user didn't enter through the one narrow "+New Chart" path.
+    test('no return_to-specific offer without a return_to on the exploration — the generic fallback offer appears instead', async () => {
       seedReturnTo(null);
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
       useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
@@ -292,6 +298,103 @@ describe('ExplorationPromoteModal', () => {
       fireEvent.click(screen.getByTestId('exploration-promote-submit'));
       await screen.findByTestId('exploration-promote-success');
       expect(screen.queryByTestId('exploration-promote-return-to-offer')).not.toBeInTheDocument();
+      const fallback = screen.getByTestId('exploration-promote-fallback-dashboard-offer');
+      expect(fallback).toHaveTextContent('churn_chart');
+    });
+
+    test('no fallback offer when no dashboards exist at all', async () => {
+      seedReturnTo(null, { dashboards: [] });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-success');
+      expect(
+        screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
+      ).not.toBeInTheDocument();
+    });
+
+    test('no fallback offer when no chart was promoted this run (even with no return_to)', async () => {
+      seedReturnTo(null);
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue({
+          success: true,
+          results: [{ type: 'model', name: 'orders_q', success: true, error: null }],
+          reclassificationOffers: [],
+        }),
+      });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-success');
+      expect(
+        screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
+      ).not.toBeInTheDocument();
+    });
+
+    test('the return_to-specific offer takes priority — the fallback never shows alongside it', async () => {
+      seedReturnTo({ dashboard: 'sales', slot: 'r1-i1' });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+      expect(
+        screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
+      ).not.toBeInTheDocument();
+    });
+
+    test('accepting the fallback offer places the chart in the chosen dashboard, navigates, and closes', async () => {
+      seedReturnTo(null);
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+
+      await waitFor(() =>
+        expect(useStore.getState().placeChartInDashboardSlot).toHaveBeenCalledWith(
+          'sales',
+          'churn_chart'
+        )
+      );
+      await waitFor(() =>
+        expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'dashboard:sales',
+          type: 'dashboard',
+          name: 'sales',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    test('a fallback placement failure shows an inline error and does not close', async () => {
+      seedReturnTo(null, {
+        placeChartInDashboardSlot: jest.fn().mockResolvedValue({ success: false, error: 'slot taken' }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('exploration-promote-fallback-place-error')).toHaveTextContent(
+          'slot taken'
+        )
+      );
+      expect(onClose).not.toHaveBeenCalled();
     });
 
     test('no offer when return_to is set but no chart was promoted this run', async () => {
@@ -547,12 +650,34 @@ describe('ExplorationPromoteModal', () => {
       ...extra,
     });
 
-    test('no offer when nothing metric/dimension-shaped was promoted this run', async () => {
+    // ux-audit.md "post-promote offers never appear" finding
+    // (⚠ conflicts-with-e2e — promote-roundtrip #9): a MODEL is exactly as
+    // semantic-layer-visible as a metric/dimension (same ERD), so promoting
+    // one — the single most common promote-roundtrip outcome — now offers
+    // this too. This is the fix; see the too-narrow-condition note on
+    // `promotedField` in the component.
+    test('promoting a model (the common case — no metric/dimension involved) also offers "View in Semantic Layer"', async () => {
       buildPromoteChecklist.mockResolvedValue([row()]);
       useStore.setState({
         promoteExploration: jest.fn().mockResolvedValue({
           success: true,
           results: [{ type: 'model', name: 'orders_q', success: true, error: null }],
+          reclassificationOffers: [],
+        }),
+      });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      const offer = await screen.findByTestId('exploration-promote-semantic-layer-offer');
+      expect(offer).toHaveTextContent('orders_q');
+    });
+
+    test('no offer when only an insight (no model/metric/dimension) was promoted this run', async () => {
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'insight', type: 'insight', name: 'my_insight' })]);
+      useStore.setState({
+        promoteExploration: jest.fn().mockResolvedValue({
+          success: true,
+          results: [{ type: 'insight', name: 'my_insight', success: true, error: null }],
           reclassificationOffers: [],
         }),
       });
