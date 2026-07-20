@@ -74,11 +74,33 @@ const advancedGroup = {
 describe('FieldGroup', () => {
   beforeEach(resetCollapse);
 
-  test('renders header label, group icon, and present/total count badge', () => {
+  test('renders header label, group icon, and present/total count badge once something is configured', () => {
     render(<FieldGroup group={essentialsGroup} value={{ expression: 'x' }} onChange={() => {}} />);
     expect(screen.getByTestId('field-group-header-essentials')).toBeInTheDocument();
     // 1 of 2 fields present (expression).
     expect(screen.getByTestId('field-group-badge-essentials')).toHaveTextContent('1/2');
+  });
+
+  // D12 (pills-buildrail #8/#9): "0/180"-style raw schema counts read as an
+  // intimidating inventory when nothing is configured yet — the badge is
+  // hidden entirely in that state (it comes back the moment ANY field in
+  // the group has a value, per the test above). Fields spec their own
+  // `present`/`required` flags (pre-computed by buildGroupSpec, not derived
+  // live here), so this uses a fixture where BOTH are false throughout.
+  test('hides the count badge entirely when nothing in the group is configured (D12 curation)', () => {
+    const emptyStyleGroup = {
+      id: 'style',
+      label: 'Style',
+      icon: 'style',
+      objectType: 'scatter',
+      alwaysOpen: false,
+      fields: [
+        { name: 'marker.color', schema: { type: 'string' }, required: false, present: false, expanded: false },
+        { name: 'line.width', schema: { type: 'number' }, required: false, present: false, expanded: false },
+      ],
+    };
+    render(<FieldGroup group={emptyStyleGroup} value={{}} onChange={() => {}} />);
+    expect(screen.queryByTestId('field-group-badge-style')).not.toBeInTheDocument();
   });
 
   test('Essentials is always open and its header is disabled (cannot collapse)', () => {

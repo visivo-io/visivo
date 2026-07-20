@@ -452,6 +452,52 @@ describe('routeWorkspaceDragEnd — property-zone branch (Explore 2.0 Phase 3b, 
     expect(result).toBe('property_zone_accepted');
     expect(onDropField).toHaveBeenCalledWith(dragData);
   });
+
+  // T4 (pills-buildrail #4): a pill dragged out of a sibling slot
+  // (`PropertyRow`'s `useDraggable`, `data: { source: 'pill', ... }`)
+  // dropped on ANOTHER property-zone slot must also route through — pills
+  // move between slots the same way a Library/column drop lands one.
+  test('a pill dragged from one slot onto another property-zone still invokes onDropField', () => {
+    const onDropField = jest.fn();
+    const dragData = { source: 'pill', sourcePath: 'x', raw: '${ref(orders_q).amount}' };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: dragData } },
+        over: { data: { current: { kind: 'property-zone', path: 'y', onDropField } } },
+      },
+      {}
+    );
+    expect(result).toBe('property_zone_accepted');
+    expect(onDropField).toHaveBeenCalledWith(dragData);
+  });
+});
+
+describe('mapDragStartData — column + pill drag previews (T4, pills-buildrail #4)', () => {
+  test('a results-grid column drag (no `source` key) maps to a "column" preview', () => {
+    expect(mapDragStartData({ name: 'X', type: 'column', sourceType: 'data-table' })).toEqual({
+      kind: 'column',
+      name: 'X',
+    });
+  });
+
+  test('a Library-sourced column-shaped drag is NOT reclassified — `source: "library"` still wins', () => {
+    const out = mapDragStartData({ source: 'library', type: 'sourceColumn', name: 'amount' });
+    expect(out.kind).toBe('library');
+  });
+
+  test('a pill drag maps to a "pill" preview', () => {
+    expect(mapDragStartData({ source: 'pill', sourcePath: 'x', raw: '${ref(q).amount}', label: 'q ▸ amount' })).toEqual({
+      kind: 'pill',
+      name: 'q ▸ amount',
+    });
+  });
+
+  test('a pill drag with no label falls back to the sourcePath', () => {
+    expect(mapDragStartData({ source: 'pill', sourcePath: 'x', raw: '${ref(q).amount}' })).toEqual({
+      kind: 'pill',
+      name: 'x',
+    });
+  });
 });
 
 describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)', () => {
@@ -953,6 +999,28 @@ describe('WorkspaceDndContext drag overlay previews (VIS-901 #5 / VIS-1008)', ()
     await startDrag('probe');
     expect(screen.getByTestId('level-drag-preview')).toHaveTextContent('Org');
     await dropDrag();
+  });
+
+  // T4 (pills-buildrail #4 "no ghost"): a results-grid column drag
+  // previously mapped to NOTHING (`mapDragStartData` fell through every
+  // branch), so nothing followed the cursor. Confirms the fix end-to-end
+  // through a REAL pointer drag, not just the pure mapper.
+  test('a results-grid column drag (no `source` key) shows the column pill overlay', async () => {
+    renderWith({ name: 'X', type: 'column', sourceType: 'data-table' });
+    await startDrag('probe');
+    expect(screen.getByTestId('column-drag-preview')).toHaveTextContent('X');
+    await dropDrag();
+    expect(screen.queryByTestId('column-drag-preview')).not.toBeInTheDocument();
+  });
+
+  // T4 (pills-buildrail #4 "pills draggable between slots"): a pill dragged
+  // out of its slot shows an overlay too.
+  test('a pill drag shows the pill overlay', async () => {
+    renderWith({ source: 'pill', sourcePath: 'x', raw: '${ref(q).amount}', label: 'q ▸ amount' });
+    await startDrag('probe');
+    expect(screen.getByTestId('pill-drag-preview')).toHaveTextContent('q ▸ amount');
+    await dropDrag();
+    expect(screen.queryByTestId('pill-drag-preview')).not.toBeInTheDocument();
   });
 
   test('a dashboard tile drag shows the tile preview and cancels on Escape', async () => {

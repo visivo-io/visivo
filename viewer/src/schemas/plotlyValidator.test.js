@@ -111,6 +111,28 @@ describe('validateProps - unknown chart type', () => {
   });
 });
 
+// T4 (promote-roundtrip #5): "the wells display the literal pattern:
+// must match pattern '^\?\{.*\}...' — an unreadable regex, shown twice (x
+// and y)" was the audit's exact quote. `x`/`y` are `query-string`-shaped
+// (oneOf: [pattern-constrained ?{...} string, static array]); a plain
+// non-matching string fails BOTH branches, and AJV's nested `pattern`
+// sub-error (raw regex source) is what used to leak through.
+describe('validateProps - pattern violations never leak the raw regex (T4)', () => {
+  test('a non-matching x value never surfaces `\\?\\{` / `^` / `$` regex syntax in its message', async () => {
+    const result = await validateProps('scatter', { type: 'scatter', x: 'not-a-ref-or-array' });
+    expect(result.valid).toBe(false);
+    const xErrors = result.errors.filter(e => e.path === 'x' || e.path.startsWith('x.'));
+    expect(xErrors.length).toBeGreaterThan(0);
+    xErrors.forEach(err => {
+      expect(err.message).not.toMatch(/\\\?\\\{/);
+      expect(err.message).not.toMatch(/\^.*\$/);
+      expect(err.message.toLowerCase()).not.toContain('pattern "');
+    });
+    // The actionable, human copy IS present.
+    expect(xErrors.some(e => e.message.includes('?{ref(model).column}'))).toBe(true);
+  });
+});
+
 describe('error shape', () => {
   test('every error is { path: string, message: string }', async () => {
     const result = await validateProps('scatter', { type: 'scatter', mode: 'bogus' });

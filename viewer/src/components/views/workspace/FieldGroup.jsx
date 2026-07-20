@@ -174,12 +174,20 @@ export function FieldGroup({
         </span>
         <GroupIcon size={16} className="text-gray-500" />
         <span className="flex-1 text-sm font-medium text-gray-700">{label}</span>
-        <span
-          className="text-xs font-medium text-gray-500 bg-gray-200 rounded-full px-2 py-0.5"
-          data-testid={`field-group-badge-${id}`}
-        >
-          {presentCount}/{fields.length}
-        </span>
+        {/* D12 (pills-buildrail #8/#9, promote-roundtrip minor): a "0/180"
+            or "0 of 1366" badge reads as a raw schema-size inventory,
+            intimidating on first contact and adding nothing when there is
+            nothing configured to count. Once at least one field IS set, the
+            fraction is genuinely useful signal ("1/2 essentials filled in"),
+            so it still renders — only the empty, all-zero case is hidden. */}
+        {presentCount > 0 && (
+          <span
+            className="text-xs font-medium text-gray-500 bg-gray-200 rounded-full px-2 py-0.5"
+            data-testid={`field-group-badge-${id}`}
+          >
+            {presentCount}/{fields.length}
+          </span>
+        )}
       </button>
 
       {!collapsed && (

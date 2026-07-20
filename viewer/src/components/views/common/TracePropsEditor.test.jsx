@@ -152,8 +152,10 @@ describe('TracePropsEditor', () => {
     );
 
     // TypeSelector bound to scatter (react-select renders the selected label
-    // inside the type-selector container).
-    const typeSelector = await screen.findByTestId('type-selector');
+    // inside the type-selector container). T4: scoped to `ownerName` so a
+    // Build rail stacking several insight sections has one selector per
+    // insight rather than a single ambiguous `type-selector`.
+    const typeSelector = await screen.findByTestId('type-selector-my_insight');
     expect(typeSelector).toHaveTextContent('Scatter / Line');
 
     // Grouped fields appear once async loaders resolve.

@@ -217,7 +217,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     const insightName = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames[0]
     );
-    const typeSelectTestId = `insight-type-select-${insightName}`;
+    const typeSelectTestId = `type-selector-${insightName}`;
     await pickSelectOption(page, typeSelectTestId, 'Bar');
     await expect(page.getByTestId(typeSelectTestId)).toContainText('Bar', { timeout: 5000 });
 
@@ -281,7 +281,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     // Switch to an indicator so `value` is a scalar-only slot (B13's
     // established fixture for this affordance, per
     // explorer-indicator-slice-authoring.spec.mjs).
-    await pickSelectOption(page, `insight-type-select-${insightName}`, 'Indicator');
+    await pickSelectOption(page, `type-selector-${insightName}`, 'Indicator');
 
     const tableRow = await expandSourceTable(page);
     const { locator: column } = await firstNumericColumn(page, tableRow);
@@ -325,7 +325,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     const insightName = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames[0]
     );
-    await pickSelectOption(page, `insight-type-select-${insightName}`, 'Indicator');
+    await pickSelectOption(page, `type-selector-${insightName}`, 'Indicator');
 
     const tableRow = await expandSourceTable(page);
     const { locator: column, name: columnName } = await firstNumericColumn(page, tableRow);

@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { PiTrash, PiCode, PiSliders } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import RefTextArea from '../RefTextArea';
 import FieldPill from '../FieldPill';
 import PillMenu from '../PillMenu';
 import * as pillGrammar from '../pillGrammar';
+import { useWorkspaceDrag } from '../../workspace/WorkspaceDndContext';
 import {
   isQueryStringValue,
   parseQueryString,
@@ -87,8 +88,28 @@ export function PropertyRow({
     disabled: !dropEnabled,
   });
 
+  // T4 (cold-start #3 / pills-buildrail #4): highlight EVERY eligible slot
+  // the instant a compatible drag starts, not just the one under the
+  // cursor — `isOver`-only feedback means a user gets no signal about WHERE
+  // they can drop until they're already hovering the exact right pixel.
+  const activeDrag = useWorkspaceDrag();
+  const isDragEligibleForThisRow =
+    dropEnabled && !!activeDrag && ['library', 'column', 'pill'].includes(activeDrag.kind);
+
   const isQueryMode = useMemo(() => isQueryStringValue(value), [value]);
-  const [forceQueryMode, setForceQueryMode] = useState(() => isQueryStringValue(value));
+  // T4 (promote-roundtrip #4 / pills #9): a droppable, query-capable slot
+  // (the Build rail's x/y "Essentials" fields) defaults to "Static value" —
+  // a bare `<input type="number">` — even though dropping/typing a column
+  // ref is the overwhelming use case. Typing a ref into that number input
+  // silently mangles it character-by-character (observed: '?{query_1.X}'
+  // reduced to 'e1'). Default droppable + query-capable EMPTY slots to query
+  // mode instead; the toggle above still lets someone who genuinely wants a
+  // literal static value switch to it explicitly. Non-droppable consumers
+  // (right-rail InsightEditForm/ChartEditForm/SchemaLeafForm) are unaffected
+  // — `droppable` is false there, matching every other gate in this file.
+  const [forceQueryMode, setForceQueryMode] = useState(
+    () => isQueryStringValue(value) || (droppable && queryStringSupported)
+  );
 
   // Auto-enter query mode when value externally changes to ?{...} (e.g., chart load, DnD drop)
   useEffect(() => {
@@ -226,6 +247,20 @@ export function PropertyRow({
 
   const isDropTarget = isOver && dropEnabled;
 
+  // T4 (pills-buildrail #10): clicking the PILL BODY opens the same menu the
+  // chevron does — the chevron's 16px hit target was the ONLY interactive
+  // affordance on the pill, failing Fitts and discoverability.
+  const pillMenuRef = useRef(null);
+  const handlePillBodyClick = useCallback(() => {
+    pillMenuRef.current?.open();
+  }, []);
+  const handlePillBodyKeyDown = useCallback(e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      pillMenuRef.current?.open();
+    }
+  }, []);
+
   const pillState = useMemo(
     () => pillGrammar.parse(body, pillFieldOpts),
     [body, pillFieldOpts]
@@ -268,6 +303,24 @@ export function PropertyRow({
         ? `${pillState.ref} ▸ ${pillState.column}`
         : pillState.ref;
 
+  // T4 (pills-buildrail #4): the whole pill is a drag SOURCE too, so it can
+  // move between slots (drag the x pill onto the y slot), not just receive
+  // drops. `sourcePath` + `raw` (the parsed body, pre-`?{}`-wrap) are all
+  // the target slot needs — see `handleDropField`'s `source === 'pill'`
+  // branch and `WorkspaceDndContext`'s matching router extension. Only
+  // wired up when a pill is actually showing (`showPill`) — an opaque/
+  // raw-edit row has no pill to drag.
+  const {
+    attributes: pillDragAttributes,
+    listeners: pillDragListeners,
+    setNodeRef: setPillDragRef,
+    isDragging: isPillDragging,
+  } = useDraggable({
+    id: `pill-${path}`,
+    data: { source: 'pill', sourcePath: path, raw: body, label: pillLabel },
+    disabled: !showPill,
+  });
+
   const handleSelectPreset = useCallback(
     preset => {
       const nextState =
@@ -304,9 +357,12 @@ export function PropertyRow({
       className={`flex flex-col gap-1.5 p-2.5 rounded-md transition-all duration-150 ${
         isDropTarget
           ? 'bg-primary-50 ring-2 ring-primary-300'
-          : 'bg-gray-50 hover:bg-gray-100'
+          : isDragEligibleForThisRow
+            ? 'bg-primary-50/40 ring-2 ring-dashed ring-primary-200'
+            : 'bg-gray-50 hover:bg-gray-100'
       }`}
       data-testid={droppable ? `droppable-property-${path}` : undefined}
+      data-drag-eligible={isDragEligibleForThisRow ? 'true' : undefined}
     >
       {/* Header row with path, toggle, and remove button */}
       <div className="flex items-center gap-1.5">
@@ -376,9 +432,25 @@ export function PropertyRow({
             <div className="flex-1 min-w-[180px]">
               {showPill ? (
                 <FieldPill
+                  ref={setPillDragRef}
                   type={pillType}
                   label={pillLabel}
                   data-testid={`property-pill-${path}`}
+                  // T4 (pills-buildrail #4/#10): the pill is both a drag
+                  // SOURCE (move it to another slot) and a click target
+                  // (open the same menu the chevron does) — the chevron's
+                  // 16px hit target was previously the ONLY interactive
+                  // affordance. `role="button"`/`tabIndex` keep it keyboard-
+                  // reachable without turning the pill into a real `<button>`
+                  // (PillMenu's own chevron trigger is a REAL button nested
+                  // inside; two real buttons would be invalid HTML nesting).
+                  role="button"
+                  tabIndex={disabled ? -1 : 0}
+                  onClick={disabled ? undefined : handlePillBodyClick}
+                  onKeyDown={disabled ? undefined : handlePillBodyKeyDown}
+                  {...pillDragAttributes}
+                  {...pillDragListeners}
+                  className={`${isPillDragging ? 'opacity-50' : ''} cursor-grab active:cursor-grabbing`}
                   // Delta-review fix (HIGH): a dangling ref (e.g. its query
                   // chip was deleted, or the model it names no longer
                   // resolves) must render as an explicit warning pill, never
@@ -390,6 +462,7 @@ export function PropertyRow({
                   warningMessage={error}
                   extra={
                     <PillMenu
+                      ref={pillMenuRef}
                       state={pillState}
                       onSelectPreset={handleSelectPreset}
                       onCustomAggregation={() => setForceRawEdit(true)}

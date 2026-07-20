@@ -77,7 +77,11 @@ const ExplorationBuildRail = ({ explorationId }) => {
       data-testid="exploration-build-rail"
       className="w-96 flex-shrink-0 border-l border-secondary-200 bg-white flex flex-col h-full overflow-hidden"
     >
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      {/* T4 (cold-start #3 / promote-roundtrip #3): opts this scroll body OUT
+          of dnd-kit's built-in auto-scroll (see WorkspaceDndContext's
+          `autoScroll.canScroll`) — auto-scrolling THIS container mid-drag is
+          what moved x/y drop targets out from under the cursor. */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3" data-dnd-freeze-scroll>
         <ChartBuildSection isExpanded={chartExpanded} onToggleExpand={handleToggleChart} />
 
         <div className="border-t-2 border-gray-200" />

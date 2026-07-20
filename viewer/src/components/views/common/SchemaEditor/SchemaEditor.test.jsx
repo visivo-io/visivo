@@ -83,6 +83,14 @@ describe('SchemaEditor', () => {
     expect(propertyCountTexts.length).toBeGreaterThan(0);
   });
 
+  // D12 (pills-buildrail #8/#9): "0 of 1366 properties" was the single
+  // most-quoted "raw schema dump" line in the audit — `ChartBuildSection`'s
+  // Layout Properties panel (a genuinely 1300+-leaf schema) opts out.
+  it('hides the property count when `hidePropertyCount` is set', () => {
+    render(<SchemaEditor {...defaultProps} hidePropertyCount />);
+    expect(screen.queryByText(/of.*properties/)).not.toBeInTheDocument();
+  });
+
   it('shows empty state when no properties added', () => {
     render(<SchemaEditor {...defaultProps} />);
     expect(screen.getByText(/No properties added yet/)).toBeInTheDocument();

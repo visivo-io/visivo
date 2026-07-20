@@ -3,7 +3,6 @@ import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../../stores/store';
 import { getSourceDialect, selectInsightStatus } from '../../../stores/explorerStore';
-import { CHART_TYPES } from '../../../schemas/schemas';
 import TracePropsEditor from '../common/TracePropsEditor';
 import RefTextArea from '../common/RefTextArea';
 import Select from '../../common/Select';
@@ -119,6 +118,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const sources = useStore(s => s.sources);
   const explorerSources = useStore(s => s.explorerSources);
   const models = useStore(s => s.models);
+  const showWorkspaceToast = useStore(s => s.showWorkspaceToast);
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
@@ -139,13 +139,6 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const tracePropsValue = useMemo(
     () => ({ ...(insightState?.props || {}), type }),
     [insightState?.props, type]
-  );
-
-  const handleTypeChange = useCallback(
-    value => {
-      setInsightType(insightName, value);
-    },
-    [insightName, setInsightType]
   );
 
   // TracePropsEditor's onChange always hands back the FULL props object with
@@ -180,9 +173,28 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
   // D10 §3 v1 drop-default heuristic + D9 payload resolution (mirrors
   // routeExplorationDragEnd's buildRefExpr, generalized here since this
   // callback OWNS the drop — no global "active insight" indirection).
+  //
+  // T4 (cold-start #3 / pills-buildrail #1): every drop this handler doesn't
+  // act on now says why, via the shared workspace toast — a drop that just
+  // does nothing (no pill, no error, no animation) is the single most
+  // trust-destroying moment the audit found. `source === 'pill'` (T4,
+  // pills-buildrail #4) is the ONE other successful path: a pill dragged
+  // out of a sibling slot in the SAME insight section moves (clears the
+  // source), rather than rebuilding a ref from a Library/column payload.
   const handleDropField = useCallback(
     (path, dragData) => {
-      if (!dragData || dragData.type === 'sourceTable') return;
+      if (!dragData) return;
+      if (dragData.source === 'pill') {
+        if (!dragData.sourcePath || !dragData.raw) return;
+        if (dragData.sourcePath === path) return; // dropped back on itself — no-op, nothing to warn about
+        setInsightProp(insightName, path, `?{${dragData.raw}}`);
+        removeInsightProp(insightName, dragData.sourcePath);
+        return;
+      }
+      if (dragData.type === 'sourceTable') {
+        showWorkspaceToast?.("Can't drop a whole table here — drag a column instead.");
+        return;
+      }
       let body;
       if (dragData.type === 'metric' || dragData.type === 'dimension') {
         body = dragData.parentModel
@@ -191,16 +203,20 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
       } else if (dragData.type === 'input') {
         const accessor = dragData.inputType === 'multi-select' ? 'values' : 'value';
         body = formatRefExpression(dragData.name, accessor);
-      } else {
+      } else if (dragData.name) {
         const columnRef = formatRefExpression(activeModelName, dragData.name);
         body =
           dragData.type === 'sourceColumn' && isNumericColumnType(dragData.columnType)
             ? `sum(${columnRef})`
             : columnRef;
+      } else {
+        // Unrecognized drag payload — never fail silently.
+        showWorkspaceToast?.("Can't drop that here.");
+        return;
       }
       setInsightProp(insightName, path, `?{${body}}`);
     },
-    [activeModelName, insightName, setInsightProp]
+    [activeModelName, insightName, setInsightProp, removeInsightProp, showWorkspaceToast]
   );
 
   // Explore 2.0 Phase 4 (06 §4): opens the name-prompt for a slot's
@@ -424,23 +440,15 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
 
       {isExpanded && (
         <div className="px-3 py-3 space-y-4 border-l-4 border-purple-400">
-          {/* Legacy explicit Type selector kept for parity with the onboarding
-              anchor + a quick top-level switch; TracePropsEditor ALSO renders
-              its own TypeSelector — both write through the same handler, so
-              they never disagree. */}
+          {/* D12 (grounding diagnosis #4): the legacy top-level Type <Select>
+              that used to live here was a byte-for-byte duplicate of
+              TracePropsEditor's OWN <TypeSelector> just below — both wrote
+              through the same handler and always agreed, so the second
+              control was pure confusion ("Type: Scatter/Line" stacked on
+              "Properties: Scatter/Line"). Deleted; TracePropsEditor's
+              TypeSelector (data-testid `type-selector-${ownerName}`) is now
+              the ONLY place type switching happens. */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
-            <Select
-              data-testid={`insight-type-select-${insightName}`}
-              size="sm"
-              value={type}
-              options={CHART_TYPES}
-              onChange={handleTypeChange}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Properties</label>
             <TracePropsEditor
               ownerName={insightName}
               props={tracePropsValue}

@@ -335,8 +335,14 @@ export const routeWorkspaceDragEnd = (
   // already has a generic non-metric/dimension/input fallback that resolves a
   // bare `column` against the active model correctly, so admitting it here is
   // the fix rather than adding a second parallel handler.
+  //
+  // `dragData.source === 'pill'` (T4): a pill dragged OUT of its own slot
+  // (see `PropertyRow.jsx`'s `useDraggable`) targeting another property-zone
+  // slot — moves the resolved expression rather than rebuilding a ref from a
+  // Library payload. `handleDropField` recognizes this shape and also clears
+  // the source slot (a move, not a copy).
   if (
-    (dragData.source === 'library' || dragData.type === 'column') &&
+    (dragData.source === 'library' || dragData.type === 'column' || dragData.source === 'pill') &&
     dropData.kind === 'property-zone'
   ) {
     emit &&
@@ -727,6 +733,23 @@ export const mapDragStartData = data => {
   if (data.source === 'library') {
     return { kind: 'library', name: data.name, type: data.type, data };
   }
+  // Results-grid column header (`DraggableColumnHeader`, `sourceType:
+  // 'data-table'`) never carries `source: 'library'` (it isn't a Library
+  // row), so it fell through every branch here and got NO DragOverlay
+  // content at all — the "no ghost" defect (pills-buildrail #4/T4 scope):
+  // dragging a column from the results grid showed nothing following the
+  // cursor. Column drags from the SQL editor's Library-column path already
+  // carry `source: 'library'` and are unaffected; this covers the
+  // data-table-only path.
+  if (data.sourceType === 'data-table' || data.type === 'column') {
+    return { kind: 'column', name: data.name };
+  }
+  // A pill dragged out of an Essentials/Key-fields slot to move it to
+  // another slot (T4 — "pill draggable between slots"). See
+  // `PropertyRow.jsx`'s `useDraggable` for the matching drag source.
+  if (data.source === 'pill') {
+    return { kind: 'pill', name: data.label || data.sourcePath };
+  }
   if (data.source === 'level') {
     return { kind: 'level', name: data.title || 'Level' };
   }
@@ -752,6 +775,40 @@ export const mapDragStartData = data => {
 
 const DashboardIcon = getTypeIcon('dashboard');
 const DASH_COLORS = getTypeColors('dashboard');
+const DIMENSION_COLORS = getTypeColors('dimension');
+
+/**
+ * ColumnDragPreview — the DragOverlay pill for a results-grid column-header
+ * drag (T4: pills-buildrail #4 "no ghost"). Mirrors the Library pill's visual
+ * language (architecture §2.6's "the drag preview IS the source pill") using
+ * the shared dimension palette, since a raw data-table column is a dimension
+ * until the drop target's default heuristic decides otherwise.
+ */
+const ColumnDragPreview = ({ name }) => (
+  <div
+    data-testid="column-drag-preview"
+    className={`pointer-events-none inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[12px] font-medium shadow-lg ${DIMENSION_COLORS.bg} ${DIMENSION_COLORS.text} ${DIMENSION_COLORS.border}`}
+  >
+    <span aria-hidden="true">#</span>
+    {name}
+  </div>
+);
+
+/**
+ * PillDragPreview — the DragOverlay pill for an Essentials/Key-fields pill
+ * being dragged to another slot (T4: pills-buildrail #4 "pills draggable
+ * between slots"). Plain, since the pill's own `<FieldPill>` already renders
+ * inline at its source — this overlay just needs to read as "the same thing,
+ * moving".
+ */
+const PillDragPreview = ({ name }) => (
+  <div
+    data-testid="pill-drag-preview"
+    className="pointer-events-none inline-flex items-center gap-1.5 rounded-full border border-primary-300 bg-primary-50 px-2 py-1 text-[12px] font-medium text-primary-700 shadow-lg"
+  >
+    {name}
+  </div>
+);
 
 /**
  * CanvasRowDragPreview — the DragOverlay pill for a canvas ROW drag (VIS-901 #5).
@@ -966,6 +1023,22 @@ const WorkspaceDndContext = ({ children }) => {
         // once at drag-start goes stale and collisions miss. `Always` keeps the
         // measured rects in sync with the live overlay positions.
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        // T4 (cold-start #3 / promote-roundtrip #3): dnd-kit's built-in
+        // auto-scroll fires on ANY scrollable ancestor near the pointer,
+        // including the exploration Build rail's `overflow-y-auto` body.
+        // Confirmed empirically: dragging a results-grid column toward the y
+        // well near a normal (720px) viewport's bottom edge auto-scrolled the
+        // rail ~166px mid-gesture, so the drop landed under a DIFFERENT row
+        // than the one highlighted when the drag started (or missed every
+        // droppable once the rect had moved) — the exact "column dropped on
+        // x lands in y" / "drop silently swallowed" reports. Rather than
+        // disabling auto-scroll globally (canvas dashboards legitimately need
+        // it for long layouts), exclude any container opting out via
+        // `data-dnd-freeze-scroll` — the Build rail's scroll body sets this.
+        autoScroll={{
+          canScroll: element =>
+            !(element && typeof element.closest === 'function' && element.closest('[data-dnd-freeze-scroll]')),
+        }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
@@ -974,6 +1047,10 @@ const WorkspaceDndContext = ({ children }) => {
         <DragOverlay dropAnimation={null}>
           {activeDrag?.kind === 'dashboard' ? (
             <DashboardTilePreview name={activeDrag.name} />
+          ) : activeDrag?.kind === 'column' ? (
+            <ColumnDragPreview name={activeDrag.name} />
+          ) : activeDrag?.kind === 'pill' ? (
+            <PillDragPreview name={activeDrag.name} />
           ) : activeDrag?.kind === 'pivot-field' ? (
             <PivotFieldDragPreview name={activeDrag.name} />
           ) : activeDrag?.kind === 'level' ? (

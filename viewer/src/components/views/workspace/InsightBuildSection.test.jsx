@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string -- literal Visivo `${ref(...)}` strings */
 import React from 'react';
-import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InsightBuildSection from './InsightBuildSection';
 import useStore from '../../../stores/store';
@@ -11,10 +11,6 @@ async function renderSettled(ui) {
   await act(async () => {
     render(ui);
   });
-}
-
-function openSelectMenu(testId) {
-  fireEvent.mouseDown(within(screen.getByTestId(testId)).getByRole('combobox'));
 }
 
 let mockCaptured = {};
@@ -123,26 +119,18 @@ describe('InsightBuildSection', () => {
     expect(header.className).toContain('border-purple');
   });
 
-  it('renders type selector dropdown with CHART_TYPES', async () => {
+  // D12 (grounding diagnosis #4): the legacy top-level Type <Select> — a
+  // byte-for-byte duplicate of TracePropsEditor's own TypeSelector — is
+  // deleted. Type switching is now exercised for real in
+  // TracePropsEditor.test.jsx (TracePropsEditor is mocked in THIS file, so
+  // the real TypeSelector never mounts here); this is a regression guard
+  // that the duplicate control never comes back.
+  it('renders no legacy top-level Type select — TracePropsEditor owns type switching alone', async () => {
     await renderSettled(
       <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
-    const select = screen.getByTestId('insight-type-select-test_insight');
-    expect(select).toHaveTextContent('Scatter / Line');
-    openSelectMenu('insight-type-select-test_insight');
-    const options = screen.getAllByRole('option');
-    expect(options.map(o => o.textContent)).toEqual(['Scatter / Line', 'Bar', 'Pie']);
-  });
-
-  it('changing type via the top Select calls setInsightType', async () => {
-    const setInsightType = jest.fn();
-    useStore.setState({ setInsightType });
-    await renderSettled(
-      <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
-    );
-    openSelectMenu('insight-type-select-test_insight');
-    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'Bar'));
-    expect(setInsightType).toHaveBeenCalledWith('test_insight', 'bar');
+    await screen.findByTestId('trace-props-editor-mock');
+    expect(screen.queryByTestId('insight-type-select-test_insight')).not.toBeInTheDocument();
   });
 
   it('renders TracePropsEditor with droppable=true and props.type re-attached, when expanded', async () => {
@@ -307,9 +295,13 @@ describe('InsightBuildSection', () => {
       );
     });
 
-    it('a sourceTable drop is a no-op (not a scalar ref)', async () => {
+    // T4 (cold-start #3 / pills-buildrail #1): every drop this handler
+    // doesn't act on now SAYS WHY via the shared workspace toast, instead
+    // of failing with no pill, no error, and no animation.
+    it('a sourceTable drop is a no-op AND shows visible feedback (never fails silently)', async () => {
       const setInsightProp = jest.fn();
-      useStore.setState({ setInsightProp });
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({ setInsightProp, showWorkspaceToast });
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
@@ -317,6 +309,64 @@ describe('InsightBuildSection', () => {
 
       mockCaptured.onDropField('x', { type: 'sourceTable', name: 'orders' });
       expect(setInsightProp).not.toHaveBeenCalled();
+      expect(showWorkspaceToast).toHaveBeenCalledWith(expect.stringContaining("Can't drop"));
+    });
+
+    it('an unrecognized drag payload with no name is a no-op AND shows visible feedback', async () => {
+      const setInsightProp = jest.fn();
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({ setInsightProp, showWorkspaceToast });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+
+      mockCaptured.onDropField('x', { type: 'mystery-payload' });
+      expect(setInsightProp).not.toHaveBeenCalled();
+      expect(showWorkspaceToast).toHaveBeenCalled();
+    });
+  });
+
+  // T4 (pills-buildrail #4): pills can be dragged BETWEEN slots — the whole
+  // pill is a drag source (PropertyRow) whose payload reaches this same
+  // onDropField as `{ source: 'pill', sourcePath, raw }`.
+  describe('pill-to-pill move (T4 — drag a pill between slots)', () => {
+    it('moves the resolved expression from the source slot to the target slot, clearing the source', async () => {
+      const setInsightProp = jest.fn();
+      const removeInsightProp = jest.fn();
+      useStore.setState({ setInsightProp, removeInsightProp });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+
+      mockCaptured.onDropField('y', {
+        source: 'pill',
+        sourcePath: 'x',
+        raw: '${ref(orders_q).amount}',
+      });
+
+      expect(setInsightProp).toHaveBeenCalledWith('test_insight', 'y', '?{${ref(orders_q).amount}}');
+      expect(removeInsightProp).toHaveBeenCalledWith('test_insight', 'x');
+    });
+
+    it('dropping a pill back onto its own slot is a no-op', async () => {
+      const setInsightProp = jest.fn();
+      const removeInsightProp = jest.fn();
+      useStore.setState({ setInsightProp, removeInsightProp });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+
+      mockCaptured.onDropField('x', {
+        source: 'pill',
+        sourcePath: 'x',
+        raw: '${ref(orders_q).amount}',
+      });
+
+      expect(setInsightProp).not.toHaveBeenCalled();
+      expect(removeInsightProp).not.toHaveBeenCalled();
     });
   });
 

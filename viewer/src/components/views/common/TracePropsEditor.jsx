@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
-import { PiMagnifyingGlass, PiWarningCircle } from 'react-icons/pi';
+import { PiMagnifyingGlass, PiWarningCircle, PiX } from 'react-icons/pi';
 import TypeSelector from './TypeSelector';
 import FieldGroupList from '../workspace/FieldGroupList';
 import { getSchema } from '../../../schemas/schemas';
 import { loadCatalog, loadTraceGroups } from '../../../schemas/traceCatalogLoader';
-import { buildTraceGroupSpec } from './buildTraceGroupSpec';
+import { buildTraceGroupSpec, humanizePath } from './buildTraceGroupSpec';
 import { getRequiredFields } from './insightRequiredFields';
 import { preserveTraceProps } from './preserveTraceProps';
 import { validateProps } from '../../../schemas/plotlyValidator';
@@ -107,6 +107,14 @@ const TracePropsEditor = ({
   // revealed (jumped-to) in the grouped form after a compound-result select.
   const [fieldFinderOpen, setFieldFinderOpen] = useState(false);
   const [revealPath, setRevealPath] = useState(null);
+
+  // T4 (pills-buildrail #2): a chart-type switch silently wiped every
+  // configured field with no warning ("Build, blind, wipe" — the audit's own
+  // words). `preserveTraceProps` already carries forward whatever's
+  // COMPATIBLE with the new type (x/y survive scatter->bar); this surfaces
+  // what ISN'T — a dismissible, human-readable list of what just got
+  // dropped, right where the switch happened.
+  const [typeChangeWarning, setTypeChangeWarning] = useState(null); // { fromType, toType, dropped: string[] }
 
   // Load schema + catalog + groups whenever the type changes.
   useEffect(() => {
@@ -250,7 +258,7 @@ const TracePropsEditor = ({
       if (!newType || newType === type || !onChange) return;
 
       const newSchema = await getSchema(newType);
-      const { props: nextProps, typePropsCache } = preserveTraceProps({
+      const { props: nextProps, typePropsCache, dropped } = preserveTraceProps({
         oldProps: traceProps || {},
         oldType: type,
         newType,
@@ -258,6 +266,7 @@ const TracePropsEditor = ({
         typePropsCache: typePropsCacheRef.current,
       });
       typePropsCacheRef.current = typePropsCache;
+      setTypeChangeWarning(dropped && dropped.length > 0 ? { fromType: type, toType: newType, dropped } : null);
       onChange(nextProps);
     },
     [type, traceProps, onChange]
@@ -325,10 +334,20 @@ const TracePropsEditor = ({
 
   return (
     <div className="flex flex-col gap-3" data-testid="trace-props-editor">
-      {/* Type selector + overall validity indicator */}
+      {/* Type selector + overall validity indicator. D12 (grounding
+          diagnosis #4): this is now the ONLY chart-type control on the Build
+          rail — the legacy top-level `Type` <Select> InsightBuildSection
+          used to render alongside it was a byte-for-byte duplicate and is
+          deleted. `ownerName`-scoped testid so a Build rail stacking several
+          insight sections still has one unambiguous selector per insight. */}
       <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0">
-          <TypeSelector value={type} onChange={handleTypeChange} disabled={disabled} />
+          <TypeSelector
+            value={type}
+            onChange={handleTypeChange}
+            disabled={disabled}
+            data-testid={ownerName ? `type-selector-${ownerName}` : undefined}
+          />
         </div>
         {!isValid && (
           <span
@@ -341,6 +360,34 @@ const TracePropsEditor = ({
           </span>
         )}
       </div>
+
+      {/* T4 (pills-buildrail #2): dismissible warning naming exactly what the
+          type switch just dropped — compatible fields (x/y etc.) already
+          survive via `preserveTraceProps`; this only fires when something
+          genuinely didn't carry over. */}
+      {typeChangeWarning && (
+        <div
+          data-testid="trace-props-type-change-warning"
+          className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+        >
+          <PiWarningCircle size={14} className="mt-0.5 flex-shrink-0" />
+          <span className="flex-1">
+            Switching to <strong>{typeChangeWarning.toType}</strong> dropped{' '}
+            {typeChangeWarning.dropped.length === 1 ? 'this field' : 'these fields'} not supported
+            on that chart type:{' '}
+            <strong>{typeChangeWarning.dropped.map(humanizePath).join(', ')}</strong>.
+          </span>
+          <button
+            type="button"
+            onClick={() => setTypeChangeWarning(null)}
+            aria-label="Dismiss"
+            data-testid="trace-props-type-change-warning-dismiss"
+            className="flex-shrink-0 text-amber-500 hover:text-amber-700"
+          >
+            <PiX size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Field finder affordance (palette is VIS-1021; this is just the entry point) */}
       <button
