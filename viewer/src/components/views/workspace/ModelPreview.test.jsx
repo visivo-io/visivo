@@ -1,30 +1,19 @@
 /* eslint-disable no-template-curly-in-string -- literal ${ref(...)} strings under test */
 /**
- * ModelPreview tests (VIS-801 / N-6).
+ * ModelPreview tests (VIS-801 / N-6; de-duplicated at 6c-T2 / shell-ia #9).
  *
- * The Track-N model preview shows a READ-ONLY SQL editor + a result table that
- * renders only AFTER Run. Run executes the model's SQL against its source via
- * the EXISTING useModelQueryJob hook. Monaco and the query hook are mocked.
+ * The Track-N model preview shows a result table that renders only AFTER
+ * Run. Run executes the model's SQL against its source via the EXISTING
+ * useModelQueryJob hook. It used to ALSO render a second, read-only Monaco
+ * copy of the SQL the right rail's ModelEditForm already edits — 6c-T2
+ * removed that duplicate editor in favor of a hint pointing at the one real
+ * editing surface (the rail). The query hook is mocked; Monaco is no longer
+ * imported by this component at all.
  */
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import ModelPreview from './ModelPreview';
 import useStore from '../../../stores/store';
-
-const mockEditorSpy = jest.fn();
-const mockEditorLayout = jest.fn();
-jest.mock('@monaco-editor/react', () => {
-  const React = require('react');
-  const MockEditor = props => {
-    mockEditorSpy(props);
-    // Simulate Monaco's onMount, handing back a fake editor with layout().
-    React.useEffect(() => {
-      props.onMount?.({ layout: mockEditorLayout });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-    return <div data-testid="monaco-mock" data-readonly={String(!!props.options?.readOnly)} />;
-  };
-  return { __esModule: true, default: MockEditor };
-});
 
 const mockExecuteQuery = jest.fn(() => Promise.resolve('job-1'));
 let mockJobState;
@@ -51,8 +40,6 @@ const seed = (models = [], sources = [], defaults = null, fields = {}) => {
 
 describe('ModelPreview (VIS-801)', () => {
   beforeEach(() => {
-    mockEditorSpy.mockClear();
-    mockEditorLayout.mockClear();
     mockExecuteQuery.mockClear();
     mockJobState = {
       status: null,
@@ -65,30 +52,30 @@ describe('ModelPreview (VIS-801)', () => {
     };
   });
 
-  test('renders a read-only SQL editor with the model SQL', () => {
+  // 6c-T2 / shell-ia #9: the pane used to render a SECOND, read-only copy of
+  // the model's SQL (Monaco) — the exact text the right rail's
+  // `ModelEditForm` already edits. That editor is gone; a hint now points at
+  // the rail instead of re-showing the text a second time.
+  test('does NOT render a duplicate SQL editor — points at the right rail instead', () => {
     seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
     render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
     expect(screen.getByTestId('model-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('monaco-mock')).toHaveAttribute('data-readonly', 'true');
-    expect(mockEditorSpy.mock.calls[0][0].value).toBe('SELECT 1');
+    expect(screen.queryByTestId('monaco-mock')).not.toBeInTheDocument();
+    expect(screen.queryByText('SELECT 1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('model-preview-edit-hint')).toHaveTextContent(
+      /edit this model's sql in the right rail/i
+    );
   });
 
   test('the preview pane can shrink (min-w-0) so it does not overflow on rail resize', () => {
-    // Root cause of the "black panes": the flex item kept its content width and
-    // the dark Monaco editor overflowed the narrowing pane. min-w-0 lets it shrink.
+    // Root cause of the "black panes" (the OLD Monaco duplicate): the flex
+    // item kept its content width and the dark editor overflowed the
+    // narrowing pane. min-w-0 lets the pane itself shrink regardless of what
+    // it renders — still asserted so a future wide child regresses the same
+    // way.
     seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
     render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
     expect(screen.getByTestId('model-preview').className).toContain('min-w-0');
-  });
-
-  test('relayouts the SQL editor when a rail width changes (fixes the black-pane resize glitch)', () => {
-    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
-    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
-    mockEditorLayout.mockClear(); // ignore the mount-time layout
-    act(() => {
-      useStore.getState().setWorkspaceRightWidth(420);
-    });
-    expect(mockEditorLayout).toHaveBeenCalled();
   });
 
   test('does not render results until Run is clicked', () => {
