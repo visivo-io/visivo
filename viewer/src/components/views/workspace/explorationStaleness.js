@@ -20,28 +20,89 @@ import { checkRefTargets } from './refPreflight';
  *      badge) — a card is never "opened" at all, so nothing else ever runs
  *      this check for it.
  *
- * Scope (a deliberate, documented reduction from the UX spec's literal
- * "orders changed" copy): without a persisted fingerprint of what a draft's
- * referenced objects looked like at last-sync time, distinguishing "the
- * referenced model's OWN definition changed" from "the ref no longer
- * resolves at all" isn't computable client-side today. This treats BOTH as
- * one unified "stale" signal — a dangling ref, exactly what `checkRefTargets`
- * already detects — which is the same simplification 02 §8's own prose names
- * as the mechanism ("re-run ref checks... (checkRefTargets)"). A true
- * changed-vs-deleted distinction would need a `ref_fingerprint` persisted on
- * the Exploration record — noted as follow-up work, not implemented here.
+ * DRIFT DETECTION (Phase 6c-T1, ux-audit.md existing-objects #8, ⚠
+ * conflicts-with-e2e — "no staleness indication after the underlying insight
+ * is edited elsewhere"): the dangling-ref check above only catches a ref
+ * that stopped resolving ENTIRELY (deleted). The audit's actual complaint —
+ * "I edited aggregated-bar-insight's description in the project editor,
+ * reopened the exploration that copied it, and got no signal at all" — is a
+ * DIFFERENT case: the seeded-from object still resolves, its CONTENT just
+ * changed. This was a genuine, documented scope gap (see the removed
+ * "Scope" note this replaces): a bare dangling-ref check can never catch it,
+ * only a persisted fingerprint of the seeded object's content at seed time
+ * can. `workspaceExplorationsStore.js`'s `createExploration` now captures
+ * exactly that (`computeSeedContentSignature`, below) into
+ * `exploration.seededFrom.contentSignature` at seed time; this function
+ * recomputes the CURRENT signature for the same object and flags `stale`
+ * when they diverge — orthogonal to (and additive with) the dangling-ref
+ * check, never a replacement for it.
  */
+
+// Object types this exploration's seed provenance can point at whose
+// content is meaningfully hashable via the shared collections a mounted
+// Workspace already has loaded (`state.insights`/`state.models`/
+// `state.charts`). 'source'/'table'/'metric'/'dimension' seeds don't carry a
+// single canonical "content" the same way (a table is the source's schema,
+// not a project object; metrics/dimensions are scoped inside a model's own
+// config) — omitted rather than guessed at.
+const SIGNATURE_TYPES = { insight: 'insights', chart: 'charts', model: 'models' };
+
+/** Deterministic JSON stringify — recursively sorts object keys — so two
+ * reads of logically-identical config taken at different times (seed-time
+ * vs. a later recheck) never disagree merely because of incidental key
+ * insertion-order differences from the API layer. */
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** The live content a `{type, name}` seed ref currently points at, hashed
+ * into a stable signature string — `null` when the type isn't one of
+ * `SIGNATURE_TYPES`, the object can't be found in `state`, or it has no
+ * `config` to hash (all "can't determine drift" cases, never treated as
+ * drift themselves — that would double up with the dangling-ref check,
+ * which already owns "this doesn't resolve anymore").
+ *
+ * @param {{type: string, name: string}} seed
+ * @param {object} state - `useStore.getState()` (or an equivalent plain
+ *   object exposing `insights`/`models`/`charts`).
+ * @returns {string|null}
+ */
+export function computeSeedContentSignature(seed, state) {
+  if (!seed?.type || !seed?.name) return null;
+  const collectionKey = SIGNATURE_TYPES[seed.type];
+  if (!collectionKey) return null;
+  const obj = (state?.[collectionKey] || []).find(o => o.name === seed.name);
+  if (!obj || obj.config == null) return null;
+  return stableStringify(obj.config);
+}
 
 /**
  * @param {object} exploration - a mapped workspaceExplorations record (or
  *   `null`/`undefined`, tolerated for a not-yet-loaded card).
  * @param {object} state - `useStore.getState()` (or an equivalent plain
  *   object exposing the same collection arrays `checkRefTargets` reads).
- * @returns {{stale: boolean, danglingRefs: string[]}}
+ * @returns {{stale: boolean, danglingRefs: string[], driftedFrom: {type: string, name: string}|null}}
  */
 export function computeExplorationStaleness(exploration, state) {
+  const seed = exploration?.seededFrom;
+  let driftedFrom = null;
+  if (seed?.contentSignature) {
+    const currentSignature = computeSeedContentSignature(seed, state);
+    // `currentSignature` is `null` when the object is gone entirely — that
+    // case is the dangling-ref check's job (below), not drift's; only an
+    // object that STILL resolves but hashes differently counts as drifted.
+    if (currentSignature && currentSignature !== seed.contentSignature) {
+      driftedFrom = { type: seed.type, name: seed.name };
+    }
+  }
+
   const draft = exploration?.draft;
-  if (!draft) return { stale: false, danglingRefs: [] };
+  if (!draft) return { stale: !!driftedFrom, danglingRefs: [], driftedFrom };
 
   // Splice the draft's OWN scratch query names into `models` (mirrors
   // InsightBuildSection.jsx's synthetic-state pattern) so a ref to one of
@@ -59,7 +120,9 @@ export function computeExplorationStaleness(exploration, state) {
   // `checkRefTargets` is shape-agnostic, it just scans every string for
   // `${ref(...)}` / bare `ref(...)` occurrences.
   const result = checkRefTargets(draft, syntheticState);
-  if (result.skipped || result.valid) return { stale: false, danglingRefs: [] };
+  if (result.skipped || result.valid) {
+    return { stale: !!driftedFrom, danglingRefs: [], driftedFrom };
+  }
 
   const danglingRefs = [
     ...new Set(
@@ -71,5 +134,5 @@ export function computeExplorationStaleness(exploration, state) {
         .filter(Boolean)
     ),
   ];
-  return { stale: danglingRefs.length > 0, danglingRefs };
+  return { stale: danglingRefs.length > 0 || !!driftedFrom, danglingRefs, driftedFrom };
 }

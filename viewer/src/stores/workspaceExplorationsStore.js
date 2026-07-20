@@ -89,6 +89,7 @@ import { SAVE_ACTION } from '../components/views/workspace/collectionKeys';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 import { emitWorkspaceEvent, markExplorationCreated } from '../components/views/workspace/telemetry';
 import { buildInsightFreshnessSignature } from '../utils/insightFreshnessSignature';
+import { computeSeedContentSignature } from '../components/views/workspace/explorationStaleness';
 
 const SYNC_DEBOUNCE_MS = 1000;
 
@@ -168,12 +169,23 @@ const mapDraftToApi = draft => ({
   legacy_state: draft?.legacyState ?? null,
 });
 
+/** `seeded_from.content_signature` (backend, snake_case) <-> `seededFrom.
+ * contentSignature` (frontend, camelCase — Phase 6c-T1's drift-detection
+ * field, `explorationStaleness.js`). The rest of `seeded_from`/`seededFrom`
+ * is passed through verbatim elsewhere in this file (already just `{type,
+ * name}`, no casing to reconcile) — these two helpers exist ONLY because
+ * this one field needs it. */
+const mapSeedFromApi = seed =>
+  seed ? { type: seed.type, name: seed.name, contentSignature: seed.content_signature ?? null } : null;
+const mapSeedToApi = seed =>
+  seed ? { type: seed.type, name: seed.name, content_signature: seed.contentSignature ?? null } : undefined;
+
 const mapExplorationFromApi = record => ({
   id: record.id,
   name: record.name,
   createdAt: record.created_at,
   updatedAt: record.updated_at,
-  seededFrom: record.seeded_from ?? null,
+  seededFrom: mapSeedFromApi(record.seeded_from),
   returnTo: record.return_to ?? null,
   draft: mapDraftFromApi(record.draft),
   promoted: record.promoted || [],
@@ -310,10 +322,23 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      * `explorerStore.js`'s `buildExplorationSeedState`) instead of relying on
      * `legacyStateForSeed`'s `type === 'source'`-only bridge — the "Explore
      * this" context-menu action's pre-wired query for models/tables and its
-     * name-preserving copy for insights/charts both go through this. */
+     * name-preserving copy for insights/charts both go through this.
+     *
+     * Phase 6c-T1 (ux-audit.md existing-objects #8, drift detection): a
+     * `seed` of a hashable type (insight/chart/model — see
+     * `explorationStaleness.js`'s `computeSeedContentSignature`) has its
+     * CURRENT content hashed here, at the exact moment of creation, and
+     * persisted as `seeded_from.content_signature`. This is deliberately
+     * centralized here (every "Explore this" call site — Library, Lineage,
+     * the Source/Semantic-Layer ERDs, Explorer Home — funnels through this
+     * one action) rather than in each caller, so none of them need to know
+     * drift detection exists. */
     createExploration: async (seed = null, returnTo = null, legacyStateOverride = null) => {
       try {
-        const payload = seed ? { seeded_from: seed } : {};
+        const seedWithSignature = seed
+          ? { ...seed, contentSignature: computeSeedContentSignature(seed, get()) }
+          : null;
+        const payload = seedWithSignature ? { seeded_from: mapSeedToApi(seedWithSignature) } : {};
         if (returnTo) payload.return_to = returnTo;
         const seedLegacyState = legacyStateOverride || (seed ? legacyStateForSeed(seed) : null);
         if (seedLegacyState) payload.draft = mapDraftToApi(legacyStateToDraft(seedLegacyState));
@@ -369,7 +394,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       try {
         const created = await explorationsApi.createExploration({
           name: `${existing.name} copy`,
-          seeded_from: existing.seededFrom || undefined,
+          seeded_from: mapSeedToApi(existing.seededFrom) || undefined,
           draft: mapDraftToApi(existing.draft),
         });
         const mapped = mapExplorationFromApi(created);
@@ -433,7 +458,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       try {
         const created = await explorationsApi.createExploration({
           name: existing.name,
-          seeded_from: existing.seededFrom || undefined,
+          seeded_from: mapSeedToApi(existing.seededFrom) || undefined,
           draft: mapDraftToApi(existing.draft),
         });
         const mapped = mapExplorationFromApi(created);

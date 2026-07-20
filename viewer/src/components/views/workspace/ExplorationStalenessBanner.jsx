@@ -16,7 +16,7 @@ import { PiArrowsClockwise, PiX } from 'react-icons/pi';
  * the CURRENT live store without this component needing its own store
  * wiring.
  */
-const ExplorationStalenessBanner = ({ danglingRefs = [], onRecheck, onDismiss }) => (
+const ExplorationStalenessBanner = ({ danglingRefs = [], driftedFrom = null, onRecheck, onDismiss }) => (
   <div
     role="status"
     data-testid="exploration-staleness-banner"
@@ -25,6 +25,16 @@ const ExplorationStalenessBanner = ({ danglingRefs = [], onRecheck, onDismiss })
     <PiArrowsClockwise aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
     <div className="min-w-0 flex-1 text-[12.5px]">
       <p className="font-medium text-primary-900">Some referenced objects may have changed.</p>
+      {/* Phase 6c-T1 (ux-audit.md existing-objects #8): the drift line —
+          the seeded-from object still exists but was edited elsewhere since
+          this copy was made — is distinct from, and additive with, the
+          dangling-ref line below. */}
+      {driftedFrom && (
+        <p className="mt-0.5 text-primary-800" data-testid="exploration-staleness-drift">
+          <span className="font-mono">{driftedFrom.name}</span> changed in the project since this
+          copy was made.
+        </p>
+      )}
       {danglingRefs.length > 0 && (
         <p className="mt-0.5 text-primary-800">
           No longer resolves: <span className="font-mono">{danglingRefs.join(', ')}</span>

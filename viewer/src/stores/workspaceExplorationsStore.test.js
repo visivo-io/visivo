@@ -81,6 +81,12 @@ const reset = () => {
       explorerInsightStates: {},
       explorerModelStates: {},
       explorerPromotedSignatures: {},
+      // Phase 6c-T1's content-signature computation reads these collections
+      // at seed time (`computeSeedContentSignature`) — reset so one test's
+      // seeded `models`/`insights`/`charts` never leaks into the next.
+      models: [],
+      insights: [],
+      charts: [],
     });
   });
 };
@@ -180,11 +186,57 @@ describe('createExploration', () => {
     });
 
     expect(explorationsApi.createExploration).toHaveBeenCalledWith({
-      seeded_from: { type: 'model', name: 'orders' },
+      // Phase 6c-T1: content_signature is null here because no `orders`
+      // model is loaded in the store at seed time (this test's `beforeEach`
+      // doesn't seed one) — see the drift-detection tests below for the
+      // populated-collection case.
+      seeded_from: { type: 'model', name: 'orders', content_signature: null },
     });
     expect(useStore.getState().workspaceExplorations.byId.exp_1.seededFrom).toEqual({
       type: 'model',
       name: 'orders',
+      contentSignature: null,
+    });
+  });
+
+  // Phase 6c-T1 (ux-audit.md existing-objects #8, drift detection): a
+  // hashable seed type (model/insight/chart) whose object IS loaded in the
+  // store at seed time gets its content hashed into `content_signature` —
+  // the value `computeExplorationStaleness` later compares against on
+  // resume to detect the source having been edited elsewhere.
+  test('a hashable seed with a loaded model computes and sends a content_signature', async () => {
+    useStore.setState({ models: [{ name: 'orders', config: { sql: 'SELECT 1' } }] });
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({
+        seeded_from: { type: 'model', name: 'orders', content_signature: 'irrelevant-for-this-assert' },
+      })
+    );
+
+    await act(async () => {
+      await useStore.getState().createExploration({ type: 'model', name: 'orders' });
+    });
+
+    const payload = explorationsApi.createExploration.mock.calls[0][0];
+    expect(payload.seeded_from.type).toBe('model');
+    expect(payload.seeded_from.name).toBe('orders');
+    expect(typeof payload.seeded_from.content_signature).toBe('string');
+    expect(payload.seeded_from.content_signature.length).toBeGreaterThan(0);
+  });
+
+  test('a source seed (not a hashable type) sends a null content_signature', async () => {
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({ seeded_from: { type: 'source', name: 'warehouse' } })
+    );
+
+    await act(async () => {
+      await useStore.getState().createExploration({ type: 'source', name: 'warehouse' });
+    });
+
+    const payload = explorationsApi.createExploration.mock.calls[0][0];
+    expect(payload.seeded_from).toEqual({
+      type: 'source',
+      name: 'warehouse',
+      content_signature: null,
     });
   });
 
@@ -212,7 +264,7 @@ describe('createExploration', () => {
     });
 
     const payload = explorationsApi.createExploration.mock.calls[0][0];
-    expect(payload.seeded_from).toEqual({ type: 'model', name: 'orders' });
+    expect(payload.seeded_from).toEqual({ type: 'model', name: 'orders', content_signature: null });
     expect(payload.draft.queries).toEqual([
       { name: 'query_1', sql: 'SELECT * FROM ${ref(orders)}', source: 'pg' },
     ]);
@@ -655,7 +707,7 @@ describe('duplicateExploration', () => {
 
     expect(explorationsApi.createExploration).toHaveBeenCalledWith({
       name: 'Churn dig copy',
-      seeded_from: { type: 'model', name: 'orders' },
+      seeded_from: { type: 'model', name: 'orders', content_signature: null },
       draft: {
         queries: [{ name: 'q', sql: 'x' }],
         insights: [],

@@ -78,10 +78,22 @@ class ReturnToRef(BaseModel):
 
 class SeedRef(BaseModel):
     """Durable provenance — what this exploration was seeded from, shown on
-    Home cards. Unlike ``return_to`` this never clears."""
+    Home cards. Unlike ``return_to`` this never clears.
+
+    ``content_signature`` (Explore 2.0 Phase 6c-T1, ux-audit.md's "no
+    staleness indication after the underlying insight is edited elsewhere"
+    finding — existing-objects #8): a stable client-computed hash of the
+    seeded object's config AT SEED TIME (see
+    ``explorationStaleness.js``'s ``computeSeedContentSignature``). Opaque to
+    the backend — never read or validated here, just persisted verbatim so
+    a later resume can recompute the CURRENT object's signature and detect
+    drift (the source was edited elsewhere since this copy was made), which
+    a bare dangling-ref check can never catch on its own.
+    """
 
     type: str
     name: str
+    content_signature: Optional[str] = None
 
 
 class Exploration(BaseModel):

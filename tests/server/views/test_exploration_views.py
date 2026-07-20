@@ -84,7 +84,11 @@ class TestCreate:
             json={"seeded_from": {"type": "model", "name": "orders"}},
         )
         assert resp.status_code == 201
-        assert resp.get_json()["seeded_from"] == {"type": "model", "name": "orders"}
+        assert resp.get_json()["seeded_from"] == {
+            "type": "model",
+            "name": "orders",
+            "content_signature": None,
+        }
 
     def test_create_with_draft(self, client):
         resp = client.post(
@@ -195,7 +199,11 @@ class TestUpdate:
         data = resp.get_json()
         assert data["id"] == created["id"]
         assert data["created_at"] == created["created_at"]
-        assert data["seeded_from"] == {"type": "model", "name": "orders"}
+        assert data["seeded_from"] == {
+            "type": "model",
+            "name": "orders",
+            "content_signature": None,
+        }
         assert data["promoted"] == []
         assert data["name"] == "Renamed"
 

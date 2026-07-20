@@ -338,6 +338,7 @@ const ExplorationPane = ({ id }) => {
       {!stalenessDismissed && staleness?.stale && (
         <ExplorationStalenessBanner
           danglingRefs={staleness.danglingRefs}
+          driftedFrom={staleness.driftedFrom}
           onRecheck={handleRecheckStaleness}
           onDismiss={handleDismissStaleness}
         />
