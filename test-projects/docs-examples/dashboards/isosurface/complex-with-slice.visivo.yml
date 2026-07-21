@@ -1,10 +1,18 @@
+sources:
+  - name: isosurface-data-source
+    type: duckdb
+    database: target/seeds/isosurface_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - curl
+          - "-s"
+          - https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/fractal-cubic.csv
+
 models:
   - name: isosurface-data
-    args:
-      - curl
-      - "-s"
-      - https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/fractal-cubic.csv
-
+    source: ${ref(isosurface-data-source)}
+    sql: select * from model
 charts:
   - name: complex-with-slice-isosurface-chart
     layout:

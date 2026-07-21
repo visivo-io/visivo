@@ -1,19 +1,27 @@
+sources:
+  - name: sample-data-source
+    type: duckdb
+    database: target/seeds/sample_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category,value
+            A,23
+            A,15
+            A,18
+            A,30
+            A,28
+            B,40
+            B,35
+            B,31
+            B,25
+            B,29
 models:
   - name: sample-data
-    args:
-      - echo
-      - |
-        category,value
-        A,23
-        A,15
-        A,18
-        A,30
-        A,28
-        B,40
-        B,35
-        B,31
-        B,25
-        B,29
+    source: ${ref(sample-data-source)}
+    sql: select * from model
 charts:
   - name: sample-box-plot-chart
     layout:

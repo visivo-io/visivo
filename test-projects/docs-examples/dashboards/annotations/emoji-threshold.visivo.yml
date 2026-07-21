@@ -1,15 +1,23 @@
+sources:
+  - name: threshold_emoji_data-source
+    type: duckdb
+    database: target/seeds/threshold_emoji_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,5
+            2,7
+            3,9
+            4,6
+            5,8
+
 models:
   - name: threshold_emoji_data
-    args:
-      - echo
-      - |
-        x,y
-        1,5
-        2,7
-        3,9
-        4,6
-        5,8
-
+    source: ${ref(threshold_emoji_data-source)}
+    sql: select * from model
 charts:
   - name: emoji-threshold-example
     layout:

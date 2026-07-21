@@ -1,13 +1,21 @@
+sources:
+  - name: indicator-data-delta-source
+    type: duckdb
+    database: target/seeds/indicator_data_delta.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |-
+            sort,value
+            3,85
+            2,75
+            1,65
+            0,55
 models:
   - name: indicator-data-delta
-    args:
-      - echo
-      - |-
-        sort,value
-        3,85
-        2,75
-        1,65
-        0,55
+    source: ${ref(indicator-data-delta-source)}
+    sql: select * from model
 charts:
   - name: delta-indicator-with-comparison-chart
     layout:

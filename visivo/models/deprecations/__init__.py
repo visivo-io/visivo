@@ -3,5 +3,7 @@
 from visivo.models.deprecations.base_deprecation import (
     DeprecationWarning,
     MigrationAction,
+    RewriteAction,
+    UnmigratableWarning,
 )
 from visivo.models.deprecations.deprecation_checker import DeprecationChecker

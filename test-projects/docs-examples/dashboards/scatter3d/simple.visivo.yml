@@ -1,14 +1,22 @@
+sources:
+  - name: scatter3d-data-source
+    type: duckdb
+    database: target/seeds/scatter3d_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z
+            1,10,15
+            2,20,25
+            3,15,30
+            4,25,35
+            5,30,40
 models:
   - name: scatter3d-data
-    args:
-      - echo
-      - |
-        x,y,z
-        1,10,15
-        2,20,25
-        3,15,30
-        4,25,35
-        5,30,40
+    source: ${ref(scatter3d-data-source)}
+    sql: select * from model
 charts:
   - name: simple-scatter3d-chart
     layout:

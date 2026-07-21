@@ -1,15 +1,23 @@
+sources:
+  - name: waterfall-data-connectors-source
+    type: duckdb
+    database: target/seeds/waterfall_data_connectors.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            idx,quarter,half,value,mode
+            0,Q1,H1,1000,initial
+            1,Q2,H1,200,relative
+            2,Gross Profit,H1 Summary,0,total
+            3,Q3,H2,-150,relative
+            4,Q4,H2,300,relative
+            5,Gross Profit,FY2024,0,total
 models:
   - name: waterfall-data-connectors
-    args:
-      - echo
-      - |
-        idx,quarter,half,value,mode
-        0,Q1,H1,1000,initial
-        1,Q2,H1,200,relative
-        2,Gross Profit,H1 Summary,0,total
-        3,Q3,H2,-150,relative
-        4,Q4,H2,300,relative
-        5,Gross Profit,FY2024,0,total
+    source: ${ref(waterfall-data-connectors-source)}
+    sql: select * from model
 charts:
   - name: waterfall-chart-with-connectors
     layout:

@@ -1,12 +1,20 @@
+sources:
+  - name: parcoords-data-source
+    type: duckdb
+    database: target/seeds/parcoords_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            variable_1,variable_2,variable_3
+            1,4,7
+            2,5,8
+            3,6,9
 models:
   - name: parcoords-data
-    args:
-      - echo
-      - |
-        variable_1,variable_2,variable_3
-        1,4,7
-        2,5,8
-        3,6,9
+    source: ${ref(parcoords-data-source)}
+    sql: select * from model
 charts:
   - name: simple-parcoords-chart
     layout:

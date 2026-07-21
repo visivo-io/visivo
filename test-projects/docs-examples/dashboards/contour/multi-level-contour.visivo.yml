@@ -1,24 +1,32 @@
+sources:
+  - name: contour-data-multi-source
+    type: duckdb
+    database: target/seeds/contour_data_multi.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z
+            -2,-2,0
+            -1,-2,1
+            0,-2,2
+            1,-2,3
+            2,-2,4
+            -2,-1,1
+            -1,-1,2
+            0,-1,3
+            1,-1,4
+            2,-1,5
+            -2,0,2
+            -1,0,3
+            0,0,4
+            1,0,5
+            2,0,6
 models:
   - name: contour-data-multi
-    args:
-      - echo
-      - |
-        x,y,z
-        -2,-2,0
-        -1,-2,1
-        0,-2,2
-        1,-2,3
-        2,-2,4
-        -2,-1,1
-        -1,-1,2
-        0,-1,3
-        1,-1,4
-        2,-1,5
-        -2,0,2
-        -1,0,3
-        0,0,4
-        1,0,5
-        2,0,6
+    source: ${ref(contour-data-multi-source)}
+    sql: select * from model
 charts:
   - name: contour-chart-with-multiple-levels
     layout:

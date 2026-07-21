@@ -1,10 +1,18 @@
+sources:
+  - name: image-data-annotated-source
+    type: duckdb
+    database: target/seeds/image_data_annotated.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            z
+            [[1,0,0,1],[0,1,1,0],[0,0,1,1]]
 models:
   - name: image-data-annotated
-    args:
-      - echo
-      - |
-        z
-        [[1,0,0,1],[0,1,1,0],[0,0,1,1]]
+    source: ${ref(image-data-annotated-source)}
+    sql: select * from model
 charts:
   - name: image-plot-with-axis-annotations
     layout:

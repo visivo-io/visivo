@@ -1,15 +1,23 @@
+sources:
+  - name: threshold_annotation_data-source
+    type: duckdb
+    database: target/seeds/threshold_annotation_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,3
+            2,6
+            3,9
+            4,12
+            5,15
+
 models:
   - name: threshold_annotation_data
-    args:
-      - echo
-      - |
-        x,y
-        1,3
-        2,6
-        3,9
-        4,12
-        5,15
-
+    source: ${ref(threshold_annotation_data-source)}
+    sql: select * from model
 charts:
   - name: threshold-with-annotation-example
     layout:

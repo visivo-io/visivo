@@ -1,13 +1,21 @@
+sources:
+  - name: funnelarea-data-hover-source
+    type: duckdb
+    database: target/seeds/funnelarea_data_hover.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            stage,value
+            Leads,1000
+            Opportunities,500
+            Proposals,250
+            Won,100
 models:
   - name: funnelarea-data-hover
-    args:
-      - echo
-      - |
-        stage,value
-        Leads,1000
-        Opportunities,500
-        Proposals,250
-        Won,100
+    source: ${ref(funnelarea-data-hover-source)}
+    sql: select * from model
 charts:
   - name: funnelarea-chart-with-hover-info
     layout:

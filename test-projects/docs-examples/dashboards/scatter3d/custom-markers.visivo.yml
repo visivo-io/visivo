@@ -1,14 +1,22 @@
+sources:
+  - name: scatter3d-data-custom-source
+    type: duckdb
+    database: target/seeds/scatter3d_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z,size,color
+            1,5,10,15,#1f77b4
+            2,10,12,20,#ff7f0e
+            3,8,10,25,#2ca02c
+            4,15,18,30,#d62728
+            5,12,20,35,#9467bd
 models:
   - name: scatter3d-data-custom
-    args:
-      - echo
-      - |
-        x,y,z,size,color
-        1,5,10,15,#1f77b4
-        2,10,12,20,#ff7f0e
-        3,8,10,25,#2ca02c
-        4,15,18,30,#d62728
-        5,12,20,35,#9467bd
+    source: ${ref(scatter3d-data-custom-source)}
+    sql: select * from model
 charts:
   - name: scatter3d-chart-with-custom-markers
     layout:

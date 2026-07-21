@@ -1,14 +1,22 @@
+sources:
+  - name: waterfall-data-source
+    type: duckdb
+    database: target/seeds/waterfall_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            idx,label,value
+            0,Starting,1000
+            1,Increase A,200
+            2,Decrease B,-150
+            3,Increase C,300
+            4,Ending,1350
 models:
   - name: waterfall-data
-    args:
-      - echo
-      - |
-        idx,label,value
-        0,Starting,1000
-        1,Increase A,200
-        2,Decrease B,-150
-        3,Increase C,300
-        4,Ending,1350
+    source: ${ref(waterfall-data-source)}
+    sql: select * from model
 charts:
   - name: simple-waterfall-chart
     layout:

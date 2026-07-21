@@ -1,18 +1,26 @@
+sources:
+  - name: heatmap-data-custom-source
+    type: duckdb
+    database: target/seeds/heatmap_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z
+            Low,A,0.1
+            Low,B,0.2
+            Low,C,0.3
+            Medium,A,0.4
+            Medium,B,0.5
+            Medium,C,0.6
+            High,A,0.7
+            High,B,0.8
+            High,C,0.9
 models:
   - name: heatmap-data-custom
-    args:
-      - echo
-      - |
-        x,y,z
-        Low,A,0.1
-        Low,B,0.2
-        Low,C,0.3
-        Medium,A,0.4
-        Medium,B,0.5
-        Medium,C,0.6
-        High,A,0.7
-        High,B,0.8
-        High,C,0.9
+    source: ${ref(heatmap-data-custom-source)}
+    sql: select * from model
 charts:
   - name: heatmap-chart-with-categorical-axis
     layout:

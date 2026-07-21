@@ -1,16 +1,24 @@
+sources:
+  - name: treemap-data-source
+    type: duckdb
+    database: target/seeds/treemap_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            labels,parents,values
+            Total,,100
+            A,Total,40
+            B,Total,30
+            C,Total,30
+            D,A,10
+            E,A,20
+            F,B,10
 models:
   - name: treemap-data
-    args:
-      - echo
-      - |
-        labels,parents,values
-        Total,,100
-        A,Total,40
-        B,Total,30
-        C,Total,30
-        D,A,10
-        E,A,20
-        F,B,10
+    source: ${ref(treemap-data-source)}
+    sql: select * from model
 charts:
   - name: simple-treemap-chart
     layout:

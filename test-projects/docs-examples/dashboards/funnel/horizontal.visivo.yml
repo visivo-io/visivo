@@ -1,13 +1,21 @@
+sources:
+  - name: funnel-data-horizontal-source
+    type: duckdb
+    database: target/seeds/funnel_data_horizontal.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            stage,value
+            Awareness,5000
+            Interest,3000
+            Consideration,1500
+            Conversion,700
 models:
   - name: funnel-data-horizontal
-    args:
-      - echo
-      - |
-        stage,value
-        Awareness,5000
-        Interest,3000
-        Consideration,1500
-        Conversion,700
+    source: ${ref(funnel-data-horizontal-source)}
+    sql: select * from model
 charts:
   - name: horizontal-funnel-chart
     layout:

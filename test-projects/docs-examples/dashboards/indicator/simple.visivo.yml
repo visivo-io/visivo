@@ -1,14 +1,21 @@
 models:
   - name: indicator-data
-    args:
-      - echo
-      - |-
-        value
-        75
+    source: ${ref(indicator-data-source)}
+    sql: select * from model
 sources:
   - name: name
     type: sqlite
     database: database
+  - name: indicator-data-source
+    type: duckdb
+    database: target/seeds/indicator_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |-
+            value
+            75
 charts:
   - name: simple-numeric-indicator-chart
     layout:

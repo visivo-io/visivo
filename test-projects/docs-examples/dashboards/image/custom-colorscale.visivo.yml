@@ -1,11 +1,19 @@
+sources:
+  - name: image-data-custom-source
+    type: duckdb
+    database: target/seeds/image_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            pixel_1,pixel_2,pixel_3
+            "[0.2,0.2,0.3,0.4]","[0.4,0.6,0.7,0.8]","[0.8,1.0,0.2,0.3]"
+            "[0.1,0.2,0.3,0.4]","[0.5,0.6,0.7,0.8]","[0.9,1.0,0.2,0.3]"
 models:
   - name: image-data-custom
-    args:
-      - echo
-      - |
-        pixel_1,pixel_2,pixel_3
-        "[0.2,0.2,0.3,0.4]","[0.4,0.6,0.7,0.8]","[0.8,1.0,0.2,0.3]"
-        "[0.1,0.2,0.3,0.4]","[0.5,0.6,0.7,0.8]","[0.9,1.0,0.2,0.3]"
+    source: ${ref(image-data-custom-source)}
+    sql: select * from model
 charts:
   - name: image-plot-with-custom-colorscale
     layout:

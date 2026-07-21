@@ -2,9 +2,60 @@ relations:
   - name: local_to_local
     condition: ${ref(local_test_table).x} = ${ref(another_local_test_table).x}
 
-metrics: 
+metrics:
   - name: composite_metric
     expression: ${ref(local_test_table).x_sum} + ${ref(another_local_test_table).new_y_sum}
+
+sources:
+  - name: csv-source
+    type: duckdb
+    database: target/seeds/csv.duckdb
+    seeds:
+      - table_name: csv
+        args:
+          - echo
+          - |-
+            x,y
+            1,9
+            2,1
+            3,2
+            4,3
+            5,5
+            6,8
+
+  - name: markdown-table-base-source
+    type: duckdb
+    database: target/seeds/markdown_table_base.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            vanilla_text,markdown
+            plain,plain
+            **bold**,**bold**
+            <ins>[link](https://visivo.io/)</ins>,<ins>[link](https://visivo.io/)</ins>
+            # header,# header
+
+  - name: processes-source
+    type: duckdb
+    database: target/seeds/processes.duckdb
+    seeds:
+      - table_name: processes
+        args:
+          - python
+          - create_processes_csv.py
+          - "&&"
+          - cat target/processes.csv
+
+  - name: waterfall_model-source
+    type: duckdb
+    database: target/seeds/waterfall_model.duckdb
+    seeds:
+      - table_name: appl_pl
+        args:
+          - cat
+          - data/aapl_pl.csv
 
 models:
   - name: local_test_table
@@ -25,54 +76,29 @@ models:
         expression: "ROUND(new_x, 2)"
   - name: second_local_test_table
     sql: "SELECT * FROM second_test_table"
+  # Was a LocalMergeModel over local_test_table + second_local_test_table. Both
+  # resolved to the local-duckdb default source, so the join is now plain SQL
+  # over the tables they each read.
   - name: join_table
     sql: |
-      SELECT ltt.x, sltt.y FROM local_test_table.model AS ltt 
-        JOIN second_local_test_table.model AS sltt
+      SELECT ltt.x, sltt.y FROM test_table AS ltt
+        JOIN second_test_table AS sltt
         ON ltt.x = sltt.x
-    models:
-      - ${ ref(local_test_table) }
-      - ${ ref(second_local_test_table) }
   - name: csv
-    table_name: csv
-    args:
-      - echo
-      - |-
-        x,y
-        1,9
-        2,1
-        3,2
-        4,3
-        5,5
-        6,8
-
+    source: ${ref(csv-source)}
+    sql: select * from csv
   - name: markdown-table-base
-    args: 
-      - echo
-      - | 
-        vanilla_text,markdown
-        plain,plain
-        **bold**,**bold**
-        <ins>[link](https://visivo.io/)</ins>,<ins>[link](https://visivo.io/)</ins>
-        # header,# header
-
+    source: ${ref(markdown-table-base-source)}
+    sql: select * from model
   - name: processes
-    table_name: processes
-    args:
-      - python
-      - create_processes_csv.py
-      - "&&"
-      - cat target/processes.csv
-
+    source: ${ref(processes-source)}
+    sql: select * from processes
   - name: waterfall_model
-    table_name: appl_pl
-    args:
-      - cat
-      - data/aapl_pl.csv
-
+    source: ${ref(waterfall_model-source)}
+    sql: select * from appl_pl
   # Date-based model for testing date inputs and expressions
   - name: daily_metrics_embedded
-    source: 
+    source:
       type: duckdb
       database: test.duckdb
     sql: |

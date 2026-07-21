@@ -1,18 +1,26 @@
+sources:
+  - name: vector-field-data-source
+    type: duckdb
+    database: target/seeds/vector_field_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z,u,v,w
+            0,0,0,1,0,0
+            0,1,0,0,1,0
+            1,0,0,0,0,1
+            1,1,0,1,1,1
+            0,0,1,-1,0,0
+            0,1,1,0,-1,0
+            1,0,1,0,0,-1
+            1,1,1,-1,-1,-1
+
 models:
   - name: vector-field-data
-    args:
-      - echo
-      - |
-        x,y,z,u,v,w
-        0,0,0,1,0,0
-        0,1,0,0,1,0
-        1,0,0,0,0,1
-        1,1,0,1,1,1
-        0,0,1,-1,0,0
-        0,1,1,0,-1,0
-        1,0,1,0,0,-1
-        1,1,1,-1,-1,-1
-
+    source: ${ref(vector-field-data-source)}
+    sql: select * from model
 charts:
   - name: simple-cone-plot
     layout:
