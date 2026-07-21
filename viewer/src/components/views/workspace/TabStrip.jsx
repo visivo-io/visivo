@@ -315,6 +315,7 @@ const TabStrip = () => {
         )}
         <div
           ref={scrollTrackRef}
+          data-testid="workspace-tab-scroll-track"
           className="flex flex-1 items-stretch overflow-x-auto overflow-y-hidden scroll-smooth"
         >
           <DndContext
