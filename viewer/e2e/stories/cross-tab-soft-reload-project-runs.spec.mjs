@@ -39,6 +39,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { io as ioClient } from 'socket.io-client';
+import { apiBase } from '../helpers/sandbox.mjs';
 
 const BASE =
   process.env.VIS_PUBLISH_BASE || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
@@ -55,15 +56,6 @@ const BASE =
 // project.visivo.yml and firing an unscoped reload broadcast at every
 // :8001-connected page, while this test's own marker-survival assertions
 // went vacuous for the (never-received) commit-broadcast path.
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE);
-    const backendPort = u.port ? u.port.replace(/^3/, '8') : '8001';
-    return `${u.protocol}//${u.hostname}:${backendPort}`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
 const WAIT = 20000;
 // The commit broadcast is near-instant (a bare socket.io emit); this just
 // gives every page's socket + hot-reload.js handler time to run before we

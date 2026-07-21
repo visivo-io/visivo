@@ -18,17 +18,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE_URL);
-    return `${u.protocol}//${u.hostname}:8001`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
+import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
 
 async function gotoExplorerHome(page) {
   await page.goto(`${BASE_URL}/workspace/exploration`);

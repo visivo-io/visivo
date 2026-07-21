@@ -31,22 +31,12 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
 
 // Tall viewport (mirrors exploration-dnd-pull-in.spec.mjs's rationale): keeps
 // every Build-rail drop target comfortably away from a scrollable edge for
 // the whole drag gesture, avoiding dnd-kit auto-scroll drift.
 test.use({ viewport: { width: 1280, height: 1600 } });
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE_URL);
-    return `${u.protocol}//${u.hostname}:8001`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
 
 const SOURCE = 'local-duckdb';
 const TABLE = 'test_table';

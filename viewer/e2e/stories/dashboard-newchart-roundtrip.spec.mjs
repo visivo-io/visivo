@@ -31,19 +31,9 @@
 
 import { test, expect } from '@playwright/test';
 import { typeSql, runQuery } from '../helpers/explorer.mjs';
+import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE_URL);
-    return `${u.protocol}//${u.hostname}:8001`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
 
 const SOURCE = 'local-duckdb';
 const TABLE = 'test_table';
