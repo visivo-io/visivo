@@ -19,6 +19,15 @@ import { draftSummary } from '../explorationLegacyBridge';
  * a provenance chip when `seededFrom` is set, a staleness badge, and
  * Open / ⋮ (rename · duplicate · delete).
  *
+ * Phase 6c-T5 (ux-audit.md "Every source-tile click mints a new auto-named
+ * exploration; cards only open via small 'Open' button" — "Make the whole
+ * card clickable" direction): the ENTIRE card is a click target for Open,
+ * matching the Library row / LibrarySourceRow convention elsewhere in this
+ * surface. The kebab menu and the inline-rename input each stop propagation
+ * so their own clicks never also fire Open; the "Open" button itself stays
+ * (an explicit, labeled affordance is still good practice) but is now
+ * redundant rather than the ONLY way in.
+ *
  * Promotion count (Explore 2.0 Phase 4, 01-ux-spec.md §2's "promotion count
  * arrives in Phase 4" note): read straight off the exploration's real
  * `promoted[]` trail (empty for an exploration that's never promoted
@@ -49,19 +58,35 @@ const ExplorationCard = ({
     ? `edited ${formatDistanceToNowStrict(new Date(exploration.updatedAt), { addSuffix: true })}`
     : null;
 
+  const handleCardOpen = () => onOpen(exploration.id);
+  const handleCardKeyDown = e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardOpen();
+    }
+  };
+
   return (
     <div
       data-testid={`exploration-card-${exploration.id}`}
-      className="rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:shadow-md"
+      role="button"
+      tabIndex={0}
+      onClick={handleCardOpen}
+      onKeyDown={handleCardKeyDown}
+      className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:shadow-md"
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         {rename.editing ? (
-          <InlineRenameInput
-            name={exploration.name}
-            testIdPrefix={`exploration-card-${exploration.id}-rename`}
-            onCommit={rename.commit}
-            onCancel={rename.cancel}
-          />
+          // No stopPropagation needed here — InlineRenameInput's own root
+          // element already stops click propagation itself.
+          <div className="min-w-0 flex-1">
+            <InlineRenameInput
+              name={exploration.name}
+              testIdPrefix={`exploration-card-${exploration.id}-rename`}
+              onCommit={rename.commit}
+              onCancel={rename.cancel}
+            />
+          </div>
         ) : (
           <span
             data-testid={`exploration-card-${exploration.id}-name`}
@@ -70,59 +95,61 @@ const ExplorationCard = ({
             {exploration.name}
           </span>
         )}
-        <Dropdown
-          align="right"
-          width={160}
-          trigger={
-            <button
-              type="button"
-              title="More actions"
-              aria-label={`More actions for ${exploration.name}`}
-              data-testid={`exploration-card-${exploration.id}-menu`}
-              className="-mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            >
-              <PiDotsThreeVertical style={{ fontSize: 16 }} />
-            </button>
-          }
-        >
-          {close => (
-            <div className="py-1">
+        <div onClick={e => e.stopPropagation()}>
+          <Dropdown
+            align="right"
+            width={160}
+            trigger={
               <button
                 type="button"
-                onClick={() => {
-                  rename.start();
-                  close();
-                }}
-                data-testid={`exploration-card-${exploration.id}-rename-action`}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
+                title="More actions"
+                aria-label={`More actions for ${exploration.name}`}
+                data-testid={`exploration-card-${exploration.id}-menu`}
+                className="-mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               >
-                <PiPencilSimple style={{ fontSize: 14 }} /> Rename
+                <PiDotsThreeVertical style={{ fontSize: 16 }} />
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onDuplicate(exploration.id);
-                  close();
-                }}
-                data-testid={`exploration-card-${exploration.id}-duplicate-action`}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
-              >
-                <PiCopy style={{ fontSize: 14 }} /> Duplicate
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onDelete(exploration);
-                  close();
-                }}
-                data-testid={`exploration-card-${exploration.id}-delete-action`}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-highlight-600 hover:bg-highlight-50"
-              >
-                <PiTrash style={{ fontSize: 14 }} /> Delete
-              </button>
-            </div>
-          )}
-        </Dropdown>
+            }
+          >
+            {close => (
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    rename.start();
+                    close();
+                  }}
+                  data-testid={`exploration-card-${exploration.id}-rename-action`}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
+                >
+                  <PiPencilSimple style={{ fontSize: 14 }} /> Rename
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDuplicate(exploration.id);
+                    close();
+                  }}
+                  data-testid={`exploration-card-${exploration.id}-duplicate-action`}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
+                >
+                  <PiCopy style={{ fontSize: 14 }} /> Duplicate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(exploration);
+                    close();
+                  }}
+                  data-testid={`exploration-card-${exploration.id}-delete-action`}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-highlight-600 hover:bg-highlight-50"
+                >
+                  <PiTrash style={{ fontSize: 14 }} /> Delete
+                </button>
+              </div>
+            )}
+          </Dropdown>
+        </div>
       </div>
 
       <div
@@ -186,7 +213,10 @@ const ExplorationCard = ({
       <div className="flex items-center justify-end">
         <button
           type="button"
-          onClick={() => onOpen(exploration.id)}
+          onClick={e => {
+            e.stopPropagation();
+            onOpen(exploration.id);
+          }}
           data-testid={`exploration-card-${exploration.id}-open`}
           className="rounded-md border border-primary-200 px-3 py-1 text-[12px] font-medium text-primary-600 transition-colors hover:bg-primary-50"
         >
