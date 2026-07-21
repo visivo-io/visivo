@@ -74,11 +74,18 @@ jest.mock('../../../schemas/schemas', () => ({
     if (type === 'bar') return BAR_SCHEMA;
     return null;
   }),
-  // TypeSelector reads CHART_TYPES; provide a tiny registry.
+  // TypeSelector reads CHART_TYPES; provide a tiny registry. `mystery_type`
+  // has no committed schema (the mocked getSchema below falls through to
+  // `null` for anything that isn't scatter/bar) — used to exercise the
+  // `newSchema || {}` defensive fallback in handleTypeChange. `layout` is
+  // included too since TypeSelector itself filters it out (a Plotly LAYOUT
+  // container, not a selectable trace type) — kept for parity with the real
+  // registry shape.
   CHART_TYPES: [
     { value: 'scatter', label: 'Scatter / Line' },
     { value: 'bar', label: 'Bar' },
     { value: 'layout', label: 'Layout' },
+    { value: 'mystery_type', label: 'Mystery Type' },
   ],
 }));
 
@@ -87,10 +94,23 @@ jest.mock('../../../schemas/schemas', () => ({
 // the index build.
 jest.mock('./fieldFinder/FieldFinderPalette', () => ({
   __esModule: true,
-  default: ({ onClose }) => (
+  default: ({ onClose, onEditScalar, onRevealCompound }) => (
     <div data-testid="field-finder-palette-stub">
       <button type="button" onClick={onClose}>
         close-palette
+      </button>
+      <button type="button" onClick={() => onEditScalar('mode', 'markers')}>
+        simulate-edit-scalar
+      </button>
+      <button type="button" onClick={() => onRevealCompound('line.dash')}>
+        simulate-reveal-compound
+      </button>
+      {/* 'mode' (Key fields group) and 'line.dash' (Other group, uncatalogued)
+          land in DIFFERENT FieldGroups — used to prove handleReveal's stale-
+          timer clear actually matters (a stale timer nulling the WRONG
+          group's reveal would be observable as that group's header). */}
+      <button type="button" onClick={() => onRevealCompound('mode')}>
+        simulate-reveal-mode
       </button>
     </div>
   ),
@@ -139,6 +159,54 @@ const scatterProps = { type: 'scatter', x: [1, 2, 3], y: [4, 5, 6] };
 
 const resetCollapse = () =>
   act(() => useFieldGroupCollapseStore.setState({ collapsed: {} }));
+
+// A `mockImplementationOnce` queued by one test but never actually consumed
+// (e.g. its component only calls the mock a different number of times than
+// expected) silently leaks into whichever LATER test happens to call the
+// mock next — `jest.clearAllMocks()` clears call history, not the queue.
+// Snapshotting + restoring the real default implementations file-wide after
+// EVERY test makes each `mockImplementationOnce` strictly test-local.
+afterEach(() => {
+  // The field-group collapse store is a module-level Zustand singleton —
+  // without resetting it file-wide, a test that toggles a group collapsed
+  // under a given `ownerName` (e.g. 'my_insight.key') leaks that persisted
+  // state into every LATER test using the same ownerName.
+  resetCollapse();
+  const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
+  const { getSchema } = jest.requireMock('../../../schemas/schemas');
+  const { loadCatalog, loadTraceGroups } = jest.requireMock('../../../schemas/traceCatalogLoader');
+  validateProps.mockImplementation(async (type, props) => {
+    if (props && props.mode && !['lines', 'markers'].includes(props.mode)) {
+      return {
+        valid: false,
+        errors: [{ path: 'mode', message: 'must be equal to one of the allowed values' }],
+      };
+    }
+    return { valid: true, errors: [] };
+  });
+  getSchema.mockImplementation(async type => {
+    if (type === 'scatter') return SCATTER_SCHEMA;
+    if (type === 'bar') return BAR_SCHEMA;
+    return null;
+  });
+  loadCatalog.mockImplementation(async type => {
+    if (type === 'scatter') {
+      return [
+        { path: 'x', label: 'X Axis', tier: 'A' },
+        { path: 'y', label: 'Y Axis', tier: 'A' },
+        { path: 'mode', label: 'Display Mode', tier: 'B' },
+      ];
+    }
+    if (type === 'bar') {
+      return [
+        { path: 'x', label: 'X Axis', tier: 'A' },
+        { path: 'y', label: 'Y Axis', tier: 'A' },
+      ];
+    }
+    return [];
+  });
+  loadTraceGroups.mockImplementation(async () => ({}));
+});
 
 describe('TracePropsEditor', () => {
   beforeEach(() => {
@@ -347,5 +415,501 @@ describe('onValidityChange (VIS-993 gate wiring)', () => {
       />
     );
     await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(true, {}));
+  });
+});
+
+describe('effect cleanup races (`cancelled` guards)', () => {
+  // React 18 no longer warns on a setState call reaching an unmounted
+  // component (that warning was removed), so "unmount, then resolve/reject
+  // the pending promise" alone doesn't falsify the `cancelled` guard — the
+  // test would pass identically whether or not the guard exists. The
+  // guard's REAL job is the classic stale-response race: type A's fetch is
+  // still in flight when the user switches to type B; A's response must
+  // never clobber B's once it lands late. That IS observable, and does
+  // falsify if the `if (cancelled) return;` checks are removed.
+  test('a stale schema-load response for an ABANDONED type never overwrites the CURRENT type once it resolves late', async () => {
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    let resolveStaleScatterSchema;
+    // The FIRST call (mount, type=scatter) hangs indefinitely...
+    getSchema.mockImplementationOnce(
+      () => new Promise(r => (resolveStaleScatterSchema = r))
+    );
+    const { rerender } = render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
+    );
+    expect(await screen.findByTestId('trace-props-loading')).toBeInTheDocument();
+
+    // ...while the user switches straight to bar (a real controlled-component
+    // prop change) before that stale request ever resolves. `bar` uses the
+    // mock's default (immediate) implementation. Bar's own catalog has no
+    // tier-B entries at all (only x/y, tier A) — so a correctly-loaded bar
+    // form has NO "Key fields" group whatsoever. The TypeSelector's own
+    // displayed text is NOT a valid signal here (it mirrors the CONTROLLED
+    // `type` prop directly, regardless of which schema/catalog is loaded) —
+    // the group structure, which is schema/catalog-derived, is.
+    rerender(<TracePropsEditor ownerName="my_insight" props={{ type: 'bar' }} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    expect(screen.queryByTestId('field-group-key')).not.toBeInTheDocument();
+
+    // The abandoned scatter request finally resolves. Without the
+    // `cancelled` guard, its `.then()` would call `setSchema(SCATTER_SCHEMA)`
+    // + `setCatalogEntries(scatterCatalog)` on the CURRENT (bar) render,
+    // silently reintroducing scatter's tier-B `mode` field (and its "Key
+    // fields" group) into a supposedly-bar form.
+    await act(async () => resolveStaleScatterSchema(SCATTER_SCHEMA));
+    expect(screen.queryByTestId('field-group-key')).not.toBeInTheDocument();
+  });
+
+  test('a stale validateProps response for an ABANDONED type never overwrites the CURRENT type\'s validity once it resolves late', async () => {
+    const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
+    let resolveStaleValidation;
+    // The FIRST call (mount, type=scatter, mode='bogus' -> real invalidity)
+    // hangs indefinitely.
+    validateProps.mockImplementationOnce(
+      () => new Promise(r => (resolveStaleValidation = r))
+    );
+    const onValidityChange = jest.fn();
+    const { rerender } = render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'scatter', mode: 'bogus' }}
+        onChange={() => {}}
+        onValidityChange={onValidityChange}
+      />
+    );
+    await screen.findByTestId('trace-props-loading');
+
+    // Switch to bar (valid by the mock's default implementation) before the
+    // stale scatter validation ever resolves.
+    rerender(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'bar' }}
+        onChange={() => {}}
+        onValidityChange={onValidityChange}
+      />
+    );
+    await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(true, {}));
+
+    // The abandoned scatter validation finally resolves as INVALID. Without
+    // the `cancelled` guard, this would flip the CURRENT (bar, valid) state
+    // back to invalid.
+    await act(async () =>
+      resolveStaleValidation({
+        valid: false,
+        errors: [{ path: 'mode', message: 'must be equal to one of the allowed values' }],
+      })
+    );
+    expect(onValidityChange).toHaveBeenLastCalledWith(true, {});
+    expect(screen.queryByTestId('trace-props-invalid-indicator')).not.toBeInTheDocument();
+  });
+
+  // The `.catch()` side of both effects has its OWN `if (cancelled) return;`
+  // guard, separate from the `.then()` side above. Unlike a bare resolve,
+  // React logging an "Uncaught"/console.error for a rejection that fires
+  // after unmount IS observable and DOES falsify if the guard is removed
+  // (verified by hand: deleting the two `.catch()` cancelled-checks makes
+  // both of these fail with an unexpected-console.error from setupTests.js).
+  test('unmounting before the schema promise REJECTS never logs (the .catch() cancelled guard)', async () => {
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    let rejectSchema;
+    getSchema.mockImplementationOnce(() => new Promise((_, rej) => (rejectSchema = rej)));
+    const { unmount } = render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
+    );
+    unmount();
+    await act(async () => {
+      rejectSchema(new Error('too late, already unmounted'));
+      // Let the rejection's .catch() microtask run before the test ends.
+      await Promise.resolve().then(() => Promise.resolve());
+    });
+  });
+
+  test('unmounting before validateProps REJECTS never logs (the .catch() cancelled guard)', async () => {
+    const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
+    let rejectValidate;
+    validateProps.mockImplementationOnce(() => new Promise((_, rej) => (rejectValidate = rej)));
+    const { unmount } = render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
+    );
+    unmount();
+    await act(async () => {
+      rejectValidate(new Error('too late, already unmounted'));
+      await Promise.resolve().then(() => Promise.resolve());
+    });
+  });
+});
+
+describe('empty/absent type + traceProps (defensive fallbacks)', () => {
+  test('with no type at all, the schema-load effect short-circuits: no loading spinner, no error, no crash', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={{}} onChange={() => {}} />);
+    await screen.findByTestId('trace-props-editor');
+    expect(screen.queryByTestId('trace-props-loading')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('field-group-essentials')).not.toBeInTheDocument();
+  });
+
+  test('a completely absent `props` (null) is tolerated end to end, including opening the Field Finder', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={null} onChange={() => {}} />);
+    await screen.findByTestId('trace-props-editor');
+    fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+    expect(screen.getByTestId('field-finder-palette-stub')).toBeInTheDocument();
+  });
+});
+
+describe('schema/catalog/groups load edge cases', () => {
+  test('getSchema resolving to a falsy value (not rejecting) surfaces the same "Failed to load" message', async () => {
+    const { getSchema } = jest.requireMock('../../../schemas/schemas');
+    getSchema.mockImplementationOnce(() => Promise.resolve(null));
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    expect(await screen.findByText('Failed to load schema for scatter')).toBeInTheDocument();
+  });
+
+  test('loadCatalog resolving a non-array falls back to an empty catalog (no crash)', async () => {
+    const { loadCatalog } = jest.requireMock('../../../schemas/traceCatalogLoader');
+    loadCatalog.mockImplementationOnce(() => Promise.resolve('not-an-array'));
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    // With no usable catalog, buildTraceGroupSpec has no tier metadata to
+    // group by, so every field (including x/y) falls into the generic
+    // "Other" catch-all group instead of Essentials/Key fields — but it
+    // still renders, with no crash. "Other" is collapsed by default, so
+    // expand it before asserting a field row is actually mounted.
+    const otherHeader = await screen.findByTestId('field-group-header-other');
+    fireEvent.click(otherHeader);
+    const moreButton = screen.queryByTestId('field-group-more-other');
+    if (moreButton) fireEvent.click(moreButton);
+    expect(screen.getByTestId('prop-x')).toBeInTheDocument();
+  });
+
+  test('loadTraceGroups resolving a non-object falls back to an empty groups map (no crash)', async () => {
+    const { loadTraceGroups } = jest.requireMock('../../../schemas/traceCatalogLoader');
+    loadTraceGroups.mockImplementationOnce(() => Promise.resolve('not-an-object'));
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+  });
+});
+
+describe('AJV validation edge cases', () => {
+  test('a rejected validateProps call is treated as non-blocking (valid=true, no field errors), and logs a warning', async () => {
+    const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
+    validateProps.mockImplementationOnce(() => Promise.reject(new Error('schema compile error')));
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+      await screen.findByTestId('field-group-essentials');
+      await waitFor(() => expect(warnSpy).toHaveBeenCalled());
+      expect(screen.queryByTestId('trace-props-invalid-indicator')).not.toBeInTheDocument();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('only the FIRST error per dot-path is kept, and root-level (empty-path) errors never populate the field error map', async () => {
+    const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
+    validateProps.mockImplementationOnce(() =>
+      Promise.resolve({
+        valid: false,
+        errors: [
+          { path: 'mode', message: 'first message wins' },
+          { path: 'mode', message: 'second message must be dropped' },
+          { path: '', message: 'root-level, never shown as a per-field error' },
+        ],
+      })
+    );
+    render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ ...scatterProps, mode: 'lines' }}
+        onChange={() => {}}
+      />
+    );
+    const err = await screen.findByTestId('property-error-mode');
+    expect(err).toHaveTextContent('first message wins');
+    expect(err).not.toHaveTextContent('second message must be dropped');
+    // The overall invalid indicator still reflects `valid: false` regardless.
+    expect(screen.getByTestId('trace-props-invalid-indicator')).toBeInTheDocument();
+  });
+
+  test('an invalid result with NO `errors` array at all is tolerated (defensive `|| []`)', async () => {
+    const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
+    validateProps.mockImplementationOnce(() => Promise.resolve({ valid: false }));
+    render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
+    );
+    await screen.findByTestId('field-group-essentials');
+    expect(await screen.findByTestId('trace-props-invalid-indicator')).toBeInTheDocument();
+  });
+});
+
+describe('handleFieldsChange / handleTypeChange guard branches', () => {
+  test('editing a field with NO onChange handler is a silent no-op (never throws)', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} />);
+    await screen.findByTestId('field-group-essentials');
+    expect(() => {
+      fireEvent.change(screen.getByTestId('input-x'), { target: { value: '[9,9,9]' } });
+    }).not.toThrow();
+  });
+
+  test('editing a field with onChange PRESENT writes the full next props through, with `type` re-attached', async () => {
+    const onChange = jest.fn();
+    render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={onChange} />
+    );
+    await screen.findByTestId('field-group-essentials');
+    fireEvent.change(screen.getByTestId('input-x'), { target: { value: '[9,9,9]' } });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ x: '[9,9,9]', type: 'scatter' })
+    );
+  });
+
+  test('reselecting the CURRENT type is a no-op (newType === type short-circuits)', async () => {
+    const onChange = jest.fn();
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={onChange} />);
+    await screen.findByTestId('field-group-essentials');
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const scatterOption = await screen.findAllByText('Scatter / Line');
+    // Selecting the already-active option (react-select's own selected value,
+    // not the menu option) — click the menu's rendered option explicitly.
+    fireEvent.click(scatterOption[scatterOption.length - 1]);
+    await new Promise(r => setTimeout(r, 0));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('switching type with NO onChange handler is a silent no-op (never throws)', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} />);
+    await screen.findByTestId('field-group-essentials');
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const barOption = await screen.findByText('Bar');
+    expect(() => fireEvent.click(barOption)).not.toThrow();
+  });
+});
+
+describe('typeChangeWarning (T4 / pills-buildrail #2)', () => {
+  test('switching type drops incompatible fields and shows a dismissible warning naming them (plural)', async () => {
+    const onChange = jest.fn();
+    // mode + line are both set and both unsupported on bar -> two drops -> plural copy.
+    const propsWithModeAndLine = { ...scatterProps, mode: 'lines', line: { dash: 'dot' } };
+    const { rerender } = render(
+      <TracePropsEditor ownerName="my_insight" props={propsWithModeAndLine} onChange={onChange} />
+    );
+    await screen.findByTestId('field-group-essentials');
+
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByText('Bar'));
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    // Re-render with the switched props (mirrors the real controlled-component
+    // round trip a parent store would perform).
+    const nextProps = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    rerender(
+      <TracePropsEditor ownerName="my_insight" props={nextProps} onChange={onChange} />
+    );
+
+    const warning = await screen.findByTestId('trace-props-type-change-warning');
+    expect(warning).toHaveTextContent('bar');
+    expect(warning).toHaveTextContent('these fields');
+    expect(warning).toHaveTextContent('Mode');
+
+    fireEvent.click(screen.getByTestId('trace-props-type-change-warning-dismiss'));
+    expect(screen.queryByTestId('trace-props-type-change-warning')).not.toBeInTheDocument();
+  });
+
+  test('a SINGLE dropped field uses the singular copy ("this field")', async () => {
+    const onChange = jest.fn();
+    // Only `mode` is set (no `line`) so exactly one field drops on scatter -> bar.
+    render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'scatter', x: [1], y: [2], mode: 'lines' }}
+        onChange={onChange}
+      />
+    );
+    await screen.findByTestId('field-group-essentials');
+
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByText('Bar'));
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    expect(await screen.findByText(/this field/)).toBeInTheDocument();
+  });
+});
+
+describe('ownerName omitted', () => {
+  test('the TypeSelector renders with no scoped data-testid when ownerName is omitted', async () => {
+    render(<TracePropsEditor props={scatterProps} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    expect(document.querySelector('[data-testid^="type-selector-"]')).not.toBeInTheDocument();
+    // The selector itself still renders and works.
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+});
+
+describe('externalErrors (Explore 2.0 Phase 3b advisory validation)', () => {
+  test('an externalErrors-only path surfaces the advisory message', async () => {
+    render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={scatterProps}
+        onChange={() => {}}
+        externalErrors={{ x: 'Reference to orders_q not found' }}
+      />
+    );
+    const err = await screen.findByTestId('property-error-x');
+    expect(err).toHaveTextContent('Reference to orders_q not found');
+  });
+
+  test('a real AJV error wins over an advisory externalErrors entry on the SAME path', async () => {
+    render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'scatter', x: [1], y: [2], mode: 'bogus' }}
+        onChange={() => {}}
+        externalErrors={{ mode: 'advisory: this ref looks dangling' }}
+      />
+    );
+    const err = await screen.findByTestId('property-error-mode');
+    // AJV's real invalidity message wins, per the merge order `{...external, ...ajv}`.
+    expect(err).toHaveTextContent(/allowed values/i);
+    expect(err).not.toHaveTextContent('advisory: this ref looks dangling');
+  });
+});
+
+describe('⌘K modifier variants (mac vs non-mac, key casing)', () => {
+  test('uppercase "K" also opens the palette', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    fireEvent.keyDown(document.body, { key: 'K', ctrlKey: true, metaKey: true });
+    expect(screen.getByTestId('field-finder-palette-stub')).toBeInTheDocument();
+  });
+
+  test('ctrlKey alone (no metaKey) still opens the palette on a non-mac platform', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true });
+    expect(screen.getByTestId('field-finder-palette-stub')).toBeInTheDocument();
+  });
+
+  test('on a mac platform, metaKey (not ctrlKey) is what opens the palette', async () => {
+    const originalPlatform = Object.getOwnPropertyDescriptor(window.navigator, 'platform');
+    Object.defineProperty(window.navigator, 'platform', { value: 'MacIntel', configurable: true });
+    try {
+      render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+      await screen.findByTestId('field-group-essentials');
+      // ctrlKey alone must NOT open it on mac (mod = e.metaKey there).
+      fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true });
+      expect(screen.queryByTestId('field-finder-palette-stub')).not.toBeInTheDocument();
+      fireEvent.keyDown(document.body, { key: 'k', metaKey: true });
+      expect(screen.getByTestId('field-finder-palette-stub')).toBeInTheDocument();
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(window.navigator, 'platform', originalPlatform);
+      }
+    }
+  });
+});
+
+describe('Field Finder palette callbacks (handleFieldFinderEdit / handleReveal)', () => {
+  test('a scalar edit from the palette writes the value through onChange with `type` re-attached', async () => {
+    const onChange = jest.fn();
+    render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={onChange} />
+    );
+    await screen.findByTestId('field-group-essentials');
+    fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+    fireEvent.click(screen.getByText('simulate-edit-scalar'));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'markers', type: 'scatter' })
+    );
+  });
+
+  test('a compound-result reveal sets the reveal path, forwarded to FieldGroupList', async () => {
+    render(
+      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
+    );
+    await screen.findByTestId('field-group-essentials');
+    fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+    fireEvent.click(screen.getByText('simulate-reveal-compound'));
+    // The "Key fields" group owns `line.dash` and force-expands to reveal it.
+    await screen.findByTestId('field-group-header-key');
+    expect(screen.getByTestId('field-group-header-key')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('a scalar edit from the palette with NO onChange handler is a silent no-op', async () => {
+    render(<TracePropsEditor ownerName="my_insight" props={scatterProps} />);
+    await screen.findByTestId('field-group-essentials');
+    fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+    expect(() => {
+      fireEvent.click(screen.getByText('simulate-edit-scalar'));
+    }).not.toThrow();
+  });
+
+  test('revealing a SECOND (different) path clears the first reveal\'s stale timer, instead of it firing later and nulling the wrong group\'s reveal', async () => {
+    // 'mode' (Key fields group, tier B) and 'line.dash' (Other group,
+    // uncatalogued) land in DIFFERENT FieldGroups — which one is force-
+    // expanded is what makes a STALE timer's premature `setRevealPath(null)`
+    // observable, rather than just re-asserting the same always-true state.
+    jest.useFakeTimers();
+    try {
+      render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
+      await screen.findByTestId('field-group-essentials');
+
+      fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+      fireEvent.click(screen.getByText('simulate-reveal-mode')); // reveal #1: 'mode'
+      expect(screen.getByTestId('field-group-header-key')).toHaveAttribute('aria-expanded', 'true');
+
+      // 1000ms later (still well within reveal #1's 1600ms window), reveal a
+      // DIFFERENT path. If the stale timer is cleared (correct), reveal #1's
+      // timer never fires; if not (bug), it will fire 1600ms after reveal #1
+      // regardless — i.e. 600ms from here — and null the revealPath out from
+      // under reveal #2.
+      act(() => jest.advanceTimersByTime(1000));
+      fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+      fireEvent.click(screen.getByText('simulate-reveal-compound')); // reveal #2: 'line.dash'
+      expect(screen.getByTestId('field-group-header-other')).toHaveAttribute('aria-expanded', 'true');
+
+      // Advance past where reveal #1's timer WOULD have fired (600ms from
+      // here = 1600ms from reveal #1) but still short of reveal #2's own
+      // 1600ms window (which only started 600ms ago).
+      act(() => jest.advanceTimersByTime(700));
+      expect(screen.getByTestId('field-group-header-other')).toHaveAttribute('aria-expanded', 'true');
+
+      // Reveal #2's own timer does eventually clear it.
+      act(() => jest.advanceTimersByTime(1000));
+      expect(screen.getByTestId('field-group-header-other')).toHaveAttribute('aria-expanded', 'false');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('handleTypeChange: newSchema resolving falsy (unknown type in CHART_TYPES)', () => {
+  test('switching to a type with no committed schema falls back to an empty newSchema (no crash, everything drops)', async () => {
+    const onChange = jest.fn();
+    render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ ...scatterProps, mode: 'lines' }}
+        onChange={onChange}
+      />
+    );
+    await screen.findByTestId('field-group-essentials');
+
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    // getSchema('mystery_type') resolves null in this file's mock -> the
+    // `newSchema || {}` defensive fallback in handleTypeChange.
+    fireEvent.click(await screen.findByText('Mystery Type'));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const nextProps = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(nextProps).toEqual({ type: 'mystery_type' });
   });
 });

@@ -96,7 +96,7 @@ export function FieldGroup({
   const { id, label, icon, objectType, alwaysOpen, defaultOpen = true, fields = [] } = group || {};
 
   const collapsedMap = useFieldGroupCollapseStore(s => s.collapsed);
-  const toggleCollapsed = useFieldGroupCollapseStore(s => s.toggleCollapsed);
+  const setCollapsed = useFieldGroupCollapseStore(s => s.setCollapsed);
   // Effective collapse: an explicit persisted entry wins; absent, fall back to
   // the group's `defaultOpen` (trace-prop Layout/Animation/Other are
   // collapsed-by-default per §3). `defaultOpen` defaults to true, so semantic
@@ -140,7 +140,16 @@ export function FieldGroup({
 
   const handleHeaderClick = () => {
     if (alwaysOpen) return;
-    toggleCollapsed(objectType, id);
+    // Bug fix (found while adding coverage): the store's own `toggleCollapsed`
+    // flips based on ITS OWN "absence -> currently expanded" convention,
+    // which disagrees with THIS component's `defaultOpen`-aware effective
+    // collapse (`persistedCollapsed` above) for any `defaultOpen: false`
+    // group (Layout/Animation/Other) that has never been explicitly toggled
+    // yet — the very first click on a collapsed-by-default group's header
+    // was a silent no-op (it takes a SECOND click to actually expand).
+    // Setting the explicit next value from `persistedCollapsed` (which
+    // already accounts for `defaultOpen`) makes the very first click work.
+    setCollapsed(objectType, id, !persistedCollapsed);
   };
 
   const handleFieldChange = (name, fieldValue) => {
