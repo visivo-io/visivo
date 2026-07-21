@@ -105,6 +105,13 @@ jest.mock('./fieldFinder/FieldFinderPalette', () => ({
       <button type="button" onClick={() => onRevealCompound('line.dash')}>
         simulate-reveal-compound
       </button>
+      {/* 'mode' (Key fields group) and 'line.dash' (Other group, uncatalogued)
+          land in DIFFERENT FieldGroups — used to prove handleReveal's stale-
+          timer clear actually matters (a stale timer nulling the WRONG
+          group's reveal would be observable as that group's header). */}
+      <button type="button" onClick={() => onRevealCompound('mode')}>
+        simulate-reveal-mode
+      </button>
     </div>
   ),
 }));
@@ -412,20 +419,98 @@ describe('onValidityChange (VIS-993 gate wiring)', () => {
 });
 
 describe('effect cleanup races (`cancelled` guards)', () => {
-  test('unmounting before the schema promise RESOLVES never updates state on the unmounted component', async () => {
+  // React 18 no longer warns on a setState call reaching an unmounted
+  // component (that warning was removed), so "unmount, then resolve/reject
+  // the pending promise" alone doesn't falsify the `cancelled` guard — the
+  // test would pass identically whether or not the guard exists. The
+  // guard's REAL job is the classic stale-response race: type A's fetch is
+  // still in flight when the user switches to type B; A's response must
+  // never clobber B's once it lands late. That IS observable, and does
+  // falsify if the `if (cancelled) return;` checks are removed.
+  test('a stale schema-load response for an ABANDONED type never overwrites the CURRENT type once it resolves late', async () => {
     const { getSchema } = jest.requireMock('../../../schemas/schemas');
-    let resolveSchema;
-    getSchema.mockImplementationOnce(() => new Promise(r => (resolveSchema = r)));
-    const { unmount } = render(
+    let resolveStaleScatterSchema;
+    // The FIRST call (mount, type=scatter) hangs indefinitely...
+    getSchema.mockImplementationOnce(
+      () => new Promise(r => (resolveStaleScatterSchema = r))
+    );
+    const { rerender } = render(
       <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
     );
-    unmount();
-    // Resolving after unmount must not throw / warn ("state update on an
-    // unmounted component") — the `cancelled` guard is what prevents it.
-    await act(async () => resolveSchema(SCATTER_SCHEMA));
+    expect(await screen.findByTestId('trace-props-loading')).toBeInTheDocument();
+
+    // ...while the user switches straight to bar (a real controlled-component
+    // prop change) before that stale request ever resolves. `bar` uses the
+    // mock's default (immediate) implementation. Bar's own catalog has no
+    // tier-B entries at all (only x/y, tier A) — so a correctly-loaded bar
+    // form has NO "Key fields" group whatsoever. The TypeSelector's own
+    // displayed text is NOT a valid signal here (it mirrors the CONTROLLED
+    // `type` prop directly, regardless of which schema/catalog is loaded) —
+    // the group structure, which is schema/catalog-derived, is.
+    rerender(<TracePropsEditor ownerName="my_insight" props={{ type: 'bar' }} onChange={() => {}} />);
+    await screen.findByTestId('field-group-essentials');
+    expect(screen.queryByTestId('field-group-key')).not.toBeInTheDocument();
+
+    // The abandoned scatter request finally resolves. Without the
+    // `cancelled` guard, its `.then()` would call `setSchema(SCATTER_SCHEMA)`
+    // + `setCatalogEntries(scatterCatalog)` on the CURRENT (bar) render,
+    // silently reintroducing scatter's tier-B `mode` field (and its "Key
+    // fields" group) into a supposedly-bar form.
+    await act(async () => resolveStaleScatterSchema(SCATTER_SCHEMA));
+    expect(screen.queryByTestId('field-group-key')).not.toBeInTheDocument();
   });
 
-  test('unmounting before the schema promise REJECTS never updates state on the unmounted component', async () => {
+  test('a stale validateProps response for an ABANDONED type never overwrites the CURRENT type\'s validity once it resolves late', async () => {
+    const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
+    let resolveStaleValidation;
+    // The FIRST call (mount, type=scatter, mode='bogus' -> real invalidity)
+    // hangs indefinitely.
+    validateProps.mockImplementationOnce(
+      () => new Promise(r => (resolveStaleValidation = r))
+    );
+    const onValidityChange = jest.fn();
+    const { rerender } = render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'scatter', mode: 'bogus' }}
+        onChange={() => {}}
+        onValidityChange={onValidityChange}
+      />
+    );
+    await screen.findByTestId('trace-props-loading');
+
+    // Switch to bar (valid by the mock's default implementation) before the
+    // stale scatter validation ever resolves.
+    rerender(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'bar' }}
+        onChange={() => {}}
+        onValidityChange={onValidityChange}
+      />
+    );
+    await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(true, {}));
+
+    // The abandoned scatter validation finally resolves as INVALID. Without
+    // the `cancelled` guard, this would flip the CURRENT (bar, valid) state
+    // back to invalid.
+    await act(async () =>
+      resolveStaleValidation({
+        valid: false,
+        errors: [{ path: 'mode', message: 'must be equal to one of the allowed values' }],
+      })
+    );
+    expect(onValidityChange).toHaveBeenLastCalledWith(true, {});
+    expect(screen.queryByTestId('trace-props-invalid-indicator')).not.toBeInTheDocument();
+  });
+
+  // The `.catch()` side of both effects has its OWN `if (cancelled) return;`
+  // guard, separate from the `.then()` side above. Unlike a bare resolve,
+  // React logging an "Uncaught"/console.error for a rejection that fires
+  // after unmount IS observable and DOES falsify if the guard is removed
+  // (verified by hand: deleting the two `.catch()` cancelled-checks makes
+  // both of these fail with an unexpected-console.error from setupTests.js).
+  test('unmounting before the schema promise REJECTS never logs (the .catch() cancelled guard)', async () => {
     const { getSchema } = jest.requireMock('../../../schemas/schemas');
     let rejectSchema;
     getSchema.mockImplementationOnce(() => new Promise((_, rej) => (rejectSchema = rej)));
@@ -440,18 +525,7 @@ describe('effect cleanup races (`cancelled` guards)', () => {
     });
   });
 
-  test('unmounting before validateProps RESOLVES never updates state on the unmounted component', async () => {
-    const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
-    let resolveValidate;
-    validateProps.mockImplementationOnce(() => new Promise(r => (resolveValidate = r)));
-    const { unmount } = render(
-      <TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />
-    );
-    unmount();
-    await act(async () => resolveValidate({ valid: true, errors: [] }));
-  });
-
-  test('unmounting before validateProps REJECTS never updates state on the unmounted component', async () => {
+  test('unmounting before validateProps REJECTS never logs (the .catch() cancelled guard)', async () => {
     const { validateProps } = jest.requireMock('../../../schemas/plotlyValidator');
     let rejectValidate;
     validateProps.mockImplementationOnce(() => new Promise((_, rej) => (rejectValidate = rej)));
@@ -776,21 +850,39 @@ describe('Field Finder palette callbacks (handleFieldFinderEdit / handleReveal)'
     }).not.toThrow();
   });
 
-  test('revealing a SECOND path before the first reveal timer fires clears the stale timer (no stale reset)', async () => {
+  test('revealing a SECOND (different) path clears the first reveal\'s stale timer, instead of it firing later and nulling the wrong group\'s reveal', async () => {
+    // 'mode' (Key fields group, tier B) and 'line.dash' (Other group,
+    // uncatalogued) land in DIFFERENT FieldGroups — which one is force-
+    // expanded is what makes a STALE timer's premature `setRevealPath(null)`
+    // observable, rather than just re-asserting the same always-true state.
     jest.useFakeTimers();
     try {
       render(<TracePropsEditor ownerName="my_insight" props={scatterProps} onChange={() => {}} />);
       await screen.findByTestId('field-group-essentials');
+
       fireEvent.click(screen.getByTestId('trace-props-field-finder'));
-      fireEvent.click(screen.getByText('simulate-reveal-compound'));
-      // Reveal again before the 1600ms timer would have cleared the first one.
-      fireEvent.click(screen.getByTestId('trace-props-field-finder'));
-      fireEvent.click(screen.getByText('simulate-reveal-compound'));
-      // No crash from a stale/duplicate timer; the group is still revealed.
+      fireEvent.click(screen.getByText('simulate-reveal-mode')); // reveal #1: 'mode'
       expect(screen.getByTestId('field-group-header-key')).toHaveAttribute('aria-expanded', 'true');
-      act(() => {
-        jest.advanceTimersByTime(1600);
-      });
+
+      // 1000ms later (still well within reveal #1's 1600ms window), reveal a
+      // DIFFERENT path. If the stale timer is cleared (correct), reveal #1's
+      // timer never fires; if not (bug), it will fire 1600ms after reveal #1
+      // regardless — i.e. 600ms from here — and null the revealPath out from
+      // under reveal #2.
+      act(() => jest.advanceTimersByTime(1000));
+      fireEvent.click(screen.getByTestId('trace-props-field-finder'));
+      fireEvent.click(screen.getByText('simulate-reveal-compound')); // reveal #2: 'line.dash'
+      expect(screen.getByTestId('field-group-header-other')).toHaveAttribute('aria-expanded', 'true');
+
+      // Advance past where reveal #1's timer WOULD have fired (600ms from
+      // here = 1600ms from reveal #1) but still short of reveal #2's own
+      // 1600ms window (which only started 600ms ago).
+      act(() => jest.advanceTimersByTime(700));
+      expect(screen.getByTestId('field-group-header-other')).toHaveAttribute('aria-expanded', 'true');
+
+      // Reveal #2's own timer does eventually clear it.
+      act(() => jest.advanceTimersByTime(1000));
+      expect(screen.getByTestId('field-group-header-other')).toHaveAttribute('aria-expanded', 'false');
     } finally {
       jest.useRealTimers();
     }

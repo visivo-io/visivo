@@ -466,16 +466,12 @@ describe('ChartBuildSection', () => {
     });
   });
 
-  describe('layout schema load race (`cancelled` guard)', () => {
-    it('unmounting before getSchema resolves never updates state on the unmounted component', async () => {
-      const { getSchema } = jest.requireMock('../../../schemas/schemas');
-      let resolveSchema;
-      getSchema.mockImplementationOnce(() => new Promise(r => (resolveSchema = r)));
-      const { unmount } = renderInDnd(
-        <ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />
-      );
-      unmount();
-      await act(async () => resolveSchema({ properties: {} }));
-    });
-  });
+  // Note: the layout-schema-load effect's `if (!cancelled) setLayoutSchema(s)`
+  // guard has no genuinely testable surface here. Its dependency array is
+  // `[]` (it never re-runs), so unlike TracePropsEditor's equivalent guard
+  // there is no type-switch race to construct — the only trigger for
+  // `cancelled` becoming true is unmount, and React 18 removed the "state
+  // update on an unmounted component" warning, so "unmount then resolve"
+  // passes identically whether or not the guard exists (verified by hand).
+  // Not asserting a race that can't be observed.
 });
