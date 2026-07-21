@@ -224,6 +224,18 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
 
   test('duplicate opens a sibling exploration tab', async ({ page }) => {
     await gotoExplorerHome(page);
+    // Unlike its sibling tests, this one doesn't seed its own content and
+    // used to just assume the gallery already had a card in it — true only
+    // by accident, when some OTHER spec in the same serial project happened
+    // to run first and leak an exploration. Running this file (or this
+    // test) in isolation hit a genuinely empty gallery and hung forever on
+    // the card locator below. Mint one explicitly, same as every other test
+    // in this file — the afterEach cleanup already tracks and deletes it.
+    await page.getByTestId('explorer-home-new-exploration').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await page.getByTestId('workspace-view-switcher-explorer').click();
+    await expect(page.getByTestId('explorer-home-gallery')).toBeVisible();
+
     // Scoped to the workspace tab strip — `[role="tab"]` isn't unique to it
     // (the Right Rail's Outline/Edit switcher, RightRail.jsx, also renders
     // `role="tab"`, and the legacy workbench opened below auto-selects an

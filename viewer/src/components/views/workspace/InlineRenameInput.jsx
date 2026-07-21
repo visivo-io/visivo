@@ -42,6 +42,13 @@ const InlineRenameInput = ({ name, onCommit, onCancel, testIdPrefix = 'inline-re
         onBlur={commit}
         onClick={e => e.stopPropagation()}
         onKeyDown={e => {
+          // Phase 6c-T5: a caller may render this input inside its own
+          // keyboard-activatable container (ExplorationCard's whole-card
+          // onClick/onKeyDown, VIS-1059-ish "Enter/Space opens the card").
+          // Without stopPropagation, Enter here both commits the rename AND
+          // bubbles up as "Enter pressed on the card", firing the card's own
+          // open handler mid-rename. Stop it here, once, for every caller.
+          e.stopPropagation();
           if (e.key === 'Enter') commit();
           else if (e.key === 'Escape') onCancel();
         }}

@@ -108,8 +108,39 @@ test.describe('"Explore this" from a dashboard chart context menu (Phase 6c-T5)'
     // explorer subject at all.
     const row = page.locator('[data-canvas-path="row.0"]').first();
     await expect(row).toBeVisible({ timeout: WAIT });
-    await row.hover({ force: true, position: { x: 4, y: 4 } });
-    await row.click({ button: 'right', force: true, position: { x: 4, y: 4 } });
+    // row.0 in this fixture holds TWO items (width 9 + width 2, project.visivo.yml)
+    // with a `gap: 0.7rem` gutter between them — the only pixel range that
+    // belongs to the row's own DOM node and isn't covered by either item. A
+    // fixed top-left offset like {x:4,y:4} lands inside item.0 (it starts
+    // flush with the row's edge), hitting the item instead of the row.
+    // Dashboard.jsx's `shouldStack(width)` renders this row as a horizontal
+    // CSS grid when the canvas is wide, but flips to a stacked (column) flex
+    // layout when the canvas is narrow — which it is here, inside the
+    // Workspace shell with both rails open. Don't assume an axis: read both
+    // items' live boxes and find whichever axis actually has a gap between
+    // them (row.0.item.1 doesn't exist in the DOM for a single-item row, but
+    // this fixture always has two — see explorerSubjectAtKey callers above).
+    const rowBox = await row.boundingBox();
+    const item0Box = await page.locator('[data-canvas-path="row.0.item.0"]').first().boundingBox();
+    const item1Box = await page.locator('[data-canvas-path="row.0.item.1"]').first().boundingBox();
+    let gapPoint;
+    if (item1Box.y >= item0Box.y + item0Box.height) {
+      // Stacked (column) layout: gap is vertical, between item0's bottom and
+      // item1's top.
+      gapPoint = {
+        x: rowBox.width / 2,
+        y: (item0Box.y + item0Box.height + item1Box.y) / 2 - rowBox.y,
+      };
+    } else {
+      // Side-by-side (grid) layout: gap is horizontal, between item0's right
+      // edge and item1's left edge.
+      gapPoint = {
+        x: (item0Box.x + item0Box.width + item1Box.x) / 2 - rowBox.x,
+        y: rowBox.height / 2,
+      };
+    }
+    await row.hover({ force: true, position: gapPoint });
+    await row.click({ button: 'right', force: true, position: gapPoint });
     const menu = page.getByTestId('canvas-context-menu');
     await expect(menu).toBeVisible();
     await expect(page.getByTestId('canvas-ctx-explore-this')).toHaveCount(0);
