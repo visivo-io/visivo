@@ -193,7 +193,11 @@ export function PropertySearch({ properties = [], selectedPaths = new Set(), onT
   }, [groupedProperties]);
 
   return (
-    <Paper variant="outlined" sx={{ maxHeight: 400, display: 'flex', flexDirection: 'column' }}>
+    <Paper
+      variant="outlined"
+      data-testid="property-search"
+      sx={{ maxHeight: 400, display: 'flex', flexDirection: 'column' }}
+    >
       {/* Search input */}
       <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
         <TextField

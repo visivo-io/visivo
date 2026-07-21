@@ -187,9 +187,15 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
               }
             }}
             onClick={e => e.stopPropagation()}
-            className={`text-sm font-medium text-pink-800 bg-transparent border-0 border-b border-transparent px-0 py-0 outline-none focus:border-pink-400 disabled:cursor-default ${
-              renameError ? 'border-highlight-400 focus:border-highlight-400' : ''
-            }`}
+            // D12: an unnamed chart's fallback text ('Untitled') is styled as
+            // a lighter, italic placeholder rather than a solid committed
+            // name — "Chart: Untitled" previously read like a real, boring
+            // title rather than "you haven't named this yet". Purely visual;
+            // the underlying rename/sentinel logic (commitRename treating a
+            // re-typed 'Untitled' as a no-op) is unchanged.
+            className={`text-sm bg-transparent border-0 border-b border-transparent px-0 py-0 outline-none focus:border-pink-400 disabled:cursor-default ${
+              !chartName && !isEditing ? 'italic text-gray-400 font-normal' : 'font-medium text-pink-800'
+            } ${renameError ? 'border-highlight-400 focus:border-highlight-400' : ''}`}
           />
           {renameError && (
             <span data-testid="chart-rename-error" className="text-xs text-highlight-600 mt-0.5">
@@ -247,6 +253,12 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Layout Properties</label>
+            {/* D12 (pills-buildrail #8/#9): the Plotly layout schema has
+                1300+ leaves — "0 of 1366 properties" is the single most-
+                quoted "raw schema dump" moment in the audit. Curated
+                cleanup, not a picker redesign: hide the count, keep the
+                existing search-driven "Add Properties" picker as the one
+                path into the long tail. */}
             <SchemaEditor
               schema={layoutSchema}
               value={chartLayout}
@@ -254,6 +266,7 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
               excludeProperties={[]}
               initiallyExpanded={Object.keys(chartLayout || {})}
               droppable={false}
+              hidePropertyCount
             />
           </div>
         </div>

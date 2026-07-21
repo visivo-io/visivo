@@ -1,10 +1,13 @@
 /**
- * ExplorationWorkbench — CenterPanel + ExplorationBuildRail, re-parented for
- * `ExplorationPane` (Explore 2.0 Phase 2 origin; Phase 3a's DnD unification
- * + Phase 3b's Build-rail rebuild + cutover both landed here since — see the
- * component's own docstring for the current composition and what was
- * retired at the cutover: `ExplorerLeftPanel`/`SourceBrowser`/
- * `ExplorerDndContext`/`ExplorerRightPanel`/`ModelTabBar`).
+ * ExplorationWorkbench — the exploration CENTER pane (CenterPanel alone),
+ * re-parented for `ExplorationPane` (Explore 2.0 Phase 2 origin; Phase 3a's
+ * DnD unification + Phase 3b's Build-rail rebuild both landed here since —
+ * see the component's own docstring for what was retired at the cutover:
+ * `ExplorerLeftPanel`/`SourceBrowser`/`ExplorerDndContext`/
+ * `ExplorerRightPanel`/`ModelTabBar`). As of 6c-T2 (D6 — the two-rails fix),
+ * `ExplorationBuildRail` no longer mounts here at all — it moved to the
+ * shell's single `<RightRail>` (see `RightRail.test.jsx`'s exploration-scope
+ * coverage for that half).
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
@@ -19,11 +22,6 @@ jest.mock('../../explorer/CenterPanel', () => {
         {modelTabBar}
       </div>
     );
-  };
-});
-jest.mock('./ExplorationBuildRail', () => {
-  return function MockExplorationBuildRail({ explorationId }) {
-    return <div data-testid="build-rail" data-exploration-id={explorationId || ''}>ExplorationBuildRail</div>;
   };
 });
 jest.mock('./ExplorationQueryChips', () => {
@@ -46,22 +44,19 @@ describe('ExplorationWorkbench', () => {
     });
   });
 
-  test('renders CenterPanel + ExplorationBuildRail — NO nested DnD context, NO ExplorerLeftPanel', () => {
+  test('renders CenterPanel alone — NO in-pane build rail, NO nested DnD context, NO ExplorerLeftPanel', () => {
     render(<ExplorationWorkbench />);
     expect(screen.getByTestId('exploration-workbench')).toBeInTheDocument();
     expect(screen.getByTestId('center-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('build-rail')).toBeInTheDocument();
+    // D6 (6c-T2) — this is the two-rails regression test: ExplorationBuildRail
+    // must NEVER mount here again. It lives exclusively in RightRail now.
+    expect(screen.queryByTestId('exploration-build-rail')).not.toBeInTheDocument();
     // Phase 3a: DnD unifies onto the shell's WorkspaceDndContext — this
     // component no longer wraps a nested one, and the Library (the
     // Workspace's own left rail, not a component this pane mounts) replaces
     // the old ExplorerLeftPanel as the browse surface.
     expect(screen.queryByTestId('dnd-context')).not.toBeInTheDocument();
     expect(screen.queryByTestId('left-panel')).not.toBeInTheDocument();
-  });
-
-  test('threads its own `id` prop down to ExplorationBuildRail as explorationId', () => {
-    render(<ExplorationWorkbench id="exp_a1" />);
-    expect(screen.getByTestId('build-rail')).toHaveAttribute('data-exploration-id', 'exp_a1');
   });
 
   test('passes the new query chips as CenterPanel.modelTabBar (replaces ModelTabBar)', () => {

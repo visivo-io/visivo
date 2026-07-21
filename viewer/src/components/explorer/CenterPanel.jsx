@@ -27,6 +27,17 @@ import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
 
 const NARROW_THRESHOLD = 600;
 
+// 6c-T2 (audit cold-start #7 / shell-ia — "editor consumes ~440px of dark
+// dead space for a one-line query"): the SQL editor's row auto-sizes to its
+// LINE COUNT (same `(lines + 2) * 19` formula ModelEditForm already uses for
+// its Monaco instance) instead of always claiming a fixed 65% ratio of the
+// pane's height. `EDITOR_AUTO_MAX_HEIGHT` caps a long query from eating the
+// whole pane; `CHART_MIN_HEIGHT` floors the row so the chart preview beside
+// the editor (wide mode) is never crushed by a trivially short query.
+const EDITOR_AUTO_MIN_HEIGHT = 120;
+const EDITOR_AUTO_MAX_HEIGHT = 420;
+const CHART_MIN_HEIGHT = 260;
+
 const CenterPanel = ({
   // Explore 2.0 Phase 3a/3b: the exploration surface (`ExplorationWorkbench`)
   // is CenterPanel's only remaining consumer post-cutover (the standalone
@@ -97,7 +108,10 @@ const CenterPanel = ({
     minRatio: 0.25,
   });
 
-  // Vertical split: top <-> bottom
+  // Vertical split: top <-> bottom. Stays available as a manual override —
+  // once the user actually drags the divider, their ratio wins from then on
+  // (`userAdjustedTopBottom`) — but the DEFAULT is content-based auto-height
+  // (below), not this fixed 0.65 ratio.
   const {
     ratio: topBottomRatio,
     isResizing: isVertResizing,
@@ -110,14 +124,38 @@ const CenterPanel = ({
     maxRatio: 0.85,
     minRatio: 0.25,
   });
+  const [userAdjustedTopBottom, setUserAdjustedTopBottom] = useState(false);
+  const handleVertMouseDownAndMarkAdjusted = useCallback(
+    (e) => {
+      setUserAdjustedTopBottom(true);
+      handleVertMouseDown(e);
+    },
+    [handleVertMouseDown]
+  );
 
-  // Fix Plotly resize when divider ratios change
+  // Auto-height target for the top row (editor [+ chart in wide mode]) — see
+  // the constants' docstring above. Narrow mode's Chart tab has no editor in
+  // the row at all, so it keeps the ratio-based split (chart wants to fill
+  // whatever space it's given, not size to "content").
+  // `String.prototype.split` always returns at least one element — the
+  // `|| 1` fallback this line used to carry was unreachable by language
+  // guarantee, not by a contract another module could change.
+  const sqlLineCount = (sql || '').split('\n').length;
+  const topRowSharesChart = isWide;
+  const useAutoTopHeight =
+    !userAdjustedTopBottom && !isEditorCollapsed && !(!isWide && centerMode === 'chart');
+  const autoTopHeightPx = Math.min(
+    EDITOR_AUTO_MAX_HEIGHT,
+    Math.max(topRowSharesChart ? CHART_MIN_HEIGHT : EDITOR_AUTO_MIN_HEIGHT, (sqlLineCount + 2) * 19)
+  );
+
+  // Fix Plotly resize when divider ratios (or the auto-height target) change
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       window.dispatchEvent(new Event('resize'));
     });
     return () => cancelAnimationFrame(frame);
-  }, [editorChartRatio, topBottomRatio]);
+  }, [editorChartRatio, topBottomRatio, autoTopHeightPx, useAutoTopHeight]);
 
   const [resultsPage, setResultsPage] = useState(0);
   const [resultsPageSize, setResultsPageSize] = useState(1000);
@@ -180,13 +218,18 @@ const CenterPanel = ({
     return computeColumnProfile(profileColumn, colDef, displayResult.rows);
   }, [profileColumn, displayResult, dataTableColumns]);
 
-  const topFlex = topBottomRatio;
-  const bottomFlex = 1 - topBottomRatio;
+  // Content-based auto-height (default) vs. the manual drag ratio (once the
+  // user has actually dragged the divider) — see `useAutoTopHeight` above.
+  const topRowStyle = useAutoTopHeight
+    ? { flex: `0 0 ${autoTopHeightPx}px` }
+    : { flex: topBottomRatio };
+  const bottomRowStyle = useAutoTopHeight ? { flex: '1 1 auto' } : { flex: 1 - topBottomRatio };
 
   const sourceSelector = (
     <div data-testid="source-selector-wrapper" className="min-w-[140px]">
       <Select
         data-testid="source-selector"
+        aria-label="Select source"
         size="sm"
         placeholder="Select source"
         value={sourceName || ''}
@@ -262,7 +305,13 @@ const CenterPanel = ({
       {modelTabBar}
 
       {/* Top row: Editor + Chart */}
-      <div style={{ flex: topFlex }} className="overflow-hidden min-h-0" ref={topRowRef}>
+      <div
+        style={topRowStyle}
+        className="overflow-hidden min-h-0"
+        ref={topRowRef}
+        data-testid="center-panel-top-row"
+        data-auto-height={useAutoTopHeight ? 'true' : 'false'}
+      >
         {isWide ? (
           /* Wide mode: side-by-side */
           <div className="flex h-full">
@@ -313,10 +362,10 @@ const CenterPanel = ({
       </div>
 
       {/* Horizontal divider */}
-      <Divider isDragging={isVertResizing} handleMouseDown={handleVertMouseDown} />
+      <Divider isDragging={isVertResizing} handleMouseDown={handleVertMouseDownAndMarkAdjusted} />
 
       {/* Bottom row: Data Table */}
-      <div style={{ flex: bottomFlex }} className="overflow-hidden min-h-0" data-testid="data-section">
+      <div style={bottomRowStyle} className="overflow-hidden min-h-0" data-testid="data-section">
         <div className="flex h-full">
           {queryResult ? (
             <>

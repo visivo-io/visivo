@@ -7,7 +7,7 @@
  * and additionalProperties violations fail. Mirrors the neighboring
  * projectSchema.test.js style.
  */
-import { validateProps, clearValidatorCache } from './plotlyValidator';
+import { validateProps, clearValidatorCache, formatErrorMessage } from './plotlyValidator';
 
 beforeEach(() => {
   clearValidatorCache();
@@ -111,6 +111,28 @@ describe('validateProps - unknown chart type', () => {
   });
 });
 
+// T4 (promote-roundtrip #5): "the wells display the literal pattern:
+// must match pattern '^\?\{.*\}...' — an unreadable regex, shown twice (x
+// and y)" was the audit's exact quote. `x`/`y` are `query-string`-shaped
+// (oneOf: [pattern-constrained ?{...} string, static array]); a plain
+// non-matching string fails BOTH branches, and AJV's nested `pattern`
+// sub-error (raw regex source) is what used to leak through.
+describe('validateProps - pattern violations never leak the raw regex (T4)', () => {
+  test('a non-matching x value never surfaces `\\?\\{` / `^` / `$` regex syntax in its message', async () => {
+    const result = await validateProps('scatter', { type: 'scatter', x: 'not-a-ref-or-array' });
+    expect(result.valid).toBe(false);
+    const xErrors = result.errors.filter(e => e.path === 'x' || e.path.startsWith('x.'));
+    expect(xErrors.length).toBeGreaterThan(0);
+    xErrors.forEach(err => {
+      expect(err.message).not.toMatch(/\\\?\\\{/);
+      expect(err.message).not.toMatch(/\^.*\$/);
+      expect(err.message.toLowerCase()).not.toContain('pattern "');
+    });
+    // The actionable, human copy IS present.
+    expect(xErrors.some(e => e.message.includes('?{ref(model).column}'))).toBe(true);
+  });
+});
+
 describe('error shape', () => {
   test('every error is { path: string, message: string }', async () => {
     const result = await validateProps('scatter', { type: 'scatter', mode: 'bogus' });
@@ -130,5 +152,54 @@ describe('caching', () => {
     const second = await validateProps('scatter', { type: 'scatter', mode: 'lines' });
     expect(first.valid).toBe(true);
     expect(second.valid).toBe(true);
+  });
+});
+
+// T4 (promote-roundtrip #5) covers the QUERY_STRING_PATTERN_MARKER branch of
+// humanizePatternError; `legend` is pattern-constrained by a DIFFERENT regex
+// (`^legend([2-9]|...)?$`, no `?{` marker), so this exercises the plain
+// fallback branch ("This value doesn't match the format this field
+// expects.") instead of the query-string-specific copy.
+describe('validateProps - non-query-string pattern errors fall back to a generic message', () => {
+  test('a pattern violation unrelated to the ?{...} query-string grammar gets the generic fallback message', async () => {
+    const result = await validateProps('scatter', { type: 'scatter', legend: 'bogus-legend-name' });
+    expect(result.valid).toBe(false);
+    const legendErrors = result.errors.filter(e => e.path === 'legend');
+    expect(legendErrors.length).toBeGreaterThan(0);
+    expect(
+      legendErrors.some(e => e.message === "This value doesn't match the format this field expects.")
+    ).toBe(true);
+    // None of the generic-fallback errors leak raw regex syntax either.
+    legendErrors.forEach(err => {
+      expect(err.message).not.toMatch(/\^legend/);
+    });
+  });
+});
+
+// formatErrorMessage's own defensive `|| fallback`s guard against AJV error
+// shapes AJV itself never actually produces in practice (a 'pattern' error
+// with no `.params.pattern`, any AJV error with no `.message`) — genuinely
+// unreachable through validateProps' public, real-schema surface. Testing
+// formatErrorMessage directly (it's a pure, exported formatter) is the only
+// way to exercise these fallbacks without mocking AJV's internals.
+describe('formatErrorMessage - defensive fallbacks for malformed/unexpected AJV error shapes', () => {
+  test('a "pattern" keyword error with no params.pattern falls back to the generic message, not a crash', () => {
+    const message = formatErrorMessage({ keyword: 'pattern', params: {} });
+    expect(message).toBe("This value doesn't match the format this field expects.");
+  });
+
+  test('a "pattern" keyword error with no params at all falls back to the generic message', () => {
+    const message = formatErrorMessage({ keyword: 'pattern' });
+    expect(message).toBe("This value doesn't match the format this field expects.");
+  });
+
+  test('an AJV error with no `.message` falls back to "is invalid"', () => {
+    const message = formatErrorMessage({ keyword: 'type', params: {} });
+    expect(message).toBe('is invalid');
+  });
+
+  test('an enum error missing allowedValues still surfaces the base message untouched', () => {
+    const message = formatErrorMessage({ keyword: 'enum', message: 'must be equal to one of the allowed values', params: {} });
+    expect(message).toBe('must be equal to one of the allowed values');
   });
 });

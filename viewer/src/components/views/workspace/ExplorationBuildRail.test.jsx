@@ -175,6 +175,16 @@ describe('ExplorationBuildRail', () => {
       );
     });
 
+    it('shows the empty-state hint when explorationId is given but the record is not (yet) in the collection', () => {
+      // The exploration list hasn't loaded/hydrated this id yet — `byId` has
+      // no entry at all (distinct from an entry with an empty `promoted[]`).
+      useStore.setState({ workspaceExplorations: { byId: {}, order: [] } });
+      render(<ExplorationBuildRail explorationId="exp_not_loaded_yet" />);
+      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
+        'Objects you Save to Project will appear here.'
+      );
+    });
+
     it('shows the empty-state hint when the exploration has never promoted anything', () => {
       useStore.setState({
         workspaceExplorations: {

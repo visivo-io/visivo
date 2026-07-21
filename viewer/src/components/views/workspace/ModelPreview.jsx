@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import Editor from '@monaco-editor/react';
 import CircularProgress from '@mui/material/CircularProgress';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { PiPencilSimple } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { useModelQueryJob } from '../../../hooks/useModelQueryJob';
 import { parseRefValue } from '../../../utils/refString';
@@ -82,14 +82,19 @@ const SemanticFieldsStrip = ({ modelName }) => {
 };
 
 /**
- * ModelPreview — VIS-801 / N-6.
+ * ModelPreview — VIS-801 / N-6; de-duplicated at 6c-T2 (shell-ia #9, "model
+ * tab shows the same SQL in two editors at once").
  *
- * Renders the active model as a READ-ONLY SQL editor (the same Monaco editor
- * ModelEditForm uses, in read-only mode) plus a result-table preview. The
- * result table renders only AFTER the user clicks Run — running executes the
- * model's SQL against its source via the EXISTING `useModelQueryJob` hook (the
- * same /api/model-query-jobs path the Explorer SQL editor uses). No editing
- * affordances — editing lives in the right rail.
+ * Renders the active model's source/fields chrome, a Run button, and a
+ * result-table preview — the result table renders only AFTER the user clicks
+ * Run, executing the model's SQL against its source via the EXISTING
+ * `useModelQueryJob` hook (the same /api/model-query-jobs path the Explorer
+ * SQL editor uses). This pane used to ALSO render a second, read-only Monaco
+ * copy of the exact SQL the right rail's `ModelEditForm` already edits — two
+ * editors, one of them locked, with nothing to tell a first-time user which
+ * was real. The rail IS the editor; this pane is its results/lineage
+ * complement, not a twin — see `RightRailEditPanel`'s `model` branch for the
+ * one editable SQL surface.
  *
  * The model record is resolved from the model store by name (RightRailEditPanel
  * COLLECTION_KEY['model'] = 'models'). The source name is read from the model's
@@ -171,20 +176,6 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
 
   const [hasRun, setHasRun] = useState(false);
 
-  // The SQL editor is Monaco (a dark, canvas-rendered widget). The "black panes"
-  // on a rail-divider drag came from this pane not being allowed to SHRINK: the
-  // root + editor container lacked `min-w-0`, so the flex item kept its content
-  // width and the dark editor overflowed the narrowing pane. `min-w-0` (below)
-  // lets it shrink; this forces an immediate Monaco relayout as the width
-  // changes so it repaints in step instead of lagging behind `automaticLayout`.
-  const editorRef = useRef(null);
-  const rightWidth = useStore(s => s.workspaceRightWidth);
-  const leftWidth = useStore(s => s.workspaceLeftWidth);
-  const resizing = useStore(s => s.workspaceResizing);
-  useEffect(() => {
-    editorRef.current?.layout?.();
-  }, [rightWidth, leftWidth, resizing]);
-
   const handleRun = () => {
     if (!sourceName || !sql) return;
     setHasRun(true);
@@ -241,27 +232,17 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
 
       <SemanticFieldsStrip modelName={config.name || name} />
 
-      <div className="min-w-0 overflow-hidden border-b border-gray-200" style={{ height: 240 }}>
-        <Editor
-          height="240px"
-          language="sql"
-          theme="vs-dark"
-          value={sql}
-          onMount={editor => {
-            editorRef.current = editor;
-          }}
-          options={{
-            readOnly: true,
-            domReadOnly: true,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            fontSize: 13,
-            automaticLayout: true,
-            wordWrap: 'on',
-            lineNumbers: 'on',
-            folding: false,
-          }}
-        />
+      {/* shell-ia #9: this pane used to duplicate the SQL right rail's
+          `ModelEditForm` already edits, in a second, read-only Monaco
+          instance — two editors, one locked, no signal which was real. One
+          editing surface now: this hint points at it instead of re-showing
+          the text. */}
+      <div
+        data-testid="model-preview-edit-hint"
+        className="flex items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-4 py-2 text-[12px] text-gray-500"
+      >
+        <PiPencilSimple aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        Edit this model's SQL in the right rail — this pane runs it and shows results.
       </div>
 
       <div data-testid="model-preview-results" className="flex-1 min-h-0 overflow-auto p-3">

@@ -39,6 +39,7 @@
 
 import { test, expect } from '@playwright/test';
 import { typeSql } from '../helpers/explorer.mjs';
+import { BASE_URL, API } from '../helpers/sandbox.mjs';
 
 /**
  * `typeSql` + a verify-and-retry guard. Under heavy concurrent-load
@@ -72,8 +73,6 @@ async function typeSqlReliably(page, sql) {
 // workspace-tabs-shortcuts.spec.mjs's own MOD constant).
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
 
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
 // Explorations are S3'd to a single file-backed repository shared by every
 // test in this suite (`.visivo/explorations/` — see ExplorationRepository).
 // Runs serially (playwright.config.mjs's `exploration-mutations` project)
@@ -81,7 +80,6 @@ const BASE_URL =
 // records; belt-and-suspenders cleanup keeps the directory from growing
 // across repeated runs — diff the id list before/after and delete whatever
 // a test created.
-const API = BASE_URL.replace(':3001', ':8001');
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);
@@ -468,6 +466,13 @@ test.describe('Exploration lifecycle (Explore 2.0 Phase 2)', () => {
     await expect(page.getByTestId('workspace-middle-semantic-layer')).toBeVisible({
       timeout: 15000,
     });
+    // Wave-1 composed gate: the middle pane can commit a frame before the URL
+    // write lands under load (observed 1-in-3), so sampling `page.url()` at
+    // this exact instant is racy. Wait for the URL to BECOME the bare view
+    // route, then still assert the pathname exactly — same proof, not a
+    // weaker one. (That the pane can lead the URL at all is logged against
+    // 6c-T2 for a look at whether the write should be synchronous.)
+    await page.waitForURL('**/workspace/semantic-layer', { timeout: 10000 });
     expect(new URL(page.url()).pathname).toBe('/workspace/semantic-layer');
     await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).toBeVisible();
 

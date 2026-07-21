@@ -31,22 +31,12 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
 
 // Tall viewport (mirrors exploration-dnd-pull-in.spec.mjs's rationale): keeps
 // every Build-rail drop target comfortably away from a scrollable edge for
 // the whole drag gesture, avoiding dnd-kit auto-scroll drift.
 test.use({ viewport: { width: 1280, height: 1600 } });
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE_URL);
-    return `${u.protocol}//${u.hostname}:8001`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
 
 const SOURCE = 'local-duckdb';
 const TABLE = 'test_table';
@@ -217,7 +207,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     const insightName = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames[0]
     );
-    const typeSelectTestId = `insight-type-select-${insightName}`;
+    const typeSelectTestId = `type-selector-${insightName}`;
     await pickSelectOption(page, typeSelectTestId, 'Bar');
     await expect(page.getByTestId(typeSelectTestId)).toContainText('Bar', { timeout: 5000 });
 
@@ -281,7 +271,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     // Switch to an indicator so `value` is a scalar-only slot (B13's
     // established fixture for this affordance, per
     // explorer-indicator-slice-authoring.spec.mjs).
-    await pickSelectOption(page, `insight-type-select-${insightName}`, 'Indicator');
+    await pickSelectOption(page, `type-selector-${insightName}`, 'Indicator');
 
     const tableRow = await expandSourceTable(page);
     const { locator: column } = await firstNumericColumn(page, tableRow);
@@ -325,7 +315,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     const insightName = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames[0]
     );
-    await pickSelectOption(page, `insight-type-select-${insightName}`, 'Indicator');
+    await pickSelectOption(page, `type-selector-${insightName}`, 'Indicator');
 
     const tableRow = await expandSourceTable(page);
     const { locator: column, name: columnName } = await firstNumericColumn(page, tableRow);

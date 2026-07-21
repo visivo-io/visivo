@@ -29,19 +29,9 @@
 
 import { test, expect } from '@playwright/test';
 import { typeSql, runQuery } from '../helpers/explorer.mjs';
+import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE_URL);
-    return `${u.protocol}//${u.hostname}:8001`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
 
 const TABLE = 'test_table';
 
@@ -156,7 +146,12 @@ test.describe('The "Explore this" flywheel loop (Explore 2.0 Phase 5)', () => {
     // provenance record, not the query text.
     await expect(async () => {
       const exploration = await fetchExploration(page, explorationId2);
-      expect(exploration.seeded_from).toEqual({ type: 'model', name: modelName });
+      // 6c-T1 added `content_signature` to SeedRef (staleness drift detection),
+      // so the shape is no longer exactly these two keys — assert the
+      // identity fields exactly AND that the signature was captured.
+      expect(exploration.seeded_from).toMatchObject({ type: 'model', name: modelName });
+      expect(typeof exploration.seeded_from.content_signature).toBe('string');
+      expect(exploration.seeded_from.content_signature.length).toBeGreaterThan(0);
       expect((exploration.draft.queries || [])[0]?.sql || '').toContain(TABLE);
     }).toPass({ timeout: 15000 });
 
@@ -213,7 +208,16 @@ test.describe('The "Explore this" flywheel loop (Explore 2.0 Phase 5)', () => {
 
     await expect(async () => {
       const exploration = await fetchExploration(page, explorationId3);
-      expect(exploration.seeded_from).toEqual({ type: 'metric', name: metricName });
+      // 6c-T1 added `content_signature` to SeedRef (staleness drift detection),
+      // so the shape is no longer exactly these two keys — assert the
+      // identity fields exactly AND that the signature was captured.
+      expect(exploration.seeded_from).toMatchObject({ type: 'metric', name: metricName });
+      // 6c-T1's drift detection deliberately does NOT hash metric/dimension
+      // seeds (explorationStaleness.js's SIGNATURE_TYPES): a metric has no
+      // standalone content — it lives inside its model's config — so its
+      // signature is null BY DESIGN rather than guessed at. Asserted so the
+      // contract is documented, not silently assumed.
+      expect(exploration.seeded_from.content_signature).toBeNull();
     }).toPass({ timeout: 15000 });
 
     // The two round-trip explorations are genuinely distinct records.

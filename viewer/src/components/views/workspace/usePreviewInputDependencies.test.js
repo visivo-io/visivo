@@ -27,8 +27,8 @@ jest.mock('zustand/react/shallow', () => ({
   useShallow: fn => fn,
 }));
 
-const seedStore = ({ inputs = [], insightJobs = {} } = {}) => {
-  const state = { inputs, insightJobs, fetchInputs: jest.fn() };
+const seedStore = ({ inputs = [], insightJobs = {}, models = [] } = {}) => {
+  const state = { inputs, insightJobs, models, fetchInputs: jest.fn() };
   useStore.mockImplementation(selector =>
     typeof selector === 'function' ? selector(state) : state
   );
@@ -158,6 +158,60 @@ describe('usePreviewInputDependencies', () => {
     expect(result.current.unresolvedNames).toEqual(['not_yet_promoted_input']);
   });
 
+  // ux-audit.md "unresolved-input misclassification" finding (cold-start #3,
+  // promote-roundtrip #3, pills #3): a MODEL ref (`?{${ref(model).column}}`)
+  // is harvested by the same extractor real input refs are, but a model name
+  // is never an input dependency — it must never end up in unresolvedNames.
+  it('excludes PUBLISHED model names from unresolvedNames — a model ref is never mistaken for an input', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      models: [{ name: 'orders_q' }],
+      insightJobs: { sales: { inputDependencies: ['region', 'orders_q'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  // A draft/not-yet-promoted model tab is never in `state.models` yet — the
+  // caller (ExplorerChartPreview) passes its own known draft names via
+  // `extraModelNames` so those are excluded too.
+  it('excludes caller-supplied extraModelNames (draft model tabs) from unresolvedNames', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      models: [], // 'model' is a draft tab, not yet published
+      insightJobs: { sales: { inputDependencies: ['region', 'model'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', {
+        insightNames: ['sales'],
+        extraModelNames: ['model'],
+      })
+    );
+
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  it('still surfaces a genuinely undefined name even alongside known model names', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      models: [{ name: 'orders_q' }],
+      insightJobs: { sales: { inputDependencies: ['region', 'orders_q', 'not_a_real_thing'] } },
+    });
+
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'], extraModelNames: [] })
+    );
+
+    expect(result.current.unresolvedNames).toEqual(['not_a_real_thing']);
+  });
+
   it('unresolvedNames is empty when every referenced name resolves', () => {
     seedStore({
       inputs: [{ name: 'region', config: { name: 'region' } }],
@@ -206,6 +260,102 @@ describe('usePreviewInputDependencies', () => {
     expect(call[1]).toEqual(['region']);
     // No third argument carrying pending/resolved state.
     expect(call.length).toBe(2);
+  });
+
+  it('defaults insightNames to an empty array when the options object omits it entirely', () => {
+    seedStore({ inputs: [{ name: 'region', config: { name: 'region' } }], insightJobs: {} });
+    const { result } = renderHook(() => usePreviewInputDependencies('p1', {}));
+    expect(result.current.inputConfigs).toEqual([]);
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  // `insightNames = []` only guards an OMITTED (undefined) key — an explicit
+  // `null` bypasses the default parameter entirely, so the hook's own
+  // `(insightNames || []).filter(...)` fallback is what actually protects it.
+  it('tolerates an explicit null for insightNames (bypasses the default parameter)', () => {
+    seedStore({ inputs: [{ name: 'region', config: { name: 'region' } }], insightJobs: {} });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: null })
+    );
+    expect(result.current.inputConfigs).toEqual([]);
+  });
+
+  it('skips an insight name with no matching insightJobs entry at all, rather than throwing', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      insightJobs: { sales: { inputDependencies: ['region'] } },
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales', 'no_job_yet'] })
+    );
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
+  });
+
+  it('tolerates a job with no inputDependencies key at all (pendingInputs-only)', () => {
+    seedStore({
+      inputs: [{ name: 'quarter', config: { name: 'quarter' } }],
+      insightJobs: { sales: { pendingInputs: ['quarter'] } },
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['quarter']);
+  });
+
+  it('resolves an input whose store entry has no nested .config — the entry itself is used as the config', () => {
+    seedStore({
+      inputs: [{ name: 'region', type: 'single-select' }], // flat, no nested `config` key
+      insightJobs: { sales: { inputDependencies: ['region'] } },
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+    expect(result.current.inputConfigs).toEqual([{ name: 'region', type: 'single-select' }]);
+  });
+
+  it('tolerates storeInputs being null/undefined (not just an empty array)', () => {
+    seedStore({ insightJobs: { sales: { inputDependencies: ['region'] } } });
+    // Override the seeded `inputs: []` default with an explicit undefined.
+    useStore.mockImplementation(selector => {
+      const state = {
+        inputs: undefined,
+        insightJobs: { sales: { inputDependencies: ['region'] } },
+        fetchInputs: jest.fn(),
+      };
+      return typeof selector === 'function' ? selector(state) : state;
+    });
+    useStore.getState = jest.fn(() => ({ inputs: undefined, fetchInputs: jest.fn() }));
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+    // region has no matching config (storeInputs treated as []) -> unresolved, not a crash.
+    expect(result.current.inputConfigs).toEqual([]);
+    expect(result.current.unresolvedNames).toEqual(['region']);
+  });
+
+  it('tolerates an explicit null for extraModelNames (bypasses the default parameter)', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      insightJobs: { sales: { inputDependencies: ['region', 'orders_q'] } },
+      models: [{ name: 'orders_q' }],
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'], extraModelNames: null })
+    );
+    // orders_q is still excluded via the published-models set even though
+    // extraModelNames itself was null rather than omitted/[].
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  it('never calls fetchInputs when the store does not provide one (typeof guard)', () => {
+    useStore.mockImplementation(selector => {
+      const state = { inputs: [], insightJobs: {}, fetchInputs: undefined };
+      return typeof selector === 'function' ? selector(state) : state;
+    });
+    useStore.getState = jest.fn(() => ({ inputs: [], fetchInputs: undefined }));
+    expect(() =>
+      renderHook(() => usePreviewInputDependencies('p1', { insightNames: [] }))
+    ).not.toThrow();
   });
 
   it('fetches the inputs list at most once even when the empty-array reference churns', () => {

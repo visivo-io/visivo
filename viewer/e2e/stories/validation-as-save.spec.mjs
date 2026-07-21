@@ -12,9 +12,9 @@
  * the in-memory draft cache; discarded in afterAll).
  */
 import { test, expect } from '@playwright/test';
+import { API } from '../helpers/sandbox.mjs';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
-const API = BASE.replace(':3001', ':8001');
 const WAIT = 20000;
 // The backbone debounces 500ms, then the async gate (schema + refs + backend
 // sqlglot) must run before any POST could fire. 1500ms comfortably covers it.

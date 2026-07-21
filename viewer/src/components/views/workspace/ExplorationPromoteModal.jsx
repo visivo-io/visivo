@@ -4,6 +4,7 @@ import useStore from '../../../stores/store';
 import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
+import Select from '../../common/Select';
 
 const TIER_HEADING = { model: 'MODELS', field: 'FIELDS', insight: 'INSIGHTS', chart: 'CHART' };
 const TIER_ORDER = ['model', 'field', 'insight', 'chart'];
@@ -158,6 +159,56 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     [returnTo, dashboards]
   );
 
+  // ux-audit.md "post-promote offers never appear" finding (⚠
+  // conflicts-with-e2e — promote-roundtrip #9): the `return_to`-driven offer
+  // above is real and works — dashboard-newchart-roundtrip.spec.mjs proves
+  // it — but `return_to` is only ever armed by ONE specific entry point
+  // (Library "+ New" -> Chart, scoped to an already-open dashboard tab). The
+  // canonical build flow this audit walked through (Explorer home -> source
+  // tile -> query -> chart -> Save to Project) never sets it, so the
+  // flywheel's own advertised "promote -> place in dashboard" round-trip had
+  // NO exit ramp at all for the single most common path — a too-narrow
+  // condition on an otherwise-correct feature, not a bug in the feature
+  // itself. This fallback reuses the exact same `placeChartInDashboardSlot`
+  // plumbing for the common case: a chart was promoted this run, there's no
+  // `return_to` intent already offering placement, and at least one
+  // dashboard exists to place it in.
+  const showFallbackDashboardOffer = !!promotedChart && !returnTo?.dashboard && dashboards.length > 0;
+  const [fallbackDashboardName, setFallbackDashboardName] = useState('');
+  useEffect(() => {
+    if (showFallbackDashboardOffer && !fallbackDashboardName) {
+      setFallbackDashboardName(dashboards[0]?.name || '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFallbackDashboardOffer, dashboards]);
+  const [fallbackPlacing, setFallbackPlacing] = useState(false);
+  const [fallbackPlaceError, setFallbackPlaceError] = useState(null);
+  const fallbackPlacingRef = useRef(false);
+
+  const handleFallbackPlace = useCallback(async () => {
+    if (fallbackPlacingRef.current) return;
+    if (!promotedChart || !fallbackDashboardName || !placeChartInDashboardSlot) return;
+    fallbackPlacingRef.current = true;
+    setFallbackPlacing(true);
+    setFallbackPlaceError(null);
+    try {
+      const placeResult = await placeChartInDashboardSlot(fallbackDashboardName, promotedChart.name);
+      if (!placeResult?.success) {
+        setFallbackPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
+        return;
+      }
+      openWorkspaceTab?.({
+        id: `dashboard:${fallbackDashboardName}`,
+        type: 'dashboard',
+        name: fallbackDashboardName,
+      });
+      onClose?.();
+    } finally {
+      fallbackPlacingRef.current = false;
+      setFallbackPlacing(false);
+    }
+  }, [promotedChart, fallbackDashboardName, placeChartInDashboardSlot, openWorkspaceTab, onClose]);
+
   // P5-D4 (e2e-gap-review.md "Final delta pass") — `disabled={placing}` alone
   // is not a sufficient double-click guard: a real double-click can dispatch
   // both click events before React re-renders the button disabled (the exact
@@ -258,15 +309,35 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     }
   }, [consumeExplorationReturnTo, explorationId]);
 
-  // VIS-1069 — the first metric/dimension promoted THIS RUN (mirrors
+  // VIS-1069 — the first metric/dimension/model promoted THIS RUN (mirrors
   // `promotedChart`'s "this run only" scoping above).
-  const promotedField = useMemo(
-    () =>
-      (promotedThisRun?.results || []).find(
-        r => r.success && (r.type === 'metric' || r.type === 'dimension')
-      ) || null,
-    [promotedThisRun]
-  );
+  //
+  // ux-audit.md "post-promote offers never appear" finding (⚠
+  // conflicts-with-e2e — promote-roundtrip #9): this originally only
+  // considered `type === 'metric' || type === 'dimension'`, which is real
+  // and correct for ITS OWN narrow trigger (Save-as-metric on a pill) but is
+  // NEVER true for the single most common promote outcome — a plain
+  // query -> chart flow promotes a MODEL + an INSIGHT + a CHART, never a
+  // metric/dimension. A model is exactly as semantic-layer-visible as a
+  // metric/dimension (it's a node on the same ERD), so the same reciprocal
+  // "go look at what you just published" offer applies to it too — this was
+  // a too-narrow condition, not a discoverability gap in an otherwise-correct
+  // trigger.
+  // Composed-gate correction: `find()` over the results scans them in PROMOTE
+  // order, which is dependency-ordered — the model a metric depends on is
+  // always promoted (and therefore found) first. Broadening to models above
+  // then meant a run that published a metric offered "View <its model> in the
+  // Semantic Layer", naming the incidental dependency instead of the thing
+  // the user just built. Prefer the most specific field, fall back to the
+  // model so the plain query -> chart flow still gets an offer.
+  const promotedField = useMemo(() => {
+    const succeeded = (promotedThisRun?.results || []).filter(r => r.success);
+    return (
+      succeeded.find(r => r.type === 'metric' || r.type === 'dimension') ||
+      succeeded.find(r => r.type === 'model') ||
+      null
+    );
+  }, [promotedThisRun]);
 
   const handleViewInSemanticLayer = useCallback(() => {
     if (!promotedField) return;
@@ -445,6 +516,52 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
             className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
           >
             {placeError}
+          </p>
+        )}
+
+        {/* ux-audit.md "post-promote offers never appear" finding
+            (⚠ conflicts-with-e2e — promote-roundtrip #9): the fallback for
+            the common case — a chart was promoted but no return_to intent
+            was ever armed — so the promote -> dashboard round-trip still has
+            an exit ramp from the ordinary Save-to-Project flow, not just the
+            "+ New Chart from an open dashboard" entry point. */}
+        {promotedThisRun && showFallbackDashboardOffer && (
+          <div
+            data-testid="exploration-promote-fallback-dashboard-offer"
+            className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
+          >
+            <span className="flex min-w-0 items-center gap-1.5 text-xs text-primary-800">
+              Add <span className="font-medium">{promotedChart.name}</span> to
+              <Select
+                data-testid="exploration-promote-fallback-dashboard-select"
+                value={fallbackDashboardName}
+                onChange={setFallbackDashboardName}
+                disabled={fallbackPlacing}
+                size="sm"
+                isSearchable={false}
+                options={dashboards.map(d => ({ value: d.name, label: d.name }))}
+                className="min-w-[7rem]"
+              />
+              ?
+            </span>
+            <button
+              type="button"
+              data-testid="exploration-promote-fallback-place"
+              onClick={handleFallbackPlace}
+              disabled={fallbackPlacing || !fallbackDashboardName}
+              className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {fallbackPlacing ? 'Adding…' : 'Add'}
+            </button>
+          </div>
+        )}
+
+        {fallbackPlaceError && (
+          <p
+            data-testid="exploration-promote-fallback-place-error"
+            className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
+          >
+            {fallbackPlaceError}
           </p>
         )}
 

@@ -12,8 +12,12 @@
  *                               consumers (RightRail, MiddlePane, collapsed-
  *                               rail indicators, etc.) can read it directly
  *                               without a derivation hook.
- *   - `workspaceLeftCollapsed` / `workspaceRightCollapsed` — rail collapse.
- *   - `workspaceRightTab`    — which right-rail tab is active.
+ *   - `workspaceLeftCollapsed` / `workspaceRightCollapsed` — rail collapse
+ *     (manual toggle AND 6c-T2's narrow-viewport auto-collapse both write
+ *     these same flags — see `applyWorkspaceAutoCollapse`).
+ *   - `workspaceRightTab`    — which right-rail tab is active ('outline' |
+ *     'edit' | 'build' — 'build' is the exploration-scope Insight+Chart CRUD,
+ *     D6).
  *   - `workspaceLens`        — sub-bar lens for the active object.
  *   - `workspaceOutlineSelectedKey` — which Outline-tree node is selected
  *     (`'dashboard'` | `'row.N'` | `'row.N.item.M'`). Drives the mulberry
@@ -123,7 +127,20 @@ const createWorkspaceSlice = (set, get) => ({
   // Rails -------------------------------------------------------------------
   workspaceLeftCollapsed: false,
   workspaceRightCollapsed: false,
-  workspaceRightTab: 'edit', // 'outline' | 'edit'
+  workspaceRightTab: 'edit', // 'outline' | 'edit' | 'build'
+
+  // Narrow-viewport AUTO collapse bookkeeping (6c-T2 responsive shell,
+  // BLOCKER at 1100px) — NOT read by LeftRail/RightRail (they only ever read
+  // the `workspace{Left,Right}Collapsed` flags above, unchanged). This just
+  // records whether the CURRENT collapse of a rail was performed by
+  // `WorkspaceShell`'s own width `ResizeObserver` (`applyWorkspaceAutoCollapse`)
+  // rather than the user clicking the rail's own expand/collapse toggle, so
+  // the shell knows it's safe to auto-EXPAND that rail again once the
+  // viewport widens back out — and, symmetrically, so it never fights a rail
+  // the user closed/opened themselves. `toggleWorkspace{Left,Right}Collapsed`
+  // clear this the instant the user touches the toggle.
+  workspaceLeftAutoCollapsedByShell: false,
+  workspaceRightAutoCollapsedByShell: false,
 
   // Lens (sub-bar segmented) ------------------------------------------------
   workspaceLens: 'preview', // 'preview' | 'lineage'
@@ -586,15 +603,63 @@ const createWorkspaceSlice = (set, get) => ({
   // ------------------------------------------------------------------------
 
   toggleWorkspaceLeftCollapsed: () => {
-    set((s) => ({ workspaceLeftCollapsed: !s.workspaceLeftCollapsed }));
+    // A manual toggle always wins — clear the auto-collapse bookkeeping so
+    // `applyWorkspaceAutoCollapse` never later "auto-expands" a rail the
+    // user just explicitly collapsed (or re-collapses one they just opened,
+    // as long as space allows — see that action's docstring).
+    set((s) => ({
+      workspaceLeftCollapsed: !s.workspaceLeftCollapsed,
+      workspaceLeftAutoCollapsedByShell: false,
+    }));
   },
 
   toggleWorkspaceRightCollapsed: () => {
-    set((s) => ({ workspaceRightCollapsed: !s.workspaceRightCollapsed }));
+    set((s) => ({
+      workspaceRightCollapsed: !s.workspaceRightCollapsed,
+      workspaceRightAutoCollapsedByShell: false,
+    }));
+  },
+
+  /**
+   * applyWorkspaceAutoCollapse — 6c-T2 responsive shell (BLOCKER at 1100px).
+   * `WorkspaceShell`'s own width `ResizeObserver` calls this with the
+   * stateless target from `computeAutoCollapse` (`{ left, right }` — which
+   * rails NEED to be collapsed, independent of who collapsed them). This
+   * reconciles that target against the CURRENT state as a one-way nudge, not
+   * a continuous override:
+   *   - needs to collapse + isn't already            → collapse it, tag
+   *     `...AutoCollapsedByShell` so a later widen can safely reopen it.
+   *   - no longer needs to collapse + IS collapsed AND WE collapsed it
+   *     (`...AutoCollapsedByShell`)                   → re-expand it.
+   *   - no longer needs to collapse but the USER collapsed it themselves
+   *     → left alone (never fights a manual choice).
+   * A rail the user manually expands while still narrow stays expanded —
+   * `toggleWorkspace{Left,Right}Collapsed` already cleared the bookkeeping,
+   * so this action won't touch it again until the user's next toggle.
+   */
+  applyWorkspaceAutoCollapse: ({ left, right }) => {
+    set((s) => {
+      const update = {};
+      if (left && !s.workspaceLeftCollapsed) {
+        update.workspaceLeftCollapsed = true;
+        update.workspaceLeftAutoCollapsedByShell = true;
+      } else if (!left && s.workspaceLeftCollapsed && s.workspaceLeftAutoCollapsedByShell) {
+        update.workspaceLeftCollapsed = false;
+        update.workspaceLeftAutoCollapsedByShell = false;
+      }
+      if (right && !s.workspaceRightCollapsed) {
+        update.workspaceRightCollapsed = true;
+        update.workspaceRightAutoCollapsedByShell = true;
+      } else if (!right && s.workspaceRightCollapsed && s.workspaceRightAutoCollapsedByShell) {
+        update.workspaceRightCollapsed = false;
+        update.workspaceRightAutoCollapsedByShell = false;
+      }
+      return Object.keys(update).length > 0 ? update : s;
+    });
   },
 
   setWorkspaceRightTab: (tab) => {
-    if (!['outline', 'edit'].includes(tab)) return;
+    if (!['outline', 'edit', 'build'].includes(tab)) return;
     set({ workspaceRightTab: tab });
   },
 

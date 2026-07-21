@@ -164,6 +164,36 @@ describe('workspaceCollisionDetection — canvas item drag (VIS-974)', () => {
     // group), never to an item gap.
     expect(result[0].id).toBe('band');
   });
+
+  test('a NESTED row drag is scoped to ITS OWN container\'s between-rows bands, not a top-level or sibling-container band', () => {
+    // Two bands exist: one scoped to the SAME container as the dragged row,
+    // one scoped to a DIFFERENT container. Only the same-container band may
+    // win, even if the other is geometrically closer to the pointer.
+    const sameContainerBand = container('same', {
+      kind: 'between-rows',
+      index: 1,
+      containerPath: 'row.0.item.1',
+    });
+    const otherContainerBand = container('other', {
+      kind: 'between-rows',
+      index: 1,
+      containerPath: 'row.2.item.0',
+    });
+    const droppableRects = new Map([
+      ['same', rect(400, 90, 200, 10)],
+      ['other', rect(0, 90, 200, 10)], // geometrically closer to the pointer
+    ]);
+    const result = workspaceCollisionDetection({
+      active: {
+        data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0.item.1.row.0' } },
+      },
+      droppableContainers: [sameContainerBand, otherContainerBand],
+      droppableRects,
+      pointerCoordinates: { x: 100, y: 95 },
+      collisionRect: rect(90, 90, 10, 10),
+    });
+    expect(result[0].id).toBe('same');
+  });
 });
 
 describe('mapDragStartData — drag preview mapping (VIS-901 #5)', () => {
@@ -280,6 +310,32 @@ describe('routeWorkspaceDragEnd (VIS-802)', () => {
     );
   });
 
+  test('a ref-slot with NO `allowedTypes` at all rejects every type (allowedTypes||[] fallback)', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'chart', name: 'c1' } } },
+        over: { data: { current: { kind: 'ref-slot', refId: 'row-0-item-0' } } }, // no allowedTypes
+      },
+      {}
+    );
+    expect(result).toBe('ref_rejected');
+  });
+
+  test('a valid ref-slot drop with no `onChange` on the droppable still resolves accepted (never throws)', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'chart', name: 'c1' } } },
+        over: {
+          data: {
+            current: { kind: 'ref-slot', refId: 'row-0-item-0', allowedTypes: ['chart'] },
+          },
+        },
+      },
+      {}
+    );
+    expect(result).toBe('ref_accepted');
+  });
+
   test('library row drop with a type-mismatch is rejected (no write)', () => {
     const onChange = jest.fn();
     const emit = jest.fn();
@@ -316,6 +372,78 @@ describe('routeWorkspaceDragEnd (VIS-802)', () => {
       {}
     );
     expect(result).toBe('noop');
+  });
+
+  test('a completely undefined event is a safe noop (event||{} fallback)', () => {
+    expect(routeWorkspaceDragEnd(undefined, {})).toBe('noop');
+  });
+
+  test('an `over` with no `.data.current` (dropData undefined) is a noop', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { type: 'dashboard', name: 'd0' } } },
+        over: { data: {} },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+  });
+
+  test('an `active` with no `.data.current` (dragData undefined) is a noop', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: {} },
+        over: { data: { current: { levelKey: 'level:1' } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+  });
+
+  test('a level-reorder with no `moveLevel` action provided is a safe no-op call (never throws)', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'level', levelIndex: 0 } } },
+        over: { data: { current: { levelKey: 'level:1', levelIndex: 1 } } },
+      },
+      {} // no moveLevel, no emit
+    );
+    expect(result).toBe('level_reorder');
+  });
+
+  test('a dashboard-tile drop with NO `reassignDashboardLevel` action provided still resolves (never throws)', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { type: 'dashboard', name: 'd0', level: 'Organization' } } },
+        over: { data: { current: { levelKey: 'level:1', levelValue: 'Department' } } },
+      },
+      { dashboards: DASHBOARDS, projectDefaults: defaults } // no reassignDashboardLevel, no emit
+    );
+    expect(result).toBe('reassign_level');
+  });
+
+  test('a dashboard-tile drop with an unrecognized levelKey (no matching group) is a noop', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { type: 'dashboard', name: 'd0', level: 'Organization' } } },
+        over: { data: { current: { levelKey: 'level:not-a-real-level' } } },
+      },
+      { dashboards: DASHBOARDS, projectDefaults: defaults }
+    );
+    expect(result).toBe('noop');
+  });
+
+  test('dashboards undefined (not just empty) is tolerated for level reassignment (dashboards||[] fallback)', () => {
+    const reassignDashboardLevel = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { type: 'dashboard', name: 'd0', level: 'Organization' } } },
+        over: { data: { current: { levelKey: 'level:1', levelValue: 'Department' } } },
+      },
+      { dashboards: undefined, projectDefaults: defaults, reassignDashboardLevel }
+    );
+    expect(result).toBe('reassign_level');
+    expect(reassignDashboardLevel).toHaveBeenCalledWith('d0', 'Department');
   });
 });
 
@@ -452,6 +580,52 @@ describe('routeWorkspaceDragEnd — property-zone branch (Explore 2.0 Phase 3b, 
     expect(result).toBe('property_zone_accepted');
     expect(onDropField).toHaveBeenCalledWith(dragData);
   });
+
+  // T4 (pills-buildrail #4): a pill dragged out of a sibling slot
+  // (`PropertyRow`'s `useDraggable`, `data: { source: 'pill', ... }`)
+  // dropped on ANOTHER property-zone slot must also route through — pills
+  // move between slots the same way a Library/column drop lands one.
+  test('a pill dragged from one slot onto another property-zone still invokes onDropField', () => {
+    const onDropField = jest.fn();
+    const dragData = { source: 'pill', sourcePath: 'x', raw: '${ref(orders_q).amount}' };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: dragData } },
+        over: { data: { current: { kind: 'property-zone', path: 'y', onDropField } } },
+      },
+      {}
+    );
+    expect(result).toBe('property_zone_accepted');
+    expect(onDropField).toHaveBeenCalledWith(dragData);
+  });
+});
+
+describe('mapDragStartData — column + pill drag previews (T4, pills-buildrail #4)', () => {
+  test('a results-grid column drag (no `source` key) maps to a "column" preview', () => {
+    expect(mapDragStartData({ name: 'X', type: 'column', sourceType: 'data-table' })).toEqual({
+      kind: 'column',
+      name: 'X',
+    });
+  });
+
+  test('a Library-sourced column-shaped drag is NOT reclassified — `source: "library"` still wins', () => {
+    const out = mapDragStartData({ source: 'library', type: 'sourceColumn', name: 'amount' });
+    expect(out.kind).toBe('library');
+  });
+
+  test('a pill drag maps to a "pill" preview', () => {
+    expect(mapDragStartData({ source: 'pill', sourcePath: 'x', raw: '${ref(q).amount}', label: 'q ▸ amount' })).toEqual({
+      kind: 'pill',
+      name: 'q ▸ amount',
+    });
+  });
+
+  test('a pill drag with no label falls back to the sourcePath', () => {
+    expect(mapDragStartData({ source: 'pill', sourcePath: 'x', raw: '${ref(q).amount}' })).toEqual({
+      kind: 'pill',
+      name: 'x',
+    });
+  });
 });
 
 describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)', () => {
@@ -471,6 +645,17 @@ describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)',
       'relation_erd_add_model',
       expect.objectContaining({ name: 'orders', accepted: true })
     );
+  });
+
+  test('a valid model dropped on the ERD with no `onAddModel` on the droppable still resolves accepted (never throws)', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'model', name: 'orders' } } },
+        over: { data: { current: { kind: 'erd-canvas' } } }, // no onAddModel
+      },
+      {}
+    );
+    expect(result).toBe('erd_add_model');
   });
 
   test('csvScriptModel + localMergeModel are accepted as models too', () => {
@@ -584,6 +769,39 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     );
   });
 
+  test('a same-row item reorder that resolves to the SAME position is a noop (reorderItemsInRow returns the identical config)', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 } },
+        },
+        // Dropping item 0 just before itself (index 0) is a true no-op.
+        over: overCanvas({ kind: 'between-items', rowPath: 'row.0', index: 0 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
+  });
+
+  test('canvas item drag onto a DIFFERENT row that resolves to a no-op transform (unknown source row) never commits', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          // 'row.9' doesn't exist in canvasConfig() -> moveItemBetweenRows can't
+          // find the source item and returns the config unchanged.
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.9', itemIndex: 0 } },
+        },
+        over: overCanvas({ kind: 'end-of-row', rowPath: 'row.1' }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
+  });
+
   test('canvas item drag onto an EMPTY slot FILLS it (VIS-989)', () => {
     const commitCanvasConfig = jest.fn();
     const emit = jest.fn();
@@ -624,6 +842,34 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     );
   });
 
+  test('filling an empty slot from a source item that no longer exists is a noop (moveItemIntoSlot returns the identical config)', () => {
+    const commitCanvasConfig = jest.fn();
+    const slotConfig = {
+      rows: [{ height: 'medium', items: [{ width: 6 }] }],
+    };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          // 'row.9' doesn't exist -> the source item can't be found.
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.9', itemIndex: 0 } },
+        },
+        over: {
+          data: {
+            current: {
+              kind: 'canvas-drop',
+              dashboardName: 'dash',
+              config: slotConfig,
+              target: { kind: 'on-item', rowPath: 'row.0', index: 0, empty: true },
+            },
+          },
+        },
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
+  });
+
   test('canvas item drag onto a FILLED slot (on-item, not empty) is a noop', () => {
     const commitCanvasConfig = jest.fn();
     const result = routeWorkspaceDragEnd(
@@ -658,6 +904,48 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
       'canvas_action',
       expect.objectContaining({ kind: 'move_row', from: 1, to: 0 })
     );
+  });
+
+  test('a top-level row reorder that resolves to the SAME position is a noop', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'row', rowIndex: 0, rowPath: 'row.0' } } },
+        // Dropping row 0 just before itself (index 0) is a true no-op.
+        over: overCanvas({ kind: 'between-rows', index: 0 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
+  });
+
+  test('a top-level row reorder moving FORWARD (toIndex > fromIndex) normalises the index correctly', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'row', rowIndex: 0, rowPath: 'row.0' } } },
+        // Drop AFTER both rows (index 2) → row 0 moves to the end.
+        over: overCanvas({ kind: 'between-rows', index: 2 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('canvas_reorder_rows');
+    const heights = commitCanvasConfig.mock.calls[0][1].rows.map(r => r.height);
+    expect(heights).toEqual(['small', 'medium']);
+  });
+
+  test('a canvas-drop with a drag source that is neither "canvas" nor "library" is a noop', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'something-else', kind: 'item' } } },
+        over: overCanvas({ kind: 'between-rows', index: 0 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
   });
 
   test('library drag → canvas between-items inserts a new item referencing the object', () => {
@@ -704,6 +992,35 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
       {}
     );
     expect(result).toBe('noop');
+  });
+
+  test('a canvas-drop missing `target`/`dashboardName`/`config` on the droppable is a safe noop', () => {
+    const commitCanvasConfig = jest.fn();
+    const missingTarget = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0' } } },
+        over: { data: { current: { kind: 'canvas-drop', dashboardName: 'dash', config: canvasConfig() } } },
+      },
+      { commitCanvasConfig }
+    );
+    const missingDashboardName = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0' } } },
+        over: { data: { current: { kind: 'canvas-drop', config: canvasConfig(), target: { kind: 'between-rows', index: 1 } } } },
+      },
+      { commitCanvasConfig }
+    );
+    const missingConfig = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0' } } },
+        over: { data: { current: { kind: 'canvas-drop', dashboardName: 'dash', target: { kind: 'between-rows', index: 1 } } } },
+      },
+      { commitCanvasConfig }
+    );
+    expect(missingTarget).toBe('noop');
+    expect(missingDashboardName).toBe('noop');
+    expect(missingConfig).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
   });
 
   // ── Nested rows/items (VIS-903) ──────────────────────────────────────────
@@ -774,6 +1091,22 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
       'canvas_action',
       expect.objectContaining({ kind: 'move_row', containerPath: 'row.0.item.1' })
     );
+  });
+
+  test('a nested row reorder that resolves to the SAME position is a noop', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0.item.1.row.0' } },
+        },
+        // Dropping sub-row 0 just before itself (index 0) is a true no-op.
+        over: overNested({ kind: 'between-rows', index: 0, containerPath: 'row.0.item.1' }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
   });
 
   test('nested row drag onto a DIFFERENT container band is a noop (no cross-boundary move)', () => {
@@ -953,6 +1286,28 @@ describe('WorkspaceDndContext drag overlay previews (VIS-901 #5 / VIS-1008)', ()
     await startDrag('probe');
     expect(screen.getByTestId('level-drag-preview')).toHaveTextContent('Org');
     await dropDrag();
+  });
+
+  // T4 (pills-buildrail #4 "no ghost"): a results-grid column drag
+  // previously mapped to NOTHING (`mapDragStartData` fell through every
+  // branch), so nothing followed the cursor. Confirms the fix end-to-end
+  // through a REAL pointer drag, not just the pure mapper.
+  test('a results-grid column drag (no `source` key) shows the column pill overlay', async () => {
+    renderWith({ name: 'X', type: 'column', sourceType: 'data-table' });
+    await startDrag('probe');
+    expect(screen.getByTestId('column-drag-preview')).toHaveTextContent('X');
+    await dropDrag();
+    expect(screen.queryByTestId('column-drag-preview')).not.toBeInTheDocument();
+  });
+
+  // T4 (pills-buildrail #4 "pills draggable between slots"): a pill dragged
+  // out of its slot shows an overlay too.
+  test('a pill drag shows the pill overlay', async () => {
+    renderWith({ source: 'pill', sourcePath: 'x', raw: '${ref(q).amount}', label: 'q ▸ amount' });
+    await startDrag('probe');
+    expect(screen.getByTestId('pill-drag-preview')).toHaveTextContent('q ▸ amount');
+    await dropDrag();
+    expect(screen.queryByTestId('pill-drag-preview')).not.toBeInTheDocument();
   });
 
   test('a dashboard tile drag shows the tile preview and cancels on Escape', async () => {
@@ -1206,6 +1561,26 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
     );
   });
 
+  test('a completely undefined event is a safe noop (event||{} fallback)', () => {
+    expect(routeExplorationDragEnd(undefined, baseDeps())).toBe('noop');
+  });
+
+  test('an `over` with no `.data.current` (dropData undefined) is a noop', () => {
+    const result = routeExplorationDragEnd(
+      { active: { data: { current: { type: 'column', name: 'x' } } }, over: { data: {} } },
+      baseDeps()
+    );
+    expect(result).toBe('noop');
+  });
+
+  test('an `active` with no `.data.current` (dragData undefined) is a noop', () => {
+    const result = routeExplorationDragEnd(
+      { active: { data: {} }, over: { data: { current: { type: 'axis-zone', fieldName: 'x' } } } },
+      baseDeps()
+    );
+    expect(result).toBe('noop');
+  });
+
   describe('axis-zone / property-zone', () => {
     test('a plain column drop resolves against the active model (preview_model fallback)', () => {
       const deps = baseDeps();
@@ -1354,6 +1729,23 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
       });
     });
 
+    test('a metric drop with NO `expression` on the drag data falls back to the bare name', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'churn_rate', type: 'metric' } } }, // no expression
+          over: { data: { current: { type: 'data-table-drop' } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_computed_column_drop');
+      expect(deps.addComputedColumn).toHaveBeenCalledWith({
+        name: 'churn_rate',
+        expression: 'churn_rate',
+        type: 'metric',
+      });
+    });
+
     test('a non metric/dimension drop is a noop', () => {
       const deps = baseDeps();
       const result = routeExplorationDragEnd(
@@ -1407,6 +1799,19 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
         deps
       );
       expect(result).toBe('noop');
+    });
+
+    test('with no cursor element AND no `updateInsightInteraction` provided, still resolves without throwing', () => {
+      const deps = baseDeps();
+      delete deps.updateInsightInteraction;
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region', type: 'dimension' } } },
+          over: { data: { current: { type: 'interaction-zone', index: 0, insightName: 'ins_1' } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_interaction_drop');
     });
   });
 
@@ -1484,6 +1889,19 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
       });
     });
 
+    test('a sourceTable drop with no `seedModelTabFromTable` provided still resolves (never throws)', () => {
+      const deps = baseDeps();
+      delete deps.seedModelTabFromTable;
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'orders', type: 'sourceTable', sourceName: 'warehouse' } } },
+          over: { data: { current: { type: 'sql-editor-drop' } } },
+        },
+        deps
+      );
+      expect(result).toBe('exploration_seed_query_from_table');
+    });
+
     test('a sourceColumn drop inserts the bare column name via the droppable-supplied callback', () => {
       const deps = baseDeps();
       const onInsertText = jest.fn();
@@ -1496,6 +1914,18 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
       );
       expect(result).toBe('exploration_sql_cursor_insert');
       expect(onInsertText).toHaveBeenCalledWith('region');
+    });
+
+    test('a sourceColumn drop with no `onInsertText` on the droppable still resolves (never throws)', () => {
+      const deps = baseDeps();
+      const result = routeExplorationDragEnd(
+        {
+          active: { data: { current: { name: 'region', type: 'sourceColumn' } } },
+          over: { data: { current: { type: 'sql-editor-drop' } } }, // no onInsertText
+        },
+        deps
+      );
+      expect(result).toBe('exploration_sql_cursor_insert');
     });
 
     test('a plain results-grid column drop also inserts (generalizes DraggableColumnHeader)', () => {
@@ -1537,5 +1967,19 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
     );
     expect(result).toBe('exploration_source_drop');
     expect(setActiveModelSource).toHaveBeenCalledWith('warehouse');
+  });
+
+  test('dispatches to routeExplorationDragEnd even when `exploration` deps are entirely omitted (exploration||{} fallback)', () => {
+    // No `exploration` key at all -> routeExplorationDragEnd receives `{}`,
+    // its destructured actions are all undefined, and it degrades to a noop
+    // rather than throwing.
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { name: 'warehouse', type: 'source' } } },
+        over: { data: { current: { type: 'source-zone' } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
   });
 });

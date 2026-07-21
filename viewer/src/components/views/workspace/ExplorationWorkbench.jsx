@@ -1,14 +1,20 @@
 import React from 'react';
 import CenterPanel from '../../explorer/CenterPanel';
-import ExplorationBuildRail from './ExplorationBuildRail';
 import useExplorerWorkbenchInit from '../../explorer/useExplorerWorkbenchInit';
 import ExplorationQueryChips from './ExplorationQueryChips';
 
 /**
- * ExplorationWorkbench — CenterPanel + ExplorationBuildRail, sized to fill an
- * `ExplorationPane` inside the Workspace shell rather than a standalone
- * full-viewport route (Explore 2.0 Phase 2 origin; the Phase 3a DnD
- * unification + Phase 3b Build-rail rebuild both landed here since).
+ * ExplorationWorkbench — the exploration CENTER pane (SQL editor / results /
+ * chart preview), sized to fill an `ExplorationPane` inside the Workspace
+ * shell rather than a standalone full-viewport route (Explore 2.0 Phase 2
+ * origin; the Phase 3a DnD unification + Phase 3b Build-rail rebuild both
+ * landed here since). As of 6c-T2 (D6 — the two-rails fix) this is CenterPanel
+ * ALONE: the Insight+Chart CRUD (`ExplorationBuildRail`) moved OUT to the
+ * shell's single `<RightRail>` (exploration scope's `Build` tab,
+ * `RightRail.jsx`), which threads `explorationId` from its own
+ * `selectedItem` rather than a prop passed down through here — mounting a
+ * second copy in-pane, alongside the shell's already-mounted rail, was
+ * exactly the two-rails bug (shell-ia #1, code-grounding defect #1).
  *
  * Current composition (post Phase 3b cutover, 03-delivery-plan.md):
  *
@@ -31,29 +37,28 @@ import ExplorationQueryChips from './ExplorationQueryChips';
  *     NEW `property-zone` branch (S5/D10) hands insight-prop-slot drops
  *     straight to each `PropertyRow`'s own `onDropField` — no nested DnD
  *     context, no global "active insight" indirection.
- *   - `ExplorationBuildRail` (Phase 3b, VIS-1059; Phase 4, VIS-1062–1066)
- *     replaces the retired `ExplorerRightPanel`: Chart + stacked Insight
- *     sections rebuilt onto `TracePropsEditor`/`FieldGroupList` (typed D8/D10
- *     pills, advisory ref-target validation), a live promoted trail, and
- *     "Save to Project" opening `ExplorationPromoteModal` — the per-object
- *     gated promote checklist that replaced the deleted `ExplorerSaveModal`/
- *     `saveExplorerObjects` (all-or-nothing, no per-object gate).
  *   - `useExplorerWorkbenchInit()` (the shared init hook) is unchanged.
+ *     `RightRail` mounts `ExplorationBuildRail` independently of this pane,
+ *     reading the SAME shared `explorerStore` singleton `ExplorationPane`
+ *     restores in a `useLayoutEffect` (synchronous, pre-paint) on activation
+ *     — so a tab switch can't leave a stale frame visible, but the rail is
+ *     not itself gated on that restore the way this pane gates ITS OWN mount
+ *     (see `ExplorationPane`'s docstring). It never triggers the "auto-create
+ *     when empty" this hook owns, so there's nothing here for an early read
+ *     to corrupt — worst case is a same-commit stale render, not a decision
+ *     with a side effect.
  *   - No `?return_to=` QUERY-PARAM handling here — that dead param form was
  *     replaced at the Phase 3b cutover's redirect route (02-architecture.md
  *     §5). The `return_to` RECORD FIELD itself is consumed inside
  *     `ExplorationPromoteModal`'s success state (VIS-1068's "Place in
- *     <dashboard>" offer) — this pane just renders that modal, unchanged.
+ *     <dashboard>" offer), opened from the Build rail in `RightRail` now,
+ *     not from here.
  *
  * The HOST (`ExplorationPane`) is responsible for gating this component's
  * mount on the per-exploration state restore having already landed — see
- * `useExplorerWorkbenchInit`'s docstring — and passes down the exploration's
- * own `id` (used by the Build rail's promoted trail + promote checklist).
- *
- * @param {object} props
- * @param {string} [props.id] - the current exploration's backend id.
+ * `useExplorerWorkbenchInit`'s docstring.
  */
-const ExplorationWorkbench = ({ id }) => {
+const ExplorationWorkbench = () => {
   useExplorerWorkbenchInit();
 
   return (
@@ -62,7 +67,6 @@ const ExplorationWorkbench = ({ id }) => {
       data-testid="exploration-workbench"
     >
       <CenterPanel modelTabBar={<ExplorationQueryChips />} enableLibraryDrop />
-      <ExplorationBuildRail explorationId={id} />
     </div>
   );
 };
