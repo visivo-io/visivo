@@ -74,13 +74,13 @@ describe('SeedsEditor', () => {
     fireEvent.click(screen.getByText('Add'));
     expect(onChangeSpy).toHaveBeenLastCalledWith([{ table_name: 't', args: ['cat', ''] }]);
 
-    fireEvent.click(screen.getByLabelText('Remove seed 1 argument 2'));
+    fireEvent.click(screen.getByLabelText('Remove argument 2 from seed 1'));
     expect(onChangeSpy).toHaveBeenLastCalledWith([{ table_name: 't', args: ['cat'] }]);
   });
 
   test('the only arg row has no remove button', () => {
     render(<Harness initial={[{ table_name: 't', args: ['cat'] }]} />);
-    expect(screen.queryByLabelText('Remove seed 1 argument 1')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Remove argument 1 from seed 1')).not.toBeInTheDocument();
   });
 
   test('allow_empty toggles', () => {

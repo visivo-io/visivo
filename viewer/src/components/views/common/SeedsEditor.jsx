@@ -130,7 +130,7 @@ const SeedsEditor = ({ seeds, onChange }) => {
                   <button
                     type="button"
                     onClick={() => removeArg(seedIndex, argIndex)}
-                    aria-label={`Remove seed ${seedIndex + 1} argument ${argIndex + 1}`}
+                    aria-label={`Remove argument ${argIndex + 1} from seed ${seedIndex + 1}`}
                     className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                   >
                     <RemoveIcon fontSize="small" />
