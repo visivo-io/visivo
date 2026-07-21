@@ -197,6 +197,20 @@ describe('computeSeedContentSignature', () => {
     expect(computeSeedContentSignature({ type: 'model', name: 'missing' }, state)).toBeNull();
   });
 
+  it('returns null when the seed has a type but no name', () => {
+    expect(computeSeedContentSignature({ type: 'model' }, { models: [] })).toBeNull();
+  });
+
+  it('returns null when the seed has a name but no type', () => {
+    expect(computeSeedContentSignature({ name: 'm' }, { models: [] })).toBeNull();
+  });
+
+  it('returns null when the collection the seed type maps to is entirely absent from state', () => {
+    // state has no `models` key at all (not even an empty array) — the
+    // `state?.[collectionKey] || []` fallback must hold, never throw.
+    expect(computeSeedContentSignature({ type: 'model', name: 'm' }, {})).toBeNull();
+  });
+
   it('returns the same signature regardless of object key order (stable hashing)', () => {
     const stateA = { models: [{ name: 'm', config: { sql: 'SELECT 1', source: 's' } }] };
     const stateB = { models: [{ name: 'm', config: { source: 's', sql: 'SELECT 1' } }] };
@@ -211,5 +225,29 @@ describe('computeSeedContentSignature', () => {
     expect(computeSeedContentSignature({ type: 'model', name: 'm' }, stateA)).not.toBe(
       computeSeedContentSignature({ type: 'model', name: 'm' }, stateB)
     );
+  });
+
+  // stableStringify recurses through arrays too, not just plain objects —
+  // an array-valued config field (e.g. a list of columns/tags) must still
+  // hash deterministically regardless of how it got built.
+  it('hashes array-valued config fields deterministically (stableStringify array branch)', () => {
+    const stateA = { models: [{ name: 'm', config: { sql: 'SELECT 1', tags: ['a', 'b'] } }] };
+    const stateB = { models: [{ name: 'm', config: { sql: 'SELECT 1', tags: ['a', 'b'] } }] };
+    const stateC = { models: [{ name: 'm', config: { sql: 'SELECT 1', tags: ['a', 'c'] } }] };
+    const sigA = computeSeedContentSignature({ type: 'model', name: 'm' }, stateA);
+    const sigB = computeSeedContentSignature({ type: 'model', name: 'm' }, stateB);
+    const sigC = computeSeedContentSignature({ type: 'model', name: 'm' }, stateC);
+    expect(sigA).toBe(sigB);
+    expect(sigA).not.toBe(sigC);
+  });
+});
+
+describe('computeExplorationStaleness — draft without a queries key', () => {
+  it('never throws when draft.queries is entirely absent (falls back to [])', () => {
+    const exploration = {
+      draft: { insights: [{ name: 'ins', props: { x: '?{${ref(orders_q).region}}' } }] },
+    };
+    expect(() => computeExplorationStaleness(exploration, baseState)).not.toThrow();
+    expect(computeExplorationStaleness(exploration, baseState).stale).toBe(false);
   });
 });

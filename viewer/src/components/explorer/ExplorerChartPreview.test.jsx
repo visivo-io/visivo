@@ -145,6 +145,59 @@ describe('ExplorerChartPreview', () => {
     );
   });
 
+  it('falls back to a default chart name when explorerChartName is unset', () => {
+    useStore.setState({ explorerChartName: undefined });
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('cp-chart-name')).toHaveTextContent('Preview Chart');
+  });
+
+  it('tolerates state.insights being absent entirely (realInsights || [] fallback)', () => {
+    useStore.setState({ insights: undefined });
+    expect(() => render(<ExplorerChartPreview />)).not.toThrow();
+    // No real insights known at all -> stays on the draft-namespaced key.
+    expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+      JSON.stringify(['__draft__:ins_1'])
+    );
+  });
+
+  it('tolerates a workspaceExplorations entry with no `promoted` key at all (explorationPromoted fallback)', () => {
+    useStore.setState({
+      workspaceExplorations: { byId: { exp_1: { id: 'exp_1' } }, order: ['exp_1'] }, // no `promoted` key
+    });
+    expect(() => render(<ExplorerChartPreview />)).not.toThrow();
+    expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+      JSON.stringify(['__draft__:ins_1'])
+    );
+  });
+
+  it('tolerates useInsightsData returning a falsy value instead of an object', () => {
+    const { useInsightsData } = jest.requireMock('../../hooks/useInsightsData');
+    useInsightsData.mockReturnValue(null);
+    useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: {} });
+    markPromoted(['ins_1']);
+    expect(() => render(<ExplorerChartPreview />)).not.toThrow();
+  });
+
+  // A name can be in the exploration's promoted[] trail (VIS-1091) without
+  // ever having a recorded freshness signature — e.g. a legacy/pre-P6-D1
+  // promote, or a signature write that itself failed. Must fall back to the
+  // draft-namespaced key rather than throwing on a missing signature.
+  it('a promoted name with no recorded signature at all falls back to the draft key', () => {
+    useStore.setState({
+      insights: [{ name: 'ins_1' }],
+      insightJobs: { ins_1: { name: 'ins_1', data: [{ x: 1 }] } },
+      workspaceExplorations: {
+        byId: { exp_1: { id: 'exp_1', promoted: [{ type: 'insight', name: 'ins_1' }] } },
+        order: ['exp_1'],
+      },
+      explorerPromotedSignatures: {}, // no signature recorded for ins_1 at all
+    });
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+      JSON.stringify(['__draft__:ins_1'])
+    );
+  });
+
   it('passes chart name and layout from the store', () => {
     useStore.setState({
       explorerChartName: 'my_cool_chart',
@@ -193,6 +246,19 @@ describe('ExplorerChartPreview', () => {
   // mapped yet -> a guided empty state, never a spinner with no request in
   // flight (Chart.jsx's own `hasAllInsightData` gate would otherwise spin
   // forever waiting on data this hook never even tries to fetch).
+  it('renders the "run the query first" state without naming a model when blockedModel is null', () => {
+    useDraftInsightPreview.mockReturnValue({
+      ...defaultDraftPreview,
+      perInsight: {
+        ins_1: { isLoading: false, error: null, blockedReason: 'model_not_run', blockedModel: null },
+      },
+    });
+    render(<ExplorerChartPreview />);
+    const runFirst = screen.getByTestId('chart-preview-run-first');
+    expect(runFirst).toHaveTextContent('Run your query to see a preview');
+    expect(runFirst).not.toHaveTextContent('for "');
+  });
+
   it('renders a guided empty state instead of ChartPreview on a no_data_props block', () => {
     useDraftInsightPreview.mockReturnValue({
       ...defaultDraftPreview,
@@ -253,10 +319,22 @@ describe('ExplorerChartPreview', () => {
     render(<ExplorerChartPreview />);
     const banner = screen.getByTestId('chart-preview-unresolved-inputs');
     expect(banner).toHaveTextContent('not_defined_yet');
+    // Singular phrasing for exactly one unresolved name.
+    expect(banner).toHaveTextContent('Input "not_defined_yet" isn\'t defined in this project yet.');
     // D11 / ux-audit.md "unresolved-input misclassification": plain
     // language, never the "promoted" pipeline jargon a MODEL banner used to
     // leak onto a genuine input.
     expect(banner).not.toHaveTextContent('promoted');
+  });
+
+  it('pluralizes the unresolved-inputs banner when more than one name is unresolved', () => {
+    usePreviewInputDependencies.mockReturnValue({
+      inputConfigs: [],
+      unresolvedNames: ['region', 'quarter'],
+    });
+    render(<ExplorerChartPreview />);
+    const banner = screen.getByTestId('chart-preview-unresolved-inputs');
+    expect(banner).toHaveTextContent('Inputs "region", "quarter" aren\'t defined in this project yet.');
   });
 
   // ux-audit.md "unresolved-input misclassification" (cold-start #3): the
@@ -269,6 +347,15 @@ describe('ExplorerChartPreview', () => {
     expect(usePreviewInputDependencies).toHaveBeenCalledWith(
       'proj-1',
       expect.objectContaining({ extraModelNames: expect.arrayContaining(['orders_q', 'model']) })
+    );
+  });
+
+  it('tolerates explorerModelStates being unset entirely (never throws, extraModelNames falls back to empty)', () => {
+    useStore.setState({ explorerModelStates: undefined });
+    expect(() => render(<ExplorerChartPreview />)).not.toThrow();
+    expect(usePreviewInputDependencies).toHaveBeenCalledWith(
+      'proj-1',
+      expect.objectContaining({ extraModelNames: [] })
     );
   });
 
@@ -628,6 +715,17 @@ describe('ExplorerChartPreview', () => {
       render(<ExplorerChartPreview />);
       expect(screen.getByTestId('chart-preview-promoted-poll-failed')).toHaveTextContent(
         'fetch failed'
+      );
+    });
+
+    it('renders a non-Error promotedFetchError (no .message) via String() fallback', () => {
+      const { useInsightsData } = jest.requireMock('../../hooks/useInsightsData');
+      useInsightsData.mockReturnValue({ error: 'plain string failure' });
+      useStore.setState({ insights: [{ name: 'ins_1' }], insightJobs: {} });
+      markPromoted(['ins_1']);
+      render(<ExplorerChartPreview />);
+      expect(screen.getByTestId('chart-preview-promoted-poll-failed')).toHaveTextContent(
+        'plain string failure'
       );
     });
 

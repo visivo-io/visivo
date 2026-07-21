@@ -262,6 +262,102 @@ describe('usePreviewInputDependencies', () => {
     expect(call.length).toBe(2);
   });
 
+  it('defaults insightNames to an empty array when the options object omits it entirely', () => {
+    seedStore({ inputs: [{ name: 'region', config: { name: 'region' } }], insightJobs: {} });
+    const { result } = renderHook(() => usePreviewInputDependencies('p1', {}));
+    expect(result.current.inputConfigs).toEqual([]);
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  // `insightNames = []` only guards an OMITTED (undefined) key — an explicit
+  // `null` bypasses the default parameter entirely, so the hook's own
+  // `(insightNames || []).filter(...)` fallback is what actually protects it.
+  it('tolerates an explicit null for insightNames (bypasses the default parameter)', () => {
+    seedStore({ inputs: [{ name: 'region', config: { name: 'region' } }], insightJobs: {} });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: null })
+    );
+    expect(result.current.inputConfigs).toEqual([]);
+  });
+
+  it('skips an insight name with no matching insightJobs entry at all, rather than throwing', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      insightJobs: { sales: { inputDependencies: ['region'] } },
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales', 'no_job_yet'] })
+    );
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['region']);
+  });
+
+  it('tolerates a job with no inputDependencies key at all (pendingInputs-only)', () => {
+    seedStore({
+      inputs: [{ name: 'quarter', config: { name: 'quarter' } }],
+      insightJobs: { sales: { pendingInputs: ['quarter'] } },
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+    expect(result.current.inputConfigs.map(c => c.name)).toEqual(['quarter']);
+  });
+
+  it('resolves an input whose store entry has no nested .config — the entry itself is used as the config', () => {
+    seedStore({
+      inputs: [{ name: 'region', type: 'single-select' }], // flat, no nested `config` key
+      insightJobs: { sales: { inputDependencies: ['region'] } },
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+    expect(result.current.inputConfigs).toEqual([{ name: 'region', type: 'single-select' }]);
+  });
+
+  it('tolerates storeInputs being null/undefined (not just an empty array)', () => {
+    seedStore({ insightJobs: { sales: { inputDependencies: ['region'] } } });
+    // Override the seeded `inputs: []` default with an explicit undefined.
+    useStore.mockImplementation(selector => {
+      const state = {
+        inputs: undefined,
+        insightJobs: { sales: { inputDependencies: ['region'] } },
+        fetchInputs: jest.fn(),
+      };
+      return typeof selector === 'function' ? selector(state) : state;
+    });
+    useStore.getState = jest.fn(() => ({ inputs: undefined, fetchInputs: jest.fn() }));
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'] })
+    );
+    // region has no matching config (storeInputs treated as []) -> unresolved, not a crash.
+    expect(result.current.inputConfigs).toEqual([]);
+    expect(result.current.unresolvedNames).toEqual(['region']);
+  });
+
+  it('tolerates an explicit null for extraModelNames (bypasses the default parameter)', () => {
+    seedStore({
+      inputs: [{ name: 'region', config: { name: 'region' } }],
+      insightJobs: { sales: { inputDependencies: ['region', 'orders_q'] } },
+      models: [{ name: 'orders_q' }],
+    });
+    const { result } = renderHook(() =>
+      usePreviewInputDependencies('p1', { insightNames: ['sales'], extraModelNames: null })
+    );
+    // orders_q is still excluded via the published-models set even though
+    // extraModelNames itself was null rather than omitted/[].
+    expect(result.current.unresolvedNames).toEqual([]);
+  });
+
+  it('never calls fetchInputs when the store does not provide one (typeof guard)', () => {
+    useStore.mockImplementation(selector => {
+      const state = { inputs: [], insightJobs: {}, fetchInputs: undefined };
+      return typeof selector === 'function' ? selector(state) : state;
+    });
+    useStore.getState = jest.fn(() => ({ inputs: [], fetchInputs: undefined }));
+    expect(() =>
+      renderHook(() => usePreviewInputDependencies('p1', { insightNames: [] }))
+    ).not.toThrow();
+  });
+
   it('fetches the inputs list at most once even when the empty-array reference churns', () => {
     // A project with no inputs makes `fetchInputs` write a fresh [] each call,
     // so `s.inputs` returns a NEW reference every render. Simulate that by
