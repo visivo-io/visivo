@@ -96,4 +96,21 @@ describe('suggestPromoteNames', () => {
   test('returns an empty map for an empty checklist', () => {
     expect(suggestPromoteNames([], () => null, []).size).toBe(0);
   });
+
+  test('fails safe on an undefined/null rows argument (never throws)', () => {
+    expect(suggestPromoteNames(undefined, () => 'orders', []).size).toBe(0);
+    expect(suggestPromoteNames(null, () => 'orders', []).size).toBe(0);
+  });
+
+  test('fails safe when no getModelSourceName callback is supplied at all', () => {
+    const rows = [row({ name: 'query_1' })];
+    const suggestions = suggestPromoteNames(rows, undefined, []);
+    expect(suggestions.has('model:query_1')).toBe(false);
+  });
+
+  test('a generic chart with neither an insight NOR a model anchor is left unsuggested', () => {
+    const rows = [row({ tier: 'chart', type: 'chart', name: 'chart' })];
+    const suggestions = suggestPromoteNames(rows, () => 'orders', []);
+    expect(suggestions.size).toBe(0);
+  });
 });

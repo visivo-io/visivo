@@ -26,7 +26,7 @@ import {
 } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
 import { futureFlags } from '../../../../router-config';
-import Library from './Library';
+import Library, { libraryFooterHint } from './Library';
 import useStore from '../../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../telemetry';
 
@@ -719,6 +719,46 @@ describe('Library', () => {
   // footer shows dashboard-canvas help text ('Drag a layout item onto the
   // canvas...') on the Explorer surface" — the footer must not advertise a
   // canvas that doesn't exist on the current surface.
+  describe('libraryFooterHint (pure function — every scope branch)', () => {
+    test('exploration selectedItem wins regardless of scope', () => {
+      expect(
+        libraryFooterHint({ scope: 'item', selectedItem: { type: 'exploration', name: 'exp_1' } })
+      ).toMatch(/exploration/);
+    });
+
+    test('explorer scope (Explorer home, no tab)', () => {
+      expect(libraryFooterHint({ scope: 'explorer', selectedItem: null })).toMatch(
+        /start exploring/
+      );
+    });
+
+    test('dashboard scope keeps the canvas-drag hint', () => {
+      expect(libraryFooterHint({ scope: 'dashboard', selectedItem: null })).toMatch(
+        /Drag a layout item onto the canvas/
+      );
+    });
+
+    test('semantic-layer scope', () => {
+      expect(libraryFooterHint({ scope: 'semantic-layer', selectedItem: null })).toMatch(
+        /diagram/
+      );
+    });
+
+    test('root/item/anything-else falls back to the plain default', () => {
+      expect(libraryFooterHint({ scope: 'root', selectedItem: null })).toBe(
+        'Click a data object to edit it.'
+      );
+      expect(libraryFooterHint({ scope: 'item', selectedItem: { type: 'model', name: 'x' } })).toBe(
+        'Click a data object to edit it.'
+      );
+    });
+
+    test('fails safe on a missing/undefined scope object', () => {
+      expect(libraryFooterHint(undefined)).toBe('Click a data object to edit it.');
+      expect(libraryFooterHint({})).toBe('Click a data object to edit it.');
+    });
+  });
+
   describe('footer hint (context-aware, not canvas-blind)', () => {
     test('on a dashboard, keeps the canvas hint (there really is one)', () => {
       seedStore();

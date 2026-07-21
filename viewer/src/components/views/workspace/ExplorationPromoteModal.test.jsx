@@ -882,6 +882,80 @@ describe('ExplorationPromoteModal', () => {
       ).toHaveValue('daily_orders');
     });
 
+    test('committing a rename on an INSIGHT row calls renameInsight (not renameModelTab)', async () => {
+      const renameInsight = jest.fn();
+      useStore.setState({ renameInsight });
+      buildPromoteChecklist
+        .mockResolvedValueOnce([row({ tier: 'insight', type: 'insight', name: 'churn_by_cohort' })])
+        .mockResolvedValueOnce([row({ tier: 'insight', type: 'insight', name: 'renamed_insight' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-insight-churn_by_cohort-name-input');
+      fireEvent.change(input, { target: { value: 'renamed_insight' } });
+      fireEvent.blur(input);
+      await waitFor(() =>
+        expect(renameInsight).toHaveBeenCalledWith('churn_by_cohort', 'renamed_insight')
+      );
+      expect(
+        await screen.findByTestId('promote-row-insight-renamed_insight-name-input')
+      ).toHaveValue('renamed_insight');
+    });
+
+    test('committing a rename on a CHART row calls setChartName (not renameModelTab)', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ setChartName });
+      buildPromoteChecklist
+        .mockResolvedValueOnce([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })])
+        .mockResolvedValueOnce([row({ tier: 'chart', type: 'chart', name: 'renamed_chart' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-chart-churn_chart-name-input');
+      fireEvent.change(input, { target: { value: 'renamed_chart' } });
+      fireEvent.blur(input);
+      await waitFor(() => expect(setChartName).toHaveBeenCalledWith('renamed_chart'));
+      expect(
+        await screen.findByTestId('promote-row-chart-renamed_chart-name-input')
+      ).toHaveValue('renamed_chart');
+    });
+
+    // A collision the pure suggestion logic couldn't foresee (fail-open, not
+    // fail-blocking): the auto-suggest pass must not crash the modal — the
+    // placeholder name stays and the row is still a normal editable field.
+    test('a collision during auto-suggestion (initial load) fails open — no crash, placeholder name stays editable', async () => {
+      const renameModelTab = jest.fn(() => {
+        throw Object.assign(new Error('Name "orders_query" is already in use. Choose a different name.'), {
+          code: 'NAME_COLLISION',
+        });
+      });
+      useStore.setState({
+        renameModelTab,
+        explorerModelStates: { query_1: { sourceName: 'orders' } },
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ name: 'query_1' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders_query'));
+      // The collision means the suggestion never "took" — the row keeps its
+      // original (still-editable) name rather than the modal crashing.
+      expect(
+        await screen.findByTestId('promote-row-model-query_1-name-input')
+      ).toHaveValue('query_1');
+    });
+
+    // Clearing the field to blank is the same "nothing to commit" path as
+    // re-typing the unchanged name — covers the OTHER side of that OR.
+    test('clearing a name to blank on blur is a no-op — reverts to the current name, no rename call, no error', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.blur(input);
+      await waitFor(() => expect(input).toHaveValue('orders_q'));
+      expect(renameModelTab).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('promote-row-model-orders_q-name-error')
+      ).not.toBeInTheDocument();
+    });
+
     test('an invalid name shows a human validation message inline and never calls the rename action', async () => {
       const renameModelTab = jest.fn();
       useStore.setState({ renameModelTab });
