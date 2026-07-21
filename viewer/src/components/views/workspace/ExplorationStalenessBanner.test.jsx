@@ -58,6 +58,16 @@ describe('ExplorationStalenessBanner', () => {
     expect(screen.queryByTestId('exploration-staleness-drift')).not.toBeInTheDocument();
   });
 
+  // The `danglingRefs = []` default parameter only applies when the caller
+  // OMITS the prop entirely — distinct from the earlier "empty list" test,
+  // which passes `danglingRefs={[]}` explicitly.
+  test('defaults danglingRefs to an empty list when the prop is omitted entirely', () => {
+    render(<ExplorationStalenessBanner onRecheck={jest.fn()} onDismiss={jest.fn()} />);
+    expect(screen.getByTestId('exploration-staleness-banner')).not.toHaveTextContent(
+      'No longer resolves'
+    );
+  });
+
   test('renders both the drift line and the dangling-refs line together when both apply', () => {
     render(
       <ExplorationStalenessBanner

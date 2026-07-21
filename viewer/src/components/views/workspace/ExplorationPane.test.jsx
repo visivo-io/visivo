@@ -588,6 +588,27 @@ describe('ExplorationPane — rename', () => {
 });
 
 describe('ExplorationPane — duplicate', () => {
+  test('a failed duplicate never opens a tab, and re-enables the button', async () => {
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      flushExplorationSync,
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorationPane id="exp_1" />);
+
+    fireEvent.click(screen.getByTestId('exploration-duplicate-button'));
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalledWith('exp_1'));
+
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByTestId('exploration-duplicate-button')).not.toBeDisabled()
+    );
+  });
+
   test('flushes, duplicates, and opens the new exploration tab', async () => {
     const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
     const duplicateExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_2' });
@@ -664,6 +685,43 @@ describe('ExplorationPane — duplicate', () => {
     expect(openWorkspaceTab).toHaveBeenCalledTimes(1);
   });
 
+  // VIS-1086's actual documented threat model: "a real double-click can
+  // dispatch BOTH click events before React re-renders the button
+  // `disabled`". The test above issues its two `fireEvent.click` calls as
+  // separate statements, each of which lets React commit the `disabled`
+  // state before the next one fires — so jsdom itself refuses to dispatch a
+  // click at all to an already-disabled button, and `duplicatingRef.current`'s
+  // own early-return is never actually reached. Batching both dispatches into
+  // ONE `act()` defers that commit until after both have fired, reproducing
+  // the real race the ref guard exists for.
+  test('two click events landing in the SAME tick (before the disabled commit) still call duplicateExploration only once', async () => {
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_2' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      flushExplorationSync,
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorationPane id="exp_1" />);
+
+    const button = screen.getByTestId('exploration-duplicate-button');
+    // Deliberate: a bare `fireEvent.click` already wraps itself in its own
+    // `act()`, which would flush the `disabled` commit BETWEEN the two calls
+    // (masking the race this test exists to reproduce). Wrapping both in ONE
+    // outer `act()` defers that commit until after both synchronous
+    // dispatches have run — batching is the entire point here, not
+    // redundant nesting.
+    // eslint-disable-next-line testing-library/no-unnecessary-act
+    await act(async () => {
+      fireEvent.click(button);
+      fireEvent.click(button);
+    });
+
+    expect(duplicateExploration).toHaveBeenCalledTimes(1);
+  });
+
   test('the duplicate in-flight guard resets when the exploration id changes (switching tabs)', async () => {
     let resolveDuplicate;
     const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
@@ -729,5 +787,85 @@ describe('ExplorationPane — exploration_opened telemetry (VIS-1072)', () => {
     rerender(<ExplorationPane id="exp_2" />);
     const opened = events.filter(e => e.eventName === 'exploration_opened');
     expect(opened.map(e => e.payload.id)).toEqual(['exp_1', 'exp_2']);
+  });
+});
+
+// Live debounced persist (02-architecture.md §1/§8): a genuine edit while the
+// tab stays open re-arms a ~600ms debounce that snapshots the legacy working
+// state and pushes a fresh draft. The FIRST run after activation is
+// deliberately skipped (`skipNextLiveSyncRef` — the restore effect just wrote
+// the very state this effect would otherwise immediately re-persist), so this
+// only fires on a SECOND, real change.
+describe('ExplorationPane — live debounced persist while editing (02 §1/§8)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('an edit to the watched legacy working-state debounces a draft update after the sync window', () => {
+    const updateExplorationDraft = jest.fn();
+    const snapshotExplorerWorkingState = jest.fn(() => ({ modelTabs: ['edited_model'] }));
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+      explorerModelTabs: [],
+    });
+    render(<ExplorationPane id="exp_1" />);
+    // Nothing fires yet — the debounce hasn't even been armed by a real edit,
+    // and the activation run was skipped.
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    // A real edit — one of the watched legacy-state fields changes.
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['new_model'] });
+    });
+    // Not yet — still inside the debounce window.
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(400);
+    });
+    expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+    expect(snapshotExplorerWorkingState).toHaveBeenCalled();
+  });
+
+  test('rapid successive edits coalesce into a single debounced persist (the timer is cleared and re-armed each time)', () => {
+    const updateExplorationDraft = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState: jest.fn(() => ({ modelTabs: [] })),
+      explorerModelTabs: [],
+    });
+    render(<ExplorationPane id="exp_1" />);
+
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['a'] });
+    });
+    act(() => {
+      jest.advanceTimersByTime(400);
+    });
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['a', 'b'] });
+    });
+    act(() => {
+      jest.advanceTimersByTime(400);
+    });
+    // Still within the SECOND edit's own window — the first timer was cleared.
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+    expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
   });
 });

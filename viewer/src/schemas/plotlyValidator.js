@@ -61,7 +61,7 @@ function humanizePatternError(error) {
  * @param {object} error - an AJV error object
  * @returns {string}
  */
-function formatErrorMessage(error) {
+export function formatErrorMessage(error) {
   if (error.keyword === 'pattern') {
     return humanizePatternError(error);
   }

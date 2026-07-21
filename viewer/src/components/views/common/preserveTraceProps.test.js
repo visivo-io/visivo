@@ -165,6 +165,29 @@ describe('preserveTraceProps (VIS-1020 §2 type-switch prop preservation)', () =
     expect(cache).toEqual({});
   });
 
+  it('tolerates a completely missing newSchema (undefined) without throwing', () => {
+    const { props } = preserveTraceProps({
+      oldProps: scatterProps,
+      oldType: 'scatter',
+      newType: 'mystery',
+      newSchema: undefined,
+      typePropsCache: {},
+    });
+    // No properties key to validate against -> everything drops.
+    expect(props).toEqual({ type: 'mystery' });
+  });
+
+  it('tolerates a newSchema with no `properties` key at all', () => {
+    const { props } = preserveTraceProps({
+      oldProps: scatterProps,
+      oldType: 'scatter',
+      newType: 'mystery',
+      newSchema: { $defs: {} },
+      typePropsCache: {},
+    });
+    expect(props).toEqual({ type: 'mystery' });
+  });
+
   it('tolerates missing/empty inputs without throwing', () => {
     const { props, typePropsCache } = preserveTraceProps({
       oldProps: undefined,
@@ -187,5 +210,87 @@ describe('preserveTraceProps (VIS-1020 §2 type-switch prop preservation)', () =
       typePropsCache: {},
     });
     expect(props).toEqual({ type: 'mystery' });
+  });
+
+  // T4 (pills-buildrail #2): the `dropped` list is what lets the caller warn
+  // the user about a silent type-switch data loss instead of eating it.
+  describe('the `dropped` list (T4 / pills-buildrail #2)', () => {
+    it('names exactly the top-level props that had a value under the OLD type but are not valid on a FRESH new type', () => {
+      const { dropped } = preserveTraceProps({
+        oldProps: scatterProps,
+        oldType: 'scatter',
+        newType: 'bar',
+        newSchema: barSchema,
+        typePropsCache: {},
+      });
+      // scatterProps has x, y, mode, line; bar only allows x/y.
+      expect(dropped.sort()).toEqual(['line', 'mode']);
+    });
+
+    it('is empty when every old prop is valid on the new type', () => {
+      const { dropped } = preserveTraceProps({
+        oldProps: { type: 'bar', x: [1], y: [2] },
+        oldType: 'bar',
+        newType: 'scatter',
+        newSchema: scatterSchema,
+        typePropsCache: {},
+      });
+      expect(dropped).toEqual([]);
+    });
+
+    it('is empty when nothing was configured on the old type', () => {
+      const { dropped } = preserveTraceProps({
+        oldProps: { type: 'scatter' },
+        oldType: 'scatter',
+        newType: 'bar',
+        newSchema: barSchema,
+        typePropsCache: {},
+      });
+      expect(dropped).toEqual([]);
+    });
+
+    // A prior visit to `newType` restores its exact snapshot, so anything not
+    // carried forward this time is already accounted for by that restoration
+    // — warning again would be a false alarm about data that isn't actually lost.
+    it('stays empty on a REVISIT to a previously-configured type, even though some props do not carry forward', () => {
+      // First visit to bar stashes scatter's mode/line and drops them from view.
+      const afterBar = preserveTraceProps({
+        oldProps: scatterProps,
+        oldType: 'scatter',
+        newType: 'bar',
+        newSchema: barSchema,
+        typePropsCache: {},
+      });
+      // Switch back to scatter (mode/line restored from cache), then to bar
+      // again — bar was already visited, so this is a "revisit".
+      const afterScatterAgain = preserveTraceProps({
+        oldProps: { ...afterBar.props, mode: 'markers' },
+        oldType: 'bar',
+        newType: 'scatter',
+        newSchema: scatterSchema,
+        typePropsCache: afterBar.typePropsCache,
+      });
+      const revisitBar = preserveTraceProps({
+        oldProps: afterScatterAgain.props,
+        oldType: 'scatter',
+        newType: 'bar',
+        newSchema: barSchema,
+        typePropsCache: afterScatterAgain.typePropsCache,
+      });
+      // mode/line don't carry forward to bar again, but bar was visited
+      // before — no fresh warning.
+      expect(revisitBar.dropped).toEqual([]);
+    });
+
+    it('does not warn when oldType is falsy (no prior type to have dropped anything from)', () => {
+      const { dropped } = preserveTraceProps({
+        oldProps: { x: [1], mode: 'lines' },
+        oldType: null,
+        newType: 'bar',
+        newSchema: barSchema,
+        typePropsCache: {},
+      });
+      expect(dropped).toEqual(['mode']);
+    });
   });
 });

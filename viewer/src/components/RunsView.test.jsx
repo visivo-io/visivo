@@ -113,6 +113,79 @@ describe('RunsView is self-contained (6c-T2 dark-on-dark hardening)', () => {
   });
 });
 
+describe('RunsView — RunDetail meta + console-text fallback chain', () => {
+  test('a queued run with no dag_filter shows "not set yet" in its OWN detail meta row (distinct from the list Scope column)', () => {
+    mockQueries({ runs: [run({ state: 'queued', dag_filter: '' })] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /queued/i }));
+    expect(screen.getByText('not set yet')).toBeInTheDocument();
+  });
+
+  test('a terminal run with no dag_filter shows "all (full rebuild)" in its detail meta', () => {
+    mockQueries({ runs: [run({ state: 'succeeded', dag_filter: '' })] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /succeeded/i }));
+    expect(screen.getByText('all (full rebuild)')).toBeInTheDocument();
+  });
+
+  test('missing created_at / updated_at render the — placeholder instead of a date', () => {
+    mockQueries({ runs: [run({ state: 'succeeded', created_at: null, updated_at: null })] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /succeeded/i }));
+    // Two placeholder rows (Created + Updated) plus the list's own Created cell.
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('a superseded run shows the extra "Superseded" meta row', () => {
+    mockQueries({ runs: [run({ state: 'succeeded', is_superseded: true })] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /succeeded/i }));
+    expect(screen.getByText('Superseded')).toBeInTheDocument();
+    expect(screen.getByText('A newer run replaced this one.')).toBeInTheDocument();
+  });
+
+  test('a non-superseded run never shows the Superseded row', () => {
+    mockQueries({ runs: [run({ state: 'succeeded', is_superseded: false })] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /succeeded/i }));
+    expect(screen.queryByText('Superseded')).not.toBeInTheDocument();
+  });
+
+  test('an error with logs_tail but no .error field surfaces logs_tail as the console text', () => {
+    mockQueries({
+      runs: [run({ state: 'failed', error_json: { logs_tail: 'tail output only' } })],
+      log: undefined,
+    });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /failed/i }));
+    expect(screen.getByText('tail output only')).toBeInTheDocument();
+    // No `err.phase` on this fixture → the heading has no " — phase" suffix.
+    expect(screen.getByText('Error')).toBeInTheDocument();
+  });
+
+  test('an active run with no log yet and no error shows the "Waiting for output…" placeholder', () => {
+    mockQueries({ runs: [run({ state: 'running' })], log: undefined });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /running/i }));
+    expect(screen.getByText('Waiting for output…')).toBeInTheDocument();
+  });
+
+  test('a terminal run with no log and no error shows "No output captured."', () => {
+    mockQueries({ runs: [run({ state: 'canceled', error_json: null })], log: undefined });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /canceled/i }));
+    expect(screen.getByText('No output captured.')).toBeInTheDocument();
+  });
+
+  test('an unmapped/unknown run state falls back to the generic gray badge', () => {
+    mockQueries({ runs: [run({ state: 'weird_future_state', dag_filter: '' })] });
+    render(<RunsView />);
+    const badge = screen.getByText('weird_future_state');
+    expect(badge.className).toContain('bg-gray-100');
+    expect(badge.className).toContain('text-gray-800');
+  });
+});
+
 describe('RunsView detail expansion', () => {
   test('expanding a run shows its captured log, labeled Logs', () => {
     mockQueries({

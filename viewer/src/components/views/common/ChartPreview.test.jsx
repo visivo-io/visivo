@@ -12,15 +12,26 @@ jest.mock('../../items/Chart', () => {
       <span data-testid="chart-layout">{JSON.stringify(chart?.layout)}</span>
       <span data-testid="chart-config">{JSON.stringify(plotlyConfig)}</span>
       {onRelayout && (
-        <button
-          data-testid="trigger-relayout"
-          onClick={() =>
-            onRelayout({
-              'title.text': 'Edited Title',
-              'xaxis.title.text': 'Edited X',
-            })
-          }
-        />
+        <>
+          <button
+            data-testid="trigger-relayout"
+            onClick={() =>
+              onRelayout({
+                'title.text': 'Edited Title',
+                'xaxis.title.text': 'Edited X',
+              })
+            }
+          />
+          <button
+            data-testid="trigger-relayout-yaxis"
+            onClick={() => onRelayout({ 'yaxis.title.text': 'Edited Y' })}
+          />
+          <button
+            data-testid="trigger-relayout-irrelevant"
+            onClick={() => onRelayout({ 'some.other.key': 'ignored' })}
+          />
+          <button data-testid="trigger-relayout-falsy" onClick={() => onRelayout(null)} />
+        </>
       )}
     </div>
   ));
@@ -151,6 +162,23 @@ describe('ChartPreview (presentational)', () => {
     );
   });
 
+  it('shows empty state when insightKeys is omitted entirely (insightKeys || [] fallback)', () => {
+    render(<ChartPreview chartConfig={chartConfig} projectId="p" />);
+    expect(screen.getByTestId('chart-preview-empty')).toBeInTheDocument();
+  });
+
+  it('accepts an error object with no .message property at all (String() fallback)', () => {
+    render(
+      <ChartPreview
+        chartConfig={chartConfig}
+        insightKeys={['__preview__a']}
+        projectId="p"
+        error={{ code: 'WEIRD_FAILURE' }}
+      />
+    );
+    expect(screen.getByTestId('chart-preview-error-technical')).toHaveTextContent('[object Object]');
+  });
+
   it('shows empty state when insightKeys is empty', () => {
     render(<ChartPreview chartConfig={chartConfig} insightKeys={[]} projectId="p" />);
     expect(screen.getByTestId('chart-preview-empty')).toBeInTheDocument();
@@ -209,5 +237,64 @@ describe('ChartPreview (presentational)', () => {
     );
     const config = JSON.parse(screen.getByTestId('chart-config').textContent);
     expect(config.editable).toBe(true);
+  });
+
+  it('calls onLayoutChange with an extracted yaxis title edit from relayout', () => {
+    const onLayoutChange = jest.fn();
+    render(
+      <ChartPreview
+        chartConfig={chartConfig}
+        insightKeys={['__preview__a']}
+        projectId="p"
+        onLayoutChange={onLayoutChange}
+        editableLayout={true}
+      />
+    );
+    fireEvent.click(screen.getByTestId('trigger-relayout-yaxis'));
+    expect(onLayoutChange).toHaveBeenCalledWith({ yaxis: { title: { text: 'Edited Y' } } });
+  });
+
+  it('never calls onLayoutChange when the relayout update carries no recognized keys', () => {
+    const onLayoutChange = jest.fn();
+    render(
+      <ChartPreview
+        chartConfig={chartConfig}
+        insightKeys={['__preview__a']}
+        projectId="p"
+        onLayoutChange={onLayoutChange}
+        editableLayout={true}
+      />
+    );
+    fireEvent.click(screen.getByTestId('trigger-relayout-irrelevant'));
+    expect(onLayoutChange).not.toHaveBeenCalled();
+  });
+
+  it('a falsy relayout update is a no-op, never throws and never calls onLayoutChange', () => {
+    const onLayoutChange = jest.fn();
+    render(
+      <ChartPreview
+        chartConfig={chartConfig}
+        insightKeys={['__preview__a']}
+        projectId="p"
+        onLayoutChange={onLayoutChange}
+        editableLayout={true}
+      />
+    );
+    expect(() => fireEvent.click(screen.getByTestId('trigger-relayout-falsy'))).not.toThrow();
+    expect(onLayoutChange).not.toHaveBeenCalled();
+  });
+
+  it('relayout is a safe no-op (never throws) when no onLayoutChange callback was provided at all', () => {
+    render(
+      <ChartPreview chartConfig={chartConfig} insightKeys={['__preview__a']} projectId="p" editableLayout={true} />
+    );
+    expect(() => fireEvent.click(screen.getByTestId('trigger-relayout'))).not.toThrow();
+  });
+
+  it('falls back to a default name and default layout margins when chartConfig is omitted entirely', () => {
+    render(<ChartPreview insightKeys={['__preview__a']} projectId="p" />);
+    expect(screen.getByTestId('chart-name')).toHaveTextContent('Preview Chart');
+    const layout = JSON.parse(screen.getByTestId('chart-layout').textContent);
+    expect(layout).toEqual({ autosize: true, margin: { l: 70, r: 70, t: 50, b: 70 } });
   });
 });
