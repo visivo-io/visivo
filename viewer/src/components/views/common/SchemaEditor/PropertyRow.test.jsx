@@ -37,6 +37,7 @@ const draggableData = {};
 // can be exercised without a real dnd-kit pointer drag (jsdom can't simulate
 // one). Reset to false in `beforeEach` below.
 let mockIsOver = false;
+let mockIsDragging = false;
 jest.mock('@dnd-kit/core', () => ({
   useDroppable: ({ id, data, disabled }) => {
     droppableData[id] = { data, disabled };
@@ -44,7 +45,7 @@ jest.mock('@dnd-kit/core', () => ({
   },
   useDraggable: ({ id, data, disabled }) => {
     draggableData[id] = { data, disabled };
-    return { attributes: {}, listeners: {}, setNodeRef: () => {}, isDragging: false };
+    return { attributes: {}, listeners: {}, setNodeRef: () => {}, isDragging: mockIsDragging };
   },
 }));
 
@@ -79,11 +80,18 @@ describe('PropertyRow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsOver = false;
+    mockIsDragging = false;
     mockActiveDrag = null;
   });
 
   it('renders with property path', () => {
     render(<PropertyRow {...defaultProps} />);
+    expect(screen.getByText('marker.color')).toBeInTheDocument();
+  });
+
+  it('tolerates a missing `defs` prop entirely (defaults to {})', () => {
+    const { defs: _omit, ...propsWithoutDefs } = defaultProps;
+    expect(() => render(<PropertyRow {...propsWithoutDefs} />)).not.toThrow();
     expect(screen.getByText('marker.color')).toBeInTheDocument();
   });
 
@@ -842,6 +850,21 @@ describe('PropertyRow', () => {
         expect(entry.data.raw).toBe('${ref(orders_q).amount}');
       });
 
+      test('mid-drag, the pill gets a reduced-opacity class', () => {
+        mockIsDragging = true;
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        expect(screen.getByTestId('property-pill-x').className).toMatch(/opacity-50/);
+      });
+
       test('the drag source is DISABLED when no pill is showing (opaque/raw-edit rows have nothing to drag)', () => {
         render(
           <PropertyRow
@@ -907,6 +930,22 @@ describe('PropertyRow', () => {
         const pill = screen.getByTestId('property-pill-x');
         fireEvent.keyDown(pill, { key: ' ' });
         expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+      });
+
+      test('an unrelated key (e.g. Tab) never opens the menu', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        const pill = screen.getByTestId('property-pill-x');
+        fireEvent.keyDown(pill, { key: 'Tab' });
+        expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
       });
     });
 
