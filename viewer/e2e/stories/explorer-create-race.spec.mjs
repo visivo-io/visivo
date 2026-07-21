@@ -34,10 +34,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const API = BASE_URL.replace(':3001', ':8001');
+import { BASE_URL, API } from '../helpers/sandbox.mjs';
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);

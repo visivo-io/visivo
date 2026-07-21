@@ -28,10 +28,7 @@
 
 import { test, expect } from '@playwright/test';
 import { typeSql } from '../helpers/explorer.mjs';
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const API = BASE_URL.replace(':3001', ':8001');
+import { BASE_URL, API } from '../helpers/sandbox.mjs';
 
 /** `typeSql` + a verify-and-retry guard (mirrors exploration-lifecycle.spec.mjs's
  * identical helper) — under concurrent-load contention, typing before the

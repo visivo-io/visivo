@@ -37,10 +37,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const API = BASE_URL.replace(':3001', ':8001');
+import { BASE_URL, API } from '../helpers/sandbox.mjs';
+import { focusSqlEditor } from '../helpers/explorer.mjs';
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);
@@ -137,7 +135,7 @@ test.describe('Cold-session default-source race (VIS-1082)', () => {
     // persisted once the user runs/saves — not just a UI-only patch that
     // reverts on reload. Type SQL so a query genuinely exists, then let the
     // draft-sync settle and read the persisted source back.
-    await page.locator('.view-lines').first().click({ timeout: 10000 });
+    await focusSqlEditor(page);
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+a`);
     await page.keyboard.type('SELECT 1 AS cold_session_marker', { delay: 5 });

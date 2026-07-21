@@ -39,6 +39,7 @@
 
 import { test, expect } from '@playwright/test';
 import { typeSql } from '../helpers/explorer.mjs';
+import { BASE_URL, API } from '../helpers/sandbox.mjs';
 
 /**
  * `typeSql` + a verify-and-retry guard. Under heavy concurrent-load
@@ -72,8 +73,6 @@ async function typeSqlReliably(page, sql) {
 // workspace-tabs-shortcuts.spec.mjs's own MOD constant).
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
 
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
 // Explorations are S3'd to a single file-backed repository shared by every
 // test in this suite (`.visivo/explorations/` — see ExplorationRepository).
 // Runs serially (playwright.config.mjs's `exploration-mutations` project)
@@ -81,7 +80,6 @@ const BASE_URL =
 // records; belt-and-suspenders cleanup keeps the directory from growing
 // across repeated runs — diff the id list before/after and delete whatever
 // a test created.
-const API = BASE_URL.replace(':3001', ':8001');
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);
