@@ -256,6 +256,31 @@ describe('PillMenu', () => {
       expect(onSaveAsMetric).toHaveBeenCalledTimes(1);
       expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
     });
+
+    // ux-audit.md "Save-as-metric flow is solid but 'Save as metric' disabled
+    // state gives no visible reason": a native `title` attribute only shows
+    // on hover — a visible line is required so the reason isn't invisible
+    // until the user happens to hover a greyed-out item.
+    test('a disabled "Save as metric…" shows a VISIBLE reason, not just a hover title', () => {
+      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }} />);
+      openMenu();
+      expect(screen.getByTestId('pill-menu-save-as-metric-disabled-hint')).toHaveTextContent(
+        'Only an aggregate pill'
+      );
+    });
+
+    test('no visible disabled-reason line once "Save as metric…" is enabled', () => {
+      render(
+        <PillMenu
+          state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
+          onSaveAsMetric={jest.fn()}
+        />
+      );
+      openMenu();
+      expect(
+        screen.queryByTestId('pill-menu-save-as-metric-disabled-hint')
+      ).not.toBeInTheDocument();
+    });
   });
 
   test('"Custom aggregation…" calls onCustomAggregation and closes the menu', () => {

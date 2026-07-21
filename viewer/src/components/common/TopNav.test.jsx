@@ -320,6 +320,22 @@ describe('TopNav', () => {
       fireEvent.click(screen.getByText('Alpha'));
       expect(screen.queryByText('PROJECTS')).not.toBeInTheDocument();
     });
+
+    // ux-audit.md "Top-left 'Project' pill appears to do nothing" — a
+    // non-interactive pill (nothing to switch to) now explains itself via a
+    // tooltip instead of silently doing nothing on click.
+    it('a single project pill explains itself via a title tooltip rather than doing nothing', () => {
+      renderNav({ projects: [projects[0]], currentProject: projects[0] });
+      expect(screen.getByRole('button', { name: 'Alpha' })).toHaveAttribute(
+        'title',
+        expect.stringContaining('only project')
+      );
+    });
+
+    it('a multi-project pill carries no such tooltip (it really does open a menu)', () => {
+      renderNav({ projects, currentProject: projects[0] });
+      expect(screen.getByRole('button', { name: 'Alpha' })).not.toHaveAttribute('title');
+    });
   });
 
   describe('version history (cloud)', () => {

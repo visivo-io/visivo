@@ -35,7 +35,7 @@ describe('ExplorationCard', () => {
   });
 
   // Explore 2.0 Phase 4 (01-ux-spec.md §2): "promotion count arrives in Phase 4".
-  test('omits the promoted count when nothing has been promoted yet', () => {
+  test('omits the saved-to-project count when nothing has been saved yet', () => {
     render(
       <ExplorationCard
         exploration={exploration({ promoted: [] })}
@@ -45,10 +45,10 @@ describe('ExplorationCard', () => {
         onDelete={jest.fn()}
       />
     );
-    expect(screen.getByTestId('exploration-card-exp_1-summary')).not.toHaveTextContent('promoted');
+    expect(screen.getByTestId('exploration-card-exp_1-summary')).not.toHaveTextContent('saved to project');
   });
 
-  test('shows the promoted count once the exploration has real promotions', () => {
+  test('shows the saved-to-project count once the exploration has real promotions', () => {
     render(
       <ExplorationCard
         exploration={exploration({
@@ -63,7 +63,7 @@ describe('ExplorationCard', () => {
         onDelete={jest.fn()}
       />
     );
-    expect(screen.getByTestId('exploration-card-exp_1-summary')).toHaveTextContent('2 promoted');
+    expect(screen.getByTestId('exploration-card-exp_1-summary')).toHaveTextContent('2 saved to project');
   });
 
   test('renders a provenance chip when seededFrom is set', () => {

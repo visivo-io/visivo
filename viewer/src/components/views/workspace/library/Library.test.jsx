@@ -715,4 +715,39 @@ describe('Library', () => {
     );
   });
 
+  // ux-audit.md "Left-rail footer help text is context-blind" + "Sidebar
+  // footer shows dashboard-canvas help text ('Drag a layout item onto the
+  // canvas...') on the Explorer surface" — the footer must not advertise a
+  // canvas that doesn't exist on the current surface.
+  describe('footer hint (context-aware, not canvas-blind)', () => {
+    test('on a dashboard, keeps the canvas hint (there really is one)', () => {
+      seedStore();
+      renderLibrary('/workspace/dashboard/overview');
+      expect(screen.getByTestId('library-footer-hint')).toHaveTextContent(
+        'Drag a layout item onto the canvas'
+      );
+    });
+
+    test('on the Project root (no dashboard, no tab open), drops the canvas hint', () => {
+      seedStore();
+      renderLibrary('/workspace');
+      expect(screen.getByTestId('library-footer-hint')).not.toHaveTextContent(
+        'Drag a layout item onto the canvas'
+      );
+      expect(screen.getByTestId('library-footer-hint')).toHaveTextContent(
+        'Click a data object to edit it.'
+      );
+    });
+
+    test('on an open exploration tab, shows exploration-specific guidance, never the canvas line', () => {
+      seedStore({
+        workspaceTabs: [{ id: 'exploration:exp_1', type: 'exploration', name: 'exp_1', dirty: false }],
+        workspaceActiveTabId: 'exploration:exp_1',
+      });
+      renderLibrary();
+      const hint = screen.getByTestId('library-footer-hint');
+      expect(hint).not.toHaveTextContent('Drag a layout item onto the canvas');
+      expect(hint).toHaveTextContent('exploration');
+    });
+  });
 });

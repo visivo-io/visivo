@@ -475,10 +475,13 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
       timeout: 10000,
     });
 
-    // Explorer Home card shows the promotion count.
+    // Explorer Home card shows the promotion count. D11 — "saved to
+    // project" is the user-facing vocabulary; "promote"/"promoted" are
+    // internal-only now (08-ux-overhaul.md's decision D11).
     await gotoExplorerHome(page);
-    await expect(page.getByTestId(`exploration-card-${id}-summary`)).toContainText('promoted', {
-      timeout: 15000,
-    });
+    await expect(page.getByTestId(`exploration-card-${id}-summary`)).toContainText(
+      'saved to project',
+      { timeout: 15000 }
+    );
   });
 });

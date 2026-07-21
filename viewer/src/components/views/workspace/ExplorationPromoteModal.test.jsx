@@ -24,6 +24,13 @@ beforeEach(() => {
     promoteExploration: jest.fn().mockResolvedValue({ success: true, results: [], reclassificationOffers: [] }),
     setInsightProp: jest.fn(),
     updateInsightInteraction: jest.fn(),
+    // Naming step (D11) — every test gets a harmless no-op unless it
+    // specifically wants to assert a rename call; only rows with a generic
+    // placeholder name (query_1/model/insight/chart) ever trigger these.
+    renameModelTab: jest.fn(),
+    renameInsight: jest.fn(),
+    setChartName: jest.fn(),
+    explorerModelStates: {},
   });
 });
 
@@ -84,7 +91,7 @@ describe('ExplorationPromoteModal', () => {
     );
     expect(screen.getByTestId('promote-row-model-bad-checkbox')).not.toBeChecked();
     expect(screen.getByTestId('promote-row-model-bad-checkbox')).toBeDisabled();
-    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Promote 1 selected');
+    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project');
   });
 
   test('a failed row is visible, flagged, and un-checkable — never blocks a valid sibling', async () => {
@@ -100,7 +107,7 @@ describe('ExplorationPromoteModal', () => {
     );
     // Clicking the disabled checkbox does nothing.
     fireEvent.click(screen.getByTestId('promote-row-model-bad_ratio-checkbox'));
-    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Promote 1 selected');
+    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project');
   });
 
   test('a "modified" row shows "updates existing ✎"', async () => {
@@ -116,9 +123,9 @@ describe('ExplorationPromoteModal', () => {
   test('unchecking a row excludes it from the selection count', async () => {
     buildPromoteChecklist.mockResolvedValue([row(), row({ tier: 'insight', type: 'insight', name: 'i' })]);
     render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
-    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Promote 2 selected'));
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 2 to project'));
     fireEvent.click(screen.getByTestId('promote-row-model-orders_q-checkbox'));
-    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Promote 1 selected');
+    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project');
   });
 
   test('Promote submit button is disabled with zero rows selected', async () => {
@@ -146,10 +153,10 @@ describe('ExplorationPromoteModal', () => {
     );
     // Deliberately does NOT auto-close on the common all-valid, no-collision
     // path: `setPromotedThisRun` and a same-tick `onClose()` would land in
-    // the same React commit, so the "Promoted N objects" confirmation would
+    // the same React commit, so the "Saved N objects to project" confirmation would
     // never actually paint. The user reviews it and dismisses via "Close".
     expect(await screen.findByTestId('exploration-promote-success')).toHaveTextContent(
-      'Promoted 1 object.'
+      'Saved 1 object to project.'
     );
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByTestId('exploration-promote-cancel')).toHaveTextContent('Close');
@@ -202,7 +209,7 @@ describe('ExplorationPromoteModal', () => {
     await screen.findByTestId('exploration-promote-error');
     // Both banners coexist — the failure of 'flaky' must never hide that
     // 'orders_q' really did promote.
-    expect(screen.getByTestId('exploration-promote-success')).toHaveTextContent('Promoted 1 object');
+    expect(screen.getByTestId('exploration-promote-success')).toHaveTextContent('Saved 1 object to project');
   });
 
   // Overall success===false but zero rows actually succeeded — the success
@@ -771,6 +778,170 @@ describe('ExplorationPromoteModal', () => {
         name: 'semantic-layer',
       });
       expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  // D11 / ux-audit.md "Promote has no naming step — project polluted with
+  // 'query_1' and 'insight'" + "Promote dialog will publish objects named
+  // 'chart'/'insight' with no rename step".
+  describe('naming step (D11)', () => {
+    test('a new model/insight/chart row renders as an editable name field, not static text', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        row(),
+        row({ tier: 'insight', type: 'insight', name: 'churn_by_cohort' }),
+        row({ tier: 'chart', type: 'chart', name: 'churn_chart' }),
+      ]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      expect(await screen.findByTestId('promote-row-model-orders_q-name-input')).toHaveValue('orders_q');
+      expect(screen.getByTestId('promote-row-insight-churn_by_cohort-name-input')).toHaveValue(
+        'churn_by_cohort'
+      );
+      expect(screen.getByTestId('promote-row-chart-churn_chart-name-input')).toHaveValue('churn_chart');
+    });
+
+    test('a field (metric/dimension) row is never a rename field — it is already user-named', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        row({ tier: 'field', type: 'metric', name: 'churn_rate', parentModel: 'orders_q' }),
+      ]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await screen.findByTestId('promote-row-metric-churn_rate');
+      expect(
+        screen.queryByTestId('promote-row-metric-churn_rate-name-input')
+      ).not.toBeInTheDocument();
+    });
+
+    test('a "modified" (update-by-name) row is never a rename field — its real name is not up for grabs', async () => {
+      buildPromoteChecklist.mockResolvedValue([row({ status: 'modified' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await screen.findByTestId('promote-row-model-orders_q');
+      expect(
+        screen.queryByTestId('promote-row-model-orders_q-name-input')
+      ).not.toBeInTheDocument();
+    });
+
+    test('a brand-new model row still carrying a generic placeholder name is auto-suggested a real one, anchored on its bound source', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({
+        renameModelTab,
+        explorerModelStates: { query_1: { sourceName: 'orders' } },
+      });
+      // Only ONE buildPromoteChecklist call — applying the suggestion
+      // patches the already-fetched row locally rather than re-fetching
+      // (a real e2e regression: a second full checklist rebuild here, each
+      // row re-validated over the network, is exactly what pushed several
+      // "click Save, then immediately click Submit" stories past their
+      // assumed-instant window and timed them out).
+      buildPromoteChecklist.mockResolvedValue([row({ name: 'query_1' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders_query'));
+      expect(buildPromoteChecklist).toHaveBeenCalledTimes(1);
+      expect(
+        await screen.findByTestId('promote-row-model-orders_query-name-input')
+      ).toHaveValue('orders_query');
+    });
+
+    test('a field row referencing a just-renamed model shows the model\'s NEW name in its "(→ …)" suffix', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({
+        renameModelTab,
+        explorerModelStates: { query_1: { sourceName: 'orders' } },
+      });
+      buildPromoteChecklist.mockResolvedValue([
+        row({ name: 'query_1' }),
+        row({ tier: 'field', type: 'metric', name: 'total', parentModel: 'query_1' }),
+      ]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders_query'));
+      expect(await screen.findByTestId('promote-row-metric-total')).toHaveTextContent(
+        '(→ orders_query)'
+      );
+    });
+
+    test('a generic name with no resolvable anchor (no bound source) is left as-is — still editable, never guessed', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab, explorerModelStates: { query_1: {} } });
+      buildPromoteChecklist.mockResolvedValue([row({ name: 'query_1' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      expect(await screen.findByTestId('promote-row-model-query_1-name-input')).toHaveValue('query_1');
+      expect(renameModelTab).not.toHaveBeenCalled();
+    });
+
+    test('committing a valid new name renames the row via the store action and the checklist reflects it', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist
+        .mockResolvedValueOnce([row()])
+        .mockResolvedValueOnce([row({ name: 'daily_orders' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'daily_orders' } });
+      fireEvent.blur(input);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+      expect(
+        await screen.findByTestId('promote-row-model-daily_orders-name-input')
+      ).toHaveValue('daily_orders');
+    });
+
+    test('an invalid name shows a human validation message inline and never calls the rename action', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'not a valid name!' } });
+      fireEvent.blur(input);
+      expect(
+        await screen.findByTestId('promote-row-model-orders_q-name-error')
+      ).toHaveTextContent('letters, numbers');
+      expect(renameModelTab).not.toHaveBeenCalled();
+    });
+
+    test('a name collision surfaces the store action\'s own error message inline, never a raw exception', async () => {
+      const collisionError = new Error('Name "orders" is already in use by a model. Choose a different name.');
+      collisionError.code = 'NAME_COLLISION';
+      const renameModelTab = jest.fn(() => {
+        throw collisionError;
+      });
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'orders' } });
+      fireEvent.blur(input);
+      expect(
+        await screen.findByTestId('promote-row-model-orders_q-name-error')
+      ).toHaveTextContent('already in use');
+    });
+
+    test('re-typing the exact same name on blur is a no-op — no rename call, no error', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.blur(input);
+      expect(renameModelTab).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('promote-row-model-orders_q-name-error')
+      ).not.toBeInTheDocument();
+    });
+
+    test('a mix of new and "modified" rows shows the overwrite-explainer banner', async () => {
+      buildPromoteChecklist.mockResolvedValue([
+        row({ name: 'orders_q', status: 'modified' }),
+        row({ tier: 'insight', type: 'insight', name: 'churn_by_cohort' }),
+      ]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      expect(await screen.findByTestId('exploration-promote-update-notice')).toHaveTextContent(
+        'overwrite the object of that name already in your project'
+      );
+    });
+
+    test('an all-new checklist never shows the overwrite-explainer banner', async () => {
+      buildPromoteChecklist.mockResolvedValue([row({ status: 'new' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await screen.findByTestId('promote-row-model-orders_q');
+      expect(screen.queryByTestId('exploration-promote-update-notice')).not.toBeInTheDocument();
     });
   });
 });

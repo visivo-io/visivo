@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { PiPlus, PiFloppyDisk, PiCheckCircle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { selectHasModifications } from '../../../stores/explorerStore';
@@ -53,9 +53,20 @@ const ExplorationBuildRail = ({ explorationId }) => {
   const createInsight = useStore(s => s.createInsight);
   const hasChanges = useStore(selectHasModifications);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
-  const promoted = useStore(s =>
+  const promotedRaw = useStore(s =>
     explorationId ? s.workspaceExplorations?.byId?.[explorationId]?.promoted || EMPTY_PROMOTED : EMPTY_PROMOTED
   );
+  // D11 / ux-audit.md "PROMOTED ledger duplicates entries (query_1 · model
+  // listed twice)": the backend record is an append-only log (each promote
+  // run appends a fresh entry, even for an object saved before), so the
+  // SAME object can legitimately appear more than once. The trail is a
+  // status list ("what's in my project"), not a history — dedupe by
+  // `type:name`, keeping the LAST (most recent) entry for each.
+  const promoted = useMemo(() => {
+    const byKey = new Map();
+    promotedRaw.forEach(p => byKey.set(`${p.type}:${p.name}`, p));
+    return Array.from(byKey.values());
+  }, [promotedRaw]);
 
   const [chartExpanded, setChartExpanded] = useState(true);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -120,34 +131,48 @@ const ExplorationBuildRail = ({ explorationId }) => {
           Add Insight
         </button>
 
-        {/* Promoted trail (01-ux-spec.md §3b) — each entry links to its real,
-            now-published object. */}
+        {/* Saved-to-project trail (01-ux-spec.md §3b) — each entry links to
+            its real, now-published object. D11: "promote" is internal-only
+            vocabulary now — this heading and its caption use the single
+            user-facing verb ("Save to project") and signpost the SECOND,
+            separate step (global Commit) rather than leaving the user to
+            infer it from an unexplained "Commit" button appearing in the
+            nav (ux-audit.md "Save / Promote / Commit: three words, one
+            journey, zero signposting"). */}
         <div data-testid="exploration-promoted-trail" className="border-t border-gray-100 pt-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wide">
-            Promoted
+          <label className="block text-xs font-medium text-gray-400 mb-0.5 uppercase tracking-wide">
+            Saved to project
           </label>
           {promoted.length === 0 ? (
             <p className="text-xs text-gray-400 py-1">
-              Objects you Save to Project will appear here.
+              Objects you save to project will appear here.
             </p>
           ) : (
-            <ul className="space-y-1">
-              {promoted.map((p, i) => (
-                <li key={`${p.type}:${p.name}:${i}`}>
-                  <button
-                    type="button"
-                    data-testid={`exploration-promoted-item-${p.type}-${p.name}`}
-                    onClick={() => handleOpenPromoted(p)}
-                    className="flex w-full items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 hover:underline text-left"
-                  >
-                    <PiCheckCircle size={12} className="text-green-500 flex-shrink-0" />
-                    <span className="truncate">{p.name}</span>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-gray-400">{p.type}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p
+                className="text-[10px] text-gray-400 mb-1"
+                title="Saved objects are written to your project files but not committed yet — use Commit in the top bar to make them permanent."
+              >
+                pending commit
+              </p>
+              <ul className="space-y-1">
+                {promoted.map(p => (
+                  <li key={`${p.type}:${p.name}`}>
+                    <button
+                      type="button"
+                      data-testid={`exploration-promoted-item-${p.type}-${p.name}`}
+                      onClick={() => handleOpenPromoted(p)}
+                      className="flex w-full items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 hover:underline text-left"
+                    >
+                      <PiCheckCircle size={12} className="text-green-500 flex-shrink-0" />
+                      <span className="truncate">{p.name}</span>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-gray-400">{p.type}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       </div>
@@ -161,7 +186,7 @@ const ExplorationBuildRail = ({ explorationId }) => {
           className="flex items-center justify-center gap-2 w-full py-2 px-4 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <PiFloppyDisk size={16} />
-          Save to Project
+          Save to project…
         </button>
       </div>
       {showSaveModal && (

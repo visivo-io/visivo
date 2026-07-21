@@ -56,6 +56,29 @@ import ViewSwitcher from '../ViewSwitcher';
 // record in `models` and falling into create-SQL-model mode.
 const routeType = obj => obj.canonicalType || obj.type;
 
+// ux-audit.md "Left-rail footer help text is context-blind" + "Sidebar
+// footer shows dashboard-canvas help text ('Drag a layout item onto the
+// canvas...') on the Explorer surface" — the footer used to hardcode the
+// dashboard-canvas hint on every surface, including Explorer/exploration
+// screens where there is no canvas to drag onto at all. Scoped by
+// `useWorkspaceScope()`'s own `scope`/`selectedItem` (already the single
+// source of truth every other Library behavior reads).
+export function libraryFooterHint(scope) {
+  if (scope?.selectedItem?.type === 'exploration') {
+    return 'Drag a column onto a chart field to map it. Click a data object to add it to your exploration.';
+  }
+  if (scope?.scope === 'explorer') {
+    return 'Click a source tile to start exploring, or click an existing object to explore it.';
+  }
+  if (scope?.scope === 'dashboard') {
+    return 'Drag a layout item onto the canvas. Click a data object to edit it.';
+  }
+  if (scope?.scope === 'semantic-layer') {
+    return 'Click a model on the diagram, or a data object here, to edit it.';
+  }
+  return 'Click a data object to edit it.';
+}
+
 const Library = () => {
   const data = useLibraryData();
   const scope = useWorkspaceScope();
@@ -453,8 +476,11 @@ const Library = () => {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-gray-200 px-3 py-2 text-[11px] text-gray-400">
-        Drag a layout item onto the canvas. Click a data object to edit it.
+      <div
+        data-testid="library-footer-hint"
+        className="shrink-0 border-t border-gray-200 px-3 py-2 text-[11px] text-gray-400"
+      >
+        {libraryFooterHint(scope)}
       </div>
     </aside>
   );

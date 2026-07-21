@@ -134,7 +134,7 @@ const ExplorationCard = ({
             editedLabel,
             `${queryCount} ${queryCount === 1 ? 'query' : 'queries'}`,
             `${insightCount} ${insightCount === 1 ? 'insight' : 'insights'}`,
-            promotedCount > 0 ? `${promotedCount} promoted` : null,
+            promotedCount > 0 ? `${promotedCount} saved to project` : null,
           ]
             .filter(Boolean)
             .join(' · ')}

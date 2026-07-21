@@ -171,7 +171,7 @@ describe('ExplorationBuildRail', () => {
     it('shows the empty-state hint when no explorationId is given', () => {
       render(<ExplorationBuildRail />);
       expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
-        'Objects you Save to Project will appear here.'
+        'Objects you save to project will appear here.'
       );
     });
 
@@ -184,7 +184,7 @@ describe('ExplorationBuildRail', () => {
       });
       render(<ExplorationBuildRail explorationId="exp_a1" />);
       expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
-        'Objects you Save to Project will appear here.'
+        'Objects you save to project will appear here.'
       );
     });
 
@@ -209,7 +209,7 @@ describe('ExplorationBuildRail', () => {
         screen.getByTestId('exploration-promoted-item-insight-churn_by_cohort')
       ).toBeInTheDocument();
       expect(
-        screen.queryByText('Objects you Save to Project will appear here.')
+        screen.queryByText('Objects you save to project will appear here.')
       ).not.toBeInTheDocument();
     });
 
@@ -235,5 +235,66 @@ describe('ExplorationBuildRail', () => {
         name: 'orders_q',
       });
     });
+
+    // D11 / ux-audit.md "PROMOTED ledger duplicates entries (query_1 · model
+    // listed twice)": the backend record is an append-only log, so the same
+    // object can legitimately appear more than once across repeated saves —
+    // the trail must still show each object exactly once.
+    it('dedupes repeated entries for the same object, keeping only one row', () => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: {
+            exp_a1: {
+              id: 'exp_a1',
+              promoted: [
+                { type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:00:00Z' },
+                { type: 'insight', name: 'insight_1', promoted_at: '2026-01-01T00:00:01Z' },
+                { type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:05:00Z' },
+              ],
+            },
+          },
+          order: ['exp_a1'],
+        },
+      });
+      render(<ExplorationBuildRail explorationId="exp_a1" />);
+      expect(
+        screen.getAllByTestId('exploration-promoted-item-model-orders_q')
+      ).toHaveLength(1);
+      expect(
+        screen.getByTestId('exploration-promoted-item-insight-insight_1')
+      ).toBeInTheDocument();
+    });
+
+    it('shows the pending-commit caption once anything has been saved to project', () => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: {
+            exp_a1: {
+              id: 'exp_a1',
+              promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:00:00Z' }],
+            },
+          },
+          order: ['exp_a1'],
+        },
+      });
+      render(<ExplorationBuildRail explorationId="exp_a1" />);
+      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent('pending commit');
+    });
+
+    it('does not show the pending-commit caption while nothing has been saved yet', () => {
+      render(<ExplorationBuildRail />);
+      expect(screen.getByTestId('exploration-promoted-trail')).not.toHaveTextContent(
+        'pending commit'
+      );
+    });
+  });
+
+  // D11 — the single user-facing verb for this whole chain is "Save to
+  // project", never "Promote".
+  it('the CTA reads "Save to project…", never "Promote"', () => {
+    render(<ExplorationBuildRail />);
+    const button = screen.getByTestId('explorer-save-button');
+    expect(button).toHaveTextContent('Save to project…');
+    expect(button).not.toHaveTextContent(/promote/i);
   });
 });

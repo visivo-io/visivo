@@ -224,6 +224,12 @@ function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, c
   const multiProject = projects.length > 1;
   const stageBtn = (
     <button
+      // ux-audit.md "Top-left 'Project' pill appears to do nothing" (the
+      // same finding covers this Stage segment — clicking either non-
+      // interactive pill gave no feedback at all): a plain-label pill (no
+      // dropdown to open) now explains itself on hover instead of looking
+      // like a dead button.
+      title={stageOpens ? undefined : `${currentStage.name} — the only environment available here`}
       style={{
         display: 'flex', alignItems: 'center', gap: 7, background: currentStage.color, color: '#fff',
         border: 'none', cursor: stageOpens ? 'pointer' : 'default', padding: '7px 12px', fontSize: 12.5,
@@ -238,6 +244,11 @@ function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, c
   );
   const projectBtn = (
     <button
+      title={
+        multiProject
+          ? undefined
+          : `${currentProject.name || currentProject.id} — this is your only project here`
+      }
       style={{
         display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,.06)', color: '#fff',
         border: 'none', borderLeft: `1px solid ${HAIR}`, cursor: multiProject ? 'pointer' : 'default',
