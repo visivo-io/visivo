@@ -394,4 +394,88 @@ describe('ChartBuildSection', () => {
       expect(screen.queryByTestId('chart-rename-error')).not.toBeInTheDocument();
     });
   });
+
+  it('tolerates `charts` being undefined (not just empty) — no crash, treated as not-loaded', async () => {
+    useStore.setState({ charts: undefined });
+    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    const nameEl = await screen.findByTestId('chart-name-input');
+    expect(nameEl).not.toBeDisabled();
+  });
+
+  describe('chartName unset (Untitled fallback branches)', () => {
+    it('renders "Untitled" in italic placeholder styling when there is no chart name yet', async () => {
+      useStore.setState({ explorerChartName: '' });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const input = await screen.findByTestId('chart-name-input');
+      expect(input).toHaveValue('Untitled');
+      expect(input.className).toContain('italic');
+      expect(input.className).toContain('text-gray-400');
+    });
+
+    it('committing an empty/whitespace name while unset resets to "Untitled" (chartName||"Untitled" fallback)', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ explorerChartName: '', setChartName });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.blur(input);
+      expect(setChartName).not.toHaveBeenCalled();
+      expect(input).toHaveValue('Untitled');
+    });
+
+    it('Escape while unset restores "Untitled" (chartName||"Untitled" fallback in the Escape handler)', async () => {
+      useStore.setState({ explorerChartName: '' });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'abandoned' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(input).toHaveValue('Untitled');
+    });
+
+    it('re-typing "Untitled" verbatim while unset is a no-op (matches the chartName||"Untitled" fallback, not just the literal check)', async () => {
+      const setChartName = jest.fn();
+      useStore.setState({ explorerChartName: '', setChartName });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const input = await screen.findByTestId('chart-name-input');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'Untitled' } });
+      fireEvent.blur(input);
+      expect(setChartName).not.toHaveBeenCalled();
+      expect(input).toHaveValue('Untitled');
+    });
+  });
+
+  describe('chartLayout undefined (Object.keys(chartLayout||{}) fallback)', () => {
+    it('tolerates an undefined chartLayout without crashing', async () => {
+      useStore.setState({ explorerChartLayout: undefined });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      expect(await screen.findByTestId('chart-schema-editor')).toBeInTheDocument();
+    });
+  });
+
+  describe('closeChart optional chaining (`closeChart?.()`)', () => {
+    it('tolerates an undefined closeChart action without crashing', async () => {
+      useStore.setState({ closeChart: undefined });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      await screen.findByTestId('chart-schema-editor');
+      expect(() => {
+        fireEvent.click(screen.getByTestId('chart-close'));
+      }).not.toThrow();
+    });
+  });
+
+  describe('layout schema load race (`cancelled` guard)', () => {
+    it('unmounting before getSchema resolves never updates state on the unmounted component', async () => {
+      const { getSchema } = jest.requireMock('../../../schemas/schemas');
+      let resolveSchema;
+      getSchema.mockImplementationOnce(() => new Promise(r => (resolveSchema = r)));
+      const { unmount } = renderInDnd(
+        <ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      unmount();
+      await act(async () => resolveSchema({ properties: {} }));
+    });
+  });
 });
