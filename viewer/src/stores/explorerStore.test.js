@@ -1777,7 +1777,7 @@ describe('explorerStore', () => {
       expect(state.explorerModelStates.existing_q.sourceName).toBe('pg');
     });
 
-    it('metric/dimension: creates a new insight and binds the field into its y prop', () => {
+    it('metric/dimension: creates a new insight (none active) and binds the field into its first empty essential slot', () => {
       const result = useStore
         .getState()
         .addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
@@ -1785,7 +1785,10 @@ describe('explorerStore', () => {
       const state = useStore.getState();
       const newInsightName = state.explorerActiveInsightName;
       expect(newInsightName).toBeTruthy();
-      expect(state.explorerInsightStates[newInsightName].props.y).toBe(
+      // A fresh insight has no props yet — `x` is the first empty essential
+      // slot (mirrors the DnD path's fill order for a new scatter/line
+      // insight).
+      expect(state.explorerInsightStates[newInsightName].props.x).toBe(
         '?{${ref(orders).revenue}}'
       );
     });
@@ -1794,7 +1797,66 @@ describe('explorerStore', () => {
       useStore.getState().addObjectToActiveExploration({ type: 'dimension', name: 'region' });
       const state = useStore.getState();
       const newInsightName = state.explorerActiveInsightName;
-      expect(state.explorerInsightStates[newInsightName].props.y).toBe('?{${ref(region)}}');
+      expect(state.explorerInsightStates[newInsightName].props.x).toBe('?{${ref(region)}}');
+    });
+
+    // Phase 6c-T5 (ux-audit.md pills-buildrail "Metric 'Add to exploration'
+    // spawns another blank insight instead of extending an existing one"):
+    // the fix — extend the insight already in view instead of manufacturing
+    // a sibling.
+    it('metric/dimension: extends the ACTIVE insight instead of creating a new sibling', () => {
+      useStore.setState({
+        explorerChartInsightNames: ['existing_insight'],
+        explorerActiveInsightName: 'existing_insight',
+        explorerInsightStates: {
+          existing_insight: {
+            type: 'bar',
+            props: { x: '?{${ref(orders).order_date}}' },
+            interactions: [],
+            typePropsCache: {},
+            isNew: true,
+          },
+        },
+      });
+      const result = useStore
+        .getState()
+        .addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      // No new insight was minted — still exactly one, still the same name.
+      expect(state.explorerChartInsightNames).toEqual(['existing_insight']);
+      expect(state.explorerActiveInsightName).toBe('existing_insight');
+      // `x` was already filled — the metric lands in the next empty
+      // essential slot (`y`), not a fresh insight.
+      expect(state.explorerInsightStates.existing_insight.props.y).toBe(
+        '?{${ref(orders).revenue}}'
+      );
+      expect(state.explorerInsightStates.existing_insight.props.x).toBe(
+        '?{${ref(orders).order_date}}'
+      );
+    });
+
+    // Companion fix: "the warning banner grew to reference 'daily_metrics'
+    // although no daily_metrics model tab appeared — the model was pulled
+    // in with no visible representation."
+    it('metric/dimension: adds a model tab for the field\'s parent model when one is not already open', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'select 1', source: 'ref(pg)' } }],
+      });
+      useStore.getState().addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toContain('orders');
+      expect(state.explorerModelStates.orders).toBeTruthy();
+    });
+
+    it("metric/dimension: doesn't duplicate an already-open model tab for the field's parent model", () => {
+      useStore.getState().createModelTab('orders');
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'select 1', source: 'ref(pg)' } }],
+      });
+      useStore.getState().addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      const state = useStore.getState();
+      expect(state.explorerModelTabs.filter(n => n === 'orders')).toHaveLength(1);
     });
 
     it('rejects a type with no meaningful "add to exploration" action', () => {

@@ -1592,10 +1592,47 @@ const createExplorerSlice = (set, get) => ({
       const refExpr = obj.parentModel
         ? formatRefExpression(obj.parentModel, obj.name)
         : formatRefExpression(obj.name);
-      get().createInsight();
-      const newInsightName = get().explorerActiveInsightName;
-      if (newInsightName) {
-        get().setInsightProp(newInsightName, 'y', `?{${refExpr}}`);
+
+      // ux-audit.md pills-buildrail "Metric 'Add to exploration' spawns
+      // another blank insight" finding: extend the insight the user is
+      // ALREADY looking at (the active one) instead of always manufacturing
+      // a new blank sibling — mirrors the drag-and-drop path, which the
+      // audit praised as working correctly, binding into whatever insight
+      // owns the slot dropped on rather than minting a new one. Only falls
+      // back to creating a fresh insight when there is genuinely none to
+      // extend (a bare model/source-only exploration with no chart yet).
+      let targetInsightName = get().explorerActiveInsightName;
+      if (!targetInsightName || !get().explorerInsightStates[targetInsightName]) {
+        get().createInsight();
+        targetInsightName = get().explorerActiveInsightName;
+      }
+      if (targetInsightName) {
+        const props = get().explorerInsightStates[targetInsightName]?.props || {};
+        // Prefer the first unfilled Essential slot (x, then y) — the same
+        // pair drag-and-drop fills first for a fresh scatter/line insight.
+        const slot = !props.x ? 'x' : 'y';
+        get().setInsightProp(targetInsightName, slot, `?{${refExpr}}`);
+      }
+
+      // ux-audit.md's companion complaint: "the warning banner grew to
+      // reference 'daily_metrics' although no daily_metrics model tab
+      // appeared — the model was pulled in with no visible representation."
+      // Keep the model tab strip in sync with what the exploration now
+      // references, exactly like `resolveModelsForInsights` already does
+      // for a chart/insight "Explore this" seed.
+      if (
+        obj.parentModel &&
+        !get().explorerModelTabs.includes(obj.parentModel) &&
+        !get().explorerModelStates[obj.parentModel]
+      ) {
+        const modelObj = (get().models || []).find(m => m.name === obj.parentModel);
+        if (modelObj) {
+          const modelState = buildModelStateFromObject(modelObj, get());
+          set(current => ({
+            explorerModelTabs: [...current.explorerModelTabs, obj.parentModel],
+            explorerModelStates: { ...current.explorerModelStates, [obj.parentModel]: modelState },
+          }));
+        }
       }
       return { success: true };
     }
