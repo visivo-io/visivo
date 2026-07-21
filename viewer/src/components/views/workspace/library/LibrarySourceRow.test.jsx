@@ -56,6 +56,28 @@ describe('LibrarySourceRow', () => {
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 
+  test('hovering reveals the Open button and drag handle; unhovering hides them again', () => {
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+    const row = screen.getByTestId('library-row-source-warehouse');
+    // React's synthetic mouseenter/mouseleave simulate proper enter/leave
+    // semantics for the whole subtree regardless of native (non-bubbling)
+    // behavior, so firing on this inner row still reaches the outer
+    // wrapper's onMouseEnter/onMouseLeave handlers.
+    fireEvent.mouseEnter(row);
+    expect(screen.getByTestId('library-row-source-warehouse-open')).toHaveClass('opacity-100');
+    fireEvent.mouseLeave(row);
+    expect(screen.getByTestId('library-row-source-warehouse-open')).toHaveClass('opacity-0');
+  });
+
+  test('right-clicking the row suppresses the native context menu (no custom menu of its own)', () => {
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+    const row = screen.getByTestId('library-row-source-warehouse');
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
+    row.dispatchEvent(event);
+    expect(preventDefaultSpy).toHaveBeenCalled();
+  });
+
   // Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
   // navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): row click now
   // expands in place — the natural gesture for hunting a column to drag —
@@ -196,6 +218,24 @@ describe('LibrarySourceRow', () => {
         columnType: 'DOUBLE',
       })
     );
+  });
+
+  test('a failed table fetch shows the error state with a working Retry', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: 'warehouse', has_cached_schema: true },
+    ]);
+    fetchSourceTables.mockRejectedValueOnce(new Error('backend unreachable'));
+
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
+
+    await screen.findByTestId('library-source-warehouse-retry');
+    expect(screen.getByText('backend unreachable')).toBeInTheDocument();
+
+    fetchSourceTables.mockResolvedValueOnce([{ name: 'orders', column_count: 2 }]);
+    fireEvent.click(screen.getByTestId('library-source-warehouse-retry'));
+
+    await screen.findByTestId('library-source-table-warehouse-orders');
   });
 
   test('cold source (no cached schema) shows a Generate prompt instead of a tree', async () => {

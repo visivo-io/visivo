@@ -100,6 +100,41 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
   });
 
+  test('activateWorkspaceTab delegates to activateWorkspaceView for a view-typed payload', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().activateWorkspaceTab({ type: 'explorer', name: 'explorer' });
+    });
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('explorer');
+    // Delegating to activateWorkspaceView parks the document tab (per its own
+    // contract) rather than leaving the dashboard tab active.
+    expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  test('switchWorkspaceTab routes the URL via workspaceUrlNavigate when one is registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().switchWorkspaceTab('dashboard:d1');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+    expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('closeWorkspaceTab routes the URL to the newly-focused tab via workspaceUrlNavigate when one is registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('chart:revenue');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+  });
+
   test('restoreWorkspaceTabs replaces the strip without focusing (dedupe + sanitize)', () => {
     act(() => {
       useStore.getState().restoreWorkspaceTabs([
@@ -569,6 +604,19 @@ describe('workspace store slice', () => {
       const s = useStore.getState();
       expect(s.workspaceLeftCollapsed).toBe(false);
       expect(s.workspaceLeftAutoCollapsedByShell).toBe(false);
+    });
+
+    test('re-expands the RIGHT rail it previously auto-collapsed (mirrors the left-rail case)', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: true });
+      });
+      expect(useStore.getState().workspaceRightCollapsed).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceRightCollapsed).toBe(false);
+      expect(s.workspaceRightAutoCollapsedByShell).toBe(false);
     });
 
     test('never auto-expands a rail the USER collapsed manually', () => {

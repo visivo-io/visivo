@@ -203,6 +203,16 @@ describe('ExplorationBuildRail', () => {
         'No other insights in this project yet.'
       );
     });
+
+    it('shows a distinct "no matches" message when every OTHER insight is already on this chart', () => {
+      useStore.setState({ insights: [{ name: 'insight_a', config: {} }] });
+      render(<ExplorationBuildRail />);
+      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+      expect(screen.getByTestId('add-insight-menu')).toHaveTextContent(
+        'No matches — every other insight is already on this chart.'
+      );
+    });
+
   });
 
   it('toggling the active insight deactivates it; toggling an inactive one activates it', () => {
@@ -252,6 +262,14 @@ describe('ExplorationBuildRail', () => {
         },
       });
       render(<ExplorationBuildRail explorationId="exp_a1" />);
+      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
+        'Objects you Save to Project will appear here.'
+      );
+    });
+
+    it('shows the empty-state hint when explorationId is given but no matching record exists yet', () => {
+      useStore.setState({ workspaceExplorations: { byId: {}, order: [] } });
+      render(<ExplorationBuildRail explorationId="exp_not_yet_loaded" />);
       expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
         'Objects you Save to Project will appear here.'
       );

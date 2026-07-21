@@ -732,6 +732,19 @@ describe('duplicateExploration', () => {
     expect(result).toEqual({ success: false, error: 'Exploration not found' });
     expect(explorationsApi.createExploration).not.toHaveBeenCalled();
   });
+
+  test('returns success:false when the create-copy API call itself fails', async () => {
+    seedRecord({ name: 'Churn dig' });
+    explorationsApi.createExploration.mockRejectedValueOnce(new Error('network down'));
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().duplicateExploration('exp_1');
+    });
+
+    expect(result).toEqual({ success: false, error: 'network down' });
+    expect(useStore.getState().workspaceExplorations.order).toEqual(['exp_1']);
+  });
 });
 
 describe('deleteExploration', () => {
@@ -1455,6 +1468,32 @@ describe('promoteExploration', () => {
     expect(result.success).toBe(true);
     expect(result.results).toEqual([
       { type: 'model', name: 'orders_q', tier: 'model', success: true, error: null },
+    ]);
+  });
+
+  test('a row whose save action is not registered on the store fails cleanly (defensive guard)', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    // Simulate store-composition drift: SAVE_ACTION says 'model' -> 'saveModel',
+    // but the action itself is missing from the composed store.
+    act(() => {
+      useStore.setState({ saveModel: undefined });
+    });
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.results).toEqual([
+      {
+        type: 'model',
+        name: 'orders_q',
+        tier: 'model',
+        success: false,
+        error: 'No save action registered for type "model"',
+      },
     ]);
   });
 

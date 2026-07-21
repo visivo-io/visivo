@@ -295,4 +295,76 @@ describe('CanvasContextMenu (VIS-781)', () => {
       expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
     });
   });
+
+  // Phase 6c-T5 coverage completion — closes pre-existing gaps this track's
+  // diff surfaced (Jared's 95%+ requirement applies to the whole file).
+  describe('coverage completion', () => {
+    test('a leaf with neither chart nor table (e.g. markdown) offers no Open/Open-in-new-tab/Explore this', () => {
+      const MARKDOWN_DASH = {
+        name: 'dash',
+        config: {
+          rows: [{ height: 'medium', items: [{ width: 12, markdown: 'ref(notes)' }] }],
+        },
+      };
+      useStore.setState({ dashboards: [MARKDOWN_DASH] });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-open')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-open-new-tab')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
+      // Still a leaf — Wrap is offered regardless of subject type.
+      expect(screen.getByTestId('canvas-ctx-wrap')).toBeInTheDocument();
+    });
+
+    test('"Add row inside" (on a container) commits a config with a nested row added', () => {
+      useStore.setState({ dashboards: [CONTAINER_DASH] });
+      const commit = jest.fn();
+      renderHost({ commit, structure: 'container' });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-add-row-inside'));
+
+      expect(commit).toHaveBeenCalledTimes(1);
+      const [name, nextConfig] = commit.mock.calls[0];
+      expect(name).toBe('dash');
+      expect(nextConfig.rows[0].items[0].rows.length).toBeGreaterThan(1);
+      expect(emitWorkspaceEvent).toHaveBeenCalledWith(
+        'canvas_action',
+        expect.objectContaining({ kind: 'add_row_inside' })
+      );
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('"Add item to row" (on a leaf\'s parent row) commits a config with an extra item', () => {
+      const commit = jest.fn();
+      renderHost({ commit });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-add-item'));
+
+      expect(commit).toHaveBeenCalledTimes(1);
+      const [name, nextConfig] = commit.mock.calls[0];
+      expect(name).toBe('dash');
+      expect(nextConfig.rows[0].items.length).toBeGreaterThan(2);
+      expect(emitWorkspaceEvent).toHaveBeenCalledWith(
+        'canvas_action',
+        expect.objectContaining({ kind: 'add_item_to_row' })
+      );
+    });
+
+    test('a pointerdown INSIDE the menu (not on a specific item) never dismisses it', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      const menu = screen.getByTestId('canvas-context-menu');
+      fireEvent.pointerDown(menu);
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+    });
+
+    test('a pointerdown OUTSIDE the menu dismisses it', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+      fireEvent.pointerDown(screen.getByTestId('host'));
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+  });
 });

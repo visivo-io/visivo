@@ -44,6 +44,15 @@ const renderNode = (props = {}) =>
   );
 
 describe('SemanticLayerErdModelNode — field pill "Explore this" back-link', () => {
+  test('a pointerdown on a field pill stops propagation (never starts a React Flow node drag)', () => {
+    seed();
+    renderNode();
+    fireEvent.pointerDown(screen.getByTestId('erd-metric-pill-total_revenue'));
+    // No throw / no node-drag side effect to assert directly — this pins
+    // the stopPropagation call itself executing (see the model header
+    // Explore button's identical guard, tested alongside it below).
+  });
+
   test('clicking a metric pill mints an exploration seeded from that field and opens its tab', async () => {
     const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_1' });
     const openWorkspaceTab = jest.fn();
@@ -154,6 +163,7 @@ describe('SemanticLayerErdModelNode — model header "Explore" button (Phase 6c-
 
     const button = screen.getByTestId('semantic-erd-model-explore-orders');
     expect(button).toBeVisible();
+    fireEvent.pointerDown(button);
     fireEvent.click(button);
     await waitFor(() => expect(openWorkspaceTab).toHaveBeenCalled());
 

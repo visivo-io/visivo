@@ -10,7 +10,7 @@
  *   - flip icon click opens the popover
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { DndContext, useDraggable } from '@dnd-kit/core';
 import LibraryRow, { getTypeDef } from './LibraryRow';
 import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
@@ -107,6 +107,58 @@ describe('LibraryRow', () => {
     expect(row).toHaveTextContent('waterfall');
     fireEvent.click(row);
     expect(onClick).toHaveBeenCalledWith(CHART, expect.anything());
+  });
+
+  test('Enter/Space on the focused row also forwards click (keyboard accessibility)', () => {
+    const onClick = jest.fn();
+    render(withDnd(<LibraryRow obj={CHART} onClick={onClick} />));
+    const row = screen.getByTestId('library-row-chart-waterfall');
+    fireEvent.keyDown(row, { key: 'Enter' });
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(onClick).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(row, { key: 'Tab' });
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  test('StatusDot: renders nothing for a published/no-status object, green for new, amber for modified', () => {
+    const { rerender } = render(withDnd(<LibraryRow obj={{ ...CHART, status: 'published' }} />));
+    expect(screen.queryByTestId('library-row-status-dot')).not.toBeInTheDocument();
+
+    rerender(withDnd(<LibraryRow obj={{ ...CHART, status: 'new' }} />));
+    const newDot = screen.getByTestId('library-row-status-dot');
+    expect(newDot).toHaveClass('bg-green-500');
+    expect(newDot).toHaveAttribute('title', 'New — not yet published');
+
+    rerender(withDnd(<LibraryRow obj={{ ...CHART, status: 'modified' }} />));
+    const modifiedDot = screen.getByTestId('library-row-status-dot');
+    expect(modifiedDot).toHaveClass('bg-amber-500');
+    expect(modifiedDot).toHaveAttribute('title', 'Modified — has unpublished changes');
+  });
+
+  test('mouseLeave un-hovers the row (actions hide again)', () => {
+    render(withDnd(<LibraryRow obj={INSIGHT} />));
+    const row = screen.getByTestId('library-row-insight-revenue_growth');
+    fireEvent.mouseEnter(row);
+    expect(row).toHaveAttribute('data-hovered', 'true');
+    fireEvent.mouseLeave(row);
+    expect(row).toHaveAttribute('data-hovered', 'false');
+  });
+
+  test('a mousedown on a context-menu item does not lose row focus, and a mousedown INSIDE the menu never dismisses it', () => {
+    render(withDnd(<LibraryRow obj={INSIGHT} />));
+    const row = screen.getByTestId('library-row-insight-revenue_growth');
+    fireEvent.mouseEnter(row);
+    fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+    const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+    expect(menu).toBeInTheDocument();
+
+    // A real cursor click fires mousedown before click — the item's own
+    // onMouseDown must preventDefault (never lose focus) and the doc-level
+    // outside-click guard must see the target is INSIDE the menu and leave
+    // it open.
+    const menuItem = within(menu).getByText('Open in right rail');
+    fireEvent.mouseDown(menuItem);
+    expect(screen.getByTestId('library-row-insight-revenue_growth-context-menu')).toBeInTheDocument();
   });
 
   test('reveals flip + ⋯ actions on hover and the kebab opens a context menu', () => {

@@ -530,6 +530,34 @@ describe('SemanticLayerCanvas', () => {
       });
     });
 
+    it('"Open" from the context menu selects the model (setWorkspaceSelection)', () => {
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onNodeContextMenu(
+          { clientX: 40, clientY: 60, preventDefault: jest.fn() },
+          { type: 'semanticLayerModelNode', data: { name: 'orders' } }
+        );
+      });
+      fireEvent.click(screen.getByTestId('semantic-erd-node-ctx-open'));
+      expect(mockSetWorkspaceSelection).toHaveBeenCalledWith({ type: 'model', name: 'orders' });
+    });
+
+    it('"Open in new tab" from the context menu background-opens the model', () => {
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onNodeContextMenu(
+          { clientX: 40, clientY: 60, preventDefault: jest.fn() },
+          { type: 'semanticLayerModelNode', data: { name: 'orders' } }
+        );
+      });
+      fireEvent.click(screen.getByTestId('semantic-erd-node-ctx-open-new-tab'));
+      expect(mockOpenWorkspaceTab).toHaveBeenCalledWith({
+        id: 'model:orders',
+        type: 'model',
+        name: 'orders',
+      });
+    });
+
     it('right-clicking a relation node does not open the model context menu', () => {
       useRelationErdDag.mockReturnValue({
         nodes: [

@@ -261,6 +261,112 @@ describe('ExplorationPane — ready state', () => {
   });
 });
 
+// Phase 6c-T5 coverage completion: the live-sync debounce itself (the actual
+// "autosave while editing" mechanism this whole track is about) had never
+// been exercised past its arm-and-schedule step — every existing test only
+// asserted the unmount/deactivate flush, never the timer firing on its own,
+// nor the flush-on-page-leaving effect cancelling an already-armed one.
+describe('ExplorationPane — live-sync debounce firing (Phase 6c-T5)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('editing (a watched field changing) arms the debounce, which persists the CURRENT snapshot once it fires', () => {
+    const updateExplorationDraft = jest.fn();
+    const snapshotExplorerWorkingState = jest.fn(() => ({ modelTabs: ['query_1'] }));
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1'] });
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+  });
+
+  test('a SECOND edit before the first debounce fires re-arms the timer (only the LATEST snapshot persists)', () => {
+    const updateExplorationDraft = jest.fn();
+    let snapshotCallCount = 0;
+    const snapshotExplorerWorkingState = jest.fn(() => {
+      snapshotCallCount += 1;
+      return { modelTabs: [`query_${snapshotCallCount}`] };
+    });
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1'] });
+    });
+    // Well before the 600ms debounce — a second edit re-arms it rather than
+    // letting the first one fire.
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1', 'query_2'] });
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    // Only ONE persist fired — the re-armed one — not two.
+    expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+  });
+
+  test('flush-on-page-leaving cancels an ALREADY-ARMED live-sync timer instead of double-firing', () => {
+    const updateExplorationDraft = jest.fn();
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      flushExplorationSync,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+    flushExplorationSync.mockClear();
+
+    // Arm the live-sync timer (an edit just happened) but don't let it fire yet.
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1'] });
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    // The page starts leaving before the debounce would have fired on its own.
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+    expect(flushExplorationSync).toHaveBeenCalledTimes(1);
+
+    // Advancing time past the original debounce window must NOT fire a
+    // second, stale persist — the timer was cancelled, not just raced.
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+  });
+});
+
 // VIS-1083: a 404'd sync marks the record 'deleted-remotely' — the pane must
 // surface the recovery banner (never stay silent) while still rendering the
 // workbench underneath (the local draft is not lost).
@@ -504,6 +610,24 @@ describe('ExplorationPane — duplicate', () => {
       type: 'exploration',
       name: 'exp_2',
     });
+  });
+
+  test('a failed duplicate never opens a tab', async () => {
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      flushExplorationSync,
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorationPane id="exp_1" />);
+
+    fireEvent.click(screen.getByTestId('exploration-duplicate-button'));
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalled());
+
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
   });
 
   // VIS-1086: double-clicking Duplicate must never fire two duplicate

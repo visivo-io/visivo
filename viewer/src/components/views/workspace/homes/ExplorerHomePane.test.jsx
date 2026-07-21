@@ -321,6 +321,63 @@ describe('ExplorerHomePane — recent explorations gallery', () => {
       name: 'exp_1',
     });
   });
+
+  // Phase 6c-T5 coverage completion: the gallery's own Duplicate/Rename menu
+  // wiring (distinct from ExplorationCard's internal handling) had never
+  // actually been driven end-to-end via a click.
+  test('the card kebab\'s Duplicate action calls duplicateExploration and opens the new tab on success', async () => {
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_copy' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-duplicate-action'));
+
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalledWith('exp_1'));
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'exploration:exp_copy',
+        type: 'exploration',
+        name: 'exp_copy',
+      })
+    );
+  });
+
+  test('a failed duplicate never opens a tab', async () => {
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-duplicate-action'));
+
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('the card kebab\'s Rename action calls renameExploration with the new name', () => {
+    const renameExploration = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      renameExploration,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-rename-action'));
+    const input = screen.getByTestId('exploration-card-exp_1-rename-input');
+    fireEvent.change(input, { target: { value: 'Renamed exploration' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(renameExploration).toHaveBeenCalledWith('exp_1', 'Renamed exploration');
+  });
 });
 
 // Phase 6c-T5 (ux-audit.md "Phantom 'Scratch' exploration on a brand-new

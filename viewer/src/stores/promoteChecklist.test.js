@@ -210,6 +210,16 @@ describe('buildPromoteChecklist', () => {
     expect(rows).toHaveLength(0);
   });
 
+  test('an unreachable diff endpoint fails open — every candidate falls back to "new"', async () => {
+    const state = baseState({
+      explorerModelStates: { orders_q: { sql: 'select 1', sourceName: 'w', isNew: true, computedColumns: [] } },
+      fetchExplorerDiff: jest.fn().mockRejectedValue(new Error('network down')),
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ name: 'orders_q', status: 'new' });
+  });
+
   test('diff "modified" status is honored', async () => {
     const state = baseState({
       explorerModelStates: { orders_q: { sql: 'select 1', sourceName: 'w', isNew: false, computedColumns: [] } },

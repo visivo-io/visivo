@@ -1,6 +1,8 @@
 /* eslint-disable no-template-curly-in-string */
 import useStore from './store';
 import { fetchDiff } from '../api/explorer';
+import { translateExpressions } from '../api/expressions';
+import { fetchModelData } from '../api/modelData';
 import {
   expandDotNotationProps,
   getSourceDialect,
@@ -69,6 +71,12 @@ jest.mock('../api/commit', () => ({
   getCommitStatus: jest.fn().mockResolvedValue({ has_unpublished_changes: false }),
   getPendingChanges: jest.fn().mockResolvedValue({ pending: [] }),
   commitChanges: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/expressions', () => ({
+  translateExpressions: jest.fn(),
+}));
+jest.mock('../api/modelData', () => ({
+  fetchModelData: jest.fn().mockResolvedValue({ available: false }),
 }));
 
 // Helper to reset all explorer new state
@@ -2828,5 +2836,430 @@ describe('explorerStore', () => {
       const restoredSnapshot = useStore.getState().snapshotExplorerWorkingState();
       expect(restoredSnapshot).toEqual(snapshot);
     });
+  });
+
+  // ====================================================================
+  // Phase 6c-T5 coverage completion — closes pre-existing gaps in every
+  // file this track's diff touches (Jared's 95%+ statements/branches
+  // requirement applies to the whole file, not just the changed lines).
+  //
+  // Own beforeEach: the cross-cutting cached collections (`insights` /
+  // `charts` / `models` / `metrics` / `dimensions` / `explorerSources`) are
+  // NOT reset by the file-level `resetState()` (it only resets `explorer*`
+  // fields) — same convention `describe('buildExplorationSeedState', ...)`
+  // above already establishes for the same reason: several tests below seed
+  // these collections, and without a reset each test would otherwise
+  // inherit the PREVIOUS test's leftover collection (surfacing as a
+  // NameCollisionError from `createInsight`/`setChartName` since a stale
+  // cached name from a prior test collides with this test's own).
+  // ====================================================================
+  describe('Phase 6c-T5 coverage completion', () => {
+    beforeEach(() => {
+      useStore.setState({
+        insights: [],
+        charts: [],
+        models: [],
+        metrics: [],
+        dimensions: [],
+        explorerSources: [],
+      });
+    });
+
+  describe('deleteExplorerInsight', () => {
+    it('removes the insight from both insightStates and chartInsightNames', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().createInsight('ins_b');
+
+      useStore.getState().deleteExplorerInsight('ins_a');
+
+      const state = useStore.getState();
+      expect(state.explorerInsightStates.ins_a).toBeUndefined();
+      expect(state.explorerChartInsightNames).toEqual(['ins_b']);
+    });
+
+    it('moves the active insight to the next remaining one when the ACTIVE insight is deleted', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().createInsight('ins_b');
+      useStore.getState().setActiveInsight('ins_a');
+
+      useStore.getState().deleteExplorerInsight('ins_a');
+
+      expect(useStore.getState().explorerActiveInsightName).toBe('ins_b');
+    });
+
+    it('sets active to null when deleting the LAST remaining insight while it is active', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().setActiveInsight('ins_a');
+
+      useStore.getState().deleteExplorerInsight('ins_a');
+
+      expect(useStore.getState().explorerActiveInsightName).toBeNull();
+    });
+
+    it('leaves the active insight untouched when deleting a DIFFERENT (non-active) insight', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().createInsight('ins_b');
+      useStore.getState().setActiveInsight('ins_a');
+
+      useStore.getState().deleteExplorerInsight('ins_b');
+
+      expect(useStore.getState().explorerActiveInsightName).toBe('ins_a');
+    });
+  });
+
+  describe('resetInsight', () => {
+    it('is a no-op when the insight does not exist', () => {
+      const before = useStore.getState().explorerInsightStates;
+      useStore.getState().resetInsight('missing');
+      expect(useStore.getState().explorerInsightStates).toBe(before);
+    });
+
+    it('is a no-op for a brand-new (isNew) insight — nothing cached to reset to', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'col_a');
+      useStore.getState().resetInsight('ins');
+      // isNew insights have no cached counterpart; props are left untouched.
+      expect(useStore.getState().explorerInsightStates.ins.props.x).toBe('col_a');
+    });
+
+    it('is a no-op when no cached insight object matches the name', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [],
+      });
+      useStore.getState().resetInsight('ins');
+      expect(useStore.getState().explorerInsightStates.ins.isNew).toBe(false);
+    });
+
+    it('restores type/props/interactions from the cached API object, converting interactions to UI format', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'edited_away');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [
+          {
+            name: 'ins',
+            config: {
+              props: { type: 'bar', x: '?{${ref(orders).month}}' },
+              interactions: [{ filter: 'region = "west"' }],
+            },
+          },
+        ],
+      });
+
+      useStore.getState().resetInsight('ins');
+
+      const insight = useStore.getState().explorerInsightStates.ins;
+      expect(insight.type).toBe('bar');
+      expect(insight.props).toEqual({ x: '?{${ref(orders).month}}' });
+      expect(insight.interactions).toEqual([{ type: 'filter', value: 'region = "west"' }]);
+      expect(insight.typePropsCache).toEqual({});
+    });
+
+    it('defaults an unrecognized interaction shape to an empty filter (fallback branch)', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [
+          {
+            name: 'ins',
+            config: { props: { type: 'scatter' }, interactions: [{ unknownKey: 'value' }] },
+          },
+        ],
+      });
+
+      useStore.getState().resetInsight('ins');
+
+      expect(useStore.getState().explorerInsightStates.ins.interactions).toEqual([
+        { type: 'filter', value: '' },
+      ]);
+    });
+
+    it("falls back to type 'scatter' when the cached config has no type at all", () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [{ name: 'ins', config: { props: {} } }],
+      });
+
+      useStore.getState().resetInsight('ins');
+
+      expect(useStore.getState().explorerInsightStates.ins.type).toBe('scatter');
+    });
+  });
+
+  describe('restorePropsFromCache — nested (dot-notation) path branch', () => {
+    it('builds a nested object from a dotted cache key (e.g. marker.color)', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            props: {},
+            typePropsCache: { _shared: { 'marker.color': 'red', 'marker.size': '8' } },
+          },
+        },
+      });
+
+      useStore.getState().restorePropsFromCache('ins', ['marker.color', 'marker.size']);
+
+      expect(useStore.getState().explorerInsightStates.ins.props.marker).toEqual({
+        color: 'red',
+        size: '8',
+      });
+    });
+  });
+
+  describe('updateInsightInteraction', () => {
+    it('is a no-op when the insight does not exist', () => {
+      const before = useStore.getState().explorerInsightStates;
+      useStore.getState().updateInsightInteraction('missing', 0, { value: 'x' });
+      expect(useStore.getState().explorerInsightStates).toBe(before);
+    });
+
+    it('merges the update into the interaction at the given index, leaving others untouched', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().addInsightInteraction('ins', { type: 'filter', value: 'a' });
+      useStore.getState().addInsightInteraction('ins', { type: 'sort', value: 'b' });
+
+      useStore.getState().updateInsightInteraction('ins', 0, { value: 'a_updated' });
+
+      const interactions = useStore.getState().explorerInsightStates.ins.interactions;
+      expect(interactions[0]).toEqual({ type: 'filter', value: 'a_updated' });
+      expect(interactions[1]).toEqual({ type: 'sort', value: 'b' });
+    });
+  });
+
+  describe('replaceChartLayout', () => {
+    it('wholesale-replaces the chart layout (not a merge)', () => {
+      useStore.getState().setChartLayout({ title: 'old', keep: 'me' });
+      useStore.getState().replaceChartLayout({ title: 'new' });
+      expect(useStore.getState().explorerChartLayout).toEqual({ title: 'new' });
+    });
+  });
+
+  describe('closeChart', () => {
+    it('resets chart name/layout/insights to a clean slate', () => {
+      useStore.getState().setChartName('c1');
+      useStore.getState().createInsight('ins');
+      useStore.getState().setChartLayout({ title: 'x' });
+
+      useStore.getState().closeChart();
+
+      const state = useStore.getState();
+      expect(state.explorerChartName).toBeNull();
+      expect(state.explorerChartLayout).toEqual({});
+      expect(state.explorerChartInsightNames).toEqual([]);
+      expect(state.explorerActiveInsightName).toBeNull();
+      expect(state.explorerInsightStates).toEqual({});
+      expect(state.explorerDiffResult).toBeNull();
+    });
+  });
+
+  describe('resetChart', () => {
+    it('is a no-op when no cached chart matches the current chart name', () => {
+      useStore.getState().setChartName('c1');
+      useStore.setState({ charts: [] });
+      const before = useStore.getState().explorerChartLayout;
+      useStore.getState().resetChart();
+      expect(useStore.getState().explorerChartLayout).toBe(before);
+    });
+
+    it('restores layout + insight names from the cached chart object', () => {
+      useStore.getState().setChartName('c1');
+      useStore.setState({
+        charts: [
+          {
+            name: 'c1',
+            config: { layout: { title: 'Cached' }, insights: ['${ref(ins_a)}', '${ref(ins_b)}'] },
+          },
+        ],
+      });
+
+      useStore.getState().resetChart();
+
+      const state = useStore.getState();
+      expect(state.explorerChartLayout).toEqual({ title: 'Cached' });
+      expect(state.explorerChartInsightNames).toEqual(['ins_a', 'ins_b']);
+      expect(state.explorerActiveInsightName).toBe('ins_a');
+    });
+  });
+
+  describe('loadChart — clears an auto-created empty model tab that is clutter', () => {
+    it('drops an auto-created (isNew, no sql) tab when loading a chart, so it never lingers as clutter', () => {
+      useStore.getState().createModelTab('scratch');
+      expect(useStore.getState().explorerModelTabs).toContain('scratch');
+
+      const chart = { name: 'c', config: { insights: [], layout: {} } };
+      useStore.getState().loadChart(chart, [], []);
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).not.toContain('scratch');
+      expect(state.explorerModelStates.scratch).toBeUndefined();
+    });
+
+    it('keeps a tab that already has real SQL (not clutter)', () => {
+      useStore.getState().createModelTab('real_query');
+      useStore.getState().setActiveModelSql('SELECT 1');
+
+      const chart = { name: 'c', config: { insights: [], layout: {} } };
+      useStore.getState().loadChart(chart, [], []);
+
+      expect(useStore.getState().explorerModelTabs).toContain('real_query');
+    });
+  });
+
+  describe('buildExplorationSeedState — unsupported type', () => {
+    it('returns null for a type with no seeding rule (e.g. dashboard)', () => {
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'dashboard', name: 'kpis' })
+      ).toBeNull();
+    });
+  });
+
+  describe('fetchExplorerDiff — failure path', () => {
+    it('sets explorerDiffResult to null and returns null when the request rejects', async () => {
+      fetchDiff.mockRejectedValueOnce(new Error('network down'));
+      const result = await useStore.getState().fetchExplorerDiff();
+      expect(result).toBeNull();
+      expect(useStore.getState().explorerDiffResult).toBeNull();
+    });
+
+    it('includes a chart payload when a chart is loaded', async () => {
+      useStore.getState().setChartName('c1');
+      useStore.getState().createInsight('ins');
+      useStore.getState().setChartLayout({ title: 'x' });
+      await useStore.getState().fetchExplorerDiff();
+      const payload = fetchDiff.mock.calls[0][0];
+      expect(payload.chart).toMatchObject({ name: 'c1', insights: ['ref(ins)'] });
+    });
+  });
+
+  describe('validateExplorerExpression', () => {
+    it('returns valid:true with the translated expression + detected type on success', async () => {
+      translateExpressions.mockResolvedValueOnce({
+        errors: [],
+        translations: [{ name: '__validate__', duckdb_expression: 'SUM(x)', detected_type: 'metric' }],
+      });
+      const result = await useStore.getState().validateExplorerExpression('sum(x)', 'duckdb');
+      expect(result).toEqual({ valid: true, duckdbExpression: 'SUM(x)', detectedType: 'metric' });
+    });
+
+    it('defaults detectedType to "dimension" and echoes the input expression when the API omits them', async () => {
+      translateExpressions.mockResolvedValueOnce({ errors: [], translations: [] });
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: true, duckdbExpression: 'x', detectedType: 'dimension' });
+    });
+
+    it('returns valid:false with the API-reported error message', async () => {
+      translateExpressions.mockResolvedValueOnce({
+        errors: [{ name: '__validate__', error: 'unknown column' }],
+        translations: [],
+      });
+      const result = await useStore.getState().validateExplorerExpression('bogus', 'duckdb');
+      expect(result).toEqual({ valid: false, error: 'unknown column' });
+    });
+
+    it('returns valid:false when the API call itself throws', async () => {
+      translateExpressions.mockRejectedValueOnce(new Error('network down'));
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: false, error: 'network down' });
+    });
+  });
+
+  describe('autoLoadModelData (via addExistingInsightToChart pulling in a new model)', () => {
+    it('auto-loads cached parquet rows into a newly-added model tab when available', async () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'ins',
+            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
+          },
+        ],
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      fetchModelData.mockResolvedValueOnce({
+        available: true,
+        columns: ['month'],
+        rows: [{ month: 'Jan' }],
+        row_count: 1,
+        truncated: false,
+      });
+
+      useStore.getState().addExistingInsightToChart('ins');
+      // Flush the microtask chain the dynamic import + two chained promises run on.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const modelState = useStore.getState().explorerModelStates.orders;
+      expect(modelState.queryResult).toEqual({
+        columns: ['month'],
+        rows: [{ month: 'Jan' }],
+        row_count: 1,
+        truncated: false,
+      });
+    });
+
+    it('leaves queryResult null when no cached parquet data is available', async () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'ins',
+            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
+          },
+        ],
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      fetchModelData.mockResolvedValueOnce({ available: false });
+
+      useStore.getState().addExistingInsightToChart('ins');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(useStore.getState().explorerModelStates.orders.queryResult).toBeNull();
+    });
+  });
+
+  describe('transformInsightToUiState — malformed interaction fallback (via buildExplorationSeedState)', () => {
+    it('defaults an interaction with neither a filter/split/sort key nor a type+value shape to an empty filter', () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'weird_ins',
+            config: { type: 'scatter', props: {}, interactions: [{ mystery: true }] },
+          },
+        ],
+        models: [],
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'insight', name: 'weird_ins' });
+      expect(snapshot.insightStates.weird_ins.interactions).toEqual([
+        { type: 'filter', value: '' },
+      ]);
+    });
+  });
+
+  describe('matchSourceName — no match at all (via buildExplorationSeedState model seeding)', () => {
+    it('falls back to the extracted (unmatched) source name when no configured source matches', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(totally_unknown_source)' } }],
+        explorerSources: [{ source_name: 'pg' }, { source_name: 'warehouse-pg' }],
+      });
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'model', name: 'orders' });
+      // Neither exact nor suffix match against 'pg'/'warehouse-pg' — matchSourceName
+      // returns null, and resolvedSourceName falls back to the extracted name itself.
+      expect(snapshot.modelStates.query_1.sourceName).toBe('totally_unknown_source');
+    });
+  });
   });
 });
