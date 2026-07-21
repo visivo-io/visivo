@@ -745,7 +745,7 @@ describe('ownerName omitted', () => {
   test('the TypeSelector renders with no scoped data-testid when ownerName is omitted', async () => {
     render(<TracePropsEditor props={scatterProps} onChange={() => {}} />);
     await screen.findByTestId('field-group-essentials');
-    expect(document.querySelector('[data-testid^="type-selector-"]')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/^type-selector-/)).not.toBeInTheDocument();
     // The selector itself still renders and works.
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });

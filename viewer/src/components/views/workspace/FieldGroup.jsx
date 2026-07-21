@@ -226,7 +226,16 @@ export function FieldGroup({
               );
             }
             return (
-              <div key={field.name} {...rowProps}>
+              // The reveal flash-ring lands on THIS wrapper, not on the row
+              // inside it, and a wrapper has no user-facing handle to query
+              // by — so it carries a testid purely so a test can assert the
+              // ring without reaching through `.parentElement` (banned by
+              // testing-library/no-node-access, and rightly: that couples the
+              // test to DOM nesting rather than to the element it means).
+              // Deliberately NOT in `rowProps`: the override branch above
+              // spreads those AFTER its own `data-testid`, so putting it
+              // there silently overwrites `field-override-<name>`.
+              <div key={field.name} data-testid={`field-row-${field.name}`} {...rowProps}>
                 <PropertyRow
                   path={field.name}
                   value={getValueAtPath(value, field.name)}

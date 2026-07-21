@@ -327,7 +327,7 @@ describe('FieldGroup', () => {
       expect(screen.getByTestId('prop-baz')).toBeInTheDocument();
       expect(screen.queryByTestId('field-group-more-advanced')).not.toBeInTheDocument();
       // The reveal target's wrapper flashes a highlight ring.
-      const targetWrapper = screen.getByTestId('prop-bar').parentElement;
+      const targetWrapper = screen.getByTestId('field-row-bar');
       expect(targetWrapper.className).toMatch(/ring-2 ring-primary-400/);
 
       // Flash clears after the timeout.
@@ -349,7 +349,7 @@ describe('FieldGroup', () => {
           revealPath="baz"
         />
       );
-      const targetWrapper = screen.getByTestId('prop-baz').parentElement;
+      const targetWrapper = screen.getByTestId('field-row-baz');
       expect(targetWrapper.className).toMatch(/ring-2 ring-primary-400/);
     });
 

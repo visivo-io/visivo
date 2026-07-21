@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string -- literal Visivo `${ref(...)}` strings */
 import React from 'react';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InsightBuildSection from './InsightBuildSection';
 import useStore from '../../../stores/store';
@@ -664,7 +664,7 @@ describe('InsightBuildSection', () => {
       // driven the same way TracePropsEditor's TypeSelector tests drive it:
       // focus + open + click the rendered option.
       const container = await screen.findByTestId('interaction-type-select-0');
-      const input = container.querySelector('input[role="combobox"]') || screen.getAllByRole('combobox')[0];
+      const input = within(container).getByRole('combobox');
       fireEvent.focus(input);
       fireEvent.keyDown(input, { key: 'ArrowDown' });
       const splitOption = await screen.findByText('Split');

@@ -263,7 +263,7 @@ describe('SchemaEditor', () => {
 
     // Scope clicks to the picker's own root container so a later property
     // ROW with the same text ('mode') is never ambiguous.
-    const picker = screen.getByPlaceholderText('Search properties...').closest('.MuiPaper-root');
+    const picker = screen.getByTestId('property-search');
 
     // Add 'mode' via the picker.
     fireEvent.click(within(picker).getByText('mode'));
