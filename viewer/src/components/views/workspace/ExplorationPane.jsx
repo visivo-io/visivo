@@ -213,6 +213,67 @@ const ExplorationPane = ({ id }) => {
     explorerIsEditorCollapsed,
   ]);
 
+  // Phase 6c-T5 (ux-audit.md "⚠ conflicts-with-e2e Reload silently discards
+  // recent SQL edits (autosave debounce race)" / its MINOR duplicate "Edits
+  // made seconds before closing the browser are silently lost"):
+  //
+  // THE BUG: this pane's own live-sync debounce (600ms above) plus the
+  // slice's backend-persist debounce (`updateExplorationDraft`'s internal
+  // ~1s, `workspaceExplorationsStore.js`) stack into a combined ~1.6s window
+  // where a just-typed edit sits in memory only. A reload/close inside that
+  // window loses it — older edits (outside the window) DO autosave, so the
+  // bug reads as "sometimes" losing work, which is exactly what the audit
+  // reproduced.
+  //
+  // THE FIX: flush BOTH debounces immediately, synchronously, the instant
+  // the page starts to go away — `visibilitychange`→'hidden' fires on tab
+  // close/reload/backgrounding, reliably BEFORE the page is torn down (an
+  // in-flight fetch has real odds of completing); `pagehide`/`beforeunload`
+  // are a second, later-firing net for browsers/paths that skip visibility
+  // events. All three read the CURRENT legacy working state (not a stale
+  // closure) and go through the exact same `updateExplorationDraft` +
+  // `flushExplorationSync` primitives the deactivate-cleanup effect already
+  // uses — this is that same safety net, just triggered by "the page itself
+  // is leaving" instead of "React is unmounting this pane component" (a
+  // real browser close/reload fires neither of THOSE — this effect's
+  // listeners are the only thing that ever runs in that case).
+  //
+  // Best-effort by nature: a fetch started this late can still be aborted by
+  // an instantaneous hard browser kill — no client-side flush can fully
+  // close that window (only `sendBeacon`/service-worker background sync
+  // could, and neither fits this contract cleanly) — but this closes the
+  // window the audit actually reproduced (~1s of normal typing-then-reload),
+  // which is the realistic, common case.
+  useEffect(() => {
+    if (readyId !== id) return undefined;
+    const flushNow = () => {
+      if (liveSyncTimerRef.current) {
+        clearTimeout(liveSyncTimerRef.current);
+        liveSyncTimerRef.current = null;
+      }
+      const snapshot = snapshotExplorerWorkingState();
+      updateExplorationDraft(id, legacyStateToDraft(snapshot));
+      flushExplorationSync(id);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushNow();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', flushNow);
+    window.addEventListener('beforeunload', flushNow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', flushNow);
+      window.removeEventListener('beforeunload', flushNow);
+    };
+  }, [
+    id,
+    readyId,
+    snapshotExplorerWorkingState,
+    updateExplorationDraft,
+    flushExplorationSync,
+  ]);
+
   const handleRename = useCallback(
     nextName => {
       renameExploration(id, nextName);

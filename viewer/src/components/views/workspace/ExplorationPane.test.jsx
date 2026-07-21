@@ -103,6 +103,118 @@ describe('ExplorationPane — ready state', () => {
     expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
   });
 
+  // Phase 6c-T5 (ux-audit.md "⚠ conflicts-with-e2e Reload silently discards
+  // recent SQL edits (autosave debounce race)" / "Edits made seconds before
+  // closing the browser are silently lost"): flush BOTH the live-sync
+  // debounce and the backend-persist debounce the instant the page starts
+  // to leave — `visibilitychange`→'hidden' is the primary signal (fires
+  // reliably before teardown); `pagehide`/`beforeunload` are the fallback
+  // net. A real browser close/reload triggers NEITHER a React unmount nor
+  // an `id` change, so nothing else in this component would ever catch it.
+  describe('flush-on-page-leaving (Phase 6c-T5)', () => {
+    const fireDocumentVisibilityHidden = () => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+    };
+
+    afterEach(() => {
+      // Restore jsdom's default so later tests in this file (and other
+      // files sharing the jsdom document) see a normal 'visible' state.
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      });
+    });
+
+    test('document going hidden (tab close / reload / backgrounding) flushes the CURRENT draft immediately', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      const snapshotExplorerWorkingState = jest.fn(() => ({ modelTabs: ['query_1'] }));
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+        snapshotExplorerWorkingState,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      // Clear the mount-time calls (restore/snapshot bookkeeping) so the
+      // assertion below is unambiguously about the visibilitychange flush.
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      fireDocumentVisibilityHidden();
+
+      expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+      expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('pagehide also flushes immediately (fallback net alongside visibilitychange)', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      act(() => {
+        window.dispatchEvent(new Event('pagehide'));
+      });
+
+      expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+      expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('beforeunload also flushes immediately', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      act(() => {
+        window.dispatchEvent(new Event('beforeunload'));
+      });
+
+      expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+      expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('unmounting removes the listeners — no stale flush against a closed pane', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      const { unmount } = render(<ExplorationPane id="exp_1" />);
+      unmount();
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      act(() => {
+        window.dispatchEvent(new Event('pagehide'));
+      });
+
+      expect(updateExplorationDraft).not.toHaveBeenCalled();
+      expect(flushExplorationSync).not.toHaveBeenCalled();
+    });
+  });
+
   test('switching id flushes the OLD exploration and restores the NEW one — two-tab isolation', () => {
     const restoreExplorerWorkingState = jest.fn();
     const updateExplorationDraft = jest.fn();
