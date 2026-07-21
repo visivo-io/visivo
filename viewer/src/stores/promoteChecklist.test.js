@@ -100,15 +100,86 @@ describe('buildPromoteChecklist', () => {
     expect(rows[0]).toMatchObject({ tier: 'insight', type: 'insight', name: 'churn', status: 'new' });
   });
 
-  test('the chart produces a "chart" tier row when named', async () => {
+  test('the chart produces a "chart" tier row when named and it references a real (non-scaffold) insight', async () => {
     const state = baseState({
       explorerChartName: 'churn_chart',
       explorerChartInsightNames: ['churn'],
+      explorerInsightStates: {
+        churn: { type: 'scatter', props: { x: '?{${ref(orders_q).region}}' }, interactions: [], isNew: true },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    const chartRow = rows.find(r => r.tier === 'chart');
+    expect(chartRow).toMatchObject({ tier: 'chart', type: 'chart', name: 'churn_chart', status: 'new' });
+    expect(chartRow.config.insights).toEqual(['ref(churn)']);
+  });
+
+  // Phase 6c-T5 (VIS-1102 / ux-audit.md's "Promote has no naming step —
+  // project polluted with 'query_1' and 'insight'" finding): a brand-new,
+  // unedited insight (no props, no interactions) is the auto-created
+  // scaffold every fresh exploration mounts with, not authored content —
+  // it must never be offered for "Save to Project".
+  test('a brand-new insight with no props/interactions bound is never a candidate', async () => {
+    const state = baseState({
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], isNew: true },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('an EXISTING insight (isNew: false) with no props is still a candidate — the backend diff decides relevance', async () => {
+    const state = baseState({
+      explorerInsightStates: {
+        published_insight: { type: 'scatter', props: {}, interactions: [], isNew: false },
+      },
+      fetchExplorerDiff: jest.fn().mockResolvedValue({ insights: { published_insight: 'modified' } }),
     });
     const rows = await buildPromoteChecklist(() => state);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ tier: 'chart', type: 'chart', name: 'churn_chart', status: 'new' });
-    expect(rows[0].config.insights).toEqual(['ref(churn)']);
+    expect(rows[0]).toMatchObject({ type: 'insight', name: 'published_insight', status: 'modified' });
+  });
+
+  test('a chart referencing ONLY a scaffold insight, with no layout config, is never a candidate', async () => {
+    const state = baseState({
+      explorerChartName: 'chart',
+      explorerChartInsightNames: ['insight'],
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], isNew: true },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('a chart with real layout config is a candidate even if its insight is still a scaffold', async () => {
+    const state = baseState({
+      explorerChartName: 'chart',
+      explorerChartInsightNames: ['insight'],
+      explorerChartLayout: { title: 'Revenue over time' },
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], isNew: true },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    const chartRow = rows.find(r => r.tier === 'chart');
+    expect(chartRow).toBeTruthy();
+  });
+
+  test('an untouched seeded exploration (empty model, scaffold insight, scaffold chart) produces an EMPTY checklist', async () => {
+    const state = baseState({
+      explorerModelStates: {
+        query_1: { sql: '', sourceName: 'local-duckdb', isNew: true, computedColumns: [] },
+      },
+      explorerChartName: 'chart',
+      explorerChartInsightNames: ['insight'],
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], isNew: true },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(0);
   });
 
   test('rows are sorted in dependency order: model, field, insight, chart', async () => {

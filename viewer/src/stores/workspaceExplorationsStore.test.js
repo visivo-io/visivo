@@ -191,6 +191,10 @@ describe('createExploration', () => {
       // doesn't seed one) — see the drift-detection tests below for the
       // populated-collection case.
       seeded_from: { type: 'model', name: 'orders', content_signature: null },
+      // Phase 6c-T5 (naming coherence): a seeded create gets a deterministic
+      // default name derived from what was explored, rather than the
+      // backend's generic 'Exploration N' counter.
+      name: 'orders exploration',
     });
     expect(useStore.getState().workspaceExplorations.byId.exp_1.seededFrom).toEqual({
       type: 'model',

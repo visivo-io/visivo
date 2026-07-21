@@ -246,15 +246,21 @@ test.describe('Post-promote fallback dashboard offer, reached through the ordina
     await gotoExplorerHome(page);
     const id = await startFromSourceTile(page);
     // No query typed, nothing run, nothing to save — open Save to Project
-    // directly (the empty-checklist path).
+    // directly.
+    //
+    // Phase 6c-T5 (VIS-1102) fixed the bug this test used to route around:
+    // an untouched source-tile exploration (empty SQL, the auto-created
+    // scaffold insight with no bindings, a chart referencing only that
+    // scaffold) used to be offered for saving anyway — the checklist listed
+    // the seeded query/insight/chart regardless of whether the user had
+    // authored anything (`promoteChecklist.js`'s pre-fix behavior). Now the
+    // checklist is genuinely empty for this exact flow, so THIS is the
+    // reachable negative path: assert the modal's "No changes to save."
+    // empty state directly, rather than dismissing via Cancel.
     await page.getByTestId('explorer-save-button').click();
     await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
-    // NOTE (gate correction): the modal's "No changes to save." empty state is
-    // NOT reachable this way — a source-tile exploration is seeded with a
-    // query + insight + chart, so the checklist is never empty here. (That the
-    // untouched seed is offered for saving at all is its own finding, tracked
-    // for 6c-T5/T3.) The behavior under test is the OFFER, so drive the
-    // reachable negative path instead: dismiss without saving anything.
+    await expect(page.getByText('No changes to save.')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('exploration-promote-submit')).toBeDisabled();
     await page.getByTestId('exploration-promote-cancel').click();
     await expect(page.getByTestId('exploration-promote-modal')).toBeHidden({ timeout: 10000 });
     // Nothing was promoted this run -> no fallback dashboard offer anywhere.
