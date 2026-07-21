@@ -34,9 +34,8 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { BASE_URL, API } from '../helpers/sandbox.mjs';
 
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
 // Explorations are S3'd to a single file-backed repository shared by every
 // test in this suite (`.visivo/explorations/` — see ExplorationRepository).
 // Runs serially (playwright.config.mjs's `exploration-mutations` project)
@@ -45,7 +44,6 @@ const BASE_URL =
 // across repeated runs — diff the id list before/after and delete whatever
 // a test created, regardless of which UI path (seed / new / duplicate)
 // minted it.
-const API = BASE_URL.replace(':3001', ':8001');
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);

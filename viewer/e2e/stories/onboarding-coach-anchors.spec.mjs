@@ -20,16 +20,9 @@
  * (ExplorationQueryChips' "+").
  */
 import { test, expect } from '@playwright/test';
+import { apiBase } from '../helpers/sandbox.mjs';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE);
-    return `${u.protocol}//${u.hostname}:8001`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
 
 // Anchors that mount eagerly when the user lands on the route. The Coach
 // guarantees a graceful no-op when a target isn't on the page yet, so

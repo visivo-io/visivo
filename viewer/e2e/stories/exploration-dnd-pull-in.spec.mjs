@@ -28,6 +28,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
 
 // A tall viewport keeps the Build rail's insight properties in view without
 // scrolling (mirrors canvas-dnd.spec.mjs's `test.use({ viewport: ... })`):
@@ -39,17 +40,6 @@ import { test, expect } from '@playwright/test';
 // instead. A generously tall viewport keeps every drop target comfortably
 // away from any edge for the whole gesture.
 test.use({ viewport: { width: 1280, height: 1600 } });
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const apiBase = (() => {
-  try {
-    const u = new URL(BASE_URL);
-    return `${u.protocol}//${u.hostname}:8001`;
-  } catch {
-    return 'http://localhost:8001';
-  }
-})();
 
 const SOURCE = 'local-duckdb';
 const TABLE = 'test_table';

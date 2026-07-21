@@ -33,10 +33,7 @@
  * reasoning as exploration-lifecycle.spec.mjs.
  */
 import { test, expect } from '@playwright/test';
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
-const API = BASE_URL.replace(':3001', ':8001');
+import { BASE_URL, API } from '../helpers/sandbox.mjs';
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);
@@ -156,6 +153,12 @@ test.describe('Tab-strip power features against a phantom exploration tab (#25)'
       timeout: 15000,
     });
     await expect(page.getByText(/doesn't exist/i)).toBeVisible();
+    // Both tabs point at deleted records, so the not-found pane above is
+    // already on screen for the PREVIOUSLY active tab — it proves nothing
+    // about which tab we just landed on, and sampling `page.url()` right
+    // after it reads whichever navigation happened to have committed first.
+    // Wait for the URL this assertion is actually about before asserting it.
+    await page.waitForURL(`**/workspace/exploration/${phantomId}`, { timeout: 10000 });
     expect(new URL(page.url()).pathname).toBe(`/workspace/exploration/${phantomId}`);
 
     // The tab strip itself is still fully functional — the real (now also
