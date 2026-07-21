@@ -19,6 +19,7 @@
 
 import { test, expect } from '@playwright/test';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { focusSqlEditor } from '../helpers/explorer.mjs';
 
 async function gotoExplorerHome(page) {
   await page.goto(`${BASE_URL}/workspace/exploration`);
@@ -96,11 +97,11 @@ test.describe('Exploration query chips (Explore 2.0 Phase 3a)', () => {
     await newExploration(page);
     const firstName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
 
-    await page.locator('.view-lines').first().click();
+    await focusSqlEditor(page);
     await page.keyboard.type('SELECT 1 AS one', { delay: 5 });
 
     await page.getByTestId('query-chip-add').click();
-    await page.locator('.view-lines').first().click();
+    await focusSqlEditor(page);
     await page.keyboard.type('SELECT 2 AS two', { delay: 5 });
 
     await page.getByTestId(`query-chip-${firstName}`).click();
