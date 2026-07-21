@@ -3,7 +3,23 @@ from typing import Any, Optional, Dict, List, ClassVar, Set
 import click
 from pydantic import PrivateAttr
 from visivo.models.sources.source import Source
-from sqlalchemy import create_engine, event, text, inspect
+from sqlalchemy import (
+    create_engine,
+    event,
+    text,
+    inspect,
+    Column,
+    MetaData,
+    Table,
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Numeric,
+    Text,
+    Time,
+)
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
 import polars as pl
@@ -16,6 +32,55 @@ from sqlglot.schema import MappingSchema
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 
 
+def _sqlalchemy_type_for(polars_dtype):
+    """Map a Polars dtype to the SQLAlchemy column type used when writing a seed table.
+
+    Anything without a natural SQL equivalent is written as text — see
+    ``_cast_unsupported_columns_to_string``, which stringifies the matching column.
+    """
+    if polars_dtype == pl.Boolean:
+        return Boolean
+    if polars_dtype.is_integer():
+        return BigInteger
+    if polars_dtype.is_float():
+        return Float
+    if polars_dtype.is_decimal():
+        return Numeric
+    if polars_dtype == pl.Date:
+        return Date
+    if polars_dtype == pl.Datetime:
+        return DateTime
+    if polars_dtype == pl.Time:
+        return Time
+    return Text
+
+
+def _cast_unsupported_columns_to_string(data_frame):
+    """Stringify columns with no natural SQL type (lists, structs, ...).
+
+    ``cast(pl.String)`` cannot flatten nested dtypes, so these go through
+    ``map_elements`` instead — the alternative is the whole seed failing on one
+    nested column.
+    """
+    unsupported = [
+        name
+        for name, dtype in data_frame.schema.items()
+        if _sqlalchemy_type_for(dtype) is Text and dtype != pl.String
+    ]
+    if not unsupported:
+        return data_frame
+    return data_frame.with_columns(
+        [
+            (
+                pl.col(name).map_elements(str, return_dtype=pl.String)
+                if data_frame.schema[name].is_nested()
+                else pl.col(name).cast(pl.String)
+            )
+            for name in unsupported
+        ]
+    )
+
+
 class SqlalchemySource(Source, ABC):
 
     _engine: Any = PrivateAttr(default=None)
@@ -25,6 +90,38 @@ class SqlalchemySource(Source, ABC):
     def url(self):
         """Return the URL for this source."""
         raise NotImplementedError(f"No url method implemented for {self.type}")
+
+    def write_dataframe(self, table_name: str, data_frame, replace: bool = True):
+        """Write a Polars DataFrame to a table over this source's SQLAlchemy engine.
+
+        Built on SQLAlchemy Core rather than ``polars.write_database`` because polars'
+        sqlalchemy engine requires pandas, which Visivo does not depend on.
+        """
+        try:
+            data_frame = _cast_unsupported_columns_to_string(data_frame)
+            metadata = MetaData()
+            table = Table(
+                table_name,
+                metadata,
+                *[
+                    Column(name, _sqlalchemy_type_for(dtype))
+                    for name, dtype in data_frame.schema.items()
+                ],
+                schema=self.get_db_schema() if hasattr(self, "get_db_schema") else None,
+            )
+
+            engine = self.get_engine()
+            with engine.begin() as connection:
+                if replace:
+                    table.drop(connection, checkfirst=True)
+                table.create(connection, checkfirst=True)
+                rows = data_frame.to_dicts()
+                if rows:
+                    connection.execute(table.insert(), rows)
+        except Exception as err:
+            raise click.ClickException(
+                f"Error writing table '{table_name}' to {self.type} source '{self.name}': {str(err)}"
+            )
 
     def read_sql(self, query: str, **kwargs):
         with self.connect() as connection:

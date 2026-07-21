@@ -22,8 +22,6 @@ def register_commit_views(app, flask_app, output_dir):
                 or flask_app.chart_manager.has_unpublished_changes()
                 or flask_app.table_manager.has_unpublished_changes()
                 or flask_app.dashboard_manager.has_unpublished_changes()
-                or flask_app.csv_script_model_manager.has_unpublished_changes()
-                or flask_app.local_merge_model_manager.has_unpublished_changes()
                 or flask_app.input_manager.has_unpublished_changes()
                 or flask_app._cached_defaults is not None
             )
@@ -151,34 +149,6 @@ def register_commit_views(app, flask_app, output_dir):
                     }
                     pending.append(dashboard_info)
 
-            # Get csv script models with changes
-            for (
-                name,
-                model,
-            ) in flask_app.csv_script_model_manager.cached_objects.items():
-                status = flask_app.csv_script_model_manager.get_status(name)
-                if status and status != ObjectStatus.PUBLISHED:
-                    model_info = {
-                        "name": name,
-                        "type": "csvScriptModel",
-                        "status": status.value,
-                    }
-                    pending.append(model_info)
-
-            # Get local merge models with changes
-            for (
-                name,
-                model,
-            ) in flask_app.local_merge_model_manager.cached_objects.items():
-                status = flask_app.local_merge_model_manager.get_status(name)
-                if status and status != ObjectStatus.PUBLISHED:
-                    model_info = {
-                        "name": name,
-                        "type": "localMergeModel",
-                        "status": status.value,
-                    }
-                    pending.append(model_info)
-
             # Get inputs with changes
             for name, input_obj in flask_app.input_manager.cached_objects.items():
                 status = flask_app.input_manager.get_status(name)
@@ -244,8 +214,6 @@ def register_commit_views(app, flask_app, output_dir):
                 ("chart", flask_app.chart_manager),
                 ("table", flask_app.table_manager),
                 ("dashboard", flask_app.dashboard_manager),
-                ("csvScriptModel", flask_app.csv_script_model_manager),
-                ("localMergeModel", flask_app.local_merge_model_manager),
                 ("input", flask_app.input_manager),
             ]
             to_publish, to_remove = [], []
@@ -438,46 +406,6 @@ def register_commit_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
-            # Process csv script models (stored under "models" in YAML)
-            for (
-                name,
-                model,
-            ) in flask_app.csv_script_model_manager.cached_objects.items():
-                status = flask_app.csv_script_model_manager.get_status(name)
-                if status and status != ObjectStatus.PUBLISHED:
-                    child_info = _build_child_info(
-                        name=name,
-                        obj=model,
-                        status=status,
-                        published_obj=flask_app.csv_script_model_manager.published_objects.get(
-                            name
-                        ),
-                        type_key="models",
-                        project_file_path=flask_app.project.project_file_path,
-                    )
-                    named_children[name] = child_info
-                    published_count += 1
-
-            # Process local merge models (stored under "models" in YAML)
-            for (
-                name,
-                model,
-            ) in flask_app.local_merge_model_manager.cached_objects.items():
-                status = flask_app.local_merge_model_manager.get_status(name)
-                if status and status != ObjectStatus.PUBLISHED:
-                    child_info = _build_child_info(
-                        name=name,
-                        obj=model,
-                        status=status,
-                        published_obj=flask_app.local_merge_model_manager.published_objects.get(
-                            name
-                        ),
-                        type_key="models",
-                        project_file_path=flask_app.project.project_file_path,
-                    )
-                    named_children[name] = child_info
-                    published_count += 1
-
             # Process inputs
             for name, input_obj in flask_app.input_manager.cached_objects.items():
                 status = flask_app.input_manager.get_status(name)
@@ -556,8 +484,6 @@ def register_commit_views(app, flask_app, output_dir):
                 flask_app.chart_manager.clear_cache()
                 flask_app.table_manager.clear_cache()
                 flask_app.dashboard_manager.clear_cache()
-                flask_app.csv_script_model_manager.clear_cache()
-                flask_app.local_merge_model_manager.clear_cache()
                 flask_app.input_manager.clear_cache()
                 flask_app._cached_defaults = None
 
@@ -596,8 +522,6 @@ def register_commit_views(app, flask_app, output_dir):
                 flask_app.chart_manager,
                 flask_app.table_manager,
                 flask_app.dashboard_manager,
-                flask_app.csv_script_model_manager,
-                flask_app.local_merge_model_manager,
                 flask_app.input_manager,
             ]
             discarded_count = 0

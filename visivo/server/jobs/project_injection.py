@@ -19,8 +19,6 @@ MANAGER_TO_PROJECT_FIELD = [
     ("dashboard_manager", "dashboards"),
     ("input_manager", "inputs"),
     ("markdown_manager", "markdowns"),
-    ("csv_script_model_manager", "csv_script_models"),
-    ("local_merge_model_manager", "local_merge_models"),
 ]
 
 

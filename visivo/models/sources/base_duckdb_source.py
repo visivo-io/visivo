@@ -60,6 +60,28 @@ class BaseDuckdbSource(Source):
         """Return a context manager for DuckDB connections."""
         return DuckdbConnection(source=self, read_only=read_only, **kwargs)
 
+    def write_dataframe(self, table_name: str, data_frame, replace: bool = True):
+        """Write a Polars DataFrame to a table in this DuckDB database."""
+        try:
+            with self.connect(read_only=False) as connection:
+                connection.register("visivo_write_data_frame", data_frame)
+                if replace:
+                    connection.execute(
+                        f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM visivo_write_data_frame"
+                    )
+                else:
+                    connection.execute(
+                        f"CREATE TABLE IF NOT EXISTS {table_name} AS "
+                        "SELECT * FROM visivo_write_data_frame WHERE FALSE"
+                    )
+                    connection.execute(
+                        f"INSERT INTO {table_name} SELECT * FROM visivo_write_data_frame"
+                    )
+        except Exception as err:
+            raise click.ClickException(
+                f"Error writing table '{table_name}' to {self.type} source '{self.name}': {str(err)}"
+            )
+
     def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
         """
         Build SQLGlot schema using DuckDB's introspection capabilities.

@@ -106,7 +106,6 @@ class TestRunOnSave:
         for path in [
             "/api/sources/db/",
             "/api/models/m/",
-            "/api/local-merge-models/lm/",
             "/api/insights/i/",
             "/api/charts/c/",
             "/api/tables/t/",
