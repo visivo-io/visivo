@@ -226,6 +226,7 @@ const CenterPanel = ({
     <div data-testid="source-selector-wrapper" className="min-w-[140px]">
       <Select
         data-testid="source-selector"
+        aria-label="Select source"
         size="sm"
         placeholder="Select source"
         value={sourceName || ''}
