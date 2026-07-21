@@ -29,6 +29,7 @@
 
 import { test, expect } from '@playwright/test';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { focusSqlEditor } from '../helpers/explorer.mjs';
 
 // A tall viewport keeps the Build rail's insight properties in view without
 // scrolling (mirrors canvas-dnd.spec.mjs's `test.use({ viewport: ... })`):
@@ -202,7 +203,7 @@ test.describe('Exploration DnD pull-in (Explore 2.0 Phase 3a — D9)', () => {
     );
 
     // Focus the editor at the end of its current content before dropping.
-    await page.locator('.view-lines').first().click();
+    await focusSqlEditor(page);
     await page.keyboard.press('Control+End');
 
     await dragAndDrop(page, firstColumn, page.getByTestId('sql-editor-drop-zone'));
