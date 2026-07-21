@@ -8,7 +8,18 @@
  */
 import { expect } from '@playwright/test';
 
-export const BASE = process.env.VIS_CANVAS_BASE || 'http://localhost:3001';
+// `VIS_CANVAS_BASE` stays first so anyone already setting it keeps their
+// behavior, but PLAYWRIGHT_BASE_URL must be consulted before the :3001
+// fallback. Without it this constant sent all 15 specs that call
+// `openWorkspace()` to the SHARED sandbox no matter which one the runner
+// asked for — the browser-side twin of the hardcoded-backend-port bug fixed
+// in `sandbox.mjs`, and invisible for the same reason: nothing errored, the
+// specs just quietly drove someone else's project.
+export const BASE =
+  process.env.VIS_CANVAS_BASE ||
+  process.env.PLAYWRIGHT_BASE_URL ||
+  process.env.VISIVO_BASE_URL ||
+  'http://localhost:3001';
 export const SCREENS = 'e2e/stories/__screens__';
 export const WAIT = 20000;
 
