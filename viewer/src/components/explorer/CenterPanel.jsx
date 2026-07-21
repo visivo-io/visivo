@@ -137,7 +137,10 @@ const CenterPanel = ({
   // the constants' docstring above. Narrow mode's Chart tab has no editor in
   // the row at all, so it keeps the ratio-based split (chart wants to fill
   // whatever space it's given, not size to "content").
-  const sqlLineCount = (sql || '').split('\n').length || 1;
+  // `String.prototype.split` always returns at least one element — the
+  // `|| 1` fallback this line used to carry was unreachable by language
+  // guarantee, not by a contract another module could change.
+  const sqlLineCount = (sql || '').split('\n').length;
   const topRowSharesChart = isWide;
   const useAutoTopHeight =
     !userAdjustedTopBottom && !isEditorCollapsed && !(!isWide && centerMode === 'chart');
