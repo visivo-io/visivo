@@ -175,6 +175,19 @@ describe('ExplorationBuildRail', () => {
       );
     });
 
+    it('shows the empty-state hint when the exploration record has no `promoted` key at all', () => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: { exp_a1: { id: 'exp_a1' } }, // no `promoted` key
+          order: ['exp_a1'],
+        },
+      });
+      render(<ExplorationBuildRail explorationId="exp_a1" />);
+      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
+        'Objects you save to project will appear here.'
+      );
+    });
+
     it('shows the empty-state hint when the exploration has never promoted anything', () => {
       useStore.setState({
         workspaceExplorations: {

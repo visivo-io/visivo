@@ -40,6 +40,12 @@ describe('TabCloseConfirmDialog', () => {
     expect(screen.queryByTestId('tab-close-confirm-dialog')).not.toBeInTheDocument();
   });
 
+  test('fails safe (renders nothing) when workspaceTabs itself is undefined', () => {
+    seed({ workspaceTabs: undefined, workspacePendingCloseTabId: 'chart:revenue' });
+    render(<TabCloseConfirmDialog />);
+    expect(screen.queryByTestId('tab-close-confirm-dialog')).not.toBeInTheDocument();
+  });
+
   test('renders the dialog naming the dirty tab, with focus on the safe action', () => {
     seed({ workspacePendingCloseTabId: 'chart:revenue' });
     render(<TabCloseConfirmDialog />);

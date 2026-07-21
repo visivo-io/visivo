@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ExplorationPromoteModal from './ExplorationPromoteModal';
 import useStore from '../../../stores/store';
 import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
@@ -35,6 +35,95 @@ beforeEach(() => {
 });
 
 describe('ExplorationPromoteModal', () => {
+  test('renders fine with no explorationId at all (no return_to lookup possible)', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    render(<ExplorationPromoteModal onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+    expect(screen.queryByTestId('exploration-promote-return-to-offer')).not.toBeInTheDocument();
+  });
+
+  test('fails safe when the dashboards collection itself is undefined (not just empty)', async () => {
+    buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+    useStore.setState({
+      dashboards: undefined,
+      promoteExploration: jest.fn().mockResolvedValue({
+        success: true,
+        results: [{ type: 'chart', name: 'churn_chart', success: true, error: null }],
+        reclassificationOffers: [],
+      }),
+    });
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    await screen.findByTestId('exploration-promote-success');
+    expect(
+      screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
+    ).not.toBeInTheDocument();
+  });
+
+  test('fails safe when promoteExploration resolves with no `results` array at all', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    useStore.setState({
+      promoteExploration: jest.fn().mockResolvedValue({ success: true }),
+    });
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    // Never crashes; simply nothing succeeded or failed to report.
+    await waitFor(() =>
+      expect(screen.queryByTestId('exploration-promote-error')).not.toBeInTheDocument()
+    );
+  });
+
+  test('pluralizes the failure message for 2+ failed objects', async () => {
+    buildPromoteChecklist.mockResolvedValue([row(), row({ name: 'flaky_a' }), row({ name: 'flaky_b' })]);
+    useStore.setState({
+      promoteExploration: jest.fn().mockResolvedValue({
+        success: false,
+        results: [
+          { type: 'model', name: 'orders_q', success: true, error: null },
+          { type: 'model', name: 'flaky_a', success: false, error: 'server rejected it' },
+          { type: 'model', name: 'flaky_b', success: false, error: 'also rejected' },
+        ],
+      }),
+    });
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    expect(await screen.findByTestId('exploration-promote-error')).toHaveTextContent(
+      '2 objects failed to promote'
+    );
+  });
+
+  test('renaming one row preserves an UNRELATED, still-unchecked sibling row\'s unchecked state (selection remap)', async () => {
+    const renameModelTab = jest.fn();
+    useStore.setState({ renameModelTab });
+    buildPromoteChecklist
+      .mockResolvedValueOnce([row(), row({ tier: 'insight', type: 'insight', name: 'sibling_insight' })])
+      .mockResolvedValueOnce([
+        row({ name: 'daily_orders' }),
+        row({ tier: 'insight', type: 'insight', name: 'sibling_insight' }),
+      ]);
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 2 to project'));
+    // Uncheck the sibling row before renaming the model row.
+    fireEvent.click(screen.getByTestId('promote-row-insight-sibling_insight-checkbox'));
+    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project');
+
+    const input = screen.getByTestId('promote-row-model-orders_q-name-input');
+    fireEvent.change(input, { target: { value: 'daily_orders' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+
+    // The renamed model row stays selected (it was); the sibling stays
+    // UNSELECTED (it was manually unchecked) — the remap must not silently
+    // re-check it just because the checklist was rebuilt.
+    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project');
+    expect(
+      screen.getByTestId('promote-row-insight-sibling_insight-checkbox')
+    ).not.toBeChecked();
+  });
+
   test('shows a loading state while the checklist builds', () => {
     buildPromoteChecklist.mockReturnValue(new Promise(() => {})); // never resolves
     render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
@@ -125,6 +214,17 @@ describe('ExplorationPromoteModal', () => {
     render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
     await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 2 to project'));
     fireEvent.click(screen.getByTestId('promote-row-model-orders_q-checkbox'));
+    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project');
+  });
+
+  test('re-checking a previously-unchecked row re-includes it in the selection count', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project'));
+    const checkbox = screen.getByTestId('promote-row-model-orders_q-checkbox');
+    fireEvent.click(checkbox); // uncheck
+    expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 0 to project');
+    fireEvent.click(checkbox); // re-check
     expect(screen.getByTestId('exploration-promote-submit')).toHaveTextContent('Save 1 to project');
   });
 
@@ -255,6 +355,30 @@ describe('ExplorationPromoteModal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  test('dismissing a reclassification offer removes just that offer from the list', async () => {
+    buildPromoteChecklist.mockResolvedValue([row({ tier: 'field', type: 'metric' })]);
+    const promoteExploration = jest.fn().mockResolvedValue({
+      success: true,
+      results: [{ type: 'metric', name: 'orders_q', success: true, error: null }],
+      reclassificationOffers: [
+        {
+          promotedType: 'metric',
+          promotedName: 'orders_q',
+          slots: [{ insightName: 'other', location: 'prop', key: 'y', swapTo: { kind: 'metricRef', ref: 'orders_q' } }],
+        },
+      ],
+    });
+    useStore.setState({ promoteExploration });
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    await screen.findByTestId('field-swap-offer-banner');
+
+    fireEvent.click(screen.getByTestId('field-swap-offer-orders_q-dismiss'));
+
+    expect(screen.queryByTestId('field-swap-offer-banner')).not.toBeInTheDocument();
+  });
+
   test('Cancel closes without ever calling promoteExploration', async () => {
     buildPromoteChecklist.mockResolvedValue([row()]);
     const promoteExploration = jest.fn();
@@ -265,6 +389,44 @@ describe('ExplorationPromoteModal', () => {
     fireEvent.click(screen.getByTestId('exploration-promote-cancel'));
     expect(onClose).toHaveBeenCalled();
     expect(promoteExploration).not.toHaveBeenCalled();
+  });
+
+  test('clicking the backdrop closes the modal (same as Cancel)', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    const onClose = jest.fn();
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+    await screen.findByTestId('exploration-promote-cancel');
+    fireEvent.click(screen.getByTestId('exploration-promote-modal'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  test('clicking a CHILD of the backdrop (the dialog card itself) does not close it', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    const onClose = jest.fn();
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+    await screen.findByTestId('exploration-promote-cancel');
+    fireEvent.click(screen.getByRole('dialog'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('clicking the backdrop while a promote is in flight does NOT close the modal', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    let resolvePromote;
+    const promoteExploration = jest.fn(
+      () => new Promise(resolve => { resolvePromote = resolve; })
+    );
+    useStore.setState({ promoteExploration });
+    const onClose = jest.fn();
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+    fireEvent.click(screen.getByTestId('exploration-promote-modal'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolvePromote({ success: true, results: [], reclassificationOffers: [] });
+    });
   });
 
   // VIS-1068 — dashboard round-trip completion ("Place in <dashboard>").
@@ -402,6 +564,22 @@ describe('ExplorationPromoteModal', () => {
         )
       );
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    test('a fallback placement failure with no `error` field falls back to a generic message', async () => {
+      seedReturnTo(null, {
+        placeChartInDashboardSlot: jest.fn().mockResolvedValue({ success: false }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+      expect(
+        await screen.findByTestId('exploration-promote-fallback-place-error')
+      ).toHaveTextContent('Could not place the chart in the dashboard');
     });
 
     test('no offer when return_to is set but no chart was promoted this run', async () => {
@@ -547,6 +725,23 @@ describe('ExplorationPromoteModal', () => {
       expect(screen.getByTestId('exploration-promote-decline-placement')).toBeEnabled();
     });
 
+    test('a failed decline with no `error` field falls back to a generic message', async () => {
+      seedReturnTo(
+        { dashboard: 'sales' },
+        { consumeExplorationReturnTo: jest.fn().mockResolvedValue({ success: false }) }
+      );
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+      fireEvent.click(screen.getByTestId('exploration-promote-decline-placement'));
+      expect(await screen.findByTestId('exploration-promote-decline-error')).toHaveTextContent(
+        'Could not dismiss the placement offer'
+      );
+    });
+
     test('a placement failure shows an inline error and does not consume return_to or close', async () => {
       seedReturnTo({ dashboard: 'sales' }, {
         placeChartInDashboardSlot: jest.fn().mockResolvedValue({ success: false, error: 'slot taken' }),
@@ -566,6 +761,22 @@ describe('ExplorationPromoteModal', () => {
       );
       expect(useStore.getState().consumeExplorationReturnTo).not.toHaveBeenCalled();
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    test('a placement failure with no `error` field falls back to a generic message', async () => {
+      seedReturnTo({ dashboard: 'sales' }, {
+        placeChartInDashboardSlot: jest.fn().mockResolvedValue({ success: false }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+      fireEvent.click(screen.getByTestId('exploration-promote-place-in-dashboard'));
+      expect(await screen.findByTestId('exploration-promote-place-error')).toHaveTextContent(
+        'Could not place the chart in the dashboard'
+      );
     });
 
     // P6-D10 (e2e-gap-review.md "Phase 6 delta pass") — the ACCEPT path
@@ -600,6 +811,23 @@ describe('ExplorationPromoteModal', () => {
       );
       expect(useStore.getState().openWorkspaceTab).not.toHaveBeenCalled();
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    test('a consume-return-to failure with no `error` field falls back to a generic message', async () => {
+      seedReturnTo(
+        { dashboard: 'sales', slot: 'r1-i1' },
+        { consumeExplorationReturnTo: jest.fn().mockResolvedValue({ success: false }) }
+      );
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-return-to-offer');
+      fireEvent.click(screen.getByTestId('exploration-promote-place-in-dashboard'));
+      expect(await screen.findByTestId('exploration-promote-place-error')).toHaveTextContent(
+        'Chart placed, but could not clear the placement prompt'
+      );
     });
 
     // P5-D4 — a real double-click can dispatch both events before React
@@ -985,6 +1213,40 @@ describe('ExplorationPromoteModal', () => {
       expect(
         await screen.findByTestId('promote-row-model-orders_q-name-error')
       ).toHaveTextContent('already in use');
+    });
+
+    test('pressing Enter in the name field blurs it (committing the new name)', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist
+        .mockResolvedValueOnce([row()])
+        .mockResolvedValueOnce([row({ name: 'daily_orders' })]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      input.focus();
+      fireEvent.change(input, { target: { value: 'daily_orders' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+    });
+
+    test('pressing Escape reverts the draft to the current name and clears any pending error', async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'not a valid name!' } });
+      fireEvent.blur(input);
+      expect(await screen.findByTestId('promote-row-model-orders_q-name-error')).toBeInTheDocument();
+
+      fireEvent.change(input, { target: { value: 'still typing' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(input).toHaveValue('orders_q');
+      expect(
+        screen.queryByTestId('promote-row-model-orders_q-name-error')
+      ).not.toBeInTheDocument();
+      expect(renameModelTab).not.toHaveBeenCalled();
     });
 
     test('re-typing the exact same name on blur is a no-op — no rename call, no error', async () => {

@@ -245,5 +245,36 @@ describe('ExplorationCard', () => {
       expect(badge).toHaveTextContent('stale');
       expect(badge).toHaveAttribute('title', expect.stringContaining('deleted_model'));
     });
+
+    test('renders a generic tooltip when stale but no specific dangling refs are known', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+          stale
+        />
+      );
+      const badge = screen.getByTestId('exploration-card-exp_1-stale');
+      expect(badge).toHaveAttribute(
+        'title',
+        'This exploration references objects that may have changed'
+      );
+    });
+  });
+
+  test('omits the edited-time label when the exploration has no updatedAt', () => {
+    render(
+      <ExplorationCard
+        exploration={exploration({ updatedAt: null })}
+        onOpen={jest.fn()}
+        onRename={jest.fn()}
+        onDuplicate={jest.fn()}
+        onDelete={jest.fn()}
+      />
+    );
+    expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
   });
 });

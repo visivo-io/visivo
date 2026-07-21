@@ -394,6 +394,108 @@ describe('ExplorerHomePane — delete flow', () => {
   });
 });
 
+describe('ExplorerHomePane — rename flow', () => {
+  test('committing a rename on a card calls renameExploration with the new name', () => {
+    const renameExploration = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      renameExploration,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-rename-action'));
+    const input = screen.getByTestId('exploration-card-exp_1-rename-input');
+    fireEvent.change(input, { target: { value: 'Renamed exploration' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(renameExploration).toHaveBeenCalledWith('exp_1', 'Renamed exploration');
+  });
+});
+
+describe('ExplorerHomePane — duplicate flow', () => {
+  test('clicking Duplicate on a card calls duplicateExploration and opens the copy', async () => {
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_copy' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-duplicate-action'));
+
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalledWith('exp_1'));
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'exploration:exp_copy',
+        type: 'exploration',
+        name: 'exp_copy',
+      })
+    );
+  });
+
+  test('a failed duplicate never opens a tab', async () => {
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-duplicate-action'));
+
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalledWith('exp_1'));
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+});
+
+describe('ExplorerHomePane — create-failure paths (never navigate on failure)', () => {
+  test('a failed "+ New exploration" create never opens a tab', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('explorer-home-new-exploration'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('a failed source-tile create never opens a tab', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('explorer-home-source-tile-warehouse'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+});
+
+test('fails safe when workspaceExplorations.order itself is undefined (not just empty)', () => {
+  seed({
+    workspaceExplorations: { byId: {}, order: undefined },
+    workspaceExplorationsFetched: true,
+  });
+  render(<ExplorerHomePane />);
+  // Renders without crashing; falls back to the empty gallery state.
+  expect(screen.getByTestId('workspace-middle-explorer')).toBeInTheDocument();
+});
+
 // VIS-1070 — the gallery computes staleness once per card (via
 // computeExplorationStaleness) and passes it down; this pins the wiring,
 // not the detection logic itself (covered by explorationStaleness.test.js).

@@ -593,6 +593,22 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
   });
 
+  test('the header "+ New" menu dismisses on a pointerdown outside it', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
+  });
+
+  test('a pointerdown INSIDE the "+ New" menu does not dismiss it', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    const menu = screen.getByTestId('library-new-object-menu');
+    fireEvent.mouseDown(menu);
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+  });
+
   test('shows the empty placeholder when a subsection has no rows', () => {
     seedStore({ charts: [], models: [], csvScriptModels: [], localMergeModels: [] });
     renderLibrary();
@@ -616,6 +632,36 @@ describe('Library', () => {
     expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
     // The selected model row is now visible.
     expect(screen.getByTestId('library-row-model-monthly_revenue')).toBeInTheDocument();
+  });
+
+  test('expanding the rail maps a csvScriptModel/localMergeModel active object onto the single "model" subsection', () => {
+    seedStore({
+      workspaceActiveObject: { type: 'csvScriptModel', name: 'monthly_revenue' },
+      workspaceActiveTabId: 'model:monthly_revenue',
+      libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
+    });
+    renderLibrary();
+    // Reveals the shared "model" subsection, not a nonexistent "csvScriptModel" one.
+    expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
+  });
+
+  test('expanding the rail actually calls scrollIntoView on the now-visible active row', async () => {
+    const scrollIntoView = jest.fn();
+    // jsdom doesn't implement scrollIntoView at all by default — the
+    // production guard (`typeof el.scrollIntoView === 'function'`) exists
+    // for exactly that gap; polyfill it here to exercise the real call.
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      seedStore({
+        workspaceActiveObject: { type: 'model', name: 'monthly_revenue' },
+        workspaceActiveTabId: 'model:monthly_revenue',
+        libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
+      });
+      renderLibrary();
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' }));
+    } finally {
+      delete window.HTMLElement.prototype.scrollIntoView;
+    }
   });
 
   // The old per-surface Project/Explorer/Semantic buttons (and their tests)
@@ -663,6 +709,18 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
   });
 
+  test('the "layout" group filter narrows to Layout-Item subsections (the mirror of the "data" group test)', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-group-layout'));
+    ['chart', 'table', 'markdown', 'input', 'dashboard'].forEach(t =>
+      expect(screen.getByTestId(`library-subsection-${t}`)).toBeInTheDocument()
+    );
+    ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t =>
+      expect(screen.queryByTestId(`library-subsection-${t}`)).not.toBeInTheDocument()
+    );
+  });
+
   test('Clear drops every active filter and restores the full list', () => {
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-filter-toggle'));
@@ -696,6 +754,16 @@ describe('Library', () => {
     );
     expect(screen.getByTestId('library-row-chart-waterfall')).toBeInTheDocument();
     expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
+  });
+
+  test('a search matching NOTHING at all shows the whole-list empty state', async () => {
+    renderLibrary();
+    fireEvent.change(screen.getByTestId('library-search'), {
+      target: { value: 'zzz_no_such_object_zzz' },
+    });
+    expect(await screen.findByTestId('library-empty')).toHaveTextContent(
+      'No objects match “zzz_no_such_object_zzz”.'
+    );
   });
 
   test('highlights the row corresponding to the active workspace tab', () => {

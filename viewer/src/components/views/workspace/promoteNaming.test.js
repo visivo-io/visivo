@@ -113,4 +113,29 @@ describe('suggestPromoteNames', () => {
     const suggestions = suggestPromoteNames(rows, () => 'orders', []);
     expect(suggestions.size).toBe(0);
   });
+
+  test('a lone generic insight row with no model anchor at all is left unsuggested', () => {
+    const rows = [row({ tier: 'insight', type: 'insight', name: 'insight' })];
+    const suggestions = suggestPromoteNames(rows, () => 'orders', []);
+    expect(suggestions.size).toBe(0);
+  });
+
+  // Even an insight that itself stayed unsuggested (no model anchor) still
+  // becomes the NEXT row's anchor candidate — cascading uses whatever name
+  // is on hand, generic or not, rather than leaving the chart anchor-less
+  // when an earlier row already had none itself.
+  test('an unsuggested (still-generic) insight still anchors a later generic chart', () => {
+    const rows = [
+      row({ tier: 'insight', type: 'insight', name: 'insight' }),
+      row({ tier: 'chart', type: 'chart', name: 'chart' }),
+    ];
+    const suggestions = suggestPromoteNames(rows, () => 'orders', []);
+    expect(suggestions.has('insight:insight')).toBe(false);
+    expect(suggestions.get('chart:chart')).toBe('insight_chart');
+  });
+
+  test('isGenericPromoteName never throws on a nullish name', () => {
+    expect(isGenericPromoteName('model', undefined)).toBe(false);
+    expect(isGenericPromoteName('model', null)).toBe(false);
+  });
 });
