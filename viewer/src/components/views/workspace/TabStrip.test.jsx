@@ -264,8 +264,8 @@ describe('TabStrip overflow scroll affordance', () => {
     const track = getTrack();
     stubGeometry(track, { scrollLeft: 0, clientWidth: 300, scrollWidth: 300 });
     fireEvent.scroll(track);
-    expect(screen.queryByTestId('workspace-tab-scroll-left')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('workspace-tab-scroll-right')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scroll tabs left' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scroll tabs right' })).not.toBeInTheDocument();
   });
 
   test('overflowing content scrolled to the start: only the right chevron renders', () => {
@@ -274,8 +274,8 @@ describe('TabStrip overflow scroll affordance', () => {
     const track = getTrack();
     stubGeometry(track, { scrollLeft: 0, clientWidth: 300, scrollWidth: 900 });
     fireEvent.scroll(track);
-    expect(screen.queryByTestId('workspace-tab-scroll-left')).not.toBeInTheDocument();
-    expect(screen.getByTestId('workspace-tab-scroll-right')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scroll tabs left' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scroll tabs right' })).toBeInTheDocument();
   });
 
   test('overflowing content scrolled to the end: only the left chevron renders', () => {
@@ -285,8 +285,8 @@ describe('TabStrip overflow scroll affordance', () => {
     // scrollLeft + clientWidth === scrollWidth → fully scrolled right.
     stubGeometry(track, { scrollLeft: 600, clientWidth: 300, scrollWidth: 900 });
     fireEvent.scroll(track);
-    expect(screen.getByTestId('workspace-tab-scroll-left')).toBeInTheDocument();
-    expect(screen.queryByTestId('workspace-tab-scroll-right')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scroll tabs left' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scroll tabs right' })).not.toBeInTheDocument();
   });
 
   test('overflowing content scrolled to the middle: both chevrons render', () => {
@@ -295,8 +295,8 @@ describe('TabStrip overflow scroll affordance', () => {
     const track = getTrack();
     stubGeometry(track, { scrollLeft: 300, clientWidth: 300, scrollWidth: 900 });
     fireEvent.scroll(track);
-    expect(screen.getByTestId('workspace-tab-scroll-left')).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-tab-scroll-right')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scroll tabs left' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scroll tabs right' })).toBeInTheDocument();
   });
 
   test('clicking the left chevron scrolls the track left by a fixed amount', () => {
@@ -306,7 +306,7 @@ describe('TabStrip overflow scroll affordance', () => {
     stubGeometry(track, { scrollLeft: 300, clientWidth: 300, scrollWidth: 900 });
     track.scrollBy = jest.fn();
     fireEvent.scroll(track);
-    fireEvent.click(screen.getByTestId('workspace-tab-scroll-left'));
+    fireEvent.click(screen.getByRole('button', { name: 'Scroll tabs left' }));
     expect(track.scrollBy).toHaveBeenCalledWith({ left: -160, behavior: 'smooth' });
   });
 
@@ -317,7 +317,7 @@ describe('TabStrip overflow scroll affordance', () => {
     stubGeometry(track, { scrollLeft: 300, clientWidth: 300, scrollWidth: 900 });
     track.scrollBy = jest.fn();
     fireEvent.scroll(track);
-    fireEvent.click(screen.getByTestId('workspace-tab-scroll-right'));
+    fireEvent.click(screen.getByRole('button', { name: 'Scroll tabs right' }));
     expect(track.scrollBy).toHaveBeenCalledWith({ left: 160, behavior: 'smooth' });
   });
 
@@ -327,7 +327,7 @@ describe('TabStrip overflow scroll affordance', () => {
     const track = getTrack();
     stubGeometry(track, { scrollLeft: 0, clientWidth: 300, scrollWidth: 900 });
     fireEvent.scroll(track);
-    expect(screen.getByTestId('workspace-tab-scroll-right')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scroll tabs right' })).toBeInTheDocument();
 
     // Tabs shrink to fit — the geometry must already read as fitting BEFORE
     // the state update commits, so the `[tabs?.length, ...]` effect (which
@@ -337,7 +337,7 @@ describe('TabStrip overflow scroll affordance', () => {
       stubGeometry(track, { scrollLeft: 0, clientWidth: 300, scrollWidth: 300 });
       useStore.setState({ workspaceTabs: [sampleTabs[0]] });
     });
-    expect(screen.queryByTestId('workspace-tab-scroll-right')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scroll tabs right' })).not.toBeInTheDocument();
   });
 
   test('unmounting removes the scroll listener without throwing', () => {
@@ -363,7 +363,7 @@ describe('TabStrip overflow scroll affordance', () => {
       expect(() => fireEvent.scroll(track)).not.toThrow();
       // The 'scroll' listener is registered in the SAME guarded effect as the
       // ResizeObserver — without it, the overflow-derived state never updates.
-      expect(screen.queryByTestId('workspace-tab-scroll-right')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Scroll tabs right' })).not.toBeInTheDocument();
     } finally {
       global.ResizeObserver = original;
     }
