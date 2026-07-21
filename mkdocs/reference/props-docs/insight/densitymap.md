@@ -29,17 +29,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymap/#attr
         Here's a simple `densitymap` insight showing the density of random points on a MapLibre map:
 
         ```yaml
+        sources:
+          - name: densitymap-data-source
+            type: duckdb
+            database: target/seeds/densitymap_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lat,lon
+                    37.7749,-122.4194
+                    34.0522,-118.2437
+                    40.7128,-74.0060
+                    41.8781,-87.6298
+                    29.7604,-95.3698
         models:
           - name: densitymap-data
-            args:
-              - echo
-              - |
-                lat,lon
-                37.7749,-122.4194
-                34.0522,-118.2437
-                40.7128,-74.0060
-                41.8781,-87.6298
-                29.7604,-95.3698
+            source: ${ref(densitymap-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Densitymap Insight
             props:
@@ -70,17 +78,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymap/#attr
         This example demonstrates a `densitymap` insight with a custom radius for the points, which influences how smooth the heatmap appears:
 
         ```yaml
+        sources:
+          - name: densitymap-data-radius-source
+            type: duckdb
+            database: target/seeds/densitymap_data_radius.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lat,lon
+                    51.5074,-0.1278
+                    48.8566,2.3522
+                    52.5200,13.4050
+                    40.7128,-74.0060
+                    34.0522,-118.2437
         models:
           - name: densitymap-data-radius
-            args:
-              - echo
-              - |
-                lat,lon
-                51.5074,-0.1278
-                48.8566,2.3522
-                52.5200,13.4050
-                40.7128,-74.0060
-                34.0522,-118.2437
+            source: ${ref(densitymap-data-radius-source)}
+            sql: select * from model
         insights:
           - name: Densitymap with Custom Radius
             props:
@@ -111,17 +127,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymap/#attr
         This example shows a `densitymap` insight with a custom colorscale and zoom centered on Europe:
 
         ```yaml
+        sources:
+          - name: densitymap-data-colorscale-source
+            type: duckdb
+            database: target/seeds/densitymap_data_colorscale.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lat,lon
+                    48.8566,2.3522
+                    41.9028,12.4964
+                    52.3676,4.9041
+                    40.4168,-3.7038
+                    51.1657,10.4515
         models:
           - name: densitymap-data-colorscale
-            args:
-              - echo
-              - |
-                lat,lon
-                48.8566,2.3522
-                41.9028,12.4964
-                52.3676,4.9041
-                40.4168,-3.7038
-                51.1657,10.4515
+            source: ${ref(densitymap-data-colorscale-source)}
+            sql: select * from model
         insights:
           - name: Densitymap with Custom Colorscale
             props:

@@ -29,9 +29,12 @@ if TYPE_CHECKING:
 
 SEED_DATABASE_DIR = "target/seeds"
 
-# ```yaml / ```yml fenced blocks in markdown, capturing the block body
+# ```yaml / ```yml fenced blocks in markdown, capturing the block body. The
+# fence may be indented — mkdocs nests them inside tabbed content — so the
+# indent is captured and the closing fence must match it.
 MARKDOWN_YAML_FENCE = re.compile(
-    r"(?P<open>^```ya?ml[^\n]*\n)(?P<body>.*?)(?P<close>^```)", re.M | re.S
+    r"(?P<indent>[ \t]*)(?P<open>```ya?ml[^\n]*\n)(?P<body>.*?)(?P<close>^(?P=indent)```)",
+    re.M | re.S,
 )
 
 LOCAL_MERGE_GUIDANCE = (
@@ -196,6 +199,23 @@ def migrate_yaml_text(
     return stream.getvalue(), descriptions
 
 
+def _dedent(text: str, indent: str) -> str:
+    if not indent:
+        return text
+    return "".join(
+        line[len(indent) :] if line.startswith(indent) else line
+        for line in text.splitlines(keepends=True)
+    )
+
+
+def _indent(text: str, indent: str) -> str:
+    if not indent:
+        return text
+    return "".join(
+        f"{indent}{line}" if line.strip() else line for line in text.splitlines(keepends=True)
+    )
+
+
 def migrate_markdown_text(
     text: str, taken_names: Optional[set] = None
 ) -> Optional[Tuple[str, List[str]]]:
@@ -203,12 +223,13 @@ def migrate_markdown_text(
     descriptions = []
 
     def replace(match):
-        migrated = migrate_yaml_text(match.group("body"), taken_names)
+        indent = match.group("indent")
+        migrated = migrate_yaml_text(_dedent(match.group("body"), indent), taken_names)
         if not migrated:
             return match.group(0)
         body, block_descriptions = migrated
         descriptions.extend(block_descriptions)
-        return f"{match.group('open')}{body}{match.group('close')}"
+        return f"{indent}{match.group('open')}{_indent(body, indent)}{match.group('close')}"
 
     result = MARKDOWN_YAML_FENCE.sub(replace, text)
     if not descriptions:

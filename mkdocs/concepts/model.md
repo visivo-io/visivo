@@ -11,10 +11,8 @@ Models are the seam between raw data and visualization. They let you:
 - Name and reuse a query across many Insights, so the transformation lives in one place.
 - Keep dashboard logic declarative — an Insight references `${ref(model_name)}` instead of
   embedding raw SQL.
-- Bring data together from multiple Sources (via a
-  [LocalMergeModel](../reference/configuration/Models/LocalMergeModel/index.md)) or from a
-  script that emits CSV (via a
-  [CsvScriptModel](../reference/configuration/Models/CsvScriptModel/index.md)).
+- Query data that came from a script, API, or other non-SQL process, by loading it onto a
+  Source with a [Seed](../reference/configuration/Sources/DuckdbSource/Seed/index.md).
 
 If you already use **dbt™**, Visivo reads your dbt™ models directly — you do not have to
 re-declare them.
@@ -41,14 +39,16 @@ insights:
 
 ## Model types
 
-| Type | Use when |
-|------|----------|
-| [SqlModel](../reference/configuration/Models/SqlModel/index.md) | You want to write a SQL query against one Source. |
-| [LocalMergeModel](../reference/configuration/Models/LocalMergeModel/index.md) | You want to join tables that live in **different** Sources. |
-| [CsvScriptModel](../reference/configuration/Models/CsvScriptModel/index.md) | Your data comes from a script, API, or other non-SQL process. |
+There is one Model type — [SqlModel](../reference/configuration/SqlModel/index.md) — a
+SQL query against one Source.
+
+When your data comes from a script, an API, or another non-SQL process, give the Source a
+[Seed](../reference/configuration/Sources/DuckdbSource/Seed/index.md): a command whose CSV output is loaded
+into a table before any Model queries it. Seed several datasets onto one Source and a single
+Model can join across them in plain SQL.
 
 ## Learn more
 
 - [How It Works](../how_it_works.md) — how a Model's query is compiled and run.
 - [Including](../topics/including.md) — splitting models across files.
-- Reference: [Models configuration](../reference/configuration/Models/SqlModel/index.md).
+- Reference: [Models configuration](../reference/configuration/SqlModel/index.md).

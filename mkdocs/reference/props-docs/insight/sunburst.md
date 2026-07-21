@@ -27,19 +27,27 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attrib
     === "Simple Sunburst Insight"
 
         ```yaml
+        sources:
+          - name: sunburst-data-source
+            type: duckdb
+            database: target/seeds/sunburst_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    labels,parents,values
+                    Total,,100
+                    A,Total,40
+                    B,Total,30
+                    C,Total,30
+                    D,A,10
+                    E,A,20
+                    F,B,10
         models:
           - name: sunburst-data
-            args:
-              - echo
-              - |
-                labels,parents,values
-                Total,,100
-                A,Total,40
-                B,Total,30
-                C,Total,30
-                D,A,10
-                E,A,20
-                F,B,10
+            source: ${ref(sunburst-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Sunburst Insight
             props:
@@ -59,19 +67,27 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attrib
     === "Sunburst Insight with Custom Colors"
 
         ```yaml
+        sources:
+          - name: sunburst-data-colors-source
+            type: duckdb
+            database: target/seeds/sunburst_data_colors.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    labels,parents,values,colors
+                    Total,,100,#1f77b4
+                    A,Total,40,#ff7f0e
+                    B,Total,30,#2ca02c
+                    C,Total,30,#d62728
+                    D,A,10,#9467bd
+                    E,A,20,#8c564b
+                    F,B,10,#e377c2
         models:
           - name: sunburst-data-colors
-            args:
-              - echo
-              - |
-                labels,parents,values,colors
-                Total,,100,#1f77b4
-                A,Total,40,#ff7f0e
-                B,Total,30,#2ca02c
-                C,Total,30,#d62728
-                D,A,10,#9467bd
-                E,A,20,#8c564b
-                F,B,10,#e377c2
+            source: ${ref(sunburst-data-colors-source)}
+            sql: select * from model
         insights:
           - name: Sunburst Insight with Custom Colors
             props:
@@ -93,19 +109,27 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attrib
     === "Sunburst Insight with Custom Sizes"
 
         ```yaml
+        sources:
+          - name: sunburst-data-sizes-source
+            type: duckdb
+            database: target/seeds/sunburst_data_sizes.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    labels,parents,values,size
+                    Total,,100,1
+                    A,Total,40,2
+                    B,Total,30,3
+                    C,Total,30,4
+                    D,A,10,5
+                    E,A,20,6
+                    F,B,10,7
         models:
           - name: sunburst-data-sizes
-            args:
-              - echo
-              - |
-                labels,parents,values,size
-                Total,,100,1
-                A,Total,40,2
-                B,Total,30,3
-                C,Total,30,4
-                D,A,10,5
-                E,A,20,6
-                F,B,10,7
+            source: ${ref(sunburst-data-sizes-source)}
+            sql: select * from model
         insights:
           - name: Sunburst Insight with Custom Sizes
             props:

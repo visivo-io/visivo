@@ -218,7 +218,7 @@ sources:
 Query a local CSV file directly. The file is exposed as a view named after the Source, so a
 [Model](../concepts/model.md) can `SELECT` from it. Use this for small, version-controlled
 datasets; for CSVs produced by a command, use a
-[CsvScriptModel](../reference/configuration/Models/CsvScriptModel/index.md) instead.
+[Seed](../reference/configuration/Sources/DuckdbSource/Seed/index.md) on a database Source instead.
 
 ```yaml title="project.visivo.yml"
 sources:

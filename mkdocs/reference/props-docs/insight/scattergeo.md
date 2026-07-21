@@ -31,17 +31,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attr
         ![](../../../assets/example-charts/props/scattergeo/simple-scattergeo.png)
 
         ```yaml
+        sources:
+          - name: scattergeo-data-source
+            type: duckdb
+            database: target/seeds/scattergeo_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat
+                    -75,40
+                    -80,25
+                    -120,47
+                    -100,35
+                    -90,30
         models:
           - name: scattergeo-data
-            args:
-              - echo
-              - |
-                lon,lat
-                -75,40
-                -80,25
-                -120,47
-                -100,35
-                -90,30
+            source: ${ref(scattergeo-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scattergeo Insight
             props:
@@ -70,17 +78,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attr
         ![](../../../assets/example-charts/props/scattergeo/lines-scattergeo.png)
 
         ```yaml
+        sources:
+          - name: scattergeo-data-lines-source
+            type: duckdb
+            database: target/seeds/scattergeo_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat
+                    -75,40
+                    -80,25
+                    -120,47
+                    -100,35
+                    -90,30
         models:
           - name: scattergeo-data-lines
-            args:
-              - echo
-              - |
-                lon,lat
-                -75,40
-                -80,25
-                -120,47
-                -100,35
-                -90,30
+            source: ${ref(scattergeo-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scattergeo Insight with Lines
             props:
@@ -109,17 +125,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attr
         ![](../../../assets/example-charts/props/scattergeo/custom-markers-scattergeo.png)
 
         ```yaml
+        sources:
+          - name: scattergeo-data-custom-source
+            type: duckdb
+            database: target/seeds/scattergeo_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat,size,color
+                    -75,40,10,#1f77b4
+                    -80,25,15,#ff7f0e
+                    -120,47,20,#2ca02c
+                    -100,35,25,#d62728
+                    -90,30,30,#9467bd
         models:
           - name: scattergeo-data-custom
-            args:
-              - echo
-              - |
-                lon,lat,size,color
-                -75,40,10,#1f77b4
-                -80,25,15,#ff7f0e
-                -120,47,20,#2ca02c
-                -100,35,25,#d62728
-                -90,30,30,#9467bd
+            source: ${ref(scattergeo-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scattergeo Insight with Custom Markers
             props:

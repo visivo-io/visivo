@@ -32,12 +32,20 @@ _**See the [Attributes](../../configuration/Insight/Props/Bar/#attributes) for t
         ![](../../../assets/example-charts/props/bar/simple-bar.png)
 
         ```yaml
+        sources:
+          - name: monty-python-quest-data-source
+            type: duckdb
+            database: target/seeds/monty_python_quest_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+
         models:
           - name: monty-python-quest-data
-            args:
-              - curl
-              - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-
+            source: ${ref(monty-python-quest-data-source)}
+            sql: select * from model
         insights:
           - name: Count Enemies Encountered by Knight
             props:
@@ -63,12 +71,20 @@ _**See the [Attributes](../../configuration/Insight/Props/Bar/#attributes) for t
         ![](../../../assets/example-charts/props/bar/cohorted-bar.png)
 
         ```yaml
+        sources:
+          - name: monty-python-quest-data-source
+            type: duckdb
+            database: target/seeds/monty_python_quest_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+
         models:
           - name: monty-python-quest-data
-            args:
-              - curl
-              - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-
+            source: ${ref(monty-python-quest-data-source)}
+            sql: select * from model
         insights:
           - name: Count Enemies Encountered by Knight
             props:
@@ -95,12 +111,20 @@ _**See the [Attributes](../../configuration/Insight/Props/Bar/#attributes) for t
         ![](../../../assets/example-charts/props/bar/cohorted-horizontal-bar.png)
 
         ```yaml
+        sources:
+          - name: monty-python-quest-data-h-source
+            type: duckdb
+            database: target/seeds/monty_python_quest_data_h.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+
         models:
           - name: monty-python-quest-data-h
-            args:
-              - curl
-              - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-
+            source: ${ref(monty-python-quest-data-h-source)}
+            sql: select * from model
         insights:
           - name: Count Enemies Encountered by Knight H
             props:

@@ -27,21 +27,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attribu
     === "Simple Surface Insight"
 
         ```yaml
+        sources:
+          - name: surface-data-source
+            type: duckdb
+            database: target/seeds/surface_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    1,1,1
+                    1,2,2
+                    1,3,3
+                    2,1,4
+                    2,2,5
+                    2,3,6
+                    3,1,7
+                    3,2,8
+                    3,3,9
         models:
           - name: surface-data
-            args:
-              - echo
-              - |
-                x,y,z
-                1,1,1
-                1,2,2
-                1,3,3
-                2,1,4
-                2,2,5
-                2,3,6
-                3,1,7
-                3,2,8
-                3,3,9
+            source: ${ref(surface-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Surface Insight
             props:
@@ -61,21 +69,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attribu
     === "Surface Insight with Custom Colorscale"
 
         ```yaml
+        sources:
+          - name: surface-data-colorscale-source
+            type: duckdb
+            database: target/seeds/surface_data_colorscale.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    1,1,1
+                    1,2,2
+                    1,3,3
+                    2,1,4
+                    2,2,5
+                    2,3,6
+                    3,1,7
+                    3,2,8
+                    3,3,9
         models:
           - name: surface-data-colorscale
-            args:
-              - echo
-              - |
-                x,y,z
-                1,1,1
-                1,2,2
-                1,3,3
-                2,1,4
-                2,2,5
-                2,3,6
-                3,1,7
-                3,2,8
-                3,3,9
+            source: ${ref(surface-data-colorscale-source)}
+            sql: select * from model
         insights:
           - name: Surface Insight with Custom Colorscale
             props:
@@ -96,21 +112,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attribu
     === "Surface Insight with Contours"
 
         ```yaml
+        sources:
+          - name: surface-data-contours-source
+            type: duckdb
+            database: target/seeds/surface_data_contours.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    1,1,1
+                    1,2,2
+                    1,3,3
+                    2,1,4
+                    2,2,5
+                    2,3,6
+                    3,1,7
+                    3,2,8
+                    3,3,9
         models:
           - name: surface-data-contours
-            args:
-              - echo
-              - |
-                x,y,z
-                1,1,1
-                1,2,2
-                1,3,3
-                2,1,4
-                2,2,5
-                2,3,6
-                3,1,7
-                3,2,8
-                3,3,9
+            source: ${ref(surface-data-contours-source)}
+            sql: select * from model
         insights:
           - name: Surface Insight with Contours
             props:

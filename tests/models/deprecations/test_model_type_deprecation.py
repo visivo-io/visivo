@@ -132,6 +132,19 @@ class TestMigrateMarkdownText:
         _, descriptions = migrate_markdown_text(text)
         assert len(descriptions) == 2
 
+    def test_rewrites_an_indented_fence_and_keeps_the_indent(self):
+        """mkdocs nests fences inside tabbed content, so they are indented."""
+        block = "".join(f"        {line}\n" for line in CSV_SCRIPT_YAML.splitlines())
+        text = f'=== "Tab"\n\n    Prose.\n\n        ```yaml\n{block}        ```\n'
+        result, descriptions = migrate_markdown_text(text)
+
+        assert len(descriptions) == 1
+        assert "        sources:" in result
+        assert "          - name: quests-source" in result
+        # every content line keeps the fence's indent
+        body = result.split("```yaml\n")[1].split("        ```")[0]
+        assert all(line.startswith("        ") for line in body.splitlines() if line.strip())
+
     def test_leaves_non_yaml_fences_alone(self):
         text = "```python\nmodels = 1\n```\n"
         assert migrate_markdown_text(text) is None

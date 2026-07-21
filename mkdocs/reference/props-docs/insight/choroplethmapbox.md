@@ -33,17 +33,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Choroplethmapbox
         Here's a simple `choroplethmapbox` map showing population density across different regions on a Mapbox layer:
 
         ```yaml
+        sources:
+          - name: country-population-data-mapbox-source
+            type: duckdb
+            database: target/seeds/country_population_data_mapbox.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    iso_alpha,population_density
+                    USA,36
+                    CAN,4
+                    RUS,9
+                    CHN,153
+                    IND,450
         models:
           - name: country-population-data-mapbox
-            args:
-              - echo
-              - |
-                iso_alpha,population_density
-                USA,36
-                CAN,4
-                RUS,9
-                CHN,153
-                IND,450
+            source: ${ref(country-population-data-mapbox-source)}
+            sql: select * from model
         insights:
           - name: Simple ChoroplethMapbox Map
             props:
@@ -72,17 +80,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Choroplethmapbox
     === "ChoroplethMapbox with Custom Colorscale and Zoom"
 
         ```yaml
+        sources:
+          - name: european-gdp-data-source
+            type: duckdb
+            database: target/seeds/european_gdp_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    iso_alpha,gdp
+                    FRA,2716
+                    DEU,3846
+                    ITA,2001
+                    ESP,1419
+                    GBR,2827
         models:
           - name: european-gdp-data
-            args:
-              - echo
-              - |
-                iso_alpha,gdp
-                FRA,2716
-                DEU,3846
-                ITA,2001
-                ESP,1419
-                GBR,2827
+            source: ${ref(european-gdp-data-source)}
+            sql: select * from model
         insights:
           - name: ChoroplethMapbox with Custom Colorscale
             props:
@@ -111,17 +127,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Choroplethmapbox
     === "Interactive ChoroplethMapbox with Hover Data"
 
         ```yaml
+        sources:
+          - name: covid-data-mapbox-source
+            type: duckdb
+            database: target/seeds/covid_data_mapbox.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    iso_alpha,covid_cases,covid_deaths
+                    USA,33000000,600000
+                    BRA,20000000,550000
+                    IND,30000000,400000
+                    RUS,6000000,150000
+                    ZAF,2000000,60000
         models:
           - name: covid-data-mapbox
-            args:
-              - echo
-              - |
-                iso_alpha,covid_cases,covid_deaths
-                USA,33000000,600000
-                BRA,20000000,550000
-                IND,30000000,400000
-                RUS,6000000,150000
-                ZAF,2000000,60000
+            source: ${ref(covid-data-mapbox-source)}
+            sql: select * from model
         insights:
           - name: Interactive ChoroplethMapbox with Hover Data
             props:

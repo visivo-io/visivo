@@ -31,21 +31,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dconto
         ![](../../../assets/example-charts/props/histogram2dcontour/simple-histogram2dcontour.png)
 
         ```yaml
+        sources:
+          - name: histogram2dcontour-data-source
+            type: duckdb
+            database: target/seeds/histogram2dcontour_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,1
+                    2,3
+                    3,4
+                    4,5
+                    2,1
+                    3,2
+                    5,6
+                    4,2
+                    5,3
         models:
           - name: histogram2dcontour-data
-            args:
-              - echo
-              - |
-                x,y
-                1,1
-                2,3
-                3,4
-                4,5
-                2,1
-                3,2
-                5,6
-                4,2
-                5,3
+            source: ${ref(histogram2dcontour-data-source)}
+            sql: select * from model
         insights:
           - name: Simple 2D Contour Histogram
             props:
@@ -77,21 +85,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dconto
         ![](../../../assets/example-charts/props/histogram2dcontour/filled-contour-histogram2dcontour.png)
 
         ```yaml
+        sources:
+          - name: histogram2dcontour-data-filled-source
+            type: duckdb
+            database: target/seeds/histogram2dcontour_data_filled.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    2,1
+                    3,2
+                    4,3
+                    5,4
+                    6,5
+                    3,1
+                    4,2
+                    5,3
+                    6,4
         models:
           - name: histogram2dcontour-data-filled
-            args:
-              - echo
-              - |
-                x,y
-                2,1
-                3,2
-                4,3
-                5,4
-                6,5
-                3,1
-                4,2
-                5,3
-                6,4
+            source: ${ref(histogram2dcontour-data-filled-source)}
+            sql: select * from model
         insights:
           - name: 2D Contour Histogram with Filled Contours
             props:
@@ -123,21 +139,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dconto
         ![](../../../assets/example-charts/props/histogram2dcontour/custom-bins-histogram2dcontour.png)
 
         ```yaml
+        sources:
+          - name: histogram2dcontour-data-bins-source
+            type: duckdb
+            database: target/seeds/histogram2dcontour_data_bins.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,6
+                    3,7
+                    2,4
+                    3,5
+                    4,6
+                    5,8
+                    4,3
+                    5,4
         models:
           - name: histogram2dcontour-data-bins
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,6
-                3,7
-                2,4
-                3,5
-                4,6
-                5,8
-                4,3
-                5,4
+            source: ${ref(histogram2dcontour-data-bins-source)}
+            sql: select * from model
         insights:
           - name: 2D Contour Histogram with Custom Bins
             props:

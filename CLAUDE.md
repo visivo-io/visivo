@@ -168,7 +168,7 @@ The CLI execution path is introspection-free to maintain performance:
 - **Run phase**: Only executes trace queries and generates data files
 - **Compile phase**: Only parses YAML and generates artifacts
 - **Source connection tests**: Use minimal "SELECT 1" queries for connectivity validation
-- **Model execution**: CsvScriptModel and LocalMergeModel never introspect sources
+- **Model execution**: Source seeds are loaded in the run phase and never introspect sources
 
 ### Key Design Principles
 1. **Lazy Loading**: Introspection only when requested by UI

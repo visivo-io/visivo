@@ -121,8 +121,8 @@ relations:
 !!! note "Relations join within a single source"
     Both Models in a Relation must use the same [Source](../concepts/source.md), because a SQL
     join requires all tables to be reachable from one database connection. To combine data
-    from different Sources, use a
-    [LocalMergeModel](../reference/configuration/Models/LocalMergeModel/index.md).
+    that does not already live together, load it onto a single Source with
+    [Seeds](../reference/configuration/Sources/DuckdbSource/Seed/index.md).
 
 ## How it fits together
 

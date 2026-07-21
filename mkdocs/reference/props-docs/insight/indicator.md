@@ -31,13 +31,21 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Indicator/#attri
         ![](../../../assets/example-charts/props/indicator/simple-indicator.png)
 
         ```yaml
+        sources:
+          - name: indicator-data-source
+            type: duckdb
+            database: target/seeds/indicator_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    value
+                    75
         models:
           - name: indicator-data
-            args:
-              - echo
-              - |
-                value
-                75
+            source: ${ref(indicator-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Numeric Indicator
             props:
@@ -69,13 +77,21 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Indicator/#attri
         ![](../../../assets/example-charts/props/indicator/gauge-indicator.png)
 
         ```yaml
+        sources:
+          - name: indicator-data-gauge-source
+            type: duckdb
+            database: target/seeds/indicator_data_gauge.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    value
+                    65
         models:
           - name: indicator-data-gauge
-            args:
-              - echo
-              - |
-                value
-                65
+            source: ${ref(indicator-data-gauge-source)}
+            sql: select * from model
         insights:
           - name: Gauge Indicator
             props:
@@ -103,16 +119,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Indicator/#attri
         ![](../../../assets/example-charts/props/indicator/delta-indicator.png)
 
         ```yaml
+        sources:
+          - name: indicator-data-delta-source
+            type: duckdb
+            database: target/seeds/indicator_data_delta.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    sort,value
+                    3,85
+                    2,75
+                    1,65
+                    0,55
         models:
           - name: indicator-data-delta
-            args:
-              - echo
-              - |
-                sort,value
-                3,85
-                2,75
-                1,65
-                0,55
+            source: ${ref(indicator-data-delta-source)}
+            sql: select * from model
         insights:
           - name: Delta Indicator with Comparison
             props:

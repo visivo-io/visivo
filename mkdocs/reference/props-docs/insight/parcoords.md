@@ -31,16 +31,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attri
         ![](../../../assets/example-charts/props/parcoords/simple-parcoords.png)
 
         ```yaml
+        sources:
+          - name: parcoords-data-source
+            type: duckdb
+            database: target/seeds/parcoords_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    variable_1,variable_2,variable_3
+                    1,4,7
+                    2,5,8
+                    3,6,9
+
         models:
           - name: parcoords-data
-            args:
-              - echo
-              - |
-                variable_1,variable_2,variable_3
-                1,4,7
-                2,5,8
-                3,6,9
-
+            source: ${ref(parcoords-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Parcoords Plot
             description: "Parallel coordinates plot with three numerical variables"
@@ -77,16 +85,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attri
         ![](../../../assets/example-charts/props/parcoords/custom-ranges-parcoords.png)
 
         ```yaml
+        sources:
+          - name: parcoords-data-ranges-source
+            type: duckdb
+            database: target/seeds/parcoords_data_ranges.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    variable_1,variable_2,variable_3
+                    5,10,15
+                    10,20,25
+                    15,30,35
+
         models:
           - name: parcoords-data-ranges
-            args:
-              - echo
-              - |
-                variable_1,variable_2,variable_3
-                5,10,15
-                10,20,25
-                15,30,35
-
+            source: ${ref(parcoords-data-ranges-source)}
+            sql: select * from model
         insights:
           - name: Parcoords Plot with Custom Ranges
             description: "Parallel coordinates with custom axis ranges"
@@ -126,16 +142,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attri
         ![](../../../assets/example-charts/props/parcoords/custom-colorscale-parcoords.png)
 
         ```yaml
+        sources:
+          - name: parcoords-data-colorscale-source
+            type: duckdb
+            database: target/seeds/parcoords_data_colorscale.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    variable_1,variable_2,variable_3
+                    1,2,3
+                    2,3,4
+                    3,4,5
+
         models:
           - name: parcoords-data-colorscale
-            args:
-              - echo
-              - |
-                variable_1,variable_2,variable_3
-                1,2,3
-                2,3,4
-                3,4,5
-
+            source: ${ref(parcoords-data-colorscale-source)}
+            sql: select * from model
         insights:
           - name: Parcoords Plot with Custom Colorscale
             description: "Custom colorscale applied to parallel coordinates"

@@ -27,16 +27,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterternary/#
     === "Simple Scatterternary Insight"
 
         ```yaml
+        sources:
+          - name: scatterternary-data-source
+            type: duckdb
+            database: target/seeds/scatterternary_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,c
+                    0.1,0.5,0.4
+                    0.3,0.4,0.3
+                    0.5,0.3,0.2
+                    0.7,0.2,0.1
         models:
           - name: scatterternary-data
-            args:
-              - echo
-              - |
-                a,b,c
-                0.1,0.5,0.4
-                0.3,0.4,0.3
-                0.5,0.3,0.2
-                0.7,0.2,0.1
+            source: ${ref(scatterternary-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scatterternary Insight
             props:
@@ -61,16 +69,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterternary/#
     === "Scatterternary Insight with Lines"
 
         ```yaml
+        sources:
+          - name: scatterternary-data-lines-source
+            type: duckdb
+            database: target/seeds/scatterternary_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,c
+                    0.2,0.6,0.2
+                    0.4,0.3,0.3
+                    0.6,0.2,0.2
+                    0.8,0.1,0.1
         models:
           - name: scatterternary-data-lines
-            args:
-              - echo
-              - |
-                a,b,c
-                0.2,0.6,0.2
-                0.4,0.3,0.3
-                0.6,0.2,0.2
-                0.8,0.1,0.1
+            source: ${ref(scatterternary-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scatterternary Insight with Lines
             props:
@@ -95,16 +111,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterternary/#
     === "Scatterternary Insight with Custom Marker Sizes and Colors"
 
         ```yaml
+        sources:
+          - name: scatterternary-data-custom-source
+            type: duckdb
+            database: target/seeds/scatterternary_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,c,size,color
+                    0.1,0.5,0.4,10,#1f77b4
+                    0.3,0.4,0.3,15,#ff7f0e
+                    0.5,0.3,0.2,20,#2ca02c
+                    0.7,0.2,0.1,25,#d62728
         models:
           - name: scatterternary-data-custom
-            args:
-              - echo
-              - |
-                a,b,c,size,color
-                0.1,0.5,0.4,10,#1f77b4
-                0.3,0.4,0.3,15,#ff7f0e
-                0.5,0.3,0.2,20,#2ca02c
-                0.7,0.2,0.1,25,#d62728
+            source: ${ref(scatterternary-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scatterternary Insight with Custom Markers
             props:

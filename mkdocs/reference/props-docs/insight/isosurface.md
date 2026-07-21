@@ -33,21 +33,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Isosurface/#attr
         You can copy this code below to create this chart in your project:
 
         ```yaml
+        sources:
+          - name: isosurface-data-simple-source
+            type: duckdb
+            database: target/seeds/isosurface_data_simple.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    idx,x,y,z,value
+                    0,0,0,1,1
+                    1,0,1,1,2
+                    2,0,0,0,3
+                    3,0,1,0,4
+                    4,1,0,1,5
+                    5,1,1,1,6
+                    6,1,0,0,7
+                    7,1,1,0,8
+
         models:
           - name: isosurface-data-simple
-            args:
-              - echo
-              - |
-                idx,x,y,z,value
-                0,0,0,1,1
-                1,0,1,1,2
-                2,0,0,0,3
-                3,0,1,0,4
-                4,1,0,1,5
-                5,1,1,1,6
-                6,1,0,0,7
-                7,1,1,0,8
-
+            source: ${ref(isosurface-data-simple-source)}
+            sql: select * from model
         insights:
           - name: Simple Isosurface Plot Insight
             props:
@@ -81,12 +89,20 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Isosurface/#attr
         Here's the code:
 
         ```yaml
+        sources:
+          - name: isosurface-data-source
+            type: duckdb
+            database: target/seeds/isosurface_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/fractal-cubic.csv
+
         models:
           - name: isosurface-data
-            args:
-              - curl
-              - https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/fractal-cubic.csv
-
+            source: ${ref(isosurface-data-source)}
+            sql: select * from model
         insights:
           - name: Complex With Slice Isosurface Insight
             props:

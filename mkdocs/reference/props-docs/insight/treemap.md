@@ -30,19 +30,27 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Treemap/#attribu
     === "Simple Treemap Insight"
 
         ```yaml
+        sources:
+          - name: treemap-data-source
+            type: duckdb
+            database: target/seeds/treemap_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    labels,parents,values
+                    Total,,100
+                    A,Total,40
+                    B,Total,30
+                    C,Total,30
+                    D,A,10
+                    E,A,20
+                    F,B,10
         models:
           - name: treemap-data
-            args:
-              - echo
-              - |
-                labels,parents,values
-                Total,,100
-                A,Total,40
-                B,Total,30
-                C,Total,30
-                D,A,10
-                E,A,20
-                F,B,10
+            source: ${ref(treemap-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Treemap Insight
             props:
@@ -68,19 +76,27 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Treemap/#attribu
     === "Treemap Insight with Custom Colors"
 
         ```yaml
+        sources:
+          - name: treemap-data-colors-source
+            type: duckdb
+            database: target/seeds/treemap_data_colors.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    labels,parents,values,colors
+                    Total,,100,#1f77b4
+                    A,Total,40,#ff7f0e
+                    B,Total,30,#2ca02c
+                    C,Total,30,#d62728
+                    D,A,10,#9467bd
+                    E,A,20,#8c564b
+                    F,B,10,#e377c2
         models:
           - name: treemap-data-colors
-            args:
-              - echo
-              - |
-                labels,parents,values,colors
-                Total,,100,#1f77b4
-                A,Total,40,#ff7f0e
-                B,Total,30,#2ca02c
-                C,Total,30,#d62728
-                D,A,10,#9467bd
-                E,A,20,#8c564b
-                F,B,10,#e377c2
+            source: ${ref(treemap-data-colors-source)}
+            sql: select * from model
         insights:
           - name: Treemap Insight with Custom Colors
             props:
@@ -104,22 +120,30 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Treemap/#attribu
     === "Treemap Insight with Custom Tiling"
 
         ```yaml
+        sources:
+          - name: treemap-data-tiling-source
+            type: duckdb
+            database: target/seeds/treemap_data_tiling.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    labels,parents,values
+                    Total,,100
+                    A,Total,40
+                    B,Total,30
+                    C,Total,30
+                    D,A,15
+                    E,A,25
+                    F,B,10
+                    G,B,20
+                    H,C,15
+                    I,C,15
         models:
           - name: treemap-data-tiling
-            args:
-              - echo
-              - |
-                labels,parents,values
-                Total,,100
-                A,Total,40
-                B,Total,30
-                C,Total,30
-                D,A,15
-                E,A,25
-                F,B,10
-                G,B,20
-                H,C,15
-                I,C,15
+            source: ${ref(treemap-data-tiling-source)}
+            sql: select * from model
         insights:
           - name: Treemap Insight with Custom Tiling
             props:

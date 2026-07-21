@@ -31,23 +31,31 @@ _**See the [Attributes](../../configuration/Insight/Props/Box/#attributes) for t
         ![](../../../assets/example-charts/props/box/simple-box-plot.png)
 
         ```yaml
+        sources:
+          - name: sample-data-source
+            type: duckdb
+            database: target/seeds/sample_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,value
+                    A,23
+                    A,15
+                    A,18
+                    A,30
+                    A,28
+                    B,40
+                    B,35
+                    B,31
+                    B,25
+                    B,29
+
         models:
           - name: sample-data
-            args:
-              - echo
-              - |
-                category,value
-                A,23
-                A,15
-                A,18
-                A,30
-                A,28
-                B,40
-                B,35
-                B,31
-                B,25
-                B,29
-
+            source: ${ref(sample-data-source)}
+            sql: select * from model
         insights:
           - name: Sample Box Plot
             props:
@@ -80,12 +88,20 @@ _**See the [Attributes](../../configuration/Insight/Props/Box/#attributes) for t
         ![](../../../assets/example-charts/props/box/horizontal-box-plot.png)
 
         ```yaml
+        sources:
+          - name: quest-rewards-source
+            type: duckdb
+            database: target/seeds/quest_rewards.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+
         models:
           - name: quest-rewards
-            args:
-              - curl
-              - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-
+            source: ${ref(quest-rewards-source)}
+            sql: select * from model
         insights:
           - name: Rewards Distribution by Quest
             props:
@@ -116,12 +132,20 @@ _**See the [Attributes](../../configuration/Insight/Props/Box/#attributes) for t
         ![](../../../assets/example-charts/props/box/cohorted-box-plot.png)
 
         ```yaml
+        sources:
+          - name: proclamations-data-source
+            type: duckdb
+            database: target/seeds/proclamations_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+
         models:
           - name: proclamations-data
-            args:
-              - curl
-              - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-
+            source: ${ref(proclamations-data-source)}
+            sql: select * from model
         insights:
           - name: Proclamations Box Plot
             props:

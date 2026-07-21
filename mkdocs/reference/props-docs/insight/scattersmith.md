@@ -27,16 +27,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#at
     === "Simple Scattersmith Insight"
 
         ```yaml
+        sources:
+          - name: scattersmith-data-source
+            type: duckdb
+            database: target/seeds/scattersmith_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    real,imaginary
+                    0.5,0.2
+                    0.8,0.3
+                    1.0,0.5
+                    1.2,0.7
         models:
           - name: scattersmith-data
-            args:
-              - echo
-              - |
-                real,imaginary
-                0.5,0.2
-                0.8,0.3
-                1.0,0.5
-                1.2,0.7
+            source: ${ref(scattersmith-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scattersmith Insight
             props:
@@ -59,16 +67,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#at
     === "Scattersmith Insight with Lines"
 
         ```yaml
+        sources:
+          - name: scattersmith-data-lines-source
+            type: duckdb
+            database: target/seeds/scattersmith_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    real,imaginary
+                    0.2,0.1
+                    0.5,0.4
+                    0.7,0.6
+                    1.0,0.8
         models:
           - name: scattersmith-data-lines
-            args:
-              - echo
-              - |
-                real,imaginary
-                0.2,0.1
-                0.5,0.4
-                0.7,0.6
-                1.0,0.8
+            source: ${ref(scattersmith-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scattersmith Insight with Lines
             props:
@@ -91,16 +107,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#at
     === "Scattersmith Insight with Custom Marker Sizes and Colors"
 
         ```yaml
+        sources:
+          - name: scattersmith-data-custom-source
+            type: duckdb
+            database: target/seeds/scattersmith_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    real,imaginary,size,color
+                    0.5,0.2,10,#1f77b4
+                    0.8,0.3,15,#ff7f0e
+                    1.0,0.5,20,#2ca02c
+                    1.2,0.7,25,#d62728
         models:
           - name: scattersmith-data-custom
-            args:
-              - echo
-              - |
-                real,imaginary,size,color
-                0.5,0.2,10,#1f77b4
-                0.8,0.3,15,#ff7f0e
-                1.0,0.5,20,#2ca02c
-                1.2,0.7,25,#d62728
+            source: ${ref(scattersmith-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scattersmith Insight with Custom Markers
             props:
