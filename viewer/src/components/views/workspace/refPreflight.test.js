@@ -15,8 +15,6 @@ const stateWith = collections => ({
   charts: [],
   insights: [],
   models: [],
-  csvScriptModels: [],
-  localMergeModels: [],
   tables: [],
   markdowns: [],
   inputs: [],

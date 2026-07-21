@@ -78,15 +78,7 @@ const URL_PATTERNS = {
     dashboardDelete: '/api/dashboards/{name}/delete/',
     dashboardValidate: '/api/dashboards/{name}/validate/',
 
-    // CsvScriptModel management endpoints
-    csvScriptModelsList: '/api/csv-script-models/',
-    csvScriptModelDetail: '/api/csv-script-models/{name}/',
-    csvScriptModelValidate: '/api/csv-script-models/{name}/validate/',
 
-    // LocalMergeModel management endpoints
-    localMergeModelsList: '/api/local-merge-models/',
-    localMergeModelDetail: '/api/local-merge-models/{name}/',
-    localMergeModelValidate: '/api/local-merge-models/{name}/validate/',
 
     // Defaults management endpoints
     defaults: '/api/defaults/',
@@ -224,15 +216,7 @@ const URL_PATTERNS = {
     dashboardDelete: null,
     dashboardValidate: null,
 
-    // CsvScriptModel management endpoints (not available in dist)
-    csvScriptModelsList: null,
-    csvScriptModelDetail: null,
-    csvScriptModelValidate: null,
 
-    // LocalMergeModel management endpoints (not available in dist)
-    localMergeModelsList: null,
-    localMergeModelDetail: null,
-    localMergeModelValidate: null,
 
     // Defaults management endpoints (not available in dist)
     defaults: null,

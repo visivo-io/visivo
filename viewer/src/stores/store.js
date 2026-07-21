@@ -21,8 +21,6 @@ import createRunSlice from './runStore';
 import createDefaultsSlice from './defaultsStore';
 import createDashboardSlice from './dashboardStore';
 import createInlineCreateSlice from './inlineCreateStore';
-import createCsvScriptModelSlice from './csvScriptModelStore';
-import createLocalMergeModelSlice from './localMergeModelStore';
 import createExplorerSlice from './explorerStore';
 import createModelJobsSlice from './modelJobsStore';
 import createWorkspaceSlice from './workspaceStore';
@@ -53,8 +51,6 @@ const useStore = create(
     ...createDefaultsSlice(...a),
     ...createDashboardSlice(...a),
     ...createInlineCreateSlice(...a),
-    ...createCsvScriptModelSlice(...a),
-    ...createLocalMergeModelSlice(...a),
     ...createExplorerSlice(...a),
     ...createModelJobsSlice(...a),
     ...createWorkspaceSlice(...a),

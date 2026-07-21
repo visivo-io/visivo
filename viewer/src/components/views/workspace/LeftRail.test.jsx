@@ -34,8 +34,6 @@ const seedStore = (extra = {}) => {
       dashboards: [],
       sources: [],
       models: [],
-      csvScriptModels: [],
-      localMergeModels: [],
       dimensions: [],
       metrics: [],
       relations: [],

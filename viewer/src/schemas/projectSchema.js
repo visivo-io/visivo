@@ -47,8 +47,6 @@ export const OBJECT_TYPE_TO_DEF = {
   markdown: 'Markdown',
   input: 'Input',
   dashboard: 'Dashboard',
-  csvscriptmodel: 'CsvScriptModel',
-  localmergemodel: 'LocalMergeModel',
   defaults: 'Defaults',
   // Dashboard structure children — not Library object types, but the
   // validation-as-save gate (VIS-993) validates Item/Row mutations against
@@ -61,7 +59,7 @@ export const OBJECT_TYPE_TO_DEF = {
  * Resolve an object type (lowercase / camelCase / PascalCase) to its `$defs`
  * entry name. Returns null when the type has no known mapping.
  *
- * @param {string} type - The object type (e.g. 'dimension', 'csvScriptModel')
+ * @param {string} type - The object type (e.g. 'dimension', 'model')
  * @returns {string|null} The PascalCase def name or null
  */
 export function getDefNameForType(type) {

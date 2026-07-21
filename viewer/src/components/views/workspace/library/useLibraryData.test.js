@@ -5,8 +5,7 @@
  * design's two sections — Layout Items (chart · table · markdown · input ·
  * dashboard) and Data Layer (source · model · dimension · metric · relation ·
  * insight)
- * — with stable ids and `model` being the union of sql_model +
- * csv_script_model + local_merge_model.
+ * — with stable ids and model rows carrying a subtype + canonicalType.
  */
 import { renderHook, act } from '@testing-library/react';
 import useStore from '../../../../stores/store';
@@ -22,8 +21,6 @@ const resetStore = () => {
       dashboards: [],
       sources: [],
       models: [],
-      csvScriptModels: [],
-      localMergeModels: [],
       dimensions: [],
       metrics: [],
       relations: [],
@@ -112,35 +109,20 @@ describe('useLibraryData', () => {
     ]);
   });
 
-  test('model is the union of sql / csv-script / local-merge models', () => {
+  test('model rows carry a subtype and the canonical type used for routing', () => {
     act(() => {
       useStore.setState({
         models: [{ name: 'monthly_revenue', status: 'published' }],
-        csvScriptModels: [{ name: 'fibonacci_seed', status: 'new' }],
-        localMergeModels: [{ name: 'daily_join', status: 'modified' }],
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    expect(result.current.dataLayer.model).toHaveLength(3);
-    expect(result.current.dataLayer.model.map(m => m.subtype)).toEqual([
-      'sql_model',
-      'csv_script_model',
-      'local_merge_model',
-    ]);
-    expect(result.current.dataLayer.model.map(m => m.name)).toEqual([
-      'monthly_revenue',
-      'fibonacci_seed',
-      'daily_join',
-    ]);
+    expect(result.current.dataLayer.model).toHaveLength(1);
+    expect(result.current.dataLayer.model.map(m => m.subtype)).toEqual(['sql_model']);
+    expect(result.current.dataLayer.model.map(m => m.name)).toEqual(['monthly_revenue']);
     expect(result.current.dataLayer.model.every(m => m.type === 'model')).toBe(true);
-    // Rows carry the REAL type for tab opens / edit routing — presenting a
-    // csv-script or local-merge model as a plain 'model' resolved a null
-    // record in `models` and dropped the rail into create-SQL-model mode.
-    expect(result.current.dataLayer.model.map(m => m.canonicalType)).toEqual([
-      'model',
-      'csvScriptModel',
-      'localMergeModel',
-    ]);
+    // Rows carry the REAL type for tab opens / edit routing — routing by
+    // anything else resolves a null record and drops the rail into create mode.
+    expect(result.current.dataLayer.model.map(m => m.canonicalType)).toEqual(['model']);
   });
 
   test('sources expose the underlying source subtype + status passthrough', () => {
@@ -175,8 +157,6 @@ describe('useLibraryData', () => {
         dashboards: undefined,
         sources: undefined,
         models: undefined,
-        csvScriptModels: undefined,
-        localMergeModels: undefined,
         dimensions: undefined,
         metrics: undefined,
         relations: undefined,

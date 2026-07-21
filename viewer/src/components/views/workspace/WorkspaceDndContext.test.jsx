@@ -381,22 +381,6 @@ describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)',
     );
   });
 
-  test('csvScriptModel + localMergeModel are accepted as models too', () => {
-    const onAddModel = jest.fn();
-    ['csvScriptModel', 'localMergeModel'].forEach(type => {
-      onAddModel.mockClear();
-      const result = routeWorkspaceDragEnd(
-        {
-          active: { data: { current: { source: 'library', type, name: `m_${type}` } } },
-          over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
-        },
-        {}
-      );
-      expect(result).toBe('erd_add_model');
-      expect(onAddModel).toHaveBeenCalledWith(`m_${type}`);
-    });
-  });
-
   test('a non-model Library row dropped on the ERD is rejected (no add)', () => {
     const onAddModel = jest.fn();
     const result = routeWorkspaceDragEnd(

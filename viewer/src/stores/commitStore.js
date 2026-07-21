@@ -25,8 +25,6 @@ import { emitFirstPublishTelemetry } from '../components/views/workspace/telemet
 const NAMED_CHILD_FETCHERS = [
   'fetchSources',
   'fetchModels',
-  'fetchCsvScriptModels',
-  'fetchLocalMergeModels',
   'fetchDimensions',
   'fetchMetrics',
   'fetchRelations',

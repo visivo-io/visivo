@@ -4,8 +4,7 @@
  * Every per-object canvas now renders through one shared frame: a SubBar with
  * the N-way lens picker, a lens-aware read-only pill, and lazy (code-split)
  * bodies. This story exercises the user-visible framework behaviours:
- *   - the whole model family (a csvScriptModel is surfaced as a `model`) renders
- *     the Model canvas instead of dead-ending on Lineage;
+ *   - a model renders the Model canvas instead of dead-ending on Lineage;
  *   - a read-only canvas shows the read-only pill, which disappears on Lineage;
  *   - the lens picker toggles Canvas ↔ Lineage.
  *
@@ -26,12 +25,12 @@ test.use({ viewport: { width: 1600, height: 1400 } });
 test.describe('ObjectCanvasFrame (VIS-1001)', () => {
   test.setTimeout(90000);
 
-  test('a csvScriptModel renders the Model canvas (not lineage)', async ({ page }) => {
+  test('a model renders the Model canvas (not lineage)', async ({ page }) => {
     const errors = collectErrors(page);
     await openWorkspace(page);
 
-    // `csv` is a csvScriptModel — the Library surfaces it as a `model`. The frame
-    // + ModelPreview resolve it across the model-family collections.
+    // `csv` is a seeded model in the integration fixture; the frame + ModelPreview
+    // resolve it from the models collection.
     await selectLibraryObject(page, 'model', 'csv');
 
     await expect(page.getByTestId('workspace-middle-model-preview')).toBeVisible({ timeout: WAIT });
@@ -40,7 +39,7 @@ test.describe('ObjectCanvasFrame (VIS-1001)', () => {
     await expect(page.getByTestId('model-preview-empty')).toHaveCount(0);
     await expect(page.getByTestId('workspace-middle-model-lineage')).toHaveCount(0);
 
-    await page.screenshot({ path: `${SCREENS}/vis1001-01-csv-model-canvas.png` });
+    await page.screenshot({ path: `${SCREENS}/vis1001-01-model-canvas.png` });
     expect(errors).toEqual([]);
   });
 

@@ -47,8 +47,6 @@ const RefSelector = ({
   // Get objects from store - get individual arrays and combine with useMemo to avoid infinite loops
   const sources = useStore(state => state.sources);
   const models = useStore(state => state.models);
-  const csvScriptModels = useStore(state => state.csvScriptModels);
-  const localMergeModels = useStore(state => state.localMergeModels);
 
   // Combine objects based on type (memoized to prevent infinite re-renders)
   const objects = useMemo(() => {
@@ -56,16 +54,11 @@ const RefSelector = ({
       case 'source':
         return sources || [];
       case 'model':
-        // Include all types of models
-        return [
-          ...(models || []),
-          ...(csvScriptModels || []),
-          ...(localMergeModels || []),
-        ];
+        return models || [];
       default:
         return [];
     }
-  }, [objectType, sources, models, csvScriptModels, localMergeModels]);
+  }, [objectType, sources, models]);
 
   // Parse current value to get selected name(s)
   const selectedValues = useMemo(() => {

@@ -38,7 +38,7 @@ const InsightPreview = React.lazy(() => import('./InsightPreview'));
 // server-only introspection feed; on the dist build the frame shows its
 // "unavailable" state instead of muting the Canvas lens to Lineage.
 const SourceErd = React.lazy(() => import('./source/SourceErd'));
-// ModelPreview is the Model canvas body; csvScriptModel + localMergeModel share
+// ModelPreview is the Model canvas body; every model type shares
 // it (VIS-1001 fixes the latent bug where those distinct type strings fell to
 // lineage because the registry only keyed 'model').
 const ModelCanvas = React.lazy(() => import('./ModelPreview'));
@@ -126,8 +126,6 @@ export const OBJECT_CANVAS_REGISTRY = {
     emptyHint: 'No source selected.',
   },
   model: MODEL_DESCRIPTOR,
-  csvScriptModel: MODEL_DESCRIPTOR,
-  localMergeModel: MODEL_DESCRIPTOR,
   relation: {
     Component: RelationErdCanvas,
     availability: 'serve',

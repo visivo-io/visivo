@@ -10,7 +10,7 @@ import { useMemo } from 'react';
  *
  * Two filters compose:
  *   - `search`     — case-insensitive substring match against the row name
- *                    (and `subtype`, so e.g. `csv_script_model` matches).
+ *                    (and `subtype`, when a row carries one).
  *   - `typeFilter` — `null` for "all types", or a single type key
  *                    (`chart`, `model`, …); rows of any other type drop.
  *
@@ -31,7 +31,7 @@ export function useLibraryFilter({ rows, search, typeFilter }) {
       next = next.filter(r => {
         const name = (r.name || '').toLowerCase();
         if (name.includes(query)) return true;
-        // Allow matching on the subtype too (e.g. 'csv_script_model').
+        // Allow matching on the subtype too, when a row carries one.
         if (r.subtype && String(r.subtype).toLowerCase().includes(query)) return true;
         return false;
       });

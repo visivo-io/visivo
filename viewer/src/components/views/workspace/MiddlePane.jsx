@@ -160,7 +160,7 @@ const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
 };
 
 // Every non-dashboard object (chart, model, insight, input, table, markdown,
-// source, dimension, metric, relation, csvScriptModel, localMergeModel, unknown)
+// source, dimension, metric, relation, unknown)
 // routes through the shared ObjectCanvasFrame (VIS-1001), which owns the SubBar,
 // the N-way lens picker, the per-object local lens, and the canonical states.
 const PerObjectPane = ({ activeObject, projectId }) => (

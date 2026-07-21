@@ -11,7 +11,7 @@ const ROWS = [
   { id: 'chart:revenue', type: 'chart', name: 'revenue_chart' },
   { id: 'table:waterfall', type: 'table', name: 'waterfall_table' },
   { id: 'chart:fib', type: 'chart', name: 'fibonacci_growth' },
-  { id: 'model:fib', type: 'model', name: 'fib_model', subtype: 'csv_script_model' },
+  { id: 'model:fib', type: 'model', name: 'fib_model', subtype: 'sql_model' },
 ];
 
 describe('useLibraryFilter', () => {
@@ -31,7 +31,7 @@ describe('useLibraryFilter', () => {
 
   test('matches on the row subtype too', () => {
     const { result } = renderHook(() =>
-      useLibraryFilter({ rows: ROWS, search: 'csv_script', typeFilter: null })
+      useLibraryFilter({ rows: ROWS, search: 'sql_model', typeFilter: null })
     );
     expect(result.current.map(r => r.id)).toEqual(['model:fib']);
   });

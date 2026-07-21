@@ -22,8 +22,6 @@ const seed = (extra = {}) => {
       ],
       insights: [{ name: 'a' }, { name: 'b' }],
       models: [{ name: 'm1' }],
-      csvScriptModels: [],
-      localMergeModels: [],
       sources: [{ name: 's1' }, { name: 's2' }, { name: 's3' }],
       workspaceActiveObject: null,
       openWorkspaceTab: jest.fn(),

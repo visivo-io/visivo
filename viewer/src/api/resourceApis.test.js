@@ -8,8 +8,6 @@ import * as dimensions from './dimensions';
 import * as metrics from './metrics';
 import * as relations from './relations';
 import * as models from './models';
-import * as csvScriptModels from './csvScriptModels';
-import * as localMergeModels from './localMergeModels';
 import * as markdowns from './markdowns';
 import * as inputs from './inputs';
 import * as insights from './insights';
@@ -73,22 +71,6 @@ const CASES = [
     save: models.saveModel,
     del: models.deleteModel,
     validate: models.validateModel,
-  },
-  {
-    name: 'csvScriptModels',
-    fetchAll: csvScriptModels.fetchAllCsvScriptModels,
-    fetchOne: null,
-    save: csvScriptModels.saveCsvScriptModel,
-    del: csvScriptModels.deleteCsvScriptModel,
-    validate: csvScriptModels.validateCsvScriptModel,
-  },
-  {
-    name: 'localMergeModels',
-    fetchAll: localMergeModels.fetchAllLocalMergeModels,
-    fetchOne: null,
-    save: localMergeModels.saveLocalMergeModel,
-    del: localMergeModels.deleteLocalMergeModel,
-    validate: localMergeModels.validateLocalMergeModel,
   },
   {
     name: 'markdowns',

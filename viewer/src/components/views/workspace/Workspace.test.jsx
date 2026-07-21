@@ -101,8 +101,6 @@ const resetWorkspaceStore = () => {
       fetchInputs: jest.fn(),
       fetchSources: jest.fn(),
       fetchModels: jest.fn(),
-      fetchCsvScriptModels: jest.fn(),
-      fetchLocalMergeModels: jest.fn(),
       fetchDimensions: jest.fn(),
       fetchMetrics: jest.fn(),
       fetchRelations: jest.fn(),
@@ -271,8 +269,6 @@ describe('VIS-775 Workspace shell', () => {
       fetchInputs: jest.fn(),
       fetchSources: jest.fn(),
       fetchModels: jest.fn(),
-      fetchCsvScriptModels: jest.fn(),
-      fetchLocalMergeModels: jest.fn(),
       fetchDimensions: jest.fn(),
       fetchMetrics: jest.fn(),
       fetchRelations: jest.fn(),
@@ -288,8 +284,6 @@ describe('VIS-775 Workspace shell', () => {
       fetchers.fetchInputs,
       fetchers.fetchSources,
       fetchers.fetchModels,
-      fetchers.fetchCsvScriptModels,
-      fetchers.fetchLocalMergeModels,
       fetchers.fetchInsights,
     ].forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
     // The semantic-layer collections (relations/metrics/dimensions) are also

@@ -271,7 +271,7 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
  *
  * The body resolves + renders its own record (and its own empty / not-found
  * state, as each preview already does); the frame just RESOLVES the record via
- * `useCanvasRecord` and passes it down so csvScriptModel / localMergeModel —
+ * `useCanvasRecord` and passes it down so every model type —
  * whose records live in their own collections, not `models` — render the Model
  * canvas instead of "not found".
  */
