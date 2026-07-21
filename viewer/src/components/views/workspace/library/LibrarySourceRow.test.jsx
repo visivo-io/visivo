@@ -56,12 +56,37 @@ describe('LibrarySourceRow', () => {
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 
-  test('clicking the row delegates to onClick (does not expand)', () => {
+  // Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
+  // navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): row click now
+  // expands in place — the natural gesture for hunting a column to drag —
+  // instead of navigating away from whatever exploration the user is mid-edit
+  // on. Navigation moved to an explicit, hover-revealed "Open" icon button.
+  test('clicking the row body expands in place — it no longer navigates via onClick', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: 'warehouse', has_cached_schema: true },
+    ]);
+    fetchSourceTables.mockResolvedValue([{ name: 'orders', column_count: 4 }]);
     const onClick = jest.fn();
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
+
     fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
+
+    await waitFor(() => expect(fetchSourceSchemaJobs).toHaveBeenCalledTimes(1));
+    await screen.findByTestId('library-source-table-warehouse-orders');
+    expect(onClick).not.toHaveBeenCalled();
+
+    // Clicking the row body again collapses it (same toggle as the caret).
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
+    expect(screen.queryByTestId('library-source-table-warehouse-orders')).not.toBeInTheDocument();
+  });
+
+  test('the explicit "Open" button still navigates via onClick, without expanding', () => {
+    const onClick = jest.fn();
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse-open'));
     expect(onClick).toHaveBeenCalledWith(SOURCE, expect.anything());
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('library-source-table-warehouse-orders')).not.toBeInTheDocument();
   });
 
   test('expanding the caret lazily loads the cached schema feed (source -> table)', async () => {

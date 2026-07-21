@@ -19,6 +19,8 @@ import JoinOperatorPopover from './JoinOperatorPopover';
 import RelationLinkEdge from './RelationLinkEdge';
 import { mergeById } from './erdNodeMerge';
 import ErdTidyButton from './ErdTidyButton';
+import OpenObjectContextMenu from '../OpenObjectContextMenu';
+import { emitWorkspaceEvent } from '../telemetry';
 
 /**
  * SemanticLayerCanvas — the project-wide Semantic Layer ERD (VIS-1014).
@@ -64,6 +66,48 @@ const SemanticLayerCanvasInner = () => {
   const openEditRelationModal = useStore(s => s.openEditRelationModal);
   const getRelationByName = useStore(s => s.getRelationByName);
   const savedPositions = erdLayout.nodes;
+
+  // Phase 6c-T5 (ux-audit.md "No 'Explore this' entry point from Semantic
+  // Layer ERD — nodes are completely inert", ⚠ conflicts-with-e2e) — a
+  // right-click Open/Explore-this menu for model cards, same shared
+  // component `LineageCanvas` uses for its own nodes.
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
+  const [ctxMenu, setCtxMenu] = useState(null);
+  const handleNodeContextMenu = useCallback((event, node) => {
+    if (node?.type !== 'semanticLayerModelNode' || !node.data?.name) return;
+    event.preventDefault();
+    setCtxMenu({ x: event.clientX, y: event.clientY, obj: { type: 'model', name: node.data.name } });
+  }, []);
+  const dismissCtxMenu = useCallback(() => setCtxMenu(null), []);
+  const handleCtxOpen = useCallback(
+    obj => {
+      if (setWorkspaceSelection) setWorkspaceSelection(obj);
+    },
+    [setWorkspaceSelection]
+  );
+  const handleCtxOpenInNewTab = useCallback(
+    obj => {
+      if (openWorkspaceTab) openWorkspaceTab({ id: `${obj.type}:${obj.name}`, type: obj.type, name: obj.name });
+    },
+    [openWorkspaceTab]
+  );
+  const handleCtxExploreThis = useCallback(
+    obj => {
+      if (!createExploration || !openWorkspaceTab) return;
+      const seed = { type: obj.type, name: obj.name };
+      const legacyStateOverride = buildExplorationSeedState ? buildExplorationSeedState(seed) : null;
+      createExploration(seed, null, legacyStateOverride).then(result => {
+        if (result?.success) {
+          openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+          emitWorkspaceEvent('explore_this_used', { source_type: obj.type });
+        }
+      });
+    },
+    [createExploration, openWorkspaceTab, buildExplorationSeedState]
+  );
 
   // VIS-1069 — one-shot node-focus intent (mirrors `workspaceLensIntent`):
   // promoting a metric/dimension's "View in Semantic Layer" offer sets this
@@ -119,7 +163,12 @@ const SemanticLayerCanvasInner = () => {
   );
   const edgeTypes = useMemo(() => ({ relationLinkEdge: RelationLinkEdge }), []);
 
-  // Click a relation node → open the existing relation editor.
+  // Click a relation node → open the existing relation editor. Click a MODEL
+  // card → select it (Phase 6c-T5, ux-audit.md "left-click doesn't even
+  // select the object (right rail still says 'Select an object from the
+  // Library or Outline')") — mirrors every other canvas's click-to-select
+  // convention (`CanvasContextMenu.jsx`'s `setSelectedKey`) without
+  // navigating away from the ERD itself.
   const onNodeClick = useCallback(
     (_event, node) => {
       if (node?.type === 'relationNode' && node.data?.relationName) {
@@ -127,9 +176,13 @@ const SemanticLayerCanvasInner = () => {
           ? getRelationByName(node.data.relationName)
           : { name: node.data.relationName };
         if (openEditRelationModal) openEditRelationModal(relation);
+        return;
+      }
+      if (node?.type === 'semanticLayerModelNode' && node.data?.name && setWorkspaceSelection) {
+        setWorkspaceSelection({ type: 'model', name: node.data.name });
       }
     },
-    [getRelationByName, openEditRelationModal]
+    [getRelationByName, openEditRelationModal, setWorkspaceSelection]
   );
 
   // Controlled nodes: keep a moved/in-flight node, overlay saved, seed new, drop
@@ -302,6 +355,7 @@ const SemanticLayerCanvasInner = () => {
               onNodesChange={onNodesChange}
               onNodeDragStop={onNodeDragStop}
               onNodeClick={onNodeClick}
+              onNodeContextMenu={handleNodeContextMenu}
               onConnectStart={onConnectStart}
               onConnect={onConnect}
               onConnectEnd={onConnectEnd}
@@ -328,6 +382,19 @@ const SemanticLayerCanvasInner = () => {
           initialB={popover.initialB}
           onClose={closePopover}
           onSaved={handlePopoverSaved}
+        />
+      )}
+
+      {ctxMenu && (
+        <OpenObjectContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          obj={ctxMenu.obj}
+          onOpen={handleCtxOpen}
+          onOpenInNewTab={handleCtxOpenInNewTab}
+          onExploreThis={handleCtxExploreThis}
+          onDismiss={dismissCtxMenu}
+          testIdPrefix="semantic-erd-node-ctx"
         />
       )}
     </div>

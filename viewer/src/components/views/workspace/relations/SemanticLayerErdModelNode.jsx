@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Position } from 'reactflow';
+import { PiCompass } from 'react-icons/pi';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import { NodeHandle } from '../../../styled/NodeHandle';
 import useStore from '../../../../stores/store';
@@ -116,6 +117,67 @@ const FieldPills = ({ label, names, type }) => {
   );
 };
 
+/**
+ * ExploreModelButton — Phase 6c-T5 (ux-audit.md "No 'Explore this' entry
+ * point from Semantic Layer ERD — nodes are completely inert" finding).
+ * `FieldPills` above already gives metric/dimension pills a working "Explore
+ * this" click (VIS-1069); the model card's OWN header had nothing — no
+ * click, no right-click, no visible affordance at all. This is a VISIBLE,
+ * always-on icon button (not hover-only, not right-click-only — the audit's
+ * direction is "at least one visible, labeled path per surface") that mints
+ * an exploration seeded from the whole model, mirroring `FieldPills`'
+ * double-click guard (`exploringRef`) exactly.
+ */
+const ExploreModelButton = ({ name, colors }) => {
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const exploringRef = useRef(false);
+  const [exploring, setExploring] = useState(false);
+
+  const handleClick = useCallback(
+    e => {
+      e.stopPropagation();
+      if (!createExploration || exploringRef.current) return;
+      exploringRef.current = true;
+      setExploring(true);
+      const seed = { type: 'model', name };
+      const legacyStateOverride = buildExplorationSeedState ? buildExplorationSeedState(seed) : null;
+      createExploration(seed, null, legacyStateOverride)
+        .then(result => {
+          if (result?.success && openWorkspaceTab) {
+            openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+            emitWorkspaceEvent('explore_this_used', { source_type: 'model' });
+          }
+        })
+        .finally(() => {
+          exploringRef.current = false;
+          setExploring(false);
+        });
+    },
+    [name, createExploration, buildExplorationSeedState, openWorkspaceTab]
+  );
+
+  return (
+    <button
+      type="button"
+      data-testid={`semantic-erd-model-explore-${name}`}
+      title={`Explore ${name}`}
+      aria-label={`Explore ${name}`}
+      disabled={exploring}
+      onPointerDown={e => e.stopPropagation()}
+      onClick={handleClick}
+      className={[
+        'ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors',
+        'hover:bg-black/10 disabled:cursor-not-allowed disabled:opacity-60',
+        colors.text,
+      ].join(' ')}
+    >
+      <PiCompass style={{ fontSize: 13 }} aria-hidden="true" />
+    </button>
+  );
+};
+
 const SemanticLayerErdModelNode = ({ data, selected }) => {
   const { name, columns = [], metrics = [], dimensions = [] } = data;
   const colors = getTypeColors('model');
@@ -137,9 +199,10 @@ const SemanticLayerErdModelNode = ({ data, selected }) => {
         ].join(' ')}
       >
         {Icon && <Icon style={{ fontSize: 16 }} className="shrink-0" aria-hidden="true" />}
-        <span className="truncate" title={name}>
+        <span className="min-w-0 flex-1 truncate" title={name}>
           {name}
         </span>
+        <ExploreModelButton name={name} colors={colors} />
       </div>
 
       {columns.length > 0 ? (

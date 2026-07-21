@@ -141,3 +141,50 @@ describe('SemanticLayerErdModelNode — field pill "Explore this" back-link', ()
     });
   });
 });
+
+// Phase 6c-T5 (ux-audit.md "No 'Explore this' entry point from Semantic
+// Layer ERD — nodes are completely inert"): the model card header itself
+// gets a VISIBLE "Explore" affordance — not just the field pills.
+describe('SemanticLayerErdModelNode — model header "Explore" button (Phase 6c-T5)', () => {
+  test('is visible without hovering or right-clicking, and mints an exploration seeded from the whole model', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_model' });
+    const openWorkspaceTab = jest.fn();
+    seed({ createExploration, openWorkspaceTab });
+    renderNode();
+
+    const button = screen.getByTestId('semantic-erd-model-explore-orders');
+    expect(button).toBeVisible();
+    fireEvent.click(button);
+    await waitFor(() => expect(openWorkspaceTab).toHaveBeenCalled());
+
+    expect(createExploration).toHaveBeenCalledWith({ type: 'model', name: 'orders' }, null, null);
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_model',
+      type: 'exploration',
+      name: 'exp_model',
+    });
+  });
+
+  test('double-clicking the model Explore button mints exactly ONE exploration', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    seed({ createExploration });
+    renderNode();
+
+    const button = screen.getByTestId('semantic-erd-model-explore-orders');
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(createExploration).toHaveBeenCalledTimes(1));
+    expect(button).toBeDisabled();
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_model' });
+    });
+    await waitFor(() => expect(button).not.toBeDisabled());
+  });
+});

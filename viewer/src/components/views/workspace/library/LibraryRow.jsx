@@ -325,6 +325,20 @@ const LibraryRow = ({
     setMenuOpen(prev => !prev);
   }, []);
 
+  // Phase 6c-T5 (ux-audit.md "'Explore this' is discoverable only via
+  // right-click/kebab in the Library tree — give it a visible affordance"):
+  // a proper hover-revealed button, a peer of the flip/kebab actions, not
+  // buried one level deeper inside the kebab menu. Routes through the SAME
+  // `onContextAction('exploreThis', obj)` the kebab menu item already calls
+  // — one action, two doors.
+  const handleExploreClick = useCallback(
+    e => {
+      e.stopPropagation();
+      onContextAction && onContextAction('exploreThis', obj);
+    },
+    [onContextAction, obj]
+  );
+
   const handleMenuDismiss = useCallback(() => setMenuOpen(false), []);
   const handlePopoverClose = useCallback(() => setPopoverOpen(false), []);
 
@@ -412,6 +426,18 @@ const LibraryRow = ({
             showActions ? 'opacity-100' : 'opacity-0 pointer-events-none',
           ].join(' ')}
         >
+          {EXPLORE_THIS_TYPES.includes(obj.type) && (
+            <button
+              type="button"
+              onClick={handleExploreClick}
+              title="Explore this"
+              aria-label={`Explore ${obj.name}`}
+              data-testid={`${tid}-explore`}
+              className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-white hover:text-gray-900"
+            >
+              <PiCompass className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={handleFlipClick}

@@ -9,7 +9,7 @@
  * item gating + commit wiring.
  */
 import React, { useRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CanvasContextMenu from './CanvasContextMenu';
 import useStore from '../../../../stores/store';
@@ -239,6 +239,60 @@ describe('CanvasContextMenu (VIS-781)', () => {
       rightClick('r0i0');
       expect(screen.queryByTestId('canvas-ctx-open')).not.toBeInTheDocument();
       expect(screen.queryByTestId('canvas-ctx-open-new-tab')).not.toBeInTheDocument();
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // Phase 6c-T5 (ux-audit.md "No 'Explore this' from a dashboard chart's
+  // context menu", ⚠ conflicts-with-e2e) — the highest-intent moment for
+  // exploration (looking at a rendered chart) had no explore affordance.
+  // ------------------------------------------------------------------
+  describe('"Explore this" (Phase 6c-T5)', () => {
+    let createExploration;
+    let buildExplorationSeedState;
+    let openWorkspaceTab;
+
+    beforeEach(() => {
+      createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_1' });
+      buildExplorationSeedState = jest.fn(() => null);
+      openWorkspaceTab = jest.fn();
+      useStore.setState({ createExploration, buildExplorationSeedState, openWorkspaceTab });
+    });
+
+    test('a chart leaf offers "Explore this"', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0'); // the chart leaf → subject { type: 'chart', name: 'a' }
+      expect(screen.getByTestId('canvas-ctx-explore-this')).toBeInTheDocument();
+    });
+
+    test('a table leaf does NOT offer "Explore this" (not an explorable type yet)', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i1'); // the table leaf → subject { type: 'table', name: 'b' }
+      expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
+    });
+
+    test('clicking "Explore this" mints an exploration seeded from the chart and opens it, dismissing the menu', async () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-explore-this'));
+
+      // The menu dismisses immediately (doesn't wait on the async create).
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+
+      await waitFor(() => expect(openWorkspaceTab).toHaveBeenCalled());
+      expect(createExploration).toHaveBeenCalledWith({ type: 'chart', name: 'a' }, null, null);
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'exploration:exp_1',
+        type: 'exploration',
+        name: 'exp_1',
+      });
+    });
+
+    test('a container item never offers "Explore this"', () => {
+      useStore.setState({ dashboards: [CONTAINER_DASH] });
+      renderHost({ commit: jest.fn(), structure: 'container' });
+      rightClick('r0i0');
+      expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
     });
   });
 });

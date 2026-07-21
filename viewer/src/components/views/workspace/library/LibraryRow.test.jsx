@@ -210,6 +210,38 @@ describe('LibraryRow', () => {
     });
   });
 
+  // Phase 6c-T5 (ux-audit.md "'Explore this' is discoverable only via
+  // right-click/kebab in the Library tree — give it a visible affordance").
+  describe('visible "Explore" button (Phase 6c-T5)', () => {
+    test('a hover-revealed Explore button exists for an EXPLORE_THIS_TYPE row — no right-click/kebab needed', () => {
+      const onContextAction = jest.fn();
+      render(withDnd(<LibraryRow obj={INSIGHT} onContextAction={onContextAction} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      const exploreButton = screen.getByTestId('library-row-insight-revenue_growth-explore');
+      expect(exploreButton).toBeInTheDocument();
+      fireEvent.click(exploreButton);
+      expect(onContextAction).toHaveBeenCalledWith('exploreThis', INSIGHT);
+      // Never opened the kebab's dropdown menu — this is a direct, one-click
+      // affordance, not a menu item.
+      expect(
+        screen.queryByTestId('library-row-insight-revenue_growth-context-menu')
+      ).not.toBeInTheDocument();
+    });
+
+    test('a model row also gets the visible Explore button', () => {
+      render(withDnd(<LibraryRow obj={MODEL} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
+      expect(screen.getByTestId('library-row-model-monthly_revenue-explore')).toBeInTheDocument();
+    });
+
+    test('a type outside EXPLORE_THIS_TYPES (e.g. dashboard) gets no Explore button', () => {
+      const DASHBOARD = { type: 'dashboard', name: 'kpis' };
+      render(withDnd(<LibraryRow obj={DASHBOARD} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-dashboard-kpis'));
+      expect(screen.queryByTestId('library-row-dashboard-kpis-explore')).not.toBeInTheDocument();
+    });
+  });
+
   test('right-click opens the context menu (preventing the native one)', () => {
     render(withDnd(<LibraryRow obj={CHART} />));
     const row = screen.getByTestId('library-row-chart-waterfall');

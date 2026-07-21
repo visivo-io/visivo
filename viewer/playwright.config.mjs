@@ -111,6 +111,13 @@ export default defineConfig({
         // other exploration-mutating spec above.
         '**/exploration-promote-fallback-dashboard-offer.spec.mjs',
         '**/exploration-staleness-drift.spec.mjs',
+        // Phase 6c-T5 (ux-audit.md Lifecycle/entry-point/persistence
+        // findings): each mints real backend exploration records via the
+        // same shared `.visivo/explorations/` repository — same isolation
+        // need as every other exploration-mutating spec above.
+        '**/explore-this-semantic-layer-erd.spec.mjs',
+        '**/explore-this-dashboard-chart.spec.mjs',
+        '**/exploration-reload-persistence.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -262,6 +269,11 @@ export default defineConfig({
         // entry for the same two files for why.
         '**/exploration-promote-fallback-dashboard-offer.spec.mjs',
         '**/exploration-staleness-drift.spec.mjs',
+        // Phase 6c-T5 additions — see the 'parallel' project's testIgnore
+        // entry for the same three files for why.
+        '**/explore-this-semantic-layer-erd.spec.mjs',
+        '**/explore-this-dashboard-chart.spec.mjs',
+        '**/exploration-reload-persistence.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

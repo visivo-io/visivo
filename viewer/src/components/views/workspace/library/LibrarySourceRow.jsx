@@ -11,6 +11,7 @@ import {
   PiSpinnerGap,
   PiWarningCircle,
   PiArrowsClockwise,
+  PiArrowSquareOut,
 } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
@@ -368,9 +369,18 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
 /**
  * LibrarySourceRow — the top-level row `LibrarySubsection` renders for each
  * `source` object instead of the plain `LibraryRow` (see `LibrarySubsection`'s
- * `typeKey === 'source'` branch). Same click/context-menu delegation as a
- * normal Library row (via `onClick`/`onContextAction`), plus the caret that
- * lazily mounts `LibrarySourceDrilldown`.
+ * `typeKey === 'source'` branch). The caret lazily mounts
+ * `LibrarySourceDrilldown`.
+ *
+ * Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
+ * navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): the row's own
+ * click used to delegate straight to `onClick` (navigate to the source's ERD
+ * tab) — the single most natural click (the row, its name, its whole body)
+ * punished the user for hunting for a column to drag by yanking them out of
+ * their in-progress exploration. Row click now EXPANDS in place (same as the
+ * caret) — the natural way to find a column; an explicit, small "Open"
+ * icon button (visible on hover, mirrors `LibraryRow`'s flip/kebab
+ * affordances) is the one remaining path to the ERD tab.
  */
 const LibrarySourceRow = ({ obj, selected = false, onClick }) => {
   const SourceIcon = getTypeIcon('source');
@@ -398,12 +408,23 @@ const LibrarySourceRow = ({ obj, selected = false, onClick }) => {
     [obj.name, toggleExpanded]
   );
 
+  // Phase 6c-T5: row click expands in place instead of navigating away —
+  // see the file docstring. Mirrors clicking the caret exactly.
   const handleClick = useCallback(
     e => {
       if (drag.isDragging) return;
+      e.stopPropagation();
+      toggleExpanded(obj.name);
+    },
+    [drag.isDragging, obj.name, toggleExpanded]
+  );
+
+  const handleOpenClick = useCallback(
+    e => {
+      e.stopPropagation();
       onClick && onClick(obj, e);
     },
-    [drag.isDragging, obj, onClick]
+    [obj, onClick]
   );
 
   const tid = `library-row-source-${obj.name}`;
@@ -448,6 +469,22 @@ const LibrarySourceRow = ({ obj, selected = false, onClick }) => {
         <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
           {obj.name}
         </span>
+        {/* Phase 6c-T5: the explicit navigation affordance the row body used
+            to hijack — hover-revealed, mirrors LibraryRow's flip/kebab
+            actions. */}
+        <button
+          type="button"
+          onClick={handleOpenClick}
+          title={`Open ${obj.name}`}
+          aria-label={`Open ${obj.name}`}
+          data-testid={`${tid}-open`}
+          className={[
+            'flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 transition-opacity hover:bg-white hover:text-gray-700',
+            hovered ? 'opacity-100' : 'opacity-0 pointer-events-none',
+          ].join(' ')}
+        >
+          <PiArrowSquareOut className="h-3.5 w-3.5" />
+        </button>
         <span
           aria-hidden="true"
           data-testid={`${tid}-drag-handle`}

@@ -3,6 +3,7 @@ import useStore from '../../../../stores/store';
 import { parseRefValue } from '../../../../utils/refString';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
+import { EXPLORE_THIS_TYPES } from '../../workspace/library/LibraryRow';
 import {
   wrapItemInContainer,
   unwrapTrivialContainer,
@@ -154,6 +155,12 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
   );
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
+  // Phase 6c-T5 (ux-audit.md "No 'Explore this' from a dashboard chart's
+  // context menu", ⚠ conflicts-with-e2e): the highest-intent moment for
+  // exploration — looking at a rendered chart — had no explore affordance
+  // anywhere (menu offered only Open / Wrap / Add item to row).
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
   const commitCanvasConfig = useWorkspaceCommit();
   // menu: null | { x, y, key, kind }
   const [menu, setMenu] = useState(null);
@@ -248,6 +255,27 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
     [openWorkspaceTab, openWorkspaceTabBackground]
   );
 
+  // "Explore this" — mints an exploration seeded from the chart (real SQL +
+  // props copied in via `buildExplorationSeedState`, same as every other
+  // "Explore this" entry point) and opens its tab. Closes the menu
+  // immediately (same as `openAsTab` above) rather than waiting on the
+  // async create — the menu unmounting is itself the double-click guard.
+  const handleExploreThis = useCallback(
+    subject => {
+      setMenu(null);
+      if (!subject || !createExploration) return;
+      const seed = { type: subject.type, name: subject.name };
+      const legacyStateOverride = buildExplorationSeedState ? buildExplorationSeedState(seed) : null;
+      createExploration(seed, null, legacyStateOverride).then(result => {
+        if (result?.success && openWorkspaceTab) {
+          openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+          emitWorkspaceEvent('explore_this_used', { source_type: subject.type });
+        }
+      });
+    },
+    [createExploration, buildExplorationSeedState, openWorkspaceTab]
+  );
+
   if (!dashboardConfig || !menu) return null;
 
   const isContainer = menu.kind === 'item' && isContainerItem(dashboardConfig, menu.key);
@@ -293,6 +321,13 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
             hint="⌘↵"
             onClick={() => openAsTab(explorerSubject, true)}
           />
+          {EXPLORE_THIS_TYPES.includes(explorerSubject.type) && (
+            <MenuItem
+              testid="canvas-ctx-explore-this"
+              label="Explore this"
+              onClick={() => handleExploreThis(explorerSubject)}
+            />
+          )}
           <div className="my-1 h-px bg-primary-50" />
         </>
       )}

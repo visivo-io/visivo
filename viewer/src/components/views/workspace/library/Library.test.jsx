@@ -238,7 +238,32 @@ describe('Library', () => {
     const openWorkspaceTab = jest.fn();
     seedStore({ openWorkspaceTab });
     renderLibrary();
+    fireEvent.click(screen.getByTestId('library-row-model-monthly_revenue'));
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'model:monthly_revenue',
+      type: 'model',
+      name: 'monthly_revenue',
+    });
+  });
+
+  // Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
+  // navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): a source row
+  // is the ONE Data-Layer row type that does NOT delegate its body click to
+  // openWorkspaceTab anymore — clicking it expands the source's table/column
+  // drill-down in place (LibrarySourceRow's own test file covers this in
+  // depth; this pins the integration point through the full Library tree).
+  test('clicking a SOURCE row body expands it in place instead of navigating; the explicit Open button still navigates', () => {
+    const openWorkspaceTab = jest.fn();
+    seedStore({ openWorkspaceTab });
+    renderLibrary();
     fireEvent.click(screen.getByTestId('library-row-source-local-duck'));
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+    expect(screen.getByTestId('library-row-source-local-duck-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('library-row-source-local-duck-open'));
     expect(openWorkspaceTab).toHaveBeenCalledWith({
       id: 'source:local-duck',
       type: 'source',
