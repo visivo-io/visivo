@@ -150,6 +150,12 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     const before = await rail.locator('[data-testid^="insight-build-section-"]').count();
 
     await page.getByTestId('right-panel-add-insight').click();
+    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
+    // of letting you pick an existing one"): the button now opens a picker
+    // (existing insights + "New blank insight"); these specs want the OLD
+    // "always create a fresh blank insight" behavior, so drive the new
+    // secondary action explicitly.
+    await page.getByTestId('add-insight-menu-create-new').click();
     await expect(rail.locator('[data-testid^="insight-build-section-"]')).toHaveCount(
       before + 1,
       { timeout: 10000 }
