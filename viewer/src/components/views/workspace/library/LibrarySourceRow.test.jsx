@@ -291,4 +291,24 @@ describe('LibrarySourceRow', () => {
     expect(screen.getByTestId('library-source-warehouse-unavailable')).toBeInTheDocument();
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
+
+  test('a selected row gets the selected chrome (data-selected + highlighted text)', () => {
+    render(withDnd(<LibrarySourceRow obj={SOURCE} selected onClick={jest.fn()} />));
+    const row = screen.getByTestId('library-row-source-warehouse');
+    expect(row).toHaveAttribute('data-selected', 'true');
+  });
+
+  test('a click never fires onClick while a drag is in progress (isDragging)', () => {
+    useDraggable.mockReturnValueOnce({
+      transform: null,
+      setNodeRef: jest.fn(),
+      listeners: {},
+      attributes: {},
+      isDragging: true,
+    });
+    const onClick = jest.fn();
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
+    expect(onClick).not.toHaveBeenCalled();
+  });
 });
