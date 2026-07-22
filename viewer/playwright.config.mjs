@@ -118,6 +118,10 @@ export default defineConfig({
         '**/explore-this-semantic-layer-erd.spec.mjs',
         '**/explore-this-dashboard-chart.spec.mjs',
         '**/exploration-reload-persistence.spec.mjs',
+        // Chart-building loop (computed column -> prop well, layout prop
+        // edit, type switch): mints a real exploration + computed columns
+        // against the shared `.visivo/explorations/` repository.
+        '**/exploration-chart-build-updates.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -274,6 +278,10 @@ export default defineConfig({
         '**/explore-this-semantic-layer-erd.spec.mjs',
         '**/explore-this-dashboard-chart.spec.mjs',
         '**/exploration-reload-persistence.spec.mjs',
+        // Chart-building loop (computed column -> prop well, layout prop
+        // edit, type switch): mints a real exploration + computed columns
+        // against the shared `.visivo/explorations/` repository.
+        '**/exploration-chart-build-updates.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,
