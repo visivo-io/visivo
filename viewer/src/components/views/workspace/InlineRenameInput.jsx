@@ -58,7 +58,16 @@ const InlineRenameInput = ({ name, onCommit, onCancel, testIdPrefix = 'inline-re
       <button
         type="button"
         onMouseDown={e => e.preventDefault()}
-        onClick={commit}
+        onClick={e => {
+          // Same bubble guard as the input's own onClick/onKeyDown above —
+          // found via manual walkthrough (Phase 6c-T5): clicking Save here
+          // was ALSO opening the exploration tab, because this click event
+          // bubbled up to ExplorationCard's whole-card onClick unabated.
+          // Only the input itself stopped propagation; these two buttons
+          // never did.
+          e.stopPropagation();
+          commit();
+        }}
         title="Save name"
         data-testid={`${testIdPrefix}-commit`}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-primary-600 hover:bg-primary-100"
@@ -68,7 +77,10 @@ const InlineRenameInput = ({ name, onCommit, onCancel, testIdPrefix = 'inline-re
       <button
         type="button"
         onMouseDown={e => e.preventDefault()}
-        onClick={onCancel}
+        onClick={e => {
+          e.stopPropagation();
+          onCancel();
+        }}
         title="Cancel"
         data-testid={`${testIdPrefix}-cancel`}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100"
