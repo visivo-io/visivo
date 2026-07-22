@@ -41,11 +41,63 @@ class TestRunSeeds:
         assert source.read_sql("select count(*) as c from first") == [{"c": 1}]
         assert source.read_sql("select count(*) as c from second") == [{"c": 2}]
 
-    def test_reruns_replace_rather_than_accumulate(self):
+    def test_reruns_skip_when_table_present_by_default(self):
+        # overwrite_if_present defaults False: a second seed over the same database
+        # with different data must NOT overwrite an already-present table.
         source = seeded_source([Seed(table_name="raw", args=["echo", "x\n1\n2"])])
         run_seeds(source)
+        rerun = DuckdbSource(
+            name="rerun",
+            type="duckdb",
+            database=source.database,
+            seeds=[Seed(table_name="raw", args=["echo", "x\n9\n9\n9"])],
+        )
+        run_seeds(rerun)
+        assert source.read_sql("select count(*) as c from raw") == [{"c": 2}]  # unchanged
+
+    def test_existing_table_overwrite_reloads_an_existing_table(self):
+        source = seeded_source([Seed(table_name="raw", args=["echo", "x\n1\n2"])])
         run_seeds(source)
-        assert source.read_sql("select count(*) as c from raw") == [{"c": 2}]
+        rerun = DuckdbSource(
+            name="rerun",
+            type="duckdb",
+            database=source.database,
+            seeds=[
+                Seed(
+                    table_name="raw",
+                    args=["echo", "x\n9\n9\n9"],
+                    existing_table="overwrite",
+                )
+            ],
+        )
+        run_seeds(rerun)
+        assert source.read_sql("select count(*) as c from raw") == [{"c": 3}]  # replaced
+
+    def test_existing_table_append_adds_to_an_existing_table(self):
+        source = seeded_source([Seed(table_name="raw", args=["echo", "x\n1\n2"])])
+        run_seeds(source)
+        rerun = DuckdbSource(
+            name="rerun",
+            type="duckdb",
+            database=source.database,
+            seeds=[
+                Seed(
+                    table_name="raw",
+                    args=["echo", "x\n3\n4"],
+                    existing_table="append",
+                )
+            ],
+        )
+        run_seeds(rerun)
+        # 2 original + 2 appended rows.
+        assert source.read_sql("select count(*) as c from raw") == [{"c": 4}]
+
+    def test_table_exists_is_false_before_and_true_after_a_seed(self):
+        source = seeded_source([Seed(table_name="raw", args=["echo", "x\n1"])])
+        assert source.table_exists("raw") is False  # no database file yet
+        run_seeds(source)
+        assert source.table_exists("raw") is True
+        assert source.table_exists("never_seeded") is False
 
     def test_a_source_without_seeds_is_a_no_op(self):
         assert run_seeds(seeded_source()) == 0

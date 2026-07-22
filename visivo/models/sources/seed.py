@@ -1,7 +1,7 @@
 import csv
 import io
 import os
-from typing import List
+from typing import List, Literal
 
 import click
 from pydantic import Field
@@ -142,6 +142,17 @@ class Seed(BaseModel):
 
     allow_empty: bool = Field(
         default=False, description="Whether to allow the command to return an empty csv."
+    )
+
+    existing_table: Literal["skip", "append", "overwrite"] = Field(
+        default="skip",
+        description=(
+            "What to do when the seed's `table_name` already exists on the source. "
+            "`skip` (default) leaves the existing table untouched and does not run the command; "
+            "`append` runs the command and inserts its rows into the existing table; "
+            "`overwrite` runs the command and replaces the table. When the table is absent the "
+            "seed always runs and creates it."
+        ),
     )
 
     def validate_stream_is_csv(self, stream: io.StringIO):

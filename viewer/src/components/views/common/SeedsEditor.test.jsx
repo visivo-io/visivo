@@ -96,6 +96,24 @@ describe('SeedsEditor', () => {
     ]);
   });
 
+  test('existing_table defaults to skip and updates on select', () => {
+    const onChangeSpy = jest.fn();
+    render(
+      <Harness initial={[{ table_name: 't', args: ['cat'] }]} onChangeSpy={onChangeSpy} />
+    );
+
+    // Defaults to "skip" (matching the model default) when unset.
+    expect(screen.getByLabelText('When table exists')).toHaveValue('skip');
+
+    fireEvent.change(screen.getByLabelText('When table exists'), {
+      target: { value: 'append' },
+    });
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith([
+      { table_name: 't', args: ['cat'], existing_table: 'append' },
+    ]);
+  });
+
   test('seeds are independent — editing one leaves the other alone', () => {
     const onChangeSpy = jest.fn();
     render(

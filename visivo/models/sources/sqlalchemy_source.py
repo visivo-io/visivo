@@ -123,6 +123,19 @@ class SqlalchemySource(Source, ABC):
                 f"Error writing table '{table_name}' to {self.type} source '{self.name}': {str(err)}"
             )
 
+    def table_exists(self, table_name: str) -> bool:
+        """Targeted existence check for a single table (seed ``existing_table="skip"``).
+
+        Uses SQLAlchemy's inspector ``has_table`` (dialect-correct) rather than a full
+        introspection sweep. Any failure (unreachable DB, missing schema) returns
+        ``False`` so the seed conservatively re-runs rather than being wrongly skipped.
+        """
+        try:
+            schema = self.get_db_schema() if hasattr(self, "get_db_schema") else None
+            return inspect(self.get_engine()).has_table(table_name, schema=schema)
+        except Exception:
+            return False
+
     def read_sql(self, query: str, **kwargs):
         with self.connect() as connection:
             query = text(query)

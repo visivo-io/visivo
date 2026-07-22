@@ -125,6 +125,16 @@ class Source(ABC, NamedModel):
         """
         raise NotImplementedError(f"No write_dataframe method implemented for {self.type}")
 
+    def table_exists(self, table_name: str) -> bool:
+        """Whether ``table_name`` already exists on this source.
+
+        Backs a seed's ``existing_table="skip"``: when a table is already present
+        the seed run is skipped. This is a single, targeted existence check (not a full
+        schema introspection). Defaults to ``False`` so a source that can't answer simply
+        re-runs the seed rather than wrongly skipping it.
+        """
+        return False
+
     def connect(self):
         return Connection(source=self)
 

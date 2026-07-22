@@ -82,6 +82,23 @@ class BaseDuckdbSource(Source):
                 f"Error writing table '{table_name}' to {self.type} source '{self.name}': {str(err)}"
             )
 
+    def table_exists(self, table_name: str) -> bool:
+        """Targeted existence check for a single table (seed ``existing_table="skip"``).
+
+        A single ``information_schema.tables`` lookup, not a full introspection. Any
+        failure — most commonly the database file not existing yet on the first run —
+        returns ``False`` so the seed runs and creates the table.
+        """
+        try:
+            with self.connect(read_only=True) as connection:
+                result = connection.execute(
+                    "SELECT 1 FROM information_schema.tables WHERE table_name = ? LIMIT 1",
+                    [table_name],
+                ).fetchone()
+                return result is not None
+        except Exception:
+            return False
+
     def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
         """
         Build SQLGlot schema using DuckDB's introspection capabilities.

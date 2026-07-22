@@ -38,6 +38,19 @@ def run_seeds(source: Source, working_dir: str = None) -> int:
 
     seeds = getattr(source, "seeds", None) or []
     for seed in seeds:
+        # existing_table governs what happens when the table already exists:
+        #   skip      -> leave it, don't run (only this mode needs the existence check)
+        #   append    -> run and insert into it (write_dataframe replace=False)
+        #   overwrite -> run and replace it (write_dataframe replace=True)
+        # An absent table always runs and creates it, regardless of the mode.
+        mode = getattr(seed, "existing_table", "skip")
+        if mode == "skip" and source.table_exists(seed.table_name):
+            Logger.instance().debug(
+                f"Source {source.name}: seed {seed.table_name} already present, "
+                "skipping (existing_table=skip)"
+            )
+            continue
+        replace = mode != "append"
         Logger.instance().debug(f"Source {source.name}: running seed {seed.table_name}")
         process = subprocess.Popen(
             seed.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir
@@ -61,7 +74,7 @@ def run_seeds(source: Source, working_dir: str = None) -> int:
             continue
         csv_stream.seek(0)
 
-        source.write_dataframe(seed.table_name, pl.read_csv(csv_stream))
+        source.write_dataframe(seed.table_name, pl.read_csv(csv_stream), replace=replace)
         Logger.instance().debug(f"Source {source.name}: seed {seed.table_name} loaded")
 
     return len(seeds)

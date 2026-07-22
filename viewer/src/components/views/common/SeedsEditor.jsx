@@ -105,6 +105,25 @@ const SeedsEditor = ({ seeds, onChange }) => {
             </label>
           </div>
 
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor={`seed-${seedIndex}-existing-table`}
+              className="text-xs font-medium text-gray-700"
+            >
+              When table exists
+            </label>
+            <select
+              id={`seed-${seedIndex}-existing-table`}
+              value={seed.existing_table || 'skip'}
+              onChange={e => updateSeed(seedIndex, { existing_table: e.target.value })}
+              className="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="skip">Skip</option>
+              <option value="append">Append</option>
+              <option value="overwrite">Overwrite</option>
+            </select>
+          </div>
+
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-gray-700">Command Arguments</span>
