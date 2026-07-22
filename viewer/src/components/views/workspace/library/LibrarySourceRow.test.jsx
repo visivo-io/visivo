@@ -16,9 +16,15 @@ import {
   fetchSourceTables,
   fetchTableColumns,
 } from '../../../../api/sourceSchemaJobs';
+import { isAvailable } from '../../../../contexts/URLContext';
 
+// A jest.fn() (not a bare arrow function) so one test can override its
+// return value for that render only — `useSourceOutline`'s `available` is
+// computed via `useMemo(() => isAvailable(...), [])` at mount, so the
+// override must be in place BEFORE that component renders.
+// `jest.clearAllMocks()` below resets call history, not this implementation.
 jest.mock('../../../../contexts/URLContext', () => ({
-  isAvailable: () => true,
+  isAvailable: jest.fn(() => true),
 }));
 jest.mock('../../../../api/sourceSchemaJobs', () => ({
   fetchSourceSchemaJobs: jest.fn(),
@@ -157,6 +163,9 @@ describe('LibrarySourceRow', () => {
     fetchTableColumns.mockResolvedValue([
       { name: 'id', type: 'INTEGER' },
       { name: 'region', type: 'VARCHAR' },
+      { name: 'is_active', type: 'BOOLEAN' },
+      { name: 'created_at', type: 'TIMESTAMP' },
+      { name: 'untyped', type: null },
     ]);
 
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
@@ -172,6 +181,16 @@ describe('LibrarySourceRow', () => {
     expect(
       screen.getByTestId('library-source-column-warehouse-orders-region')
     ).toHaveTextContent('T');
+    expect(
+      screen.getByTestId('library-source-column-warehouse-orders-is_active')
+    ).toHaveTextContent('B');
+    // date/time and no-type both render an icon-only glyph (no letter label).
+    expect(
+      screen.getByTestId('library-source-column-warehouse-orders-created_at')
+    ).not.toHaveTextContent(/[A-Z]/);
+    expect(
+      screen.getByTestId('library-source-column-warehouse-orders-untyped')
+    ).not.toHaveTextContent(/[A-Z]/);
   });
 
   test('table row drag payload carries type sourceTable + sourceName', async () => {
@@ -261,5 +280,15 @@ describe('LibrarySourceRow', () => {
   test('renders the drag handle on the source row', () => {
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     expect(screen.getByTestId('library-row-source-warehouse-drag-handle')).toBeInTheDocument();
+  });
+
+  test('schema browsing disabled (isAvailable false, e.g. dist/cloud) shows the degraded message instead of a tree', () => {
+    isAvailable.mockReturnValueOnce(false);
+
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
+
+    expect(screen.getByTestId('library-source-warehouse-unavailable')).toBeInTheDocument();
+    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 });
