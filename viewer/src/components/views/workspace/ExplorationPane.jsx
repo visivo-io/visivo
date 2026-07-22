@@ -186,6 +186,14 @@ const ExplorationPane = ({ id }) => {
   // Live debounced persist while the tab is open and being edited — bounds
   // data loss on a crash/hard-reload to ~1 debounce window (02 §1/§8).
   const liveSyncTimerRef = useRef(null);
+  // Tracks whether THIS pane has a debounced write that hasn't fired yet —
+  // distinct from `liveSyncTimerRef` itself, which (deliberately, so a
+  // *new* edit's debounce can supersede an old one) holds the last timer ID
+  // it ever set and is never nulled out when that timer fires naturally.
+  // `flushNow` below needs the narrower "is something actually still
+  // pending" signal, not "has this pane ever scheduled a sync" — see its
+  // own comment for the regression this ref exists to prevent.
+  const liveSyncPendingRef = useRef(false);
   useEffect(() => {
     if (readyId !== id) return undefined;
     if (skipNextLiveSyncRef.current) {
@@ -193,7 +201,9 @@ const ExplorationPane = ({ id }) => {
       return undefined;
     }
     if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current);
+    liveSyncPendingRef.current = true;
     liveSyncTimerRef.current = setTimeout(() => {
+      liveSyncPendingRef.current = false;
       const snapshot = snapshotExplorerWorkingState();
       updateExplorationDraft(id, legacyStateToDraft(snapshot));
     }, LIVE_SYNC_DEBOUNCE_MS);
@@ -244,13 +254,27 @@ const ExplorationPane = ({ id }) => {
   // could, and neither fits this contract cleanly) — but this closes the
   // window the audit actually reproduced (~1s of normal typing-then-reload),
   // which is the realistic, common case.
+  //
+  // GUARD (found via e2e, #19 cross-tab-concurrency): only flush if
+  // `liveSyncPendingRef` says a debounced write is genuinely still
+  // outstanding. Without this, `flushNow` unconditionally re-POSTed this
+  // pane's CURRENT client snapshot on every reload/hide — including when
+  // nothing was pending because the debounce had already fired and synced
+  // minutes ago. That's harmless when this tab's own snapshot is the
+  // freshest thing around, but not when it's gone stale relative to the
+  // server (e.g. a sibling tab/browser context won a last-write-wins race
+  // after this tab's own snapshot was taken): reloading the LOSING tab
+  // would silently re-push its stale snapshot and clobber the winner's
+  // already-persisted draft, right as the page reloaded to go read it back.
   useEffect(() => {
     if (readyId !== id) return undefined;
     const flushNow = () => {
+      if (!liveSyncPendingRef.current) return;
       if (liveSyncTimerRef.current) {
         clearTimeout(liveSyncTimerRef.current);
         liveSyncTimerRef.current = null;
       }
+      liveSyncPendingRef.current = false;
       const snapshot = snapshotExplorerWorkingState();
       updateExplorationDraft(id, legacyStateToDraft(snapshot));
       flushExplorationSync(id);

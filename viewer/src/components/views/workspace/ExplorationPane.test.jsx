@@ -131,7 +131,7 @@ describe('ExplorationPane — ready state', () => {
       });
     });
 
-    test('document going hidden (tab close / reload / backgrounding) flushes the CURRENT draft immediately', () => {
+    test('document going hidden (tab close / reload / backgrounding) flushes a genuinely PENDING debounced edit immediately', () => {
       const updateExplorationDraft = jest.fn();
       const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
       const snapshotExplorerWorkingState = jest.fn(() => ({ modelTabs: ['query_1'] }));
@@ -147,13 +147,20 @@ describe('ExplorationPane — ready state', () => {
       updateExplorationDraft.mockClear();
       flushExplorationSync.mockClear();
 
+      // Arm the live-sync debounce (an edit just happened) — flushNow only
+      // acts when something is genuinely pending (see the "never re-pushes
+      // a stale snapshot" test below for why that guard exists).
+      act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
+
       fireDocumentVisibilityHidden();
 
       expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
       expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
     });
 
-    test('pagehide also flushes immediately (fallback net alongside visibilitychange)', () => {
+    test('pagehide also flushes a pending edit immediately (fallback net alongside visibilitychange)', () => {
       const updateExplorationDraft = jest.fn();
       const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
       seed({
@@ -164,6 +171,10 @@ describe('ExplorationPane — ready state', () => {
       render(<ExplorationPane id="exp_1" />);
       updateExplorationDraft.mockClear();
       flushExplorationSync.mockClear();
+
+      act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
 
       act(() => {
         window.dispatchEvent(new Event('pagehide'));
@@ -173,7 +184,7 @@ describe('ExplorationPane — ready state', () => {
       expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
     });
 
-    test('beforeunload also flushes immediately', () => {
+    test('beforeunload also flushes a pending edit immediately', () => {
       const updateExplorationDraft = jest.fn();
       const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
       seed({
@@ -186,11 +197,62 @@ describe('ExplorationPane — ready state', () => {
       flushExplorationSync.mockClear();
 
       act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
+
+      act(() => {
         window.dispatchEvent(new Event('beforeunload'));
       });
 
       expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
       expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+    });
+
+    // Regression test (#19 cross-tab-concurrency, found live via e2e): the
+    // ORIGINAL flush-on-hide fix unconditionally re-pushed this pane's
+    // current snapshot on every hide/reload — including when nothing was
+    // pending, because the debounce had already fired and synced. That's
+    // dangerous specifically when this tab's own snapshot has gone STALE
+    // relative to the server (e.g. a sibling browser context won a
+    // last-write-wins race after this tab's debounce already sent its own,
+    // now-losing, edit): reloading the LOSING tab would silently re-push
+    // its stale snapshot and clobber the winner's already-persisted draft.
+    test('never re-pushes a snapshot on hide/reload when nothing is genuinely pending (no stale-clobber on the losing side of a cross-tab race)', () => {
+      jest.useFakeTimers();
+      try {
+        const updateExplorationDraft = jest.fn();
+        const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+        seed({
+          workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+          updateExplorationDraft,
+          flushExplorationSync,
+        });
+        render(<ExplorationPane id="exp_1" />);
+        updateExplorationDraft.mockClear();
+        flushExplorationSync.mockClear();
+
+        // An edit happens, and its debounce fires NATURALLY (not via a page
+        // hide) — by the time the page later goes away, nothing is pending
+        // anymore; some OTHER context may since have written a newer draft.
+        act(() => {
+          useStore.setState({ explorerModelTabs: ['query_1'] });
+        });
+        act(() => {
+          jest.advanceTimersByTime(600);
+        });
+        expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+        updateExplorationDraft.mockClear();
+        flushExplorationSync.mockClear();
+
+        act(() => {
+          window.dispatchEvent(new Event('pagehide'));
+        });
+
+        expect(updateExplorationDraft).not.toHaveBeenCalled();
+        expect(flushExplorationSync).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     test('unmounting removes the listeners — no stale flush against a closed pane', () => {
