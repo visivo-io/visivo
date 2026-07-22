@@ -9,7 +9,7 @@
  * the plain "Save to Project" button.
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorationBuildRail from './ExplorationBuildRail';
 import useStore from '../../../stores/store';
@@ -194,7 +194,7 @@ describe('ExplorationBuildRail', () => {
       useStore.setState({ workspaceExplorations: { byId: {}, order: [] } });
       render(<ExplorationBuildRail explorationId="exp_not_loaded_yet" />);
       expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
-        'Objects you Save to Project will appear here.'
+        'Objects you save to project will appear here.'
       );
     });
 
@@ -319,5 +319,104 @@ describe('ExplorationBuildRail', () => {
     const button = screen.getByTestId('explorer-save-button');
     expect(button).toHaveTextContent('Save to project…');
     expect(button).not.toHaveTextContent(/promote/i);
+  });
+
+  // D11 (walkthrough finding, post-Wave-1): "the chip is still labelled
+  // model/insight during live editing" — the fix is a proactive effect that
+  // applies the SAME suggestion logic `promoteNaming.js` already used at
+  // save time, live, the moment a placeholder-named tab/insight has a real
+  // anchor. These assert against the store directly (not the chip DOM —
+  // `ExplorationQueryChips` isn't mounted by this component at all) since
+  // that's the one true source the chip, the tab strip, and the promote
+  // checklist all read from.
+  describe('live auto-suggest naming (D11 proactive — chip still read "model"/"insight" while editing)', () => {
+    it('renames a generic-named model tab to <source>_query the moment it has a bound source', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: {
+          model: { isNew: true, sourceName: 'orders_db', sql: '' },
+        },
+      });
+      render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+      });
+      expect(useStore.getState().explorerModelStates['orders_db_query']).toBeTruthy();
+      expect(useStore.getState().explorerModelStates.model).toBeUndefined();
+    });
+
+    it('renames a generic-named insight to <model>_insight once its model already has a real name', async () => {
+      useStore.setState({
+        explorerModelTabs: ['orders_db_query'],
+        explorerModelStates: { orders_db_query: { isNew: true, sourceName: 'orders_db' } },
+        explorerChartInsightNames: ['insight'],
+        explorerActiveInsightName: 'insight',
+        explorerInsightStates: {
+          insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+        },
+      });
+      render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerChartInsightNames).toEqual(['orders_db_query_insight']);
+      });
+    });
+
+    it('leaves a generic-named model tab untouched when it has no bound source yet — never guesses', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: null } },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+    });
+
+    it('never touches a model tab that already has a real, user-given name', async () => {
+      useStore.setState({
+        explorerModelTabs: ['orders_query'],
+        explorerModelStates: { orders_query: { isNew: true, sourceName: 'orders_db' } },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['orders_query']);
+    });
+
+    it('never touches a "modified" (update-by-name) tab even if its name happens to look generic', async () => {
+      // renameModelTab's own isNew guard is the safety net here — this pins
+      // that the live effect relies on it rather than re-deriving new-ness.
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: false, sourceName: 'orders_db' } },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+    });
+
+    it('is idempotent — the rename fires once and does not oscillate on re-render', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
+      });
+      const { rerender } = render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+      });
+      rerender(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+    });
+
+    it('a suggested name that collides with an existing object falls back to a disambiguated one', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
+        models: [{ name: 'orders_db_query' }],
+      });
+      render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query_2']);
+      });
+    });
   });
 });

@@ -1,7 +1,9 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { PiPlus, PiFloppyDisk, PiCheckCircle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
-import { selectHasModifications } from '../../../stores/explorerStore';
+import { selectHasModifications, getAllKnownNames } from '../../../stores/explorerStore';
+import { generateUniqueName } from '../../../utils/uniqueName';
+import { isGenericPromoteName } from './promoteNaming';
 import InsightBuildSection from './InsightBuildSection';
 import ChartBuildSection from './ChartBuildSection';
 import ExplorationPromoteModal from './ExplorationPromoteModal';
@@ -70,6 +72,77 @@ const ExplorationBuildRail = ({ explorationId }) => {
 
   const [chartExpanded, setChartExpanded] = useState(true);
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // D11 (walkthrough finding, post-Wave-1): "Save to project" already
+  // suggests a real name for a brand-new placeholder-named row
+  // (`promoteNaming.js`'s `suggestPromoteNames`) — but only at save time, so
+  // a chip sat on screen literally labeled "model"/"insight" for the whole
+  // life of the draft up to that point (the single most visible copy issue
+  // left in this phase). This mirrors that same suggestion live, the moment
+  // a placeholder-named model tab has a source to anchor on (every fresh
+  // tab gets one immediately — project default or first available source,
+  // `createModelTab`) or a placeholder-named insight has a real model to
+  // anchor on. `renameModelTab`/`renameInsight` already refuse to touch
+  // anything that isn't a brand-new draft (their own `isNew` guard) and are
+  // a no-op on a name that's already real, so this only ever fires once per
+  // object — after the rename, the tab/insight name is no longer generic,
+  // so the effect naturally stops re-firing for it. The one deliberate
+  // tradeoff: a user who manually retypes a chip's name back to literally
+  // "model"/"insight" would see it renamed again too — an accepted, narrow
+  // edge case for keeping this simple and not tracking "did the user ever
+  // touch this name" separately from the store's own isNew/name state.
+  const explorerModelTabsForNaming = useStore(s => s.explorerModelTabs);
+  const explorerModelStatesForNaming = useStore(s => s.explorerModelStates);
+  const renameModelTab = useStore(s => s.renameModelTab);
+  const renameInsight = useStore(s => s.renameInsight);
+  useEffect(() => {
+    const used = new Set(Array.from(getAllKnownNames(useStore.getState()).keys()));
+
+    let modelAnchor = null;
+    for (const name of explorerModelTabsForNaming) {
+      if (!isGenericPromoteName('model', name)) {
+        modelAnchor = name;
+        continue;
+      }
+      const sourceName = explorerModelStatesForNaming?.[name]?.sourceName || null;
+      if (!sourceName) continue; // no anchor yet — leave editable, never guess
+      const suggested = generateUniqueName(`${sourceName}_query`, used);
+      if (suggested === name) continue;
+      used.add(suggested);
+      try {
+        renameModelTab(name, suggested);
+        modelAnchor = suggested;
+      } catch {
+        // A collision the suggestion logic couldn't see — fail open, leave
+        // the placeholder in place; still editable by hand via the chip's
+        // rename menu.
+      }
+    }
+
+    for (const name of chartInsightNames) {
+      if (!isGenericPromoteName('insight', name)) continue;
+      if (!modelAnchor) continue;
+      const suggested = generateUniqueName(`${modelAnchor}_insight`, used);
+      if (suggested === name) continue;
+      used.add(suggested);
+      try {
+        renameInsight(name, suggested);
+      } catch {
+        // same fail-open as above
+      }
+    }
+    // Deliberately excludes `chartInsightNames`'s own identity churn concerns
+    // beyond re-running when it changes — this effect is idempotent and
+    // self-terminating (see comment above), so re-running it on every
+    // relevant state change is safe and cheap (no network calls).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    explorerModelTabsForNaming,
+    explorerModelStatesForNaming,
+    chartInsightNames,
+    renameModelTab,
+    renameInsight,
+  ]);
 
   const handleOpenPromoted = useCallback(
     p => {

@@ -1288,7 +1288,12 @@ describe('ExplorationPromoteModal', () => {
   // overlap with the tests above is expected and left as-is.
 
   // VIS-1068 — dashboard round-trip completion ("Place in <dashboard>").
-  describe('return_to / "Place in <dashboard>"', () => {
+  // (coverage-push): kept alongside the original describe block of the
+  // same name above per the merge instruction to keep both sides' tests —
+  // the title is disambiguated only so `jest/no-identical-title` doesn't
+  // flag two sibling describes sharing a name; these tests are additive
+  // coverage, not a rename of the earlier suite.
+  describe('return_to / "Place in <dashboard>" (coverage-push)', () => {
     const seedReturnTo = (returnTo, extra = {}) => {
       useStore.setState({
         workspaceExplorations: {
@@ -1868,7 +1873,12 @@ describe('ExplorationPromoteModal', () => {
   });
 
   // VIS-1069 — Semantic Layer reciprocal ("View in Semantic Layer").
-  describe('View in Semantic Layer', () => {
+  // (coverage-push): kept alongside the original describe block of the
+  // same name above per the merge instruction to keep both sides' tests —
+  // the title is disambiguated only so `jest/no-identical-title` doesn't
+  // flag two sibling describes sharing a name; these tests are additive
+  // coverage, not a rename of the earlier suite.
+  describe('View in Semantic Layer (coverage-push)', () => {
     const promoteFieldResult = (extra = {}) => ({
       success: true,
       results: [{ type: 'metric', name: 'churn_rate', tier: 'field', success: true, error: null }],
