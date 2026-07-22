@@ -1748,6 +1748,33 @@ describe('explorerStore', () => {
       ).toBeNull();
     });
 
+    it('metric that does not exist at all in the cached collection returns null', () => {
+      useStore.setState({ metrics: [] });
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'metric', name: 'nonexistent' })
+      ).toBeNull();
+    });
+
+    it('chart: an insight ref that resolves to a model NOT in the cached collection is silently skipped (no tab/state for it)', () => {
+      useStore.setState({
+        charts: [
+          { name: 'chart_x', config: { insights: ['ref(ins_a)'], layout: {} } },
+        ],
+        insights: [
+          {
+            name: 'ins_a',
+            config: { type: 'bar', props: { x: '?{${ref(ghost_model).month}}' }, interactions: [] },
+          },
+        ],
+        models: [], // ghost_model is NOT here
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'chart', name: 'chart_x' });
+      expect(snapshot.modelTabs).toEqual([]);
+      expect(snapshot.modelStates).toEqual({});
+    });
+
     it('insight: copies the insight config into a draft insight of the SAME name + auto-loads its model', () => {
       useStore.setState({
         insights: [
@@ -3495,6 +3522,18 @@ describe('explorerStore', () => {
       translateExpressions.mockRejectedValueOnce(new Error('network down'));
       const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
       expect(result).toEqual({ valid: false, error: 'network down' });
+    });
+
+    it('tolerates a response that omits `errors`/`translations` entirely (not just empty arrays)', async () => {
+      translateExpressions.mockResolvedValueOnce({});
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: true, duckdbExpression: 'x', detectedType: 'dimension' });
+    });
+
+    it('falls back to a generic message when a thrown error has no .message', async () => {
+      translateExpressions.mockRejectedValueOnce({});
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: false, error: 'Validation failed' });
     });
   });
 
