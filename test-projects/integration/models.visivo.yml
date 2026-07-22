@@ -76,10 +76,13 @@ models:
         expression: "ROUND(new_x, 2)"
   - name: second_local_test_table
     sql: "SELECT * FROM second_test_table"
-  # Was a LocalMergeModel over local_test_table + second_local_test_table. Both
-  # resolved to the local-duckdb default source, so the join is now plain SQL
-  # over the tables they each read.
+  # Was a LocalMergeModel, which always executed its join in DuckDB regardless of
+  # the run's default source. Pin it to local-duckdb so that behaviour is
+  # preserved and the join stays dialect-safe across every backend the suite runs
+  # against (ClickHouse, in particular, rejects this join on the default source).
+  # test_table + second_test_table both live in the local duckdb.
   - name: join_table
+    source: ${ref(local-duckdb)}
     sql: |
       SELECT ltt.x, sltt.y FROM test_table AS ltt
         JOIN second_test_table AS sltt
