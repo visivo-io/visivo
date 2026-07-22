@@ -53,6 +53,13 @@ describe('LibraryRow', () => {
     expect(dashboardDef.droppable).toBe(false);
   });
 
+  test('getTypeDef falls back to a bare icon/label/pluralization for a type with no objectTypeConfigs entry', () => {
+    const def = getTypeDef('totally_unknown_type');
+    expect(def.label).toBe('totally_unknown_type');
+    expect(def.plural).toBe('totally_unknown_types');
+    expect(def.icon).toBeTruthy();
+  });
+
   // Explore 2.0 Phase 3a (D9 / 02-architecture.md §4): source/metric/
   // dimension/insight are exploration drag sources (SQL editor, prop slots,
   // interactions, the chart insight zone) even though they are NOT
@@ -159,6 +166,18 @@ describe('LibraryRow', () => {
     const menuItem = within(menu).getByText('Open in right rail');
     fireEvent.mouseDown(menuItem);
     expect(screen.getByTestId('library-row-insight-revenue_growth-context-menu')).toBeInTheDocument();
+  });
+
+  test('a mousedown OUTSIDE the menu dismisses it', () => {
+    render(withDnd(<LibraryRow obj={INSIGHT} />));
+    fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+    fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+    expect(screen.getByTestId('library-row-insight-revenue_growth-context-menu')).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(
+      screen.queryByTestId('library-row-insight-revenue_growth-context-menu')
+    ).not.toBeInTheDocument();
   });
 
   test('reveals flip + ⋯ actions on hover and the kebab opens a context menu', () => {
@@ -389,5 +408,19 @@ describe('LibraryRow', () => {
     render(withDnd(<LibraryRow obj={CHART} draggable />));
     const row = screen.getByTestId('library-row-chart-waterfall');
     expect(row.style.transform || '').not.toMatch(/translate/);
+  });
+
+  test('a click never fires onClick while a drag is in progress (isDragging)', () => {
+    useDraggable.mockReturnValueOnce({
+      transform: null,
+      setNodeRef: jest.fn(),
+      listeners: {},
+      attributes: {},
+      isDragging: true,
+    });
+    const onClick = jest.fn();
+    render(withDnd(<LibraryRow obj={CHART} draggable onClick={onClick} />));
+    fireEvent.click(screen.getByTestId('library-row-chart-waterfall'));
+    expect(onClick).not.toHaveBeenCalled();
   });
 });
