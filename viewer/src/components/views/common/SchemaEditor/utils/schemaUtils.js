@@ -239,10 +239,47 @@ export function groupPropertiesByParent(properties) {
 }
 
 /**
- * Search/filter properties by query
+ * Relevance score for a property against a search query. Higher is better;
+ * `null` means "no match at all".
+ *
+ * Filtering alone is not enough on a schema this size. Plotly's trace schema
+ * has 1,366 properties, and a plain substring filter returns them in schema
+ * order: searching "title" used to yield 184 hits with `title.text` — the plot
+ * title, and overwhelmingly the thing a person typing "title" wants — sitting
+ * at position 131, behind a dozen `coloraxis.colorbar.title.font.*` entries and
+ * a description-only match on `editrevision`. The property was reachable in
+ * principle and unreachable in practice.
+ *
+ * The ordering encodes "how directly does this path answer the query":
+ * whole-path match, then leaf-name match, then a path SEGMENT match (so
+ * `title.text` beats `coloraxis.colorbar.title.text` on the same term), then a
+ * loose substring, and finally description-only matches. Depth breaks ties, so
+ * shallower — i.e. more top-level — properties come first.
+ */
+function scoreProperty(prop, lowerQuery) {
+  const path = (prop.path || '').toLowerCase();
+  if (!path) return null;
+  const segments = path.split('.');
+  const leaf = segments[segments.length - 1];
+
+  if (path === lowerQuery) return 100;
+  if (leaf === lowerQuery) return 90;
+  if (segments[0] === lowerQuery) return 80; // e.g. "title" -> title.text
+  if (segments.includes(lowerQuery)) return 70;
+  if (leaf.startsWith(lowerQuery)) return 60;
+  if (path.startsWith(lowerQuery)) return 50;
+  if (path.includes(lowerQuery)) return 40;
+  // Description-only matches are genuinely weaker signal: they are how
+  // `editrevision` surfaced above the plot title for the query "title".
+  if (prop.description?.toLowerCase().includes(lowerQuery)) return 10;
+  return null;
+}
+
+/**
+ * Search/filter properties by query, best matches first.
  * @param {Array} properties - Flattened properties array
  * @param {string} query - Search query
- * @returns {Array} Filtered properties
+ * @returns {Array} Matching properties, ordered by relevance
  */
 export function filterProperties(properties, query) {
   if (!query || !query.trim()) {
@@ -250,9 +287,24 @@ export function filterProperties(properties, query) {
   }
 
   const lowerQuery = query.toLowerCase().trim();
-  return properties.filter(prop => {
-    const pathMatch = prop.path.toLowerCase().includes(lowerQuery);
-    const descMatch = prop.description?.toLowerCase().includes(lowerQuery);
-    return pathMatch || descMatch;
-  });
+  return (properties || [])
+    .map((prop, index) => ({ prop, score: scoreProperty(prop, lowerQuery), index }))
+    .filter(entry => entry.score !== null)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      // Shallower paths first — `title.text` before `coloraxis.colorbar.title.text`.
+      const depthA = a.prop.path.split('.').length;
+      const depthB = b.prop.path.split('.').length;
+      if (depthA !== depthB) return depthA - depthB;
+      // Stable within a tier: preserve the schema's own order, which carries
+      // Plotly's own sense of which properties are primary.
+      //
+      // Tried and rejected: breaking ties on path LENGTH, on the theory that
+      // shorter means more fundamental. It reads well until you run it —
+      // `title.x` (7 chars, the title's horizontal position) then outranks
+      // `title.text` (10 chars, the title itself). Measured on the real
+      // schema, not reasoned about.
+      return a.index - b.index;
+    })
+    .map(entry => entry.prop);
 }

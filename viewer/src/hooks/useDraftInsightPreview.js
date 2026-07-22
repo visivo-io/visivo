@@ -62,6 +62,30 @@ const extractInputDependencies = (query, staticProps) => {
 const EMPTY_INSIGHT_STATUS = { isLoading: false, error: null, blockedReason: null, blockedModel: null };
 
 /**
+ * The result the USER is looking at, and therefore the one the preview must be
+ * built from.
+ *
+ * A model has two results in the store. `queryResult` is what the source
+ * returned. `enrichedResult` is that plus any computed columns the user added
+ * (useExplorerDuckDB computes them client-side in DuckDB and writes them here);
+ * it is what the results grid renders and what a user drags a column FROM.
+ *
+ * Reading `queryResult` here meant a computed column could be dropped into a
+ * chart well and then fail to render: the schema sent to the compile endpoint
+ * listed only the source's own columns, so FieldResolver rejected the
+ * expression with `Column 'less_than_4' not found on model 'model'. Available
+ * columns: X, Y` — naming, as unavailable, a column visibly present in the grid
+ * directly below the error. The DuckDB table registered for `post_query` was
+ * built from the same raw rows, so it would have been missing the column too
+ * even if the compile had passed.
+ *
+ * `enrichedResult` is shaped exactly like `queryResult` (`{columns, rows,
+ * row_count}`) and is only ever set when there are computed columns, so
+ * preferring it is a superset in every case.
+ */
+const visibleResult = modelState => modelState?.enrichedResult || modelState?.queryResult;
+
+/**
  * useDraftInsightPreview — Explore 2.0 Phase 4 (S2's resolved design). Live,
  * client-side preview for the exploration surface's UNSAVED chart/insight
  * drafts: debounced compile-draft calls -> synthetic draft-namespaced
@@ -229,7 +253,7 @@ const useDraftInsightPreview = () => {
 
         const modelSchemas = {};
         Object.entries(modelStates).forEach(([modelName, s]) => {
-          const result = s?.queryResult;
+          const result = visibleResult(s);
           if (!result?.rows?.length || !Array.isArray(result.columns)) return;
           const inferred = inferColumnTypes(result.columns, result.rows);
           modelSchemas[modelName] = Object.fromEntries(
@@ -267,7 +291,7 @@ const useDraftInsightPreview = () => {
           // already models — reuse that same guided state instead of
           // executing a doomed query.
           const unloadedModel = (compiled.models || []).find(model => {
-            const rows = modelStates[model.name]?.queryResult?.rows;
+            const rows = visibleResult(modelStates[model.name])?.rows;
             return !rows || !rows.length;
           });
           if (unloadedModel) {
@@ -292,9 +316,16 @@ const useDraftInsightPreview = () => {
           // already known (via the guard above) to have fetched rows.
           const conn = await getConnection(db);
           for (const model of compiled.models || []) {
-            const rows = modelStates[model.name]?.queryResult?.rows || [];
+            const result = visibleResult(modelStates[model.name]);
+            const rows = result?.rows || [];
             if (!rows.length) continue;
-            const fingerprint = `${rows.length}:${modelStates[model.name]?.sql}`;
+            // The column list is part of the identity: adding or removing a
+            // computed column changes the shape without changing the row count
+            // or the SQL, and a fingerprint blind to that would keep serving a
+            // stale table that lacks the column the user just added.
+            const fingerprint = `${rows.length}:${modelStates[model.name]?.sql}:${(
+              result.columns || []
+            ).join(',')}`;
             if (registeredTablesRef.current.get(model.name_hash) === fingerprint) continue;
             const tempFile = `draft_model_${model.name_hash}_${Date.now()}.json`;
             // eslint-disable-next-line no-await-in-loop
