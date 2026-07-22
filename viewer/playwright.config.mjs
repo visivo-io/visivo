@@ -111,6 +111,10 @@ export default defineConfig({
         // other exploration-mutating spec above.
         '**/exploration-promote-fallback-dashboard-offer.spec.mjs',
         '**/exploration-staleness-drift.spec.mjs',
+        // Chart-building loop (computed column -> prop well, layout prop
+        // edit, type switch): mints a real exploration + computed columns
+        // against the shared `.visivo/explorations/` repository.
+        '**/exploration-chart-build-updates.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -262,6 +266,10 @@ export default defineConfig({
         // entry for the same two files for why.
         '**/exploration-promote-fallback-dashboard-offer.spec.mjs',
         '**/exploration-staleness-drift.spec.mjs',
+        // Chart-building loop (computed column -> prop well, layout prop
+        // edit, type switch): mints a real exploration + computed columns
+        // against the shared `.visivo/explorations/` repository.
+        '**/exploration-chart-build-updates.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

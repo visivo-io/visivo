@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PropertySearch } from './PropertySearch';
 
 describe('PropertySearch', () => {
@@ -106,9 +107,26 @@ describe('PropertySearch', () => {
     expect(checkedCount).toBe(2);
   });
 
-  it('shows selection count in footer', () => {
+  it('shows how many properties are selected, never the raw schema size', () => {
     render(<PropertySearch {...defaultProps} selectedPaths={new Set(['x', 'y'])} />);
-    expect(screen.getByText(/2 of 6 properties selected/)).toBeInTheDocument();
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+    // The old copy was "N of <schema size> properties selected", which on the
+    // real Plotly trace schema read "0 of 1366 properties selected" and made an
+    // untouched panel look like a 1,366-item task list (ux-audit.md, pills #8).
+    expect(screen.queryByText(/of \d+ properties selected/)).not.toBeInTheDocument();
+  });
+
+  it('prompts instead of counting when nothing is selected and nothing searched', () => {
+    render(<PropertySearch {...defaultProps} selectedPaths={new Set()} />);
+    expect(screen.getByText('Search or browse to add properties')).toBeInTheDocument();
+  });
+
+  it('reports how many properties MATCHED once the user searches', async () => {
+    const user = userEvent.setup();
+    render(<PropertySearch {...defaultProps} selectedPaths={new Set()} />);
+    await user.type(screen.getByPlaceholderText('Search properties...'), 'color');
+    // The count describes the search result, not the schema.
+    expect(screen.getByText(/^\d+ matching$/)).toBeInTheDocument();
   });
 
   it('can be disabled', () => {
