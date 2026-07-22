@@ -205,6 +205,16 @@ describe('explorerStore', () => {
       expect(useStore.getState().explorerModelStates.model.sourceName).toBeNull();
     });
 
+    it('auto-names correctly even when explorerModelStates/explorerSources are entirely undefined (pre-hydration)', () => {
+      useStore.setState({ explorerModelStates: undefined, explorerSources: undefined, defaults: undefined });
+
+      useStore.getState().createModelTab();
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['model']);
+      expect(state.explorerModelStates.model.sourceName).toBeNull();
+    });
+
     it('creates a model tab with a provided name', () => {
       useStore.getState().createModelTab('my_model');
 
