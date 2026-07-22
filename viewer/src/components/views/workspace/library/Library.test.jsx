@@ -234,6 +234,18 @@ describe('Library', () => {
     });
   });
 
+  test('clicking a row is a safe no-op when openWorkspaceTab is unavailable — telemetry still fires', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    seedStore({ openWorkspaceTab: undefined });
+    renderLibrary();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('library-row-chart-waterfall'))
+    ).not.toThrow();
+    expect(events.find(e => e.eventName === 'library_row_selected')).toBeTruthy();
+    unsubscribe();
+  });
+
   test('clicking a Data-Layer row also delegates to openWorkspaceTab', () => {
     const openWorkspaceTab = jest.fn();
     seedStore({ openWorkspaceTab });
@@ -407,6 +419,59 @@ describe('Library', () => {
       );
     });
 
+    test('"Explore this" seeds with a null legacy override when buildExplorationSeedState is unavailable', async () => {
+      const openWorkspaceTab = jest.fn();
+      const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new2' });
+      seedStore({ openWorkspaceTab, createExploration, buildExplorationSeedState: undefined });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      fireEvent.click(within(menu).getByText('Explore this'));
+
+      await waitFor(() =>
+        expect(createExploration).toHaveBeenCalledWith(
+          { type: 'insight', name: 'revenue_growth' },
+          null,
+          null
+        )
+      );
+    });
+
+    test('"Explore this" never opens a tab when the mint fails', async () => {
+      const openWorkspaceTab = jest.fn();
+      const createExploration = jest.fn().mockResolvedValue({ success: false });
+      seedStore({ openWorkspaceTab, createExploration });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      fireEvent.click(within(menu).getByText('Explore this'));
+
+      await waitFor(() => expect(createExploration).toHaveBeenCalled());
+      expect(openWorkspaceTab).not.toHaveBeenCalled();
+    });
+
+    test('a context action with no wired handler (e.g. "Show lineage") only emits telemetry — no crash, no store call', () => {
+      const events = [];
+      const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+      const openWorkspaceTab = jest.fn();
+      const createExploration = jest.fn();
+      const addObjectToActiveExploration = jest.fn();
+      seedStore({ openWorkspaceTab, createExploration, addObjectToActiveExploration });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      expect(() => fireEvent.click(within(menu).getByText('Show lineage'))).not.toThrow();
+
+      expect(createExploration).not.toHaveBeenCalled();
+      expect(addObjectToActiveExploration).not.toHaveBeenCalled();
+      const ctx = events.find(e => e.eventName === 'library_row_context_action');
+      expect(ctx.payload).toEqual({ type: 'insight', name: 'revenue_growth', action: 'showLineage' });
+      unsubscribe();
+    });
+
     test('"Add to exploration" is offered only when the active tab is an exploration, and calls addObjectToActiveExploration', () => {
       const addObjectToActiveExploration = jest.fn();
       seedStore({
@@ -510,6 +575,46 @@ describe('Library', () => {
     );
   });
 
+  test('"+ New" → Chart scoped to a dashboard is a no-op if createExploration/openWorkspaceTab are unavailable', () => {
+    seedStore({ createExploration: undefined, openWorkspaceTab: undefined });
+    renderLibrary('/workspace/dashboard/overview');
+    openNewMenu();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('library-new-object-chart'))
+    ).not.toThrow();
+  });
+
+  test('"+ New" → Chart scoped to a dashboard: a failed mint never opens a tab', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: false });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createExploration, openWorkspaceTab });
+    renderLibrary('/workspace/dashboard/overview');
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-chart'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('"+ New" → any other type is a no-op if createWorkspaceObject is unavailable', () => {
+    seedStore({ createWorkspaceObject: undefined });
+    renderLibrary();
+    openNewMenu();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('library-new-object-model'))
+    ).not.toThrow();
+  });
+
+  test('"+ New" → a create that fails (or returns no name) never opens a tab', async () => {
+    const createWorkspaceObject = jest.fn().mockResolvedValue({ success: false });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab });
+    renderLibrary();
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-model'));
+    await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('model'));
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
   test('"+ New" → Model drafts a model and opens its tab', async () => {
     const createWorkspaceObject = jest
       .fn()
@@ -591,6 +696,14 @@ describe('Library', () => {
     expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
+  });
+
+  test('the header "+ New" menu stays open on a non-Escape key', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
   });
 
   test('the header "+ New" menu dismisses on a pointerdown outside it', () => {

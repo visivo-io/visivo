@@ -113,6 +113,44 @@ describe('FieldSwapOfferBanner', () => {
     expect(updateInsightInteraction).toHaveBeenCalledWith('a', 0, { value: '?{${ref(region)}}' });
   });
 
+  test('a slot with neither a "prop" nor "interaction" location is silently skipped — no write call is made for it', () => {
+    // Forward/backward-compat guard: a slot shape from an older/newer
+    // build that doesn't match either known `location` is simply not
+    // written anywhere, rather than throwing or defaulting to one.
+    const setInsightProp = jest.fn();
+    const updateInsightInteraction = jest.fn();
+    useStore.setState({
+      setInsightProp,
+      updateInsightInteraction,
+      explorerInsightStates: {
+        a: { props: {}, interactions: [{ type: 'filter', value: '?{${ref(orders_q).region}}' }] },
+      },
+    });
+    render(
+      <FieldSwapOfferBanner
+        offers={[
+          offer({
+            slots: [
+              {
+                insightName: 'a',
+                location: 'unknown',
+                key: 0,
+                previousRef: 'orders_q',
+                previousColumn: 'region',
+                previousAgg: null,
+                swapTo: { kind: 'dimensionRef', ref: 'region' },
+              },
+            ],
+          }),
+        ]}
+        onDismiss={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByTestId('field-swap-offer-total_amount-apply'));
+    expect(setInsightProp).not.toHaveBeenCalled();
+    expect(updateInsightInteraction).not.toHaveBeenCalled();
+  });
+
   test('Apply calls onDismiss with the offer index (one-click, then gone)', () => {
     const onDismiss = jest.fn();
     render(<FieldSwapOfferBanner offers={[offer()]} onDismiss={onDismiss} />);

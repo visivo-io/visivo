@@ -106,8 +106,12 @@ const ExplorationBuildRail = ({ explorationId }) => {
       }
       const sourceName = explorerModelStatesForNaming?.[name]?.sourceName || null;
       if (!sourceName) continue; // no anchor yet — leave editable, never guess
+      // No `suggested === name` short-circuit here: `suggested` is always of
+      // the form `<sourceName>_query`(`_N`), which can never coincide with
+      // `name` (already established above to be exactly `model` or
+      // `query_<digits>`) — and `renameModelTab` already no-ops on an
+      // identical name anyway, so there's nothing to guard twice.
       const suggested = generateUniqueName(`${sourceName}_query`, used);
-      if (suggested === name) continue;
       used.add(suggested);
       try {
         renameModelTab(name, suggested);
@@ -121,9 +125,12 @@ const ExplorationBuildRail = ({ explorationId }) => {
 
     for (const name of chartInsightNames) {
       if (!isGenericPromoteName('insight', name)) continue;
-      if (!modelAnchor) continue;
+      if (!modelAnchor) continue; // no model to anchor on — leave editable
+      // Same non-coincidence argument as the model loop above: `suggested`
+      // is always `<modelAnchor>_insight`(`_N`), which can't equal `name`
+      // (already `insight`/`insight_<digits>`) — `renameInsight` no-ops on
+      // an identical name regardless.
       const suggested = generateUniqueName(`${modelAnchor}_insight`, used);
-      if (suggested === name) continue;
       used.add(suggested);
       try {
         renameInsight(name, suggested);

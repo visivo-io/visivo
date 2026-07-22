@@ -79,6 +79,14 @@ describe('TabCloseConfirmDialog', () => {
     expect(cancelCloseWorkspaceTab).toHaveBeenCalled();
   });
 
+  test('a non-Escape key is a no-op — it neither cancels nor confirms', () => {
+    const cancelCloseWorkspaceTab = jest.fn();
+    seed({ workspacePendingCloseTabId: 'chart:revenue', cancelCloseWorkspaceTab });
+    render(<TabCloseConfirmDialog />);
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(cancelCloseWorkspaceTab).not.toHaveBeenCalled();
+  });
+
   test('clicking the backdrop cancels; clicking inside the card does not', () => {
     const cancelCloseWorkspaceTab = jest.fn();
     seed({ workspacePendingCloseTabId: 'chart:revenue', cancelCloseWorkspaceTab });

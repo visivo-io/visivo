@@ -407,6 +407,21 @@ describe('ExplorationBuildRail', () => {
       expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
     });
 
+    it('leaves a generic-named insight untouched when there is no model tab at all to anchor on', async () => {
+      useStore.setState({
+        explorerModelTabs: [],
+        explorerModelStates: {},
+        explorerChartInsightNames: ['insight'],
+        explorerActiveInsightName: 'insight',
+        explorerInsightStates: {
+          insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+        },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['insight']);
+    });
+
     it('a suggested name that collides with an existing object falls back to a disambiguated one', async () => {
       useStore.setState({
         explorerModelTabs: ['model'],
