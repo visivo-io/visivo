@@ -428,8 +428,23 @@ export function PropertyRow({
           // flex-wrap so the slice badge drops to a new line in narrow
           // property panels (the right-side editor is ~300px in many
           // layouts) instead of overflowing past the panel edge.
+          //
+          // `min-w-0` (not `min-w-[180px]`): a flex item's default
+          // `min-width: auto` refuses to shrink narrower than its content's
+          // own intrinsic width, which silently defeated FieldPill's
+          // `truncate` on the label — a long ref name (a bound source like
+          // `local-duckdb_query`, or any name a user picks) just grew this
+          // whole row instead of ellipsizing, eventually pushing the pill's
+          // trailing "extra" content (PillMenu's own chevron trigger) behind
+          // the adjacent SliceBadge instead of next to it. `flex-1` already
+          // gives this column room to grow up to the available space;
+          // `min-w-0` is what lets it also shrink and hand off to
+          // `truncate` once the content is longer than that — paired with
+          // the matching `min-w-0` chain inside `FieldPill.jsx` itself
+          // (its own docstring has the full chain; a fix at only one level
+          // still leaves the pill unable to actually shrink).
           <div className="flex items-start gap-1.5 flex-wrap">
-            <div className="flex-1 min-w-[180px]">
+            <div className="flex-1 min-w-0">
               {showPill ? (
                 <FieldPill
                   ref={setPillDragRef}
