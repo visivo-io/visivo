@@ -9,7 +9,7 @@
  * the plain "Save to Project" button.
  */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorationBuildRail from './ExplorationBuildRail';
 import useStore from '../../../stores/store';
@@ -336,6 +336,7 @@ describe('ExplorationBuildRail', () => {
         explorerModelStates: {
           model: { isNew: true, sourceName: 'orders_db', sql: '' },
         },
+        defaults: { source_name: 'orders_db' },
       });
       render(<ExplorationBuildRail />);
       await waitFor(() => {
@@ -365,6 +366,7 @@ describe('ExplorationBuildRail', () => {
       useStore.setState({
         explorerModelTabs: ['model'],
         explorerModelStates: { model: { isNew: true, sourceName: null } },
+        defaults: { source_name: 'orders_db' },
       });
       render(<ExplorationBuildRail />);
       await screen.findByTestId('exploration-build-rail');
@@ -375,6 +377,7 @@ describe('ExplorationBuildRail', () => {
       useStore.setState({
         explorerModelTabs: ['orders_query'],
         explorerModelStates: { orders_query: { isNew: true, sourceName: 'orders_db' } },
+        defaults: { source_name: 'orders_db' },
       });
       render(<ExplorationBuildRail />);
       await screen.findByTestId('exploration-build-rail');
@@ -387,16 +390,62 @@ describe('ExplorationBuildRail', () => {
       useStore.setState({
         explorerModelTabs: ['model'],
         explorerModelStates: { model: { isNew: false, sourceName: 'orders_db' } },
+        defaults: { source_name: 'orders_db' },
       });
       render(<ExplorationBuildRail />);
       await screen.findByTestId('exploration-build-rail');
       expect(useStore.getState().explorerModelTabs).toEqual(['model']);
     });
 
+    it('does NOT rename a model tab off its source while project defaults have not loaded yet (VIS-1082 cold-session race)', async () => {
+      // Regression pin: `useExplorerWorkbenchInit.js`'s rebind effect
+      // (`applyResolvedDefaultSource`) corrects a cold-session tab's
+      // TEMPORARY fallback source by looking the tab up by its ORIGINAL
+      // name once `defaults` lands. If this effect had already renamed the
+      // tab off that temporary source first, the rebind's name lookup would
+      // silently miss and the real default would never land — caught by
+      // `explorer-cold-session-default-source.spec.mjs`. `defaults: null`
+      // (the actual initial store value before `fetchDefaults()` resolves)
+      // must keep this effect from touching the name at all.
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'local-sqlite' } },
+        defaults: null,
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+    });
+
+    it('renames off the source once defaults load, even when the fallback source already happened to match (no other state change to re-trigger the effect)', async () => {
+      // The common non-racy case: `applyResolvedDefaultSource` no-ops when
+      // the fallback source already equals the real default, so
+      // `explorerModelStates` never changes once `defaults` arrives — this
+      // effect must still notice (via `defaults` in its own dependency
+      // array) and suggest a name rather than leaving the tab generic
+      // forever.
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
+        defaults: null,
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+
+      act(() => {
+        useStore.setState({ defaults: { source_name: 'orders_db' } });
+      });
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+      });
+    });
+
     it('is idempotent — the rename fires once and does not oscillate on re-render', async () => {
       useStore.setState({
         explorerModelTabs: ['model'],
         explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
+        defaults: { source_name: 'orders_db' },
       });
       const { rerender } = render(<ExplorationBuildRail />);
       await waitFor(() => {
@@ -427,6 +476,7 @@ describe('ExplorationBuildRail', () => {
         explorerModelTabs: ['model'],
         explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
         models: [{ name: 'orders_db_query' }],
+        defaults: { source_name: 'orders_db' },
       });
       render(<ExplorationBuildRail />);
       await waitFor(() => {

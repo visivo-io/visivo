@@ -245,6 +245,82 @@ describe('ExplorerHomePane — VIS-1086 double-click guard', () => {
       resolveCreate({ success: true, id: 'exp_seeded' });
     });
   });
+
+  // The three tests above all prove the OBSERVABLE behavior (one
+  // `createExploration` call) via two real `fireEvent.click`s — but RTL's
+  // `fireEvent` auto-wraps each call in `act()`, which flushes the
+  // `setCreating(true)` render (and therefore the DOM `disabled` attribute)
+  // before the second `fireEvent.click` ever fires. So those tests actually
+  // demonstrate "a disabled button doesn't dispatch a second click" — real
+  // and worth pinning, but they never exercise `handleNew`/`handleSourceTile`'s
+  // own `creatingRef.current` guard body, since the DOM gate already stopped
+  // the second click from reaching the handler at all. A genuine same-tick
+  // double-click (faster than a render commit) can't be produced through
+  // `fireEvent`/`userEvent` in jsdom OR a real browser (React's commit for a
+  // synchronous event handler's state update finishes before the browser's
+  // own event dispatch returns) — so this test invokes the React onClick
+  // handler directly, twice, in the same synchronous callback, bypassing
+  // DOM dispatch (and therefore the `disabled` gate) entirely. That's the
+  // only way to prove `creatingRef.current` itself — not just the `disabled`
+  // attribute — is what makes the second call a no-op.
+  const getOnClick = element => {
+    const propsKey = Object.keys(element).find(k => k.startsWith('__reactProps$'));
+    if (!propsKey) throw new Error('no React onClick handler found on this element');
+    return element[propsKey].onClick;
+  };
+
+  test('a same-tick double "click" (calling the handler directly, twice, before any render can disable the button) still only calls createExploration once — the creatingRef guard itself, not just the disabled attribute', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      createExploration,
+    });
+    render(<ExplorerHomePane />);
+
+    const onClick = getOnClick(screen.getByTestId('explorer-home-new-exploration'));
+    act(() => {
+      onClick();
+      onClick(); // same synchronous tick — no render/commit in between
+    });
+
+    expect(createExploration).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_new' });
+    });
+  });
+
+  test('a same-tick double "click" on a source tile (direct handler call) still only calls createExploration once', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+    });
+    render(<ExplorerHomePane />);
+
+    const onClick = getOnClick(screen.getByTestId('explorer-home-source-tile-warehouse'));
+    act(() => {
+      onClick();
+      onClick();
+    });
+
+    expect(createExploration).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_seeded' });
+    });
+  });
 });
 
 describe('ExplorerHomePane — start from a source', () => {
@@ -355,6 +431,87 @@ describe('ExplorerHomePane — lazy Scratch seeding', () => {
     });
     render(<ExplorerHomePane />);
     expect(createExploration).not.toHaveBeenCalled();
+  });
+
+  // The auto-seed effect's own `createExploration()` call and a manual
+  // "+ New exploration" / source-tile click can both fire on an empty list
+  // (the seed is in flight; the user clicks before it resolves). Both
+  // handlers await `seedPromiseRef.current` FIRST so the seed's write always
+  // lands before a manual create's read — otherwise the backend's
+  // count()-based default naming could mint the same name twice (see the
+  // handler's own VIS-1084 doc comment). These pin that the manual call is
+  // genuinely deferred until the seed resolves, not just "also eventually
+  // happens" — `createExploration` must show exactly ONE call immediately
+  // after the manual click (the seed's), and only reach two once the seed
+  // promise is actually resolved.
+  test('"+ New exploration" clicked while the auto-seed is still in flight awaits the seed before creating manually', async () => {
+    const resolvers = [];
+    const createExploration = jest.fn(
+      () => new Promise(resolve => resolvers.push(resolve))
+    );
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: {}, order: [] },
+      workspaceExplorationsFetched: true,
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    expect(createExploration).toHaveBeenCalledTimes(1); // the auto-seed call
+
+    fireEvent.click(screen.getByTestId('explorer-home-new-exploration'));
+    // Still just the seed's call — the manual create is parked behind it.
+    expect(createExploration).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolvers[0]({ success: true, id: 'exp_scratch' }); // the seed resolves
+    });
+    // NOW the manual create fires.
+    await waitFor(() => expect(createExploration).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolvers[1]({ success: true, id: 'exp_manual' });
+    });
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_manual',
+      type: 'exploration',
+      name: 'exp_manual',
+    });
+  });
+
+  test('a source tile clicked while the auto-seed is still in flight awaits the seed before creating manually', async () => {
+    const resolvers = [];
+    const createExploration = jest.fn(
+      () => new Promise(resolve => resolvers.push(resolve))
+    );
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: {}, order: [] },
+      workspaceExplorationsFetched: true,
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    expect(createExploration).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('explorer-home-source-tile-warehouse'));
+    expect(createExploration).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolvers[0]({ success: true, id: 'exp_scratch' });
+    });
+    await waitFor(() => expect(createExploration).toHaveBeenCalledTimes(2));
+    expect(createExploration).toHaveBeenNthCalledWith(2, { type: 'source', name: 'warehouse' });
+
+    await act(async () => {
+      resolvers[1]({ success: true, id: 'exp_seeded' });
+    });
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_seeded',
+      type: 'exploration',
+      name: 'exp_seeded',
+    });
   });
 });
 

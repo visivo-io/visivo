@@ -91,8 +91,31 @@ const ExplorationBuildRail = ({ explorationId }) => {
   // "model"/"insight" would see it renamed again too — an accepted, narrow
   // edge case for keeping this simple and not tracking "did the user ever
   // touch this name" separately from the store's own isNew/name state.
+  //
+  // VIS-1082 interaction (cold-session default-source race,
+  // useExplorerWorkbenchInit.js): on a genuinely cold session, a model tab
+  // can be auto-created with a TEMPORARY "first available source" fallback
+  // before `defaults` has loaded; a dedicated effect there
+  // (`applyResolvedDefaultSource`) rebinds it to the real project default
+  // once `defaults` lands, looking the tab up BY ITS ORIGINAL NAME. An
+  // earlier version of this effect had no dependency on `defaults` at all,
+  // so it could rename that tab off the temporary fallback source (e.g.
+  // `local-sqlite_query`) before the rebind ran — the rebind's name lookup
+  // then silently missed (the tab no longer existed under its original
+  // name) and the source correction was lost entirely, caught by
+  // `explorer-cold-session-default-source.spec.mjs` failing after this
+  // effect was introduced. Gating model-tab renaming on `defaults` having
+  // already loaded closes the window: while `defaults` is still null, no
+  // source-based rename fires at all, so the rebind's name lookup always
+  // still finds the tab; once `defaults` loads and the rebind (if any)
+  // corrects `sourceName`, THIS effect naturally re-fires (its own
+  // `explorerModelStatesForNaming` dependency changes) and suggests off the
+  // now-correct source. No new dependency-array entry is needed for
+  // `defaults` itself — the rebind's `set()` call is what actually retriggers
+  // this effect, by changing `explorerModelStatesForNaming`.
   const explorerModelTabsForNaming = useStore(s => s.explorerModelTabs);
   const explorerModelStatesForNaming = useStore(s => s.explorerModelStates);
+  const explorerDefaultsForNaming = useStore(s => s.defaults);
   const renameModelTab = useStore(s => s.renameModelTab);
   const renameInsight = useStore(s => s.renameInsight);
   useEffect(() => {
@@ -104,6 +127,11 @@ const ExplorationBuildRail = ({ explorationId }) => {
         modelAnchor = name;
         continue;
       }
+      // Defaults haven't loaded yet — this tab's `sourceName` may still be
+      // the temporary "first available" fallback pending correction (see
+      // the VIS-1082 note above). Leave it generic/editable rather than
+      // naming it off a source that's about to change out from under it.
+      if (!explorerDefaultsForNaming) continue;
       const sourceName = explorerModelStatesForNaming?.[name]?.sourceName || null;
       if (!sourceName) continue; // no anchor yet — leave editable, never guess
       // No `suggested === name` short-circuit here: `suggested` is always of
@@ -142,10 +170,19 @@ const ExplorationBuildRail = ({ explorationId }) => {
     // beyond re-running when it changes — this effect is idempotent and
     // self-terminating (see comment above), so re-running it on every
     // relevant state change is safe and cheap (no network calls).
+    // `explorerDefaultsForNaming` IS listed below even though the common
+    // path (a rebind actually correcting `sourceName`) would re-trigger this
+    // effect via `explorerModelStatesForNaming` alone — the fallback source
+    // can coincidentally already equal the real default (single-source
+    // projects; `applyResolvedDefaultSource` itself no-ops when they match),
+    // in which case `explorerModelStatesForNaming` never changes once
+    // `defaults` arrives, and without `defaults` as its own dependency this
+    // effect would never re-run to notice it's now safe to suggest a name.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     explorerModelTabsForNaming,
     explorerModelStatesForNaming,
+    explorerDefaultsForNaming,
     chartInsightNames,
     renameModelTab,
     renameInsight,
