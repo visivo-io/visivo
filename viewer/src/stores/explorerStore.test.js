@@ -350,6 +350,19 @@ describe('explorerStore', () => {
       useStore.getState().seedModelTabFromTable({ sourceName: 'warehouse' });
       expect(useStore.getState().explorerModelTabs).toEqual([]);
     });
+
+    it('is a no-op when called with no argument at all', () => {
+      useStore.getState().seedModelTabFromTable();
+      expect(useStore.getState().explorerModelTabs).toEqual([]);
+    });
+
+    it('falls back to the first available source when neither an explicit source nor a project default exists', () => {
+      useStore.setState({ defaults: null, explorerSources: [{ source_name: 'only-source' }] });
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders' });
+
+      const name = useStore.getState().explorerActiveModelName;
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('only-source');
+    });
   });
 
   describe('switchModelTab', () => {
