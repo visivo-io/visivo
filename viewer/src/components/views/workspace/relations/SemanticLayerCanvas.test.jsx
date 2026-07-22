@@ -755,4 +755,145 @@ describe('SemanticLayerCanvas', () => {
     });
     expect(screen.queryByTestId('join-popover-stub')).not.toBeInTheDocument();
   });
+
+  // Coverage completion (Jared's 95%+ stmts+branch bar) — every wired store
+  // action here is a plain `if (fn) fn(...)` guard; each test below flips
+  // exactly one to undefined and confirms the handler is a no-op rather than
+  // crashing, closing that guard's untested "unavailable" side.
+  describe('coverage completion — unavailable store actions are no-ops', () => {
+    it('mount effect tolerates fetchRelations/fetchMetrics/fetchDimensions all being non-functions', () => {
+      mockStore({
+        models: [{ name: 'orders' }],
+        metrics: [],
+        dimensions: [],
+        fetchRelations: undefined,
+        fetchMetrics: undefined,
+        fetchDimensions: undefined,
+      });
+      useRelationErdDag.mockReturnValue({ nodes: [], edges: [] });
+      expect(() => render(<SemanticLayerCanvas />)).not.toThrow();
+    });
+
+    it('onNodeClick on a model node is a no-op when setWorkspaceSelection is unavailable', () => {
+      oneModel();
+      mockStore({ models: [{ name: 'orders' }], setWorkspaceSelection: undefined });
+      useRelationErdDag.mockReturnValue({
+        nodes: [{ id: 'erd-model-orders', type: 'erdModelNode', position: { x: 0, y: 0 }, data: { name: 'orders' } }],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      expect(() =>
+        act(() => rfProps.current.onNodeClick({}, { type: 'semanticLayerModelNode', data: { name: 'orders' } }))
+      ).not.toThrow();
+    });
+
+    it('onNodeClick on a relation node is a no-op when openEditRelationModal is unavailable', () => {
+      mockStore({ openEditRelationModal: undefined });
+      useRelationErdDag.mockReturnValue({
+        nodes: [
+          {
+            id: 'erd-relnode-orders_to_users',
+            type: 'relationNode',
+            position: { x: 0, y: 0 },
+            data: { relationName: 'orders_to_users' },
+          },
+        ],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      expect(() =>
+        act(() =>
+          rfProps.current.onNodeClick(
+            {},
+            { type: 'relationNode', data: { relationName: 'orders_to_users' } }
+          )
+        )
+      ).not.toThrow();
+      expect(mockOpenEditRelationModal).not.toHaveBeenCalled();
+    });
+
+    it('onNodeDragStop is a no-op when setErdNodePositions is unavailable', () => {
+      oneModel();
+      mockStore({ models: [{ name: 'orders' }], setErdNodePositions: undefined });
+      useRelationErdDag.mockReturnValue({
+        nodes: [{ id: 'erd-model-orders', type: 'erdModelNode', position: { x: 0, y: 0 }, data: { name: 'orders' } }],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      expect(() =>
+        act(() => rfProps.current.onNodeDragStop({}, { id: 'erd-model-orders', position: { x: 1, y: 1 } }))
+      ).not.toThrow();
+      expect(mockSetErdNodePositions).not.toHaveBeenCalled();
+    });
+
+    it('the Tidy button is a no-op when clearErdLayout is unavailable', () => {
+      oneModel();
+      mockStore({ models: [{ name: 'orders' }], clearErdLayout: undefined });
+      useRelationErdDag.mockReturnValue({
+        nodes: [{ id: 'erd-model-orders', type: 'erdModelNode', position: { x: 0, y: 0 }, data: { name: 'orders' } }],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      expect(() => act(() => screen.getByTestId('semantic-layer-erd-reset-layout').click())).not.toThrow();
+      expect(mockClearErdLayout).not.toHaveBeenCalled();
+    });
+
+    it('a connect gesture with no resolvable source model is a no-op (never opens the join popover)', () => {
+      twoModels();
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onConnect({
+          source: 'erd-model-unknown',
+          target: 'erd-model-users',
+          sourceHandle: 'x',
+          targetHandle: 'id',
+        });
+      });
+      expect(screen.queryByTestId('join-popover-stub')).not.toBeInTheDocument();
+    });
+
+    it('"Explore this" from the model context menu is a no-op when createExploration/openWorkspaceTab are unavailable', () => {
+      oneModel();
+      mockStore({
+        models: [{ name: 'orders' }],
+        createExploration: undefined,
+        openWorkspaceTab: undefined,
+      });
+      useRelationErdDag.mockReturnValue({
+        nodes: [{ id: 'erd-model-orders', type: 'erdModelNode', position: { x: 0, y: 0 }, data: { name: 'orders' } }],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onNodeContextMenu(
+          { clientX: 10, clientY: 10, preventDefault: jest.fn() },
+          { type: 'semanticLayerModelNode', data: { name: 'orders' } }
+        );
+      });
+      expect(() =>
+        fireEvent.click(screen.getByTestId('semantic-erd-node-ctx-explore-this'))
+      ).not.toThrow();
+    });
+
+    it('"Explore this" from the model context menu never opens a tab when createExploration resolves success:false', async () => {
+      const createExploration = jest.fn().mockResolvedValue({ success: false });
+      const openWorkspaceTab = jest.fn();
+      oneModel();
+      mockStore({ models: [{ name: 'orders' }], createExploration, openWorkspaceTab });
+      useRelationErdDag.mockReturnValue({
+        nodes: [{ id: 'erd-model-orders', type: 'erdModelNode', position: { x: 0, y: 0 }, data: { name: 'orders' } }],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onNodeContextMenu(
+          { clientX: 10, clientY: 10, preventDefault: jest.fn() },
+          { type: 'semanticLayerModelNode', data: { name: 'orders' } }
+        );
+      });
+      fireEvent.click(screen.getByTestId('semantic-erd-node-ctx-explore-this'));
+      await waitFor(() => expect(createExploration).toHaveBeenCalled());
+      expect(openWorkspaceTab).not.toHaveBeenCalled();
+    });
+  });
 });
