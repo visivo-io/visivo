@@ -72,9 +72,27 @@ async function drag(page, srcSel, dstSel) {
 /** The preview must be a rendered chart — never the failure panel, and never
  *  the "nothing yet" state once props are bound. */
 async function expectLiveChart(page, step) {
-  await expect(page.locator('.js-plotly-plot').first(), `${step}: chart renders`).toBeVisible({
-    timeout: 30000,
-  });
+  // Assert that a plotly surface IS VISIBLE, not that the first matching node
+  // is. During a re-render the DOM can briefly hold more than one
+  // `.js-plotly-plot` (an outgoing one still detaching), and `.first()` can
+  // land on the hidden one — which fails while the user is looking at a
+  // perfectly good chart. Observed as a 1-in-3 flake before this changed.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          () =>
+            [...document.querySelectorAll('.js-plotly-plot')].filter(el => {
+              const r = el.getBoundingClientRect();
+              return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+            }).length
+        ),
+      {
+        message: `${step}: at least one plotly surface is visible`,
+        timeout: 30000,
+      }
+    )
+    .toBeGreaterThan(0);
   await expect(page.getByText('This preview failed to run'), `${step}: no failure panel`).toHaveCount(
     0
   );
@@ -83,11 +101,18 @@ async function expectLiveChart(page, step) {
 
 test.describe('Chart-building keeps the preview in sync with every edit', () => {
   let createdId = null;
+  let createdMetric = null;
 
   test.afterEach(async ({ page }) => {
     if (createdId) {
       await page.request.delete(`${apiBase}/api/explorations/${createdId}/`).catch(() => {});
       createdId = null;
+    }
+    if (createdMetric) {
+      await page.request
+        .delete(`${apiBase}/api/metrics/${encodeURIComponent(createdMetric)}/`)
+        .catch(() => {});
+      createdMetric = null;
     }
   });
 
@@ -162,7 +187,40 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
     await titleInput.blur();
     await expectLiveChart(page, 'after typing a title');
 
-    // 5. Switching chart type must carry the bound props over, not blank out.
+    // 5. Promoting a bound pill to a metric must not disturb the chart. The
+    //    metric flow has its own spec (save-as-metric.spec.mjs) covering the
+    //    naming, collision and born-bound-to-parent-model contracts; what is
+    //    NOT covered anywhere is whether the CHART survives it — the pill is
+    //    rewritten from an inline aggregate to a metric reference underneath,
+    //    which is exactly the kind of swap that can silently blank a preview.
+    const ySlot = page.getByTestId('droppable-property-y');
+    await ySlot.getByTestId('pill-menu-trigger').click();
+    await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 10000 });
+    // Only an AGGREGATE pill can become a metric (PillMenu gates the action and
+    // says so in its tooltip), so apply a preset first — which is itself an
+    // edit the chart has to survive.
+    await page.getByTestId('pill-menu-preset-sum').click();
+    await expectLiveChart(page, 'after applying the SUM preset to y');
+    await expect(ySlot).toContainText('SUM');
+
+    await ySlot.getByTestId('pill-menu-trigger').click();
+    await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 10000 });
+    const saveAsMetric = page.getByTestId('pill-menu-save-as-metric');
+    await expect(saveAsMetric).toBeEnabled({ timeout: 10000 });
+    await saveAsMetric.click();
+    await expect(page.getByTestId('save-as-metric-prompt')).toBeVisible({ timeout: 10000 });
+    const metricName = await page.getByTestId('save-as-metric-name-input').inputValue();
+    createdMetric = metricName;
+    await page.getByTestId('save-as-metric-submit').click();
+    await expect(page.getByTestId('save-as-metric-prompt')).not.toBeVisible({ timeout: 20000 });
+
+    // The pill now names the metric rather than the raw aggregate...
+    await expect(ySlot).toContainText(metricName);
+    await expect(ySlot, 'never raw ref syntax (D8)').not.toContainText('?{');
+    // ...and the chart is still live, bound to it.
+    await expectLiveChart(page, 'after saving the y pill as a metric');
+
+    // 6. Switching chart type must carry the bound props over, not blank out.
     await page.locator('[data-testid^="type-selector"]').first().click();
     await page.getByText('Bar', { exact: true }).first().click();
     await expectLiveChart(page, 'after scatter → bar');
@@ -170,5 +228,9 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
       page.getByTestId('droppable-property-x'),
       'x binding survives the type switch'
     ).toContainText('less_than_4');
+    await expect(
+      page.getByTestId('droppable-property-y'),
+      'the metric binding survives the type switch too'
+    ).toContainText(createdMetric);
   });
 });
