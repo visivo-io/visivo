@@ -100,6 +100,62 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
   });
 
+  // activateWorkspaceTab is the URL→store write called directly by
+  // useWorkspaceUrlSync for a deep link / browser back-forward — a
+  // VIEW-typed payload (a stale `?edit=project:...`-shaped URL, or a legacy
+  // persisted record) must delegate to activateWorkspaceView exactly like
+  // openWorkspaceTab does, not create a bogus tab record.
+  test('activateWorkspaceTab with a VIEW-typed payload delegates to activateWorkspaceView and returns null', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().activateWorkspaceTab({
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+    });
+    expect(returned).toBeNull();
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('semantic-layer');
+    expect(s.workspaceTabs).toHaveLength(0);
+    expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  test('openWorkspaceTab rejects bad input (missing type/name)', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().openWorkspaceTab({ type: 'chart' });
+    });
+    expect(returned).toBeNull();
+    act(() => {
+      returned = useStore.getState().openWorkspaceTab(null);
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
+  test('activateWorkspaceTab rejects bad input (missing type/name)', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().activateWorkspaceTab({ type: 'chart' });
+    });
+    expect(returned).toBeNull();
+    act(() => {
+      returned = useStore.getState().activateWorkspaceTab(null);
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
+  test('restoreWorkspaceTabs is a no-op for a non-array payload (defensive fallback)', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'keep-me' });
+      useStore.getState().restoreWorkspaceTabs(null);
+      useStore.getState().restoreWorkspaceTabs('not-an-array');
+    });
+    // The existing tab set is untouched — restoreWorkspaceTabs never ran.
+    expect(useStore.getState().workspaceTabs.map(t => t.id)).toEqual(['chart:keep-me']);
+  });
+
   test('restoreWorkspaceTabs replaces the strip without focusing (dedupe + sanitize)', () => {
     act(() => {
       useStore.getState().restoreWorkspaceTabs([
@@ -206,6 +262,18 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
   });
 
+  test('switchWorkspaceTab routes the URL through the registered navigator (Back button + single loop)', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd2' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().switchWorkspaceTab('dashboard:d1');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+    expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
   test('closeWorkspaceTab removes the tab and reassigns focus when the active tab closes', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
@@ -233,6 +301,45 @@ describe('workspace store slice', () => {
     const s = useStore.getState();
     expect(s.workspaceTabs.map((t) => t.id)).toEqual(['dashboard:d1']);
     expect(s.workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('closeWorkspaceTab with a registered navigator routes the URL to the newly-focused remaining tab', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd2' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('dashboard:d2');
+    });
+    // d1 (the remaining tab) takes over the center — the URL follows it.
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+    expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('closeWorkspaceTab with a registered navigator routes the URL to the owning VIEW when no tab remains', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('dashboard:d1');
+    });
+    // No tab remains — the URL must not dangle on the closed tab's `?edit=`/
+    // dashboard path; it routes to the destination that now owns the center.
+    expect(nav).toHaveBeenCalledWith('/workspace');
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+  });
+
+  test('closeWorkspaceTab of a non-active tab never touches the URL, even with a navigator registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd2' });
+      useStore.getState().switchWorkspaceTab('dashboard:d1');
+      nav.mockClear();
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('dashboard:d2');
+    });
+    expect(nav).not.toHaveBeenCalled();
   });
 
   test('closing the last tab clears the active id', () => {
@@ -449,6 +556,23 @@ describe('workspace store slice', () => {
       const s = useStore.getState();
       expect(s.workspaceLeftCollapsed).toBe(false);
       expect(s.workspaceLeftAutoCollapsedByShell).toBe(false);
+    });
+
+    // Symmetric to the left-rail case above — the right rail's own re-expand
+    // branch is a separate `else if` in the reducer and must be pinned
+    // independently (a left-only regression test would never catch it).
+    test('re-expands the RIGHT rail it previously auto-collapsed once space is available again', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: true });
+      });
+      expect(useStore.getState().workspaceRightCollapsed).toBe(true);
+      expect(useStore.getState().workspaceRightAutoCollapsedByShell).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceRightCollapsed).toBe(false);
+      expect(s.workspaceRightAutoCollapsedByShell).toBe(false);
     });
 
     test('never auto-expands a rail the USER collapsed manually', () => {
@@ -799,6 +923,14 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceLensIntent).toBeNull();
   });
 
+  test('setWorkspaceLensIntent(null) clears the intent directly (not just via clearWorkspaceLensIntent)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceLensIntent({ objectKey: 'chart:rev', lens: 'lineage' });
+      useStore.getState().setWorkspaceLensIntent(null);
+    });
+    expect(useStore.getState().workspaceLensIntent).toBeNull();
+  });
+
   test('workspaceSemanticLayerFocusIntent: set, validate, and clear (VIS-1069)', () => {
     act(() => {
       useStore.getState().setWorkspaceSemanticLayerFocusIntent({ objectKey: 'metric:revenue' });
@@ -818,6 +950,76 @@ describe('workspace store slice', () => {
       useStore.getState().clearWorkspaceSemanticLayerFocusIntent();
     });
     expect(useStore.getState().workspaceSemanticLayerFocusIntent).toBeNull();
+  });
+
+  test('setWorkspaceSemanticLayerFocusIntent(null) clears the intent directly', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent({ objectKey: 'metric:revenue' });
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent(null);
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toBeNull();
+  });
+
+  // Toast queue (Explore 2.0 Phase 2) ----------------------------------------
+
+  test('showWorkspaceToast sets a message with a fresh key; a falsy message is a no-op', () => {
+    act(() => {
+      useStore.getState().showWorkspaceToast('Churn dig was deleted');
+    });
+    expect(useStore.getState().workspaceToast).toEqual(
+      expect.objectContaining({ message: 'Churn dig was deleted' })
+    );
+    act(() => {
+      useStore.setState({ workspaceToast: null });
+      useStore.getState().showWorkspaceToast('');
+    });
+    expect(useStore.getState().workspaceToast).toBeNull();
+  });
+
+  test('dismissWorkspaceToast clears the toast', () => {
+    act(() => {
+      useStore.getState().showWorkspaceToast('Something happened');
+      useStore.getState().dismissWorkspaceToast();
+    });
+    expect(useStore.getState().workspaceToast).toBeNull();
+  });
+
+  // Library source drill-down (Explore 2.0 Phase 3a / D9) --------------------
+
+  test('toggleLibrarySourceRowExpanded flips a source row; a falsy sourceName is a no-op', () => {
+    act(() => {
+      useStore.getState().toggleLibrarySourceRowExpanded('analytics_db');
+    });
+    expect(useStore.getState().librarySourceRowExpanded.analytics_db).toBe(true);
+    act(() => {
+      useStore.getState().toggleLibrarySourceRowExpanded('analytics_db');
+    });
+    expect(useStore.getState().librarySourceRowExpanded.analytics_db).toBe(false);
+    act(() => {
+      useStore.getState().toggleLibrarySourceRowExpanded('');
+      useStore.getState().toggleLibrarySourceRowExpanded(null);
+    });
+    // Neither no-op call touched the map at all.
+    expect(useStore.getState().librarySourceRowExpanded).toEqual({ analytics_db: false });
+  });
+
+  // Canvas hover key (VIS-771 follow-up) --------------------------------------
+
+  test('setWorkspaceCanvasHoverKey sets/clears the hover key, and is a reference-stable no-op when unchanged', () => {
+    act(() => {
+      useStore.getState().setWorkspaceCanvasHoverKey('row.0.item.1');
+    });
+    expect(useStore.getState().workspaceCanvasHoverKey).toBe('row.0.item.1');
+    const stateBefore = useStore.getState();
+    act(() => {
+      useStore.getState().setWorkspaceCanvasHoverKey('row.0.item.1');
+    });
+    // Same key again — the state object reference is untouched (no-op set).
+    expect(useStore.getState()).toBe(stateBefore);
+    act(() => {
+      useStore.getState().setWorkspaceCanvasHoverKey(null);
+    });
+    expect(useStore.getState().workspaceCanvasHoverKey).toBeNull();
   });
 
   // Outline tree (VIS-793 / Track F F-3) ------------------------------------
@@ -844,6 +1046,18 @@ describe('workspace store slice', () => {
       const s = useStore.getState();
       expect(s.workspaceActiveObject).toEqual({ type: 'chart', name: 'rev' });
       expect(s.workspaceOutlineSelectedKey).toBe('row.0.item.0');
+    });
+
+    // outlineKey is neither undefined nor null, but also not a (truthy)
+    // string — the malformed-value branch that's neither "set" nor "reset".
+    test('a non-string, non-null outlineKey is silently ignored (neither set nor reset)', () => {
+      act(() => {
+        useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
+        useStore.getState().setWorkspaceSelection({ type: 'chart', name: 'rev' }, 42);
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveObject).toEqual({ type: 'chart', name: 'rev' });
+      expect(s.workspaceOutlineSelectedKey).toBe('row.1');
     });
 
     test('clears activeObject when null passed', () => {
@@ -1009,6 +1223,42 @@ describe('workspace store slice', () => {
     });
   });
 
+  describe('hydrateWorkspaceTabs edge cases', () => {
+    test('a falsy `tabs` argument hydrates an empty strip with nothing active', () => {
+      act(() => {
+        useStore.getState().hydrateWorkspaceTabs(null, null);
+      });
+      const s = useStore.getState();
+      expect(s.workspaceTabs).toEqual([]);
+      expect(s.workspaceActiveTabId).toBeNull();
+      expect(s.workspaceActiveObject).toBeNull();
+    });
+
+    test('omitting activeTabId defaults focus to the FIRST hydrated tab', () => {
+      act(() => {
+        useStore.getState().hydrateWorkspaceTabs([
+          { id: 'dashboard:d1', type: 'dashboard', name: 'd1' },
+          { id: 'chart:c1', type: 'chart', name: 'c1' },
+        ]);
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveTabId).toBe('dashboard:d1');
+      expect(s.workspaceActiveObject).toEqual({ type: 'dashboard', name: 'd1' });
+    });
+
+    test('an activeTabId that matches no hydrated tab leaves nothing active', () => {
+      act(() => {
+        useStore.getState().hydrateWorkspaceTabs(
+          [{ id: 'dashboard:d1', type: 'dashboard', name: 'd1' }],
+          'dashboard:does-not-exist'
+        );
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveTabId).toBe('dashboard:does-not-exist');
+      expect(s.workspaceActiveObject).toBeNull();
+    });
+  });
+
   // Source outline (VIS-1004) — disjoint selection key + per-source expand -----
 
   test('setWorkspaceSourceOutlineSelectedKey selects, toggles off, and stays disjoint', () => {
@@ -1026,6 +1276,22 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBeNull();
   });
 
+  test('setWorkspaceSourceOutlineSelectedKey(null) explicitly clears a DIFFERENT current selection (not just the toggle-off path)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey('source-outline::db::main::table::orders');
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(null);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBeNull();
+  });
+
+  test('setWorkspaceSourceOutlineSelectedKey rejects a non-string, non-null key (leaves selection untouched)', () => {
+    act(() => {
+      useStore.setState({ workspaceSourceOutlineSelectedKey: 'source-outline::db::main' });
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(42);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe('source-outline::db::main');
+  });
+
   test('toggleWorkspaceSourceOutlineExpanded adds/removes a node per source', () => {
     act(() => {
       useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', 'node-1');
@@ -1039,6 +1305,33 @@ describe('workspace store slice', () => {
     });
     expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([]);
     expect(useStore.getState().workspaceSourceOutlineExpanded.src_b).toEqual(['node-2']);
+  });
+
+  test('toggleWorkspaceSourceOutlineExpanded is a no-op without both a sourceName and a nodeKey', () => {
+    act(() => {
+      useStore.setState({ workspaceSourceOutlineExpanded: {} });
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('', 'node-1');
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', '');
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded(null, null);
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded).toEqual({});
+  });
+
+  test('setWorkspaceSourceOutlineData caches a payload, evicts on null, and no-ops without a sourceName', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineData('analytics_db', { nodes: ['t1'] });
+    });
+    expect(useStore.getState().workspaceSourceOutlineDataCache.analytics_db).toEqual({
+      nodes: ['t1'],
+    });
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineData('analytics_db', null);
+    });
+    expect(useStore.getState().workspaceSourceOutlineDataCache).not.toHaveProperty('analytics_db');
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineData('', { nodes: ['ignored'] });
+    });
+    expect(useStore.getState().workspaceSourceOutlineDataCache).toEqual({});
   });
 
   test('setWorkspaceSourceOutlineExpanded replaces a source expanded set (auto-expand)', () => {
@@ -1100,6 +1393,61 @@ describe('workspace store slice', () => {
     expect(useStore.getState().saveDashboard).not.toHaveBeenCalled();
   });
 
+  test('addDashboardRow is a no-op for a falsy dashboardName (never reaches the list scan)', () => {
+    act(() => {
+      useStore.setState({ dashboards: [{ name: 'd1', config: { rows: [] } }], saveDashboard: jest.fn() });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('');
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().saveDashboard).not.toHaveBeenCalled();
+  });
+
+  test('addDashboardRow returns null when the `dashboards` collection is missing from the store entirely', () => {
+    act(() => {
+      useStore.setState({ dashboards: undefined, saveDashboard: jest.fn() });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('d1');
+    });
+    expect(returned).toBeNull();
+  });
+
+  test('addDashboardRow tolerates a config with no `rows` array yet (starts a fresh one)', () => {
+    const saveDashboard = jest.fn();
+    act(() => {
+      useStore.setState({
+        dashboards: [{ name: 'd1', config: { name: 'd1' } }], // no `rows` at all
+        saveDashboard,
+      });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('d1');
+    });
+    expect(returned).toBe(0);
+    const dash = useStore.getState().dashboards.find((d) => d.name === 'd1');
+    expect(dash.config.rows).toEqual([{ height: 'medium', items: [] }]);
+  });
+
+  test('addDashboardRow skips the persist call when saveDashboard is not wired up', () => {
+    act(() => {
+      useStore.setState({
+        dashboards: [{ name: 'd1', config: { name: 'd1', rows: [] } }],
+        saveDashboard: undefined,
+      });
+    });
+    expect(() => {
+      act(() => {
+        useStore.getState().addDashboardRow('d1');
+      });
+    }).not.toThrow();
+    expect(useStore.getState().dashboards.find((d) => d.name === 'd1').config.rows).toHaveLength(1);
+  });
+
   test('updateDashboardConfigOptimistic replaces the draft config without saving (VIS-802)', () => {
     const saveDashboard = jest.fn();
     act(() => {
@@ -1129,6 +1477,28 @@ describe('workspace store slice', () => {
     let returned;
     act(() => {
       returned = useStore.getState().updateDashboardConfigOptimistic('missing', { rows: [] });
+    });
+    expect(returned).toBe(false);
+  });
+
+  test('updateDashboardConfigOptimistic is a no-op for a falsy dashboardName', () => {
+    act(() => {
+      useStore.setState({ dashboards: [{ name: 'd1', config: { rows: [] } }] });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateDashboardConfigOptimistic('', { rows: [] });
+    });
+    expect(returned).toBe(false);
+  });
+
+  test('updateDashboardConfigOptimistic tolerates a store with no `dashboards` collection at all', () => {
+    act(() => {
+      useStore.setState({ dashboards: undefined });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateDashboardConfigOptimistic('d1', { rows: [] });
     });
     expect(returned).toBe(false);
   });
@@ -1205,6 +1575,13 @@ describe('workspace store slice', () => {
     expect(useStore.getState().updateRecordConfigOptimistic('chart', 'missing', {})).toBe(false);
     expect(useStore.getState().updateRecordConfigOptimistic('chart', '', {})).toBe(false);
   });
+
+  test('updateRecordConfigOptimistic tolerates a store with no collection array at all for the type', () => {
+    act(() => {
+      useStore.setState({ charts: undefined });
+    });
+    expect(useStore.getState().updateRecordConfigOptimistic('chart', 'c1', {})).toBe(false);
+  });
 });
 
 describe('workspace VIEWS — the three destinations (D1, Explore 2.0 Phase 0)', () => {
@@ -1225,6 +1602,41 @@ describe('workspace VIEWS — the three destinations (D1, Explore 2.0 Phase 0)',
     expect(s.workspaceActiveTabId).toBeNull();
     expect(s.workspaceActiveObject).toBeNull();
     expect(s.workspaceTabs.some((t) => t.id === 'chart:revenue')).toBe(true);
+  });
+
+  test('activateWorkspaceView on the SAME view with no active tab fires no telemetry (both OR operands false)', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      act(() => {
+        useStore.setState({ workspaceActiveView: 'project', workspaceActiveTabId: null });
+        useStore.getState().activateWorkspaceView('project');
+      });
+      expect(events.filter(e => e.eventName === 'view_activated')).toHaveLength(0);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  test('activateWorkspaceView on the SAME view still fires telemetry when a tab was active (parking it)', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      act(() => {
+        useStore.setState({ workspaceActiveView: 'project' });
+        useStore.getState().activateWorkspaceTab({ type: 'chart', name: 'revenue' });
+      });
+      events.length = 0;
+      act(() => {
+        // Same view the tab's owning destination already resolved to
+        // ('project'), but a tab IS currently active — the right OR operand
+        // alone must still fire the event.
+        useStore.getState().activateWorkspaceView('project');
+      });
+      expect(events.filter(e => e.eventName === 'view_activated')).toHaveLength(1);
+    } finally {
+      unsubscribe();
+    }
   });
 
   test('activateWorkspaceView rejects an unknown view key', () => {
@@ -1252,6 +1664,17 @@ describe('workspace VIEWS — the three destinations (D1, Explore 2.0 Phase 0)',
     });
     // No router registered — falls back to the direct store write.
     expect(useStore.getState().workspaceActiveView).toBe('explorer');
+  });
+
+  test('openWorkspaceView rejects an unknown view key without navigating or activating', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.setState({ workspaceActiveView: 'project' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().openWorkspaceView('bogus-view');
+    });
+    expect(nav).not.toHaveBeenCalled();
+    expect(useStore.getState().workspaceActiveView).toBe('project');
   });
 
   test('openWorkspaceTab / activateWorkspaceTab with a VIEW-typed payload delegate to the view actions (legacy call-site back-compat)', () => {
@@ -1360,6 +1783,30 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
     });
   });
 
+  test('setWorkspacePivotDraft defaults a non-array `columns` to [] too (not just when omitted)', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({
+        tableName: 't',
+        columns: 'not-an-array',
+        rows: ['${ref(s).cat}'],
+        values: ['sum(${ref(s).rev})'],
+      });
+    });
+    expect(useStore.getState().workspacePivotDraft).toEqual({
+      tableName: 't',
+      columns: [],
+      rows: ['${ref(s).cat}'],
+      values: ['sum(${ref(s).rev})'],
+    });
+  });
+
+  test('setWorkspacePivotDraft defaults a missing tableName to null', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({ columns: [] });
+    });
+    expect(useStore.getState().workspacePivotDraft.tableName).toBeNull();
+  });
+
   test('setWorkspacePivotDraft with a falsy value clears the draft', () => {
     act(() => {
       useStore.getState().setWorkspacePivotDraft({ tableName: 't', columns: [] });
@@ -1456,6 +1903,73 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
     expect(result.success).toBe(false);
   });
 
+  test('commitWorkspacePivotDraft tolerates a store with no `tables` collection at all', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: undefined,
+        workspacePivotDraft: { tableName: 'ghost-table', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(result).toEqual({ success: true });
+    // No matching record at all (not even an empty `tables` list) — the merge
+    // starts from `{}` rather than throwing on a missing `.config`.
+    expect(saveTable).toHaveBeenCalledWith('ghost-table', expect.objectContaining({ name: 'ghost-table' }));
+  });
+
+  test('commitWorkspacePivotDraft merges onto `{}` when the table name has no matching record yet', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [{ name: 'unrelated-table', config: { name: 'unrelated-table' } }],
+        workspacePivotDraft: {
+          tableName: 'brand-new-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    await act(async () => {
+      await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(saveTable).toHaveBeenCalledWith(
+      'brand-new-table',
+      expect.objectContaining({ name: 'brand-new-table', columns: ['${ref(s).region}'] })
+    );
+  });
+
+  test('commitWorkspacePivotDraft merges onto the BARE record when it carries no `.config` envelope', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        // A bare (un-enveloped) record — `rows_per_page` sits directly on it,
+        // not under `.config` (VIS-1018's other collection shapes).
+        tables: [{ name: 'bare-table', rows_per_page: 50 }],
+        workspacePivotDraft: {
+          tableName: 'bare-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    await act(async () => {
+      await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(saveTable).toHaveBeenCalledWith(
+      'bare-table',
+      expect.objectContaining({ rows_per_page: 50, columns: ['${ref(s).region}'] })
+    );
+  });
+
   test('commitWorkspacePivotDraftAsNew saves a uniquely-named new table and opens its tab', async () => {
     const saveTable = jest.fn(() => Promise.resolve({ success: true }));
     act(() => {
@@ -1544,5 +2058,105 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
       result = await useStore.getState().commitWorkspacePivotDraftAsNew();
     });
     expect(result.success).toBe(false);
+  });
+
+  test('commitWorkspacePivotDraftAsNew tolerates a store with no `tables` collection at all', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: undefined,
+        workspaceTabs: [],
+        workspacePivotDraft: { tableName: null, columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(true);
+    // No source tableName at all → the generic base name, not `<name>_pivot`.
+    expect(result.name).toBe('pivot_table');
+  });
+
+  test('commitWorkspacePivotDraftAsNew carries forward a BARE source record\'s rows_per_page/format_cells (no `.config` envelope)', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        workspaceTabs: [],
+        tables: [{ name: 'source-table', rows_per_page: 25, format_cells: { a: 1 } }],
+        workspacePivotDraft: {
+          tableName: 'source-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    await act(async () => {
+      await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    const [, config] = saveTable.mock.calls[0];
+    expect(config.rows_per_page).toBe(25);
+    expect(config.format_cells).toEqual({ a: 1 });
+  });
+
+  test('commitWorkspacePivotDraftAsNew opens the new tab only when saveTable actually succeeds', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: false, error: 'rejected' }));
+    const openWorkspaceTab = jest.fn();
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab,
+        workspaceTabs: [],
+        tables: [{ name: 'src', config: { name: 'src' } }],
+        workspacePivotDraft: { tableName: 'src', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(false);
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('commitWorkspacePivotDraftAsNew still returns a name-tagged result when saveTable resolves with no result object at all', async () => {
+    const saveTable = jest.fn(() => Promise.resolve(undefined));
+    const openWorkspaceTab = jest.fn();
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab,
+        workspaceTabs: [],
+        tables: [{ name: 'src', config: { name: 'src' } }],
+        workspacePivotDraft: { tableName: 'src', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result).toEqual({ name: 'src_pivot' });
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('commitWorkspacePivotDraftAsNew never throws when openWorkspaceTab is not wired up, even on success', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab: undefined,
+        workspaceTabs: [],
+        tables: [{ name: 'src', config: { name: 'src' } }],
+        workspacePivotDraft: { tableName: 'src', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(true);
   });
 });

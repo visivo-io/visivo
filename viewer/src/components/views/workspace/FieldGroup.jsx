@@ -96,7 +96,7 @@ export function FieldGroup({
   const { id, label, icon, objectType, alwaysOpen, defaultOpen = true, fields = [] } = group || {};
 
   const collapsedMap = useFieldGroupCollapseStore(s => s.collapsed);
-  const toggleCollapsed = useFieldGroupCollapseStore(s => s.toggleCollapsed);
+  const setCollapsed = useFieldGroupCollapseStore(s => s.setCollapsed);
   // Effective collapse: an explicit persisted entry wins; absent, fall back to
   // the group's `defaultOpen` (trace-prop Layout/Animation/Other are
   // collapsed-by-default per §3). `defaultOpen` defaults to true, so semantic
@@ -140,7 +140,16 @@ export function FieldGroup({
 
   const handleHeaderClick = () => {
     if (alwaysOpen) return;
-    toggleCollapsed(objectType, id);
+    // Bug fix (found while adding coverage): the store's own `toggleCollapsed`
+    // flips based on ITS OWN "absence -> currently expanded" convention,
+    // which disagrees with THIS component's `defaultOpen`-aware effective
+    // collapse (`persistedCollapsed` above) for any `defaultOpen: false`
+    // group (Layout/Animation/Other) that has never been explicitly toggled
+    // yet — the very first click on a collapsed-by-default group's header
+    // was a silent no-op (it takes a SECOND click to actually expand).
+    // Setting the explicit next value from `persistedCollapsed` (which
+    // already accounts for `defaultOpen`) makes the very first click work.
+    setCollapsed(objectType, id, !persistedCollapsed);
   };
 
   const handleFieldChange = (name, fieldValue) => {
@@ -217,7 +226,16 @@ export function FieldGroup({
               );
             }
             return (
-              <div key={field.name} {...rowProps}>
+              // The reveal flash-ring lands on THIS wrapper, not on the row
+              // inside it, and a wrapper has no user-facing handle to query
+              // by — so it carries a testid purely so a test can assert the
+              // ring without reaching through `.parentElement` (banned by
+              // testing-library/no-node-access, and rightly: that couples the
+              // test to DOM nesting rather than to the element it means).
+              // Deliberately NOT in `rowProps`: the override branch above
+              // spreads those AFTER its own `data-testid`, so putting it
+              // there silently overwrites `field-override-<name>`.
+              <div key={field.name} data-testid={`field-row-${field.name}`} {...rowProps}>
                 <PropertyRow
                   path={field.name}
                   value={getValueAtPath(value, field.name)}

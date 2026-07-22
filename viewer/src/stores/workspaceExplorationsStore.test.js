@@ -158,6 +158,37 @@ describe('fetchExplorations', () => {
 
     expect(result).toEqual({ success: false, error: 'network down' });
   });
+
+  // mapDraftFromApi's `|| []`/`?? null` fallbacks — every other fixture in
+  // this file supplies a fully-populated `draft`; a genuinely partial one
+  // (fields entirely absent, not just empty) is what actually exercises them.
+  test('defaults every draft field when the wire draft omits them entirely', async () => {
+    explorationsApi.fetchExplorations.mockResolvedValueOnce([wireExploration({ draft: {} })]);
+
+    await act(async () => {
+      await useStore.getState().fetchExplorations();
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.draft).toEqual({
+      queries: [],
+      insights: [],
+      chart: null,
+      computedColumns: [],
+      legacyState: null,
+    });
+  });
+
+  test('defaults `promoted` to [] when the wire record omits it', async () => {
+    const bare = wireExploration();
+    delete bare.promoted;
+    explorationsApi.fetchExplorations.mockResolvedValueOnce([bare]);
+
+    await act(async () => {
+      await useStore.getState().fetchExplorations();
+    });
+
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.promoted).toEqual([]);
+  });
 });
 
 describe('createExploration', () => {
@@ -507,6 +538,79 @@ describe('runSync — VIS-1083 deleted-remotely (404 handling)', () => {
     expect(useStore.getState().workspaceExplorations.byId.exp_1.syncStatus).toBe('error');
   });
 
+  // runSync's OWN `!record` guard: the id can be dropped from `byId` (by a
+  // concurrent delete/discard) AFTER scheduleSync armed the timer but BEFORE
+  // it fires — the debounce fires against whatever is CURRENT, not a captured
+  // closure, so it must no-op rather than crash on a since-vanished record.
+  test('a debounced sync that fires after the record was deleted in the meantime is a graceful no-op', async () => {
+    seedRecord();
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    // The record vanishes (a concurrent deleteExploration/discard) before the
+    // debounce window elapses.
+    act(() => {
+      useStore.setState(state => {
+        const nextById = { ...state.workspaceExplorations.byId };
+        delete nextById.exp_1;
+        return { workspaceExplorations: { byId: nextById, order: [] } };
+      });
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+  });
+
+  // patchExploration's own `!existing` guard, hit from runSync's CATCH branch
+  // specifically: the record is present when runSync STARTS (passes its own
+  // guard, flips to 'saving') but is deleted while the API call is still
+  // in flight — the later `patchExploration` write (setting 'error') must
+  // no-op instead of resurrecting a deleted record.
+  test('a record deleted WHILE its sync POST is in flight never gets resurrected by the error patch', async () => {
+    seedRecord();
+    let rejectUpdate;
+    explorationsApi.updateExploration.mockImplementationOnce(
+      () => new Promise((_resolve, reject) => { rejectUpdate = reject; })
+    );
+
+    act(() => {
+      useStore.getState().updateExplorationDraft('exp_1', {
+        queries: [],
+        insights: [],
+        chart: null,
+        computedColumns: [],
+      });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    // The debounced runSync has started (record still present, flipped to
+    // 'saving') and is now awaiting the in-flight POST.
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.syncStatus).toBe('saving');
+
+    // The record is deleted out from under the in-flight request.
+    act(() => {
+      useStore.setState({ workspaceExplorations: { byId: {}, order: [] } });
+    });
+
+    await act(async () => {
+      rejectUpdate(new Error('offline'));
+      await Promise.resolve().then(() => Promise.resolve());
+    });
+
+    // Nothing resurrected the deleted record.
+    expect(useStore.getState().workspaceExplorations.byId.exp_1).toBeUndefined();
+  });
+
   test('flushExplorationSync surfaces deletedRemotely:true on a 404', async () => {
     seedRecord();
     explorationsApi.updateExploration.mockRejectedValueOnce(notFoundError());
@@ -728,6 +832,44 @@ describe('duplicateExploration', () => {
     expect(result).toEqual({ success: false, error: 'Exploration not found' });
     expect(explorationsApi.createExploration).not.toHaveBeenCalled();
   });
+
+  test('returns success:false and leaves the source record untouched when the create POST fails', async () => {
+    seedRecord({ name: 'Churn dig' });
+    explorationsApi.createExploration.mockRejectedValueOnce(new Error('network down'));
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().duplicateExploration('exp_1');
+    });
+
+    expect(result).toEqual({ success: false, error: 'network down' });
+    // No new record inserted — only the original survives.
+    expect(useStore.getState().workspaceExplorations.order).toEqual(['exp_1']);
+  });
+
+  // mapDraftToApi's `|| []`/`?? null` fallbacks — a draft object with fields
+  // entirely absent (not just empty), exercised via the one public action
+  // that calls mapDraftToApi on an arbitrary in-memory draft.
+  test('duplicates an exploration whose in-memory draft omits every field entirely', async () => {
+    seedRecord({ name: 'Bare', draft: {} });
+    explorationsApi.createExploration.mockResolvedValueOnce(wireExploration({ id: 'exp_2' }));
+
+    await act(async () => {
+      await useStore.getState().duplicateExploration('exp_1');
+    });
+
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draft: {
+          queries: [],
+          insights: [],
+          chart: null,
+          computed_columns: [],
+          legacy_state: null,
+        },
+      })
+    );
+  });
 });
 
 describe('deleteExploration', () => {
@@ -814,6 +956,37 @@ describe('deleteExploration', () => {
 
     expect(useStore.getState().workspaceToast).toBeNull();
   });
+
+  test('tolerates a store with no `workspaceTabs` collection at all (never toasts, never throws)', async () => {
+    seedRecord({ name: 'Churn dig' });
+    act(() => {
+      useStore.setState({ workspaceTabs: undefined });
+    });
+    explorationsApi.deleteExploration.mockResolvedValueOnce(true);
+
+    await expect(
+      act(async () => {
+        await useStore.getState().deleteExploration('exp_1');
+      })
+    ).resolves.not.toThrow();
+    expect(useStore.getState().workspaceToast).toBeNull();
+  });
+
+  test('the deleted-toast falls back to "Exploration" when the record has no name', async () => {
+    seedRecord({ name: '' });
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [{ id: 'exploration:exp_1', type: 'exploration', name: 'exp_1' }],
+      });
+    });
+    explorationsApi.deleteExploration.mockResolvedValueOnce(true);
+
+    await act(async () => {
+      await useStore.getState().deleteExploration('exp_1');
+    });
+
+    expect(useStore.getState().workspaceToast).toMatchObject({ message: 'Exploration was deleted' });
+  });
 });
 
 describe('renameExploration', () => {
@@ -857,6 +1030,20 @@ describe('renameExploration', () => {
     });
 
     expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+  });
+
+  test('is a no-op when name is null/undefined (never reaches `.trim()` on a non-string)', async () => {
+    seedRecord({ name: 'Scratch' });
+
+    await act(async () => {
+      await useStore.getState().renameExploration('exp_1', null);
+    });
+    await act(async () => {
+      await useStore.getState().renameExploration('exp_1', undefined);
+    });
+
+    expect(explorationsApi.updateExploration).not.toHaveBeenCalled();
+    expect(useStore.getState().workspaceExplorations.byId.exp_1.name).toBe('Scratch');
   });
 
   test('returns success:false for an unknown id', async () => {
@@ -1047,6 +1234,13 @@ describe('VIS-1081 discard mechanics', () => {
       useStore.getState().snapshotExplorationForDiscard('exp_1');
     });
     expect(_openDraftSnapshots.get('exp_1').queries[0].name).toBe('q1');
+  });
+
+  test('snapshotExplorationForDiscard is a no-op for an unknown id (nothing captured)', () => {
+    act(() => {
+      useStore.getState().snapshotExplorationForDiscard('exp_never_existed');
+    });
+    expect(_openDraftSnapshots.has('exp_never_existed')).toBe(false);
   });
 
   test('clearExplorationDiscardSnapshot removes the bookkeeping', () => {
@@ -1495,6 +1689,36 @@ describe('promoteExploration', () => {
     expect(order).toEqual(['model', 'insight', 'chart']);
   });
 
+  // Defensive branch: a checklist row of a type with no registered SAVE_ACTION
+  // (or whose mapped store action isn't wired up) must fail that ONE row with
+  // an explicit error, not throw and abort the whole promote — the tier-order
+  // re-sort above only trusts `buildPromoteChecklist`'s `tier`, not `type`, so
+  // an unrecognized type is reachable if the checklist ever drifts.
+  test('a row whose type has no registered save action fails that row with an explicit error, without throwing', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ type: 'bogus_type', tier: 'model', name: 'mystery' }),
+    ]);
+    seedRecord();
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'bogus_type', name: 'mystery' },
+      ]);
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.results).toEqual([
+      {
+        type: 'bogus_type',
+        name: 'mystery',
+        tier: 'model',
+        success: false,
+        error: 'No save action registered for type "bogus_type"',
+      },
+    ]);
+  });
+
   test('a failed row blocks only itself — partial promotion continues', async () => {
     buildPromoteChecklist.mockResolvedValue([
       checklistRow({ name: 'good_model' }),
@@ -1577,6 +1801,43 @@ describe('promoteExploration', () => {
         slots: [{ insightName: 'other_insight', location: 'prop', key: 'x', swapTo: { kind: 'metricRef', ref: 'region' } }],
       },
     ]);
+  });
+
+  // The default `findReclassifiedSlots` mock (top of file) returns `[]` — a
+  // metric/dimension row DOES trigger the scan, but with no collision hits,
+  // `reclassificationOffers` stays empty (the `hits.length > 0` false path).
+  // Also exercises the `get().explorerInsightStates || {}` fallback: the
+  // store here has no `explorerInsightStates` key set at all.
+  test('a promoted metric with no reclassification hits reports an empty offers list, even with no explorerInsightStates at all', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ type: 'metric', tier: 'field', name: 'region' }),
+    ]);
+    seedRecord();
+    act(() =>
+      useStore.setState({
+        saveMetric: jest.fn().mockResolvedValue({ success: true }),
+        explorerInsightStates: undefined,
+      })
+    );
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [{ type: 'metric', name: 'region' }]);
+    });
+
+    expect(findReclassifiedSlots).toHaveBeenCalledWith('region', 'metric', {});
+    expect(result.reclassificationOffers).toEqual([]);
+  });
+
+  test('promoteExploration with no selection argument at all promotes nothing (the `selection || []` fallback)', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1');
+    });
+    expect(result).toEqual({ success: false, results: [], reclassificationOffers: [] });
   });
 
   test('no reclassification offers for a promoted model/insight/chart (only metric/dimension trigger the scan)', async () => {

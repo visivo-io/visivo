@@ -33,7 +33,11 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.VISIVO_BASE_URL || 'http://localhost:3001';
+// PLAYWRIGHT_BASE_URL must come before the :3001 fallback: :3001 is the SHARED
+// sandbox, so without it an unset VISIVO_BASE_URL silently routes this spec
+// onto whatever else is using that sandbox.
+const BASE_URL =
+  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
 
 /** Expand a Library per-type subsection (collapsed by default, VIS-828) and
  *  click the named row, returning the row locator. Idempotent: the header
