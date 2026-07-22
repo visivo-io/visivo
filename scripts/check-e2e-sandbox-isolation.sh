@@ -64,4 +64,63 @@ if [ -n "$hits" ]; then
     exit 1
 fi
 
-echo "e2e sandbox isolation: clean (no hardcoded backend ports)."
+# --- Second class: a FRONTEND base that ignores PLAYWRIGHT_BASE_URL ---------
+#
+# The check above only catches backend addresses. The same isolation break can
+# happen on the browser side: a helper defining its own base URL from some
+# other env var falls back to :3001 whenever that var isn't set, so every spec
+# using it drives the SHARED sandbox no matter what PLAYWRIGHT_BASE_URL says.
+#
+# Real instance (found by a builder agent after the backend fix had landed):
+#
+#     export const BASE = process.env.VIS_CANVAS_BASE || 'http://localhost:3001';
+#
+# in `helpers/workspace.mjs` — 15 specs call its `openWorkspace()`, and all of
+# them silently navigated to :3001 while their own sandbox sat idle. It is
+# exactly the bug the backend fix addressed, in a file the backend-port regex
+# can't see (its literal is a 3xxx port, not an 8xxx one).
+#
+# Rule, deliberately narrow: only a base that FALLS BACK TO :3001 — the shared
+# sandbox — must consult PLAYWRIGHT_BASE_URL.
+#
+# Many specs legitimately declare their own base against a UNIQUE port
+# (`VIS_CANVAS_DND_BASE || 'http://localhost:3008'`). That is the documented
+# dedicated-per-spec-sandbox topology, not a bug: those specs bring their own
+# sandbox on their own port and are meant to ignore the ambient one. Flagging
+# them would put ~39 legitimate files in the report, and a check that cries
+# wolf gets switched off — which would cost more than the bug it prevents.
+#
+# Falling back to :3001 is different in kind: :3001 is the SHARED sandbox, so
+# an unset env var silently routes the spec onto whatever else is using it.
+base_hits=$(grep -rnE "^ *(export )?const [A-Za-z_]*BASE[A-Za-z_]* *=.*localhost:3001" "$E2E_DIR" \
+    --include='*.mjs' \
+    | grep -v "/helpers/sandbox.mjs:" \
+    | grep -vE "^[^:]+:[0-9]+: *(//|\*)" \
+    || true)
+
+offenders=""
+while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    file="${line%%:*}"
+    rest="${line#*:}"
+    lineno="${rest%%:*}"
+    # Read the declaration plus the two following lines — these are commonly
+    # wrapped by prettier across several lines.
+    decl=$(sed -n "${lineno},$((lineno + 2))p" "$file")
+    case "$decl" in
+        *PLAYWRIGHT_BASE_URL*) ;;
+        *process.env*) offenders="${offenders}${file}:${lineno}: ${decl%%$'\n'*}"$'\n' ;;
+    esac
+done <<< "$base_hits"
+
+if [ -n "$offenders" ]; then
+    echo "Frontend base URL(s) in viewer/e2e that ignore PLAYWRIGHT_BASE_URL —"
+    echo "specs using these drive the SHARED sandbox whichever one you asked for:"
+    echo
+    echo "$offenders"
+    echo "Import { BASE_URL } from '../helpers/sandbox.mjs', or include"
+    echo "PLAYWRIGHT_BASE_URL in the fallback chain."
+    exit 1
+fi
+
+echo "e2e sandbox isolation: clean (backend ports and frontend bases both honor the sandbox)."

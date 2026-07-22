@@ -8,24 +8,17 @@
  */
 import { expect } from '@playwright/test';
 
-// Phase 6c-T5 (e2e harness fix, companion to helpers/sandbox.mjs's apiBase
-// isolation): this constant used to read ONLY `VIS_CANVAS_BASE`, ignoring
-// `PLAYWRIGHT_BASE_URL` entirely. Every other sandbox convention in this repo
-// (scripts/sandbox.sh, playwright.config.mjs's own `use.baseURL`,
-// helpers/sandbox.mjs's BASE_URL) is driven by `PLAYWRIGHT_BASE_URL` — an
-// agent running its own isolated sandbox (e.g. `PLAYWRIGHT_BASE_URL=
-// http://localhost:3072`) silently had every spec importing `openWorkspace`
-// from here navigate to the DEFAULT shared :3001 sandbox instead, while its
-// OWN backend assertions (via helpers/sandbox.mjs's apiBase) correctly hit
-// :8072 — a mismatched frontend/backend pairing that manifests as "the click
-// worked, the store never updated" (workspaceActiveObject observes a
-// different browser tab than the one being driven). `PLAYWRIGHT_BASE_URL` /
-// `VISIVO_BASE_URL` now take priority, with `VIS_CANVAS_BASE` kept as a
-// documented fallback for any caller still setting it explicitly.
+// `VIS_CANVAS_BASE` stays first so anyone already setting it keeps their
+// behavior, but PLAYWRIGHT_BASE_URL must be consulted before the :3001
+// fallback. Without it this constant sent all 15 specs that call
+// `openWorkspace()` to the SHARED sandbox no matter which one the runner
+// asked for — the browser-side twin of the hardcoded-backend-port bug fixed
+// in `sandbox.mjs`, and invisible for the same reason: nothing errored, the
+// specs just quietly drove someone else's project.
 export const BASE =
+  process.env.VIS_CANVAS_BASE ||
   process.env.PLAYWRIGHT_BASE_URL ||
   process.env.VISIVO_BASE_URL ||
-  process.env.VIS_CANVAS_BASE ||
   'http://localhost:3001';
 export const SCREENS = 'e2e/stories/__screens__';
 export const WAIT = 20000;
