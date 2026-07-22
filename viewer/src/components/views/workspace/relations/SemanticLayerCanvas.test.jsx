@@ -694,6 +694,20 @@ describe('SemanticLayerCanvas', () => {
     expect(popover).toHaveAttribute('data-b', ':');
   });
 
+  it('dropping a connect on the pane from an unresolvable source node is a no-op (never opens the popover)', () => {
+    twoModels();
+    render(<SemanticLayerCanvas />);
+    const pane = document.createElement('div');
+    pane.classList.add('react-flow__pane');
+    act(() => {
+      rfProps.current.onConnectStart({}, { nodeId: 'erd-model-unknown', handleId: 'x' });
+    });
+    act(() => {
+      rfProps.current.onConnectEnd({ target: pane, clientX: 180, clientY: 90 });
+    });
+    expect(screen.queryByTestId('join-popover-stub')).not.toBeInTheDocument();
+  });
+
   it('a connect ending on a non-pane target is a no-op', () => {
     twoModels();
     render(<SemanticLayerCanvas />);
@@ -873,6 +887,56 @@ describe('SemanticLayerCanvas', () => {
       expect(() =>
         fireEvent.click(screen.getByTestId('semantic-erd-node-ctx-explore-this'))
       ).not.toThrow();
+    });
+
+    it('"Open" from the context menu is a no-op when setWorkspaceSelection is unavailable', () => {
+      oneModel();
+      mockStore({ models: [{ name: 'orders' }], setWorkspaceSelection: undefined });
+      useRelationErdDag.mockReturnValue({
+        nodes: [{ id: 'erd-model-orders', type: 'erdModelNode', position: { x: 0, y: 0 }, data: { name: 'orders' } }],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onNodeContextMenu(
+          { clientX: 10, clientY: 10, preventDefault: jest.fn() },
+          { type: 'semanticLayerModelNode', data: { name: 'orders' } }
+        );
+      });
+      expect(() => fireEvent.click(screen.getByTestId('semantic-erd-node-ctx-open'))).not.toThrow();
+    });
+
+    it('"Open in new tab" from the context menu is a no-op when openWorkspaceTab is unavailable', () => {
+      oneModel();
+      mockStore({ models: [{ name: 'orders' }], openWorkspaceTab: undefined });
+      useRelationErdDag.mockReturnValue({
+        nodes: [{ id: 'erd-model-orders', type: 'erdModelNode', position: { x: 0, y: 0 }, data: { name: 'orders' } }],
+        edges: [],
+      });
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onNodeContextMenu(
+          { clientX: 10, clientY: 10, preventDefault: jest.fn() },
+          { type: 'semanticLayerModelNode', data: { name: 'orders' } }
+        );
+      });
+      expect(() =>
+        fireEvent.click(screen.getByTestId('semantic-erd-node-ctx-open-new-tab'))
+      ).not.toThrow();
+    });
+
+    it('saving from the popover is a no-op (no crash) when fetchRelations is unavailable', () => {
+      twoModels({ fetchRelations: undefined });
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onConnect({
+          source: 'erd-model-orders',
+          target: 'erd-model-users',
+          sourceHandle: 'user_id',
+          targetHandle: 'id',
+        });
+      });
+      expect(() => act(() => screen.getByTestId('join-popover-stub-saved').click())).not.toThrow();
     });
 
     it('"Explore this" from the model context menu never opens a tab when createExploration resolves success:false', async () => {
