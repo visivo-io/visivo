@@ -330,4 +330,178 @@ describe('buildPromoteChecklist', () => {
     const chartRow = rows.find(r => r.type === 'chart');
     expect(chartRow.valid).toBe(true);
   });
+
+  // Coverage-completion pass (Jared's 95%+ stmts+branch bar) — every test
+  // below targets a SPECIFIC uncovered branch identified from the raw
+  // istanbul branchMap, not a guess. Each asserts real, distinct behavior;
+  // none are render-smoke/assertion-free.
+
+  test('a failed structural verdict with no errors array falls back to a generic message', async () => {
+    validateRecordConfig.mockResolvedValueOnce({ valid: false, errors: [] });
+    const state = baseState({
+      explorerModelStates: { orders_q: { sql: 'select 1', sourceName: 'w', isNew: true, computedColumns: [] } },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows[0]).toMatchObject({ valid: false, error: 'Invalid configuration' });
+  });
+
+  test('a dangling ref with no errors array falls back to a generic message', async () => {
+    checkRefTargets.mockReturnValueOnce({ valid: false, errors: [] });
+    const state = baseState({
+      explorerInsightStates: {
+        churn: { type: 'scatter', props: { x: '?{1}' }, interactions: [], isNew: true },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows[0]).toMatchObject({ valid: false, error: 'Broken reference' });
+  });
+
+  test('a failed expression parse with no errors array falls back to a generic message', async () => {
+    // mockImplementation (not mockResolvedValueOnce) — this state has TWO
+    // candidates (model + field), and Promise.all runs both rows' gates
+    // concurrently, so call order isn't guaranteed (same reasoning as the
+    // existing "failed expression parse" test above).
+    checkExpressions.mockImplementation((type, config) =>
+      Promise.resolve(config.expression === 'bad_expr' ? { valid: false, errors: [] } : VALID)
+    );
+    const state = baseState({
+      explorerModelStates: {
+        orders_q: {
+          sql: 'select 1',
+          sourceName: 'w',
+          isNew: true,
+          computedColumns: [{ name: 'bad', expression: 'bad_expr', type: 'metric' }],
+        },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows.find(r => r.name === 'bad')).toMatchObject({
+      valid: false,
+      error: 'Expression failed to parse',
+    });
+  });
+
+  test('a completely uninitialized legacy state (every collection undefined, not just empty) produces an empty checklist without crashing', async () => {
+    // Not routed through baseState()'s defaults — this simulates
+    // buildPromoteChecklist being called against a genuinely fresh/
+    // not-yet-hydrated store slice, where every `|| {}`/`|| []` fallback in
+    // the function (model/insight state maps, the four synthetic-sibling
+    // collections, the chart's own insightNames/layout reads) is load-
+    // bearing, not decorative.
+    const state = {
+      explorerModelStates: undefined,
+      explorerInsightStates: undefined,
+      explorerChartName: null,
+      explorerChartInsightNames: undefined,
+      explorerChartLayout: undefined,
+      models: undefined,
+      metrics: undefined,
+      dimensions: undefined,
+      insights: undefined,
+      charts: undefined,
+      fetchExplorerDiff: jest.fn().mockResolvedValue({}),
+    };
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toEqual([]);
+  });
+
+  test('a model state with no sourceName omits the `source` ref from its config entirely', async () => {
+    const state = baseState({
+      explorerModelStates: { scratch: { sql: 'select 1', isNew: true, computedColumns: [] } },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows[0].config).toEqual({ sql: 'select 1' });
+  });
+
+  test('a model state with `computedColumns` entirely omitted produces just the model row, no crash', async () => {
+    const state = baseState({
+      explorerModelStates: { orders_q: { sql: 'select 1', sourceName: 'w', isNew: true } },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].tier).toBe('model');
+  });
+
+  test('an insight state with `props` entirely omitted (not just {}) still reads as scaffold', async () => {
+    const state = baseState({
+      explorerInsightStates: { insight: { type: 'scatter', interactions: [], isNew: true } },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('an insight state with `interactions` entirely omitted (not just []) still reads as scaffold', async () => {
+    const state = baseState({
+      explorerInsightStates: { insight: { type: 'scatter', props: {}, isNew: true } },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('an insight with a bound interaction and NO field props is authored content, not scaffold', async () => {
+    const state = baseState({
+      explorerInsightStates: {
+        churn: {
+          type: 'scatter',
+          props: {},
+          interactions: [{ type: 'filter', value: "${ref(orders_q).region} = 'US'" }],
+          isNew: true,
+        },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].config.interactions).toEqual([{ filter: "${ref(orders_q).region} = 'US'" }]);
+  });
+
+  test('a chart made valid by real layout config (no meaningful insight), with chartInsightNames entirely omitted, serializes an empty insights list', async () => {
+    const state = baseState({
+      explorerChartName: 'chart',
+      explorerChartInsightNames: undefined,
+      explorerChartLayout: { title: 'Revenue' },
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], isNew: true }, // still scaffold
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    const chartRow = rows.find(r => r.tier === 'chart');
+    expect(chartRow.config.insights).toEqual([]);
+  });
+
+  test('a chart made valid by a meaningful insight, with chartLayout entirely omitted, serializes an empty layout object', async () => {
+    const state = baseState({
+      explorerChartName: 'chart',
+      explorerChartInsightNames: ['churn'],
+      explorerChartLayout: undefined,
+      explorerInsightStates: {
+        churn: { type: 'scatter', props: { x: '?{1}' }, interactions: [], isNew: true },
+      },
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    const chartRow = rows.find(r => r.tier === 'chart');
+    expect(chartRow.config.layout).toEqual({});
+  });
+
+  test('an unchanged (diff-null) chart is dropped, regardless of its sibling insight\'s own status', async () => {
+    const state = baseState({
+      explorerChartName: 'chart',
+      explorerChartInsightNames: ['churn'],
+      explorerInsightStates: {
+        churn: { type: 'scatter', props: { x: '?{1}' }, interactions: [], isNew: true },
+      },
+      fetchExplorerDiff: jest.fn().mockResolvedValue({ chart: null }),
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows.find(r => r.tier === 'chart')).toBeUndefined();
+    expect(rows.find(r => r.tier === 'insight')).toBeTruthy();
+  });
+
+  test('fetchExplorerDiff resolving to a falsy value (not a rejection) also fails open to "new"', async () => {
+    const state = baseState({
+      explorerModelStates: { orders_q: { sql: 'select 1', sourceName: 'w', isNew: true, computedColumns: [] } },
+      fetchExplorerDiff: jest.fn().mockResolvedValue(null),
+    });
+    const rows = await buildPromoteChecklist(() => state);
+    expect(rows[0]).toMatchObject({ name: 'orders_q', status: 'new' });
+  });
 });
