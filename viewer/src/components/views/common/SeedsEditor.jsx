@@ -1,6 +1,7 @@
 import React from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import { FormInput } from '../../styled/FormComponents';
 
 /**
  * Source types that cannot carry seeds.
@@ -70,13 +71,13 @@ const SeedsEditor = ({ seeds, onChange }) => {
       {list.map((seed, seedIndex) => (
         <div key={seedIndex} className="p-3 border border-gray-200 rounded-md space-y-2">
           <div className="flex items-center gap-2">
-            <input
-              type="text"
+            <FormInput
+              id={`seed-${seedIndex}-table-name`}
+              label="Table name"
               aria-label={`Seed ${seedIndex + 1} table name`}
               value={seed.table_name || ''}
               onChange={e => updateSeed(seedIndex, { table_name: e.target.value })}
-              placeholder="table name"
-              className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="flex-1"
             />
             <button
               type="button"
