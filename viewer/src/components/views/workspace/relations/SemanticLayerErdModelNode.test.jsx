@@ -149,6 +149,14 @@ describe('SemanticLayerErdModelNode — field pill "Explore this" back-link', ()
       resolveCreate({ success: true, id: 'exp_1' });
     });
   });
+
+  test('a field pill click is a no-op when createExploration is unavailable', () => {
+    seed({ createExploration: undefined });
+    renderNode();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('erd-metric-pill-total_revenue'))
+    ).not.toThrow();
+  });
 });
 
 // Phase 6c-T5 (ux-audit.md "No 'Explore this' entry point from Semantic
@@ -196,5 +204,51 @@ describe('SemanticLayerErdModelNode — model header "Explore" button (Phase 6c-
       resolveCreate({ success: true, id: 'exp_model' });
     });
     await waitFor(() => expect(button).not.toBeDisabled());
+  });
+
+  test('is a no-op when createExploration is unavailable', () => {
+    seed({ createExploration: undefined });
+    renderNode();
+    expect(() => fireEvent.click(screen.getByTestId('semantic-erd-model-explore-orders'))).not.toThrow();
+  });
+
+  test('falls back to a null seed override when buildExplorationSeedState is unavailable', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_model' });
+    seed({ createExploration, buildExplorationSeedState: undefined });
+    renderNode();
+    fireEvent.click(screen.getByTestId('semantic-erd-model-explore-orders'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(createExploration).toHaveBeenCalledWith({ type: 'model', name: 'orders' }, null, null);
+  });
+
+  test('never opens a tab when createExploration resolves success:false', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: false });
+    const openWorkspaceTab = jest.fn();
+    seed({ createExploration, openWorkspaceTab });
+    renderNode();
+    fireEvent.click(screen.getByTestId('semantic-erd-model-explore-orders'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+});
+
+describe('SemanticLayerErdModelNode — card chrome', () => {
+  test('a selected card gets the selected border + shadow treatment', () => {
+    renderNode({ selected: true });
+    // No dedicated testid for the outer card — assert via the className the
+    // `selected` prop drives (colors.borderSelected + shadow-md), matching
+    // the ternary this test exists to close.
+    const card = screen.getByTestId('semantic-erd-model-node-orders');
+    expect(card.className).toMatch(/shadow-md/);
+  });
+
+  test('a model with no columns shows the "No columns loaded" empty state instead of a column list', () => {
+    seed();
+    render(
+      <ReactFlowProvider>
+        <SemanticLayerErdModelNode data={{ name: 'bare_model' }} selected={false} />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByText('No columns loaded')).toBeInTheDocument();
   });
 });
