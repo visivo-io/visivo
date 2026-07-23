@@ -37,10 +37,7 @@ insights:
       y: ?{ sum(${ref(orders).amount}) }
 ```
 
-## Model types
-
-There is one Model type — [SqlModel](../reference/configuration/SqlModel/index.md) — a
-SQL query against one Source.
+## Seeds
 
 When your data comes from a script, an API, or another non-SQL process, give the Source a
 [Seed](../reference/configuration/Sources/DuckdbSource/Seed/index.md): a command whose CSV output is loaded
