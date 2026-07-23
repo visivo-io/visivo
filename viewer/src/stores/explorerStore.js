@@ -1,5 +1,7 @@
 /* eslint-disable no-template-curly-in-string */
 import { generateUniqueName } from '../utils/uniqueName';
+import { legacyStateForSeed } from '../components/views/workspace/explorationLegacyBridge';
+import { formatRefExpression } from '../utils/refString';
 
 /**
  * Thrown by create/rename actions when the proposed name collides with any
@@ -464,6 +466,17 @@ const createExplorerSlice = (set, get) => ({
   // --- Per-Insight State ---
   explorerInsightStates: {},
 
+  // --- Promoted-lane freshness signatures (P6-D1/D2/D3/D8 closure) ---
+  // `{ [insightName]: signature }` — the frozen `insightFreshnessSignature.js`
+  // signature captured by `promoteExploration` at the MOMENT an insight was
+  // (re-)promoted, never mutated by data arrival. Round-trips through
+  // `snapshotExplorerWorkingState`/`restoreExplorerWorkingState` exactly like
+  // `explorerInsightStates` does, so it survives a tab park/resume (and a
+  // reload, via `draft.legacyState`) instead of living in a component-
+  // instance ref that dies on remount. See `ExplorerChartPreview.jsx`'s
+  // `previewInsightKeys`.
+  explorerPromotedSignatures: {},
+
   // --- Diff Result (from backend /api/explorer/diff/) ---
   explorerDiffResult: null,
 
@@ -508,6 +521,75 @@ const createExplorerSlice = (set, get) => ({
     const firstAvailableSource = (state.explorerSources || [])[0]?.source_name || null;
     const defaultSource = projectDefaultSource || firstAvailableSource;
     const newModelState = { ...createEmptyModelState(true), sourceName: defaultSource };
+
+    set({
+      explorerModelTabs: [...state.explorerModelTabs, finalName],
+      explorerActiveModelName: finalName,
+      explorerModelStates: {
+        ...state.explorerModelStates,
+        [finalName]: newModelState,
+      },
+    });
+
+    // Returned so callers that create a tab before `defaults` has necessarily
+    // arrived (useExplorerWorkbenchInit's cold-session auto-create,
+    // VIS-1082) can remember which tab to rebind once it does.
+    return finalName;
+  },
+
+  /**
+   * VIS-1082 — cold-session default-source race. `createModelTab` resolves
+   * its source at CREATE time from whatever `state.defaults` holds right
+   * then; on a cold session the auto-create-model-tab effect
+   * (useExplorerWorkbenchInit.js) can fire before `fetchDefaults()` (a
+   * separate, unordered effect) has landed, silently falling back to "first
+   * available source" instead of the project's configured default. Call this
+   * once `defaults` arrives to correct a tab that was minted before that —
+   * a no-op if the user already picked a source themselves (`sourceEdited`)
+   * or the tab's source already matches. Deliberately does NOT set
+   * `sourceEdited` — this is still a resolved default, not a user edit (same
+   * distinction `setActiveModelSource`'s own comment draws).
+   */
+  applyResolvedDefaultSource: (modelName, sourceName) => {
+    if (!modelName || !sourceName) return;
+    const state = get();
+    const modelState = state.explorerModelStates[modelName];
+    if (!modelState || modelState.sourceEdited) return;
+    if (modelState.sourceName === sourceName) return;
+    set({
+      explorerModelStates: {
+        ...state.explorerModelStates,
+        [modelName]: { ...modelState, sourceName },
+      },
+    });
+  },
+
+  /**
+   * Explore 2.0 Phase 3a (D9): a Library schema-table row dropped on the SQL
+   * editor seeds a brand-new query chip bound to that table's source, with
+   * `SELECT * FROM <table>` pre-filled — 01-ux-spec.md §3a's "Table →
+   * canvas/editor: seeds a new scratch query." Mirrors `createModelTab`'s
+   * auto-naming; the only difference is the pre-filled sql + source (which
+   * `createModelTab` has no way to accept in one call).
+   */
+  seedModelTabFromTable: ({ tableName, sourceName } = {}) => {
+    if (!tableName) return;
+    const state = get();
+    const existing = new Set([
+      ...state.explorerModelTabs,
+      ...Object.keys(state.explorerModelStates || {}),
+    ]);
+    const finalName = generateUniqueName('model', Array.from(existing));
+
+    const projectDefaultSource = state.defaults?.source_name || null;
+    const firstAvailableSource = (state.explorerSources || [])[0]?.source_name || null;
+    const resolvedSource = sourceName || projectDefaultSource || firstAvailableSource;
+
+    const newModelState = {
+      ...createEmptyModelState(true),
+      sourceName: resolvedSource,
+      sql: `SELECT * FROM ${tableName}`,
+    };
 
     set({
       explorerModelTabs: [...state.explorerModelTabs, finalName],
@@ -1297,6 +1379,230 @@ const createExplorerSlice = (set, get) => ({
     }
   },
 
+  /**
+   * "Explore this" (VIS-1067) — build a legacy working-state snapshot seeded
+   * from a real project object, WITHOUT touching the live explorer working
+   * state (a PURE read of `get()`, unlike `addExistingInsightToChart`, which
+   * mutates the active exploration). Passed to `createExploration`'s
+   * `legacyStateOverride` param so a brand-new exploration opens pre-wired.
+   * Returns `null` when the object can't be resolved — the caller falls back
+   * to a bare `seeded_from`-only exploration (still records provenance).
+   *
+   *   - `source`   → one empty query tab bound to the source (existing
+   *                  `legacyStateForSeed` behavior, untouched).
+   *   - `table`    → one query tab with the given SQL/source (Source ERD's
+   *                  "Explore this" — `opts: {sql, source}`).
+   *   - `model`    → one query tab `SELECT * FROM ${ref(model)}`.
+   *   - `metric`/`dimension` → one query tab against the field's parent
+   *                  model (best-effort; `null` if unresolvable).
+   *   - `insight`  → copies the insight config into a draft insight of the
+   *                  SAME NAME (+ auto-loads its referenced models), so
+   *                  promoting it later updates the ORIGINAL insight via the
+   *                  ordinary update-by-name semantics `promoteExploration`
+   *                  already has (01-ux-spec.md §5).
+   *   - `chart`    → copies the chart (same name) + every one of its
+   *                  insights (same names) + their referenced models.
+   */
+  buildExplorationSeedState: (obj, opts = {}) => {
+    const state = get();
+    if (!obj || !obj.type || !obj.name) return null;
+
+    const blankSnapshot = () => ({
+      modelTabs: [],
+      activeModelName: null,
+      modelStates: {},
+      chartName: null,
+      chartLayout: {},
+      chartInsightNames: [],
+      activeInsightName: null,
+      insightStates: {},
+      leftNavCollapsed: false,
+      centerMode: 'split',
+      isEditorCollapsed: false,
+    });
+
+    const oneQuerySnapshot = ({ sql, sourceName, sourceEdited = false }) => {
+      const modelName = 'query_1';
+      return {
+        ...blankSnapshot(),
+        modelTabs: [modelName],
+        activeModelName: modelName,
+        modelStates: {
+          [modelName]: {
+            ...createEmptyModelState(true),
+            sql,
+            sourceName: sourceName || null,
+            sourceEdited,
+          },
+        },
+      };
+    };
+
+    const resolveModelsForInsights = insightObjs => {
+      const allInputNames = new Set((state.inputs || []).map(i => i.name));
+      const modelNames = new Set();
+      insightObjs.forEach(insight => {
+        const searchStr = JSON.stringify(insight.config || {});
+        for (const match of searchStr.matchAll(/ref\(([^.)]+)\)/g)) {
+          if (!allInputNames.has(match[1])) modelNames.add(match[1]);
+        }
+      });
+      const modelTabs = [];
+      const modelStates = {};
+      modelNames.forEach(modelName => {
+        const modelObj = (state.models || []).find(m => m.name === modelName);
+        if (!modelObj) return;
+        modelTabs.push(modelName);
+        modelStates[modelName] = buildModelStateFromObject(modelObj, state);
+      });
+      return { modelTabs, modelStates };
+    };
+
+    if (obj.type === 'source') {
+      return legacyStateForSeed({ type: 'source', name: obj.name });
+    }
+
+    if (obj.type === 'table') {
+      return oneQuerySnapshot({
+        sql: opts.sql || `SELECT * FROM ${obj.name}`,
+        sourceName: opts.source || null,
+        sourceEdited: !!opts.source,
+      });
+    }
+
+    if (obj.type === 'model') {
+      const modelObj = (state.models || []).find(m => m.name === obj.name);
+      if (!modelObj) return null;
+      const base = buildModelStateFromObject(modelObj, state);
+      return oneQuerySnapshot({
+        // Reuse the model's OWN literal SQL — never a `${ref(...)}`
+        // context-string expression. The scratch SQL editor's execution
+        // pipeline (`SQLEditor.jsx` -> `useModelQueryJob` ->
+        // `/api/model-query-jobs/` -> `execute_model_query_job`) sends this
+        // text VERBATIM to the source with zero ref-resolution — it's a raw
+        // pass-through, not the full-project compile pipeline that resolves
+        // `${ref(...)}` via SQLGlot — so a `${ref(...)}` string here reaches
+        // DuckDB unresolved and fails to parse (root-caused via live
+        // reproduction against the sandbox, integration-gate fix cycle:
+        // `SELECT * FROM ${ref(model)}` sent verbatim errored with "syntax
+        // error at or near \"$\""). `base.sql` is the same already-runnable
+        // text `buildModelStateFromObject` loads for every other model tab.
+        sql: base.sql || '',
+        sourceName: base.sourceName,
+      });
+    }
+
+    if (obj.type === 'metric' || obj.type === 'dimension') {
+      const collection = obj.type === 'metric' ? state.metrics : state.dimensions;
+      const fieldObj = (collection || []).find(f => f.name === obj.name);
+      const rawParent = fieldObj?.parentModel || fieldObj?.config?.model;
+      const parentModelName =
+        typeof rawParent === 'string' ? rawParent.replace(/^ref\((.+)\)$/, '$1') : null;
+      const modelObj = parentModelName
+        ? (state.models || []).find(m => m.name === parentModelName)
+        : null;
+      if (!modelObj) return null;
+      const base = buildModelStateFromObject(modelObj, state);
+      return oneQuerySnapshot({
+        // Same fix as the "model" branch above — reuse the parent model's
+        // own literal SQL, never an unresolved `${ref(...)}` expression.
+        sql: base.sql || '',
+        sourceName: base.sourceName,
+      });
+    }
+
+    if (obj.type === 'insight') {
+      const insight = (state.insights || []).find(i => i.name === obj.name);
+      if (!insight) return null;
+      const { modelTabs, modelStates } = resolveModelsForInsights([insight]);
+      return {
+        ...blankSnapshot(),
+        modelTabs,
+        modelStates,
+        activeModelName: modelTabs[0] || null,
+        chartName: generateUniqueName('chart', []),
+        chartInsightNames: [obj.name],
+        activeInsightName: obj.name,
+        insightStates: { [obj.name]: transformInsightToUiState(insight) },
+      };
+    }
+
+    if (obj.type === 'chart') {
+      const chart = (state.charts || []).find(c => c.name === obj.name);
+      if (!chart) return null;
+      const insightRefs = chart.config?.insights || [];
+      const insightNames = insightRefs
+        .map(ref => {
+          const match = typeof ref === 'string' ? ref.match(/ref\(([^)]+)\)/) : null;
+          return match ? match[1].trim() : ref;
+        })
+        .filter(Boolean);
+      const insightObjs = insightNames
+        .map(name => (state.insights || []).find(i => i.name === name))
+        .filter(Boolean);
+      const { modelTabs, modelStates } = resolveModelsForInsights(insightObjs);
+      const insightStates = {};
+      insightObjs.forEach(insight => {
+        insightStates[insight.name] = transformInsightToUiState(insight);
+      });
+      return {
+        ...blankSnapshot(),
+        modelTabs,
+        modelStates,
+        activeModelName: modelTabs[0] || null,
+        chartName: obj.name,
+        chartLayout: chart.config?.layout ? JSON.parse(JSON.stringify(chart.config.layout)) : {},
+        chartInsightNames: insightNames,
+        activeInsightName: insightNames[0] || null,
+        insightStates,
+      };
+    }
+
+    return null;
+  },
+
+  /**
+   * "Add to exploration" (VIS-1067) — context-menu equivalent of dragging a
+   * Library row onto the active exploration (`routeExplorationDragEnd` in
+   * `WorkspaceDndContext.jsx`), for the same `EXPLORATION_DRAG_TYPES` set,
+   * when there's no specific drop target to aim at. Operates on the ACTIVE
+   * exploration's live legacy working state — callers must gate visibility
+   * on `workspaceActiveObject?.type === 'exploration'` first (the pane's
+   * mount effect keeps this state in sync with that exploration's draft).
+   */
+  addObjectToActiveExploration: obj => {
+    if (!obj || !obj.type || !obj.name) {
+      return { success: false, error: 'Invalid object' };
+    }
+
+    if (obj.type === 'insight') {
+      get().addExistingInsightToChart(obj.name);
+      return { success: true };
+    }
+
+    if (obj.type === 'source') {
+      if (!get().explorerActiveModelName) {
+        get().createModelTab();
+      }
+      get().setActiveModelSource(obj.name);
+      return { success: true };
+    }
+
+    if (obj.type === 'metric' || obj.type === 'dimension') {
+      const refExpr = obj.parentModel
+        ? formatRefExpression(obj.parentModel, obj.name)
+        : formatRefExpression(obj.name);
+      get().createInsight();
+      const newInsightName = get().explorerActiveInsightName;
+      if (newInsightName) {
+        get().setInsightProp(newInsightName, 'y', `?{${refExpr}}`);
+      }
+      return { success: true };
+    }
+
+    return { success: false, error: `Cannot add type "${obj.type}" to an exploration` };
+  },
+
   handleTableSelect: ({ sourceName, table }) => {
     const state = get();
     const sql = `SELECT * FROM "${table}"`;
@@ -1388,6 +1694,107 @@ const createExplorerSlice = (set, get) => ({
   },
 
   // ====================================================================
+  // Workspace bridge (Explore 2.0 Phase 2)
+  // ====================================================================
+  // explorerStore is a SINGLETON slice on the global store, but Explore 2.0
+  // gives every exploration its own backend-persisted working state
+  // (workspaceExplorationsStore.js). Only ONE exploration tab's pane is ever
+  // mounted at a time (MiddlePane dispatches on the single active document
+  // tab), so per-exploration isolation comes from snapshot-on-deactivate +
+  // restore-on-activate around this singleton, not from N independent store
+  // instances — see `ExplorationPane.jsx` for the switch/park/resume wiring
+  // and `explorationLegacyBridge.js` for the draft (wire-shape) mapping.
+  //
+  // Deliberately EXCLUDED from both snapshot and restore (re-derived / re-run,
+  // never persisted): `queryResult` / `queryError` / `enrichedResult` per model
+  // (large, ephemeral query results — re-running is cheap and the backend
+  // draft is meant to stay a small JSON document), `explorerDiffResult`,
+  // `explorerDuckDBLoading/Error`, `explorerFailedComputedColumns`,
+  // `explorerSources` (project-wide, re-fetched independently),
+  // `explorerProfileColumn` (transient UI selection, not meaningful across a
+  // park/resume).
+
+  /** Read the current CURRENT working state into a plain, JSON-serializable
+   * snapshot — the shape `explorationLegacyBridge.js` projects into an
+   * exploration's `draft`. Model states are trimmed to their persistable
+   * subset (dropping the ephemeral query-result fields above). */
+  snapshotExplorerWorkingState: () => {
+    const state = get();
+    const modelStates = {};
+    for (const [name, modelState] of Object.entries(state.explorerModelStates || {})) {
+      modelStates[name] = {
+        sql: modelState.sql,
+        sourceName: modelState.sourceName,
+        sourceEdited: !!modelState.sourceEdited,
+        computedColumns: modelState.computedColumns || [],
+        isNew: modelState.isNew,
+      };
+    }
+    return {
+      modelTabs: [...(state.explorerModelTabs || [])],
+      activeModelName: state.explorerActiveModelName,
+      modelStates,
+      chartName: state.explorerChartName,
+      chartLayout: state.explorerChartLayout || {},
+      chartInsightNames: [...(state.explorerChartInsightNames || [])],
+      activeInsightName: state.explorerActiveInsightName,
+      insightStates: state.explorerInsightStates || {},
+      promotedSignatures: state.explorerPromotedSignatures || {},
+      leftNavCollapsed: !!state.explorerLeftNavCollapsed,
+      centerMode: state.explorerCenterMode || 'split',
+      isEditorCollapsed: !!state.explorerIsEditorCollapsed,
+    };
+  },
+
+  /** Fully REPLACE the working-state fields from a snapshot (or reset to a
+   * clean slate when `snapshot` is null/undefined — a brand-new exploration
+   * with no prior legacy state). This is a hard reset, not a merge: every
+   * mutable field this slice owns is set explicitly so a previous
+   * exploration's state can never leak into the next one (the two-tab
+   * isolation guarantee — 02-architecture.md §1). */
+  restoreExplorerWorkingState: (snapshot) => {
+    const snap = snapshot || {};
+    const modelStates = {};
+    for (const [name, modelState] of Object.entries(snap.modelStates || {})) {
+      modelStates[name] = { ...createEmptyModelState(modelState.isNew !== false), ...modelState };
+    }
+    set({
+      explorerModelTabs: [...(snap.modelTabs || [])],
+      explorerActiveModelName: snap.activeModelName || null,
+      explorerModelStates: modelStates,
+      explorerChartName: snap.chartName || null,
+      explorerChartLayout: snap.chartLayout || {},
+      explorerChartInsightNames: [...(snap.chartInsightNames || [])],
+      explorerActiveInsightName: snap.activeInsightName || null,
+      explorerInsightStates: snap.insightStates || {},
+      explorerPromotedSignatures: snap.promotedSignatures || {},
+      explorerLeftNavCollapsed: !!snap.leftNavCollapsed,
+      explorerCenterMode: snap.centerMode || 'split',
+      explorerIsEditorCollapsed: !!snap.isEditorCollapsed,
+      // Always reset — never carried in a snapshot (see docstring above).
+      explorerDiffResult: null,
+      explorerDuckDBLoading: false,
+      explorerDuckDBError: null,
+      explorerFailedComputedColumns: {},
+      explorerProfileColumn: null,
+    });
+  },
+
+  /** Record the frozen promoted-lane freshness signature for one insight
+   * (P6-D1/D2/D3/D8 closure) — called by `promoteExploration`
+   * (`workspaceExplorationsStore.js`) immediately after that insight's save
+   * succeeds, with the signature captured SYNCHRONOUSLY at promote-invoke
+   * time (before any save/checklist await), never at data-arrival. A merge,
+   * not a replace — re-promoting one insight must not disturb another
+   * insight's already-recorded signature. */
+  recordPromotedInsightSignature: (name, signature) => {
+    if (!name) return;
+    set(state => ({
+      explorerPromotedSignatures: { ...(state.explorerPromotedSignatures || {}), [name]: signature },
+    }));
+  },
+
+  // ====================================================================
   // Backend Diff — Modification Tracking
   // ====================================================================
 
@@ -1461,146 +1868,12 @@ const createExplorerSlice = (set, get) => ({
   // Standalone Utilities (not shims)
   // ====================================================================
 
-  saveExplorerObjects: async () => {
-    const state = get();
-    const errors = [];
-
-    // Save models and their model-scoped computed columns.
-    //
-    // The backend diff endpoint returns null for unchanged models, which
-    // lets us skip an unchanged `saveModel` POST. BUT the user may have
-    // added a brand-new computed column to an otherwise-unchanged model —
-    // that column still needs to be saved (with parentModel set) so the
-    // commit step nests it under the existing model in YAML. We therefore
-    // check the diff for each computed column individually rather than
-    // short-circuiting the whole model's iteration.
-    //
-    // Re-fetch the diff instead of trusting the cached explorerDiffResult:
-    // the cache is refreshed on a 300ms debounce, so edits made just before
-    // Save (or while a fetch was in flight) would otherwise be skipped as
-    // "unchanged". A failed fetch falls back to {} — save everything rather
-    // than risk dropping an edit.
-    const diff = (await get().fetchExplorerDiff()) || {};
-    const savedModelNames = new Set();
-    for (const [name, ms] of Object.entries(state.explorerModelStates)) {
-      const modelChanged = !(diff.models && diff.models[name] === null);
-      if (modelChanged && ms.sql) {
-        try {
-          const { saveModel } = await import('../api/models');
-          await saveModel(name, {
-            sql: ms.sql,
-            source: ms.sourceName ? `ref(${ms.sourceName})` : undefined,
-          });
-          savedModelNames.add(name);
-        } catch (err) {
-          errors.push({ name, type: 'model', error: err.message });
-        }
-      }
-
-      // Save computed columns as metrics/dimensions, scoped to this model.
-      // parentModel is consumed by the backend save endpoints to set the
-      // Pydantic PrivateAttr `_parent_name` so ProjectWriter nests them
-      // under the model on commit instead of writing to top-level lists.
-      // Skip individual columns whose diff status is null (unchanged) to
-      // avoid re-saving pre-existing metrics/dimensions on every save.
-      for (const cc of ms.computedColumns) {
-        const diffBucket = cc.type === 'metric' ? diff.metrics : diff.dimensions;
-        if (diffBucket && diffBucket[cc.name] === null) continue;
-        try {
-          if (cc.type === 'metric') {
-            const { saveMetric } = await import('../api/metrics');
-            await saveMetric(cc.name, {
-              expression: cc.expression,
-              parentModel: name,
-            });
-          } else {
-            const { saveDimension } = await import('../api/dimensions');
-            await saveDimension(cc.name, {
-              expression: cc.expression,
-              parentModel: name,
-            });
-          }
-        } catch (err) {
-          errors.push({ name: cc.name, type: cc.type, error: err.message });
-        }
-      }
-    }
-
-    // Save insights
-    const savedInsightNames = new Set();
-    for (const [name, is] of Object.entries(state.explorerInsightStates)) {
-      // Skip unchanged insights (diff result is null)
-      if (diff.insights && diff.insights[name] === null) continue;
-      try {
-        const { saveInsight } = await import('../api/insights');
-        const expandedProps = expandDotNotationProps(is.props);
-        const backendInteractions = (is.interactions || [])
-          .filter((i) => i.value)
-          .map((i) => ({ [i.type]: i.value }));
-        await saveInsight(name, {
-          props: { type: is.type, ...expandedProps },
-          ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
-        });
-        savedInsightNames.add(name);
-      } catch (err) {
-        errors.push({ name, type: 'insight', error: err.message });
-      }
-    }
-
-    // Save chart
-    if (state.explorerChartName) {
-      try {
-        const { saveChart } = await import('../api/charts');
-        await saveChart(state.explorerChartName, {
-          insights: state.explorerChartInsightNames.map((n) => `ref(${n})`),
-          layout: state.explorerChartLayout,
-        });
-      } catch (err) {
-        errors.push({ name: state.explorerChartName, type: 'chart', error: err.message });
-      }
-    }
-
-    // Post-save: refresh cached API stores so diff resolves to "unchanged"
-    if (errors.length === 0) {
-      // Mark objects that were actually persisted in this pass as not new.
-      // Objects the save loop skipped (e.g. auto-created empty model tabs
-      // with no SQL) must keep isNew so they stay renameable and save later.
-      const updatedModelStates = {};
-      for (const [name, ms] of Object.entries(state.explorerModelStates)) {
-        updatedModelStates[name] = savedModelNames.has(name) ? { ...ms, isNew: false } : ms;
-      }
-      const updatedInsightStates = {};
-      for (const [name, is] of Object.entries(state.explorerInsightStates)) {
-        updatedInsightStates[name] = savedInsightNames.has(name) ? { ...is, isNew: false } : is;
-      }
-      set({
-        explorerModelStates: updatedModelStates,
-        explorerInsightStates: updatedInsightStates,
-      });
-
-      // Refresh cached API stores — this makes the diff return null (unchanged)
-      // for all objects that were just saved
-      try {
-        await Promise.all([
-          get().fetchInsights?.(),
-          get().fetchModels?.(),
-          get().fetchCharts?.(),
-          get().fetchMetrics?.(),
-          get().fetchDimensions?.(),
-        ]);
-        // Re-run diff to update status dots
-        await get().fetchExplorerDiff();
-        // Sync the TopNav Commit-button state: save just added draft
-        // changes to the backend, so hasUncommittedChanges should flip true
-        // without forcing the user to refresh the page.
-        await get().checkCommitStatus?.();
-      } catch {
-        // Cache refresh is best-effort — save already succeeded
-      }
-    }
-
-    return { success: errors.length === 0, errors };
-  },
+  // `saveExplorerObjects` (all-or-nothing, raw api/*.js calls, no per-object
+  // validation gate) is DELETED — Explore 2.0 Phase 4 replaces it with
+  // `promoteExploration` (workspaceExplorationsStore.js) + `buildPromoteChecklist`
+  // (promoteChecklist.js), which promotes through the real per-type `saveX`
+  // store actions with a per-object validate/select gate
+  // (02-architecture.md §3).
 
   validateExplorerExpression: async (expression, sourceDialect) => {
     try {

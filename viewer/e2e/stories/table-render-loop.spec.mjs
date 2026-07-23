@@ -192,12 +192,20 @@ test.describe('VIS-830 Table render-loop', () => {
   });
 
   // Explorer no-regression: the shared useInsightsData hook also powers Explorer's
-  // insight rendering. Confirm Explorer mounts cleanly (no loop / no boundary).
+  // insight rendering. Confirm an open exploration's chart preview mounts cleanly
+  // (no loop / no boundary). Explore 2.0 Phase 3b cutover: `/explorer` is now a
+  // permanent redirect to Explorer Home (the gallery, no insight rendering at
+  // all) — open a real exploration first so this still exercises the same
+  // Chart.jsx/useInsightsData path the regression originally hit.
   test('Explorer renders without the render loop (no-regression)', async ({ page }) => {
     const capture = attachErrorCapture(page);
 
     await page.goto(`${BASE}/explorer`);
     await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible({ timeout: 30000 });
+
+    await page.getByTestId('explorer-home-new-exploration').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
     await page.waitForTimeout(3000);
 
     await assertNoLoopOrBoundary(page, capture, 'explorer');

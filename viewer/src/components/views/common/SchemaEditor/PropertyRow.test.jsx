@@ -1,6 +1,8 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PropertyRow } from './PropertyRow';
+import useStore from '../../../../stores/store';
 
 // Mock the RefTextArea component
 jest.mock('../RefTextArea', () => {
@@ -18,6 +20,46 @@ jest.mock('../RefTextArea', () => {
     );
   };
 });
+
+// Explore 2.0 Phase 3b (S5 §1): mock `useDroppable` (mirroring
+// `PivotShelf.test.jsx`'s established pattern) purely to capture/invoke the
+// droppable `data` payload — jsdom can't simulate a real dnd-kit pointer
+// drag, and `isOver` is always false here (fine — none of these tests assert
+// the drop-hover ring). Declared at module scope (not nested in a describe)
+// so babel's jest.mock hoisting resolves the closure over `droppableData`
+// unambiguously.
+//
+// T4 (pills-buildrail #4): `useDraggable` (the pill-as-drag-source wiring)
+// is mocked the same way — capture the payload, no real pointer drag.
+const droppableData = {};
+const draggableData = {};
+// Mutable per-test override so the "real drop-hover" (`isDropTarget`) branch
+// can be exercised without a real dnd-kit pointer drag (jsdom can't simulate
+// one). Reset to false in `beforeEach` below.
+let mockIsOver = false;
+let mockIsDragging = false;
+jest.mock('@dnd-kit/core', () => ({
+  useDroppable: ({ id, data, disabled }) => {
+    droppableData[id] = { data, disabled };
+    return { setNodeRef: () => {}, isOver: mockIsOver };
+  },
+  useDraggable: ({ id, data, disabled }) => {
+    draggableData[id] = { data, disabled };
+    return { attributes: {}, listeners: {}, setNodeRef: () => {}, isDragging: mockIsDragging };
+  },
+}));
+
+// Explore 2.0 Phase 3b (S5 §1, T4 pills-buildrail #4): `useWorkspaceDrag` reads
+// the shared shell-level drag context (`WorkspaceDndContext.jsx`). Mounting
+// the real `<WorkspaceDndContext>` here would drag in the whole dnd-kit shell
+// + a dozen store selectors just to control one hook's return value, so it's
+// mocked directly — mirroring the same "mutable per-test override" pattern as
+// `useDroppable`'s `isOver` above — to exercise `isDragEligibleForThisRow`.
+let mockActiveDrag = null;
+jest.mock('../../workspace/WorkspaceDndContext', () => ({
+  __esModule: true,
+  useWorkspaceDrag: () => mockActiveDrag,
+}));
 
 describe('PropertyRow', () => {
   const defs = {
@@ -37,10 +79,19 @@ describe('PropertyRow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsOver = false;
+    mockIsDragging = false;
+    mockActiveDrag = null;
   });
 
   it('renders with property path', () => {
     render(<PropertyRow {...defaultProps} />);
+    expect(screen.getByText('marker.color')).toBeInTheDocument();
+  });
+
+  it('tolerates a missing `defs` prop entirely (defaults to {})', () => {
+    const { defs: _omit, ...propsWithoutDefs } = defaultProps;
+    expect(() => render(<PropertyRow {...propsWithoutDefs} />)).not.toThrow();
     expect(screen.getByText('marker.color')).toBeInTheDocument();
   });
 
@@ -399,6 +450,755 @@ describe('PropertyRow', () => {
         <PropertyRow {...defaultProps} schema={queryNumberSchema} value="" onChange={onChange} />
       );
       expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+    });
+  });
+
+  // Explore 2.0 Phase 3b (S5 §1/§3, 06 §5): the `property-zone` DnD retrofit
+  // + the D8/D10 pill-rendering fork. `useDroppable` is mocked (matching
+  // `PivotShelf.test.jsx`'s established pattern) purely to capture/invoke the
+  // droppable `data` payload — jsdom can't simulate a real dnd-kit pointer drag.
+  describe('property-zone DnD retrofit + D8/D10 pill rendering', () => {
+    beforeEach(() => {
+      for (const k of Object.keys(droppableData)) delete droppableData[k];
+      useStore.setState({ metrics: [], dimensions: [] });
+    });
+
+    const queryStringDef = { 'query-string': { type: 'string', pattern: '^\\?\\{.*\\}$' } };
+
+    test('the droppable data key is `kind` (not `type`) and carries the per-slot onDropField callback', () => {
+      const onDropField = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+          droppable
+          onDropField={onDropField}
+        />
+      );
+      const entry = droppableData['property-x'];
+      expect(entry.data.kind).toBe('property-zone');
+      expect(entry.data.path).toBe('x');
+      expect(entry.data.onDropField).toBe(onDropField);
+      expect(entry.data.type).toBeUndefined();
+    });
+
+    test('not droppable when the `droppable` prop is false (default) — matches SchemaEditor/InsightEditForm/ChartEditForm call sites', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+        />
+      );
+      expect(droppableData['property-x'].disabled).toBe(true);
+    });
+
+    // T4 (promote-roundtrip #4 / pills-buildrail #9): a droppable,
+    // query-capable EMPTY slot (the Build rail's x/y "Essentials" fields)
+    // must NOT default to the "Static value" number spinner — typing a
+    // dropped/typed ref into that input silently mangles it character by
+    // character (observed live: '?{query_1.X}' reduced to 'e1').
+    test('a droppable, query-capable EMPTY slot defaults to query mode, not the static number spinner', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value={undefined}
+          droppable
+        />
+      );
+      expect(screen.getByRole('button', { name: /query/i })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: /static/i })).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+    });
+
+    // Non-droppable consumers (right-rail InsightEditForm/ChartEditForm/
+    // SchemaLeafForm) are UNCHANGED — this gate is additive, not universal.
+    test('a NON-droppable EMPTY slot still defaults to static (unaffected — gated on `droppable`)', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value={undefined}
+        />
+      );
+      expect(screen.getByRole('button', { name: /static/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test('a recognized dimension ref renders a FieldPill + PillMenu instead of RefTextArea when droppable', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      expect(screen.getByText('orders_q ▸ amount')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-trigger')).toBeInTheDocument();
+      expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+    });
+
+    test('a dangling ref (advisory `error` set) renders the pill in its explicit warning state, not the normal palette (delta-review fix)', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          error="Reference to 'orders_q' not found in models, ..."
+        />
+      );
+      const pill = screen.getByTestId('property-pill-x');
+      expect(pill).toHaveAttribute('data-warning', 'true');
+      expect(screen.getByTestId('field-pill-warning-icon')).toBeInTheDocument();
+      // The advisory text below the pill still renders too (unchanged behavior).
+      expect(screen.getByTestId('property-error-x')).toBeInTheDocument();
+    });
+
+    test('no `error` -> the pill renders normally, no warning treatment', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      expect(screen.getByTestId('property-pill-x')).not.toHaveAttribute('data-warning');
+    });
+
+    test('the SAME recognized value falls back to RefTextArea when NOT droppable (fork is gated, not universal)', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+        />
+      );
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+      expect(screen.queryByTestId('pill-menu-trigger')).not.toBeInTheDocument();
+    });
+
+    test('an opaque/unparseable expression always falls back to RefTextArea, even when droppable', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{count(distinct ${ref(orders_q).id})}"
+          droppable
+        />
+      );
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+    });
+
+    test('selecting a preset via PillMenu rewrites the serialized value through onChange', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+      expect(onChange).toHaveBeenCalledWith('?{sum(${ref(orders_q).amount})}');
+    });
+
+    test('onSaveAsMetric threads through to PillMenu, called with the parsed pill state (Explore 2.0 Phase 4)', () => {
+      const onSaveAsMetric = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="y"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount})}"
+          droppable
+          onSaveAsMetric={onSaveAsMetric}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      expect(screen.getByTestId('pill-menu-save-as-metric')).not.toBeDisabled();
+      fireEvent.click(screen.getByTestId('pill-menu-save-as-metric'));
+      expect(onSaveAsMetric).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' })
+      );
+    });
+
+    test('without onSaveAsMetric, PillMenu renders the action disabled even on an aggregate pill', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="y"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount})}"
+          droppable
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+    });
+
+    test('PillMenu Remove clears the slot value (never the whole property)', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-remove'));
+      expect(onChange).toHaveBeenCalledWith('');
+    });
+
+    test('"Custom aggregation…" switches the slot back to RefTextArea, pre-filled with the current body', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+      expect(screen.getByTestId('ref-input')).toHaveValue('${ref(orders_q).amount}');
+    });
+
+    // D3 (e2e-gap-review.md delta pass): the "Custom aggregation…" escape
+    // hatch used to be a one-way ratchet — no way back to pill rendering
+    // short of an unrelated remount, even once the raw text re-parses as a
+    // clean, recognized shape. These three tests lock in the "Back to pill"
+    // affordance's exact contract.
+    describe('"Back to pill" return path (D3)', () => {
+      test('the affordance is ABSENT immediately after "Custom aggregation…" while the raw text is still opaque/custom-shaped', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{count(distinct ${ref(orders_q).id})}"
+            droppable
+          />
+        );
+        // This value is already opaque (never rendered as a pill at all),
+        // so RefTextArea is the fallback from the start — no custom-aggregation
+        // click needed to reach raw-edit mode here.
+        expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+        expect(screen.queryByTestId('property-x-back-to-pill')).not.toBeInTheDocument();
+      });
+
+      test('the affordance APPEARS once the raw text re-parses as a recognized (non-opaque/custom) shape', () => {
+        // PropertyRow is a controlled component (`body` derives from the
+        // `value` prop) — mirrors the slice-badge tests' `rerender()`
+        // pattern to simulate the parent pushing the edited value back in,
+        // rather than relying on the mocked RefTextArea's onChange to
+        // mutate anything itself.
+        const { rerender } = render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        // Still the exact original recognized shape — RefTextArea is showing
+        // (forceRawEdit is true) but the affordance should already be visible
+        // since the raw text re-parses as a clean 'dimension' pill.
+        expect(screen.getByTestId('property-x-back-to-pill')).toBeInTheDocument();
+
+        // Parent pushes an edited, OPAQUE value back in — the affordance
+        // must disappear (forceRawEdit stays true; only the affordance
+        // reacts to the reparse).
+        rerender(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{count(distinct ${ref(orders_q).id})}"
+            droppable
+          />
+        );
+        expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+        expect(screen.queryByTestId('property-x-back-to-pill')).not.toBeInTheDocument();
+
+        // Parent pushes an edited value back matching a recognized
+        // (aggregate) shape — the affordance returns.
+        rerender(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{sum(${ref(orders_q).amount})}"
+            droppable
+          />
+        );
+        expect(screen.getByTestId('property-x-back-to-pill')).toBeInTheDocument();
+      });
+
+      test('clicking the affordance returns to pill rendering with the value UNCHANGED', () => {
+        const onChange = jest.fn();
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+            onChange={onChange}
+          />
+        );
+        fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByTestId('property-x-back-to-pill'));
+
+        // Back to the pill — same dimension label as before the escape hatch.
+        expect(screen.getByText('orders_q ▸ amount')).toBeInTheDocument();
+        expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('property-x-back-to-pill')).not.toBeInTheDocument();
+        // Purely a view-mode toggle — onChange is never called by it.
+        expect(onChange).not.toHaveBeenCalled();
+      });
+    });
+
+    test('a bare ref matching a known Metric renders a metricRef pill (Σ-style, plain name)', () => {
+      useStore.setState({ metrics: [{ name: 'churn_rate', parentModel: 'orders_q' }] });
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(churn_rate)}}"
+          droppable
+        />
+      );
+      expect(screen.getByText('churn_rate')).toBeInTheDocument();
+      expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+    });
+
+    // T4 (pills-buildrail #4): the pill is ALSO a drag SOURCE, so it can be
+    // moved to another slot (drag the x pill onto the y slot) — mirrors the
+    // droppable-data assertion style above, but against the mocked
+    // `useDraggable`.
+    describe('pill as a drag source + click-to-open (T4)', () => {
+      beforeEach(() => {
+        for (const k of Object.keys(draggableData)) delete draggableData[k];
+      });
+
+      test('a shown pill registers as a drag source carrying sourcePath + the raw (unwrapped) body', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        const entry = draggableData['pill-x'];
+        expect(entry).toBeDefined();
+        expect(entry.disabled).toBe(false);
+        expect(entry.data.source).toBe('pill');
+        expect(entry.data.sourcePath).toBe('x');
+        expect(entry.data.raw).toBe('${ref(orders_q).amount}');
+      });
+
+      test('mid-drag, the pill gets a reduced-opacity class', () => {
+        mockIsDragging = true;
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        expect(screen.getByTestId('property-pill-x').className).toMatch(/opacity-50/);
+      });
+
+      test('the drag source is DISABLED when no pill is showing (opaque/raw-edit rows have nothing to drag)', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="not a recognized shape"
+            droppable
+          />
+        );
+        expect(draggableData['pill-x'].disabled).toBe(true);
+      });
+
+      // T4 (pills-buildrail #10): clicking the pill BODY opens the same menu
+      // the 16px chevron does — previously the chevron was the ONLY
+      // interactive affordance on the whole pill.
+      test('clicking the pill body opens the PillMenu popover (same as the chevron)', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('property-pill-x'));
+        expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+      });
+
+      test('the pill body is keyboard-reachable (role="button", Enter opens the menu)', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        const pill = screen.getByTestId('property-pill-x');
+        expect(pill).toHaveAttribute('role', 'button');
+        expect(pill).toHaveAttribute('tabIndex', '0');
+        fireEvent.keyDown(pill, { key: 'Enter' });
+        expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+      });
+
+      test('the space key also opens the menu (not just Enter)', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        const pill = screen.getByTestId('property-pill-x');
+        fireEvent.keyDown(pill, { key: ' ' });
+        expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+      });
+
+      test('an unrelated key (e.g. Tab) never opens the menu', () => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+        const pill = screen.getByTestId('property-pill-x');
+        fireEvent.keyDown(pill, { key: 'Tab' });
+        expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+      });
+    });
+
+    test('handleSelectPreset("dimension"): switching an AGGREGATE pill back to a plain dimension via the menu', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount})}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-preset-dimension'));
+      expect(onChange).toHaveBeenCalledWith('?{${ref(orders_q).amount}}');
+    });
+
+    test('a droppable, disabled pill gets tabIndex=-1 and no onClick/onKeyDown handlers', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          disabled
+        />
+      );
+      const pill = screen.getByTestId('property-pill-x');
+      expect(pill).toHaveAttribute('tabIndex', '-1');
+      // Clicking/keying a disabled pill never opens the menu.
+      fireEvent.click(pill);
+      expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+      fireEvent.keyDown(pill, { key: 'Enter' });
+      expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+    });
+
+    test('metrics/dimensions non-array store values (whole-module test doubles) fail open to an empty field list, no crash', () => {
+      // Mirrors SchemaLeafForm.test.jsx's established "mock the whole store
+      // to a fixed non-array object" pattern — pillFieldOpts must guard with
+      // Array.isArray rather than truthiness.
+      useStore.setState({ metrics: { notAnArray: true }, dimensions: { notAnArray: true } });
+      expect(() => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(orders_q).amount}}"
+            droppable
+          />
+        );
+      }).not.toThrow();
+    });
+
+    test('a metric record with no `parentModel` falls back to `config.model` (string) when building pill field options', () => {
+      useStore.setState({
+        metrics: [{ name: 'churn_rate', config: { model: 'orders_q' } }],
+        dimensions: [],
+      });
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(churn_rate)}}"
+          droppable
+        />
+      );
+      // Renders as a recognized metricRef pill (not opaque) — proves the
+      // field-opts lookup succeeded via the config.model fallback path.
+      expect(screen.getByText('churn_rate')).toBeInTheDocument();
+      expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+    });
+
+    test('a metric record with neither parentModel NOR config.model resolves parentModel to null (no crash)', () => {
+      useStore.setState({
+        metrics: [{ name: 'churn_rate' }],
+        dimensions: [],
+      });
+      expect(() => {
+        render(
+          <PropertyRow
+            {...defaultProps}
+            path="x"
+            schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+            defs={queryStringDef}
+            value="?{${ref(churn_rate)}}"
+            droppable
+          />
+        );
+      }).not.toThrow();
+    });
+  });
+
+  describe('isDragEligibleForThisRow (T4 cold-start #3 / pills-buildrail #4)', () => {
+    const queryStringDef = { 'query-string': { type: 'string', pattern: '^\\?\\{.*\\}$' } };
+
+    test('a droppable row highlights as drag-eligible while a compatible ("library") drag is in flight', () => {
+      mockActiveDrag = { kind: 'library', name: 'orders_q' };
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+          droppable
+        />
+      );
+      const row = screen.getByTestId('droppable-property-x');
+      expect(row).toHaveAttribute('data-drag-eligible', 'true');
+      expect(row.className).toMatch(/ring-dashed/);
+    });
+
+    test('an INCOMPATIBLE drag kind (e.g. "canvas") does not highlight the row', () => {
+      mockActiveDrag = { kind: 'canvas', name: 'some_dashboard_item' };
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+          droppable
+        />
+      );
+      const row = screen.getByTestId('droppable-property-x');
+      expect(row).not.toHaveAttribute('data-drag-eligible');
+    });
+
+    test('a NON-droppable row never highlights, even with a compatible drag in flight', () => {
+      mockActiveDrag = { kind: 'library', name: 'orders_q' };
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+        />
+      );
+      // No droppable testid at all when droppable is false.
+      expect(screen.queryByTestId('droppable-property-x')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('isDropTarget (real drop-hover ring)', () => {
+    const queryStringDef = { 'query-string': { type: 'string', pattern: '^\\?\\{.*\\}$' } };
+
+    test('a droppable row mid-hover (isOver=true) shows the drop-target ring', () => {
+      mockIsOver = true;
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+          droppable
+        />
+      );
+      const row = screen.getByTestId('droppable-property-x');
+      expect(row.className).toMatch(/ring-primary-300/);
+    });
+
+    test('isOver=true on a NON-droppable row never shows the ring (dropEnabled gates it too)', () => {
+      mockIsOver = true;
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value=""
+        />
+      );
+      // No droppable-property testid without `droppable`, and no ring class
+      // on whatever wrapper does render.
+      const row = screen.queryByTestId('droppable-property-x');
+      expect(row).not.toBeInTheDocument();
+    });
+  });
+
+  describe('slotShape "unknown" (missing/non-object schema)', () => {
+    test('a query-form value with no usable schema never shows the slice badge (slotShape !== "unknown" gate)', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          schema={null}
+          defs={{}}
+          value="?{some_col}"
+        />
+      );
+      expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('the banner "Pick row…" custom action', () => {
+    test('clicking "Pick row…" dismisses the banner without rewriting the value', () => {
+      const onChange = jest.fn();
+      const queryNumberSchema = {
+        oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }],
+      };
+      const { rerender } = render(
+        <PropertyRow {...defaultProps} schema={queryNumberSchema} value="" onChange={onChange} />
+      );
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}"
+          onChange={onChange}
+        />
+      );
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}[0]"
+          onChange={onChange}
+        />
+      );
+      expect(screen.getByTestId('slice-banner')).toBeInTheDocument();
+      onChange.mockClear();
+      fireEvent.click(screen.getByTestId('slice-banner-pick'));
+      expect(screen.queryByTestId('slice-banner')).not.toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleChange (static, non-query FieldComponent path)', () => {
+    test('editing a plain static (non-query-capable) field calls onChange with the raw new value', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          schema={{ type: 'string' }}
+          value="old"
+          onChange={onChange}
+        />
+      );
+      // The real (unmocked) static string field renders a plain textbox.
+      const input = screen.getByRole('textbox');
+      fireEvent.change(input, { target: { value: 'new value' } });
+      expect(onChange).toHaveBeenCalledWith('new value');
     });
   });
 });

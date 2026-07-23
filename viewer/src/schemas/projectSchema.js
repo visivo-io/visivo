@@ -39,7 +39,25 @@ export const OBJECT_TYPE_TO_DEF = {
   dimension: 'Dimension',
   metric: 'Metric',
   relation: 'Relation',
-  model: 'Model',
+  // 'model' is the app's generic type string for a plain SQL-backed model
+  // (csv/local-merge models get their OWN distinct type strings below,
+  // mirroring the backend's `SqlModel`/`CsvScriptModel`/`LocalMergeModel`
+  // split). It must map to the CONCRETE `SqlModel` def, not the abstract
+  // `Model` base class — the bare `Model` $defs entry is just
+  // `{path, name, file_path}` with `additionalProperties: false`, so
+  // validating a real model config (`{sql, source}`) against it always fails
+  // with "unknown property 'sql'". Root-caused via live reproduction against
+  // the sandbox (integration-gate fix cycle, Explore 2.0 Phase 4): this
+  // silently blocked every model row in `buildPromoteChecklist`'s "Save to
+  // Project" checklist (`promoteChecklist.js`) — no established spec
+  // previously exercised `validateRecordConfig('model', ...)` with a
+  // real `sql`-bearing config (models are edited through the dedicated
+  // `ModelEditForm`/`SQLEditor` UIs, not the generic schema form, so this
+  // was a latent gap in the shared `useRecordSave` validation gate, not
+  // something Phase 4 introduced). `SqlModel` has no `required` fields, so
+  // this is a strict broadening — the blank-model creation flow
+  // (`library-inline-create.spec.mjs`) is unaffected.
+  model: 'SqlModel',
   source: 'Source',
   insight: 'Insight',
   chart: 'Chart',

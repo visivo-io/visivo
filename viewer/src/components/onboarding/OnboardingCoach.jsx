@@ -32,9 +32,20 @@ export default function OnboardingCoach() {
     setDismissedSet(readDismissed());
   }, [location.pathname]);
 
+  // D8 (e2e-gap-review.md delta pass), extended by P6-D5: a route match
+  // must also cover a deeper sub-path of `currentItem.route`, not just an
+  // exact string match — `build_model`, `create_insight`, and
+  // `define_metric` all advertise the bare `/workspace/exploration` gallery
+  // route, but `OnboardingChecklist`'s `mintsExploration`/
+  // `routeToActiveExploration` handling (see its `handleItemClick`) now
+  // lands the user on `/workspace/exploration/:id` instead, so the Coach
+  // must still recognize itself as "on route" there. Generalizes the
+  // pre-existing `/project` special case (a dashboard sub-route) into the
+  // same rule rather than special-casing `/workspace/exploration` a second
+  // time.
   const onRoute = currentItem
     ? location.pathname === currentItem.route ||
-      (currentItem.route === '/project' && location.pathname.startsWith('/project'))
+      location.pathname.startsWith(`${currentItem.route}/`)
     : false;
 
   // For multi-step macro items, the Coach points at the active step

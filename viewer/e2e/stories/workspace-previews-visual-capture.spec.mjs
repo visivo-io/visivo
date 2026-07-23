@@ -14,7 +14,11 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 
-const BASE_URL = process.env.VISIVO_BASE_URL || 'http://localhost:3001';
+// PLAYWRIGHT_BASE_URL must come before the :3001 fallback: :3001 is the SHARED
+// sandbox, so without it an unset VISIVO_BASE_URL silently routes this spec
+// onto whatever else is using that sandbox.
+const BASE_URL =
+  process.env.PLAYWRIGHT_BASE_URL || process.env.VISIVO_BASE_URL || 'http://localhost:3001';
 const OUT = '/tmp/hard-n';
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -61,11 +65,15 @@ for (const vp of VIEWPORTS) {
 
       // On a wide viewport the three-rail shell shows the middle pane in-frame,
       // so a plain viewport screenshot captures the preview. On a narrow
-      // (mobile) viewport the shell does NOT reflow — it overflows horizontally
-      // and the middle pane sits off-screen-right inside an overflow-hidden
-      // parent, so it cannot be scrolled into the viewport. Capturing the
-      // visible viewport there is the honest representation of what a mobile
-      // user actually sees (the Library, with the editor clipped off-screen).
+      // (mobile) viewport the shell now auto-collapses both rails (6c-T2,
+      // BLOCKER-at-1100px fix) and the canvas holds a real min-width, but at
+      // true PHONE width (390px) that min-width still exceeds the viewport —
+      // the shell has no horizontal scroll, so the middle pane still sits
+      // partly off-screen-right inside an overflow-hidden parent and can't be
+      // scrolled into view. Capturing the visible viewport is still the
+      // honest representation of what a mobile user actually sees (now the
+      // Library as a collapsed icon strip, not full-width, with the editor's
+      // right portion clipped off-screen instead of the whole editor).
       // We never use element.screenshot()/scrollIntoView here because that hangs
       // on a clipped off-screen element.
       const shotMiddle = async file => {

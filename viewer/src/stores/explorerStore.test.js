@@ -1,10 +1,5 @@
 /* eslint-disable no-template-curly-in-string */
 import useStore from './store';
-import { saveModel } from '../api/models';
-import { saveInsight } from '../api/insights';
-import { saveChart } from '../api/charts';
-import { saveMetric } from '../api/metrics';
-import { saveDimension } from '../api/dimensions';
 import { fetchDiff } from '../api/explorer';
 import {
   expandDotNotationProps,
@@ -27,9 +22,9 @@ import {
   NameCollisionError,
 } from './explorerStore';
 
-// Mock API modules so saveExplorerObjects + post-save fetches don't hit the network.
-// Without this, the post-save Promise.all (fetchInsights/Models/Charts/Metrics/Dimensions)
-// triggers real fetch() calls in jsdom and floods the test output with AggregateError.
+// Mock API modules so store actions that lazy-import them (fetchModels et al,
+// still exercised below) don't hit the network. Without this, real fetch()
+// calls in jsdom flood the test output with AggregateError.
 // jest.mock calls are hoisted above imports by babel-plugin-jest-hoist, so placing
 // them after imports keeps eslint's import/first happy without changing runtime order.
 jest.mock('../api/models', () => ({
@@ -237,6 +232,105 @@ describe('explorerStore', () => {
       useStore.getState().createModelTab('second');
 
       expect(useStore.getState().explorerActiveModelName).toBe('second');
+    });
+
+    it('returns the resolved tab name (VIS-1082 — callers rebind against it later)', () => {
+      expect(useStore.getState().createModelTab()).toBe('model');
+      expect(useStore.getState().createModelTab('explicit')).toBe('explicit');
+    });
+  });
+
+  // ====================================================================
+  // applyResolvedDefaultSource (VIS-1082 — cold-session default-source race)
+  // ====================================================================
+  describe('applyResolvedDefaultSource', () => {
+    it('rebinds a tab created before defaults arrived', () => {
+      useStore.setState({ defaults: null, explorerSources: [{ source_name: 'first-source' }] });
+      const name = useStore.getState().createModelTab();
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('first-source');
+
+      useStore.getState().applyResolvedDefaultSource(name, 'the-real-default');
+
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('the-real-default');
+    });
+
+    it('does not mark the tab sourceEdited (still a resolved default, not a user edit)', () => {
+      const name = useStore.getState().createModelTab();
+      useStore.getState().applyResolvedDefaultSource(name, 'the-real-default');
+      expect(useStore.getState().explorerModelStates[name].sourceEdited).toBeFalsy();
+    });
+
+    it('is a no-op once the user has explicitly picked a source (sourceEdited)', () => {
+      const name = useStore.getState().createModelTab();
+      useStore.getState().setActiveModelSource('user-chosen-source');
+
+      useStore.getState().applyResolvedDefaultSource(name, 'the-real-default');
+
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('user-chosen-source');
+    });
+
+    it('is a no-op when the tab already has the resolved source', () => {
+      useStore.setState({ defaults: { source_name: 'already-right' } });
+      const name = useStore.getState().createModelTab();
+      const before = useStore.getState().explorerModelStates[name];
+
+      useStore.getState().applyResolvedDefaultSource(name, 'already-right');
+
+      expect(useStore.getState().explorerModelStates[name]).toBe(before); // same reference — no set() fired
+    });
+
+    it('is a no-op for an unknown model name (no crash)', () => {
+      expect(() =>
+        useStore.getState().applyResolvedDefaultSource('exp_nope', 'some-source')
+      ).not.toThrow();
+    });
+
+    it('is a no-op when sourceName is falsy (no configured project default)', () => {
+      const name = useStore.getState().createModelTab();
+      const before = useStore.getState().explorerModelStates[name];
+
+      useStore.getState().applyResolvedDefaultSource(name, null);
+
+      expect(useStore.getState().explorerModelStates[name]).toBe(before);
+    });
+  });
+
+  // Explore 2.0 Phase 3a (D9): a Library schema-table row dropped on the SQL
+  // editor seeds a new query chip — 01-ux-spec.md §3a's "Table → canvas/
+  // editor: seeds a new scratch query."
+  describe('seedModelTabFromTable', () => {
+    it('creates a new tab pre-filled with SELECT * FROM <table> bound to the given source', () => {
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders', sourceName: 'warehouse' });
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toHaveLength(1);
+      const name = state.explorerModelTabs[0];
+      expect(state.explorerActiveModelName).toBe(name);
+      expect(state.explorerModelStates[name].sql).toBe('SELECT * FROM orders');
+      expect(state.explorerModelStates[name].sourceName).toBe('warehouse');
+      expect(state.explorerModelStates[name].isNew).toBe(true);
+    });
+
+    it('auto-disambiguates the new tab name against existing tabs', () => {
+      useStore.getState().createModelTab(); // 'model'
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders', sourceName: 'warehouse' });
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toHaveLength(2);
+      expect(state.explorerModelTabs[1]).not.toBe('model');
+    });
+
+    it('falls back to the project default source when none is given', () => {
+      useStore.setState({ defaults: { source_name: 'default-src' } });
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders' });
+
+      const name = useStore.getState().explorerActiveModelName;
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('default-src');
+    });
+
+    it('is a no-op without a tableName', () => {
+      useStore.getState().seedModelTabFromTable({ sourceName: 'warehouse' });
+      expect(useStore.getState().explorerModelTabs).toEqual([]);
     });
   });
 
@@ -1494,6 +1588,229 @@ describe('explorerStore', () => {
     });
   });
 
+  // VIS-1067 — "Explore this" seed-bridge extension: a pure state builder
+  // (no set() calls) so a caller can hand its result to
+  // `createExploration`'s `legacyStateOverride` param without touching the
+  // live explorer working state.
+  describe('buildExplorationSeedState', () => {
+    beforeEach(() => {
+      useStore.setState({
+        models: [],
+        insights: [],
+        charts: [],
+        metrics: [],
+        dimensions: [],
+        inputs: [],
+        explorerSources: [{ source_name: 'pg' }],
+      });
+    });
+
+    it('returns null for an unresolvable object', () => {
+      expect(useStore.getState().buildExplorationSeedState({ type: 'model', name: 'missing' })).toBeNull();
+      expect(useStore.getState().buildExplorationSeedState(null)).toBeNull();
+    });
+
+    it('source: mirrors legacyStateForSeed (one empty query tab bound to the source)', () => {
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'source', name: 'pg' });
+      expect(snapshot.modelTabs).toEqual(['query_1']);
+      expect(snapshot.modelStates.query_1).toMatchObject({ sql: '', sourceName: 'pg' });
+    });
+
+    it('table: seeds one query tab with the given SQL + source hints', () => {
+      const snapshot = useStore.getState().buildExplorationSeedState(
+        { type: 'table', name: 'public.orders' },
+        { sql: 'SELECT * FROM public.orders', source: 'pg' }
+      );
+      expect(snapshot.modelTabs).toEqual(['query_1']);
+      expect(snapshot.modelStates.query_1).toMatchObject({
+        sql: 'SELECT * FROM public.orders',
+        sourceName: 'pg',
+        sourceEdited: true,
+      });
+    });
+
+    it('model: seeds a query tab with the model\'s OWN literal SQL (never an unresolved ${ref(...)} expression)', () => {
+      // The scratch SQL editor's execution pipeline (`useModelQueryJob` ->
+      // `/api/model-query-jobs/`) sends this text VERBATIM to the source
+      // with zero ref-resolution, so a `${ref(...)}` context string reaches
+      // DuckDB unresolved and fails to parse — root-caused via live
+      // reproduction against the sandbox (integration-gate fix cycle).
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'model', name: 'orders' });
+      expect(snapshot.modelStates.query_1.sql).toBe('SELECT 1');
+      expect(snapshot.modelStates.query_1.sourceName).toBe('pg');
+    });
+
+    it('metric/dimension: seeds a query with the parent model\'s OWN literal SQL', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+        metrics: [{ name: 'revenue', parentModel: 'orders', config: { model: 'ref(orders)' } }],
+      });
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'metric', name: 'revenue' });
+      expect(snapshot.modelStates.query_1.sql).toBe('SELECT 1');
+    });
+
+    it('metric with no resolvable parent model returns null', () => {
+      useStore.setState({ metrics: [{ name: 'orphan', config: {} }] });
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'metric', name: 'orphan' })
+      ).toBeNull();
+    });
+
+    it('insight: copies the insight config into a draft insight of the SAME name + auto-loads its model', () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'churn_by_cohort',
+            config: {
+              type: 'bar',
+              props: { x: '?{${ref(orders).month}}', y: '?{${ref(orders).total}}' },
+              interactions: [],
+            },
+          },
+        ],
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'insight', name: 'churn_by_cohort' });
+
+      // SAME name preserved — promoting it later updates the ORIGINAL via
+      // ordinary update-by-name semantics.
+      expect(snapshot.chartInsightNames).toEqual(['churn_by_cohort']);
+      expect(snapshot.activeInsightName).toBe('churn_by_cohort');
+      expect(snapshot.insightStates.churn_by_cohort.type).toBe('bar');
+      expect(snapshot.insightStates.churn_by_cohort.isNew).toBe(false);
+      expect(snapshot.modelTabs).toEqual(['orders']);
+      // A fresh chart name is fine — there's no original chart to preserve.
+      expect(snapshot.chartName).toBeTruthy();
+    });
+
+    it('chart: copies the chart (same name) + every insight (same names) + their models', () => {
+      useStore.setState({
+        charts: [
+          {
+            name: 'revenue_dashboard_chart',
+            config: { layout: { 'title.text': 'Revenue' }, insights: ['${ref(ins_a)}', '${ref(ins_b)}'] },
+          },
+        ],
+        insights: [
+          {
+            name: 'ins_a',
+            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
+          },
+          {
+            name: 'ins_b',
+            config: { type: 'line', props: { x: '?{${ref(revenue).date}}' }, interactions: [] },
+          },
+        ],
+        models: [
+          { name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } },
+          { name: 'revenue', config: { sql: 'SELECT 1', source: 'ref(pg)' } },
+        ],
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'chart', name: 'revenue_dashboard_chart' });
+
+      expect(snapshot.chartName).toBe('revenue_dashboard_chart');
+      expect(snapshot.chartLayout).toEqual({ 'title.text': 'Revenue' });
+      expect(snapshot.chartInsightNames).toEqual(['ins_a', 'ins_b']);
+      expect(Object.keys(snapshot.insightStates)).toEqual(['ins_a', 'ins_b']);
+      expect(snapshot.modelTabs.sort()).toEqual(['orders', 'revenue']);
+    });
+
+    it('chart: returns null for an unresolvable chart name', () => {
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'chart', name: 'missing' })
+      ).toBeNull();
+    });
+  });
+
+  // VIS-1067 — "Add to exploration": the context-menu equivalent of dragging
+  // a Library row onto the active exploration, for the same
+  // EXPLORATION_DRAG_TYPES set.
+  describe('addObjectToActiveExploration', () => {
+    beforeEach(() => {
+      useStore.setState({
+        explorerChartInsightNames: [],
+        explorerInsightStates: {},
+        explorerActiveInsightName: null,
+        explorerModelTabs: [],
+        explorerModelStates: {},
+        explorerActiveModelName: null,
+        insights: [],
+        models: [],
+        inputs: [],
+        metrics: [],
+        dimensions: [],
+        explorerSources: [{ source_name: 'pg' }],
+      });
+    });
+
+    it('insight: adds the existing insight to the active chart', () => {
+      useStore.setState({
+        insights: [{ name: 'ins', config: { type: 'bar', props: {}, interactions: [] } }],
+      });
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'insight', name: 'ins' });
+      expect(result).toEqual({ success: true });
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['ins']);
+    });
+
+    it('source: creates a query tab if none is active, then binds the source', () => {
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'source', name: 'pg' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      expect(state.explorerActiveModelName).toBeTruthy();
+      const activeModel = state.explorerModelStates[state.explorerActiveModelName];
+      expect(activeModel.sourceName).toBe('pg');
+    });
+
+    it('source: reuses the already-active query tab', () => {
+      useStore.getState().createModelTab('existing_q');
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'source', name: 'pg' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      expect(state.explorerActiveModelName).toBe('existing_q');
+      expect(state.explorerModelStates.existing_q.sourceName).toBe('pg');
+    });
+
+    it('metric/dimension: creates a new insight and binds the field into its y prop', () => {
+      const result = useStore
+        .getState()
+        .addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      const newInsightName = state.explorerActiveInsightName;
+      expect(newInsightName).toBeTruthy();
+      expect(state.explorerInsightStates[newInsightName].props.y).toBe(
+        '?{${ref(orders).revenue}}'
+      );
+    });
+
+    it('metric/dimension without a parentModel falls back to a bare ref', () => {
+      useStore.getState().addObjectToActiveExploration({ type: 'dimension', name: 'region' });
+      const state = useStore.getState();
+      const newInsightName = state.explorerActiveInsightName;
+      expect(state.explorerInsightStates[newInsightName].props.y).toBe('?{${ref(region)}}');
+    });
+
+    it('rejects a type with no meaningful "add to exploration" action', () => {
+      const result = useStore.getState().addObjectToActiveExploration({ type: 'dashboard', name: 'kpis' });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Cannot add type/);
+    });
+
+    it('rejects an invalid object', () => {
+      expect(useStore.getState().addObjectToActiveExploration(null)).toEqual({
+        success: false,
+        error: 'Invalid object',
+      });
+    });
+  });
+
   describe('handleTableSelect', () => {
     it('sets SQL and source on the active model when SQL is empty', () => {
       useStore.getState().createModelTab('my_model');
@@ -2035,353 +2352,6 @@ describe('explorerStore', () => {
     });
   });
 
-  // ====================================================================
-  // saveExplorerObjects
-  // ====================================================================
-  describe('saveExplorerObjects', () => {
-    const mockSaveModel = saveModel;
-    const mockSaveInsight = saveInsight;
-    const mockSaveChart = saveChart;
-    const mockSaveMetric = saveMetric;
-    const mockSaveDimension = saveDimension;
-
-    beforeEach(() => {
-      mockSaveModel.mockResolvedValue({ success: true });
-      mockSaveInsight.mockResolvedValue({ success: true });
-      mockSaveChart.mockResolvedValue({ success: true });
-      mockSaveMetric.mockResolvedValue({ success: true });
-      mockSaveDimension.mockResolvedValue({ success: true });
-    });
-
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
-
-    it('saves new models and marks them as published on success', async () => {
-      useStore.setState({
-        explorerModelStates: {
-          new_model: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: true,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(true);
-      expect(result.errors).toHaveLength(0);
-      expect(mockSaveModel).toHaveBeenCalledWith('new_model', {
-        sql: 'SELECT 1',
-        source: 'ref(pg)',
-      });
-
-      // Verify post-save state: isNew is false
-      const modelState = useStore.getState().explorerModelStates.new_model;
-      expect(modelState.isNew).toBe(false);
-    });
-
-    it('skips unchanged models', async () => {
-      fetchDiff.mockResolvedValue({ models: { stable_model: null } });
-      useStore.setState({
-        explorerModelStates: {
-          stable_model: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: false,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      await useStore.getState().saveExplorerObjects();
-
-      expect(mockSaveModel).not.toHaveBeenCalled();
-    });
-
-    it('uses a fresh diff at save time — a stale cached diff cannot skip recent edits', async () => {
-      // The cached diff (from the 300ms-debounced watcher) still says
-      // "unchanged", but the backend — asked again at save time — reports the
-      // edit made inside the debounce window.
-      fetchDiff.mockResolvedValue({ models: { my_model: 'modified' } });
-      useStore.setState({
-        explorerModelStates: {
-          my_model: {
-            sql: 'SELECT 1 -- just edited',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: false,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-        explorerDiffResult: { models: { my_model: null } },
-      });
-
-      await useStore.getState().saveExplorerObjects();
-
-      expect(mockSaveModel).toHaveBeenCalledWith('my_model', {
-        sql: 'SELECT 1 -- just edited',
-        source: 'ref(pg)',
-      });
-    });
-
-    it('saves a model whose only change is the source', async () => {
-      // Source-only edit: the diff (fed the edited source) reports modified,
-      // and the save POST carries the new source ref.
-      fetchDiff.mockResolvedValue({ models: { orders: 'modified' } });
-      useStore.setState({
-        explorerModelStates: {
-          orders: {
-            sql: 'SELECT * FROM orders',
-            sourceName: 'new_source',
-            sourceEdited: true,
-            computedColumns: [],
-            isNew: false,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(true);
-      expect(mockSaveModel).toHaveBeenCalledWith('orders', {
-        sql: 'SELECT * FROM orders',
-        source: 'ref(new_source)',
-      });
-    });
-
-    it('keeps isNew on empty model tabs the save loop skipped', async () => {
-      useStore.setState({
-        explorerModelStates: {
-          placeholder: {
-            sql: '',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: true,
-          },
-          real_model: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: true,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(true);
-      const states = useStore.getState().explorerModelStates;
-      // The saved model flips; the never-saved placeholder stays new so it
-      // remains renameable and saveable later.
-      expect(states.real_model.isNew).toBe(false);
-      expect(states.placeholder.isNew).toBe(true);
-    });
-
-    it('saves modified insights and resets originals on success', async () => {
-      useStore.setState({
-        explorerModelStates: {},
-        explorerInsightStates: {
-          my_insight: {
-            type: 'bar',
-            props: { x: 'col_a' },
-            interactions: [],
-            isNew: false,
-          },
-        },
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(true);
-      expect(mockSaveInsight).toHaveBeenCalledWith('my_insight', {
-        props: { type: 'bar', x: 'col_a' },
-      });
-
-      // Verify post-save state: isNew is false
-      const insightState = useStore.getState().explorerInsightStates.my_insight;
-      expect(insightState.isNew).toBe(false);
-    });
-
-    it('saves chart when chart name exists', async () => {
-      useStore.setState({
-        explorerModelStates: {},
-        explorerInsightStates: {},
-        explorerChartName: 'my_chart',
-        explorerChartLayout: { title: 'Test' },
-        explorerChartInsightNames: ['insight_1', 'insight_2'],
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(true);
-      expect(mockSaveChart).toHaveBeenCalledWith('my_chart', {
-        insights: ['ref(insight_1)', 'ref(insight_2)'],
-        layout: { title: 'Test' },
-      });
-    });
-
-    it('saves computed columns as metrics and dimensions', async () => {
-      useStore.setState({
-        explorerModelStates: {
-          my_model: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [
-              { name: 'total', expression: 'SUM(amount)', type: 'metric' },
-              { name: 'month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
-            ],
-            isNew: true,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      await useStore.getState().saveExplorerObjects();
-
-      expect(mockSaveMetric).toHaveBeenCalledWith('total', {
-        expression: 'SUM(amount)',
-        parentModel: 'my_model',
-      });
-      expect(mockSaveDimension).toHaveBeenCalledWith('month', {
-        expression: "DATE_TRUNC('month', date)",
-        parentModel: 'my_model',
-      });
-    });
-
-    it('returns errors and does not reset originals on failure', async () => {
-      mockSaveModel.mockRejectedValue(new Error('Network error'));
-
-      useStore.setState({
-        explorerModelStates: {
-          bad_model: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: true,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(false);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toEqual({
-        name: 'bad_model',
-        type: 'model',
-        error: 'Network error',
-      });
-
-      // Original state should NOT be reset
-      const modelState = useStore.getState().explorerModelStates.bad_model;
-      expect(modelState.isNew).toBe(true);
-    });
-
-    it('expands dot-notation props when saving insights', async () => {
-      useStore.setState({
-        explorerModelStates: {},
-        explorerInsightStates: {
-          dot_insight: {
-            type: 'scatter',
-            props: { 'marker.color': 'red', 'marker.size': 10, x: 'col_a' },
-            interactions: [],
-            isNew: true,
-          },
-        },
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-      });
-
-      await useStore.getState().saveExplorerObjects();
-
-      expect(mockSaveInsight).toHaveBeenCalledWith('dot_insight', {
-        props: { type: 'scatter', marker: { color: 'red', size: 10 }, x: 'col_a' },
-      });
-    });
-
-    it('calls checkCommitStatus once on successful save so TopNav reflects pending changes', async () => {
-      const mockCheckCommitStatus = jest.fn().mockResolvedValue(undefined);
-      useStore.setState({
-        explorerModelStates: {
-          new_model: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: true,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-        checkCommitStatus: mockCheckCommitStatus,
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(true);
-      expect(mockCheckCommitStatus).toHaveBeenCalledTimes(1);
-    });
-
-    it('does NOT call checkCommitStatus when a save fails', async () => {
-      const mockCheckCommitStatus = jest.fn().mockResolvedValue(undefined);
-      mockSaveModel.mockRejectedValue(new Error('Network error'));
-      useStore.setState({
-        explorerModelStates: {
-          bad_model: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: true,
-          },
-        },
-        explorerInsightStates: {},
-        explorerChartName: null,
-        explorerChartLayout: {},
-        explorerChartInsightNames: [],
-        checkCommitStatus: mockCheckCommitStatus,
-      });
-
-      const result = await useStore.getState().saveExplorerObjects();
-
-      expect(result.success).toBe(false);
-      expect(mockCheckCommitStatus).not.toHaveBeenCalled();
-    });
-  });
-
   describe('selectDerivedInputNames (scope by chart attachment)', () => {
     beforeEach(() => {
       useStore.setState({
@@ -2701,6 +2671,100 @@ describe('explorerStore', () => {
         useStore.setState({ explorerChartName: 'cached_chart' });
         expect(() => useStore.getState().setChartName('cached_chart')).not.toThrow();
       });
+    });
+  });
+
+  // ====================================================================
+  // Workspace bridge (Explore 2.0 Phase 2) — snapshot/restore isolation
+  // ====================================================================
+  describe('snapshotExplorerWorkingState / restoreExplorerWorkingState', () => {
+    it('snapshots the persistable subset of a model state, dropping ephemeral query results', () => {
+      useStore.getState().createModelTab('orders_q');
+      useStore.getState().setActiveModelSql('SELECT * FROM orders');
+      useStore.getState().setModelQueryResult('orders_q', { columns: ['a'], rows: [[1]] });
+
+      const snapshot = useStore.getState().snapshotExplorerWorkingState();
+
+      expect(snapshot.modelTabs).toEqual(['orders_q']);
+      expect(snapshot.modelStates.orders_q.sql).toBe('SELECT * FROM orders');
+      expect(snapshot.modelStates.orders_q.queryResult).toBeUndefined();
+    });
+
+    it('snapshots chart + insight working state', () => {
+      useStore.getState().createModelTab('orders_q');
+      useStore.getState().createInsight('insight_1');
+      useStore.getState().setChartName('chart_1');
+
+      const snapshot = useStore.getState().snapshotExplorerWorkingState();
+
+      expect(snapshot.chartName).toBe('chart_1');
+      expect(snapshot.chartInsightNames).toContain('insight_1');
+      expect(snapshot.insightStates.insight_1).toBeDefined();
+    });
+
+    it('restore fully replaces working state (no leakage from a prior exploration)', () => {
+      useStore.getState().createModelTab('leftover_model');
+      useStore.getState().createInsight('leftover_insight');
+      useStore.getState().setChartName('leftover_chart');
+
+      useStore.getState().restoreExplorerWorkingState({
+        modelTabs: ['fresh_model'],
+        activeModelName: 'fresh_model',
+        modelStates: { fresh_model: { sql: 'SELECT 1', sourceName: null, isNew: true } },
+        chartName: null,
+        chartLayout: {},
+        chartInsightNames: [],
+        activeInsightName: null,
+        insightStates: {},
+        leftNavCollapsed: false,
+        centerMode: 'split',
+        isEditorCollapsed: false,
+      });
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['fresh_model']);
+      expect(state.explorerModelStates.leftover_model).toBeUndefined();
+      expect(state.explorerChartName).toBeNull();
+      expect(state.explorerInsightStates.leftover_insight).toBeUndefined();
+    });
+
+    it('restore resets ephemeral/derived fields regardless of the snapshot', () => {
+      useStore.setState({
+        explorerDiffResult: { modified: true },
+        explorerDuckDBLoading: true,
+        explorerFailedComputedColumns: { x: 'err' },
+      });
+
+      useStore.getState().restoreExplorerWorkingState(null);
+
+      const state = useStore.getState();
+      expect(state.explorerDiffResult).toBeNull();
+      expect(state.explorerDuckDBLoading).toBe(false);
+      expect(state.explorerFailedComputedColumns).toEqual({});
+    });
+
+    it('restore(null) resets to a clean empty slate (a brand-new exploration)', () => {
+      useStore.getState().createModelTab('m');
+      useStore.getState().restoreExplorerWorkingState(null);
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual([]);
+      expect(state.explorerModelStates).toEqual({});
+      expect(state.explorerChartName).toBeNull();
+    });
+
+    it('a snapshot -> restore round-trip is idempotent for the persistable fields', () => {
+      useStore.getState().createModelTab('orders_q');
+      useStore.getState().setActiveModelSql('SELECT 1');
+      useStore.getState().createInsight('insight_1');
+      useStore.getState().setChartName('chart_1');
+
+      const snapshot = useStore.getState().snapshotExplorerWorkingState();
+      resetState();
+      useStore.getState().restoreExplorerWorkingState(snapshot);
+
+      const restoredSnapshot = useStore.getState().snapshotExplorerWorkingState();
+      expect(restoredSnapshot).toEqual(snapshot);
     });
   });
 });

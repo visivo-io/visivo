@@ -13,9 +13,11 @@ import {
 import useStore from '../../../stores/store';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import LibraryDragPreview from './library/LibraryDragPreview';
+import { DROPPABLE_TYPES } from './library/LibraryRow';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
 import { runDashboardConfigGate } from './itemMutations';
+import { formatRefExpression } from '../../../utils/refString';
 import {
   reorderItemsInRow,
   moveItemBetweenRows,
@@ -197,7 +199,15 @@ export const WorkspaceCommitProvider = ({ value, children }) => (
  */
 export const routeWorkspaceDragEnd = (
   event,
-  { dashboards, projectDefaults, reassignDashboardLevel, moveLevel, commitCanvasConfig, emit }
+  {
+    dashboards,
+    projectDefaults,
+    reassignDashboardLevel,
+    moveLevel,
+    commitCanvasConfig,
+    emit,
+    exploration,
+  }
 ) => {
   const { active, over } = event || {};
   if (!over) return 'noop';
@@ -299,6 +309,51 @@ export const routeWorkspaceDragEnd = (
     if (field && typeof dropData.onDropField === 'function') {
       dropData.onDropField(field);
       return 'pivot_field_accepted';
+    }
+    return 'noop';
+  }
+
+  // ── Branch 2c: Library field/column → an exploration Build-rail insight
+  // prop slot (Explore 2.0 Phase 3b — S5 §1/§5, D8/D10 pill grammar). Mirrors
+  // the pivot-field branch immediately above verbatim: the callback lives on
+  // the droppable itself (`onDropField`), never resolved through a global
+  // "active insight" pointer — the Build rail can stack many Insight
+  // sections at once (each with its own `TracePropsEditor`/`FieldGroupList`),
+  // and every `PropertyRow` in every section handles its OWN drop
+  // independent of the others. `PropertyRow.jsx`'s droppable data key is
+  // `kind` (S5 §1 renamed it from `type` — nothing else consumed the old key)
+  // so this branch is unambiguous even though the now-legacy
+  // `axis-zone`/`property-zone`/etc. zone kinds below (still keyed on `type`,
+  // ported from the deleted `ExplorerDndContext`) used the same string value.
+  //
+  // `dragData.type === 'column'` (integration-gate fix): `DraggableColumnHeader`
+  // — the live query-RESULTS-grid column header, `sourceType: 'data-table'` —
+  // never carried `source: 'library'`, so a results-grid column dropped on a
+  // property-zone slot fell through EVERY branch (this one on the `source`
+  // guard, the legacy `type`-keyed branch below on the `kind`-vs-`type` key
+  // mismatch) and silently no-op'd. `handleDropField` (InsightBuildSection.jsx)
+  // already has a generic non-metric/dimension/input fallback that resolves a
+  // bare `column` against the active model correctly, so admitting it here is
+  // the fix rather than adding a second parallel handler.
+  //
+  // `dragData.source === 'pill'` (T4): a pill dragged OUT of its own slot
+  // (see `PropertyRow.jsx`'s `useDraggable`) targeting another property-zone
+  // slot — moves the resolved expression rather than rebuilding a ref from a
+  // Library payload. `handleDropField` recognizes this shape and also clears
+  // the source slot (a move, not a copy).
+  if (
+    (dragData.source === 'library' || dragData.type === 'column' || dragData.source === 'pill') &&
+    dropData.kind === 'property-zone'
+  ) {
+    emit &&
+      emit('property_zone_drop', {
+        path: dropData.path,
+        type: dragData.type,
+        name: dragData.name,
+      });
+    if (typeof dropData.onDropField === 'function') {
+      dropData.onDropField(dragData);
+      return 'property_zone_accepted';
     }
     return 'noop';
   }
@@ -439,6 +494,16 @@ export const routeWorkspaceDragEnd = (
 
     // 3b. Library → canvas insert (creates a new item referencing the object).
     if (dragData.source === 'library') {
+      // Explore 2.0 Phase 3a: the Library's exploration drag sources
+      // (source/metric/dimension/insight — EXPLORATION_DRAG_TYPES in
+      // LibraryRow.jsx — plus the new source/sourceTable/sourceColumn
+      // drill-down rows) are NOT canvas items; only DROPPABLE_TYPES
+      // (chart/table/markdown/input) are. Without this guard, making those
+      // rows draggable (so they can reach the exploration surface's drop
+      // targets below) would let a dashboard-canvas drop build a bogus item
+      // like `{ metric: '${ref(churn_rate)}' }` — a shape the canvas schema
+      // has no rendering for.
+      if (!DROPPABLE_TYPES.includes(dragData.type)) return 'noop';
       const newItem = buildLibraryItem(dragData.type, dragData.name);
       const next = insertItemAtTarget(config, target, newItem);
       if (next === config) return 'noop';
@@ -454,6 +519,193 @@ export const routeWorkspaceDragEnd = (
         });
       return 'canvas_library_insert';
     }
+  }
+
+  // ── Branch 4: Exploration surface drop zones (Explore 2.0 Phase 3a's DnD
+  // unification, 02-architecture.md §4) ────────────────────────────────────
+  // `ExplorerDndContext` (+ the standalone `/explorer` route it served) is
+  // fully deleted at the Phase 3b cutover. Of the legacy right panel's
+  // `type`-keyed zone kinds ported here verbatim in Phase 3a, only
+  // `interaction-zone` (InsightBuildSection's InteractionRow) and
+  // `insight-zone` (ChartBuildSection's insight drop zone) still have live
+  // producers post-cutover — both components were carried into the rebuilt
+  // Build rail unchanged. `axis-zone`, the OLD `type`-keyed `property-zone`
+  // (superseded by S5/Phase 3b's `kind`-keyed branch above, Branch 2c),
+  // `source-zone`, and `data-table-drop` have ZERO remaining producers
+  // (verified) — inert, not broken; left in place (with their unit tests)
+  // as a scoped-out cleanup rather than folded into this already-large
+  // cutover. `sql-editor-drop` is D9 (still alive, `SQLEditor.jsx`): Library
+  // table → seeds a new scratch query; Library column → inserts at the SQL
+  // editor's cursor.
+  if (
+    dropData.type === 'axis-zone' ||
+    dropData.type === 'property-zone' ||
+    dropData.type === 'interaction-zone' ||
+    dropData.type === 'source-zone' ||
+    dropData.type === 'insight-zone' ||
+    dropData.type === 'data-table-drop' ||
+    dropData.type === 'sql-editor-drop'
+  ) {
+    return routeExplorationDragEnd(event, exploration || {});
+  }
+
+  return 'noop';
+};
+
+/**
+ * Pure router for the exploration surface's drop zones (Explore 2.0 Phase 3a
+ * DnD unification, D9 / 02-architecture.md §4). Originally ported verbatim
+ * from the now-deleted `components/explorer/ExplorerDndContext.jsx`'s
+ * `handleDragEnd` — same resolution logic, same zone `type` values — so a
+ * Library drag started outside the exploration pane (the Library lives in
+ * the outer Workspace rail, not nested inside the exploration like the old
+ * `ExplorerLeftPanel`) can reach these targets at all (dnd-kit contexts
+ * don't compose). Exported + pure so it's unit-testable without a real
+ * dnd-kit pointer drag, mirroring `routeWorkspaceDragEnd`'s own pattern.
+ *
+ * @param {object} event dnd-kit drag-end event `{ active, over }`.
+ * @param {object} deps
+ * @param {string} deps.activeModelName - the exploration's active query/model
+ *   name (already resolved with its `'preview_model'` fallback by the
+ *   caller).
+ * @param {string|null} deps.activeInsightName
+ * @param {Function} deps.setInsightProp
+ * @param {Function} deps.addComputedColumn
+ * @param {Function} deps.setActiveModelSource
+ * @param {Function} deps.updateInsightInteraction
+ * @param {Function} deps.addExistingInsightToChart
+ * @param {Function} deps.seedModelTabFromTable - `({ tableName, sourceName }) => void`,
+ *   new for D9: creates a query chip seeded `SELECT * FROM <tableName>`.
+ * @returns {string} a short tag describing the routed action (for tests).
+ */
+export const routeExplorationDragEnd = (event, deps) => {
+  const { active, over } = event || {};
+  if (!over) return 'noop';
+  const dragData = active?.data?.current;
+  const dropData = over?.data?.current;
+  if (!dragData || !dropData) return 'noop';
+
+  const {
+    activeModelName,
+    activeInsightName,
+    setInsightProp,
+    addComputedColumn,
+    setActiveModelSource,
+    updateInsightInteraction,
+    addExistingInsightToChart,
+    seedModelTabFromTable,
+  } = deps || {};
+
+  // A dragged metric/dimension/input resolves the SAME way it always has;
+  // anything else (a plain results-grid `column` drag, or the new D9
+  // `sourceColumn` drag) is treated as belonging to whichever query is
+  // currently active — exactly like `DraggableColumnHeader`'s existing
+  // behavior, which this generalizes rather than replaces.
+  const buildRefExpr = () => {
+    if (dragData.type === 'metric' || dragData.type === 'dimension') {
+      return dragData.parentModel
+        ? formatRefExpression(dragData.parentModel, dragData.name)
+        : formatRefExpression(dragData.name);
+    }
+    if (dragData.type === 'input') {
+      const accessor = dragData.inputType === 'multi-select' ? 'values' : 'value';
+      return formatRefExpression(dragData.name, accessor);
+    }
+    return formatRefExpression(activeModelName, dragData.name);
+  };
+
+  if (dropData.type === 'axis-zone' || dropData.type === 'property-zone') {
+    // A whole table isn't a scalar ref — only a column-shaped drag resolves.
+    if (dragData.type === 'sourceTable') return 'noop';
+    const fieldName = dropData.type === 'axis-zone' ? dropData.fieldName : dropData.path;
+    const refExpr = buildRefExpr();
+    const dropEl = document.querySelector(
+      dropData.type === 'axis-zone'
+        ? `[data-testid="droppable-property-${fieldName}"]`
+        : `[data-testid="droppable-property-${dropData.path}"]`
+    );
+    const hasCursor = dropEl?.querySelector('[data-has-cursor="true"]');
+    if (hasCursor && activeInsightName) {
+      hasCursor.dispatchEvent(
+        new CustomEvent('ref-insert-at-cursor', { detail: { refExpr }, bubbles: false })
+      );
+    } else if (activeInsightName && typeof setInsightProp === 'function') {
+      setInsightProp(activeInsightName, fieldName, '?{' + refExpr + '}');
+    }
+    return 'exploration_prop_drop';
+  }
+
+  if (dropData.type === 'data-table-drop') {
+    if (
+      (dragData.type === 'metric' || dragData.type === 'dimension') &&
+      typeof addComputedColumn === 'function'
+    ) {
+      addComputedColumn({
+        name: dragData.name,
+        expression: dragData.expression || dragData.name,
+        type: dragData.type,
+      });
+      return 'exploration_computed_column_drop';
+    }
+    return 'noop';
+  }
+
+  if (dropData.type === 'interaction-zone') {
+    if (dragData.type === 'sourceTable') return 'noop';
+    const { insightName, index } = dropData;
+    if (!insightName) return 'noop';
+    const refExpr = buildRefExpr();
+    const dropEl = document.querySelector(`[data-testid="interaction-value-field-${index}"]`);
+    const hasCursor = dropEl?.querySelector('[data-has-cursor="true"]');
+    if (hasCursor) {
+      hasCursor.dispatchEvent(
+        new CustomEvent('ref-insert-at-cursor', { detail: { refExpr }, bubbles: false })
+      );
+    } else if (typeof updateInsightInteraction === 'function') {
+      updateInsightInteraction(insightName, index, { value: `?{${refExpr}}` });
+    }
+    return 'exploration_interaction_drop';
+  }
+
+  if (dropData.type === 'source-zone') {
+    if (dragData.type === 'source' && typeof setActiveModelSource === 'function') {
+      setActiveModelSource(dragData.name);
+      return 'exploration_source_drop';
+    }
+    return 'noop';
+  }
+
+  if (dropData.type === 'insight-zone') {
+    if (
+      dragData.type === 'insight' &&
+      dragData.name &&
+      typeof addExistingInsightToChart === 'function'
+    ) {
+      addExistingInsightToChart(dragData.name);
+      return 'exploration_insight_drop';
+    }
+    return 'noop';
+  }
+
+  if (dropData.type === 'sql-editor-drop') {
+    // D9: Library table → seeds a new scratch query bound to that table's
+    // source. Library column (schema OR results-grid) → inserts the bare
+    // column name at the Monaco cursor via the droppable's own callback (the
+    // SQL editor owns cursor access — mirrors the `pivot-field`/
+    // `property-zone` "callback lives on the droppable" pattern).
+    if (dragData.type === 'sourceTable') {
+      if (typeof seedModelTabFromTable === 'function') {
+        seedModelTabFromTable({ tableName: dragData.name, sourceName: dragData.sourceName });
+      }
+      return 'exploration_seed_query_from_table';
+    }
+    if (dragData.type === 'sourceColumn' || dragData.type === 'column') {
+      if (typeof dropData.onInsertText === 'function') {
+        dropData.onInsertText(dragData.name);
+      }
+      return 'exploration_sql_cursor_insert';
+    }
+    return 'noop';
   }
 
   return 'noop';
@@ -481,6 +733,23 @@ export const mapDragStartData = data => {
   if (data.source === 'library') {
     return { kind: 'library', name: data.name, type: data.type, data };
   }
+  // Results-grid column header (`DraggableColumnHeader`, `sourceType:
+  // 'data-table'`) never carries `source: 'library'` (it isn't a Library
+  // row), so it fell through every branch here and got NO DragOverlay
+  // content at all — the "no ghost" defect (pills-buildrail #4/T4 scope):
+  // dragging a column from the results grid showed nothing following the
+  // cursor. Column drags from the SQL editor's Library-column path already
+  // carry `source: 'library'` and are unaffected; this covers the
+  // data-table-only path.
+  if (data.sourceType === 'data-table' || data.type === 'column') {
+    return { kind: 'column', name: data.name };
+  }
+  // A pill dragged out of an Essentials/Key-fields slot to move it to
+  // another slot (T4 — "pill draggable between slots"). See
+  // `PropertyRow.jsx`'s `useDraggable` for the matching drag source.
+  if (data.source === 'pill') {
+    return { kind: 'pill', name: data.label || data.sourcePath };
+  }
   if (data.source === 'level') {
     return { kind: 'level', name: data.title || 'Level' };
   }
@@ -506,6 +775,40 @@ export const mapDragStartData = data => {
 
 const DashboardIcon = getTypeIcon('dashboard');
 const DASH_COLORS = getTypeColors('dashboard');
+const DIMENSION_COLORS = getTypeColors('dimension');
+
+/**
+ * ColumnDragPreview — the DragOverlay pill for a results-grid column-header
+ * drag (T4: pills-buildrail #4 "no ghost"). Mirrors the Library pill's visual
+ * language (architecture §2.6's "the drag preview IS the source pill") using
+ * the shared dimension palette, since a raw data-table column is a dimension
+ * until the drop target's default heuristic decides otherwise.
+ */
+const ColumnDragPreview = ({ name }) => (
+  <div
+    data-testid="column-drag-preview"
+    className={`pointer-events-none inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[12px] font-medium shadow-lg ${DIMENSION_COLORS.bg} ${DIMENSION_COLORS.text} ${DIMENSION_COLORS.border}`}
+  >
+    <span aria-hidden="true">#</span>
+    {name}
+  </div>
+);
+
+/**
+ * PillDragPreview — the DragOverlay pill for an Essentials/Key-fields pill
+ * being dragged to another slot (T4: pills-buildrail #4 "pills draggable
+ * between slots"). Plain, since the pill's own `<FieldPill>` already renders
+ * inline at its source — this overlay just needs to read as "the same thing,
+ * moving".
+ */
+const PillDragPreview = ({ name }) => (
+  <div
+    data-testid="pill-drag-preview"
+    className="pointer-events-none inline-flex items-center gap-1.5 rounded-full border border-primary-300 bg-primary-50 px-2 py-1 text-[12px] font-medium text-primary-700 shadow-lg"
+  >
+    {name}
+  </div>
+);
 
 /**
  * CanvasRowDragPreview — the DragOverlay pill for a canvas ROW drag (VIS-901 #5).
@@ -593,6 +896,22 @@ const WorkspaceDndContext = ({ children }) => {
   const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
 
+  // Explore 2.0 Phase 3a: the exploration surface's drop-zone deps
+  // (`routeExplorationDragEnd`) — read here (the shared shell-level context)
+  // rather than in the exploration pane itself, since that's what "DnD
+  // unification" means: one DndContext, one place that knows how to reach
+  // every drop target's store actions. `explorerActiveModelName` falls back
+  // to `'preview_model'` (matching the resolution the now-deleted
+  // `ExplorerDndContext.jsx` used to do for the standalone route).
+  const explorerActiveModelName = useStore(s => s.explorerActiveModelName) || 'preview_model';
+  const explorerActiveInsightName = useStore(s => s.explorerActiveInsightName);
+  const setInsightProp = useStore(s => s.setInsightProp);
+  const addActiveModelComputedColumn = useStore(s => s.addActiveModelComputedColumn);
+  const setActiveModelSource = useStore(s => s.setActiveModelSource);
+  const updateInsightInteraction = useStore(s => s.updateInsightInteraction);
+  const addExistingInsightToChart = useStore(s => s.addExistingInsightToChart);
+  const seedModelTabFromTable = useStore(s => s.seedModelTabFromTable);
+
   // `activeDrag` mirrors the dnd-kit `active` payload in a shape both overlays
   // and consumers (ProjectEditor) can read: `{ kind, name, level, type }`.
   const [activeDrag, setActiveDrag] = useState(null);
@@ -663,9 +982,33 @@ const WorkspaceDndContext = ({ children }) => {
         moveLevel,
         commitCanvasConfig,
         emit: emitWorkspaceEvent,
+        exploration: {
+          activeModelName: explorerActiveModelName,
+          activeInsightName: explorerActiveInsightName,
+          setInsightProp,
+          addComputedColumn: addActiveModelComputedColumn,
+          setActiveModelSource,
+          updateInsightInteraction,
+          addExistingInsightToChart,
+          seedModelTabFromTable,
+        },
       });
     },
-    [dashboards, projectDefaults, reassignDashboardLevel, moveLevel, commitCanvasConfig]
+    [
+      dashboards,
+      projectDefaults,
+      reassignDashboardLevel,
+      moveLevel,
+      commitCanvasConfig,
+      explorerActiveModelName,
+      explorerActiveInsightName,
+      setInsightProp,
+      addActiveModelComputedColumn,
+      setActiveModelSource,
+      updateInsightInteraction,
+      addExistingInsightToChart,
+      seedModelTabFromTable,
+    ]
   );
 
   return (
@@ -680,6 +1023,22 @@ const WorkspaceDndContext = ({ children }) => {
         // once at drag-start goes stale and collisions miss. `Always` keeps the
         // measured rects in sync with the live overlay positions.
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        // T4 (cold-start #3 / promote-roundtrip #3): dnd-kit's built-in
+        // auto-scroll fires on ANY scrollable ancestor near the pointer,
+        // including the exploration Build rail's `overflow-y-auto` body.
+        // Confirmed empirically: dragging a results-grid column toward the y
+        // well near a normal (720px) viewport's bottom edge auto-scrolled the
+        // rail ~166px mid-gesture, so the drop landed under a DIFFERENT row
+        // than the one highlighted when the drag started (or missed every
+        // droppable once the rect had moved) — the exact "column dropped on
+        // x lands in y" / "drop silently swallowed" reports. Rather than
+        // disabling auto-scroll globally (canvas dashboards legitimately need
+        // it for long layouts), exclude any container opting out via
+        // `data-dnd-freeze-scroll` — the Build rail's scroll body sets this.
+        autoScroll={{
+          canScroll: element =>
+            !(element && typeof element.closest === 'function' && element.closest('[data-dnd-freeze-scroll]')),
+        }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
@@ -688,6 +1047,10 @@ const WorkspaceDndContext = ({ children }) => {
         <DragOverlay dropAnimation={null}>
           {activeDrag?.kind === 'dashboard' ? (
             <DashboardTilePreview name={activeDrag.name} />
+          ) : activeDrag?.kind === 'column' ? (
+            <ColumnDragPreview name={activeDrag.name} />
+          ) : activeDrag?.kind === 'pill' ? (
+            <PillDragPreview name={activeDrag.name} />
           ) : activeDrag?.kind === 'pivot-field' ? (
             <PivotFieldDragPreview name={activeDrag.name} />
           ) : activeDrag?.kind === 'level' ? (

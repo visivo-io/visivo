@@ -140,6 +140,15 @@ const URL_PATTERNS = {
     // Exploration persistence endpoints
     explorationsList: '/api/explorations/',
     explorationDetail: '/api/explorations/{id}/',
+    explorationConsumeReturnTo: '/api/explorations/{id}/consume-return-to/',
+    // Explore 2.0 Phase 4: append-only promotion trail (07-exploration-api-
+    // contract.md's record-promotion sub-action).
+    explorationRecordPromotion: '/api/explorations/{id}/record-promotion/',
+
+    // Explore 2.0 Phase 4 — stateless draft-compile endpoint (S2's resolved
+    // design). Deliberately its OWN top-level segment, NOT nested under
+    // /api/insights/ — see insight_compile_views.py's docstring for why.
+    insightCompileDraft: '/api/insight-compile-draft/',
 
     // Workspace telemetry forwarding endpoint (VIS-822) — the local Flask
     // server relays workspace events through the CLI's PostHog client so the
@@ -277,6 +286,11 @@ const URL_PATTERNS = {
     // Exploration persistence endpoints (not available in dist)
     explorationsList: null,
     explorationDetail: null,
+    explorationConsumeReturnTo: null,
+    explorationRecordPromotion: null,
+
+    // Insight compile-draft endpoint (not available in dist — no Flask server)
+    insightCompileDraft: null,
 
     // Workspace telemetry forwarding (not available in dist — no Flask server)
     workspaceTelemetry: null,

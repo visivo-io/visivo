@@ -1,21 +1,24 @@
 /**
- * MiddlePane dispatcher (VIS-775 + VIS-805 + VIS-E1 / VIS-779).
+ * MiddlePane dispatcher (VIS-775 + VIS-805 + VIS-E1 / VIS-779; reworked in
+ * Explore 2.0 Phase 0 for the destination/view model).
  *
- * MiddlePane dispatches on `workspaceActiveObject.type` + `workspaceLens`:
- *   - project chrome / unscoped → mounts the real `<ProjectEditor>` (M-1),
- *     replacing the old "coming soon" placeholder.
+ * MiddlePane dispatches on the active DOCUMENT tab, else the active
+ * DESTINATION:
+ *   - no active document tab → the active view's HomePane from
+ *     `higherLevelViews.js` (Project → real `<ProjectEditor>`, Semantic Layer →
+ *     the ERD shell, Explorer → the Phase-0 placeholder).
  *   - dashboard + lineage lens → mounts `<LineageCanvas>` (VIS-E1); the canvas
  *     lens renders `<ProjectCanvas>` (render-only Dashboard wrapper, VIS-767).
  *   - a non-dashboard object WITH a Track-N preview (chart/table/markdown/
  *     input/insight/model) → `<PerObjectPane>` defaulting to the Preview lens,
- *     mounting that type's custom Preview component (from previewRegistry).
+ *     mounting that type's custom Preview component (from objectCanvasRegistry).
  *   - a non-dashboard object WITHOUT a preview (source/dimension/…/unknown) →
  *     `<PerObjectPane>` locked to the universal Lineage lens (VIS-779), Preview
  *     muted.
  *
- * Child surfaces (ProjectEditor, ProjectCanvas, LineageCanvas, the Track-N
- * preview components) are mocked so this stays a focused dispatcher test, not
- * the heavy React Flow / Plotly trees.
+ * Child surfaces (ProjectEditor, ProjectCanvas, LineageCanvas, SemanticLayerCanvas,
+ * the Track-N preview components) are mocked so this stays a focused dispatcher
+ * test, not the heavy React Flow / Plotly trees.
  */
 import React from 'react';
 import { render as rtlRender, screen, act, fireEvent } from '@testing-library/react';
@@ -78,11 +81,25 @@ jest.mock('./ModelPreview', () => ({
   __esModule: true,
   default: () => <div data-testid="model-preview-mock" />,
 }));
+// The Semantic Layer's ERD (VIS-1014) is a React-Flow tree — mock it so the
+// destination-dispatch tests stay focused on routing, not the canvas itself.
+jest.mock('./relations/SemanticLayerCanvas', () => ({
+  __esModule: true,
+  default: () => <div data-testid="semantic-layer-canvas-mock" />,
+}));
+// Explore 2.0 Phase 2: exploration mounts outside ObjectCanvasFrame (D5) via
+// its own dedicated branch — mocked here so this stays a focused DISPATCH
+// test (ExplorationPane's own state-bridge behavior has its own test file).
+jest.mock('./ExplorationPane', () => ({
+  __esModule: true,
+  default: ({ id }) => <div data-testid="exploration-pane-mock" data-id={id} />,
+}));
 
 const seed = (extra = {}) => {
   act(() => {
     useStore.setState({
       workspaceActiveObject: { type: 'dashboard', name: 'sales' },
+      workspaceActiveView: 'project',
       workspaceLens: 'preview',
       setWorkspaceLens: jest.fn(),
       project: { id: 'proj-1', name: 'proj' },
@@ -91,9 +108,9 @@ const seed = (extra = {}) => {
   });
 };
 
-describe('MiddlePane project variant (VIS-805)', () => {
-  test('mounts ProjectEditor when no object is scoped (defaults to project)', () => {
-    seed({ workspaceActiveObject: null });
+describe('MiddlePane destination Home panes (VIS-805; Explore 2.0 Phase 0 D1)', () => {
+  test('mounts ProjectEditor when no document tab is active (defaults to the Project view)', () => {
+    seed({ workspaceActiveObject: null, workspaceActiveView: 'project' });
     render(<MiddlePane />);
     expect(screen.getByTestId('workspace-middle-project')).toBeInTheDocument();
     expect(screen.getByTestId('mock-project-editor')).toBeInTheDocument();
@@ -101,10 +118,42 @@ describe('MiddlePane project variant (VIS-805)', () => {
     expect(screen.queryByTestId('workspace-middle-project-placeholder')).not.toBeInTheDocument();
   });
 
-  test('mounts ProjectEditor when the active object is the project chrome', () => {
-    seed({ workspaceActiveObject: { type: 'project', name: 'proj' } });
+  test('mounts the Semantic Layer Home when that view is active and no document tab is focused', async () => {
+    seed({ workspaceActiveObject: null, workspaceActiveView: 'semantic-layer' });
     render(<MiddlePane />);
-    expect(screen.getByTestId('mock-project-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-middle-semantic-layer')).toBeInTheDocument();
+    // The canvas body is lazy (React-Flow, code-split) — resolves through Suspense.
+    expect(await screen.findByTestId('semantic-layer-canvas-mock')).toBeInTheDocument();
+    // The Project Home does NOT also render.
+    expect(screen.queryByTestId('workspace-middle-project')).not.toBeInTheDocument();
+  });
+
+  test('mounts the real Explorer Home gallery when that view is active and no document tab is focused', () => {
+    seed({ workspaceActiveObject: null, workspaceActiveView: 'explorer' });
+    render(<MiddlePane />);
+    expect(screen.getByTestId('workspace-middle-explorer')).toBeInTheDocument();
+    // Explore 2.0 Phase 2 replaced the placeholder with the real gallery —
+    // its own behavior (cards, seeding, source tiles) is pinned in
+    // ExplorerHomePane.test.jsx; this dispatch test only checks IT mounts.
+    expect(screen.getByTestId('explorer-home-new-exploration')).toBeInTheDocument();
+  });
+
+  test('an active exploration document tab dispatches to ExplorationPane (D5 — outside ObjectCanvasFrame)', () => {
+    seed({ workspaceActiveObject: { type: 'exploration', name: 'exp_123' } });
+    render(<MiddlePane />);
+    expect(screen.getByTestId('exploration-pane-mock')).toHaveAttribute('data-id', 'exp_123');
+  });
+
+  test('an active document tab wins over the active view — the view is never a tab in Phase 0', async () => {
+    // `activeObject` truthy always dispatches to the dashboard/per-object
+    // branches, regardless of `workspaceActiveView` — destinations can only
+    // render through the `!activeObject` branch (they left the tab model).
+    seed({ workspaceActiveObject: { type: 'chart', name: 'revenue' }, workspaceActiveView: 'semantic-layer' });
+    render(<MiddlePane />);
+    expect(screen.queryByTestId('workspace-middle-semantic-layer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-middle-chart')).toBeInTheDocument();
+    // Let the chart preview's lazy chunk resolve inside act() before the test ends.
+    expect(await screen.findByTestId('chart-preview-mock')).toBeInTheDocument();
   });
 });
 

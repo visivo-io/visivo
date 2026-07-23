@@ -96,4 +96,14 @@ describe('LeftRail collapsed strip', () => {
     expect(useStore.getState().workspaceLeftCollapsed).toBe(false);
     await waitFor(() => expect(screen.getByTestId('library-search')).toHaveFocus());
   });
+
+  test('renders the collapsed destination switcher above the type-button strip (D1, Explore 2.0 Phase 0)', () => {
+    seedStore({ workspaceActiveView: 'project' });
+    renderRail();
+    const switcher = screen.getByTestId('workspace-view-switcher');
+    expect(switcher).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.getByTestId('workspace-view-switcher-project')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-view-switcher-semantic-layer')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-view-switcher-explorer')).toBeInTheDocument();
+  });
 });

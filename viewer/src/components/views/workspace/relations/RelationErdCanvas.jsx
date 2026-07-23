@@ -21,6 +21,7 @@ import AddModelMention from './AddModelMention';
 import RelationLinkEdge from './RelationLinkEdge';
 import { mergeById } from './erdNodeMerge';
 import ErdTidyButton from './ErdTidyButton';
+import CenteredFrameState from '../../common/CenteredFrameState';
 
 /**
  * RelationErdCanvas — the Relations ERD builder (VIS-1006).
@@ -31,20 +32,9 @@ import ErdTidyButton from './ErdTidyButton';
  *
  * data-testid: `relation-erd`.
  */
-const ErdEmptyState = () => (
-  <div
-    data-testid="relation-erd-empty"
-    className="flex flex-1 items-center justify-center bg-gray-50 p-12 text-center"
-  >
-    <div className="max-w-[360px] rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-      <h2 className="text-[15px] font-semibold text-gray-900">No models to relate yet</h2>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
-        Add at least two models, then drag a column from one card onto a column of another to
-        author a relation.
-      </p>
-    </div>
-  </div>
-);
+// VIS-1071 (01-ux-spec.md §7): local ErdEmptyState replaced by the shared
+// CenteredFrameState — rendered inline at its call site below (maxWidth={360}
+// preserves this state's original narrower card).
 
 const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
   const fetchModels = useStore(s => s.fetchModels);
@@ -272,7 +262,12 @@ const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
       </div>
 
       {!hasModels ? (
-        <ErdEmptyState />
+        <CenteredFrameState
+          testId="relation-erd-empty"
+          title="No models to relate yet"
+          body="Add at least two models, then drag a column from one card onto a column of another to author a relation."
+          maxWidth={360}
+        />
       ) : (
         <div ref={setDropRef} data-testid="relation-erd-dropzone" className="relative flex-1">
           <ReactFlow

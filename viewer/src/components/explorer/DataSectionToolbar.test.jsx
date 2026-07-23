@@ -238,7 +238,9 @@ describe('DataSectionToolbar', () => {
     expect(pill.dataset.objectType).toBe('dimension');
   });
 
-  it('failed columns have red styling via className override', () => {
+  // B9 (04-bug-inventory.md) / VIS-1071: failed columns use the shared
+  // `highlight-*` tokens, never raw `red-*`.
+  it('failed columns have highlight (not red) styling via className override', () => {
     setupStore({
       explorerModelStates: {
         model_a: {
@@ -250,8 +252,9 @@ describe('DataSectionToolbar', () => {
     });
     render(<DataSectionToolbar />);
     const pill = screen.getByTestId('pill-dimension-bad_col');
-    expect(pill.className).toContain('bg-red-50');
-    expect(pill.className).toContain('border-red-200');
+    expect(pill.className).toContain('bg-highlight-50');
+    expect(pill.className).toContain('border-highlight-200');
+    expect(pill.className).not.toMatch(/\bred-/);
   });
 
   it('clicking pill opens edit mode (sets editColumn)', () => {

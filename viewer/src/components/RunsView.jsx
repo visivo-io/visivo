@@ -3,15 +3,21 @@ import { useQuery } from '@tanstack/react-query';
 import useStore from '../stores/store';
 import { fetchRuns, fetchRunLog } from '../api/branching';
 import AnsiText from './common/AnsiText';
+import useProjectChangeListener from './views/workspace/useProjectChangeListener';
 
 // queued/running are the only non-terminal states — while active a run is still
 // building, so the detail panel tail-polls the log.
 const isActiveRun = run => run.state === 'queued' || run.state === 'running';
 
-// Run states mirror the backend RunState enum.
+// Run states mirror the backend RunState enum. `failed` uses the shared
+// `highlight` design token (CLAUDE.md: "Highlight — used for destructive
+// actions and alerts") instead of a hand-rolled red; the other states are
+// distinct semantic status hues with no brand-palette equivalent, so they
+// stay standard Tailwind (matching every other status pill in the app —
+// e.g. the commit/deploy indicators).
 const STATE_BADGE = {
   succeeded: 'bg-green-100 text-green-800',
-  failed: 'bg-red-100 text-red-800',
+  failed: 'bg-highlight-100 text-highlight-700',
   running: 'bg-blue-100 text-blue-800',
   queued: 'bg-amber-100 text-amber-800',
   canceled: 'bg-gray-100 text-gray-600',
@@ -55,7 +61,7 @@ function RunDetail({ run }) {
         ))}
       </dl>
       <div>
-        <div className={`font-medium mb-1 ${err ? 'text-red-700' : 'text-gray-500'}`}>
+        <div className={`font-medium mb-1 ${err ? 'text-highlight-700' : 'text-gray-500'}`}>
           {err ? `Error${err.phase ? ` — ${err.phase}` : ''}` : 'Logs'}
         </div>
         <pre className="bg-gray-900 text-gray-100 rounded p-3 overflow-auto max-h-80 whitespace-pre-wrap">
@@ -75,10 +81,34 @@ function RunDetail({ run }) {
  * Shared shape with the cloud: backed by the same fetchRuns/fetchRunLog +
  * /api/projects/<id>/run/ + /api/runs/<id>/logs/ contract (local serve
  * implements it via RunManager).
+ *
+ * e2e-gap-review.md D7 ("VIS-1087's remaining half"): `/runs` mounts OUTSIDE
+ * the Workspace shell, so — before this hook was added here — a commit fired
+ * from any `/workspace/...` tab hard-reloaded a tab sitting on `/runs` too
+ * (the commit broadcast's `reload` socket event only skips
+ * `window.location.reload()` when `window.__VISIVO_SOFT_RELOAD__` is true,
+ * which only `useProjectChangeListener` sets, and only the Workspace called
+ * it). A hard reload here silently loses which run row was expanded
+ * (`expandedId`, purely local state) for no reason — mounting the same hook
+ * Workspace.jsx already uses is a small, mechanical fix that changes nothing
+ * else about this view's own behavior or data-fetching.
+ *
+ * 6c-T2 (shell-ia — "Runs view: dark-on-dark text on a shell-less page"):
+ * the root no longer depends on `Home`'s ambient `bg-gray-50` wrapper for a
+ * readable background — every entry point (loading / error / loaded) sets
+ * its own explicit light surface, so this view is self-contained regardless
+ * of what mounts it. The destructive states (load failure, a run's error
+ * label/badge) use the shared `highlight` design token instead of a
+ * hand-rolled red — see `STATE_BADGE`'s docstring for why the other status
+ * hues stay standard Tailwind.
  */
 export default function RunsView() {
   const projectId = useStore(state => state.project?.id);
   const [expandedId, setExpandedId] = useState(null);
+
+  // D7: soft-refresh on backend `project_changed` events instead of a hard
+  // page reload — see the module docstring above.
+  useProjectChangeListener();
   const {
     data: runs = [],
     isLoading,
@@ -93,11 +123,23 @@ export default function RunsView() {
     refetchOnMount: 'always',
   });
 
-  if (isLoading) return <div className="p-6 text-gray-500">Loading runs…</div>;
-  if (error) return <div className="p-6 text-red-600">Failed to load runs.</div>;
+  if (isLoading) {
+    return (
+      <div data-testid="runs-view-loading" className="min-h-full bg-gray-50 p-6 text-gray-500">
+        Loading runs…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div data-testid="runs-view-error" className="min-h-full bg-gray-50 p-6 text-highlight">
+        Failed to load runs.
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
+    <div data-testid="runs-view" className="min-h-full bg-gray-50 p-6">
       <h2 className="text-xl font-bold text-gray-900 mb-1">Runs</h2>
       <p className="text-gray-500 text-sm mb-4">
         Each saved change triggers a debounced run that rebuilds the affected assets. Click a
@@ -137,7 +179,7 @@ export default function RunsView() {
                   </span>
                   <span className="flex-1 text-gray-600">{scopeLabel(run)}</span>
                   <span className="w-16 flex items-center justify-end gap-2 text-gray-400">
-                    {run.error_json && <span className="text-red-600 text-xs font-medium">error</span>}
+                    {run.error_json && <span className="text-highlight text-xs font-medium">error</span>}
                     <span aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
                   </span>
                 </button>

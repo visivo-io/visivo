@@ -12,6 +12,10 @@ import TerminalIcon from '@mui/icons-material/Terminal';
 import MergeIcon from '@mui/icons-material/Merge';
 import TuneIcon from '@mui/icons-material/Tune';
 import SettingsIcon from '@mui/icons-material/Settings';
+import HomeIcon from '@mui/icons-material/Home';
+import HubIcon from '@mui/icons-material/Hub';
+import ExploreIcon from '@mui/icons-material/Explore';
+import CompassCalibrationIcon from '@mui/icons-material/CompassCalibration';
 
 /**
  * Centralized object type definitions
@@ -304,6 +308,96 @@ export const OBJECT_TYPES = [
       node: 'bg-gray-50 border-gray-200',
       nodeSelected: 'bg-gray-100 border-gray-400',
       connectionHandle: '#6b7280', // gray-500
+    },
+  },
+  // Workspace DESTINATIONS (Explore 2.0 Phase 0, `higherLevelViews.js`) — not
+  // creatable data objects (enabled: false, like `defaults`), so the view
+  // switcher + every consumer that resolves a type's icon/color (TabStrip,
+  // the Home panes) share ONE source instead of each hand-rolling a fallback
+  // (fixes B1 — the Semantic Layer tab used to show a fallback MUI icon in
+  // the TabStrip while its pane borrowed `relation`'s icon). Chrome/slate
+  // toned so they read as distinct from the rainbow data-object spectrum
+  // above.
+  {
+    value: 'project',
+    label: 'Project',
+    singularLabel: 'Project',
+    icon: HomeIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-slate-100',
+      text: 'text-slate-800',
+      border: 'border-slate-200',
+      bgHover: 'hover:bg-slate-50',
+      bgSelected: 'bg-slate-100',
+      borderSelected: 'border-slate-300',
+      node: 'bg-slate-50 border-slate-200',
+      nodeSelected: 'bg-slate-100 border-slate-400',
+      connectionHandle: '#64748b', // slate-500
+    },
+  },
+  {
+    value: 'semantic-layer',
+    label: 'Semantic Layer',
+    singularLabel: 'Semantic Layer',
+    icon: HubIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-zinc-100',
+      text: 'text-zinc-800',
+      border: 'border-zinc-200',
+      bgHover: 'hover:bg-zinc-50',
+      bgSelected: 'bg-zinc-100',
+      borderSelected: 'border-zinc-300',
+      node: 'bg-zinc-50 border-zinc-200',
+      nodeSelected: 'bg-zinc-100 border-zinc-400',
+      connectionHandle: '#71717a', // zinc-500
+    },
+  },
+  {
+    value: 'explorer',
+    label: 'Explorer',
+    singularLabel: 'Explorer',
+    icon: ExploreIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-stone-100',
+      text: 'text-stone-800',
+      border: 'border-stone-200',
+      bgHover: 'hover:bg-stone-50',
+      bgSelected: 'bg-stone-100',
+      borderSelected: 'border-stone-300',
+      node: 'bg-stone-50 border-stone-200',
+      nodeSelected: 'bg-stone-100 border-stone-400',
+      connectionHandle: '#78716c', // stone-500
+    },
+  },
+  // `exploration` — the DOCUMENT type (Explore 2.0 Phase 2), distinct from
+  // the chrome `explorer` DESTINATION above: an exploration is a real object
+  // (a tab, a Home gallery card) with its own backend record, so it gets a
+  // vivid color like every other data object rather than a muted chrome
+  // tone. Teal + a compass-dial icon per the design mock
+  // (specs/plan/explorer-workspace-unification/design/1-explorer-home.html —
+  // a circle + needle, closest built-in match is CompassCalibration).
+  // `enabled: false` because explorations are never created via the
+  // Library's "New object" menu — they're minted from Explorer Home
+  // ("+ New exploration" / a source tile) or "Explore this" (Phase 5).
+  {
+    value: 'exploration',
+    label: 'Explorations',
+    singularLabel: 'Exploration',
+    icon: CompassCalibrationIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-teal-50',
+      text: 'text-teal-600',
+      border: 'border-teal-200',
+      bgHover: 'hover:bg-teal-50',
+      bgSelected: 'bg-teal-100',
+      borderSelected: 'border-teal-300',
+      node: 'bg-teal-50 border-teal-200',
+      nodeSelected: 'bg-teal-100 border-teal-400',
+      connectionHandle: '#0d9488', // teal-600
     },
   },
 ];

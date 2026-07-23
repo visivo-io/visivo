@@ -260,7 +260,14 @@ class InsightQueryBuilder:
       - Have to collect all of the query statements from insight.props & insight.interactions
     """
 
-    def __init__(self, insight, dag: ProjectDag, output_dir):
+    def __init__(
+        self,
+        insight,
+        dag: ProjectDag,
+        output_dir,
+        schema_overrides: Optional[Dict[str, dict]] = None,
+        force_dynamic: bool = False,
+    ):
         self.logger = Logger.instance()
         self.insight = insight  # Store for placeholder replacement
         self.dag = dag
@@ -268,7 +275,14 @@ class InsightQueryBuilder:
         self.insight_hash = insight.name_hash()
         self.insight_name = insight.name
         self.unresolved_query_statements = insight.get_all_query_statements(dag)
-        self.is_dynamic = insight.is_dynamic(dag)
+        # `force_dynamic` (Explore 2.0 Phase 4 compile-draft endpoint): a draft
+        # never has server-executed `pre_query` output to read back — its
+        # `post_query` must ALWAYS be the DuckDB-dialect, model-hash-qualified
+        # form the dynamic (input-referencing) path already builds, even when
+        # the draft has zero real Input dependents. See
+        # research/s2-draft-rendering-decision.md's "endpoint should force the
+        # DuckDB/post_query-only build path regardless of is_dynamic()".
+        self.is_dynamic = force_dynamic or insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
         source = insight.get_dependent_source(dag, output_dir)
         self.default_schema = source.db_schema
@@ -276,7 +290,10 @@ class InsightQueryBuilder:
         self.source_dialect = source.get_sqlglot_dialect()
         self.native_dialect = "duckdb" if self.is_dynamic else self.source_dialect
         field_resolver = FieldResolver(
-            dag=dag, output_dir=output_dir, native_dialect=self.native_dialect
+            dag=dag,
+            output_dir=output_dir,
+            native_dialect=self.native_dialect,
+            schema_overrides=schema_overrides,
         )
         self.field_resolver = field_resolver
         # Pass relevant_models to RelationGraph to scope relation resolution

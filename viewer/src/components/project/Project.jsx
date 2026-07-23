@@ -8,14 +8,33 @@ import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
 import DashboardSection from '../project/DashboardSection';
 import FilterBar from '../project/FilterBar';
+import useProjectChangeListener from '../views/workspace/useProjectChangeListener';
 
 /**
  * Project - Container component for the new project view
  * Fetches data from stores and passes to Dashboard
  * Reads dashboards from the store instead of a project_json blob
+ *
+ * e2e-gap-review.md D7 ("VIS-1087's remaining half"): `/project` (this
+ * component) and `/runs` (RunsView.jsx) render OUTSIDE the Workspace shell —
+ * per `03-delivery-plan.md`'s "Resolved questions" §1, `/project` is
+ * deliberately the separate "consumer surface" and stays that way. Before
+ * this hook was mounted here, committing from any `/workspace/...` tab hard-
+ * reloaded every OTHER open tab sitting on `/project` or `/runs` (they never
+ * set `window.__VISIVO_SOFT_RELOAD__`, so the injected `/hot-reload.js`
+ * treated the commit-broadcast `reload` event as a real navigation and
+ * called `window.location.reload()`), wiping any live client-side state
+ * there. Mounting the SAME hook the Workspace already uses is a mechanical,
+ * behavior-preserving fix: it only sets a window flag + refetches the shared
+ * store's collections on a backend recompile — it does not change `/project`
+ * itself, retire it, or fold it into the Workspace.
  */
 function Project() {
   const { dashboardName } = useParams();
+
+  // D7: soft-refresh on backend `project_changed` events instead of a hard
+  // page reload — see the module docstring above.
+  useProjectChangeListener();
 
   // Positioned root the View-mode flip layer (VIS-788 / I-1) measures + delegates
   // pointer events against, so its flip buttons land over the dashboard's slots.

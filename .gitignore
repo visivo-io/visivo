@@ -12,6 +12,12 @@ __pycache__/
 env/
 venv/
 venv12/
+venv14/
+# ...and the bare-symlink form: a trailing-slash rule matches directories
+# only, so a `venv14 -> /path/to/poetry-env` symlink slipped past it and got
+# committed by a `git add -A` (Wave 1), clobbering worktree venvs on checkout.
+/venv14
+/venv12
 cli_venv/
 api_venv/
 ENV/
@@ -45,6 +51,9 @@ htmlcov/
 .netlify
 .qodo
 .visivo_cache
+# Exploration workbench repository (Explore 2.0) — runtime state under any
+# test-projects/*/.visivo/, never checked in (analogous to target/).
+test-projects/*/.visivo/
 mk_docs.log
 visivo.spec
 

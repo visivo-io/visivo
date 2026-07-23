@@ -37,10 +37,14 @@ export const CHECKLIST_ITEMS = [
     id: 'connect_source',
     label: 'Connect a data source',
     why: 'A Source is the connection to where your data already lives.',
-    route: '/editor',                       // the Editor FAB is the canonical
-                                            // add-source surface; SourceBrowser
-                                            // in /explorer lists existing
-                                            // sources but doesn't create them.
+    route: '/editor',                       // /editor redirects into the
+                                            // Workspace (`/workspace`), where
+                                            // the Library's "New" button is
+                                            // this target's live anchor
+                                            // (B14 part 1, Explore 2.0 Phase 2
+                                            // — `library-new-object-button`
+                                            // in Library.jsx carries
+                                            // `data-onb-target="source-create-button"`).
     target: 'source-create-button',
     weight: 10,
     predicate: ({ project, sources, persisted }) =>
@@ -52,9 +56,25 @@ export const CHECKLIST_ITEMS = [
     id: 'build_model',
     label: 'Create and run a model',
     why: "A Model is a re-usable SQL definition you'll chart from.",
-    route: '/explorer',
-    target: 'model-tab-bar',
+    // Explore 2.0 Phase 3b cutover (B14 part 2): `/explorer` still exists as
+    // a permanent redirect, but the manifest points at the live route
+    // directly. The old anchor (`model-tab-bar`, the retired horizontal
+    // ModelTabBar's "+") has zero remaining producers — retargeted to the
+    // exploration surface's query-chip "+" (`ExplorationQueryChips.jsx`).
+    route: '/workspace/exploration',
+    target: 'query-chip-add',
     weight: 20,
+    // D8 (e2e-gap-review.md delta pass): `query-chip-add` only exists
+    // INSIDE an already-open exploration tab, never on the bare
+    // `/workspace/exploration` gallery `route` above points at — a
+    // first-time user clicking this row would land on an empty Home with
+    // no coach-mark and no indication anything was wrong.
+    // `OnboardingChecklist.handleItemClick` checks this flag and, instead
+    // of a bare `navigate(route)`, mints a fresh exploration first
+    // (mirroring `DashboardExplorerRedirect` in LocalRouter.jsx) and
+    // navigates straight to `/workspace/exploration/:id` — the one place
+    // `query-chip-add` is guaranteed to be mounted.
+    mintsExploration: true,
     // Multi-step flow: the Coach walks the user through creating a tab,
     // typing SQL, and running the query before the row checks off.
     // Each step's `done` reads a per-action flag tapped by the host
@@ -63,9 +83,9 @@ export const CHECKLIST_ITEMS = [
     steps: [
       {
         id: 'create_tab',
-        target: 'model-tab-bar',
-        label: 'Open a new model tab',
-        tip: 'Click + on the tab bar to start a Model. Rename it so your team knows what it does.',
+        target: 'query-chip-add',
+        label: 'Open a new query',
+        tip: 'Click + on the query chips to start a scratch query. Rename it so your team knows what it does.',
         done: ({ persisted }) => !!persisted?.actions?.model_tab_created,
       },
       {
@@ -88,9 +108,20 @@ export const CHECKLIST_ITEMS = [
     id: 'create_insight',
     label: 'Create an Insight in Explorer',
     why: 'An Insight is a chart on top of a Model.',
-    route: '/explorer',
+    route: '/workspace/exploration',
     target: 'right-panel-add-insight',
     weight: 30,
+    // P6-D5 (e2e-gap-review.md "Phase 6 delta pass"): `right-panel-add-insight`
+    // ALSO only mounts inside an open exploration tab, never on the bare
+    // `route` above — the same D8 symptom `build_model` was fixed for, left
+    // open here. Unlike `build_model` (the first step, no exploration exists
+    // yet), by the time a user reaches this row an exploration usually
+    // already exists — the one `build_model` minted, holding the model this
+    // Insight should chart from. `OnboardingChecklist.handleItemClick`
+    // therefore routes into the active/most-recently-touched exploration
+    // (falling back to minting a fresh one only if none exists yet at all),
+    // rather than `mintsExploration`'s always-mint-a-new-one behavior.
+    routeToActiveExploration: true,
     // Multi-step flow: the Coach walks the user from "create the insight"
     // (an in-memory record on the active chart) through "save it to the
     // project" (round-trips through saveInsight → backend). Both steps
@@ -127,6 +158,8 @@ export const CHECKLIST_ITEMS = [
     steps: [
       {
         id: 'open_dashboard_editor',
+        // Same live anchor as `connect_source` above — the Library's "New"
+        // button creates any object type, dashboards included.
         target: 'source-create-button',
         label: 'Open a new Dashboard',
         tip: 'Click + and pick Dashboard to start arranging widgets.',
@@ -146,6 +179,9 @@ export const CHECKLIST_ITEMS = [
     label: 'View your Project',
     why: 'See the dashboard your code produces.',
     route: '/project',
+    // Live anchor: TopNav's "Dashboards" tool-switch Link carries
+    // `data-onb-target="top-nav-project"` (B14 part 1, Explore 2.0 Phase 2 —
+    // TopNav.jsx's `DEFAULT_TOOLS`).
     target: 'top-nav-project',
     weight: 50,
     // Real signal now: user has to actually navigate to /project after
@@ -158,6 +194,9 @@ export const CHECKLIST_ITEMS = [
     label: 'Connect Visivo Cloud',
     why: 'Sign in to push your dashboard out so a teammate can open it.',
     route: '/editor',
+    // Live anchor: TopNav's Commit/Deploy buttons both carry
+    // `data-onb-target="top-nav-deploy"` (B14 part 1, Explore 2.0 Phase 2) —
+    // they're mutually exclusive by dirty state so either covers this.
     target: 'top-nav-deploy',
     weight: 55,
     // Set by the onboarding flow's Cloud screen on a successful
@@ -209,9 +248,13 @@ export const ROLE_OVERRIDES = {
         id: 'define_metric',
         label: 'Define a Metric on a Model',
         why: 'A re-usable measure every Insight + chart agrees on.',
-        route: '/explorer',
+        route: '/workspace/exploration',
         target: 'metric-add-button',
         weight: 25,
+        // P6-D5 — same gap as `create_insight` above: `metric-add-button`
+        // only mounts inside an open exploration tab. Routes into the
+        // active/most-recent exploration rather than the bare gallery route.
+        routeToActiveExploration: true,
         // Action-based: AddComputedColumnPopover taps
         // recordOnboardingAction('metric_defined') on save. A computed
         // column on a Model is exactly the "re-usable measure" the

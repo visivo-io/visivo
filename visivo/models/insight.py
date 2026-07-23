@@ -258,7 +258,29 @@ class Insight(NamedModel, ParentModel):
         input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=self)
         return len(input_descendants) > 0
 
-    def get_query_info(self, dag: ProjectDag, output_dir) -> InsightQueryInfo:
-        builder = InsightQueryBuilder(self, dag, output_dir)
+    def get_query_info(
+        self, dag: ProjectDag, output_dir, schema_overrides=None, force_dynamic=False
+    ) -> InsightQueryInfo:
+        """Resolve this insight's props/interactions into query text.
+
+        Args:
+            dag: Project DAG containing this insight's dependencies.
+            output_dir: Run output dir schemas/queries are read from.
+            schema_overrides: Optional ``{model_name: schema_dict}`` passed
+                straight through to ``FieldResolver`` (see its docstring) —
+                lets a caller resolving a never-run scratch model's raw-column
+                refs supply columns learned some other way (client-side
+                introspection) instead of hitting the normal
+                ``schemas/<model>/schema.json`` disk read. ``None`` (every
+                real run-pipeline caller) is unaffected.
+            force_dynamic: Build the DuckDB/model-hash-qualified `post_query`
+                form regardless of whether this insight actually depends on
+                an Input (the Explore 2.0 compile-draft endpoint's need —
+                see `InsightQueryBuilder`'s docstring for why). ``False``
+                (every real run-pipeline caller) is unaffected.
+        """
+        builder = InsightQueryBuilder(
+            self, dag, output_dir, schema_overrides=schema_overrides, force_dynamic=force_dynamic
+        )
         builder.resolve()
         return builder.build()

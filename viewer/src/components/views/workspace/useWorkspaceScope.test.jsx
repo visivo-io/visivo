@@ -42,6 +42,7 @@ const resetWorkspaceStore = () => {
     useStore.setState({
       workspaceTabs: [],
       workspaceActiveTabId: null,
+      workspaceActiveView: 'project',
     });
   });
 };
@@ -72,32 +73,43 @@ describe('useWorkspaceScope', () => {
     expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('null');
   });
 
-  test('returns project scope with project selectedItem when project tab is active', () => {
+  test('returns the Semantic Layer view scope when that view is active and no tab is open (B3 fix)', () => {
+    // Project/Semantic Layer/Explorer left the tab model (Phase 0) — a
+    // destination is active via `workspaceActiveView`, never a tab record.
+    // Before B3 this fell through to a nonsensical `item` scope with a
+    // `+semantic-layer` lineage selector; now it resolves through the view
+    // registry (`higherLevelViews.js`).
+    act(() => {
+      useStore.setState({ workspaceActiveView: 'semantic-layer' });
+    });
+    renderAt('/workspace');
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('semantic-layer');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent('*');
+    expect(screen.getByTestId('probe-dashboard')).toHaveTextContent('null');
+    expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('null');
+  });
+
+  test('returns the Explorer view scope when that view is active and no tab is open', () => {
+    act(() => {
+      useStore.setState({ workspaceActiveView: 'explorer' });
+    });
+    renderAt('/workspace');
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('explorer');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent('*');
+    expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('null');
+  });
+
+  test('an active document tab always wins over the active view (views can never be tabs)', () => {
     act(() => {
       useStore.setState({
-        workspaceTabs: [
-          {
-            id: 'project:analytics-platform',
-            type: 'project',
-            name: 'analytics-platform',
-            dirty: false,
-          },
-        ],
-        workspaceActiveTabId: 'project:analytics-platform',
+        workspaceTabs: [{ id: 'chart:revenue', type: 'chart', name: 'revenue', dirty: false }],
+        workspaceActiveTabId: 'chart:revenue',
+        workspaceActiveView: 'semantic-layer',
       });
     });
     renderAt('/workspace');
-    // VIS-809 (M-3): an active project-chrome tab now scopes to `project` so
-    // the right-rail Edit tab binds to the project Defaults form. The selector
-    // stays `'*'` (Full project) so lineage is unaffected.
-    expect(screen.getByTestId('probe-scope')).toHaveTextContent('project');
-    expect(screen.getByTestId('probe-selector')).toHaveTextContent('*');
-    expect(screen.getByTestId('probe-selected-type')).toHaveTextContent(
-      'project'
-    );
-    expect(screen.getByTestId('probe-selected-name')).toHaveTextContent(
-      'analytics-platform'
-    );
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('item');
+    expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('chart');
   });
 
   test('returns dashboard scope when URL is /workspace/dashboard/<name>', () => {
@@ -200,25 +212,17 @@ describe('useWorkspaceScope', () => {
     expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('B');
   });
 
-  test('an active PROJECT tab wins over a stale dashboard URL param (tab switches do not navigate)', () => {
-    // After visiting /workspace/dashboard/A the URL param lingers; clicking
-    // back to the project tab must scope to the project — mirroring the
-    // VIS-835 dashboard-tab rule — instead of the stale URL dashboard.
+  test('a stale dashboard URL param is still canonical when no tab is active (the view registry is the fallback of LAST resort)', () => {
+    // Project left the tab model (Phase 0), so the pre-Phase-0 "project tab
+    // wins over a stale dashboard URL" regression no longer applies to a tab —
+    // but the URL still wins over a merely-remembered `workspaceActiveView`
+    // when there's no tab to override it (5's precedence position).
     act(() => {
-      useStore.setState({
-        workspaceTabs: [
-          { id: 'project:analytics-platform', type: 'project', name: 'analytics-platform', dirty: false },
-          { id: 'dashboard:A', type: 'dashboard', name: 'A', dirty: false },
-        ],
-        workspaceActiveTabId: 'project:analytics-platform',
-      });
+      useStore.setState({ workspaceActiveView: 'semantic-layer' });
     });
     renderAt('/workspace/dashboard/A');
-    expect(screen.getByTestId('probe-scope')).toHaveTextContent('project');
-    expect(screen.getByTestId('probe-selector')).toHaveTextContent('*');
-    expect(screen.getByTestId('probe-dashboard')).toHaveTextContent('null');
-    expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('project');
-    expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('analytics-platform');
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('dashboard');
+    expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('A');
   });
 
   test('an active dashboard tab on a dashboard URL keeps dashboard scope', () => {

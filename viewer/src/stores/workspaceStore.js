@@ -12,8 +12,12 @@
  *                               consumers (RightRail, MiddlePane, collapsed-
  *                               rail indicators, etc.) can read it directly
  *                               without a derivation hook.
- *   - `workspaceLeftCollapsed` / `workspaceRightCollapsed` — rail collapse.
- *   - `workspaceRightTab`    — which right-rail tab is active.
+ *   - `workspaceLeftCollapsed` / `workspaceRightCollapsed` — rail collapse
+ *     (manual toggle AND 6c-T2's narrow-viewport auto-collapse both write
+ *     these same flags — see `applyWorkspaceAutoCollapse`).
+ *   - `workspaceRightTab`    — which right-rail tab is active ('outline' |
+ *     'edit' | 'build' — 'build' is the exploration-scope Insight+Chart CRUD,
+ *     D6).
  *   - `workspaceLens`        — sub-bar lens for the active object.
  *   - `workspaceOutlineSelectedKey` — which Outline-tree node is selected
  *     (`'dashboard'` | `'row.N'` | `'row.N.item.M'`). Drives the mulberry
@@ -43,7 +47,12 @@ import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
 import { unwrapConfig, withConfig } from '../components/views/workspace/unwrapRecordConfig';
-import { workspaceTabUrl, WORKSPACE_BASE } from '../components/views/workspace/workspaceUrl';
+import { workspaceTabUrl, workspaceViewUrl, WORKSPACE_BASE } from '../components/views/workspace/workspaceUrl';
+import {
+  isWorkspaceView,
+  viewForDocumentType,
+  DEFAULT_WORKSPACE_VIEW,
+} from '../components/views/workspace/higherLevelViews';
 
 /**
  * Two `{ type, name }` selection descriptors identify the same object.
@@ -67,6 +76,16 @@ const createWorkspaceSlice = (set, get) => ({
   workspaceActiveTabId: null,
   workspaceActiveObject: null, // `{ type, name }` mirror of the active tab.
 
+  // The active DESTINATION (Project · Semantic Layer · Explorer — D1 in
+  // specs/plan/explorer-workspace-unification). Views left the tab model in
+  // Explore 2.0 Phase 0: they're never `workspaceTabs` records, never dirty,
+  // never closable. `workspaceActiveObject`/`workspaceActiveTabId` stay null
+  // while a view owns the center; opening any document tab sets THIS to that
+  // document's owning destination (see `activateWorkspaceTab`), so closing
+  // the last tab returns to the right Home instead of always resetting to
+  // Project. Persists to localStorage alongside the tab set (`Workspace.jsx`).
+  workspaceActiveView: DEFAULT_WORKSPACE_VIEW,
+
   // The active tab is URL-addressable (VIS thread: Back button + the URL as the
   // clean single loop). The Workspace registers the router's `navigate` here on
   // mount; the tab actions route the active SELECTION through it, and
@@ -88,10 +107,40 @@ const createWorkspaceSlice = (set, get) => ({
   // confirm/cancel in the close dialog, or null when no close is pending.
   workspacePendingCloseTabId: null,
 
+  // A lightweight global toast queue (Explore 2.0 Phase 2): one-off notices
+  // that must be visible regardless of which pane/tab is active — e.g.
+  // "Churn dig was deleted" when Home's delete force-closes an open (even
+  // parked) exploration tab (01-ux-spec.md §4). `{ message, key } | null`;
+  // `key` re-triggers the Snackbar's appear animation for back-to-back toasts
+  // with the same message. Rendered once, at WorkspaceShell.
+  workspaceToast: null,
+
+  showWorkspaceToast: (message) => {
+    if (!message) return;
+    set({ workspaceToast: { message, key: Date.now() } });
+  },
+
+  dismissWorkspaceToast: () => {
+    set({ workspaceToast: null });
+  },
+
   // Rails -------------------------------------------------------------------
   workspaceLeftCollapsed: false,
   workspaceRightCollapsed: false,
-  workspaceRightTab: 'edit', // 'outline' | 'edit'
+  workspaceRightTab: 'edit', // 'outline' | 'edit' | 'build'
+
+  // Narrow-viewport AUTO collapse bookkeeping (6c-T2 responsive shell,
+  // BLOCKER at 1100px) — NOT read by LeftRail/RightRail (they only ever read
+  // the `workspace{Left,Right}Collapsed` flags above, unchanged). This just
+  // records whether the CURRENT collapse of a rail was performed by
+  // `WorkspaceShell`'s own width `ResizeObserver` (`applyWorkspaceAutoCollapse`)
+  // rather than the user clicking the rail's own expand/collapse toggle, so
+  // the shell knows it's safe to auto-EXPAND that rail again once the
+  // viewport widens back out — and, symmetrically, so it never fights a rail
+  // the user closed/opened themselves. `toggleWorkspace{Left,Right}Collapsed`
+  // clear this the instant the user touches the toggle.
+  workspaceLeftAutoCollapsedByShell: false,
+  workspaceRightAutoCollapsedByShell: false,
 
   // Lens (sub-bar segmented) ------------------------------------------------
   workspaceLens: 'preview', // 'preview' | 'lineage'
@@ -102,6 +151,15 @@ const createWorkspaceSlice = (set, get) => ({
   // `?edit=…&lens=lineage` deep link, and like it, scoped to one objectKey
   // so it can never leak to a later selection. The consuming pane clears it.
   workspaceLensIntent: null, // { objectKey: 'type:name', lens: 'lineage' } | null
+
+  // One-shot Semantic Layer ERD node-focus request (VIS-1069, mirrors
+  // `workspaceLensIntent`'s shape/lifecycle exactly). Promoting a
+  // metric/dimension's "View in Semantic Layer" offer sets this ONE
+  // statement before navigating to the semantic-layer view; the ERD
+  // (`SemanticLayerCanvas.jsx`) reads it once, pans/centers on the field's
+  // parent model node, and self-clears — never a lingering focus request
+  // that would hijack a later, unrelated ERD visit.
+  workspaceSemanticLayerFocusIntent: null, // { objectKey: 'type:name' } | null
 
   // Pivot playground draft (table `build` lens, VIS-1008) --------------------
   // The in-flight pivot config the drag-to-shelf builder owns while the user
@@ -151,6 +209,28 @@ const createWorkspaceSlice = (set, get) => ({
   // it. Session-only (schema can change between sessions). (VIS-1004 caching.)
   workspaceSourceOutlineDataCache: {},
 
+  // Library source drill-down (Explore 2.0 Phase 3a / D9): does the Library's
+  // "Sources" subsection have THIS source's row expanded at all (source →
+  // schema → table → columns)? A DIFFERENT concept from
+  // `workspaceSourceOutlineExpanded` above (which tracks expand state of
+  // individual db/schema/table NODES once a source's tree is already being
+  // shown) — this is the top-level gate that decides whether
+  // `useSourceOutline(sourceName)` mounts at all for a given Library row, so
+  // the drill-down is genuinely lazy: collapsed sources never fetch their
+  // cached schema. Keyed by source name → boolean. Session-only, same
+  // rationale as its sibling above (schema can change between sessions).
+  librarySourceRowExpanded: {},
+
+  toggleLibrarySourceRowExpanded: sourceName => {
+    if (!sourceName) return;
+    set(state => ({
+      librarySourceRowExpanded: {
+        ...state.librarySourceRowExpanded,
+        [sourceName]: !state.librarySourceRowExpanded[sourceName],
+      },
+    }));
+  },
+
   // Resize state (Phase 0 visual stub; actual resizing comes later) --------
   workspaceLeftWidth: 320,
   workspaceRightWidth: 360,
@@ -165,19 +245,48 @@ const createWorkspaceSlice = (set, get) => ({
    *
    * `tab` shape: `{ id?, type, name, dirty? }`. `id` defaults to
    * `<type>:<name>` so opening the same object twice focuses the existing tab.
+   *
+   * Navigates the URL AND activates in the store SYNCHRONOUSLY, in that
+   * order. This used to ONLY navigate and rely on `Workspace.jsx`'s separate
+   * URL→store sync `useEffect` (keyed on a `syncedTargetRef` value derived
+   * from `location.pathname`) to actually add/focus the tab. That guard is
+   * fundamentally racy: `closeWorkspaceTab` ALSO writes the store directly
+   * and then separately navigates, so the store and the URL are two
+   * independently-updating signals with no ordering guarantee between them
+   * — closing a tab and immediately reopening the SAME document (the URL
+   * returns to the exact string it had before, since ids are stable) can
+   * leave the effect's memory of "already synced" matching the reopen's URL
+   * even though the store no longer has the tab, so `activateWorkspaceTab`
+   * never re-fires and the reopen hangs forever (VIS-1050 gate — observed
+   * under real load: several concurrent browser instances competing for the
+   * main thread). Activating here removes the dependency on that effect
+   * entirely for the interactive path; `activateWorkspaceTab` is
+   * idempotent, so the effect harmlessly re-confirms the same state
+   * whenever it does run (still needed for browser back/forward and deep
+   * links, which never call this function). Navigate BEFORE activating —
+   * `history.pushState` (what the router's `navigate` calls under the hood)
+   * updates `window.location` before React's own re-render of anything
+   * reading it via `useLocation()`; activating first would let the document
+   * finish mounting while a caller reading the URL synchronously (e.g. a
+   * test's `page.url()`) still saw the PREVIOUS one.
    */
   openWorkspaceTab: (tab) => {
     if (!tab || !tab.type || !tab.name) return null;
-    const id = tab.id || `${tab.type}:${tab.name}`;
+    // Views (project/semantic-layer/explorer) left the tab model in Phase 0 —
+    // route legacy `openWorkspaceTab({ type: 'semantic-layer', ... })`-shaped
+    // calls (several still exist, e.g. `ProjectEditor`'s "Semantic Layer"
+    // button) to the view action instead, so those call sites keep working
+    // unmodified.
+    if (isWorkspaceView(tab.type)) {
+      get().openWorkspaceView(tab.type);
+      return tab.type;
+    }
     const nav = get().workspaceUrlNavigate;
     if (nav) {
-      // Route the active selection THROUGH the URL: navigate to the tab's URL
-      // and let `useWorkspaceUrlSync` set it active (single clean loop). The id
-      // is returned synchronously so callers keep their contract.
+      // Still route the URL — shareable links, the Back button's history,
+      // and a fresh reload all read the URL as the source of truth.
       nav(workspaceTabUrl({ type: tab.type, name: tab.name }, get().workspaceUrlBase));
-      return id;
     }
-    // No router mounted — activate in-store directly (synchronous fallback).
     return get().activateWorkspaceTab(tab);
   },
 
@@ -186,19 +295,47 @@ const createWorkspaceSlice = (set, get) => ({
    * URL→store write called by `useWorkspaceUrlSync` once the URL changes (and
    * the no-router fallback for `openWorkspaceTab`). Nothing else should call it
    * directly — UI goes through `openWorkspaceTab` so the URL stays the source.
+   *
+   * Sets `workspaceActiveView` to the document's OWNING DESTINATION as a side
+   * effect (01-ux-spec.md §1's deep-link rule) — this is the ONE write path
+   * every document open (Library, deep link, context menu, switcher) funnels
+   * through, so the rule can't be missed by a caller.
    */
   activateWorkspaceTab: (tab) => {
     if (!tab || !tab.type || !tab.name) return null;
+    if (isWorkspaceView(tab.type)) {
+      get().activateWorkspaceView(tab.type);
+      return null;
+    }
     const id = tab.id || `${tab.type}:${tab.name}`;
     const state = get();
     const existing = state.workspaceTabs.find((t) => t.id === id);
     const activeObject = { type: tab.type, name: tab.name };
     const keyReset = outlineKeyResetFor(state.workspaceActiveObject, activeObject);
+    const owningView = viewForDocumentType(tab.type);
+    // Cross-PR gap fix (#5, e2e-gap-review.md): ANY selection change must
+    // dismiss a pending tab-close confirmation — `requestCloseWorkspaceTab`
+    // parks `workspacePendingCloseTabId` so `TabCloseConfirmDialog` can ask
+    // first, but that dialog lives at the shell level (`TabStrip.jsx`), not
+    // inside the tab/view it was raised for. Before this fix, only
+    // `confirmCloseWorkspaceTab`/`cancelCloseWorkspaceTab`/
+    // `closeWorkspaceTab`'s own id-match guard ever cleared it — navigating
+    // away via ANY other path (a Library row, a switcher click, a keyboard
+    // shortcut) left the dialog mounted and rendered on top of whatever the
+    // user landed on next. Clearing it here (and in `activateWorkspaceView`
+    // below) makes every selection change dismiss the stale confirmation,
+    // exactly like actually closing the tab would have.
     if (existing) {
       if (state.workspaceActiveTabId !== id) {
         emitWorkspaceEvent('tab_switched', { id, type: tab.type, name: tab.name, via: 'open' });
       }
-      set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject, ...keyReset });
+      set({
+        workspaceActiveTabId: id,
+        workspaceActiveObject: activeObject,
+        workspaceActiveView: owningView,
+        workspacePendingCloseTabId: null,
+        ...keyReset,
+      });
       return id;
     }
     emitWorkspaceEvent('tab_opened', { id, type: tab.type, name: tab.name, background: false });
@@ -206,16 +343,65 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: [...state.workspaceTabs, { id, type: tab.type, name: tab.name, dirty: !!tab.dirty }],
       workspaceActiveTabId: id,
       workspaceActiveObject: activeObject,
+      workspaceActiveView: owningView,
+      workspacePendingCloseTabId: null,
       ...keyReset,
     });
     return id;
   },
 
   /**
+   * Activate a workspace VIEW — the store write for the three destinations
+   * (Project / Semantic Layer / Explorer, D1). Parks any active document tab:
+   * it stays open in the strip, just not focused (01-ux-spec.md §1 — "clicking
+   * a view sets `workspaceActiveView` and releases the center from the active
+   * document tab"). This is the URL→store write (mirrors `activateWorkspaceTab`);
+   * UI should call `openWorkspaceView` so the URL stays the source of truth.
+   */
+  activateWorkspaceView: (view) => {
+    if (!isWorkspaceView(view)) return;
+    const state = get();
+    if (state.workspaceActiveView !== view || state.workspaceActiveTabId) {
+      emitWorkspaceEvent('view_activated', { view });
+    }
+    // See the matching comment in `activateWorkspaceTab` — a destination
+    // switch must dismiss a pending tab-close confirmation too (#5,
+    // e2e-gap-review.md), or the dialog is left floating over the
+    // just-activated destination's Home.
+    set({
+      workspaceActiveView: view,
+      workspaceActiveTabId: null,
+      workspaceActiveObject: null,
+      workspacePendingCloseTabId: null,
+    });
+  },
+
+  /**
+   * UI entry point for switching views — navigates the URL AND activates in
+   * the store synchronously (mirrors `openWorkspaceTab`'s comment for the
+   * full rationale: don't depend entirely on the separate, racy URL→store
+   * sync effect ever getting a correct-conclusion run for this transition;
+   * navigate before activating so a synchronous URL read never lags).
+   */
+  openWorkspaceView: (view) => {
+    if (!isWorkspaceView(view)) return;
+    const state = get();
+    const nav = state.workspaceUrlNavigate;
+    if (nav) {
+      nav(workspaceViewUrl(view, state.workspaceUrlBase));
+    }
+    state.activateWorkspaceView(view);
+  },
+
+  /**
    * Restore the OPEN-TAB SET from persistence (VIS thread: "if you refresh you
    * lose all the open tabs"). Replaces the strip WITHOUT focusing anything — the
    * active tab is restored separately from the URL. Sanitizes + de-dupes the
-   * saved payload (dirty flags don't survive a reload).
+   * saved payload (dirty flags don't survive a reload) and SCRUBS any
+   * `project`/`semantic-layer`/`explorer` records a pre-Phase-0 session may
+   * have persisted — those types left the tab model entirely (01-ux-spec.md
+   * §1's migration note), so a stale record must never resurrect as a
+   * document tab.
    */
   restoreWorkspaceTabs: (tabs) => {
     if (!Array.isArray(tabs)) return;
@@ -223,6 +409,7 @@ const createWorkspaceSlice = (set, get) => ({
     const restored = [];
     for (const t of tabs) {
       if (!t || !t.type || !t.name) continue;
+      if (isWorkspaceView(t.type)) continue; // one-time scrub — see docstring
       const id = t.id || `${t.type}:${t.name}`;
       if (seen.has(id)) continue;
       seen.add(id);
@@ -255,16 +442,19 @@ const createWorkspaceSlice = (set, get) => ({
     return id;
   },
 
-  /** Focus a tab by id without opening anything new. No-op if id unknown. */
+  /**
+   * Focus a tab by id without opening anything new. No-op if id unknown.
+   * Navigates the URL AND activates in the store synchronously — see
+   * `openWorkspaceTab`'s comment for the full VIS-1050 rationale (don't
+   * depend entirely on the separate, racy URL→store sync effect).
+   */
   switchWorkspaceTab: (tabId) => {
     const state = get();
     const tab = state.workspaceTabs.find((t) => t.id === tabId);
     if (!tab) return;
-    // Route the selection through the URL (Back button + single loop); the
-    // no-router fallback focuses in-store directly.
+    // Route the selection through the URL (Back button + single loop).
     if (state.workspaceUrlNavigate) {
       state.workspaceUrlNavigate(workspaceTabUrl(tab, state.workspaceUrlBase));
-      return;
     }
     state.activateWorkspaceTab(tab);
   },
@@ -290,9 +480,16 @@ const createWorkspaceSlice = (set, get) => ({
     const newActive = wasActive && remaining.length ? remaining[Math.max(0, idx - 1)] : null;
     let activeId = state.workspaceActiveTabId;
     let activeObject = state.workspaceActiveObject;
+    let activeView = state.workspaceActiveView;
     if (wasActive) {
       activeId = newActive ? newActive.id : null;
       activeObject = newActive ? { type: newActive.type, name: newActive.name } : null;
+      // A remaining tab re-takes the center under ITS owning destination.
+      // Closing the LAST tab leaves the view exactly where it was —
+      // `workspaceActiveView` already holds the closed tab's destination, so
+      // "closing a freshly deep-linked exploration returns you to Explorer
+      // Home, not Project" (01-ux-spec.md §1) falls out for free.
+      if (newActive) activeView = viewForDocumentType(newActive.type);
     }
     // Removing from the open set + shifting active is one store update (the
     // active id must never dangle at a removed tab). We set active here rather
@@ -302,16 +499,29 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: remaining,
       workspaceActiveTabId: activeId,
       workspaceActiveObject: activeObject,
+      workspaceActiveView: activeView,
       ...outlineKeyResetFor(state.workspaceActiveObject, activeObject),
       // A tab closed by any path can't stay parked in the confirm dialog.
       workspacePendingCloseTabId:
         state.workspacePendingCloseTabId === tabId ? null : state.workspacePendingCloseTabId,
     });
-    // Sync the URL to the new active tab. Closing the LAST tab leaves an empty
-    // workspace (active null) — navigating to `/workspace` there would resurrect
-    // the project tab, so we skip it.
-    if (wasActive && newActive && state.workspaceUrlNavigate) {
-      state.workspaceUrlNavigate(workspaceTabUrl(newActive, state.workspaceUrlBase));
+    // Sync the URL to the new active surface. A remaining tab routes to ITS
+    // url (`?edit=...`/`/dashboard/:name`); closing the LAST tab leaves a VIEW
+    // owning the center (`activeView`, already resolved above), so we route
+    // to THAT view's url instead of leaving the closed tab's `?edit=`/
+    // dashboard path dangling in the address bar. Phase 0 removed the
+    // "navigating to /workspace resurrects the project tab" concern this used
+    // to guard against (views are no longer tab records — `activateWorkspaceView`
+    // never hydrates a tab) — and a dangling `?edit=` was actively harmful:
+    // `useWorkspaceScope`'s `?edit=` fallback (used once no tab is active)
+    // kept resolving the CLOSED document as the selection, so the right rail
+    // kept rendering its Edit tab and `[role="tab"]` never reached 0.
+    if (wasActive && state.workspaceUrlNavigate) {
+      if (newActive) {
+        state.workspaceUrlNavigate(workspaceTabUrl(newActive, state.workspaceUrlBase));
+      } else {
+        state.workspaceUrlNavigate(workspaceViewUrl(activeView, state.workspaceUrlBase));
+      }
     }
   },
 
@@ -333,12 +543,26 @@ const createWorkspaceSlice = (set, get) => ({
     state.closeWorkspaceTab(tabId);
   },
 
-  /** Confirm the pending dirty close — closes the tab and clears the pending id. */
+  /**
+   * Confirm the pending dirty close — closes the tab and clears the pending
+   * id. VIS-1081: for an `exploration` tab specifically, this is "Close
+   * without saving"'s ONLY chance to make that promise true — an exploration
+   * autosaves in the background while its tab is open, so closing it
+   * through the generic path alone would let the very edits the dialog just
+   * offered to discard finish persisting moments later anyway. `discardExploration`
+   * (workspaceExplorationsStore.js) reverts to the tab-open snapshot FIRST;
+   * best-effort — a failed/absent discard never blocks the close.
+   */
   confirmCloseWorkspaceTab: () => {
     const state = get();
     const tabId = state.workspacePendingCloseTabId;
     if (!tabId) return;
     set({ workspacePendingCloseTabId: null });
+    const tab = state.workspaceTabs.find((t) => t.id === tabId);
+    if (tab?.type === 'exploration' && tabId.startsWith('exploration:')) {
+      const explorationId = tabId.slice('exploration:'.length);
+      state.discardExploration?.(explorationId);
+    }
     state.closeWorkspaceTab(tabId);
   },
 
@@ -379,15 +603,63 @@ const createWorkspaceSlice = (set, get) => ({
   // ------------------------------------------------------------------------
 
   toggleWorkspaceLeftCollapsed: () => {
-    set((s) => ({ workspaceLeftCollapsed: !s.workspaceLeftCollapsed }));
+    // A manual toggle always wins — clear the auto-collapse bookkeeping so
+    // `applyWorkspaceAutoCollapse` never later "auto-expands" a rail the
+    // user just explicitly collapsed (or re-collapses one they just opened,
+    // as long as space allows — see that action's docstring).
+    set((s) => ({
+      workspaceLeftCollapsed: !s.workspaceLeftCollapsed,
+      workspaceLeftAutoCollapsedByShell: false,
+    }));
   },
 
   toggleWorkspaceRightCollapsed: () => {
-    set((s) => ({ workspaceRightCollapsed: !s.workspaceRightCollapsed }));
+    set((s) => ({
+      workspaceRightCollapsed: !s.workspaceRightCollapsed,
+      workspaceRightAutoCollapsedByShell: false,
+    }));
+  },
+
+  /**
+   * applyWorkspaceAutoCollapse — 6c-T2 responsive shell (BLOCKER at 1100px).
+   * `WorkspaceShell`'s own width `ResizeObserver` calls this with the
+   * stateless target from `computeAutoCollapse` (`{ left, right }` — which
+   * rails NEED to be collapsed, independent of who collapsed them). This
+   * reconciles that target against the CURRENT state as a one-way nudge, not
+   * a continuous override:
+   *   - needs to collapse + isn't already            → collapse it, tag
+   *     `...AutoCollapsedByShell` so a later widen can safely reopen it.
+   *   - no longer needs to collapse + IS collapsed AND WE collapsed it
+   *     (`...AutoCollapsedByShell`)                   → re-expand it.
+   *   - no longer needs to collapse but the USER collapsed it themselves
+   *     → left alone (never fights a manual choice).
+   * A rail the user manually expands while still narrow stays expanded —
+   * `toggleWorkspace{Left,Right}Collapsed` already cleared the bookkeeping,
+   * so this action won't touch it again until the user's next toggle.
+   */
+  applyWorkspaceAutoCollapse: ({ left, right }) => {
+    set((s) => {
+      const update = {};
+      if (left && !s.workspaceLeftCollapsed) {
+        update.workspaceLeftCollapsed = true;
+        update.workspaceLeftAutoCollapsedByShell = true;
+      } else if (!left && s.workspaceLeftCollapsed && s.workspaceLeftAutoCollapsedByShell) {
+        update.workspaceLeftCollapsed = false;
+        update.workspaceLeftAutoCollapsedByShell = false;
+      }
+      if (right && !s.workspaceRightCollapsed) {
+        update.workspaceRightCollapsed = true;
+        update.workspaceRightAutoCollapsedByShell = true;
+      } else if (!right && s.workspaceRightCollapsed && s.workspaceRightAutoCollapsedByShell) {
+        update.workspaceRightCollapsed = false;
+        update.workspaceRightAutoCollapsedByShell = false;
+      }
+      return Object.keys(update).length > 0 ? update : s;
+    });
   },
 
   setWorkspaceRightTab: (tab) => {
-    if (!['outline', 'edit'].includes(tab)) return;
+    if (!['outline', 'edit', 'build'].includes(tab)) return;
     set({ workspaceRightTab: tab });
   },
 
@@ -424,6 +696,16 @@ const createWorkspaceSlice = (set, get) => ({
 
   clearWorkspaceLensIntent: () => {
     set({ workspaceLensIntent: null });
+  },
+
+  // VIS-1069 — see `workspaceSemanticLayerFocusIntent`'s declaration above.
+  setWorkspaceSemanticLayerFocusIntent: (intent) => {
+    if (intent && !intent.objectKey) return;
+    set({ workspaceSemanticLayerFocusIntent: intent || null });
+  },
+
+  clearWorkspaceSemanticLayerFocusIntent: () => {
+    set({ workspaceSemanticLayerFocusIntent: null });
   },
 
   // ------------------------------------------------------------------------

@@ -53,6 +53,29 @@ describe('LibraryRow', () => {
     expect(dashboardDef.droppable).toBe(false);
   });
 
+  // Explore 2.0 Phase 3a (D9 / 02-architecture.md §4): source/metric/
+  // dimension/insight are exploration drag sources (SQL editor, prop slots,
+  // interactions, the chart insight zone) even though they are NOT
+  // canvas-droppable dashboard items — kept independent of `droppable` so
+  // the dashboard canvas-insert path (WorkspaceDndContext) can still reject
+  // them.
+  test('getTypeDef flags source/metric/dimension/insight as exploration drag sources, independent of droppable', () => {
+    ['source', 'metric', 'dimension', 'insight'].forEach(t => {
+      const def = getTypeDef(t);
+      expect(def.explorationDragSource).toBe(true);
+      expect(def.droppable).toBe(false); // unchanged — not a canvas item
+    });
+    ['model', 'relation'].forEach(t => {
+      expect(getTypeDef(t).explorationDragSource).toBe(false);
+    });
+    ['chart', 'table', 'markdown', 'input'].forEach(t => {
+      // Already draggable via `droppable` — explorationDragSource is simply
+      // not needed for these (LibrarySubsection ORs the two flags).
+      expect(getTypeDef(t).explorationDragSource).toBe(false);
+      expect(getTypeDef(t).droppable).toBe(true);
+    });
+  });
+
   test('getTypeDef derives icon + label + plural from the canonical objectTypeConfigs', () => {
     // The Library must not fork per-type metadata — every type's icon, label
     // and plural come from the app-wide canonical `objectTypeConfigs.js` so
@@ -133,6 +156,60 @@ describe('LibraryRow', () => {
     expect(menu).toHaveTextContent('⌫');
   });
 
+  // VIS-1067 — "Explore this" / "Add to exploration" context-menu entries.
+  describe('Explore this / Add to exploration (VIS-1067)', () => {
+    test('a model row offers "Explore this" but never "Add to exploration" (model is not an EXPLORATION_DRAG_TYPE)', () => {
+      render(withDnd(<LibraryRow obj={MODEL} canAddToExploration />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
+      fireEvent.click(screen.getByTestId('library-row-model-monthly_revenue-kebab'));
+      const menu = screen.getByTestId('library-row-model-monthly_revenue-context-menu');
+      expect(menu).toHaveTextContent('Explore this');
+      expect(menu).not.toHaveTextContent('Add to exploration');
+    });
+
+    test('an insight row offers "Add to exploration" only when canAddToExploration is true', () => {
+      const { rerender } = render(withDnd(<LibraryRow obj={INSIGHT} canAddToExploration={false} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+      expect(
+        screen.getByTestId('library-row-insight-revenue_growth-context-menu')
+      ).not.toHaveTextContent('Add to exploration');
+
+      // Re-render with the flag flipped WITHOUT re-toggling the kebab — the
+      // menu (internal `menuOpen` state) stays open across the prop change,
+      // clicking the kebab again would just close it.
+      rerender(withDnd(<LibraryRow obj={INSIGHT} canAddToExploration />));
+      expect(
+        screen.getByTestId('library-row-insight-revenue_growth-context-menu')
+      ).toHaveTextContent('Add to exploration');
+    });
+
+    test('"Explore this" fires onContextAction("exploreThis", obj) and dismisses the menu', () => {
+      const onContextAction = jest.fn();
+      render(withDnd(<LibraryRow obj={INSIGHT} onContextAction={onContextAction} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+      fireEvent.click(screen.getByText('Explore this'));
+      expect(onContextAction).toHaveBeenCalledWith('exploreThis', INSIGHT);
+      expect(
+        screen.queryByTestId('library-row-insight-revenue_growth-context-menu')
+      ).not.toBeInTheDocument();
+    });
+
+    test('"Add to exploration" fires onContextAction("addToExploration", obj)', () => {
+      const onContextAction = jest.fn();
+      render(
+        withDnd(
+          <LibraryRow obj={INSIGHT} canAddToExploration onContextAction={onContextAction} />
+        )
+      );
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+      fireEvent.click(screen.getByText('Add to exploration'));
+      expect(onContextAction).toHaveBeenCalledWith('addToExploration', INSIGHT);
+    });
+  });
+
   test('right-click opens the context menu (preventing the native one)', () => {
     render(withDnd(<LibraryRow obj={CHART} />));
     const row = screen.getByTestId('library-row-chart-waterfall');
@@ -178,6 +255,39 @@ describe('LibraryRow', () => {
     expect(
       screen.getByTestId('library-row-chart-waterfall-drag-handle')
     ).toBeInTheDocument();
+  });
+
+  // Explore 2.0 Phase 3a payload extension (02-architecture.md §4): the
+  // drop side (WorkspaceDndContext) needs parentModel/expression/inputType
+  // on the drag payload to resolve ref scoping and input accessors.
+  test('drag payload carries parentModel/expression/inputType when the row has them', () => {
+    useDraggable.mockClear();
+    const METRIC = {
+      id: 'metric:churn_rate',
+      type: 'metric',
+      name: 'churn_rate',
+      parentModel: 'orders_q',
+      expression: 'sum(churned) / count(*)',
+    };
+    render(withDnd(<LibraryRow obj={METRIC} draggable />));
+    const call = useDraggable.mock.calls.find(([opts]) => opts.id === 'library:metric:churn_rate');
+    expect(call[0].data).toEqual(
+      expect.objectContaining({
+        source: 'library',
+        type: 'metric',
+        name: 'churn_rate',
+        parentModel: 'orders_q',
+        expression: 'sum(churned) / count(*)',
+      })
+    );
+  });
+
+  test('drag payload carries inputType for input rows', () => {
+    useDraggable.mockClear();
+    const INPUT = { id: 'input:region', type: 'input', name: 'region', inputType: 'multi-select' };
+    render(withDnd(<LibraryRow obj={INPUT} draggable />));
+    const call = useDraggable.mock.calls.find(([opts]) => opts.id === 'library:input:region');
+    expect(call[0].data.inputType).toBe('multi-select');
   });
 
   // VIS-836: the source row must NOT translate with the cursor during a drag —

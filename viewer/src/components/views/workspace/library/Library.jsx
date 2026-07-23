@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PiPlus, PiSidebar, PiHouse, PiMagnifyingGlass, PiTreeStructure } from 'react-icons/pi';
+import { PiPlus, PiSidebar } from 'react-icons/pi';
 import LibrarySearch from './LibrarySearch';
 import LibraryFilter from './LibraryFilter';
 import LibrarySubsection from './LibrarySubsection';
@@ -10,6 +9,7 @@ import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
 import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
+import ViewSwitcher from '../ViewSwitcher';
 
 /**
  * Library — VIS-769 / Track C C1 (+ C2 / C3).
@@ -58,19 +58,21 @@ const routeType = obj => obj.canonicalType || obj.type;
 
 const Library = () => {
   const data = useLibraryData();
-  const navigate = useNavigate();
   const scope = useWorkspaceScope();
 
   // Workspace actions — read from the store directly so the Library has no
   // required props (the parent LeftRail mounts it as `<Library />`).
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
-  const activateWorkspaceTab = useStore(s => s.activateWorkspaceTab);
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
+  const addObjectToActiveExploration = useStore(s => s.addObjectToActiveExploration);
+  // VIS-1067: "Add to exploration" is only offered while an exploration tab
+  // is the ACTIVE one — that's the exploration whose live legacy working
+  // state `addObjectToActiveExploration` actually mutates.
+  const canAddToExploration = useStore(s => s.workspaceActiveObject?.type === 'exploration');
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
   const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
-  const projectName = useStore(
-    s => s.project?.project_json?.name || s.project?.name || 'project'
-  );
 
   // #8: when the rail expands (this Library mounts), reveal the active object's
   // row — expand its type subsection so a selection made while the nav was
@@ -99,20 +101,6 @@ const Library = () => {
       }
     });
   }, [setLibrarySubsectionCollapsed]);
-
-  // Reopen a top-level surface from the rail (VIS thread: "there should be a way
-  // to open the project on the left sidebar … I closed the tab and it isn't
-  // obvious how to get it back"). Explorer is its own route; the project +
-  // semantic-layer surfaces are workspace tabs — activate ensures they reopen
-  // even if the user closed them (the project tab's close-sticks guard would
-  // otherwise skip a resurrect), then the URL is synced.
-  const openSurface = useCallback(
-    (tab, url) => {
-      activateWorkspaceTab(tab);
-      navigate(url);
-    },
-    [activateWorkspaceTab, navigate]
-  );
 
   // The active workspace tab's id is the selected row's id — both are
   // `${type}:${name}`. Surfacing it here drives LibraryRow's mulberry-bar +
@@ -238,8 +226,9 @@ const Library = () => {
         name: obj.name,
         action,
       });
-      // VIS-811 / O-2: the open actions are live; the rest (wrapInChart,
-      // showLineage, delete) stay telemetry-only until their tracks wire them.
+      // VIS-811 / O-2: the open actions are live; `wrapInChart`/`showLineage`/
+      // `delete` stay telemetry-only until their tracks wire them. VIS-1067
+      // wires `exploreThis`/`addToExploration`.
       const type = routeType(obj);
       if (action === 'edit' && openWorkspaceTab) {
         openWorkspaceTab({ id: `${type}:${obj.name}`, type, name: obj.name });
@@ -249,26 +238,55 @@ const Library = () => {
           type,
           name: obj.name,
         });
+      } else if (action === 'exploreThis' && createExploration && openWorkspaceTab) {
+        const seed = { type, name: obj.name };
+        const legacyStateOverride = buildExplorationSeedState
+          ? buildExplorationSeedState(seed)
+          : null;
+        createExploration(seed, null, legacyStateOverride).then(result => {
+          if (result?.success) {
+            openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+            emitWorkspaceEvent('explore_this_used', { source_type: type });
+          }
+        });
+      } else if (action === 'addToExploration' && addObjectToActiveExploration) {
+        addObjectToActiveExploration({ type, name: obj.name, parentModel: obj.parentModel });
       }
     },
-    [openWorkspaceTab, openWorkspaceTabBackground]
+    [
+      openWorkspaceTab,
+      openWorkspaceTabBackground,
+      createExploration,
+      buildExplorationSeedState,
+      addObjectToActiveExploration,
+    ]
   );
 
   const handleCreate = useCallback(
     (typeKey, source = 'library') => {
       emitWorkspaceEvent('inline_create_used', { source, kind: typeKey });
-      // J-2 (VIS-778): "+ New Chart" inside a scoped dashboard opens the
-      // Explorer round-trip overlay (build the insight there, it gets wrapped
-      // in a chart and placed back on the dashboard). Outside a dashboard
-      // scope there's no slot to return to, so draft an empty chart instead.
+      // J-2 (VIS-778) → Explore 2.0 Phase 3b cutover (B5)/delta-review fix:
+      // "+ New Chart" inside a scoped dashboard used to build the dead
+      // pre-cutover `/workspace/dashboard/:name/explorer?return_to=…` QUERY
+      // STRING — `DashboardExplorerRedirect` (LocalRouter.jsx) only ever read
+      // the PATH segment, so `slot=new` silently dropped and the redirect's
+      // own `return_to: {dashboard}` (no querystring parsing) did the real
+      // work anyway. Mint the return_to-carrying exploration directly instead
+      // — the SAME call `CanvasAddRow.jsx`'s "+ New Chart" and the dashboard-
+      // scoped redirect route both use — so both entry points behave
+      // identically. Outside a dashboard scope there's no slot to return to,
+      // so draft an empty chart instead (unchanged).
       if (typeKey === 'chart' && scope.dashboardName) {
-        navigate(
-          `/workspace/dashboard/${encodeURIComponent(
-            scope.dashboardName
-          )}/explorer?return_to=workspace&dashboard=${encodeURIComponent(
-            scope.dashboardName
-          )}&slot=new`
-        );
+        if (!createExploration || !openWorkspaceTab) return;
+        createExploration(null, { dashboard: scope.dashboardName }).then(result => {
+          if (result?.success) {
+            openWorkspaceTab({
+              id: `exploration:${result.id}`,
+              type: 'exploration',
+              name: result.id,
+            });
+          }
+        });
         return;
       }
       if (!createWorkspaceObject) return;
@@ -282,7 +300,7 @@ const Library = () => {
         }
       });
     },
-    [createWorkspaceObject, openWorkspaceTab, navigate, scope.dashboardName]
+    [createWorkspaceObject, openWorkspaceTab, createExploration, scope.dashboardName]
   );
 
   // "+ New" menu pick. Everything templatable goes through `handleCreate`; a
@@ -325,6 +343,12 @@ const Library = () => {
               aria-label="New object"
               aria-expanded={newMenuOpen}
               data-testid="library-new-object-button"
+              // B14 part 1 (Explore 2.0 Phase 2): the onboarding manifest's
+              // `connect_source`/`build_dashboard` items target
+              // `source-create-button` — the old Editor FAB this pointed at
+              // no longer exists; the Library's "New" menu is its live
+              // equivalent (creates a source, dashboard, or any other type).
+              data-onb-target="source-create-button"
               className="inline-flex h-6 items-center gap-0.5 rounded px-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary-100/60"
             >
               <PiPlus className="h-3.5 w-3.5" /> New
@@ -379,48 +403,12 @@ const Library = () => {
         </div>
       </div>
 
-      {/* Top-level surfaces — reopen Project / Explorer / Semantic Layer even
-          after their tabs are closed. */}
-      <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
-        {[
-          {
-            key: 'project',
-            label: 'Project',
-            Icon: PiHouse,
-            onClick: () =>
-              openSurface(
-                { id: `project:${projectName}`, type: 'project', name: projectName },
-                '/workspace'
-              ),
-          },
-          {
-            key: 'explorer',
-            label: 'Explorer',
-            Icon: PiMagnifyingGlass,
-            onClick: () => navigate('/explorer'),
-          },
-          {
-            key: 'semantic-layer',
-            label: 'Semantic',
-            Icon: PiTreeStructure,
-            onClick: () =>
-              openSurface(
-                { id: 'semantic-layer:semantic-layer', type: 'semantic-layer', name: 'semantic-layer' },
-                '/workspace/semantic-layer'
-              ),
-          },
-        ].map(surface => (
-          <button
-            key={surface.key}
-            type="button"
-            onClick={surface.onClick}
-            data-testid={`library-surface-${surface.key}`}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded px-1.5 py-1 text-[11.5px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <surface.Icon className="h-3.5 w-3.5 shrink-0" /> {surface.label}
-          </button>
-        ))}
-      </div>
+      {/* Destination switcher — Project / Semantic Layer / Explorer (D1,
+          Explore 2.0 Phase 0). Replaces the old per-surface button row: these
+          are real workspace VIEWS now (`workspaceActiveView`), not bare
+          route navigations, so clicking one activates live workspace state
+          exactly like every other selection instead of leaving the shell. */}
+      <ViewSwitcher />
 
       {/* One shared search + a compact filter dropdown for the whole flat list. */}
       <div className="flex shrink-0 flex-col gap-1.5 border-b border-gray-200 px-3 py-2">
@@ -452,6 +440,7 @@ const Library = () => {
             selectedRowId={selectedRowId}
             onRowClick={handleRowClick}
             onContextAction={handleContextAction}
+            canAddToExploration={canAddToExploration}
           />
         ))}
         {renderedTypes.length === 0 && (

@@ -7,6 +7,8 @@ import {
   PiPencil,
   PiArrowSquareOut,
   PiTrash,
+  PiCompass,
+  PiPlusCircle,
 } from 'react-icons/pi';
 import { ObjectStatus } from '../../../../stores/store';
 import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
@@ -46,6 +48,29 @@ export const DATA_TYPES = ['source', 'model', 'dimension', 'metric', 'relation',
 // not a canvas-droppable item — clicking it scopes the middle pane instead.
 export const DROPPABLE_TYPES = ['chart', 'table', 'markdown', 'input'];
 
+// Explore 2.0 Phase 3a (D9 / 02-architecture.md §4): these Data-Layer types
+// are drag sources INTO an open exploration (SQL editor cursor, insight prop
+// slots, interaction fields, the chart's insight zone) even though they are
+// NOT canvas-droppable dashboard items — `source`/`metric`/`dimension`/
+// `insight` had this exact drag capability in the legacy `ExplorerLeftPanel`
+// (`DraggableItem` / `ObjectList`'s `draggableType`), which the Library
+// replaces. Kept DISTINCT from `DROPPABLE_TYPES` (rather than folding into
+// it) so the `droppable`/`accent` computation below — and the canvas-insert
+// routing in `WorkspaceDndContext.routeWorkspaceDragEnd`, which must reject
+// these types — stay unchanged: a Library row being an exploration drag
+// source is orthogonal to it being a valid DASHBOARD canvas item.
+export const EXPLORATION_DRAG_TYPES = ['source', 'metric', 'dimension', 'insight'];
+
+// Explore 2.0 Phase 5 (VIS-1067): types a right-click "Explore this" can mint
+// a brand-new, pre-wired exploration from (`explorerStore.js`'s
+// `buildExplorationSeedState`) — broader than `EXPLORATION_DRAG_TYPES`
+// because minting a NEW exploration (rather than adding into an already-open
+// one) also makes sense for `model` and `chart`, which have no meaningful
+// "drop into an existing exploration" analog (a model is queried, not
+// bound to a slot; a chart already IS the top-level draft, not a value that
+// fits inside one).
+export const EXPLORE_THIS_TYPES = ['source', 'model', 'metric', 'dimension', 'insight', 'chart'];
+
 // Every type except `relation` supports inline create (a draft with a
 // minimal valid config — see stores/inlineCreateStore.js). A relation can't
 // be templated: its condition must reference two real models.
@@ -72,10 +97,16 @@ export const getTypeDef = type => {
     droppable,
     creatable: CREATABLE_TYPES.includes(type),
     accent: droppable ? 'mulberry' : 'teal',
+    // Independent of `droppable` (canvas-item eligibility) — see
+    // EXPLORATION_DRAG_TYPES's comment above.
+    explorationDragSource: EXPLORATION_DRAG_TYPES.includes(type),
   };
 };
 
-const StatusDot = ({ status }) => {
+// Exported so `LibrarySourceRow.jsx` (the D9 source drill-down's top-level
+// row, which doesn't route through this file's own row shell) can render the
+// identical unpublished-changes dot rather than forking it.
+export const StatusDot = ({ status }) => {
   if (!status || status === ObjectStatus.PUBLISHED) return null;
   const isNew = status === ObjectStatus.NEW;
   const colorClass = isNew ? 'bg-green-500' : 'bg-amber-500';
@@ -129,8 +160,10 @@ const MenuDivider = () => (
   />
 );
 
-const ContextMenu = ({ obj, onAction, onDismiss }) => {
+const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) => {
   const isInsight = obj.type === 'insight';
+  const canExploreThis = EXPLORE_THIS_TYPES.includes(obj.type);
+  const canAddThisToExploration = canAddToExploration && EXPLORATION_DRAG_TYPES.includes(obj.type);
   const handle = action => () => {
     onAction && onAction(action, obj);
     onDismiss && onDismiss();
@@ -177,6 +210,25 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
             onClick={handle('showLineage')}
           />
         </li>
+        {(canExploreThis || canAddThisToExploration) && <MenuDivider />}
+        {canExploreThis && (
+          <li>
+            <ContextMenuItem
+              icon={PiCompass}
+              label="Explore this"
+              onClick={handle('exploreThis')}
+            />
+          </li>
+        )}
+        {canAddThisToExploration && (
+          <li>
+            <ContextMenuItem
+              icon={PiPlusCircle}
+              label="Add to exploration"
+              onClick={handle('addToExploration')}
+            />
+          </li>
+        )}
         <MenuDivider />
         <li>
           <ContextMenuItem
@@ -192,7 +244,15 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
   );
 };
 
-const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContextAction, testId }) => {
+const LibraryRow = ({
+  obj,
+  selected = false,
+  draggable = true,
+  onClick,
+  onContextAction,
+  canAddToExploration = false,
+  testId,
+}) => {
   const [hovered, setHovered] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -203,11 +263,24 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
   const def = getTypeDef(obj.type);
   const Icon = def.icon;
 
-  // dnd-kit draggable wiring. `data.current` is what drop targets read —
-  // the canvas (D2) consumes `{ source: 'library', type, name, subtype }`.
+  // dnd-kit draggable wiring. `data.current` is what drop targets read — the
+  // canvas (D2) consumes `{ source: 'library', type, name, subtype }`.
+  // `parentModel` / `expression` / `inputType` are the Explore 2.0 Phase 3a
+  // payload extension (02-architecture.md §4): `undefined` for row shapes
+  // that don't carry them (chart/table/markdown/model/relation/dashboard),
+  // which is exactly what the pre-Phase-3a payload looked like for those
+  // types — no behavior change there.
   const drag = useDraggable({
     id: `library:${obj.type}:${obj.name}`,
-    data: { source: 'library', type: obj.type, name: obj.name, subtype: obj.subtype },
+    data: {
+      source: 'library',
+      type: obj.type,
+      name: obj.name,
+      subtype: obj.subtype,
+      parentModel: obj.parentModel,
+      expression: obj.expression,
+      inputType: obj.inputType,
+    },
     disabled: !draggable,
   });
 
@@ -382,7 +455,12 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
         />
       )}
       {menuOpen && (
-        <ContextMenu obj={obj} onAction={onContextAction} onDismiss={handleMenuDismiss} />
+        <ContextMenu
+          obj={obj}
+          onAction={onContextAction}
+          onDismiss={handleMenuDismiss}
+          canAddToExploration={canAddToExploration}
+        />
       )}
     </div>
   );

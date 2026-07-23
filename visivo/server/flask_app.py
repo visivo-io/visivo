@@ -4,6 +4,7 @@ from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.server.views import register_views
 from visivo.logger.logger import Logger
+from visivo.server.repositories.exploration_repository import ExplorationRepository
 
 from visivo.telemetry.middleware import init_telemetry_middleware
 from visivo.server.managers.source_manager import SourceManager
@@ -42,6 +43,16 @@ class FlaskApp:
         self.run_manager = RunManager()
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+        # Explorations are project-root workbench data (NOT a rebuildable
+        # target/ artifact), stored under a NEW `.visivo/explorations/` dir,
+        # created lazily on first write (see ExplorationRepository). Falls
+        # back to cwd like the CLI's own `--working-dir` default so ad-hoc
+        # FlaskApp construction (e.g. in tests) never crashes on `None`.
+        explorations_root = working_dir or os.getcwd()
+        self.exploration_repo = ExplorationRepository(
+            os.path.join(explorations_root, ".visivo", "explorations")
+        )
 
         # Initialize object managers with DAG for efficient loading
         dag = project.dag()

@@ -93,6 +93,10 @@ export function PropertySearch({ properties = [], selectedPaths = new Set(), onT
           onClick={() => handleToggle(prop.path)}
           disabled={disabled}
           dense
+          // Keyed by full PATH, because the visible label is deliberately just
+          // the leaf (`text` for `title.text`) and so is ambiguous across
+          // groups — there is no unique user-facing handle to select by.
+          data-testid={`property-option-${prop.path}`}
         >
           <ListItemIcon sx={{ minWidth: 36 }}>
             <Checkbox
@@ -185,15 +189,38 @@ export function PropertySearch({ properties = [], selectedPaths = new Set(), onT
   // Get sorted group keys (root first, then alphabetically)
   const sortedGroupKeys = useMemo(() => {
     const keys = Object.keys(groupedProperties);
-    return keys.sort((a, b) => {
-      if (a === '') return -1;
-      if (b === '') return 1;
-      return a.localeCompare(b);
+    // While BROWSING (no query), alphabetical is the right order — it's a
+    // stable index you can scan.
+    //
+    // While SEARCHING it is actively harmful, and silently undid the relevance
+    // ranking `filterProperties` computes: groups render in name order, so
+    // `coloraxis.colorbar.title` sorts before `title` and the plot title lands
+    // 130 rows down however well it scored. Order groups by their best-ranked
+    // member instead — i.e. by where that member appears in the already-ranked
+    // filtered list.
+    if (!searchQuery.trim()) {
+      return keys.sort((a, b) => {
+        if (a === '') return -1;
+        if (b === '') return 1;
+        return a.localeCompare(b);
+      });
+    }
+
+    const bestRank = new Map();
+    filteredProperties.forEach((prop, index) => {
+      const parts = prop.path.split('.');
+      const group = parts.length === 1 ? '' : parts.slice(0, -1).join('.');
+      if (!bestRank.has(group)) bestRank.set(group, index);
     });
-  }, [groupedProperties]);
+    return keys.sort((a, b) => (bestRank.get(a) ?? Infinity) - (bestRank.get(b) ?? Infinity));
+  }, [groupedProperties, filteredProperties, searchQuery]);
 
   return (
-    <Paper variant="outlined" sx={{ maxHeight: 400, display: 'flex', flexDirection: 'column' }}>
+    <Paper
+      variant="outlined"
+      data-testid="property-search"
+      sx={{ maxHeight: 400, display: 'flex', flexDirection: 'column' }}
+    >
       {/* Search input */}
       <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
         <TextField
@@ -241,7 +268,17 @@ export function PropertySearch({ properties = [], selectedPaths = new Set(), onT
         }}
       >
         <Typography variant="caption" color="text.secondary">
-          {selectedPaths.size} of {properties.length} properties selected
+          {/* Never "0 of 1366 properties selected" (ux-audit.md, pills #8): the
+              raw schema size is an implementation detail of Plotly's trace
+              spec, and leading with it makes an empty panel read as a task
+              list 1,366 items long. Show a count only once the user has
+              actually selected something, and say how many matched what they
+              searched for rather than how big the schema is. */}
+          {selectedPaths.size > 0
+            ? `${selectedPaths.size} selected`
+            : searchQuery
+              ? `${filteredProperties.length} matching`
+              : 'Search or browse to add properties'}
         </Typography>
       </Box>
     </Paper>

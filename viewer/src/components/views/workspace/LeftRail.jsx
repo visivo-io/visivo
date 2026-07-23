@@ -1,15 +1,18 @@
 import React from 'react';
 import { PiMagnifyingGlass, PiSidebar } from 'react-icons/pi';
 import Library from './library/Library';
+import ViewSwitcher from './ViewSwitcher';
 import useStore from '../../../stores/store';
 import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './library/LibraryRow';
 
 /**
  * LeftRail — project-wide Library navigator (VIS-775 / Track B B2, VIS-769 /
- * Track C C1).
+ * Track C C1), topped by the destination `<ViewSwitcher>` (D1, Explore 2.0
+ * Phase 0 — 01-ux-spec.md §1).
  *
- *   - Expanded: mounts the full Library (Track C C1+).
- *   - Collapsed (48-px icon strip): one icon per subsection so the user
+ *   - Expanded: the switcher's three rows, then the full Library (Track C C1+).
+ *   - Collapsed (48-px icon strip): the switcher's three icons (fixed
+ *     positions, tooltips), then one icon per Library subsection so the user
  *     can identify what's in the rail at a glance. The two-section
  *     vocabulary matches the Library — Layout Items above the divider,
  *     Data Layer below. Icons come from the canonical `objectTypeConfigs.js`
@@ -82,6 +85,7 @@ const LeftRailCollapsed = ({ onExpand }) => {
       >
         <PiSidebar className="h-4 w-4" />
       </button>
+      <ViewSwitcher collapsed />
       <div className="flex flex-1 flex-col items-center gap-1 py-2">
         <button
           type="button"
