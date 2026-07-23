@@ -209,15 +209,25 @@ describe('ExplorationPane — ready state', () => {
     });
 
     // Regression test (#19 cross-tab-concurrency, found live via e2e): the
-    // ORIGINAL flush-on-hide fix unconditionally re-pushed this pane's
-    // current snapshot on every hide/reload — including when nothing was
-    // pending, because the debounce had already fired and synced. That's
-    // dangerous specifically when this tab's own snapshot has gone STALE
-    // relative to the server (e.g. a sibling browser context won a
-    // last-write-wins race after this tab's debounce already sent its own,
-    // now-losing, edit): reloading the LOSING tab would silently re-push
-    // its stale snapshot and clobber the winner's already-persisted draft.
-    test('never re-pushes a snapshot on hide/reload when nothing is genuinely pending (no stale-clobber on the losing side of a cross-tab race)', () => {
+    // ORIGINAL flush-on-hide fix unconditionally re-SNAPSHOTTED this pane's
+    // current legacy working state on every hide/reload — including when
+    // nothing had changed locally, because the debounce had already fired
+    // and synced. That's dangerous specifically when this tab's own
+    // snapshot has gone STALE relative to the server (e.g. a sibling
+    // browser context won a last-write-wins race after this tab's debounce
+    // already sent its own, now-losing, edit): reloading the LOSING tab
+    // would silently re-push its stale snapshot and clobber the winner's
+    // already-persisted draft.
+    //
+    // NOTE this does NOT assert `flushExplorationSync` is skipped — VIS-1107
+    // found that flushNow must call it UNCONDITIONALLY (it's a safe no-op
+    // in the real store when nothing is queued in `_pendingSyncTimers`, but
+    // skipping it here entirely was what silently dropped an
+    // already-handed-off-but-not-yet-persisted write on reload). This test
+    // only guards the narrower claim: no FRESH snapshot gets pushed via
+    // `updateExplorationDraft` when nothing local has changed since the
+    // last hand-off.
+    test('never re-snapshots/re-pushes via updateExplorationDraft on hide/reload when nothing new is pending (no stale-clobber on the losing side of a cross-tab race)', () => {
       jest.useFakeTimers();
       try {
         const updateExplorationDraft = jest.fn();
@@ -232,8 +242,9 @@ describe('ExplorationPane — ready state', () => {
         flushExplorationSync.mockClear();
 
         // An edit happens, and its debounce fires NATURALLY (not via a page
-        // hide) — by the time the page later goes away, nothing is pending
-        // anymore; some OTHER context may since have written a newer draft.
+        // hide) — by the time the page later goes away, nothing NEW is
+        // pending anymore; some OTHER context may since have written a
+        // newer draft.
         act(() => {
           useStore.setState({ explorerModelTabs: ['query_1'] });
         });
@@ -249,7 +260,66 @@ describe('ExplorationPane — ready state', () => {
         });
 
         expect(updateExplorationDraft).not.toHaveBeenCalled();
-        expect(flushExplorationSync).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    // VIS-1107 (Urgent — blocked the T5 PR): the OUTER 600ms live-sync
+    // timer firing naturally only hands the write off to
+    // workspaceExplorationsStore.js's SEPARATE ~1s backend-persist debounce
+    // (`_pendingSyncTimers`) — it does NOT force-flush it. If a reload
+    // lands after the outer timer fires but before that inner ~1s timer
+    // completes, `liveSyncPendingRef` is already false (the outer layer's
+    // job is done), so the OLD flushNow — which skipped calling
+    // `flushExplorationSync` entirely whenever nothing was pending on the
+    // outer ref — silently dropped the still-queued inner write along with
+    // the reloading page. Root-caused via an instrumented live repro (see
+    // VIS-1107): the x/y-pill e2e case produced ZERO network requests
+    // around the reload under the old code, vs. a completed POST for a
+    // SQL-only edit that reloads before the outer timer ever fires
+    // naturally. The fix: call `flushExplorationSync` UNCONDITIONALLY on
+    // every flush (it's already a safe no-op in the real store when
+    // nothing is queued) — only the "capture a fresh snapshot" step stays
+    // gated on `liveSyncPendingRef`.
+    test('VIS-1107: flushExplorationSync is called even when the OUTER live-sync ref is already idle — forces through whatever the backend-persist debounce still has queued', () => {
+      jest.useFakeTimers();
+      try {
+        const updateExplorationDraft = jest.fn();
+        const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+        seed({
+          workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+          updateExplorationDraft,
+          flushExplorationSync,
+        });
+        render(<ExplorationPane id="exp_1" />);
+        updateExplorationDraft.mockClear();
+        flushExplorationSync.mockClear();
+
+        // The outer 600ms timer fires NATURALLY, handing off to the (here
+        // mocked, in reality separately-debounced) backend persist — this
+        // is the exact moment `liveSyncPendingRef` flips back to false,
+        // even though the real store's inner ~1s timer is still running.
+        act(() => {
+          useStore.setState({ explorerModelTabs: ['query_1'] });
+        });
+        act(() => {
+          jest.advanceTimersByTime(600);
+        });
+        expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+        flushExplorationSync.mockClear();
+
+        // Reload happens before the (real, separately-timed) inner backend
+        // debounce would have completed on its own.
+        act(() => {
+          window.dispatchEvent(new Event('pagehide'));
+        });
+
+        // Must be called — this is what lets the real store's
+        // `flushExplorationSync` force through whatever it still has
+        // queued in `_pendingSyncTimers`, instead of silently doing
+        // nothing because the OUTER ref alone looked idle.
+        expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
       } finally {
         jest.useRealTimers();
       }

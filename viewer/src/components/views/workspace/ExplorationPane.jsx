@@ -255,28 +255,62 @@ const ExplorationPane = ({ id }) => {
   // window the audit actually reproduced (~1s of normal typing-then-reload),
   // which is the realistic, common case.
   //
-  // GUARD (found via e2e, #19 cross-tab-concurrency): only flush if
-  // `liveSyncPendingRef` says a debounced write is genuinely still
-  // outstanding. Without this, `flushNow` unconditionally re-POSTed this
-  // pane's CURRENT client snapshot on every reload/hide — including when
-  // nothing was pending because the debounce had already fired and synced
-  // minutes ago. That's harmless when this tab's own snapshot is the
-  // freshest thing around, but not when it's gone stale relative to the
-  // server (e.g. a sibling tab/browser context won a last-write-wins race
-  // after this tab's own snapshot was taken): reloading the LOSING tab
-  // would silently re-push its stale snapshot and clobber the winner's
-  // already-persisted draft, right as the page reloaded to go read it back.
+  // GUARD (found via e2e, #19 cross-tab-concurrency; refined via VIS-1107):
+  // re-snapshotting and pushing a FRESH `updateExplorationDraft` only
+  // happens if `liveSyncPendingRef` says an edit hasn't even been handed
+  // off to the backend-persist debounce yet. Without this, `flushNow` used
+  // to unconditionally re-POST this pane's CURRENT client snapshot on every
+  // reload/hide — including when nothing had changed locally since the
+  // debounce last fired. That's harmless when this tab's own snapshot is
+  // the freshest thing around, but not on the losing side of a cross-tab
+  // last-write-wins race (a sibling tab/browser context wrote AFTER this
+  // tab's own snapshot was taken): reloading the LOSING tab would silently
+  // re-push its stale snapshot and clobber the winner's already-persisted
+  // draft, right as the page reloaded to go read it back.
+  //
+  // VIS-1107 (Urgent, found via e2e — `exploration-reload-persistence.
+  // spec.mjs:129`'s x/y-pill scenario): that guard alone was too narrow.
+  // `liveSyncPendingRef` only tracks THIS effect's own 600ms client timer —
+  // it does NOT track `workspaceExplorationsStore.js`'s SEPARATE ~1s
+  // backend-persist debounce (`_pendingSyncTimers`) that `updateExploration
+  // Draft` (re)arms every time it's called, including from the 600ms
+  // timer's OWN natural-fire callback above (which calls
+  // `updateExplorationDraft` but deliberately does NOT force-flush it — a
+  // normal, un-hurried edit is meant to ride out its own ~1s window). So:
+  // edit → 600ms timer fires naturally → hands off to the ~1s backend
+  // debounce → `liveSyncPendingRef` is now false (the OUTER layer says
+  // "done") → reload happens before that ~1s INNER timer completes → the
+  // old guard treated "outer layer idle" as "nothing to flush" and
+  // skipped calling `flushExplorationSync` entirely, so the still-queued
+  // inner write was silently dropped along with the page.
+  //
+  // THE FIX: `flushExplorationSync` is already a safe no-op when nothing is
+  // queued in `_pendingSyncTimers` (checked internally, keyed by id) — so
+  // it can ALWAYS be called unconditionally here without risk of reviving
+  // or clobbering anything. Only the "capture a FRESH snapshot and hand it
+  // to `updateExplorationDraft`" step stays gated on `liveSyncPendingRef`,
+  // since that's the part that could push a stale snapshot in the cross-tab
+  // clobber scenario — forcing through whatever the store ALREADY has
+  // queued carries no such risk, since it isn't reintroducing a snapshot,
+  // just accelerating a write the store already decided to make.
+  //
+  // Verified empirically (not just reasoned about): an instrumented repro
+  // showed the natural-fire → reload sequence above producing ZERO network
+  // requests around the reload in the x/y-pill case, vs. a completed POST
+  // in the SQL-only case (which reloads before the outer timer ever fires
+  // naturally) — see VIS-1107 for the full request/console timeline.
   useEffect(() => {
     if (readyId !== id) return undefined;
     const flushNow = () => {
-      if (!liveSyncPendingRef.current) return;
-      if (liveSyncTimerRef.current) {
-        clearTimeout(liveSyncTimerRef.current);
-        liveSyncTimerRef.current = null;
+      if (liveSyncPendingRef.current) {
+        if (liveSyncTimerRef.current) {
+          clearTimeout(liveSyncTimerRef.current);
+          liveSyncTimerRef.current = null;
+        }
+        liveSyncPendingRef.current = false;
+        const snapshot = snapshotExplorerWorkingState();
+        updateExplorationDraft(id, legacyStateToDraft(snapshot));
       }
-      liveSyncPendingRef.current = false;
-      const snapshot = snapshotExplorerWorkingState();
-      updateExplorationDraft(id, legacyStateToDraft(snapshot));
       flushExplorationSync(id);
     };
     const onVisibilityChange = () => {
