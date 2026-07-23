@@ -530,10 +530,13 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Save to Project"
+        aria-label="Save to project"
         className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto"
       >
-        <h3 className="text-lg font-medium text-secondary-900 mb-1">Save to Project</h3>
+        {/* D11: one verb, one casing — sentence-case "Save to project" here to
+            match the CTA, the trail heading and the submit button; the modal's
+            own heading + aria-label were the last "Save to Project" holdouts. */}
+        <h3 className="text-lg font-medium text-secondary-900 mb-1">Save to project</h3>
 
         {loading ? (
           <div className="flex items-center gap-2 py-8 justify-center text-secondary-400 text-sm">

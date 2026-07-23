@@ -138,7 +138,7 @@ describe('ExplorationPromoteModal', () => {
   test('renders with role="dialog" aria-modal="true" (required by the shortcut-suppression guard)', () => {
     buildPromoteChecklist.mockReturnValue(new Promise(() => {}));
     render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
-    const dialog = screen.getByRole('dialog', { name: 'Save to Project' });
+    const dialog = screen.getByRole('dialog', { name: 'Save to project' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
   });
 
