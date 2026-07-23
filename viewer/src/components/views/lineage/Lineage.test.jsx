@@ -78,8 +78,6 @@ describe('Lineage', () => {
   const mockFetchCharts = jest.fn();
   const mockFetchTables = jest.fn();
   const mockFetchDashboards = jest.fn();
-  const mockFetchCsvScriptModels = jest.fn();
-  const mockFetchLocalMergeModels = jest.fn();
   const mockFetchInputs = jest.fn();
   const mockFetchDefaults = jest.fn();
   const mockSaveModel = jest.fn();
@@ -107,10 +105,6 @@ describe('Lineage', () => {
     fetchTables: mockFetchTables,
     dashboards: [],
     fetchDashboards: mockFetchDashboards,
-    csvScriptModels: [],
-    fetchCsvScriptModels: mockFetchCsvScriptModels,
-    localMergeModels: [],
-    fetchLocalMergeModels: mockFetchLocalMergeModels,
     inputs: [],
     fetchInputs: mockFetchInputs,
     defaults: null,
@@ -136,8 +130,6 @@ describe('Lineage', () => {
     mockFetchCharts.mockResolvedValue();
     mockFetchTables.mockResolvedValue();
     mockFetchDashboards.mockResolvedValue();
-    mockFetchCsvScriptModels.mockResolvedValue();
-    mockFetchLocalMergeModels.mockResolvedValue();
     mockFetchInputs.mockResolvedValue();
     mockFetchDefaults.mockResolvedValue();
 

@@ -31,17 +31,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attr
         ![](../../../assets/example-charts/props/funnelarea/simple-funnelarea.png)
 
         ```yaml
+        sources:
+          - name: funnelarea-data-source
+            type: duckdb
+            database: target/seeds/funnelarea_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stage,value
+                    Leads,1000
+                    Qualified Leads,750
+                    Opportunities,400
+                    Proposals,200
+                    Closed Deals,100
         models:
           - name: funnelarea-data
-            args:
-              - echo
-              - |
-                stage,value
-                Leads,1000
-                Qualified Leads,750
-                Opportunities,400
-                Proposals,200
-                Closed Deals,100
+            source: ${ref(funnelarea-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Funnelarea Insight
             props:
@@ -64,17 +72,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attr
         ![](../../../assets/example-charts/props/funnelarea/custom-colors-funnelarea.png)
 
         ```yaml
+        sources:
+          - name: funnelarea-data-custom-source
+            type: duckdb
+            database: target/seeds/funnelarea_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stage,value,color
+                    Awareness,5000,"#1f77b4"
+                    Interest,3000,"#ff7f0e"
+                    Consideration,1500,"#2ca02c"
+                    Decision,700,"#d62728"
+                    Purchase,300,"#9467bd"
         models:
           - name: funnelarea-data-custom
-            args:
-              - echo
-              - |
-                stage,value,color
-                Awareness,5000,"#1f77b4"
-                Interest,3000,"#ff7f0e"
-                Consideration,1500,"#2ca02c"
-                Decision,700,"#d62728"
-                Purchase,300,"#9467bd"
+            source: ${ref(funnelarea-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Custom Colors Funnelarea Insight
             props:
@@ -99,16 +115,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attr
         ![](../../../assets/example-charts/props/funnelarea/funnelarea-hover.png)
 
         ```yaml
+        sources:
+          - name: funnelarea-data-hover-source
+            type: duckdb
+            database: target/seeds/funnelarea_data_hover.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stage,value
+                    Leads,1000
+                    Opportunities,500
+                    Proposals,250
+                    Won,100
         models:
           - name: funnelarea-data-hover
-            args:
-              - echo
-              - |
-                stage,value
-                Leads,1000
-                Opportunities,500
-                Proposals,250
-                Won,100
+            source: ${ref(funnelarea-data-hover-source)}
+            sql: select * from model
         insights:
           - name: Funnelarea Insight with Hover Info
             props:

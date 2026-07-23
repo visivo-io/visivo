@@ -1,16 +1,24 @@
+sources:
+  - name: sunburst-data-sizes-source
+    type: duckdb
+    database: target/seeds/sunburst_data_sizes.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            labels,parents,values,size
+            Total,,100,1
+            A,Total,40,2
+            B,Total,30,3
+            C,Total,30,4
+            D,A,10,5
+            E,A,20,6
+            F,B,10,7
 models:
   - name: sunburst-data-sizes
-    args:
-      - echo
-      - |
-        labels,parents,values,size
-        Total,,100,1
-        A,Total,40,2
-        B,Total,30,3
-        C,Total,30,4
-        D,A,10,5
-        E,A,20,6
-        F,B,10,7
+    source: ${ref(sunburst-data-sizes-source)}
+    sql: select * from model
 charts:
   - name: sunburst-chart-with-custom-sizes
     layout:

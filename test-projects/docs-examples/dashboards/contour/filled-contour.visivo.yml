@@ -1,18 +1,26 @@
+sources:
+  - name: contour-data-filled-source
+    type: duckdb
+    database: target/seeds/contour_data_filled.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z
+            0,0,10
+            1,0,15
+            2,0,20
+            0,1,5
+            1,1,10
+            2,1,15
+            0,2,0
+            1,2,5
+            2,2,10
 models:
   - name: contour-data-filled
-    args:
-      - echo
-      - |
-        x,y,z
-        0,0,10
-        1,0,15
-        2,0,20
-        0,1,5
-        1,1,10
-        2,1,15
-        0,2,0
-        1,2,5
-        2,2,10
+    source: ${ref(contour-data-filled-source)}
+    sql: select * from model
 charts:
   - name: filled-contour-chart
     layout:

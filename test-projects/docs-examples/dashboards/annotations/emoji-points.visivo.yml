@@ -1,15 +1,23 @@
+sources:
+  - name: emoji_data-source
+    type: duckdb
+    database: target/seeds/emoji_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,2
+            2,4
+            3,8
+            4,6
+            5,10
+
 models:
   - name: emoji_data
-    args:
-      - echo
-      - |
-        x,y
-        1,2
-        2,4
-        3,8
-        4,6
-        5,10
-
+    source: ${ref(emoji_data-source)}
+    sql: select * from model
 charts:
   - name: emoji-points-example
     layout:

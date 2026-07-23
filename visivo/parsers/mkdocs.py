@@ -9,6 +9,7 @@ from visivo.parsers.mkdocs_utils.nav_configuration_generator import (
     mkdocs_pydantic_nav,
     get_model_to_page_mapping,
     get_model_to_path_mapping,
+    get_model_to_paths_mapping,
     find_path,
     replace_using_path,
 )
@@ -31,10 +32,14 @@ class Mkdocs:
     nav_configuration = mkdocs_pydantic_nav(SCHEMA)
     model_to_page_map = get_model_to_page_mapping(nav_configuration)
     model_to_path_map = get_model_to_path_mapping(nav_configuration)
+    # Every nav leaf for a model, so a model reused by several parents gets a
+    # page written at each of them (see get_model_to_paths_mapping).
+    model_to_paths_map = get_model_to_paths_mapping(nav_configuration)
     # The per-prop reference pages keep generating (so they stay reachable via
     # the index cards + site search), but they are collapsed out of the committed
     # nav into a single card-grid index page — register that page for writing.
     model_to_path_map[INSIGHT_PROPS_INDEX_MODEL] = INSIGHT_PROPS_INDEX_FILE_PATH
+    model_to_paths_map[INSIGHT_PROPS_INDEX_MODEL] = [INSIGHT_PROPS_INDEX_FILE_PATH]
 
     def get_model_object(self, model_name: str):
         return self.SCHEMA.get(model_name)

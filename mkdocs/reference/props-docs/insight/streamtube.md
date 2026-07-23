@@ -27,12 +27,20 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Streamtube/#attr
     === "Simple Streamtube Insight"
 
         ```yaml
+        sources:
+          - name: streamtube-data-source
+            type: duckdb
+            database: target/seeds/streamtube_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - -sL
+                  - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         models:
           - name: streamtube-data
-            args:
-              - curl
-              - -sL
-              - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
+            source: ${ref(streamtube-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Streamtube Insight
             props:
@@ -55,12 +63,20 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Streamtube/#attr
     === "Streamtube Insight with Color Mapping"
 
         ```yaml
+        sources:
+          - name: streamtube-data-source
+            type: duckdb
+            database: target/seeds/streamtube_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - -sL
+                  - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         models:
           - name: streamtube-data
-            args:
-              - curl
-              - -sL
-              - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
+            source: ${ref(streamtube-data-source)}
+            sql: select * from model
         insights:
           - name: Streamtube Insight with Color Mapping
             props:
@@ -84,12 +100,20 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Streamtube/#attr
     === "Streamtube Insight with Custom Tube Sizes"
 
         ```yaml
+        sources:
+          - name: streamtube-data-source
+            type: duckdb
+            database: target/seeds/streamtube_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - -sL
+                  - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         models:
           - name: streamtube-data
-            args:
-              - curl
-              - -sL
-              - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
+            source: ${ref(streamtube-data-source)}
+            sql: select * from model
         insights:
           - name: Streamtube Insight with Custom Tube Sizes
             props:

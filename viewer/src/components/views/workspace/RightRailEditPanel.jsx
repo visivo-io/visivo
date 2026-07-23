@@ -20,8 +20,6 @@ import TableEditForm from '../common/TableEditForm';
 import SourceEditForm from '../common/SourceEditForm';
 import InsightEditForm from '../common/InsightEditForm';
 import ModelEditForm from '../common/ModelEditForm';
-import CsvScriptModelEditForm from '../common/CsvScriptModelEditForm';
-import LocalMergeModelEditForm from '../common/LocalMergeModelEditForm';
 import SchemaLeafForm from './SchemaLeafForm';
 import LevelEditForm from '../common/LevelEditForm';
 import DefaultsEditForm from '../common/DefaultsEditForm';
@@ -82,8 +80,6 @@ const LIBRARY_EDITABLE_TYPES = [
   'input',
   'source',
   'model',
-  'csvScriptModel',
-  'localMergeModel',
   'dimension',
   'metric',
   'relation',
@@ -668,26 +664,6 @@ const INLINE_LEAF_FORMS = {
   dimension: (record, common) => <SchemaLeafForm type="dimension" record={record} {...common} />,
   metric: (record, common) => <SchemaLeafForm type="metric" record={record} {...common} />,
   relation: (record, common) => <SchemaLeafForm type="relation" record={record} {...common} />,
-  // VIS-980 (folded into VIS-996): the csv/local-merge script models edit INLINE
-  // via their existing forms instead of routing to the "open elsewhere"
-  // fallback. Delegating onSave → the rail's useRecordSave backbone, same as
-  // `model`.
-  csvScriptModel: (record, common) => (
-    <CsvScriptModelEditForm
-      model={record}
-      isCreate={common.isCreate}
-      onSave={common.onSave}
-      onClose={common.onClose}
-    />
-  ),
-  localMergeModel: (record, common) => (
-    <LocalMergeModelEditForm
-      model={record}
-      isCreate={common.isCreate}
-      onSave={common.onSave}
-      onClose={common.onClose}
-    />
-  ),
 };
 
 const LeafObjectForm = ({ type, name, onSelectRef }) => {

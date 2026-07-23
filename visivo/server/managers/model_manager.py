@@ -40,8 +40,6 @@ class ModelManager(ObjectManager[SqlModel]):
         """
         Extract SqlModel objects from a ProjectDag and populate published_objects.
 
-        Only extracts SqlModel instances (not CsvScriptModel or LocalMergeModel).
-
         Args:
             dag: The ProjectDag to extract models from
         """

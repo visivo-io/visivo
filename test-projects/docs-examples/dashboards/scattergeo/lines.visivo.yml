@@ -1,14 +1,22 @@
+sources:
+  - name: scattergeo-data-lines-source
+    type: duckdb
+    database: target/seeds/scattergeo_data_lines.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            lon,lat
+            -75,40
+            -80,25
+            -120,47
+            -100,35
+            -90,30
 models:
   - name: scattergeo-data-lines
-    args:
-      - echo
-      - |
-        lon,lat
-        -75,40
-        -80,25
-        -120,47
-        -100,35
-        -90,30
+    source: ${ref(scattergeo-data-lines-source)}
+    sql: select * from model
 charts:
   - name: scattergeo-chart-with-lines
     layout:

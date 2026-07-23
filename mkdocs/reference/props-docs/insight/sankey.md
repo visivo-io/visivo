@@ -31,16 +31,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
         ![](../../../assets/example-charts/props/sankey/simple-sankey.png)
 
         ```yaml
+        sources:
+          - name: sankey-data-source
+            type: duckdb
+            database: target/seeds/sankey_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    source,target,value
+                    0,1,10
+                    0,2,5
+                    1,3,15
+                    2,3,5
         models:
           - name: sankey-data
-            args:
-              - echo
-              - |
-                source,target,value
-                0,1,10
-                0,2,5
-                1,3,15
-                2,3,5
+            source: ${ref(sankey-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Sankey Diagram
             props:
@@ -60,16 +68,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
         ![](../../../assets/example-charts/props/sankey/custom-colors-sankey.png)
 
         ```yaml
+        sources:
+          - name: sankey-data-colors-source
+            type: duckdb
+            database: target/seeds/sankey_data_colors.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    source,target,value,color
+                    0,1,10,#1f77b4
+                    0,2,5,#ff7f0e
+                    1,3,15,#2ca02c
+                    2,3,5,#d62728
         models:
           - name: sankey-data-colors
-            args:
-              - echo
-              - |
-                source,target,value,color
-                0,1,10,#1f77b4
-                0,2,5,#ff7f0e
-                1,3,15,#2ca02c
-                2,3,5,#d62728
+            source: ${ref(sankey-data-colors-source)}
+            sql: select * from model
         insights:
           - name: Sankey Diagram with Custom Colors
             props:
@@ -90,16 +106,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
         ![](../../../assets/example-charts/props/sankey/sankey-hover-info.png)
 
         ```yaml
+        sources:
+          - name: sankey-data-hover-source
+            type: duckdb
+            database: target/seeds/sankey_data_hover.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    source,target,value
+                    0,1,20
+                    0,2,10
+                    1,3,15
+                    2,3,5
         models:
           - name: sankey-data-hover
-            args:
-              - echo
-              - |
-                source,target,value
-                0,1,20
-                0,2,10
-                1,3,15
-                2,3,5
+            source: ${ref(sankey-data-hover-source)}
+            sql: select * from model
         insights:
           - name: Sankey Diagram with Hover Information
             props:

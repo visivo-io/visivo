@@ -1,13 +1,21 @@
+sources:
+  - name: parcats-data-linewidth-source
+    type: duckdb
+    database: target/seeds/parcats_data_linewidth.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category_1,category_2,value,color
+            A,X,50,red
+            A,Y,30,green
+            B,X,40,yellow
+            B,Y,20,purple
 models:
   - name: parcats-data-linewidth
-    args:
-      - echo
-      - |
-        category_1,category_2,value,color
-        A,X,50,red
-        A,Y,30,green
-        B,X,40,yellow
-        B,Y,20,purple
+    source: ${ref(parcats-data-linewidth-source)}
+    sql: select * from model
 charts:
   - name: parcats-chart-with-custom-line-widths
     layout:

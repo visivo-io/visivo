@@ -29,15 +29,23 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Image/#attribute
         Here's a simple `image` insight displaying an image based on pixel values:
 
         ```yaml
+        sources:
+          - name: image-data-source
+            type: duckdb
+            database: target/seeds/image_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    z
+                    0,0,1,1
+                    1,0,0,1
+                    1,1,0,0
         models:
           - name: image-data
-            args:
-              - echo
-              - |
-                z
-                0,0,1,1
-                1,0,0,1
-                1,1,0,0
+            source: ${ref(image-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Image Plot
             props:
@@ -57,15 +65,23 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Image/#attribute
         This example demonstrates an `image` insight with a custom colorscale to better represent the image data:
 
         ```yaml
+        sources:
+          - name: image-data-custom-source
+            type: duckdb
+            database: target/seeds/image_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    z
+                    0.1,0.2,0.3,0.4
+                    0.5,0.6,0.7,0.8
+                    0.9,1.0,0.2,0.3
         models:
           - name: image-data-custom
-            args:
-              - echo
-              - |
-                z
-                0.1,0.2,0.3,0.4
-                0.5,0.6,0.7,0.8
-                0.9,1.0,0.2,0.3
+            source: ${ref(image-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Image Plot with Custom Colorscale
             props:
@@ -86,15 +102,23 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Image/#attribute
         This example shows an `image` insight with axis labels and annotations to provide context for the image data:
 
         ```yaml
+        sources:
+          - name: image-data-annotated-source
+            type: duckdb
+            database: target/seeds/image_data_annotated.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    z
+                    1,0,0,1
+                    0,1,1,0
+                    0,0,1,1
         models:
           - name: image-data-annotated
-            args:
-              - echo
-              - |
-                z
-                1,0,0,1
-                0,1,1,0
-                0,0,1,1
+            source: ${ref(image-data-annotated-source)}
+            sql: select * from model
         insights:
           - name: Image Plot with Axis Annotations
             props:

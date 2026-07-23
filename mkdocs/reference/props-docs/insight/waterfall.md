@@ -27,18 +27,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
     === "Simple Waterfall Insight"
 
         ```yaml
+        sources:
+          - name: waterfall-data-source
+            type: duckdb
+            database: target/seeds/waterfall_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    idx,label,value
+                    0,Starting,1000
+                    1,Increase A,200
+                    2,Decrease B,-150
+                    3,Increase C,300
+                    4,Ending,1350
+
         models:
           - name: waterfall-data
-            args:
-              - echo
-              - |
-                idx,label,value
-                0,Starting,1000
-                1,Increase A,200
-                2,Decrease B,-150
-                3,Increase C,300
-                4,Ending,1350
-
+            source: ${ref(waterfall-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Waterfall Insight
             props:
@@ -62,18 +70,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
     === "Waterfall Insight with Custom Colors"
 
         ```yaml
+        sources:
+          - name: waterfall-data-colors-source
+            type: duckdb
+            database: target/seeds/waterfall_data_colors.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    idx,label,value,color
+                    0,Starting,1000,#1f77b4
+                    1,Increase A,200,#2ca02c
+                    2,Decrease B,-150,#d62728
+                    3,Increase C,300,#ff7f0e
+                    4,Ending,1350,#9467bd
+
         models:
           - name: waterfall-data-colors
-            args:
-              - echo
-              - |
-                idx,label,value,color
-                0,Starting,1000,#1f77b4
-                1,Increase A,200,#2ca02c
-                2,Decrease B,-150,#d62728
-                3,Increase C,300,#ff7f0e
-                4,Ending,1350,#9467bd
-
+            source: ${ref(waterfall-data-colors-source)}
+            sql: select * from model
         insights:
           - name: Waterfall Insight with Custom Colors
             props:
@@ -109,19 +125,27 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
     === "Financial Waterfall Insight with Connectors"
 
         ```yaml
+        sources:
+          - name: waterfall-data-connectors-source
+            type: duckdb
+            database: target/seeds/waterfall_data_connectors.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    idx,quarter,half,value,mode
+                    0,Q1,H1,1000,initial
+                    1,Q2,H1,200,relative
+                    2,Gross Profit,H1 Summary,0,total
+                    3,Q3,H2,-150,relative
+                    4,Q4,H2,300,relative
+                    5,Gross Profit,FY2024,0,total
+
         models:
           - name: waterfall-data-connectors
-            args:
-              - echo
-              - |
-                idx,quarter,half,value,mode
-                0,Q1,H1,1000,initial
-                1,Q2,H1,200,relative
-                2,Gross Profit,H1 Summary,0,total
-                3,Q3,H2,-150,relative
-                4,Q4,H2,300,relative
-                5,Gross Profit,FY2024,0,total
-
+            source: ${ref(waterfall-data-connectors-source)}
+            sql: select * from model
         insights:
           - name: Financial Waterfall Insight
             props:

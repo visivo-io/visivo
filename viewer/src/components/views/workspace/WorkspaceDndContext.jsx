@@ -265,10 +265,7 @@ export const routeWorkspaceDragEnd = (
   // the user can author a new relation against it. Only models are accepted; any
   // other library type is a no-op (the ERD relates models, not charts/etc.).
   if (dragData.source === 'library' && dropData.kind === 'erd-canvas') {
-    const isModel =
-      dragData.type === 'model' ||
-      dragData.type === 'csvScriptModel' ||
-      dragData.type === 'localMergeModel';
+    const isModel = dragData.type === 'model';
     emit &&
       emit('relation_erd_add_model', {
         type: dragData.type,

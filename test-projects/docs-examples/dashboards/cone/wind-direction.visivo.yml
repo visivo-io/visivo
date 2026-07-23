@@ -1,15 +1,23 @@
+sources:
+  - name: wind-data-cone-source
+    type: duckdb
+    database: target/seeds/wind_data_cone.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z,u,v,w,speed
+            0,0,0,5,5,0,7.07
+            2,2,1,-5,5,0,7.07
+            4,4,3,-5,-5,0,7.07
+            6,6,5,5,-5,0,7.07
+            8,8,8,0,0,5,5.00
+
 models:
   - name: wind-data-cone
-    args:
-      - echo
-      - |
-        x,y,z,u,v,w,speed
-        0,0,0,5,5,0,7.07
-        2,2,1,-5,5,0,7.07
-        4,4,3,-5,-5,0,7.07
-        6,6,5,5,-5,0,7.07
-        8,8,8,0,0,5,5.00
-
+    source: ${ref(wind-data-cone-source)}
+    sql: select * from model
 charts:
   - name: wind-direction-cone-plot
     layout:

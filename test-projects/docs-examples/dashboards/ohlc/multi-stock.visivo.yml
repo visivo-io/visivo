@@ -1,15 +1,23 @@
+sources:
+  - name: ohlc-data-multi-source
+    type: duckdb
+    database: target/seeds/ohlc_data_multi.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            stock,date,open,high,low,close
+            AAPL,2023-03-01,150,155,145,152
+            AAPL,2023-03-02,152,158,150,156
+            AAPL,2023-03-03,156,160,154,159
+            MSFT,2023-03-01,250,255,245,252
+            MSFT,2023-03-02,252,258,250,256
+            MSFT,2023-03-03,256,260,254,259
 models:
   - name: ohlc-data-multi
-    args:
-      - echo
-      - |
-        stock,date,open,high,low,close
-        AAPL,2023-03-01,150,155,145,152
-        AAPL,2023-03-02,152,158,150,156
-        AAPL,2023-03-03,156,160,154,159
-        MSFT,2023-03-01,250,255,245,252
-        MSFT,2023-03-02,252,258,250,256
-        MSFT,2023-03-03,256,260,254,259
+    source: ${ref(ohlc-data-multi-source)}
+    sql: select * from model
 charts:
   - name: ohlc-chart-with-multiple-stocks
     layout:

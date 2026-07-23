@@ -297,3 +297,103 @@ describe('SourceEditForm — embedded sources', () => {
     expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
   });
 });
+
+describe('SourceEditForm — seeds', () => {
+  const seededSqlite = {
+    name: 's1',
+    status: 'PUBLISHED',
+    config: {
+      name: 's1',
+      type: 'sqlite',
+      database: 'prod.db',
+      seeds: [{ table_name: 'raw', args: ['cat', 'raw.csv'] }],
+    },
+  };
+
+  test('offers the seeds editor once a database type is chosen', () => {
+    renderForm();
+    expect(screen.queryByText('Add Seed')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('pick-sqlite'));
+    expect(screen.getByText('Add Seed')).toBeInTheDocument();
+  });
+
+  test('round-trips existing seeds through an edit', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ source: seededSqlite, isCreate: false, onSave });
+
+    expect(screen.getByLabelText('Seed 1 table name')).toHaveValue('raw');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][2].seeds).toEqual([
+      { table_name: 'raw', args: ['cat', 'raw.csv'] },
+    ]);
+  });
+
+  test('omits seeds entirely when none are configured', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ onSave });
+    fireEvent.change(screen.getByLabelText(/Source Name/), { target: { value: 's1' } });
+    fireEvent.click(screen.getByText('pick-sqlite'));
+    fireEvent.change(screen.getByLabelText(/Database/), { target: { value: 'x.db' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][2]).not.toHaveProperty('seeds');
+  });
+
+  test('drops the blank arg rows the editor leaves behind', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({
+      source: {
+        ...seededSqlite,
+        config: {
+          ...seededSqlite.config,
+          seeds: [{ table_name: 'raw', args: ['cat', '', 'raw.csv', '  '] }],
+        },
+      },
+      isCreate: false,
+      onSave,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][2].seeds[0].args).toEqual(['cat', 'raw.csv']);
+  });
+
+  test('refuses to save a seed with no table name', () => {
+    const onSave = jest.fn();
+    renderForm({
+      source: {
+        ...seededSqlite,
+        config: { ...seededSqlite.config, seeds: [{ table_name: '', args: ['cat'] }] },
+      },
+      isCreate: false,
+      onSave,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Every seed needs a table name and at least one command argument')
+    ).toBeInTheDocument();
+  });
+
+  test('refuses to save a seed with no command', () => {
+    const onSave = jest.fn();
+    renderForm({
+      source: {
+        ...seededSqlite,
+        config: { ...seededSqlite.config, seeds: [{ table_name: 'raw', args: ['  '] }] },
+      },
+      isCreate: false,
+      onSave,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});

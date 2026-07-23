@@ -1,15 +1,23 @@
+sources:
+  - name: icicle-data-source
+    type: duckdb
+    database: target/seeds/icicle_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category,parent,value
+            A,,100
+            B,A,50
+            C,A,30
+            D,A,10
+            E,B,25
+            F,B,15
 models:
   - name: icicle-data
-    args:
-      - echo
-      - |
-        category,parent,value
-        A,,100
-        B,A,50
-        C,A,30
-        D,A,10
-        E,B,25
-        F,B,15
+    source: ${ref(icicle-data-source)}
+    sql: select * from model
 charts:
   - name: simple-icicle-chart
     layout:

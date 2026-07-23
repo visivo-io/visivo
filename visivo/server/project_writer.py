@@ -1,9 +1,23 @@
 import json
 import os
 import ruamel.yaml
+from ruamel.yaml.scalarstring import LiteralScalarString
 from copy import deepcopy
 
 DELETE = object()
+
+
+def _preserve_multiline(value):
+    """Emit multi-line strings as a YAML ``|`` block scalar instead of ruamel's
+    default double-quoted, ``\\n``-escaped one-liner.
+
+    Seed args commonly carry a multi-line CSV (``echo`` of a table). Keeping them
+    as a readable ``|`` block — rather than one long escaped string — is what a
+    hand-authored project file looks like, so an edit round-trips cleanly.
+    """
+    if isinstance(value, str) and "\n" in value:
+        return LiteralScalarString(value)
+    return value
 
 
 class SubDiff(dict):
@@ -234,10 +248,10 @@ class ProjectWriter:
                                 # return the original reference value so that it matches the original file
                                 return parsed_json.get("original_value")
                     else:
-                        return obj
+                        return _preserve_multiline(obj)
                 except json.JSONDecodeError:
                     # if the string is not a json string, return the original string
-                    return obj
+                    return _preserve_multiline(obj)
             else:
                 # if the object is not a string, return the original object
                 return obj

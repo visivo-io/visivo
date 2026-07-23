@@ -27,16 +27,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermapbox/#a
     === "Simple Scattermapbox Insight"
 
         ```yaml
+        sources:
+          - name: scattermapbox-data-source
+            type: duckdb
+            database: target/seeds/scattermapbox_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat
+                    -73.9857,40.7484
+                    -118.2437,34.0522
+                    -0.1276,51.5074
+                    139.6917,35.6895
         models:
           - name: scattermapbox-data
-            args:
-              - echo
-              - |
-                lon,lat
-                -73.9857,40.7484
-                -118.2437,34.0522
-                -0.1276,51.5074
-                139.6917,35.6895
+            source: ${ref(scattermapbox-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scattermapbox Insight
             props:
@@ -63,16 +71,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermapbox/#a
     === "Scattermapbox Insight with Lines"
 
         ```yaml
+        sources:
+          - name: scattermapbox-data-lines-source
+            type: duckdb
+            database: target/seeds/scattermapbox_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat
+                    -73.9857,40.7484
+                    -118.2437,34.0522
+                    -0.1276,51.5074
+                    139.6917,35.6895
         models:
           - name: scattermapbox-data-lines
-            args:
-              - echo
-              - |
-                lon,lat
-                -73.9857,40.7484
-                -118.2437,34.0522
-                -0.1276,51.5074
-                139.6917,35.6895
+            source: ${ref(scattermapbox-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scattermapbox Insight with Lines
             props:
@@ -99,16 +115,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermapbox/#a
     === "Scattermapbox Insight with Custom Marker Sizes and Colors"
 
         ```yaml
+        sources:
+          - name: scattermapbox-data-custom-source
+            type: duckdb
+            database: target/seeds/scattermapbox_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat,size,color
+                    -73.9857,40.7484,10,#1f77b4
+                    -118.2437,34.0522,15,#ff7f0e
+                    -0.1276,51.5074,20,#2ca02c
+                    139.6917,35.6895,25,#d62728
         models:
           - name: scattermapbox-data-custom
-            args:
-              - echo
-              - |
-                lon,lat,size,color
-                -73.9857,40.7484,10,#1f77b4
-                -118.2437,34.0522,15,#ff7f0e
-                -0.1276,51.5074,20,#2ca02c
-                139.6917,35.6895,25,#d62728
+            source: ${ref(scattermapbox-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scattermapbox Insight with Custom Markers
             props:

@@ -99,15 +99,19 @@ class ParentModel(ABC):
                     )
                     dag.add_edge(parent_item, dereferenced_item)
                 elif isinstance(item, DefaultSource):
-                    name = root.defaults.source_name
-                    dereferenced_item = self.__get_dereferenced_item_by_name(
-                        name=name,
-                        dag=dag,
-                        root=root,
-                        item=item,
-                        parent_item=parent_item,
-                    )
-                    dag.add_edge(parent_item, dereferenced_item)
+                    name = root.defaults.source_name if root.defaults else None
+                    # No default source to point at — leave the edge off so
+                    # ModelsHaveSourcesValidator can report the missing source
+                    # instead of this dereference blowing up first.
+                    if name is not None:
+                        dereferenced_item = self.__get_dereferenced_item_by_name(
+                            name=name,
+                            dag=dag,
+                            root=root,
+                            item=item,
+                            parent_item=parent_item,
+                        )
+                        dag.add_edge(parent_item, dereferenced_item)
                 if isinstance(item, ParentModel):
                     self.__dereference_items(
                         items=item.child_items(),

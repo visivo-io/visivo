@@ -27,18 +27,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Violin/#attribut
     === "Simple Violin Insight"
 
         ```yaml
+        sources:
+          - name: violin-data-source
+            type: duckdb
+            database: target/seeds/violin_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,value
+                    A,23
+                    A,25
+                    A,27
+                    B,30
+                    B,35
+                    B,28
         models:
           - name: violin-data
-            args:
-              - echo
-              - |
-                category,value
-                A,23
-                A,25
-                A,27
-                B,30
-                B,35
-                B,28
+            source: ${ref(violin-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Violin Insight
             props:
@@ -57,18 +65,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Violin/#attribut
     === "Violin Insight with Box Overlay"
 
         ```yaml
+        sources:
+          - name: violin-data-box-source
+            type: duckdb
+            database: target/seeds/violin_data_box.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,value
+                    A,23
+                    A,25
+                    A,27
+                    B,30
+                    B,35
+                    B,28
         models:
           - name: violin-data-box
-            args:
-              - echo
-              - |
-                category,value
-                A,23
-                A,25
-                A,27
-                B,30
-                B,35
-                B,28
+            source: ${ref(violin-data-box-source)}
+            sql: select * from model
         insights:
           - name: Violin Insight with Box
             props:
@@ -93,27 +109,35 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Violin/#attribut
     === "Violin Insight with Split Categories"
 
         ```yaml
+        sources:
+          - name: violin-data-split-source
+            type: duckdb
+            database: target/seeds/violin_data_split.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,sub_category,value
+                    A,X,23
+                    A,Y,25
+                    A,Y,70
+                    A,Y,15
+                    A,X,27
+                    A,X,13
+                    A,X,21
+                    A,X,81
+                    B,X,30
+                    B,X,35
+                    B,X,4
+                    B,Y,35
+                    B,Y,6
+                    B,Y,5
+                    B,X,28
         models:
           - name: violin-data-split
-            args:
-              - echo
-              - |
-                category,sub_category,value
-                A,X,23
-                A,Y,25
-                A,Y,70
-                A,Y,15
-                A,X,27
-                A,X,13
-                A,X,21
-                A,X,81
-                B,X,30
-                B,X,35
-                B,X,4
-                B,Y,35
-                B,Y,6
-                B,Y,5
-                B,X,28
+            source: ${ref(violin-data-split-source)}
+            sql: select * from model
         insights:
           - name: Violin Insight Category X
             props:

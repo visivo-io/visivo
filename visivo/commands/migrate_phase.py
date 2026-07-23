@@ -10,20 +10,21 @@ from visivo.logger.logger import Logger
 from visivo.models.deprecations import DeprecationChecker, MigrationAction
 
 
-def migrate_phase(working_dir: str, dry_run: bool = True):
+def migrate_phase(working_dir: str, dry_run: bool = True, include_markdown: bool = False):
     """
     Execute migration of deprecated syntax in YAML files.
 
     Process:
     1. Check for project.visivo.yml file
     2. Find all YAML files in working directory
-    3. Collect all migrations from all deprecation checkers
+    3. Collect all migrations and structural rewrites from all deprecation checkers
     4. Group migrations by file
-    5. Apply or preview migrations
+    5. Apply or preview migrations, then report anything needing a manual rewrite
 
     Args:
         working_dir: The directory to scan for YAML files
         dry_run: If True, only report what would change without modifying files
+        include_markdown: Also rewrite yaml fences inside .md files
     """
     logger = Logger.instance()
 
@@ -41,9 +42,21 @@ def migrate_phase(working_dir: str, dry_run: bool = True):
     # Collect all migrations from all checkers
     checker = DeprecationChecker()
     all_migrations = checker.get_all_migrations(working_dir)
+    all_rewrites = checker.get_all_rewrites(working_dir, include_markdown)
+    unmigratable = checker.get_all_unmigratable(working_dir, include_markdown)
+
+    if all_rewrites:
+        _report_and_apply_rewrites(all_rewrites, working_dir, dry_run, logger)
+
+    if unmigratable:
+        _report_unmigratable(unmigratable, working_dir, logger)
 
     if not all_migrations:
-        logger.success("No deprecated syntax found. Project is up to date!")
+        if not all_rewrites and not unmigratable:
+            logger.success("No deprecated syntax found. Project is up to date!")
+        elif dry_run:
+            logger.info("")
+            logger.warn("Run with --apply to make changes.")
         return
 
     # Group by file
@@ -85,6 +98,51 @@ def migrate_phase(working_dir: str, dry_run: bool = True):
         logger.warn("Run with --apply to make changes.")
     else:
         logger.success(f"Applied {total_migrations} migration(s) to {files_modified} file(s).")
+
+
+def _relative(file_path: str, working_dir: str) -> str:
+    try:
+        return os.path.relpath(file_path, working_dir)
+    except ValueError:
+        return file_path
+
+
+def _report_and_apply_rewrites(rewrites, working_dir: str, dry_run: bool, logger: Logger) -> None:
+    """Report, and optionally write, whole-file structural rewrites."""
+    total = 0
+    for rewrite in sorted(rewrites, key=lambda r: r.file_path):
+        logger.info(f"\n{_relative(rewrite.file_path, working_dir)}:")
+        for description in rewrite.descriptions:
+            logger.info(f"  {description}")
+            total += 1
+
+        if not dry_run:
+            try:
+                # Validate before writing so a bad rewrite can't corrupt a file
+                yaml.safe_load(rewrite.new_content)
+            except yaml.YAMLError as e:
+                if not rewrite.file_path.endswith(".md"):
+                    logger.error(f"  Rewrite would create invalid YAML, skipping: {e}")
+                    continue
+            with open(rewrite.file_path, "w") as f:
+                f.write(rewrite.new_content)
+            logger.success(f"  Rewrote {len(rewrite.descriptions)} model(s)")
+
+    logger.info("")
+    if dry_run:
+        logger.warn(f"Found {total} structural migration(s) in {len(rewrites)} file(s).")
+    else:
+        logger.success(f"Applied {total} structural migration(s) to {len(rewrites)} file(s).")
+
+
+def _report_unmigratable(warnings, working_dir: str, logger: Logger) -> None:
+    """Report deprecated usages that need a human to rewrite them."""
+    logger.info("")
+    logger.warn(f"{len(warnings)} item(s) cannot be migrated automatically:")
+    for warning in sorted(warnings, key=lambda w: (w.file_path, w.subject)):
+        logger.warn(f"\n  {_relative(warning.file_path, working_dir)}")
+        logger.warn(f"    {warning.subject}")
+        logger.warn(f"    -> {warning.guidance}")
 
 
 def _apply_migrations_to_file(

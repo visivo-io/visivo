@@ -31,21 +31,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
         ![](../../../assets/example-charts/props/heatmap/simple-heatmap.png)
 
         ```yaml
+        sources:
+          - name: heatmap-data-source
+            type: duckdb
+            database: target/seeds/heatmap_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    A,1,5
+                    A,2,10
+                    A,3,15
+                    B,1,20
+                    B,2,25
+                    B,3,30
+                    C,1,35
+                    C,2,40
+                    C,3,45
         models:
           - name: heatmap-data
-            args:
-              - echo
-              - |
-                x,y,z
-                A,1,5
-                A,2,10
-                A,3,15
-                B,1,20
-                B,2,25
-                B,3,30
-                C,1,35
-                C,2,40
-                C,3,45
+            source: ${ref(heatmap-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Heatmap Insight
             props:
@@ -74,21 +82,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
         ![](../../../assets/example-charts/props/heatmap/categorical-heatmap.png)
 
         ```yaml
+        sources:
+          - name: heatmap-data-custom-source
+            type: duckdb
+            database: target/seeds/heatmap_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    Low,A,0.1
+                    Low,B,0.2
+                    Low,C,0.3
+                    Medium,A,0.4
+                    Medium,B,0.5
+                    Medium,C,0.6
+                    High,A,0.7
+                    High,B,0.8
+                    High,C,0.9
         models:
           - name: heatmap-data-custom
-            args:
-              - echo
-              - |
-                x,y,z
-                Low,A,0.1
-                Low,B,0.2
-                Low,C,0.3
-                Medium,A,0.4
-                Medium,B,0.5
-                Medium,C,0.6
-                High,A,0.7
-                High,B,0.8
-                High,C,0.9
+            source: ${ref(heatmap-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Heatmap with Custom Colorscale
             props:
@@ -120,20 +136,28 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
         ![](../../../assets/example-charts/props/heatmap/text-annoations.png)
 
         ```yaml
+        sources:
+          - name: heatmap-data-annotations-source
+            type: duckdb
+            database: target/seeds/heatmap_data_annotations.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    Q1,2019,100
+                    Q2,2019,150
+                    Q3,2019,200
+                    Q4,2019,250
+                    Q1,2020,300
+                    Q2,2020,350
+                    Q3,2020,400
+                    Q4,2020,450
         models:
           - name: heatmap-data-annotations
-            args:
-              - echo
-              - |
-                x,y,z
-                Q1,2019,100
-                Q2,2019,150
-                Q3,2019,200
-                Q4,2019,250
-                Q1,2020,300
-                Q2,2020,350
-                Q3,2020,400
-                Q4,2020,450
+            source: ${ref(heatmap-data-annotations-source)}
+            sql: select * from model
         insights:
           - name: Heatmap with Text Annotations
             props:

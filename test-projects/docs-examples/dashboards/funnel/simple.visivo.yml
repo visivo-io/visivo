@@ -1,14 +1,22 @@
+sources:
+  - name: funnel-data-source
+    type: duckdb
+    database: target/seeds/funnel_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            stage,value
+            Leads,1000
+            Qualified Leads,750
+            Opportunities,400
+            Proposals,200
+            Closed Deals,100
 models:
   - name: funnel-data
-    args:
-      - echo
-      - |
-        stage,value
-        Leads,1000
-        Qualified Leads,750
-        Opportunities,400
-        Proposals,200
-        Closed Deals,100
+    source: ${ref(funnel-data-source)}
+    sql: select * from model
 charts:
   - name: simple-funnel-chart
     layout:

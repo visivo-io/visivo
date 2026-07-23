@@ -1,13 +1,21 @@
+sources:
+  - name: projects-gantt-source
+    type: duckdb
+    database: target/seeds/projects_gantt.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            project,start_date,finish_date
+            Website Speed,2024-02-14,2024-03-07
+            Database Migration,2024-02-22,2024-03-05
+            Bug Fix,2024-02-12,2024-02-18
+
 models:
   - name: projects-gantt
-    args:
-      - echo
-      - |
-        project,start_date,finish_date
-        Website Speed,2024-02-14,2024-03-07
-        Database Migration,2024-02-22,2024-03-05
-        Bug Fix,2024-02-12,2024-02-18
-
+    source: ${ref(projects-gantt-source)}
+    sql: select * from model
 insights:
   - name: bar-project-durations
     props:

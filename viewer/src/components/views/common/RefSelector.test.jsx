@@ -18,8 +18,6 @@ describe('RefSelector', () => {
       useStore.setState({
         sources: [{ name: 'pg' }, { name: 'duck' }],
         models: [{ name: 'orders' }],
-        csvScriptModels: [{ name: 'csv_model' }],
-        localMergeModels: [{ name: 'merge_model' }],
       });
     });
   });
@@ -67,13 +65,11 @@ describe('RefSelector', () => {
     expect(screen.getByText('Select sources...')).toBeInTheDocument();
   });
 
-  it('offers sql, csv-script, and local-merge models for objectType="model"', async () => {
+  it('offers models for objectType="model"', async () => {
     render(<RefSelector value={null} onChange={jest.fn()} objectType="model" label="Model" />);
 
     await selectEvent.openMenu(screen.getByLabelText('Model'));
     expect(screen.getByText('orders')).toBeInTheDocument();
-    expect(screen.getByText('csv_model')).toBeInTheDocument();
-    expect(screen.getByText('merge_model')).toBeInTheDocument();
   });
 
   it('has no options for an unknown objectType', async () => {

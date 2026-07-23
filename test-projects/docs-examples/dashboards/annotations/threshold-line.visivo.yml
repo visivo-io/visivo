@@ -1,15 +1,23 @@
+sources:
+  - name: line_data-source
+    type: duckdb
+    database: target/seeds/line_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,5
+            2,8
+            3,6
+            4,10
+            5,12
+
 models:
   - name: line_data
-    args:
-      - echo
-      - |
-        x,y
-        1,5
-        2,8
-        3,6
-        4,10
-        5,12
-
+    source: ${ref(line_data-source)}
+    sql: select * from model
 charts:
   - name: threshold-line-example
     layout:

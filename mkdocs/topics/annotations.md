@@ -420,18 +420,26 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
     !!! example "Code"
 
         ```yaml
+        sources:
+          - name: line_data-source
+            type: duckdb
+            database: target/seeds/line_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,8
+                    3,6
+                    4,10
+                    5,12
+
         models:
           - name: line_data
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,8
-                3,6
-                4,10
-                5,12
-    
+            source: ${ref(line_data-source)}
+            sql: select * from model
         insights:
           - name: line_insight
             props:
@@ -441,7 +449,7 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
               mode: lines
               line:
                 color: blue
-    
+
         charts:
           - name: line_with_threshold
             insights:
@@ -468,18 +476,26 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
     !!! example "Code"
 
         ```yaml
+        sources:
+          - name: vertical_threshold_data-source
+            type: duckdb
+            database: target/seeds/vertical_threshold_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,2
+                    2,4
+                    3,8
+                    4,6
+                    5,10
+
         models:
           - name: vertical_threshold_data
-            args:
-              - echo
-              - |
-                x,y
-                1,2
-                2,4
-                3,8
-                4,6
-                5,10
-
+            source: ${ref(vertical_threshold_data-source)}
+            sql: select * from model
         insights:
           - name: vertical_line_insight
             props:
@@ -516,18 +532,26 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
     !!! example "Code"
 
         ```yaml
+        sources:
+          - name: threshold_annotation_data-source
+            type: duckdb
+            database: target/seeds/threshold_annotation_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,3
+                    2,6
+                    3,9
+                    4,12
+                    5,15
+
         models:
           - name: threshold_annotation_data
-            args:
-              - echo
-              - |
-                x,y
-                1,3
-                2,6
-                3,9
-                4,12
-                5,15
-
+            source: ${ref(threshold_annotation_data-source)}
+            sql: select * from model
         insights:
           - name: threshold_annotation_insight
             props:
@@ -580,18 +604,26 @@ Key points are data points that are particularly important or noteworthy. Annota
     !!! example "Code"  
 
         ```yaml
+        sources:
+          - name: multiple_points_data-source
+            type: duckdb
+            database: target/seeds/multiple_points_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,8
+                    3,3
+                    4,10
+                    5,6
+
         models:
           - name: multiple_points_data
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,8
-                3,3
-                4,10
-                5,6
-
+            source: ${ref(multiple_points_data-source)}
+            sql: select * from model
         insights:
           - name: multiple_points_insight
             props:
@@ -637,18 +669,26 @@ Key points are data points that are particularly important or noteworthy. Annota
     !!! example "Code"
 
         ```yaml
+        sources:
+          - name: point_region_data-source
+            type: duckdb
+            database: target/seeds/point_region_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,3
+                    2,6
+                    3,9
+                    4,12
+                    5,15
+
         models:
           - name: point_region_data
-            args:
-              - echo
-              - |
-                x,y
-                1,3
-                2,6
-                3,9
-                4,12
-                5,15
-
+            source: ${ref(point_region_data-source)}
+            sql: select * from model
         insights:
           - name: point_region_insight
             props:
@@ -709,18 +749,26 @@ Below are three examples showcasing the use of emoji annotations.
     !!! example "Code"
 
         ```yaml
+        sources:
+          - name: emoji_data-source
+            type: duckdb
+            database: target/seeds/emoji_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,2
+                    2,4
+                    3,8
+                    4,6
+                    5,10
+
         models:
           - name: emoji_data
-            args:
-              - echo
-              - |
-                x,y
-                1,2
-                2,4
-                3,8
-                4,6
-                5,10
-
+            source: ${ref(emoji_data-source)}
+            sql: select * from model
         insights:
           - name: emoji_insight
             props:
@@ -768,18 +816,26 @@ Below are three examples showcasing the use of emoji annotations.
     !!! example "Code"
 
         ```yaml
+        sources:
+          - name: threshold_emoji_data-source
+            type: duckdb
+            database: target/seeds/threshold_emoji_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,8
+                    3,6
+                    4,10
+                    5,12
+
         models:
           - name: threshold_emoji_data
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,8
-                3,6
-                4,10
-                5,12
-
+            source: ${ref(threshold_emoji_data-source)}
+            sql: select * from model
         insights:
           - name: threshold_emoji_insight
             props:
@@ -824,18 +880,26 @@ Below are three examples showcasing the use of emoji annotations.
     !!! example "Code"
 
         ```yaml
+        sources:
+          - name: region_emoji_data-source
+            type: duckdb
+            database: target/seeds/region_emoji_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,2
+                    2,4
+                    3,6
+                    4,8
+                    5,10
+
         models:
           - name: region_emoji_data
-            args:
-              - echo
-              - |
-                x,y
-                1,2
-                2,4
-                3,6
-                4,8
-                5,10
-
+            source: ${ref(region_emoji_data-source)}
+            sql: select * from model
         insights:
           - name: region_emoji_insight
             props:

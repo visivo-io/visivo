@@ -60,6 +60,45 @@ class BaseDuckdbSource(Source):
         """Return a context manager for DuckDB connections."""
         return DuckdbConnection(source=self, read_only=read_only, **kwargs)
 
+    def write_dataframe(self, table_name: str, data_frame, replace: bool = True):
+        """Write a Polars DataFrame to a table in this DuckDB database."""
+        try:
+            with self.connect(read_only=False) as connection:
+                connection.register("visivo_write_data_frame", data_frame)
+                if replace:
+                    connection.execute(
+                        f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM visivo_write_data_frame"
+                    )
+                else:
+                    connection.execute(
+                        f"CREATE TABLE IF NOT EXISTS {table_name} AS "
+                        "SELECT * FROM visivo_write_data_frame WHERE FALSE"
+                    )
+                    connection.execute(
+                        f"INSERT INTO {table_name} SELECT * FROM visivo_write_data_frame"
+                    )
+        except Exception as err:
+            raise click.ClickException(
+                f"Error writing table '{table_name}' to {self.type} source '{self.name}': {str(err)}"
+            )
+
+    def table_exists(self, table_name: str) -> bool:
+        """Targeted existence check for a single table (seed ``existing_table="skip"``).
+
+        A single ``information_schema.tables`` lookup, not a full introspection. Any
+        failure — most commonly the database file not existing yet on the first run —
+        returns ``False`` so the seed runs and creates the table.
+        """
+        try:
+            with self.connect(read_only=True) as connection:
+                result = connection.execute(
+                    "SELECT 1 FROM information_schema.tables WHERE table_name = ? LIMIT 1",
+                    [table_name],
+                ).fetchone()
+                return result is not None
+        except Exception:
+            return False
+
     def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
         """
         Build SQLGlot schema using DuckDB's introspection capabilities.

@@ -59,20 +59,9 @@ describe('objectCanvasRegistry', () => {
     });
   });
 
-  test('the model family is CLI-only (serve) and shares ONE Model canvas body', () => {
-    ['model', 'csvScriptModel', 'localMergeModel'].forEach(type => {
-      expect(OBJECT_CANVAS_REGISTRY[type].availability).toBe('serve');
-      expect(OBJECT_CANVAS_REGISTRY[type].availabilityKey).toBe('modelQueryJobs');
-    });
-    // Latent-bug guard: csvScriptModel + localMergeModel resolve to the SAME
-    // component as `model`, so they render the canvas instead of falling to
-    // lineage (the old registry only keyed 'model').
-    expect(OBJECT_CANVAS_REGISTRY.csvScriptModel.Component).toBe(
-      OBJECT_CANVAS_REGISTRY.model.Component
-    );
-    expect(OBJECT_CANVAS_REGISTRY.localMergeModel.Component).toBe(
-      OBJECT_CANVAS_REGISTRY.model.Component
-    );
+  test('the model type is CLI-only (serve)', () => {
+    expect(OBJECT_CANVAS_REGISTRY.model.availability).toBe('serve');
+    expect(OBJECT_CANVAS_REGISTRY.model.availabilityKey).toBe('modelQueryJobs');
   });
 
   test('the first lens of every registered type is the "Canvas" preview', () => {
@@ -193,7 +182,6 @@ describe('objectCanvasRegistry', () => {
       ['input', OBJECT_CANVAS_REGISTRY.input.Component],
       ['insight', OBJECT_CANVAS_REGISTRY.insight.Component],
       ['source-erd', OBJECT_CANVAS_REGISTRY.source.Component],
-      // model + csvScriptModel + localMergeModel share ONE body.
       ['model', OBJECT_CANVAS_REGISTRY.model.Component],
       ['relation-erd', OBJECT_CANVAS_REGISTRY.relation.Component],
       ['dimension-inspector', OBJECT_CANVAS_REGISTRY.dimension.Component],

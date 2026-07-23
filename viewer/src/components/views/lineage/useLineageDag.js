@@ -141,8 +141,6 @@ export function useLineageDag() {
   const dashboards = useStore(state => state.dashboards);
   const defaults = useStore(state => state.defaults);
   const inputs = useStore(state => state.inputs);
-  const csvScriptModels = useStore(state => state.csvScriptModels);
-  const localMergeModels = useStore(state => state.localMergeModels);
 
   const dag = useMemo(() => {
     const nodes = [];
@@ -161,8 +159,6 @@ export function useLineageDag() {
     (tables || []).forEach(t => { objectTypeByName[t.name] = 'table'; });
     (dashboards || []).forEach(d => { objectTypeByName[d.name] = 'dashboard'; });
     (inputs || []).forEach(i => { objectTypeByName[i.name] = 'input'; });
-    (csvScriptModels || []).forEach(m => { objectTypeByName[m.name] = 'csvScriptModel'; });
-    (localMergeModels || []).forEach(m => { objectTypeByName[m.name] = 'localMergeModel'; });
 
     /**
      * Add a node to the DAG
@@ -214,39 +210,6 @@ export function useLineageDag() {
         const childType = objectTypeByName[childName];
         if (childType) {
           addEdge(childName, childType, model.name, 'model');
-        }
-      });
-    });
-
-    // Build csvScriptModel nodes
-    (csvScriptModels || []).forEach(model => {
-      addNode(model.name, 'csvScriptModel', 'csvScriptModelNode', {
-        status: model.status,
-        model: model,
-      });
-
-      const childNames = [...new Set(model.child_item_names || [])];
-      childNames.forEach(childName => {
-        const childType = objectTypeByName[childName];
-        if (childType) {
-          addEdge(childName, childType, model.name, 'csvScriptModel');
-        }
-      });
-    });
-
-    // Build localMergeModel nodes
-    (localMergeModels || []).forEach(model => {
-      addNode(model.name, 'localMergeModel', 'localMergeModelNode', {
-        sql: model.config?.sql,
-        status: model.status,
-        model: model,
-      });
-
-      const childNames = [...new Set(model.child_item_names || [])];
-      childNames.forEach(childName => {
-        const childType = objectTypeByName[childName];
-        if (childType) {
-          addEdge(childName, childType, model.name, 'localMergeModel');
         }
       });
     });
@@ -414,7 +377,7 @@ export function useLineageDag() {
     const layoutNodes = computeLayout(nodes, validEdges);
 
     return { nodes: layoutNodes, edges: validEdges };
-  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, inputs, defaults, csvScriptModels, localMergeModels]);
+  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, inputs, defaults]);
 
   return dag;
 }

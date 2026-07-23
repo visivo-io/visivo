@@ -41,8 +41,6 @@ function mockStoreState(state) {
     dashboards: [],
     defaults: {},
     inputs: [],
-    csvScriptModels: [],
-    localMergeModels: [],
     ...state,
   };
   useStore.mockImplementation(selector => selector(fullState));

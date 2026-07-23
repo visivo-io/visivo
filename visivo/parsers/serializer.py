@@ -7,8 +7,6 @@ from visivo.models.chart import Chart
 from visivo.models.table import Table
 from visivo.models.models.model import Model
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.dimension import Dimension
 from visivo.models.metric import Metric
 from visivo.models.relation import Relation
@@ -167,8 +165,7 @@ class Serializer:
         managers serve in ``visivo serve`` for the local editor (they read this
         same DAG).
 
-        Model subtypes are split (sql / csv-script / local-merge) to match the
-        cloud's separate per-type endpoints. Dimensions and metrics are
+        Dimensions and metrics are
         surfaced even when authored inside a model, since they are their own
         named nodes in the DAG. Charts/insights/tables/markdowns/inputs are
         emitted in source (ref) form — distinct from the baked, inlined copies
@@ -189,8 +186,6 @@ class Serializer:
         return {
             "sources": collect(Source),
             "models": collect(SqlModel),
-            "csv-script-models": collect(CsvScriptModel),
-            "local-merge-models": collect(LocalMergeModel),
             "dimensions": collect(Dimension),
             "metrics": collect(Metric),
             "relations": collect(Relation),

@@ -1,14 +1,22 @@
+sources:
+  - name: waterfall-data-colors-source
+    type: duckdb
+    database: target/seeds/waterfall_data_colors.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            idx,label,value,color
+            0,Starting,1000,#1f77b4
+            1,Increase A,200,#2ca02c
+            2,Decrease B,-150,#d62728
+            3,Increase C,300,#ff7f0e
+            4,Ending,1350,#9467bd
 models:
   - name: waterfall-data-colors
-    args:
-      - echo
-      - |
-        idx,label,value,color
-        0,Starting,1000,#1f77b4
-        1,Increase A,200,#2ca02c
-        2,Decrease B,-150,#d62728
-        3,Increase C,300,#ff7f0e
-        4,Ending,1350,#9467bd
+    source: ${ref(waterfall-data-colors-source)}
+    sql: select * from model
 charts:
   - name: waterfall-chart-with-custom-colors
     layout:

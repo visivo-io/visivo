@@ -15,15 +15,12 @@ import useStore from '../../../../stores/store';
  *   - Data Layer   — click-to-edit types: Sources · Models · Dimensions ·
  *                    Metrics · Relations · Insights.
  *
- * `model` is the union of `models` (sql), `csvScriptModels` and
- * `localMergeModels` since end users think of them as a single category;
- * the `subtype` field records which underlying store the row came from and
- * `canonicalType` carries the REAL object type (`model` / `csvScriptModel` /
- * `localMergeModel`). Presentation keys off `type` ('model' — one icon, one
- * subsection), but tab opens / edit routing MUST use `canonicalType`:
- * routing a csv-script or local-merge model as a plain 'model' resolves a
- * null record in the `models` collection and drops the user into a blank
- * create-SQL-model form that saves into the wrong collection.
+ * Model rows carry `subtype` (which flavour of model the row is) and
+ * `canonicalType` (the REAL object type, used for tab opens and edit routing).
+ * Presentation keys off `type`. Both are currently always 'model' — they are
+ * kept because routing by anything other than the canonical type resolves a
+ * null record and drops the user into a blank create form that saves into the
+ * wrong collection.
  *
  * Returns:
  *
@@ -70,42 +67,20 @@ export function useLibraryData() {
   // Data-layer collections.
   const sources = useStore(s => s.sources);
   const models = useStore(s => s.models);
-  const csvScriptModels = useStore(s => s.csvScriptModels);
-  const localMergeModels = useStore(s => s.localMergeModels);
   const dimensions = useStore(s => s.dimensions);
   const metrics = useStore(s => s.metrics);
   const relations = useStore(s => s.relations);
   const insights = useStore(s => s.insights);
 
   return useMemo(() => {
-    // Models are the union of the three model stores; preserve a `subtype`
-    // so callers can tell sql / csv-script / local-merge apart.
-    const modelRows = [
-      ...safeArray(models).map(m => ({
-        id: `model:${m.name}`,
-        type: 'model',
-        canonicalType: 'model',
-        name: m.name,
-        subtype: 'sql_model',
-        status: m.status || null,
-      })),
-      ...safeArray(csvScriptModels).map(m => ({
-        id: `csvScriptModel:${m.name}`,
-        type: 'model',
-        canonicalType: 'csvScriptModel',
-        name: m.name,
-        subtype: 'csv_script_model',
-        status: m.status || null,
-      })),
-      ...safeArray(localMergeModels).map(m => ({
-        id: `localMergeModel:${m.name}`,
-        type: 'model',
-        canonicalType: 'localMergeModel',
-        name: m.name,
-        subtype: 'local_merge_model',
-        status: m.status || null,
-      })),
-    ];
+    const modelRows = safeArray(models).map(m => ({
+      id: `model:${m.name}`,
+      type: 'model',
+      canonicalType: 'model',
+      name: m.name,
+      subtype: 'sql_model',
+      status: m.status || null,
+    }));
 
     const sourceRows = safeArray(sources).map(s => ({
       id: `source:${s.name}`,
@@ -140,8 +115,6 @@ export function useLibraryData() {
     dashboards,
     sources,
     models,
-    csvScriptModels,
-    localMergeModels,
     dimensions,
     metrics,
     relations,

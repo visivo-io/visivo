@@ -267,6 +267,20 @@ def get_model_to_path_mapping(nav_configuration: list) -> dict:
     return mapping
 
 
+def get_model_to_paths_mapping(nav_configuration: list) -> dict:
+    """Like ``get_model_to_path_mapping``, but keeps *every* path for a model.
+
+    A nested model reused by several parents (e.g. ``Seed``, which every database
+    source carries) appears at one nav leaf per parent. Keying by name alone keeps
+    only the last, so the other leaves would point at files nobody writes.
+    """
+    mapping = {}
+    for path in _extract_strings_from_yaml(nav_configuration):
+        model = path.split("/")[-2]
+        mapping.setdefault(model, []).append("mkdocs/" + path)
+    return mapping
+
+
 def find_path(object, key, path=None):
     """Gets the path to traverse through a nested dictionary list to get to a key. Finds the first key that matches."""
     if path is None:

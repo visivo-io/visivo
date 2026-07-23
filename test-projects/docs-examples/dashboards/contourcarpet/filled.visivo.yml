@@ -1,18 +1,26 @@
+sources:
+  - name: contourcarpet-data-filled-source
+    type: duckdb
+    database: target/seeds/contourcarpet_data_filled.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            a,b,x,y,z
+            0,0,2,3,5
+            1,0,3,4,10
+            2,0,4,5,15
+            0,1,5,6,20
+            1,1,6,7,25
+            2,1,7,8,30
+            0,2,8,9,35
+            1,2,9,10,40
+            2,2,10,11,45
 models:
   - name: contourcarpet-data-filled
-    args:
-      - echo
-      - |
-        a,b,x,y,z
-        0,0,2,3,5
-        1,0,3,4,10
-        2,0,4,5,15
-        0,1,5,6,20
-        1,1,6,7,25
-        2,1,7,8,30
-        0,2,8,9,35
-        1,2,9,10,40
-        2,2,10,11,45
+    source: ${ref(contourcarpet-data-filled-source)}
+    sql: select * from model
 charts:
   - name: filled-contourcarpet-chart
     layout:

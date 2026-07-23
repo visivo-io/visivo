@@ -12,7 +12,13 @@ from visivo.commands.options import working_dir
     default=False,
     help="Apply migrations to files. Default is dry-run mode.",
 )
-def migrate(working_dir, apply):
+@click.option(
+    "--include-markdown",
+    is_flag=True,
+    default=False,
+    help="Also migrate yaml code blocks inside markdown files.",
+)
+def migrate(working_dir, apply, include_markdown):
     """
     Migrate deprecated syntax in a Visivo project to its current
     recommended form.
@@ -26,4 +32,5 @@ def migrate(working_dir, apply):
     migrate_phase(
         working_dir=working_dir,
         dry_run=not apply,
+        include_markdown=include_markdown,
     )

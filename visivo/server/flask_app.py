@@ -17,8 +17,6 @@ from visivo.server.managers.markdown_manager import MarkdownManager
 from visivo.server.managers.chart_manager import ChartManager
 from visivo.server.managers.table_manager import TableManager
 from visivo.server.managers.dashboard_manager import DashboardManager
-from visivo.server.managers.csv_script_model_manager import CsvScriptModelManager
-from visivo.server.managers.local_merge_model_manager import LocalMergeModelManager
 from visivo.server.managers.project_manager import ProjectManager
 from visivo.server.managers.run_manager import RunManager
 
@@ -79,12 +77,6 @@ class FlaskApp:
         self.dashboard_manager = DashboardManager()
         self.dashboard_manager.load(dag)
 
-        self.csv_script_model_manager = CsvScriptModelManager()
-        self.csv_script_model_manager.load(dag)
-
-        self.local_merge_model_manager = LocalMergeModelManager()
-        self.local_merge_model_manager.load(dag)
-
         # Initialize project manager (doesn't use DAG, just stores project and cache dir)
         self.project_manager = ProjectManager(project, output_dir)
 
@@ -106,8 +98,6 @@ class FlaskApp:
             self.chart_manager,
             self.table_manager,
             self.dashboard_manager,
-            self.csv_script_model_manager,
-            self.local_merge_model_manager,
         ]
 
     def has_draft_changes(self) -> bool:
@@ -160,7 +150,5 @@ class FlaskApp:
         self.chart_manager.load(dag)
         self.table_manager.load(dag)
         self.dashboard_manager.load(dag)
-        self.csv_script_model_manager.load(dag)
-        self.local_merge_model_manager.load(dag)
         # Project manager doesn't use load(), it gets the new project directly
         self.project_manager.project = value

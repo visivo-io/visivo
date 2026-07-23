@@ -31,17 +31,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
         ![](../../../assets/example-charts/props/funnel/simple-funnel.png)
 
         ```yaml
+        sources:
+          - name: funnel-data-source
+            type: duckdb
+            database: target/seeds/funnel_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stage,value
+                    Leads,1000
+                    Qualified Leads,750
+                    Opportunities,400
+                    Proposals,200
+                    Closed Deals,100
         models:
           - name: funnel-data
-            args:
-              - echo
-              - |
-                stage,value
-                Leads,1000
-                Qualified Leads,750
-                Opportunities,400
-                Proposals,200
-                Closed Deals,100
+            source: ${ref(funnel-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Funnel Insight
             props:
@@ -75,16 +83,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
         ![](../../../assets/example-charts/props/funnel/horizontal-funnel.png)
 
         ```yaml
+        sources:
+          - name: funnel-data-horizontal-source
+            type: duckdb
+            database: target/seeds/funnel_data_horizontal.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stage,value
+                    Awareness,5000
+                    Interest,3000
+                    Consideration,1500
+                    Conversion,700
         models:
           - name: funnel-data-horizontal
-            args:
-              - echo
-              - |
-                stage,value
-                Awareness,5000
-                Interest,3000
-                Consideration,1500
-                Conversion,700
+            source: ${ref(funnel-data-horizontal-source)}
+            sql: select * from model
         insights:
           - name: Horizontal Funnel Insight
             props:
@@ -116,17 +132,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
         ![](../../../assets/example-charts/props/funnel/custom-markers-funnel.png)
 
         ```yaml
+        sources:
+          - name: funnel-data-custom-source
+            type: duckdb
+            database: target/seeds/funnel_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stage,value,color
+                    Leads,1200,"#1f77b4"
+                    MQL,900,"#ff7f0e"
+                    SQL,600,"#2ca02c"
+                    Proposal,300,"#d62728"
+                    Won,100,"#9467bd"
         models:
           - name: funnel-data-custom
-            args:
-              - echo
-              - |
-                stage,value,color
-                Leads,1200,"#1f77b4"
-                MQL,900,"#ff7f0e"
-                SQL,600,"#2ca02c"
-                Proposal,300,"#d62728"
-                Won,100,"#9467bd"
+            source: ${ref(funnel-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Custom Markers Funnel Insight
             props:
@@ -159,24 +183,32 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
         ![](../../../assets/example-charts/props/funnel/cohort-funnel.png)
 
         ```yaml
+        sources:
+          - name: funnel-data-cohorts-source
+            type: duckdb
+            database: target/seeds/funnel_data_cohorts.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stage,value,product
+                    Awareness,5000,Product A
+                    Interest,3000,Product A
+                    Consideration,1500,Product A
+                    Purchase,700,Product A
+                    Awareness,4500,Product B
+                    Interest,2800,Product B
+                    Consideration,1200,Product B
+                    Purchase,500,Product B
+                    Awareness,3800,Product C
+                    Interest,2200,Product C
+                    Consideration,900,Product C
+                    Purchase,300,Product C
         models:
           - name: funnel-data-cohorts
-            args:
-              - echo
-              - |
-                stage,value,product
-                Awareness,5000,Product A
-                Interest,3000,Product A
-                Consideration,1500,Product A
-                Purchase,700,Product A
-                Awareness,4500,Product B
-                Interest,2800,Product B
-                Consideration,1200,Product B
-                Purchase,500,Product B
-                Awareness,3800,Product C
-                Interest,2200,Product C
-                Consideration,900,Product C
-                Purchase,300,Product C
+            source: ${ref(funnel-data-cohorts-source)}
+            sql: select * from model
         insights:
           - name: Cohort Funnel Insight
             props:

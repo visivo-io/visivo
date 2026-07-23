@@ -31,15 +31,23 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes)
         ![](../../../assets/example-charts/props/pie/simple-pie.png)
 
         ```yaml
+        sources:
+          - name: pie-data-source
+            type: duckdb
+            database: target/seeds/pie_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,value
+                    A,30
+                    B,20
+                    C,50
         models:
           - name: pie-data
-            args:
-              - echo
-              - |
-                category,value
-                A,30
-                B,20
-                C,50
+            source: ${ref(pie-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Pie Chart
             props:
@@ -55,15 +63,23 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes)
         ![](../../../assets/example-charts/props/pie/custom-colors-pie.png)
 
         ```yaml
+        sources:
+          - name: pie-data-colors-source
+            type: duckdb
+            database: target/seeds/pie_data_colors.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,value,color
+                    A,40,#1f77b4
+                    B,30,#ff7f0e
+                    C,30,#2ca02c
         models:
           - name: pie-data-colors
-            args:
-              - echo
-              - |
-                category,value,color
-                A,40,#1f77b4
-                B,30,#ff7f0e
-                C,30,#2ca02c
+            source: ${ref(pie-data-colors-source)}
+            sql: select * from model
         insights:
           - name: Pie Chart with Custom Colors
             props:
@@ -81,15 +97,23 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes)
         ![](../../../assets/example-charts/props/pie/pie-hover-info.png)
 
         ```yaml
+        sources:
+          - name: pie-data-hover-source
+            type: duckdb
+            database: target/seeds/pie_data_hover.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,value
+                    X,60
+                    Y,25
+                    Z,15
         models:
           - name: pie-data-hover
-            args:
-              - echo
-              - |
-                category,value
-                X,60
-                Y,25
-                Z,15
+            source: ${ref(pie-data-hover-source)}
+            sql: select * from model
         insights:
           - name: Pie Chart with Hover Info
             props:

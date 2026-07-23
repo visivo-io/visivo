@@ -95,8 +95,6 @@ const seedStore = (extra = {}) => {
       // Data-layer collections.
       sources: [{ name: 'local-duck', type: 'duckdb' }],
       models: [{ name: 'monthly_revenue' }],
-      csvScriptModels: [],
-      localMergeModels: [],
       dimensions: [{ name: 'period' }],
       metrics: [{ name: 'revenue' }],
       relations: [{ name: 'customers_orders' }],
@@ -242,38 +240,18 @@ describe('Library', () => {
     });
   });
 
-  test('clicking a csv-script model row opens the tab with its REAL type (not the presentational "model")', () => {
+  test('clicking a model row opens the tab keyed on its canonical type', () => {
     const openWorkspaceTab = jest.fn();
-    seedStore({ openWorkspaceTab, csvScriptModels: [{ name: 'fibonacci_seed' }] });
+    seedStore({ openWorkspaceTab });
     renderLibrary();
-    // Presentation keeps the shared model row (icon / subsection / testid)…
-    const row = screen.getByTestId('library-row-model-fibonacci_seed');
+    const row = screen.getByTestId('library-row-model-monthly_revenue');
     fireEvent.click(row);
-    // …but routing uses the canonical type so the right rail resolves the
-    // record in the csvScriptModels collection instead of finding null in
-    // `models` and dropping into a blank create-SQL-model form.
+    // Routing uses the row's canonical type so the right rail resolves a real
+    // record instead of finding null and dropping into a blank create form.
     expect(openWorkspaceTab).toHaveBeenCalledWith({
-      id: 'csvScriptModel:fibonacci_seed',
-      type: 'csvScriptModel',
-      name: 'fibonacci_seed',
-    });
-  });
-
-  test('local-merge model context "Open in new tab" background-opens with its REAL type', () => {
-    const openWorkspaceTabBackground = jest.fn();
-    seedStore({
-      openWorkspaceTab: jest.fn(),
-      openWorkspaceTabBackground,
-      localMergeModels: [{ name: 'daily_join' }],
-    });
-    renderLibrary();
-    fireEvent.contextMenu(screen.getByTestId('library-row-model-daily_join'));
-    const menu = screen.getByTestId('library-row-model-daily_join-context-menu');
-    fireEvent.click(within(menu).getByText('Open in new tab'));
-    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
-      id: 'localMergeModel:daily_join',
-      type: 'localMergeModel',
-      name: 'daily_join',
+      id: 'model:monthly_revenue',
+      type: 'model',
+      name: 'monthly_revenue',
     });
   });
 
@@ -512,7 +490,7 @@ describe('Library', () => {
   });
 
   test('shows the empty placeholder when a subsection has no rows', () => {
-    seedStore({ charts: [], models: [], csvScriptModels: [], localMergeModels: [] });
+    seedStore({ charts: [], models: [] });
     renderLibrary();
     expect(screen.getByTestId('library-subsection-chart-empty')).toHaveTextContent(
       'No charts yet'

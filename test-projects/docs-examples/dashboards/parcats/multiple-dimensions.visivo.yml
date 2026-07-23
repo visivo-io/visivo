@@ -1,13 +1,21 @@
+sources:
+  - name: parcats-data-multi-source
+    type: duckdb
+    database: target/seeds/parcats_data_multi.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category_1,category_2,category_3,value
+            A,X,Alpha,30
+            A,Y,Beta,20
+            B,X,Alpha,25
+            B,Y,Gamma,25
 models:
   - name: parcats-data-multi
-    args:
-      - echo
-      - |
-        category_1,category_2,category_3,value
-        A,X,Alpha,30
-        A,Y,Beta,20
-        B,X,Alpha,25
-        B,Y,Gamma,25
+    source: ${ref(parcats-data-multi-source)}
+    sql: select * from model
 charts:
   - name: parcats-chart-with-multiple-dimensions
     layout:

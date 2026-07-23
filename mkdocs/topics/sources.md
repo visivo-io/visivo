@@ -7,7 +7,7 @@ Sources are connections to your data warehouses or databases. This page describe
 ## Supported Connectors 
 Sources are typically OLAP or OLTP SQL based data warehouses and databases. 
 
-We have pre-built connectors for the most popular databases; however, you can also connect to nosql data stores, API, script and document sources and through [CsvScriptModels](/../reference/configuration/Models/CsvScriptModel/).
+We have pre-built connectors for the most popular databases; however, you can also bring in nosql data stores, APIs, scripts and document sources by giving a Source a [Seed](/../reference/configuration/Sources/DuckdbSource/Seed/) — a command whose csv output is loaded into a table on that Source.
 <div class="grid cards" markdown>
 
 - ![](../assets/source-logos/sqlite.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/SqliteSource/)
@@ -24,7 +24,7 @@ Visivo enables you to configure multiple sources in a single project.
 
 This is really useful for joining together data that lives in different sources. 
 
-Once your sources are set up, you can bring data together in a single chart with insights whose models originate from different sources, or through DuckDB queries that leverage tables from multiple sources (see [LocalMergeModel](/../reference/configuration/Models/LocalMergeModel/)), or through writing csvs to stdout (see [CsvScriptModels](/../reference/configuration/Models/CsvScriptModel/)).
+Once your sources are set up, you can bring data together in a single chart with insights whose models originate from different sources. To join data that does not already live together, load each dataset onto one Source with [Seeds](/../reference/configuration/Sources/DuckdbSource/Seed/) and query them with a single model.
 
 
 ## Environments 

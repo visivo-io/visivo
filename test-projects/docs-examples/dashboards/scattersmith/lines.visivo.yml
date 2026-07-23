@@ -1,13 +1,21 @@
+sources:
+  - name: scattersmith-data-lines-source
+    type: duckdb
+    database: target/seeds/scattersmith_data_lines.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            real,imaginary
+            0.2,0.1
+            0.5,0.4
+            0.7,0.6
+            1.0,0.8
 models:
   - name: scattersmith-data-lines
-    args:
-      - echo
-      - |
-        real,imaginary
-        0.2,0.1
-        0.5,0.4
-        0.7,0.6
-        1.0,0.8
+    source: ${ref(scattersmith-data-lines-source)}
+    sql: select * from model
 charts:
   - name: scattersmith-chart-with-lines
     layout:

@@ -31,18 +31,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attribut
         ![](../../../assets/example-charts/props/icicle/simple-icicle.png)
 
         ```yaml
+        sources:
+          - name: icicle-data-source
+            type: duckdb
+            database: target/seeds/icicle_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,parent,value
+                    A,,100
+                    B,A,50
+                    C,A,30
+                    D,A,10
+                    E,B,25
+                    F,B,15
         models:
           - name: icicle-data
-            args:
-              - echo
-              - |
-                category,parent,value
-                A,,100
-                B,A,50
-                C,A,30
-                D,A,10
-                E,B,25
-                F,B,15
+            source: ${ref(icicle-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Icicle Plot
             props:
@@ -72,18 +80,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attribut
         ![](../../../assets/example-charts/props/icicle/custom-colors-icicle.png)
 
         ```yaml
+        sources:
+          - name: icicle-data-custom-source
+            type: duckdb
+            database: target/seeds/icicle_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,parent,value,color
+                    A,,100,"#1f77b4"
+                    B,A,50,"#ff7f0e"
+                    C,A,30,"#2ca02c"
+                    D,A,20,"#d62728"
+                    E,B,25,"#9467bd"
+                    F,B,15,"#8c564b"
         models:
           - name: icicle-data-custom
-            args:
-              - echo
-              - |
-                category,parent,value,color
-                A,,100,"#1f77b4"
-                B,A,50,"#ff7f0e"
-                C,A,30,"#2ca02c"
-                D,A,20,"#d62728"
-                E,B,25,"#9467bd"
-                F,B,15,"#8c564b"
+            source: ${ref(icicle-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Custom Colors Icicle Plot
             props:
@@ -110,18 +126,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attribut
         ![](../../../assets/example-charts/props/icicle/depth-limited-icicle.png)
 
         ```yaml
+        sources:
+          - name: icicle-data-depth-source
+            type: duckdb
+            database: target/seeds/icicle_data_depth.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    category,parent,value
+                    A,,100
+                    B,A,50
+                    C,A,30
+                    D,A,20
+                    E,B,25
+                    F,B,15
         models:
           - name: icicle-data-depth
-            args:
-              - echo
-              - |
-                category,parent,value
-                A,,100
-                B,A,50
-                C,A,30
-                D,A,20
-                E,B,25
-                F,B,15
+            source: ${ref(icicle-data-depth-source)}
+            sql: select * from model
         insights:
           - name: Icicle Plot with Depth Limiting
             props:

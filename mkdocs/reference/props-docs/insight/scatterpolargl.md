@@ -27,17 +27,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolargl/#
     === "Simple Scatterpolargl Insight"
 
         ```yaml
+        sources:
+          - name: scatterpolargl-data-source
+            type: duckdb
+            database: target/seeds/scatterpolargl_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    theta,r
+                    0,10
+                    45,20
+                    90,30
+                    135,25
+                    180,15
         models:
           - name: scatterpolargl-data
-            args:
-              - echo
-              - |
-                theta,r
-                0,10
-                45,20
-                90,30
-                135,25
-                180,15
+            source: ${ref(scatterpolargl-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scatterpolargl Insight
             props:
@@ -60,17 +68,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolargl/#
     === "Scatterpolargl Insight with Lines"
 
         ```yaml
+        sources:
+          - name: scatterpolargl-data-lines-source
+            type: duckdb
+            database: target/seeds/scatterpolargl_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    theta,r
+                    0,5
+                    45,15
+                    90,20
+                    135,10
+                    180,25
         models:
           - name: scatterpolargl-data-lines
-            args:
-              - echo
-              - |
-                theta,r
-                0,5
-                45,15
-                90,20
-                135,10
-                180,25
+            source: ${ref(scatterpolargl-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scatterpolargl Insight with Lines
             props:
@@ -93,17 +109,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolargl/#
     === "Scatterpolargl Insight with Custom Marker Sizes and Colors"
 
         ```yaml
+        sources:
+          - name: scatterpolargl-data-custom-source
+            type: duckdb
+            database: target/seeds/scatterpolargl_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    theta,r,size,color
+                    0,5,10,#1f77b4
+                    45,15,15,#ff7f0e
+                    90,20,20,#2ca02c
+                    135,10,25,#d62728
+                    180,25,30,#9467bd
         models:
           - name: scatterpolargl-data-custom
-            args:
-              - echo
-              - |
-                theta,r,size,color
-                0,5,10,#1f77b4
-                45,15,15,#ff7f0e
-                90,20,20,#2ca02c
-                135,10,25,#d62728
-                180,25,30,#9467bd
+            source: ${ref(scatterpolargl-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scatterpolargl Insight with Custom Markers
             props:

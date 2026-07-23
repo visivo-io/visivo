@@ -143,8 +143,6 @@ describe('useRecordSave (VIS-1018)', () => {
       ['chart', 'charts', 'saveChart', 'ch1'],
       ['table', 'tables', 'saveTable', 't1'],
       ['dashboard', 'dashboards', 'saveDashboard', 'd1'],
-      ['csvScriptModel', 'csvScriptModels', 'saveCsvScriptModel', 'csv1'],
-      ['localMergeModel', 'localMergeModels', 'saveLocalMergeModel', 'lm1'],
       ['input', 'inputs', 'saveInput', 'in1'],
     ];
 

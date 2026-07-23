@@ -27,12 +27,20 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Splom/#attribute
     === "Simple Splom Insight"
 
         ```yaml
+        sources:
+          - name: splom-data-source
+            type: duckdb
+            database: target/seeds/splom_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - curl
+                  - "-s"
+                  - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
         models:
           - name: splom-data
-            args:
-              - curl
-              - "-s"
-              - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
+            source: ${ref(splom-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Splom Insight
             props:
@@ -62,17 +70,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Splom/#attribute
     === "Splom Insight with Custom Colors"
 
         ```yaml
+        sources:
+          - name: splom-data-colors-source
+            type: duckdb
+            database: target/seeds/splom_data_colors.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    var1,var2,var3,category
+                    1,2,3,A
+                    2,3,4,B
+                    3,4,5,A
+                    4,5,6,B
+                    5,6,7,A
         models:
           - name: splom-data-colors
-            args:
-              - echo
-              - |
-                var1,var2,var3,category
-                1,2,3,A
-                2,3,4,B
-                3,4,5,A
-                4,5,6,B
-                5,6,7,A
+            source: ${ref(splom-data-colors-source)}
+            sql: select * from model
         insights:
           - name: Splom Insight with Custom Colors
             props:
@@ -101,17 +117,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Splom/#attribute
     === "Splom Insight with Custom Marker Sizes"
 
         ```yaml
+        sources:
+          - name: splom-data-sizes-source
+            type: duckdb
+            database: target/seeds/splom_data_sizes.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    var1,var2,var3,size
+                    1,2,3,10
+                    2,3,4,15
+                    3,4,5,20
+                    4,5,6,25
+                    5,6,7,30
         models:
           - name: splom-data-sizes
-            args:
-              - echo
-              - |
-                var1,var2,var3,size
-                1,2,3,10
-                2,3,4,15
-                3,4,5,20
-                4,5,6,25
-                5,6,7,30
+            source: ${ref(splom-data-sizes-source)}
+            sql: select * from model
         insights:
           - name: Splom Insight with Custom Sizes
             props:

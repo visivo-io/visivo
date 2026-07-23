@@ -49,11 +49,9 @@ import { emitWorkspaceEvent } from '../telemetry';
  * via `<LibraryDragPreview>` — see Track D for the `<DndContext>` wiring.
  */
 
-// Tab opens route by the row's REAL type. Model rows present as `type:
-// 'model'` (one icon, one subsection) but carry `canonicalType`
-// ('csvScriptModel' / 'localMergeModel') so the right rail's per-type
-// routing (and record resolution) engages instead of resolving a null
-// record in `models` and falling into create-SQL-model mode.
+// Tab opens route by the row's REAL type. Rows may carry a `canonicalType`
+// that differs from the displayed `type`, in which case the right rail's
+// per-type routing (and record resolution) follows the canonical one.
 const routeType = obj => obj.canonicalType || obj.type;
 
 const Library = () => {
@@ -79,10 +77,7 @@ const Library = () => {
   useEffect(() => {
     const active = useStore.getState().workspaceActiveObject;
     if (!active?.type) return;
-    // All model variants live in the single "model" subsection.
-    const subType = ['csvScriptModel', 'localMergeModel'].includes(active.type)
-      ? 'model'
-      : active.type;
+    const subType = active.type;
     if (!LAYOUT_TYPES.includes(subType) && !DATA_TYPES.includes(subType)) return;
     setLibrarySubsectionCollapsed(subType, false);
     // Best-effort scroll the selected row into view once it renders.

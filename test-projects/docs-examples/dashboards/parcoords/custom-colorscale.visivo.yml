@@ -1,12 +1,20 @@
+sources:
+  - name: parcoords-data-colorscale-source
+    type: duckdb
+    database: target/seeds/parcoords_data_colorscale.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            variable_1,variable_2,variable_3
+            1,2,3
+            2,3,4
+            3,4,5
 models:
   - name: parcoords-data-colorscale
-    args:
-      - echo
-      - |
-        variable_1,variable_2,variable_3
-        1,2,3
-        2,3,4
-        3,4,5
+    source: ${ref(parcoords-data-colorscale-source)}
+    sql: select * from model
 charts:
   - name: parcoords-chart-with-custom-colorscale
     layout:

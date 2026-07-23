@@ -147,13 +147,11 @@ export const buildHealthSummary = ({
   dashboards = [],
   insights = [],
   models = [],
-  csvScriptModels = [],
-  localMergeModels = [],
   sources = [],
 }) => ({
   dashboards: dashboards.length,
   insights: insights.length,
-  models: models.length + csvScriptModels.length + localMergeModels.length,
+  models: models.length,
   sources: sources.length,
 });
 

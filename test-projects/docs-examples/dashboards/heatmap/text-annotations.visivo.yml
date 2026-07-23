@@ -1,17 +1,25 @@
+sources:
+  - name: heatmap-data-annotations-source
+    type: duckdb
+    database: target/seeds/heatmap_data_annotations.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z
+            Q1,2019,100
+            Q2,2019,150
+            Q3,2019,200
+            Q4,2019,250
+            Q1,2020,300
+            Q2,2020,350
+            Q3,2020,400
+            Q4,2020,450
 models:
   - name: heatmap-data-annotations
-    args:
-      - echo
-      - |
-        x,y,z
-        Q1,2019,100
-        Q2,2019,150
-        Q3,2019,200
-        Q4,2019,250
-        Q1,2020,300
-        Q2,2020,350
-        Q3,2020,400
-        Q4,2020,450
+    source: ${ref(heatmap-data-annotations-source)}
+    sql: select * from model
 charts:
   - name: heatmap-chart-with-text-annotations
     layout:

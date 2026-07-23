@@ -7,7 +7,7 @@ results when running 'visivo run'. It checks:
 
 1. Schema generation - correct number of tables and columns
 2. Trace data generation - correct number of trace folders
-3. Model generation - correct number of model files
+3. Seed generation - seeded source databases exist with data
 4. Overall structure and file existence
 
 Run this script from the integration test project directory after running 'visivo run'.
@@ -316,34 +316,43 @@ class VisivoRunValidator:
 
         return success
 
-    def validate_models(self) -> bool:
-        """Validate model generation results."""
-        models_dir = self.run_dir / "models"
+    def validate_seeds(self) -> bool:
+        """Validate that seeded sources produced their databases.
 
-        if not models_dir.exists():
-            self.log_error(f"Models directory does not exist at {models_dir}")
+        The former CsvScriptModels are now DuckDB sources carrying a ``seeds:``
+        entry; each referenced seed writes a database under ``target/seeds/`` (the
+        database filename is the model name slugified). ``join_table``, once a
+        LocalMergeModel, is now a plain SqlModel — its data flows through its
+        schema + the insights that reference it, validated elsewhere.
+        """
+        seeds_dir = self.target_dir / "seeds"
+
+        if not seeds_dir.exists():
+            self.log_error(f"Seeds directory does not exist at {seeds_dir}")
             return False
 
-        # Expected models based on models.visivo.yml
-        expected_models = ["csv", "join_table", "markdown-table-base", "waterfall_model"]
+        # Seed databases for the referenced former-csv-script models. Only sources
+        # whose models are reachable from an insight/table run, so 'processes'
+        # (unreferenced) is intentionally absent — as it was under the old design.
+        expected_seed_dbs = ["csv", "markdown_table_base", "waterfall_model"]
 
         success = True
 
-        for model_name in expected_models:
-            model_file = models_dir / f"{model_name}.duckdb"
+        for db_name in expected_seed_dbs:
+            db_file = seeds_dir / f"{db_name}.duckdb"
 
-            if not model_file.exists():
-                self.log_error(f"Model file '{model_name}.duckdb' does not exist")
+            if not db_file.exists():
+                self.log_error(f"Seed database '{db_name}.duckdb' does not exist")
                 success = False
             else:
                 # Check file size is reasonable (> 0 bytes)
-                file_size = model_file.stat().st_size
+                file_size = db_file.stat().st_size
                 if file_size == 0:
-                    self.log_error(f"Model file '{model_name}.duckdb' is empty")
+                    self.log_error(f"Seed database '{db_name}.duckdb' is empty")
                     success = False
 
         if success:
-            self.log_success(f"All {len(expected_models)} model files exist with data")
+            self.log_success(f"All {len(expected_seed_dbs)} seed databases exist with data")
 
         return success
 
@@ -387,7 +396,7 @@ class VisivoRunValidator:
             self.validate_core_files(),
             self.validate_schemas(),
             self.validate_insights(),
-            self.validate_models(),
+            self.validate_seeds(),
         ]
 
         overall_success = all(validations)

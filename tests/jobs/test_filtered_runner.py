@@ -2,13 +2,13 @@ import io
 import os
 import sys
 from tests.factories.model_factories import (
-    CsvScriptModelFactory,
     DashboardFactory,
     DefaultsFactory,
-    LocalMergeModelFactory,
     SqlModelFactory,
     ProjectFactory,
     SourceFactory,
+    DuckdbSourceFactory,
+    SeedFactory,
     InsightFactory,
     ChartFactory,
     ItemFactory,
@@ -67,52 +67,6 @@ def test_Runner_insight_given_source():
     runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/main/insights/{insight.name}.json")
-
-
-def test_runner_with_csv_script_model():
-    port = get_test_port()
-    server_url = f"http://localhost:{port}"
-    output_dir = temp_folder()
-    os.makedirs(f"{output_dir}", exist_ok=True)
-    model = CsvScriptModelFactory(
-        name="csv_script_model", args=["echo", "x,y\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
-    )
-    project = ProjectFactory(
-        sources=[],
-        models=[model],
-        dashboards=[],
-    )
-
-    runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
-    runner.run()
-    assert os.path.exists(f"{output_dir}/main/models/{model.name}.duckdb")
-
-
-def test_runner_with_local_merge_model():
-    output_dir = temp_folder()
-    port = get_test_port()
-    server_url = f"http://localhost:{port}"
-    source1 = SourceFactory(name="source1", database=f"{output_dir}/test1.db")
-    source2 = SourceFactory(name="source2", database=f"{output_dir}/test2.db")
-    sub_model1 = SqlModelFactory(name="model1", source="ref(source1)")
-    sub_model2 = SqlModelFactory(name="model2", source="ref(source2)")
-    create_file_database(url=source1.url(), output_dir=output_dir)
-    create_file_database(url=source2.url(), output_dir=output_dir)
-
-    model = LocalMergeModelFactory(
-        name="local_merge_model",
-        sql="select t1.x as x, t2.y as y, 'values' as 'cohort_on' from model1.model t1 JOIN model2.model t2 on t1.x=t2.x",
-        models=[sub_model1, sub_model2],
-    )
-    project = ProjectFactory(
-        sources=[source1, source2],
-        models=[model],
-        dashboards=[],
-    )
-
-    runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
-    runner.run()
-    assert os.path.exists(f"{output_dir}/main/models/{model.name}.duckdb")
 
 
 def test_runner_dag_filter():
@@ -177,56 +131,49 @@ def test_runner_dag_filter_with_no_jobs():
     )
 
 
-def test_runner_with_local_merge_and_csv_model():
+def test_runner_with_seeded_source():
     output_dir = temp_folder()
-
-    csv_model = CsvScriptModelFactory(name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"])
-
-    local_merge_model = LocalMergeModelFactory(
-        name="local_merge_model",
-        sql="SELECT * FROM csv_model.model",
-        models=[csv_model],
+    source = DuckdbSourceFactory(
+        name="seed_source",
+        database=f"{output_dir}/seeded.duckdb",
+        seeds=[SeedFactory(table_name="raw", args=["echo", "x,y\n1,1\n2,1\n3,2"])],
     )
-
-    project = ProjectFactory(
-        sources=[],
-        models=[local_merge_model],
-        dashboards=[],
-    )
+    model = SqlModelFactory(name="seeded_model", source="ref(seed_source)", sql="select * from raw")
+    project = ProjectFactory(sources=[source], models=[model], dashboards=[])
 
     runner = FilteredRunner(project=project, output_dir=output_dir)
     runner.run()
 
-    assert os.path.exists(f"{output_dir}/main/models/{csv_model.name}.duckdb")
-    assert os.path.exists(f"{output_dir}/main/models/{local_merge_model.name}.duckdb")
+    assert source.read_sql("select count(*) as c from raw") == [{"c": 3}]
 
 
-def test_runner_with_nested_local_merge_models():
+def test_runner_seeds_land_before_a_model_joins_them():
+    """Two seeds on one source, joined by one model.
+
+    This is the pattern that replaces LocalMergeModel: the Model->Source DAG edge
+    is what guarantees both seeds are loaded before the join runs.
+    """
     output_dir = temp_folder()
-
-    csv_model = CsvScriptModelFactory(name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"])
-
-    inner_merge_model = LocalMergeModelFactory(
-        name="inner_merge_model",
-        sql="SELECT x, y FROM csv_model.model",
-        models=[csv_model],
+    source = DuckdbSourceFactory(
+        name="seed_source",
+        database=f"{output_dir}/seeded.duckdb",
+        seeds=[
+            SeedFactory(table_name="left_rows", args=["echo", "x,y\n1,2\n3,4\n5,6"]),
+            SeedFactory(table_name="right_rows", args=["echo", "x,z\n1,7\n3,8\n5,9"]),
+        ],
     )
-
-    outer_merge_model = LocalMergeModelFactory(
-        name="outer_merge_model",
-        sql="SELECT x, y FROM inner_merge_model.model",
-        models=[inner_merge_model],
+    model = SqlModelFactory(
+        name="joined",
+        source="ref(seed_source)",
+        sql="select l.x, l.y, r.z from left_rows l join right_rows r on l.x = r.x",
     )
-
-    project = ProjectFactory(
-        sources=[],
-        models=[outer_merge_model],
-        dashboards=[],
-    )
+    project = ProjectFactory(sources=[source], models=[model], dashboards=[])
 
     runner = FilteredRunner(project=project, output_dir=output_dir)
     runner.run()
 
-    assert os.path.exists(f"{output_dir}/main/models/{csv_model.name}.duckdb")
-    assert os.path.exists(f"{output_dir}/main/models/{inner_merge_model.name}.duckdb")
-    assert os.path.exists(f"{output_dir}/main/models/{outer_merge_model.name}.duckdb")
+    assert source.read_sql(model.sql) == [
+        {"x": 1, "y": 2, "z": 7},
+        {"x": 3, "y": 4, "z": 8},
+        {"x": 5, "y": 6, "z": 9},
+    ]

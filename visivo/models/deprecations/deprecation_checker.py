@@ -7,7 +7,10 @@ from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
     MigrationAction,
+    RewriteAction,
+    UnmigratableWarning,
 )
+from visivo.models.deprecations.model_type_deprecation import ModelTypeDeprecationChecker
 
 if TYPE_CHECKING:
     from visivo.models.project import Project
@@ -23,7 +26,9 @@ class DeprecationChecker:
 
     def __init__(self):
         """Initialize the deprecation checker with all checkers."""
-        self.checkers: List[BaseDeprecationChecker] = []
+        self.checkers: List[BaseDeprecationChecker] = [
+            ModelTypeDeprecationChecker(),
+        ]
 
     def check_all(self, project: "Project") -> List[DeprecationWarning]:
         """
@@ -83,3 +88,22 @@ class DeprecationChecker:
             if checker.can_migrate():
                 all_migrations.extend(checker.get_migrations_from_files(working_dir))
         return all_migrations
+
+    def get_all_rewrites(
+        self, working_dir: str, include_markdown: bool = False
+    ) -> List[RewriteAction]:
+        """Collect whole-file rewrites from all checkers that support migration."""
+        rewrites = []
+        for checker in self.checkers:
+            if checker.can_migrate():
+                rewrites.extend(checker.get_rewrites_from_files(working_dir, include_markdown))
+        return rewrites
+
+    def get_all_unmigratable(
+        self, working_dir: str, include_markdown: bool = False
+    ) -> List[UnmigratableWarning]:
+        """Collect deprecated usages no checker will rewrite automatically."""
+        warnings = []
+        for checker in self.checkers:
+            warnings.extend(checker.get_unmigratable(working_dir, include_markdown))
+        return warnings

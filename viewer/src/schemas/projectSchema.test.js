@@ -39,8 +39,8 @@ describe('getDefNameForType', () => {
   });
 
   test('is case-insensitive (camelCase / PascalCase / lowercase)', () => {
-    expect(getDefNameForType('csvScriptModel')).toBe('CsvScriptModel');
-    expect(getDefNameForType('CSVSCRIPTMODEL')).toBe('CsvScriptModel');
+    expect(getDefNameForType('Model')).toBe('Model');
+    expect(getDefNameForType('MODEL')).toBe('Model');
   });
 
   test('returns null for unknown / bad input', () => {

@@ -13,8 +13,6 @@ from visivo.models.base.base_model import (
 )
 from visivo.models.base.context_string import CONTEXT_STRING_VALUE_PATTERN
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.query.patterns import extract_ref_names
 
 from pydantic import model_validator
@@ -29,20 +27,12 @@ def get_data_discriminator_value(value):
     elif isinstance(value, dict):
         if "interactions" in value or "props" in value:
             return "Insight"
-        elif "args" in value:
-            return "CsvScript"
-        elif "models" in value:
-            return "LocalMerge"
         elif "sql" in value:
             return "Sql"
     elif isinstance(value, Insight):
         return "Insight"
     elif isinstance(value, SqlModel):
         return "Sql"
-    elif isinstance(value, CsvScriptModel):
-        return "CsvScript"
-    elif isinstance(value, LocalMergeModel):
-        return "LocalMerge"
     return None
 
 
@@ -52,8 +42,6 @@ DataRefField = Annotated[
         ContextStringType,
         Annotated[Insight, Tag("Insight")],
         Annotated[SqlModel, Tag("Sql")],
-        Annotated[CsvScriptModel, Tag("CsvScript")],
-        Annotated[LocalMergeModel, Tag("LocalMerge")],
     ],
     Discriminator(get_data_discriminator_value),
 ]

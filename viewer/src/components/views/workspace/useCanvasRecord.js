@@ -8,8 +8,8 @@ import { COLLECTION_KEY } from './collectionKeys';
  * canvas body re-implemented, extracted once (VIS-1001).
  *
  * The store's fetch action for a collection is `fetch` + PascalCase of the
- * collection key (e.g. `charts` → `fetchCharts`, `csvScriptModels` →
- * `fetchCsvScriptModels`), matching the store slices (which also expose a
+ * collection key (e.g. `charts` → `fetchCharts`, `models` →
+ * `fetchModels`), matching the store slices (which also expose a
  * `<collection>Loading` flag consumed here).
  *
  * @returns {{ record: object|null, config: object|null, status: 'loading'|'not-found'|'ready' }}

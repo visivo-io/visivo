@@ -1,9 +1,17 @@
+sources:
+  - name: monty-python-quest-proclamations-source
+    type: duckdb
+    database: target/seeds/monty_python_quest_proclamations.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - curl
+          - "-s"
+          - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 models:
   - name: monty-python-quest-proclamations
-    args:
-      - curl
-      - "-s"
-      - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+    source: ${ref(monty-python-quest-proclamations-source)}
+    sql: select * from model
 charts:
   - name: proclamations-box-plot-with-outliers
     layout:
