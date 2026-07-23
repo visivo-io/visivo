@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- VIS-1109 fixtures use literal Visivo `${ref(...)}` strings */
 /**
  * ExplorationBuildRail (Explore 2.0 Phase 3b, VIS-1059) — replaces the
  * retired `ExplorerRightPanel` for the exploration surface. Ported test
@@ -13,6 +14,17 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import ExplorationBuildRail from './ExplorationBuildRail';
 import useStore from '../../../stores/store';
+import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
+import { validateRecordConfig } from './validateAgainstSchema';
+import { checkRefTargets } from './refPreflight';
+import { checkExpressions } from './expressionPreflight';
+
+// Only exercised by the VIS-1109 integration describe block below (every
+// other test in this file mocks `ExplorationPromoteModal` wholesale, so none
+// of them ever reach `buildPromoteChecklist`'s real validation gates).
+jest.mock('./validateAgainstSchema', () => ({ validateRecordConfig: jest.fn() }));
+jest.mock('./refPreflight', () => ({ checkRefTargets: jest.fn() }));
+jest.mock('./expressionPreflight', () => ({ checkExpressions: jest.fn() }));
 
 jest.mock('./InsightBuildSection', () => {
   return function MockInsightBuildSection({ insightName, isExpanded, onToggleExpand }) {
@@ -64,6 +76,14 @@ const defaultState = {
   explorerChartLayout: {},
   workspaceExplorations: { byId: {}, order: [] },
   insights: [],
+  // `zustand`'s `setState` is a shallow MERGE, not a replace — any key a
+  // prior test set but this object doesn't list stays carried over into the
+  // next test. `models`/`charts` are read by `getAllKnownNames` for
+  // collision-avoidance (the model/insight/chart auto-naming effect, and its
+  // VIS-1109 chart extension), so a test that sets one of these to check a
+  // collision case must not leak it into whichever test runs next.
+  models: [],
+  charts: [],
 };
 
 describe('ExplorationBuildRail', () => {
@@ -80,6 +100,13 @@ describe('ExplorationBuildRail', () => {
 
   beforeEach(() => {
     useStore.setState({ ...originalActions, ...defaultState });
+    // Harmless default for every test — only the VIS-1109 integration
+    // describe block below ever calls `buildPromoteChecklist` (which is the
+    // only path that reaches these gates); everything else mocks
+    // `ExplorationPromoteModal` wholesale and never touches them.
+    validateRecordConfig.mockResolvedValue({ valid: true, errors: [] });
+    checkRefTargets.mockReturnValue({ valid: true, errors: [] });
+    checkExpressions.mockResolvedValue({ valid: true, errors: [] });
   });
 
   it('renders InsightBuildSection for each insight', () => {
@@ -562,5 +589,267 @@ describe('ExplorationBuildRail', () => {
         expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query_2']);
       });
     });
+
+    // VIS-1109: the effect above already carries the naming cascade through
+    // model -> insight but stopped there — the chart itself was NEVER
+    // auto-named, so a query -> bind x/y -> Save to project flow left
+    // `explorerChartName` null forever (the Build rail showed "Chart:
+    // Untitled") even though the chart was rendering a live, meaningful
+    // scatter. `buildPromoteChecklist` gates the chart's checklist row on
+    // `explorerChartName && chartHasContent` — an unnamed chart never became
+    // a candidate, so it was silently dropped from "Save to project" with no
+    // row and no notice. These extend the SAME cascade one link further
+    // (`<name>_query -> _insight -> _chart`, promoteNaming.js's own
+    // documented chain) so a content-bearing chart always ends up named.
+    describe('chart naming (VIS-1109 — the chart used to be the one link in the cascade that never fired)', () => {
+      it('auto-names the chart <insightAnchor>_chart the moment it has real bound content', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerActiveInsightName: 'orders_db_query_insight',
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{${ref(orders_db_query).x}}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+        });
+      });
+
+      it('falls back to <modelAnchor>_chart when there is no meaningful insight to anchor on but the chart has real layout content', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['insight'],
+          explorerInsightStates: {
+            insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true }, // still scaffold
+          },
+          explorerChartName: null,
+          explorerChartLayout: { title: 'Revenue over time' },
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_chart');
+        });
+      });
+
+      it('leaves the chart unnamed while it is still pure scaffolding (VIS-1102 gating must still hold — never offers a scaffold chart)', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: '' },
+          },
+          explorerChartInsightNames: ['insight'],
+          explorerInsightStates: {
+            insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await screen.findByTestId('exploration-build-rail');
+        expect(useStore.getState().explorerChartName).toBeNull();
+      });
+
+      it('never renames a chart that already has a real name, even once content is bound', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{1}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: 'my_custom_chart_name',
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await screen.findByTestId('exploration-build-rail');
+        expect(useStore.getState().explorerChartName).toBe('my_custom_chart_name');
+      });
+
+      it('a suggested chart name that collides with an existing object falls back to a disambiguated one', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{1}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          charts: [{ name: 'orders_db_query_insight_chart' }],
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart_2');
+        });
+      });
+
+      it('is idempotent — the chart auto-name fires once and does not oscillate on re-render', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{1}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        const { rerender } = render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+        });
+        rerender(<ExplorationBuildRail />);
+        await screen.findByTestId('exploration-build-rail');
+        expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+      });
+    });
+  });
+});
+
+// VIS-1109 — full-stack proof: the actual bug the user hit was "Save to
+// project" itself silently dropping the chart, not merely an internal name
+// staying null. This exercises the REAL `buildPromoteChecklist` (only the
+// three low-level validation gates it calls out to over HTTP/AJV are
+// mocked — same mocking boundary `promoteChecklist.test.js` itself uses)
+// against the store state `ExplorationBuildRail`'s real, mounted naming
+// effect produces, proving the checklist row appears end-to-end once the
+// effect has run — not just that some internal name field changed.
+describe('VIS-1109 — a bound-but-unnamed chart is no longer silently dropped from Save to project', () => {
+  let originalActions;
+
+  beforeAll(() => {
+    const s = useStore.getState();
+    originalActions = {
+      setActiveInsight: s.setActiveInsight,
+      createInsight: s.createInsight,
+      addExistingInsightToChart: s.addExistingInsightToChart,
+    };
+  });
+
+  beforeEach(() => {
+    useStore.setState({ ...originalActions, ...defaultState });
+    validateRecordConfig.mockResolvedValue({ valid: true, errors: [] });
+    checkRefTargets.mockReturnValue({ valid: true, errors: [] });
+    checkExpressions.mockResolvedValue({ valid: true, errors: [] });
+  });
+
+  it('produces a chart-tier checklist row once the mounted build rail has auto-named the content-bearing chart', async () => {
+    useStore.setState({
+      explorerModelTabs: ['orders_db_query'],
+      explorerModelStates: {
+        orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x, 10 as y' },
+      },
+      explorerChartInsightNames: ['orders_db_query_insight'],
+      explorerActiveInsightName: 'orders_db_query_insight',
+      explorerInsightStates: {
+        orders_db_query_insight: {
+          type: 'scatter',
+          props: {
+            x: '?{${ref(orders_db_query).x}}',
+            y: '?{${ref(orders_db_query).y}}',
+          },
+          interactions: [],
+          typePropsCache: {},
+          isNew: true,
+        },
+      },
+      explorerChartName: null,
+      explorerChartLayout: {},
+      defaults: { source_name: 'orders_db' },
+      fetchExplorerDiff: jest.fn().mockResolvedValue({}),
+    });
+
+    render(<ExplorationBuildRail />);
+
+    // Pre-fix, `explorerChartName` never leaves `null` — this `waitFor`
+    // times out and the test fails right here, reproducing the real bug:
+    // the chart never becomes a checklist candidate at all (buildPromoteChecklist
+    // gates the chart row on `explorerChartName` being truthy), so "Save to
+    // project" silently offers only the model + insight rows, exactly the
+    // "Save 2 to project" silent-drop the user hit.
+    await waitFor(() => {
+      expect(useStore.getState().explorerChartName).toBeTruthy();
+    });
+
+    const rows = await buildPromoteChecklist(() => useStore.getState());
+    const chartRow = rows.find(r => r.tier === 'chart');
+    expect(chartRow).toBeTruthy();
+    expect(chartRow.name).toBe('orders_db_query_insight_chart');
+    expect(chartRow.status).toBe('new');
+  });
+
+  it('VIS-1102 regression pin: an untouched exploration (scaffold model/insight/chart, nothing bound) still produces an EMPTY checklist — auto-naming must never start offering scaffolding', async () => {
+    useStore.setState({
+      explorerModelTabs: ['query_1'],
+      explorerModelStates: {
+        query_1: { isNew: true, sourceName: 'orders_db', sql: '' },
+      },
+      explorerChartInsightNames: ['insight'],
+      explorerActiveInsightName: 'insight',
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+      },
+      explorerChartName: null,
+      explorerChartLayout: {},
+      defaults: { source_name: 'orders_db' },
+      fetchExplorerDiff: jest.fn().mockResolvedValue({}),
+    });
+
+    render(<ExplorationBuildRail />);
+    await screen.findByTestId('exploration-build-rail');
+
+    // Give any (would-be) effect a chance to settle before asserting nothing
+    // fired.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(useStore.getState().explorerChartName).toBeNull();
+    const rows = await buildPromoteChecklist(() => useStore.getState());
+    expect(rows).toEqual([]);
   });
 });

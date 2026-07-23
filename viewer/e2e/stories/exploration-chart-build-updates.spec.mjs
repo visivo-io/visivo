@@ -102,6 +102,7 @@ async function expectLiveChart(page, step) {
 test.describe('Chart-building keeps the preview in sync with every edit', () => {
   let createdId = null;
   let createdMetric = null;
+  let createdPromotedObjects = [];
 
   test.afterEach(async ({ page }) => {
     if (createdId) {
@@ -113,6 +114,11 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
         .delete(`${apiBase}/api/metrics/${encodeURIComponent(createdMetric)}/`)
         .catch(() => {});
       createdMetric = null;
+    }
+    for (const { segment, name } of createdPromotedObjects.splice(0)) {
+      await page.request
+        .delete(`${apiBase}/api/${segment}/${encodeURIComponent(name)}/`)
+        .catch(() => {});
     }
   });
 
@@ -232,5 +238,77 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
       page.getByTestId('droppable-property-y'),
       'the metric binding survives the type switch too'
     ).toContainText(createdMetric);
+  });
+
+  // VIS-1109: in the exact same query -> bind x/y flow this file's main
+  // story starts with, "Save to project" used to silently drop the chart —
+  // no row, no notice — because the live auto-naming effect
+  // (ExplorationBuildRail.jsx) carried the naming cascade through
+  // `<source>_query` -> `<...>_insight` but never took the last step to the
+  // chart, so `explorerChartName` stayed `null` forever (the Build rail
+  // showed "Chart: Untitled") and `buildPromoteChecklist` gates the chart's
+  // entire checklist row on that name being truthy. This never renames the
+  // chart by hand (no `chart-name-input` interaction anywhere below) —
+  // proving the auto-naming itself, not working around the bug the way
+  // `exploration-promote.spec.mjs`'s `renameChart` helper does.
+  test('a chart with real bound content (x/y, no manual naming) is auto-named and actually lands in Save to project', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    createdId = await newExploration(page);
+
+    await typeSql(page, SQL);
+    await runQuery(page);
+
+    await drag(page, '[data-testid="draggable-col-x"]', '[data-testid="droppable-property-x"]');
+    await drag(page, '[data-testid="draggable-col-y"]', '[data-testid="droppable-property-y"]');
+    await expectLiveChart(page, 'after x/y drags');
+
+    // Real bug reproduction: pre-fix this poll times out and the test fails
+    // right here — `explorerChartName` never leaves `null`.
+    await expect
+      .poll(() => page.evaluate(() => window.useStore.getState().explorerChartName), {
+        message: 'the chart auto-names itself once it has real bound content (VIS-1109)',
+        timeout: 15000,
+      })
+      .toBeTruthy();
+
+    const modelName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+    const chartName = await page.evaluate(() => window.useStore.getState().explorerChartName);
+    expect(chartName).not.toBe('Untitled');
+    expect(chartName.toLowerCase()).not.toBe('chart');
+
+    await page.getByTestId('explorer-save-button').click();
+    await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
+
+    await expect(page.getByTestId(`promote-row-model-${modelName}`)).toBeVisible();
+    await expect(page.getByTestId(`promote-row-insight-${insightName}`)).toBeVisible();
+    // The actual regression: this chart row used to not exist AT ALL — the
+    // checklist rendered MODELS + INSIGHTS only, with no CHART section and
+    // no indication anything was missing.
+    const chartRow = page.getByTestId(`promote-row-chart-${chartName}`);
+    await expect(
+      chartRow,
+      'the chart row must exist — this is the VIS-1109 silent-drop regression'
+    ).toBeVisible();
+    await expect(page.getByTestId(`promote-row-chart-${chartName}-checkbox`)).toBeChecked();
+
+    // Save for real and confirm the chart object actually lands in the
+    // backend project, not merely that a checklist row rendered.
+    createdPromotedObjects.push(
+      { segment: 'models', name: modelName },
+      { segment: 'insights', name: insightName },
+      { segment: 'charts', name: chartName }
+    );
+    await page.getByTestId('exploration-promote-submit').click();
+    await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 15000 });
+
+    await expect(async () => {
+      const res = await page.request.get(`${apiBase}/api/charts/${encodeURIComponent(chartName)}/`);
+      expect(res.ok()).toBe(true);
+    }).toPass({ timeout: 20000 });
   });
 });

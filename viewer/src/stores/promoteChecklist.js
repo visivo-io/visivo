@@ -39,7 +39,11 @@
 import { validateRecordConfig } from '../components/views/workspace/validateAgainstSchema';
 import { checkRefTargets } from '../components/views/workspace/refPreflight';
 import { checkExpressions } from '../components/views/workspace/expressionPreflight';
-import { expandDotNotationProps } from './explorerStore';
+import {
+  expandDotNotationProps,
+  isMeaningfulInsightState,
+  computeChartHasContent,
+} from './explorerStore';
 
 /** Metric/Dimension configs carry a frontend-only `parentModel` scoping field
  * (consumed by the backend save endpoint to set the Pydantic `_parent_name`
@@ -139,7 +143,10 @@ export const buildPromoteChecklist = async getState => {
     // came from an EXISTING promoted object (`isNew === false`) is exempt —
     // its bare presence here means the user opened it to edit, and the
     // backend diff (below) is what decides whether it actually changed.
-    if (is.isNew !== false && Object.keys(expandedProps).length === 0 && backendInteractions.length === 0) {
+    // (`isMeaningfulInsightState` — shared with `ExplorationBuildRail`'s live
+    // chart auto-naming effect, VIS-1109 — is the single source of truth for
+    // this "authored, not scaffold" bar.)
+    if (!isMeaningfulInsightState(is)) {
       continue;
     }
     meaningfulInsightNames.add(name);
@@ -172,9 +179,7 @@ export const buildPromoteChecklist = async getState => {
   // (the ones just filtered out above) and carries no layout config of its
   // own is scaffolding too, not authored content — referencing the
   // auto-created empty insight doesn't count as "content".
-  const chartHasContent =
-    (state.explorerChartInsightNames || []).some(n => meaningfulInsightNames.has(n)) ||
-    Object.keys(state.explorerChartLayout || {}).length > 0;
+  const chartHasContent = computeChartHasContent(state, meaningfulInsightNames);
   if (state.explorerChartName && chartHasContent) {
     candidates.push({
       tier: 'chart',

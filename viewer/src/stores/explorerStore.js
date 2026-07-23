@@ -107,6 +107,59 @@ export const expandDotNotationProps = (props) => {
 };
 
 /**
+ * Whether an insight's UI state counts as "authored content" rather than
+ * scaffold. Mirrors `buildPromoteChecklist`'s own guard (VIS-1102 / ux-audit
+ * "Promote has no naming step" finding): a brand-new insight nobody has
+ * bound anything into yet (no props, no interactions) is exactly the
+ * auto-created placeholder every exploration mounts with, never something
+ * the user actually authored. An insight loaded from an EXISTING promoted
+ * object (`isNew === false`) is always meaningful — its bare presence means
+ * the user opened it to edit, and the backend diff is what decides whether
+ * it actually changed.
+ *
+ * Shared by `promoteChecklist.js` (gates the insight's own checklist row —
+ * and, via `computeChartHasContent` below, the chart's) and
+ * `ExplorationBuildRail`'s live auto-naming effect (VIS-1109 — only names a
+ * chart once it's actually meaningful, never an empty scaffold), so the two
+ * can never drift apart on what "has content" means.
+ */
+export const isMeaningfulInsightState = (is) => {
+  if (!is) return false;
+  if (is.isNew === false) return true;
+  const expandedProps = expandDotNotationProps(is.props || {});
+  const hasInteractions = (is.interactions || []).some((i) => i.value);
+  return Object.keys(expandedProps).length > 0 || hasInteractions;
+};
+
+/**
+ * Names of every insight in `explorerInsightStates` that clears the
+ * "authored, not scaffold" bar (see `isMeaningfulInsightState`).
+ */
+export const computeMeaningfulInsightNames = (state) => {
+  const names = new Set();
+  for (const [name, is] of Object.entries(state.explorerInsightStates || {})) {
+    if (isMeaningfulInsightState(is)) names.add(name);
+  }
+  return names;
+};
+
+/**
+ * Whether the exploration's current chart carries real, authored content —
+ * NOT just a reference to the auto-created scaffold insight(s) every
+ * exploration mounts with. `meaningfulInsightNames` is accepted as an
+ * optional pre-computed Set so a caller that already has one (e.g.
+ * `buildPromoteChecklist`, which needs it for the insight rows too) never
+ * recomputes it twice.
+ */
+export const computeChartHasContent = (state, meaningfulInsightNames) => {
+  const meaningful = meaningfulInsightNames || computeMeaningfulInsightNames(state);
+  return (
+    (state.explorerChartInsightNames || []).some((n) => meaningful.has(n)) ||
+    Object.keys(state.explorerChartLayout || {}).length > 0
+  );
+};
+
+/**
  * Escape regex metacharacters in a string for use in new RegExp().
  */
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
