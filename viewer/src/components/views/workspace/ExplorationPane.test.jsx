@@ -255,6 +255,34 @@ describe('ExplorationPane — ready state', () => {
       }
     });
 
+    test('a visibilitychange event that does NOT transition to hidden (e.g. regaining focus) never flushes', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      // Arm a pending edit so a bug here couldn't hide behind the
+      // already-nothing-pending guard tested above.
+      act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
+
+      // jsdom's default visibilityState is 'visible' — dispatch the event
+      // without overriding it, simulating e.g. the tab regaining focus.
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(updateExplorationDraft).not.toHaveBeenCalled();
+      expect(flushExplorationSync).not.toHaveBeenCalled();
+    });
+
     test('unmounting removes the listeners — no stale flush against a closed pane', () => {
       const updateExplorationDraft = jest.fn();
       const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
