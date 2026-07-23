@@ -24,6 +24,17 @@ const reset = () => {
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
       workspaceLens: 'preview',
+      // VIS-1108: the GC below can consult the LIVE legacy explorerStore
+      // working-state (not just the persisted `record.draft`) when the
+      // closing tab is the active one — reset it to the same empty defaults
+      // `explorerStore.js` itself starts with so no earlier test's typed
+      // state can leak into a later test's GC assertions.
+      explorerModelTabs: [],
+      explorerModelStates: {},
+      explorerChartName: null,
+      explorerChartLayout: {},
+      explorerChartInsightNames: [],
+      explorerInsightStates: {},
     });
   });
 };
@@ -504,6 +515,137 @@ describe('workspace store slice', () => {
         useStore.getState().closeWorkspaceTab('dashboard:d1');
       });
       expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    // VIS-1108 (URGENT, DATA LOSS): typing then closing an ephemeral tab
+    // within the ExplorationPane's ~600ms live-sync debounce used to delete
+    // BOTH the record and the typed edit — the GC above read
+    // `workspaceExplorations.byId[id].draft`, but a just-typed edit lives
+    // ONLY in the legacy `explorerStore.js` working-state until that
+    // debounce pushes it into the store draft via `updateExplorationDraft`.
+    // The GC runs SYNCHRONOUSLY inside `closeWorkspaceTab`, ahead of
+    // `ExplorationPane`'s own deactivate-flush cleanup (a React effect
+    // cleanup, which only runs after this commit) — so the stale, still-
+    // blank draft always "won" and the record was deleted out from under the
+    // very edit the user just typed.
+    describe('VIS-1108 — the GC must consult the LIVE legacy working-state, not a store draft known to lag', () => {
+      test('does NOT delete a seeded exploration whose backend draft is still blank but the LIVE legacy state has just-typed SQL (fast close-after-type)', () => {
+        const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+        act(() => {
+          useStore.setState({
+            workspaceExplorations: {
+              byId: {
+                exp_1: {
+                  id: 'exp_1',
+                  name: 'local-duckdb exploration',
+                  seededFrom: { type: 'source', name: 'local-duckdb' },
+                  // The PERSISTED draft is still the blank seed — exactly
+                  // what it looks like before ExplorationPane's ~600ms
+                  // live-sync debounce has ever fired.
+                  draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                  promoted: [],
+                },
+              },
+              order: ['exp_1'],
+            },
+            deleteExploration,
+            // The legacy explorerStore working-state IS hot for this
+            // exploration (ExplorationPane's restore-on-activate put it
+            // there) — this is what the user just typed, sitting only in
+            // memory, not yet flushed into the record's draft above.
+            explorerModelTabs: ['query_1'],
+            explorerModelStates: {
+              query_1: {
+                sql: 'SELECT * FROM orders',
+                sourceName: 'local-duckdb',
+                sourceEdited: false,
+                computedColumns: [],
+                isNew: true,
+              },
+            },
+          });
+          useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+          useStore.getState().closeWorkspaceTab('exploration:exp_1');
+        });
+        // THE BUG: this used to fire unconditionally — the GC trusted the
+        // still-blank persisted draft and deleted the record, silently
+        // destroying the typed SQL along with it.
+        expect(deleteExploration).not.toHaveBeenCalled();
+      });
+
+      test('still deletes when BOTH the persisted draft AND the live legacy state genuinely have no content (no regression on the untouched-browse GC)', () => {
+        const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+        act(() => {
+          useStore.setState({
+            workspaceExplorations: {
+              byId: {
+                exp_1: {
+                  id: 'exp_1',
+                  name: 'local-duckdb exploration',
+                  seededFrom: { type: 'source', name: 'local-duckdb' },
+                  draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                  promoted: [],
+                },
+              },
+              order: ['exp_1'],
+            },
+            deleteExploration,
+            // Live legacy state mirrors the untouched seed exactly — no SQL
+            // ever typed.
+            explorerModelTabs: ['query_1'],
+            explorerModelStates: {
+              query_1: {
+                sql: '',
+                sourceName: 'local-duckdb',
+                sourceEdited: false,
+                computedColumns: [],
+                isNew: true,
+              },
+            },
+          });
+          useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+          useStore.getState().closeWorkspaceTab('exploration:exp_1');
+        });
+        expect(deleteExploration).toHaveBeenCalledWith('exp_1');
+      });
+
+      test('a background (non-active) tab close never borrows the CURRENTLY active tab’s live legacy state as its own', () => {
+        const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+        act(() => {
+          useStore.setState({
+            workspaceExplorations: {
+              byId: {
+                exp_1: {
+                  id: 'exp_1',
+                  name: 'local-duckdb exploration',
+                  seededFrom: { type: 'source', name: 'local-duckdb' },
+                  draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                  promoted: [],
+                },
+              },
+              order: ['exp_1'],
+            },
+            deleteExploration,
+          });
+          // exp_1's tab is opened, then a DIFFERENT tab is opened and
+          // becomes active — exp_1 is now parked in the background, not hot.
+          useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+          useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+          // The legacy store is now hot for something else entirely (real
+          // typed SQL belongs to whatever the ACTIVE tab is, never exp_1,
+          // which was parked before this state existed) — the GC must not
+          // misattribute it to exp_1 just because the fields happen to be
+          // set.
+          useStore.setState({
+            explorerModelTabs: ['some_other_model'],
+            explorerModelStates: {
+              some_other_model: { sql: 'SELECT 1', sourceName: 'local-duckdb', isNew: true, computedColumns: [] },
+            },
+          });
+          useStore.getState().closeWorkspaceTab('exploration:exp_1');
+        });
+        expect(deleteExploration).toHaveBeenCalledWith('exp_1');
+      });
     });
   });
 

@@ -54,6 +54,7 @@ import {
   DEFAULT_WORKSPACE_VIEW,
 } from '../components/views/workspace/higherLevelViews';
 import { isExplorationVisibleInGallery } from '../components/views/workspace/explorationLifecycle';
+import { legacyStateToDraft } from '../components/views/workspace/explorationLegacyBridge';
 
 /**
  * Two `{ type, name }` selection descriptors identify the same object.
@@ -548,8 +549,43 @@ const createWorkspaceSlice = (set, get) => ({
     if (closing.type === 'exploration' && tabId.startsWith('exploration:')) {
       const explorationId = tabId.slice('exploration:'.length);
       const record = get().workspaceExplorations?.byId?.[explorationId];
-      if (record && !isExplorationVisibleInGallery(record)) {
-        get().deleteExploration?.(explorationId);
+      if (record) {
+        // VIS-1108 (URGENT, DATA LOSS): `record.draft` is the store's
+        // PERSISTED draft — it only reflects what ExplorationPane's own
+        // live-sync effect has already pushed via `updateExplorationDraft`,
+        // which is itself debounced by ~600ms behind the legacy
+        // `explorerStore.js` working-state (the thing the user is actually
+        // typing into). This GC runs SYNCHRONOUSLY, inside the same tick as
+        // the tab strip's own click handler — well before React ever gets
+        // to run ExplorationPane's unmount cleanup (a *deferred* effect
+        // cleanup), let alone that pane's 600ms timer. Deciding "untouched"
+        // off `record.draft` alone means a fast type-then-close always sees
+        // the STALE, still-blank draft and deletes the record — and the
+        // typed SQL along with it, since it never existed anywhere else.
+        //
+        // Trusting `record.draft` alone is only safe once we know it can't
+        // be lagging — which is exactly when this exploration's tab was NOT
+        // the active one (`wasActive`, computed above from the PRE-close
+        // active tab): a parked/background tab's legacy state was already
+        // flushed into the draft the moment it was last deactivated, so
+        // there is nothing live left to consult. When it WAS active, the
+        // legacy store is (or very recently was) genuinely hot for this
+        // exploration, so take a synchronous snapshot of it RIGHT NOW and
+        // fold it into the visibility check too — never delete unless BOTH
+        // the persisted draft and the live working-state agree there's
+        // nothing meaningful yet. This is additive, not a replacement: it
+        // only ever makes the GC more conservative (never deletes something
+        // the OLD check would have kept), so the existing "GC a genuinely
+        // untouched browse" contract keeps working unchanged.
+        const alreadyVisible = isExplorationVisibleInGallery(record);
+        let stillUntouched = !alreadyVisible;
+        if (stillUntouched && wasActive && typeof get().snapshotExplorerWorkingState === 'function') {
+          const liveDraft = legacyStateToDraft(get().snapshotExplorerWorkingState());
+          stillUntouched = !isExplorationVisibleInGallery({ ...record, draft: liveDraft });
+        }
+        if (stillUntouched) {
+          get().deleteExploration?.(explorationId);
+        }
       }
     }
   },
