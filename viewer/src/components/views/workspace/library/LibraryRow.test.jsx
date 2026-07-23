@@ -10,7 +10,7 @@
  *   - flip icon click opens the popover
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { DndContext, useDraggable } from '@dnd-kit/core';
 import LibraryRow, { getTypeDef } from './LibraryRow';
 import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
@@ -51,6 +51,13 @@ describe('LibraryRow', () => {
     const dashboardDef = getTypeDef('dashboard');
     expect(dashboardDef).toBeTruthy();
     expect(dashboardDef.droppable).toBe(false);
+  });
+
+  test('getTypeDef falls back to a bare icon/label/pluralization for a type with no objectTypeConfigs entry', () => {
+    const def = getTypeDef('totally_unknown_type');
+    expect(def.label).toBe('totally_unknown_type');
+    expect(def.plural).toBe('totally_unknown_types');
+    expect(def.icon).toBeTruthy();
   });
 
   // Explore 2.0 Phase 3a (D9 / 02-architecture.md §4): source/metric/
@@ -107,6 +114,70 @@ describe('LibraryRow', () => {
     expect(row).toHaveTextContent('waterfall');
     fireEvent.click(row);
     expect(onClick).toHaveBeenCalledWith(CHART, expect.anything());
+  });
+
+  test('Enter/Space on the focused row also forwards click (keyboard accessibility)', () => {
+    const onClick = jest.fn();
+    render(withDnd(<LibraryRow obj={CHART} onClick={onClick} />));
+    const row = screen.getByTestId('library-row-chart-waterfall');
+    fireEvent.keyDown(row, { key: 'Enter' });
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(onClick).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(row, { key: 'Tab' });
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  test('StatusDot: renders nothing for a published/no-status object, green for new, amber for modified', () => {
+    const { rerender } = render(withDnd(<LibraryRow obj={{ ...CHART, status: 'published' }} />));
+    expect(screen.queryByTestId('library-row-status-dot')).not.toBeInTheDocument();
+
+    rerender(withDnd(<LibraryRow obj={{ ...CHART, status: 'new' }} />));
+    const newDot = screen.getByTestId('library-row-status-dot');
+    expect(newDot).toHaveClass('bg-green-500');
+    expect(newDot).toHaveAttribute('title', 'New — not yet published');
+
+    rerender(withDnd(<LibraryRow obj={{ ...CHART, status: 'modified' }} />));
+    const modifiedDot = screen.getByTestId('library-row-status-dot');
+    expect(modifiedDot).toHaveClass('bg-amber-500');
+    expect(modifiedDot).toHaveAttribute('title', 'Modified — has unpublished changes');
+  });
+
+  test('mouseLeave un-hovers the row (actions hide again)', () => {
+    render(withDnd(<LibraryRow obj={INSIGHT} />));
+    const row = screen.getByTestId('library-row-insight-revenue_growth');
+    fireEvent.mouseEnter(row);
+    expect(row).toHaveAttribute('data-hovered', 'true');
+    fireEvent.mouseLeave(row);
+    expect(row).toHaveAttribute('data-hovered', 'false');
+  });
+
+  test('a mousedown on a context-menu item does not lose row focus, and a mousedown INSIDE the menu never dismisses it', () => {
+    render(withDnd(<LibraryRow obj={INSIGHT} />));
+    const row = screen.getByTestId('library-row-insight-revenue_growth');
+    fireEvent.mouseEnter(row);
+    fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+    const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+    expect(menu).toBeInTheDocument();
+
+    // A real cursor click fires mousedown before click — the item's own
+    // onMouseDown must preventDefault (never lose focus) and the doc-level
+    // outside-click guard must see the target is INSIDE the menu and leave
+    // it open.
+    const menuItem = within(menu).getByText('Open in right rail');
+    fireEvent.mouseDown(menuItem);
+    expect(screen.getByTestId('library-row-insight-revenue_growth-context-menu')).toBeInTheDocument();
+  });
+
+  test('a mousedown OUTSIDE the menu dismisses it', () => {
+    render(withDnd(<LibraryRow obj={INSIGHT} />));
+    fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+    fireEvent.click(screen.getByTestId('library-row-insight-revenue_growth-kebab'));
+    expect(screen.getByTestId('library-row-insight-revenue_growth-context-menu')).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(
+      screen.queryByTestId('library-row-insight-revenue_growth-context-menu')
+    ).not.toBeInTheDocument();
   });
 
   test('reveals flip + ⋯ actions on hover and the kebab opens a context menu', () => {
@@ -210,6 +281,38 @@ describe('LibraryRow', () => {
     });
   });
 
+  // Phase 6c-T5 (ux-audit.md "'Explore this' is discoverable only via
+  // right-click/kebab in the Library tree — give it a visible affordance").
+  describe('visible "Explore" button (Phase 6c-T5)', () => {
+    test('a hover-revealed Explore button exists for an EXPLORE_THIS_TYPE row — no right-click/kebab needed', () => {
+      const onContextAction = jest.fn();
+      render(withDnd(<LibraryRow obj={INSIGHT} onContextAction={onContextAction} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-insight-revenue_growth'));
+      const exploreButton = screen.getByTestId('library-row-insight-revenue_growth-explore');
+      expect(exploreButton).toBeInTheDocument();
+      fireEvent.click(exploreButton);
+      expect(onContextAction).toHaveBeenCalledWith('exploreThis', INSIGHT);
+      // Never opened the kebab's dropdown menu — this is a direct, one-click
+      // affordance, not a menu item.
+      expect(
+        screen.queryByTestId('library-row-insight-revenue_growth-context-menu')
+      ).not.toBeInTheDocument();
+    });
+
+    test('a model row also gets the visible Explore button', () => {
+      render(withDnd(<LibraryRow obj={MODEL} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
+      expect(screen.getByTestId('library-row-model-monthly_revenue-explore')).toBeInTheDocument();
+    });
+
+    test('a type outside EXPLORE_THIS_TYPES (e.g. dashboard) gets no Explore button', () => {
+      const DASHBOARD = { type: 'dashboard', name: 'kpis' };
+      render(withDnd(<LibraryRow obj={DASHBOARD} />));
+      fireEvent.mouseEnter(screen.getByTestId('library-row-dashboard-kpis'));
+      expect(screen.queryByTestId('library-row-dashboard-kpis-explore')).not.toBeInTheDocument();
+    });
+  });
+
   test('right-click opens the context menu (preventing the native one)', () => {
     render(withDnd(<LibraryRow obj={CHART} />));
     const row = screen.getByTestId('library-row-chart-waterfall');
@@ -305,5 +408,19 @@ describe('LibraryRow', () => {
     render(withDnd(<LibraryRow obj={CHART} draggable />));
     const row = screen.getByTestId('library-row-chart-waterfall');
     expect(row.style.transform || '').not.toMatch(/translate/);
+  });
+
+  test('a click never fires onClick while a drag is in progress (isDragging)', () => {
+    useDraggable.mockReturnValueOnce({
+      transform: null,
+      setNodeRef: jest.fn(),
+      listeners: {},
+      attributes: {},
+      isDragging: true,
+    });
+    const onClick = jest.fn();
+    render(withDnd(<LibraryRow obj={CHART} draggable onClick={onClick} />));
+    fireEvent.click(screen.getByTestId('library-row-chart-waterfall'));
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

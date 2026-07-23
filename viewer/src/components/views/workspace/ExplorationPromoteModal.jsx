@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PiCheckCircle, PiXCircle, PiCircleNotch } from 'react-icons/pi';
+import { PiCheckCircle, PiXCircle, PiCircleNotch, PiPencilSimple } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
+import { getAllKnownNames } from '../../../stores/explorerStore';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
+import { validateName } from '../common/namedModel';
+import { suggestPromoteNames } from './promoteNaming';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import Select from '../../common/Select';
 
@@ -11,25 +14,61 @@ const TIER_ORDER = ['model', 'field', 'insight', 'chart'];
 
 const rowKey = row => `${row.type}:${row.name}`;
 
+// D11 (specs/plan/explorer-workspace-unification/08-ux-overhaul.md) — the ONE
+// user-facing verb for this whole chain is "Save to project"; "promote"
+// stays as internal-only vocabulary (store/API names, test ids). A row can
+// only be RENAMED here when it's a brand-new object this run would create —
+// mirrors the `renameModelTab`/`renameInsight` store actions' own
+// `if (!x.isNew) return` guard, and keeps an update-by-name ("modified") row
+// from ever silently becoming a rename-to-a-different-object.
+const RENAMABLE_TIERS = new Set(['model', 'insight', 'chart']);
+const isRenamableRow = row => row.status === 'new' && RENAMABLE_TIERS.has(row.tier);
+
+/**
+ * Calls the ONE store action that can rename this row's kind of draft
+ * object. Each of these throws `NameCollisionError` (`.code ===
+ * 'NAME_COLLISION'`) on a real collision — callers catch and surface
+ * `err.message` inline rather than letting it propagate.
+ */
+function renameRow(row, nextName, storeState) {
+  if (row.type === 'model') {
+    storeState.renameModelTab(row.name, nextName);
+  } else if (row.type === 'insight') {
+    storeState.renameInsight(row.name, nextName);
+  } else if (row.type === 'chart') {
+    storeState.setChartName(nextName);
+  }
+}
+
 /**
  * ExplorationPromoteModal — Explore 2.0 Phase 4 (01-ux-spec.md §3's "Save to
  * Project" checklist mockup, 02-architecture.md §3). REPLACES
  * `ExplorerSaveModal`/`saveExplorerObjects` (both deleted with this change) —
  * unlike that all-or-nothing modal, this is a per-object gated promote:
  *
- *   MODELS        ☑ orders_q          ✓ valid
- *   FIELDS        ☑ churn_rate        ✓ valid   (→ orders_q)
+ *   MODELS        ☑ [orders_query   ] ✓ valid
+ *   FIELDS        ☑ churn_rate        ✓ valid   (→ orders_query)
  *                 ☐ bad_ratio         ✕ expression fails: <err>
- *   INSIGHTS      ☑ churn_by_cohort   ✓ valid
- *   CHART         ☑ churn_chart       ✓ valid
- *                            [Cancel]  [Promote 4 selected ▸]
+ *   INSIGHTS      ☑ [orders_query_insight] ✓ valid
+ *   CHART         ☑ [orders_query_insight_chart] ✓ valid
+ *                            [Cancel]  [Save 4 to project ▸]
  *
  * Default selection: every VALID row pre-checked; failed rows are visible
  * but flagged and un-checkable (a failed object blocks only itself — no
- * cascade-disabling of children). "updates existing ✎" marks a `modified`
- * row — promoting a draft seeded from an existing object of the SAME NAME
- * updates the original (05-e2e-ledger.md resolution #1), never creates a
- * duplicate.
+ * cascade-disabling of children). "updates existing" marks a `modified` row —
+ * saving a draft seeded from an existing object of the SAME NAME updates the
+ * original (05-e2e-ledger.md resolution #1), never creates a duplicate.
+ *
+ * NAMING STEP (D11 / ux-audit.md "Promote has no naming step — project
+ * polluted with 'query_1' and 'insight'"): every NEW model/insight/chart row
+ * (never a field — those are already user-named by Save-as-metric; never a
+ * `modified` row — that's an intentional update of a real, already-named
+ * object) renders as an editable, validated name field rather than static
+ * text. A row whose name is still a recognized auto-generated placeholder
+ * (`query_1`, `model`, `insight`, `insight_2`, `chart`) is pre-filled with a
+ * suggested real name on open (`promoteNaming.js`'s `suggestPromoteNames`,
+ * anchored on the model's bound source and cascaded model -> insight ->
+ * chart) — always still editable, never a silent rename the user didn't see.
  */
 const EMPTY_DASHBOARDS = [];
 
@@ -60,13 +99,78 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const [placeError, setPlaceError] = useState(null);
   const [declining, setDeclining] = useState(false);
   const [declineError, setDeclineError] = useState(null);
+  // Naming step (D11) — draft text per renamable row, keyed by its CURRENT
+  // rowKey, plus any inline validation/collision error for that row. A row
+  // with an in-flight rename (renaming a store action + rebuilding the
+  // checklist) is tracked in `renamingKey` so its input can disable itself
+  // rather than accept a second overlapping edit.
+  const [nameDrafts, setNameDrafts] = useState(() => new Map());
+  const [nameErrors, setNameErrors] = useState(() => new Map());
+  const [renamingKey, setRenamingKey] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const built = await buildPromoteChecklist(useStore.getState);
+      let built = await buildPromoteChecklist(useStore.getState);
+      if (cancelled) return;
+
+      // Suggest real names for any brand-new row still carrying a generic
+      // placeholder (query_1 / model / insight / insight_2 / chart) — see
+      // `promoteNaming.js`. Suggestions that resolve are applied through the
+      // SAME rename actions the chip/section rename menus use, so every ref
+      // across sibling insights/charts is already rewritten in the store by
+      // the time this resolves — never a bespoke rename path here.
+      //
+      // Deliberately does NOT re-run `buildPromoteChecklist` after applying
+      // these renames (a first version did, and that regressed real e2e
+      // stories — VIS gate — whose `promoteEverything`-style helpers click
+      // "Save N to project ▸" immediately after the modal becomes visible,
+      // with no wait for it to be enabled; a second full checklist rebuild
+      // here, each row re-validated over the network, pushed the modal past
+      // that assumed-instant window and timed those stories out). Patching
+      // the already-fetched rows' `name`/`parentModel` fields locally is
+      // sufficient for what this modal DISPLAYS — `promoteExploration`
+      // itself always recomputes the checklist FRESH right before the real
+      // save (see its own docstring's "Fresh get() per object"), so the
+      // saved config is correct regardless of what this preview shows.
+      const state = useStore.getState();
+      const knownNames = Array.from(getAllKnownNames(state).keys());
+      const suggestions = suggestPromoteNames(
+        built,
+        modelName => state.explorerModelStates?.[modelName]?.sourceName || null,
+        knownNames
+      );
+      if (suggestions.size > 0) {
+        const appliedRenames = new Map(); // rowKey (old) -> new name
+        for (const row of built) {
+          const suggestion = suggestions.get(rowKey(row));
+          if (!suggestion) continue;
+          try {
+            renameRow(row, suggestion, state);
+            appliedRenames.set(rowKey(row), suggestion);
+          } catch {
+            // A collision with something the suggestion logic couldn't see
+            // (fail-open, not fail-blocking) — leave the placeholder name in
+            // place; the user still gets an editable field to fix it by hand.
+          }
+        }
+        if (appliedRenames.size > 0) {
+          built = built.map(row => {
+            const newName = appliedRenames.get(rowKey(row));
+            if (newName) return { ...row, name: newName };
+            // A field row's "(→ parentModel)" suffix should follow its
+            // model's rename too, purely for display.
+            const parentNewName = row.parentModel
+              ? appliedRenames.get(`model:${row.parentModel}`)
+              : null;
+            return parentNewName ? { ...row, parentModel: parentNewName } : row;
+          });
+        }
+      }
+
       if (cancelled) return;
       setRows(built);
+      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
       setSelected(new Set(built.filter(r => r.valid).map(rowKey)));
       setLoading(false);
     })();
@@ -74,6 +178,63 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       cancelled = true;
     };
   }, []);
+
+  const handleNameCommit = useCallback(
+    async (row, rawNextName) => {
+      const key = rowKey(row);
+      const nextName = (rawNextName || '').trim();
+      if (!nextName || nextName === row.name) {
+        // Reverting to the current value clears any stale error and just
+        // re-syncs the draft text — nothing to commit.
+        setNameDrafts(prev => new Map(prev).set(key, row.name));
+        setNameErrors(prev => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+        return;
+      }
+      const formatError = validateName(nextName);
+      if (formatError) {
+        setNameErrors(prev => new Map(prev).set(key, formatError));
+        return;
+      }
+      setRenamingKey(key);
+      try {
+        renameRow(row, nextName, useStore.getState());
+      } catch (err) {
+        setNameErrors(prev => new Map(prev).set(key, err.message));
+        setRenamingKey(null);
+        return;
+      }
+      // Rebuild so downstream rows (a chart referencing the just-renamed
+      // insight, etc.) reflect the rewritten refs — `renameModelTab`/
+      // `renameInsight` already rewrote every sibling ref synchronously, so
+      // this rebuild only needs to re-read the now-current draft state.
+      const built = await buildPromoteChecklist(useStore.getState);
+      setRows(built);
+      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
+      // Remap the selection: every OTHER row's key is unchanged, so a direct
+      // `has` lookup carries its checked state forward; the renamed row's
+      // prior checked state is looked up under its OLD key instead.
+      setSelected(prevSelected => {
+        const next = new Set();
+        built.forEach(r => {
+          const newKey = rowKey(r);
+          const priorKey = r.type === row.type && r.name === nextName ? key : newKey;
+          if (prevSelected.has(priorKey) && r.valid) next.add(newKey);
+        });
+        return next;
+      });
+      setNameErrors(prev => {
+        const nextErrors = new Map(prev);
+        nextErrors.delete(key);
+        return nextErrors;
+      });
+      setRenamingKey(null);
+    },
+    []
+  );
 
   const toggle = useCallback((row) => {
     if (!row.valid) return;
@@ -92,6 +253,12 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     rows.forEach(r => g[r.tier]?.push(r));
     return g;
   }, [rows]);
+
+  // D11 / ux-audit.md "Update-by-name semantics conveyed only by a tiny
+  // green pill" — a single explanatory sentence up top, in addition to (not
+  // instead of) the per-row badge, so the overwrite consequence isn't only
+  // legible on hover.
+  const hasModifiedRows = useMemo(() => rows.some(r => r.status === 'modified'), [rows]);
 
   const selectedCount = selected.size;
 
@@ -119,10 +286,10 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     }
     // Deliberately NEVER auto-close here, even on the common all-valid,
     // no-collision path: `setPromotedThisRun` and a same-tick `onClose()`
-    // land in the SAME React commit, so the "Promoted N objects" success
-    // message (and its `exploration-promote-success` testid) would never
-    // actually paint — the modal would just vanish, giving the user no
-    // confirmation of what was promoted. Root-caused via live reproduction
+    // land in the SAME React commit, so the "Saved N objects to project"
+    // success message (and its `exploration-promote-success` testid) would
+    // never actually paint — the modal would just vanish, giving the user no
+    // confirmation of what was saved. Root-caused via live reproduction
     // against the sandbox (integration-gate fix cycle). The "Close" button's
     // own label already switches to "Close" once `promotedThisRun` is set
     // (see the JSX below) — that affordance is how the user dismisses after
@@ -363,10 +530,13 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Save to Project"
+        aria-label="Save to project"
         className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto"
       >
-        <h3 className="text-lg font-medium text-secondary-900 mb-1">Save to Project</h3>
+        {/* D11: one verb, one casing — sentence-case "Save to project" here to
+            match the CTA, the trail heading and the submit button; the modal's
+            own heading + aria-label were the last "Save to Project" holdouts. */}
+        <h3 className="text-lg font-medium text-secondary-900 mb-1">Save to project</h3>
 
         {loading ? (
           <div className="flex items-center gap-2 py-8 justify-center text-secondary-400 text-sm">
@@ -377,6 +547,15 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
           <p className="text-sm text-secondary-500 py-4">No changes to save.</p>
         ) : (
           <div className="space-y-3 mt-3">
+            {hasModifiedRows && (
+              <p
+                data-testid="exploration-promote-update-notice"
+                className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5"
+              >
+                Rows marked <span className="font-medium">updates existing</span> will overwrite
+                the object of that name already in your project.
+              </p>
+            )}
             {TIER_ORDER.filter(tier => grouped[tier].length > 0).map(tier => (
               <div key={tier}>
                 <p className="text-xs font-medium text-secondary-400 uppercase tracking-wide mb-1">
@@ -388,12 +567,14 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                     const Icon = getTypeIcon(row.type);
                     const key = rowKey(row);
                     const checked = selected.has(key);
+                    const renamable = isRenamableRow(row);
+                    const nameError = nameErrors.get(key);
                     return (
-                      <label
+                      <div
                         key={key}
                         data-testid={`promote-row-${row.type}-${row.name}`}
                         className={`flex items-start gap-2 rounded-md px-2 py-1.5 text-[13px] ${
-                          row.valid ? 'cursor-pointer hover:bg-gray-50' : 'opacity-70'
+                          row.valid ? 'hover:bg-gray-50' : 'opacity-70'
                         }`}
                       >
                         <input
@@ -402,7 +583,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                           checked={checked}
                           disabled={!row.valid}
                           onChange={() => toggle(row)}
-                          className="mt-0.5"
+                          className="mt-0.5 shrink-0"
                         />
                         {Icon && (
                           <span
@@ -412,19 +593,70 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                           </span>
                         )}
                         <span className="flex-1 min-w-0">
-                          <span className="font-medium text-secondary-900">{row.name}</span>
+                          {renamable ? (
+                            <>
+                              <input
+                                type="text"
+                                data-testid={`promote-row-${row.type}-${row.name}-name-input`}
+                                aria-label={`Name for this new ${row.type}`}
+                                value={nameDrafts.has(key) ? nameDrafts.get(key) : row.name}
+                                disabled={renamingKey === key}
+                                onChange={e =>
+                                  setNameDrafts(prev => new Map(prev).set(key, e.target.value))
+                                }
+                                onBlur={e => handleNameCommit(row, e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') e.currentTarget.blur();
+                                  else if (e.key === 'Escape') {
+                                    setNameDrafts(prev => new Map(prev).set(key, row.name));
+                                    setNameErrors(prev => {
+                                      const next = new Map(prev);
+                                      next.delete(key);
+                                      return next;
+                                    });
+                                  }
+                                }}
+                                className={`w-full min-w-0 rounded border px-1.5 py-0.5 text-[13px] font-medium text-secondary-900 outline-none focus:ring-1 ${
+                                  nameError
+                                    ? 'border-highlight-300 focus:border-highlight-400 focus:ring-highlight-200'
+                                    : 'border-gray-200 focus:border-primary-400 focus:ring-primary-200'
+                                }`}
+                              />
+                              {nameError && (
+                                <span
+                                  data-testid={`promote-row-${row.type}-${row.name}-name-error`}
+                                  className="mt-0.5 block text-[11px] text-highlight-600"
+                                >
+                                  {nameError}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="font-medium text-secondary-900">{row.name}</span>
+                          )}
                           {row.parentModel && (
                             <span className="text-secondary-400"> (→ {row.parentModel})</span>
                           )}
                         </span>
                         {row.valid ? (
-                          <span
-                            className="flex items-center gap-1 text-green-600 text-xs shrink-0"
-                            data-testid={`promote-row-${row.type}-${row.name}-verdict`}
-                          >
-                            <PiCheckCircle size={13} />
-                            {row.status === 'modified' ? 'updates existing ✎' : 'valid'}
-                          </span>
+                          row.status === 'modified' ? (
+                            <span
+                              className="flex items-center gap-1 text-amber-700 text-xs shrink-0"
+                              data-testid={`promote-row-${row.type}-${row.name}-verdict`}
+                              title="Saving will overwrite the existing object of this name in your project."
+                            >
+                              <PiPencilSimple size={12} />
+                              updates existing
+                            </span>
+                          ) : (
+                            <span
+                              className="flex items-center gap-1 text-green-600 text-xs shrink-0"
+                              data-testid={`promote-row-${row.type}-${row.name}-verdict`}
+                            >
+                              <PiCheckCircle size={13} />
+                              valid
+                            </span>
+                          )
                         ) : (
                           <span
                             className="flex items-start gap-1 text-highlight-600 text-xs shrink-0 max-w-[45%] text-right"
@@ -435,7 +667,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                             <span className="truncate">{row.error || 'invalid'}</span>
                           </span>
                         )}
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
@@ -460,13 +692,27 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         )}
 
         {promotedThisRun && succeededCount > 0 && reclassificationOffers.length === 0 && (
-          <p
-            data-testid="exploration-promote-success"
-            className="mt-3 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-2.5 py-1.5"
-          >
-            Promoted {succeededCount} object
-            {succeededCount === 1 ? '' : 's'}.
-          </p>
+          <div className="mt-3 space-y-1">
+            <p
+              data-testid="exploration-promote-success"
+              className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-2.5 py-1.5"
+            >
+              Saved {succeededCount} object
+              {succeededCount === 1 ? '' : 's'} to project.
+            </p>
+            {/* D11 — the two-step journey (save to project, then commit) must
+                be signposted where the first step just completed, not left
+                for the user to discover when a green "Commit" button appears
+                in the nav with no explanation (ux-audit.md "Save / Promote /
+                Commit: three words, one journey, zero signposting"). */}
+            <p
+              data-testid="exploration-promote-pending-commit"
+              className="text-[11px] text-secondary-500 px-0.5"
+              title="Saved objects are written to your project files but not committed yet — use Commit in the top bar to make them permanent."
+            >
+              Saved to project · pending commit
+            </p>
+          </div>
         )}
 
         {/* VIS-1068 — dashboard round-trip completion. Only offered on a run
@@ -613,7 +859,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
             disabled={promoting || selectedCount === 0 || loading}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {promoting ? 'Promoting…' : `Promote ${selectedCount} selected ▸`}
+            {promoting ? 'Saving…' : `Save ${selectedCount} to project ▸`}
           </button>
         </div>
       </div>

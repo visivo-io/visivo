@@ -46,6 +46,11 @@ describe('FieldSwapOfferBanner', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  test('renders nothing when the offers prop is omitted entirely (defaults to [])', () => {
+    const { container } = render(<FieldSwapOfferBanner />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
   test('renders one banner per offer, naming the promoted field and slot count', () => {
     render(<FieldSwapOfferBanner offers={[offer()]} />);
     expect(screen.getByTestId('field-swap-offer-total_amount')).toHaveTextContent('total_amount');
@@ -108,10 +113,58 @@ describe('FieldSwapOfferBanner', () => {
     expect(updateInsightInteraction).toHaveBeenCalledWith('a', 0, { value: '?{${ref(region)}}' });
   });
 
+  test('a slot with neither a "prop" nor "interaction" location is silently skipped — no write call is made for it', () => {
+    // Forward/backward-compat guard: a slot shape from an older/newer
+    // build that doesn't match either known `location` is simply not
+    // written anywhere, rather than throwing or defaulting to one.
+    const setInsightProp = jest.fn();
+    const updateInsightInteraction = jest.fn();
+    useStore.setState({
+      setInsightProp,
+      updateInsightInteraction,
+      explorerInsightStates: {
+        a: { props: {}, interactions: [{ type: 'filter', value: '?{${ref(orders_q).region}}' }] },
+      },
+    });
+    render(
+      <FieldSwapOfferBanner
+        offers={[
+          offer({
+            slots: [
+              {
+                insightName: 'a',
+                location: 'unknown',
+                key: 0,
+                previousRef: 'orders_q',
+                previousColumn: 'region',
+                previousAgg: null,
+                swapTo: { kind: 'dimensionRef', ref: 'region' },
+              },
+            ],
+          }),
+        ]}
+        onDismiss={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByTestId('field-swap-offer-total_amount-apply'));
+    expect(setInsightProp).not.toHaveBeenCalled();
+    expect(updateInsightInteraction).not.toHaveBeenCalled();
+  });
+
   test('Apply calls onDismiss with the offer index (one-click, then gone)', () => {
     const onDismiss = jest.fn();
     render(<FieldSwapOfferBanner offers={[offer()]} onDismiss={onDismiss} />);
     fireEvent.click(screen.getByTestId('field-swap-offer-total_amount-apply'));
+    expect(onDismiss).toHaveBeenCalledWith(0);
+  });
+
+  test('the icon-only "×" dismiss button (distinct from the text "Dismiss" button) also dismisses', () => {
+    const setInsightProp = jest.fn();
+    const onDismiss = jest.fn();
+    useStore.setState({ setInsightProp });
+    render(<FieldSwapOfferBanner offers={[offer()]} onDismiss={onDismiss} />);
+    fireEvent.click(screen.getByLabelText('Dismiss'));
+    expect(setInsightProp).not.toHaveBeenCalled();
     expect(onDismiss).toHaveBeenCalledWith(0);
   });
 
@@ -219,6 +272,48 @@ describe('FieldSwapOfferBanner', () => {
         '?{${ref(total_amount)}}'
       );
       expect(showWorkspaceToast).toHaveBeenCalledWith(expect.stringContaining('Updated 1'));
+    });
+
+    test('pluralizes the skip-toast grammar ("were skipped") when 2+ slots are skipped alongside an applied one', () => {
+      const setInsightProp = jest.fn();
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({
+        setInsightProp,
+        showWorkspaceToast,
+        explorerInsightStates: {
+          unchanged_chart: { props: { y: '?{${ref(other_model).amount}}' }, interactions: [] },
+          changed_chart_1: { props: { y: '?{${ref(different_model).amount}}' }, interactions: [] },
+          changed_chart_2: { props: { y: '?{${ref(different_model).amount}}' }, interactions: [] },
+        },
+      });
+      const slotFor = insightName => ({
+        insightName,
+        location: 'prop',
+        key: 'y',
+        previousRef: 'other_model',
+        previousColumn: 'amount',
+        previousAgg: null,
+        swapTo: { kind: 'metricRef', ref: 'total_amount' },
+      });
+      render(
+        <FieldSwapOfferBanner
+          offers={[
+            offer({
+              slots: [
+                slotFor('unchanged_chart'),
+                slotFor('changed_chart_1'),
+                slotFor('changed_chart_2'),
+              ],
+            }),
+          ]}
+          onDismiss={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByTestId('field-swap-offer-total_amount-apply'));
+      expect(setInsightProp).toHaveBeenCalledTimes(1);
+      expect(showWorkspaceToast).toHaveBeenCalledWith(
+        expect.stringContaining('Updated 1 — 2 references changed since this offer was made and were skipped')
+      );
     });
 
     test('still dismisses the offer even when every slot was skipped (no lingering stale offer)', () => {

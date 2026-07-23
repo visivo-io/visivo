@@ -189,7 +189,14 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     await page.getByTestId('pill-menu-save-as-metric').click();
 
     await expect(page.getByTestId('save-as-metric-prompt')).toBeVisible({ timeout: 5000 });
-    const suggestedName = `${queryName}_${columnName}_sum`;
+    // Metric names are SQL identifiers, so `suggestMetricName` (saveAsMetricFlow.js)
+    // sanitizes `<query>_<col>_<agg>` with `.replace(/[^a-zA-Z0-9_]/g, '_')`.
+    // The query name is now source-anchored (T3's live rename → e.g.
+    // `local-duckdb_query`), so it can contain a hyphen that the metric name
+    // legitimately folds to `_`; compute the expected value the same way rather
+    // than assuming `queryName` is already identifier-safe (it used to be
+    // `query_1`, which hid this).
+    const suggestedName = `${queryName}_${columnName}_sum`.replace(/[^a-zA-Z0-9_]/g, '_');
     await expect(page.getByTestId('save-as-metric-name-input')).toHaveValue(suggestedName);
 
     await page.getByTestId('save-as-metric-submit').click();
@@ -265,6 +272,12 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     );
 
     await page.getByTestId('right-panel-add-insight').click();
+    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
+    // of letting you pick an existing one"): the button now opens a picker
+    // (existing insights + "New blank insight"); these specs want the OLD
+    // "always create a fresh blank insight" behavior, so drive the new
+    // secondary action explicitly.
+    await page.getByTestId('add-insight-menu-create-new').click();
     const insightNames = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames
     );
@@ -334,6 +347,12 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     );
 
     await page.getByTestId('right-panel-add-insight').click();
+    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
+    // of letting you pick an existing one"): the button now opens a picker
+    // (existing insights + "New blank insight"); these specs want the OLD
+    // "always create a fresh blank insight" behavior, so drive the new
+    // secondary action explicitly.
+    await page.getByTestId('add-insight-menu-create-new').click();
     const insightNames = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames
     );

@@ -34,8 +34,32 @@ describe('ExplorationCard', () => {
     expect(screen.getByText(/1 insight/i)).toBeInTheDocument();
   });
 
+  test('pluralizes "queries"/"insights" when there is more than one, omits the edit-time label when updatedAt is absent, and never throws when `promoted` is omitted entirely', () => {
+    render(
+      <ExplorationCard
+        exploration={exploration({
+          updatedAt: null,
+          promoted: undefined,
+          draft: {
+            queries: [{ name: 'a' }, { name: 'b' }],
+            insights: [{ name: 'x' }, { name: 'y' }],
+            chart: null,
+            computedColumns: [],
+          },
+        })}
+        onOpen={jest.fn()}
+        onRename={jest.fn()}
+        onDuplicate={jest.fn()}
+        onDelete={jest.fn()}
+      />
+    );
+    expect(screen.getByText(/2 queries/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 insights/i)).toBeInTheDocument();
+    expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
+  });
+
   // Explore 2.0 Phase 4 (01-ux-spec.md §2): "promotion count arrives in Phase 4".
-  test('omits the promoted count when nothing has been promoted yet', () => {
+  test('omits the saved-to-project count when nothing has been saved yet', () => {
     render(
       <ExplorationCard
         exploration={exploration({ promoted: [] })}
@@ -45,10 +69,10 @@ describe('ExplorationCard', () => {
         onDelete={jest.fn()}
       />
     );
-    expect(screen.getByTestId('exploration-card-exp_1-summary')).not.toHaveTextContent('promoted');
+    expect(screen.getByTestId('exploration-card-exp_1-summary')).not.toHaveTextContent('saved to project');
   });
 
-  test('shows the promoted count once the exploration has real promotions', () => {
+  test('shows the saved-to-project count once the exploration has real promotions', () => {
     render(
       <ExplorationCard
         exploration={exploration({
@@ -63,7 +87,7 @@ describe('ExplorationCard', () => {
         onDelete={jest.fn()}
       />
     );
-    expect(screen.getByTestId('exploration-card-exp_1-summary')).toHaveTextContent('2 promoted');
+    expect(screen.getByTestId('exploration-card-exp_1-summary')).toHaveTextContent('2 saved to project');
   });
 
   test('renders a provenance chip when seededFrom is set', () => {
@@ -157,6 +181,125 @@ describe('ExplorationCard', () => {
     expect(onOpen).toHaveBeenCalledWith('exp_1');
   });
 
+  // Phase 6c-T5 (ux-audit.md "cards only open via small 'Open' button" —
+  // "Make the whole card clickable" direction).
+  describe('whole-card clickability (Phase 6c-T5)', () => {
+    test('clicking anywhere on the card body calls onOpen', () => {
+      const onOpen = jest.fn();
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={onOpen}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByTestId('exploration-card-exp_1'));
+      expect(onOpen).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('clicking the card name text also calls onOpen', () => {
+      const onOpen = jest.fn();
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={onOpen}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByTestId('exploration-card-exp_1-name'));
+      expect(onOpen).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('Enter/Space on the focused card also calls onOpen (keyboard accessibility)', () => {
+      const onOpen = jest.fn();
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={onOpen}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      const card = screen.getByTestId('exploration-card-exp_1');
+      fireEvent.keyDown(card, { key: 'Enter' });
+      fireEvent.keyDown(card, { key: ' ' });
+      expect(onOpen).toHaveBeenCalledTimes(2);
+      expect(onOpen).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('an unrelated key does nothing', () => {
+      const onOpen = jest.fn();
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={onOpen}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      fireEvent.keyDown(screen.getByTestId('exploration-card-exp_1'), { key: 'Tab' });
+      expect(onOpen).not.toHaveBeenCalled();
+    });
+
+    test('opening the ⋮ menu does NOT also call onOpen (propagation stopped)', () => {
+      const onOpen = jest.fn();
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={onOpen}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+      expect(onOpen).not.toHaveBeenCalled();
+    });
+
+    test('starting an inline rename does NOT also call onOpen (propagation stopped)', () => {
+      const onOpen = jest.fn();
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={onOpen}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+      fireEvent.click(screen.getByTestId('exploration-card-exp_1-rename-action'));
+      expect(screen.getByTestId('exploration-card-exp_1-rename-input')).toBeInTheDocument();
+      expect(onOpen).not.toHaveBeenCalled();
+
+      // Clicking INSIDE the now-open rename input area (not just the menu
+      // action that opened it) must also never bubble into onOpen.
+      fireEvent.click(screen.getByTestId('exploration-card-exp_1-rename-input'));
+      expect(onOpen).not.toHaveBeenCalled();
+    });
+
+    test('clicking the "Open" button still calls onOpen exactly once (no double-fire from bubbling)', () => {
+      const onOpen = jest.fn();
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={onOpen}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByTestId('exploration-card-exp_1-open'));
+      expect(onOpen).toHaveBeenCalledTimes(1);
+    });
+  });
+
   test('the ⋮ menu Duplicate action calls onDuplicate with the id', () => {
     const onDuplicate = jest.fn();
     render(
@@ -244,6 +387,37 @@ describe('ExplorationCard', () => {
       const badge = screen.getByTestId('exploration-card-exp_1-stale');
       expect(badge).toHaveTextContent('stale');
       expect(badge).toHaveAttribute('title', expect.stringContaining('deleted_model'));
+    });
+
+    test('falls back to a generic title when stale with no specific dangling refs given', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration()}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+          stale
+        />
+      );
+      const badge = screen.getByTestId('exploration-card-exp_1-stale');
+      expect(badge).toHaveAttribute(
+        'title',
+        'This exploration references objects that may have changed'
+      );
+    });
+
+    test('omits the edited-time label when the exploration has no updatedAt', () => {
+      render(
+        <ExplorationCard
+          exploration={exploration({ updatedAt: null })}
+          onOpen={jest.fn()}
+          onRename={jest.fn()}
+          onDuplicate={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+      expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
     });
   });
 });

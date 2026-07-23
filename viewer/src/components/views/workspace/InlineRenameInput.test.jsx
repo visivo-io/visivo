@@ -77,6 +77,54 @@ describe('InlineRenameInput', () => {
     expect(onCommit).toHaveBeenCalledWith('Via blur');
   });
 
+  // The commit/cancel buttons preventDefault on mousedown so clicking them
+  // never blurs the input first — a real click is mousedown-then-mouseup,
+  // and a real browser would blur the still-focused input on mousedown
+  // (firing onBlur's own commit()) before the button's click handler ever
+  // ran, double-committing (or committing-then-cancelling) the rename.
+  // `dispatchEvent`/RTL's `fireEvent` return `false` when a cancelable event
+  // (mousedown is, by default) was preventDefault()'d — assert that
+  // directly rather than the harder-to-observe emergent focus behavior.
+  test('the check button preventDefaults on mousedown so it never blurs the input first', () => {
+    render(<InlineRenameInput name="Scratch" onCommit={jest.fn()} onCancel={jest.fn()} />);
+    const notCancelled = fireEvent.mouseDown(screen.getByTestId('inline-rename-commit'));
+    expect(notCancelled).toBe(false);
+  });
+
+  test('the cancel button preventDefaults on mousedown so it never blurs the input first', () => {
+    render(<InlineRenameInput name="Scratch" onCommit={jest.fn()} onCancel={jest.fn()} />);
+    const notCancelled = fireEvent.mouseDown(screen.getByTestId('inline-rename-cancel'));
+    expect(notCancelled).toBe(false);
+  });
+
+  test('an ordinary keystroke neither commits nor cancels, but still never bubbles to an ancestor keydown handler', () => {
+    const onCommit = jest.fn();
+    const onCancel = jest.fn();
+    const ancestorKeyDown = jest.fn();
+    render(
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+      <div onKeyDown={ancestorKeyDown}>
+        <InlineRenameInput name="Scratch" onCommit={onCommit} onCancel={onCancel} />
+      </div>
+    );
+    fireEvent.keyDown(screen.getByTestId('inline-rename-input'), { key: 'a' });
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(ancestorKeyDown).not.toHaveBeenCalled();
+  });
+
+  test('clicking the input itself never bubbles to an ancestor click handler (ExplorationCard whole-card click guard)', () => {
+    const ancestorClick = jest.fn();
+    render(
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+      <div onClick={ancestorClick}>
+        <InlineRenameInput name="Scratch" onCommit={jest.fn()} onCancel={jest.fn()} />
+      </div>
+    );
+    fireEvent.click(screen.getByTestId('inline-rename-input'));
+    expect(ancestorClick).not.toHaveBeenCalled();
+  });
+
   test('a custom testIdPrefix namespaces every element', () => {
     render(
       <InlineRenameInput

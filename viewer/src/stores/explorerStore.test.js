@@ -1,6 +1,8 @@
 /* eslint-disable no-template-curly-in-string */
 import useStore from './store';
 import { fetchDiff } from '../api/explorer';
+import { translateExpressions } from '../api/expressions';
+import { fetchModelData } from '../api/modelData';
 import {
   expandDotNotationProps,
   getSourceDialect,
@@ -69,6 +71,12 @@ jest.mock('../api/commit', () => ({
   getCommitStatus: jest.fn().mockResolvedValue({ has_unpublished_changes: false }),
   getPendingChanges: jest.fn().mockResolvedValue({ pending: [] }),
   commitChanges: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/expressions', () => ({
+  translateExpressions: jest.fn(),
+}));
+jest.mock('../api/modelData', () => ({
+  fetchModelData: jest.fn().mockResolvedValue({ available: false }),
 }));
 
 // Helper to reset all explorer new state
@@ -195,6 +203,16 @@ describe('explorerStore', () => {
       useStore.getState().createModelTab();
 
       expect(useStore.getState().explorerModelStates.model.sourceName).toBeNull();
+    });
+
+    it('auto-names correctly even when explorerModelStates/explorerSources are entirely undefined (pre-hydration)', () => {
+      useStore.setState({ explorerModelStates: undefined, explorerSources: undefined, defaults: undefined });
+
+      useStore.getState().createModelTab();
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['model']);
+      expect(state.explorerModelStates.model.sourceName).toBeNull();
     });
 
     it('creates a model tab with a provided name', () => {
@@ -331,6 +349,19 @@ describe('explorerStore', () => {
     it('is a no-op without a tableName', () => {
       useStore.getState().seedModelTabFromTable({ sourceName: 'warehouse' });
       expect(useStore.getState().explorerModelTabs).toEqual([]);
+    });
+
+    it('is a no-op when called with no argument at all', () => {
+      useStore.getState().seedModelTabFromTable();
+      expect(useStore.getState().explorerModelTabs).toEqual([]);
+    });
+
+    it('falls back to the first available source when neither an explicit source nor a project default exists', () => {
+      useStore.setState({ defaults: null, explorerSources: [{ source_name: 'only-source' }] });
+      useStore.getState().seedModelTabFromTable({ tableName: 'orders' });
+
+      const name = useStore.getState().explorerActiveModelName;
+      expect(useStore.getState().explorerModelStates[name].sourceName).toBe('only-source');
     });
   });
 
@@ -1339,6 +1370,33 @@ describe('explorerStore', () => {
       // from spuriously diffing as modified.
       expect(payload.models.untouched).toEqual({ sql: 'SELECT 2' });
     });
+
+    it('excludes a model with no SQL yet, and splits computed columns into separate metrics/dimensions payload buckets', async () => {
+      useStore.setState({
+        explorerModelStates: {
+          untouched_blank: { sql: '', sourceName: null, computedColumns: [], isNew: true },
+          orders: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            isNew: false,
+            computedColumns: [
+              { name: 'revenue', expression: 'SUM(x)', type: 'metric' },
+              { name: 'cohort', expression: 'DATE_TRUNC(x)', type: 'dimension' },
+            ],
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+      });
+
+      await useStore.getState().fetchExplorerDiff();
+
+      const payload = fetchDiff.mock.calls[fetchDiff.mock.calls.length - 1][0];
+      expect(payload.models.untouched_blank).toBeUndefined();
+      expect(payload.models.orders).toEqual({ sql: 'SELECT 1' });
+      expect(payload.metrics.revenue).toEqual({ expression: 'SUM(x)', parentModel: 'orders' });
+      expect(payload.dimensions.cohort).toEqual({ expression: 'DATE_TRUNC(x)', parentModel: 'orders' });
+    });
   });
 
   // ====================================================================
@@ -1490,6 +1548,39 @@ describe('explorerStore', () => {
       // Should not throw — should not create a tab
       expect(useStore.getState().explorerModelTabs).toEqual([]);
     });
+
+    it('an empty config object (neither sql nor query) still loads, with sql defaulting to an empty string', () => {
+      useStore.getState().loadModel({ name: 'blank_config', config: {} });
+      expect(useStore.getState().explorerModelTabs).toContain('blank_config');
+      expect(useStore.getState().explorerModelStates.blank_config.sql).toBe('');
+    });
+
+    it('tolerates explorerSources/metrics/dimensions being entirely undefined (pre-hydration) without crashing', () => {
+      useStore.setState({ explorerSources: undefined, metrics: undefined, dimensions: undefined });
+      expect(() =>
+        useStore.getState().loadModel({ name: 'orders', config: { sql: 'SELECT 1' } })
+      ).not.toThrow();
+      expect(useStore.getState().explorerModelStates.orders.sourceName).toBeNull();
+      expect(useStore.getState().explorerModelStates.orders.computedColumns).toEqual([]);
+    });
+
+    it('skips a metric/dimension belonging to the model that has no expression (nothing to compute)', () => {
+      useStore.setState({
+        metrics: [{ name: 'no_expr_metric', parentModel: 'orders', config: {} }],
+        dimensions: [{ name: 'no_expr_dim', parentModel: 'orders', config: {} }],
+      });
+      useStore.getState().loadModel({ name: 'orders', config: { sql: 'SELECT 1' } });
+      expect(useStore.getState().explorerModelStates.orders.computedColumns).toEqual([]);
+    });
+
+    it('a plain (non-ref()) source string is used as-is — extractSourceName is a no-op passthrough for it', () => {
+      useStore.setState({ explorerSources: [{ source_name: 'plain_source' }] });
+      useStore.getState().loadModel({
+        name: 'orders',
+        config: { sql: 'SELECT 1', source: 'plain_source' },
+      });
+      expect(useStore.getState().explorerModelStates.orders.sourceName).toBe('plain_source');
+    });
   });
 
   describe('loadChart', () => {
@@ -1569,6 +1660,27 @@ describe('explorerStore', () => {
 
       // Loaded insights are not new
       expect(state.explorerInsightStates.sales_scatter.isNew).toBe(false);
+    });
+
+    it('transformInsightToUiState type resolution: props.type when no top-level type, and the "scatter" default when neither is set; interactions/props default to empty when omitted', () => {
+      const chart = { name: 'chart', config: {} };
+      const insights = [
+        // props.type fallback (no top-level config.type)
+        { name: 'via_props_type', config: { props: { type: 'bar', x: '?{1}' } }, parentModels: [] },
+        // neither top-level type nor props.type -> defaults to 'scatter'; config.interactions
+        // and config.props both entirely omitted -> [] / {} fallbacks
+        { name: 'bare', config: {}, parentModels: [] },
+      ];
+      useStore.getState().loadChart(chart, insights, []);
+
+      const state = useStore.getState();
+      expect(state.explorerInsightStates.via_props_type.type).toBe('bar');
+      // props.type itself is stripped out of the final props object
+      expect(state.explorerInsightStates.via_props_type.props).toEqual({ x: '?{1}' });
+
+      expect(state.explorerInsightStates.bare.type).toBe('scatter');
+      expect(state.explorerInsightStates.bare.props).toEqual({});
+      expect(state.explorerInsightStates.bare.interactions).toEqual([]);
     });
 
     it('does not create duplicate model tabs for insights sharing the same model', () => {
@@ -1659,6 +1771,33 @@ describe('explorerStore', () => {
       ).toBeNull();
     });
 
+    it('metric that does not exist at all in the cached collection returns null', () => {
+      useStore.setState({ metrics: [] });
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'metric', name: 'nonexistent' })
+      ).toBeNull();
+    });
+
+    it('chart: an insight ref that resolves to a model NOT in the cached collection is silently skipped (no tab/state for it)', () => {
+      useStore.setState({
+        charts: [
+          { name: 'chart_x', config: { insights: ['ref(ins_a)'], layout: {} } },
+        ],
+        insights: [
+          {
+            name: 'ins_a',
+            config: { type: 'bar', props: { x: '?{${ref(ghost_model).month}}' }, interactions: [] },
+          },
+        ],
+        models: [], // ghost_model is NOT here
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'chart', name: 'chart_x' });
+      expect(snapshot.modelTabs).toEqual([]);
+      expect(snapshot.modelStates).toEqual({});
+    });
+
     it('insight: copies the insight config into a draft insight of the SAME name + auto-loads its model', () => {
       useStore.setState({
         insights: [
@@ -1727,6 +1866,33 @@ describe('explorerStore', () => {
         useStore.getState().buildExplorationSeedState({ type: 'chart', name: 'missing' })
       ).toBeNull();
     });
+
+    it('insight: returns null for an unresolvable insight name', () => {
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'insight', name: 'missing' })
+      ).toBeNull();
+    });
+
+    it('dimension: seeds a query with the parent model\'s OWN literal SQL (same path as metric, other collection)', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+        dimensions: [{ name: 'cohort', parentModel: 'orders', config: { model: 'ref(orders)' } }],
+      });
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'dimension', name: 'cohort' });
+      expect(snapshot.modelStates.query_1.sql).toBe('SELECT 1');
+    });
+
+    it('chart: a bare (non-ref()-wrapped) insight ref string is used as-is, and a missing layout falls back to {}', () => {
+      useStore.setState({
+        charts: [{ name: 'bare_chart', config: { insights: ['bare_insight_name'] } }],
+        insights: [{ name: 'bare_insight_name', config: { type: 'bar', props: {}, interactions: [] } }],
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'chart', name: 'bare_chart' });
+      expect(snapshot.chartInsightNames).toEqual(['bare_insight_name']);
+      expect(snapshot.chartLayout).toEqual({});
+    });
   });
 
   // VIS-1067 — "Add to exploration": the context-menu equivalent of dragging
@@ -1777,7 +1943,7 @@ describe('explorerStore', () => {
       expect(state.explorerModelStates.existing_q.sourceName).toBe('pg');
     });
 
-    it('metric/dimension: creates a new insight and binds the field into its y prop', () => {
+    it('metric/dimension: creates a new insight (none active) and binds the field into its first empty essential slot', () => {
       const result = useStore
         .getState()
         .addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
@@ -1785,7 +1951,10 @@ describe('explorerStore', () => {
       const state = useStore.getState();
       const newInsightName = state.explorerActiveInsightName;
       expect(newInsightName).toBeTruthy();
-      expect(state.explorerInsightStates[newInsightName].props.y).toBe(
+      // A fresh insight has no props yet — `x` is the first empty essential
+      // slot (mirrors the DnD path's fill order for a new scatter/line
+      // insight).
+      expect(state.explorerInsightStates[newInsightName].props.x).toBe(
         '?{${ref(orders).revenue}}'
       );
     });
@@ -1794,7 +1963,75 @@ describe('explorerStore', () => {
       useStore.getState().addObjectToActiveExploration({ type: 'dimension', name: 'region' });
       const state = useStore.getState();
       const newInsightName = state.explorerActiveInsightName;
-      expect(state.explorerInsightStates[newInsightName].props.y).toBe('?{${ref(region)}}');
+      expect(state.explorerInsightStates[newInsightName].props.x).toBe('?{${ref(region)}}');
+    });
+
+    it('tolerates state.models being entirely undefined when syncing the parent model tab (no crash, no tab added)', () => {
+      useStore.setState({ models: undefined });
+      const result = useStore
+        .getState()
+        .addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      expect(result).toEqual({ success: true });
+      expect(useStore.getState().explorerModelTabs).not.toContain('orders');
+    });
+
+    // Phase 6c-T5 (ux-audit.md pills-buildrail "Metric 'Add to exploration'
+    // spawns another blank insight instead of extending an existing one"):
+    // the fix — extend the insight already in view instead of manufacturing
+    // a sibling.
+    it('metric/dimension: extends the ACTIVE insight instead of creating a new sibling', () => {
+      useStore.setState({
+        explorerChartInsightNames: ['existing_insight'],
+        explorerActiveInsightName: 'existing_insight',
+        explorerInsightStates: {
+          existing_insight: {
+            type: 'bar',
+            props: { x: '?{${ref(orders).order_date}}' },
+            interactions: [],
+            typePropsCache: {},
+            isNew: true,
+          },
+        },
+      });
+      const result = useStore
+        .getState()
+        .addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      expect(result).toEqual({ success: true });
+      const state = useStore.getState();
+      // No new insight was minted — still exactly one, still the same name.
+      expect(state.explorerChartInsightNames).toEqual(['existing_insight']);
+      expect(state.explorerActiveInsightName).toBe('existing_insight');
+      // `x` was already filled — the metric lands in the next empty
+      // essential slot (`y`), not a fresh insight.
+      expect(state.explorerInsightStates.existing_insight.props.y).toBe(
+        '?{${ref(orders).revenue}}'
+      );
+      expect(state.explorerInsightStates.existing_insight.props.x).toBe(
+        '?{${ref(orders).order_date}}'
+      );
+    });
+
+    // Companion fix: "the warning banner grew to reference 'daily_metrics'
+    // although no daily_metrics model tab appeared — the model was pulled
+    // in with no visible representation."
+    it('metric/dimension: adds a model tab for the field\'s parent model when one is not already open', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'select 1', source: 'ref(pg)' } }],
+      });
+      useStore.getState().addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toContain('orders');
+      expect(state.explorerModelStates.orders).toBeTruthy();
+    });
+
+    it("metric/dimension: doesn't duplicate an already-open model tab for the field's parent model", () => {
+      useStore.getState().createModelTab('orders');
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'select 1', source: 'ref(pg)' } }],
+      });
+      useStore.getState().addObjectToActiveExploration({ type: 'metric', name: 'revenue', parentModel: 'orders' });
+      const state = useStore.getState();
+      expect(state.explorerModelTabs.filter(n => n === 'orders')).toHaveLength(1);
     });
 
     it('rejects a type with no meaningful "add to exploration" action', () => {
@@ -1840,6 +2077,26 @@ describe('explorerStore', () => {
         'SELECT * FROM "users"'
       );
       expect(state.explorerModelStates[state.explorerActiveModelName].sourceName).toBe('pg');
+    });
+
+    it('creating a fresh tab with no sourceName leaves sourceName null; tolerates explorerModelStates being entirely undefined', () => {
+      useStore.setState({ explorerModelStates: undefined, explorerModelTabs: [] });
+      useStore.getState().handleTableSelect({ sourceName: null, table: 'users' });
+
+      const state = useStore.getState();
+      expect(state.explorerModelStates[state.explorerActiveModelName].sourceName).toBeNull();
+    });
+
+    it('is a no-op if the active model name points at a state entry that no longer exists (data-integrity edge case)', () => {
+      useStore.setState({
+        explorerModelTabs: ['ghost'],
+        explorerActiveModelName: 'ghost',
+        explorerModelStates: {},
+      });
+      expect(() =>
+        useStore.getState().handleTableSelect({ sourceName: 'pg', table: 'users' })
+      ).not.toThrow();
+      expect(useStore.getState().explorerModelStates.ghost).toBeUndefined();
     });
 
     it('keeps existing source if none provided', () => {
@@ -2046,6 +2303,61 @@ describe('explorerStore', () => {
       expect(props.customdata[0]).toBe('?{${ref(new_model).col_a}}');
       expect(props.customdata[1]).toBe('?{${ref(new_model).col_b}}');
     });
+
+    it('propagates through every prop shape (nested object, array of non-strings, array of objects, a plain scalar left untouched) plus non-string interaction values and typePropsCache', () => {
+      useStore.getState().createModelTab('old_model');
+      useStore.setState({
+        explorerInsightStates: {
+          ins_1: {
+            type: 'scatter',
+            props: {
+              nested: { y: '?{${ref(old_model).b}}' },
+              mixedList: ['?{${ref(old_model).c}}', 5],
+              listOfObjects: [{ z: '?{${ref(old_model).d}}' }],
+              staticCount: 3,
+            },
+            interactions: [
+              { type: 'filter', value: '?{${ref(old_model).e}}' },
+              { type: 'sort', value: 42 },
+            ],
+            typePropsCache: { bar: { color: '?{${ref(old_model).f}}' } },
+            isNew: true,
+          },
+        },
+        explorerChartInsightNames: ['ins_1'],
+      });
+
+      useStore.getState().renameModelTab('old_model', 'new_model');
+
+      const ins = useStore.getState().explorerInsightStates.ins_1;
+      expect(ins.props.nested.y).toBe('?{${ref(new_model).b}}');
+      expect(ins.props.mixedList[0]).toBe('?{${ref(new_model).c}}');
+      expect(ins.props.mixedList[1]).toBe(5); // non-string array item passed through unchanged
+      expect(ins.props.listOfObjects[0].z).toBe('?{${ref(new_model).d}}');
+      expect(ins.props.staticCount).toBe(3); // plain scalar prop passed through unchanged
+      expect(ins.interactions[0].value).toBe('?{${ref(new_model).e}}');
+      expect(ins.interactions[1].value).toBe(42); // non-string interaction value untouched
+      expect(ins.typePropsCache.bar.color).toBe('?{${ref(new_model).f}}');
+    });
+
+    it('is a no-op when renaming to the same name (nothing to propagate)', () => {
+      useStore.getState().createModelTab('old_model');
+      const before = useStore.getState().explorerModelStates;
+      useStore.getState().renameModelTab('old_model', 'old_model');
+      expect(useStore.getState().explorerModelStates).toBe(before);
+    });
+
+    it('is a no-op for a tab that is not a fresh (isNew) model — existing, promoted models are not tab-renamed', () => {
+      useStore.getState().createModelTab('published_model');
+      useStore.setState({
+        explorerModelStates: {
+          published_model: { sql: 'select 1', sourceName: 's', isNew: false, computedColumns: [] },
+        },
+      });
+      const before = useStore.getState().explorerModelStates;
+      useStore.getState().renameModelTab('published_model', 'renamed');
+      expect(useStore.getState().explorerModelStates).toBe(before);
+    });
   });
 
   // ====================================================================
@@ -2061,6 +2373,14 @@ describe('explorerStore', () => {
 
     it('selectActiveModelSql returns empty string when no active model', () => {
       expect(selectActiveModelSql(useStore.getState())).toBe('');
+    });
+
+    it('every other active-model selector falls back to its empty default when no active model', () => {
+      expect(selectActiveModelSourceName(useStore.getState())).toBeNull();
+      expect(selectActiveModelQueryResult(useStore.getState())).toBeNull();
+      expect(selectActiveModelQueryError(useStore.getState())).toBeNull();
+      expect(selectActiveModelComputedColumns(useStore.getState())).toEqual([]);
+      expect(selectActiveModelEnrichedResult(useStore.getState())).toBeNull();
     });
 
     it('selectActiveModelSourceName returns active model source', () => {
@@ -2089,6 +2409,10 @@ describe('explorerStore', () => {
     it('getSourceDialect returns null for unknown sources', () => {
       expect(getSourceDialect('ghost', [{ source_name: 'pg', type: 'postgresql' }])).toBeNull();
       expect(getSourceDialect(null, [])).toBeNull();
+    });
+
+    it('getSourceDialect tolerates a genuinely undefined sources list (not just an empty array)', () => {
+      expect(getSourceDialect('anything', undefined)).toBeNull();
     });
 
     it('selectActiveModelQueryResult returns active model query result', () => {
@@ -2278,6 +2602,24 @@ describe('explorerStore', () => {
       });
       expect(selectHasModifications(useStore.getState())).toBe(false);
     });
+
+    it('returns false when the diff has a category with entries, but every one is falsy (nothing actually changed)', () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {},
+        explorerDiffResult: { models: { m1: null }, insights: { i1: null } },
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(false);
+    });
+
+    it('returns true when the diff result flags the chart itself as changed (no model/insight change needed)', () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {},
+        explorerDiffResult: { chart: 'modified' },
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(true);
+    });
   });
 
   // ====================================================================
@@ -2436,6 +2778,31 @@ describe('explorerStore', () => {
       const names = selectDerivedInputNames(useStore.getState());
       expect(names).toEqual(['my_input']);
     });
+
+    it('scans NESTED (non-array) prop objects recursively for ref(input) patterns', () => {
+      useStore.setState({
+        explorerChartInsightNames: ['attached'],
+        explorerInsightStates: {
+          attached: {
+            type: 'scatter',
+            props: { marker: { color: '?{${ref(my_input).value}}' } },
+            interactions: [],
+          },
+        },
+      });
+      expect(selectDerivedInputNames(useStore.getState())).toEqual(['my_input']);
+    });
+
+    it('returns empty array immediately when the project has no inputs at all', () => {
+      useStore.setState({
+        inputs: [],
+        explorerChartInsightNames: ['attached'],
+        explorerInsightStates: {
+          attached: { type: 'scatter', props: {}, interactions: [] },
+        },
+      });
+      expect(selectDerivedInputNames(useStore.getState())).toEqual([]);
+    });
   });
 
   describe('closeModelTab preserves model context store', () => {
@@ -2504,6 +2871,29 @@ describe('explorerStore', () => {
         expect(known.get('ctx_model')).toBe('model');
         expect(known.get('tab_only_model')).toBe('model');
       });
+
+      it('tolerates a state whose cached collections and context stores are entirely absent (pre-hydration)', () => {
+        const known = getAllKnownNames({});
+        expect(known.size).toBe(0);
+      });
+
+      it('skips a malformed collection entry (null, or missing .name) without throwing, and never overwrites an already-known name with a later duplicate', () => {
+        const known = getAllKnownNames({
+          insights: [null, { noNameField: true }, { name: 'dup' }],
+          models: [{ name: 'dup' }], // same name, different type — first writer (insight) wins
+        });
+        expect(known.get('dup')).toBe('insight');
+        expect(known.size).toBe(1);
+      });
+
+      it('a context-store name already known from a cached collection is not overwritten (insight-state loop)', () => {
+        const known = getAllKnownNames({
+          insights: [{ name: 'both' }],
+          explorerInsightStates: { both: { type: 'scatter', props: {}, interactions: [] } },
+        });
+        expect(known.get('both')).toBe('insight');
+        expect(known.size).toBe(1);
+      });
     });
 
     describe('assertNameUnique', () => {
@@ -2542,6 +2932,19 @@ describe('explorerStore', () => {
             excludingName: 'cached_insight',
           })
         ).not.toThrow();
+      });
+
+      it('is a no-op for a falsy name (nothing to check yet, e.g. a not-yet-typed rename input)', () => {
+        expect(() => assertNameUnique(useStore.getState(), '')).not.toThrow();
+        expect(() => assertNameUnique(useStore.getState(), null)).not.toThrow();
+      });
+    });
+
+    describe('NameCollisionError', () => {
+      it('omits the "by a <type>" clause when no collisionType is given', () => {
+        const err = new NameCollisionError('foo');
+        expect(err.message).toBe('Name "foo" is already in use. Choose a different name.');
+        expect(err.collisionType).toBeUndefined();
       });
     });
 
@@ -2766,5 +3169,481 @@ describe('explorerStore', () => {
       const restoredSnapshot = useStore.getState().snapshotExplorerWorkingState();
       expect(restoredSnapshot).toEqual(snapshot);
     });
+
+    it('snapshot tolerates every underlying explorer* field being genuinely undefined (pre-hydration), falling back to empty defaults', () => {
+      useStore.setState({
+        explorerModelTabs: undefined,
+        explorerChartLayout: undefined,
+        explorerChartInsightNames: undefined,
+        explorerInsightStates: undefined,
+        explorerPromotedSignatures: undefined,
+        explorerCenterMode: undefined,
+        explorerModelStates: { m: { sql: 'select 1', sourceName: 's', computedColumns: undefined, isNew: true } },
+      });
+
+      const snapshot = useStore.getState().snapshotExplorerWorkingState();
+
+      expect(snapshot.modelTabs).toEqual([]);
+      expect(snapshot.chartLayout).toEqual({});
+      expect(snapshot.chartInsightNames).toEqual([]);
+      expect(snapshot.insightStates).toEqual({});
+      expect(snapshot.promotedSignatures).toEqual({});
+      expect(snapshot.centerMode).toBe('split');
+      expect(snapshot.modelStates.m.computedColumns).toEqual([]);
+    });
+  });
+
+  describe('recordPromotedInsightSignature', () => {
+    it('is a no-op for a falsy name', () => {
+      const before = useStore.getState().explorerPromotedSignatures;
+      useStore.getState().recordPromotedInsightSignature('', 'sig-1');
+      expect(useStore.getState().explorerPromotedSignatures).toBe(before);
+    });
+
+    it('merges a new signature in without disturbing an existing one (re-promoting one insight never clobbers another)', () => {
+      useStore.setState({ explorerPromotedSignatures: { already_promoted: 'old-sig' } });
+      useStore.getState().recordPromotedInsightSignature('newly_promoted', 'new-sig');
+      expect(useStore.getState().explorerPromotedSignatures).toEqual({
+        already_promoted: 'old-sig',
+        newly_promoted: 'new-sig',
+      });
+    });
+  });
+
+  // ====================================================================
+  // Phase 6c-T5 coverage completion — closes pre-existing gaps in every
+  // file this track's diff touches (Jared's 95%+ statements/branches
+  // requirement applies to the whole file, not just the changed lines).
+  //
+  // Own beforeEach: the cross-cutting cached collections (`insights` /
+  // `charts` / `models` / `metrics` / `dimensions` / `explorerSources`) are
+  // NOT reset by the file-level `resetState()` (it only resets `explorer*`
+  // fields) — same convention `describe('buildExplorationSeedState', ...)`
+  // above already establishes for the same reason: several tests below seed
+  // these collections, and without a reset each test would otherwise
+  // inherit the PREVIOUS test's leftover collection (surfacing as a
+  // NameCollisionError from `createInsight`/`setChartName` since a stale
+  // cached name from a prior test collides with this test's own).
+  // ====================================================================
+  describe('Phase 6c-T5 coverage completion', () => {
+    beforeEach(() => {
+      useStore.setState({
+        insights: [],
+        charts: [],
+        models: [],
+        metrics: [],
+        dimensions: [],
+        explorerSources: [],
+      });
+    });
+
+  describe('deleteExplorerInsight', () => {
+    it('removes the insight from both insightStates and chartInsightNames', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().createInsight('ins_b');
+
+      useStore.getState().deleteExplorerInsight('ins_a');
+
+      const state = useStore.getState();
+      expect(state.explorerInsightStates.ins_a).toBeUndefined();
+      expect(state.explorerChartInsightNames).toEqual(['ins_b']);
+    });
+
+    it('moves the active insight to the next remaining one when the ACTIVE insight is deleted', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().createInsight('ins_b');
+      useStore.getState().setActiveInsight('ins_a');
+
+      useStore.getState().deleteExplorerInsight('ins_a');
+
+      expect(useStore.getState().explorerActiveInsightName).toBe('ins_b');
+    });
+
+    it('sets active to null when deleting the LAST remaining insight while it is active', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().setActiveInsight('ins_a');
+
+      useStore.getState().deleteExplorerInsight('ins_a');
+
+      expect(useStore.getState().explorerActiveInsightName).toBeNull();
+    });
+
+    it('leaves the active insight untouched when deleting a DIFFERENT (non-active) insight', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().createInsight('ins_b');
+      useStore.getState().setActiveInsight('ins_a');
+
+      useStore.getState().deleteExplorerInsight('ins_b');
+
+      expect(useStore.getState().explorerActiveInsightName).toBe('ins_a');
+    });
+  });
+
+  describe('resetInsight', () => {
+    it('is a no-op when the insight does not exist', () => {
+      const before = useStore.getState().explorerInsightStates;
+      useStore.getState().resetInsight('missing');
+      expect(useStore.getState().explorerInsightStates).toBe(before);
+    });
+
+    it('is a no-op for a brand-new (isNew) insight — nothing cached to reset to', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'col_a');
+      useStore.getState().resetInsight('ins');
+      // isNew insights have no cached counterpart; props are left untouched.
+      expect(useStore.getState().explorerInsightStates.ins.props.x).toBe('col_a');
+    });
+
+    it('is a no-op when no cached insight object matches the name', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [],
+      });
+      useStore.getState().resetInsight('ins');
+      expect(useStore.getState().explorerInsightStates.ins.isNew).toBe(false);
+    });
+
+    it('restores type/props/interactions from the cached API object, converting interactions to UI format', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'edited_away');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [
+          {
+            name: 'ins',
+            config: {
+              props: { type: 'bar', x: '?{${ref(orders).month}}' },
+              interactions: [{ filter: 'region = "west"' }],
+            },
+          },
+        ],
+      });
+
+      useStore.getState().resetInsight('ins');
+
+      const insight = useStore.getState().explorerInsightStates.ins;
+      expect(insight.type).toBe('bar');
+      expect(insight.props).toEqual({ x: '?{${ref(orders).month}}' });
+      expect(insight.interactions).toEqual([{ type: 'filter', value: 'region = "west"' }]);
+      expect(insight.typePropsCache).toEqual({});
+    });
+
+    it('defaults an unrecognized interaction shape to an empty filter (fallback branch)', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [
+          {
+            name: 'ins',
+            config: { props: { type: 'scatter' }, interactions: [{ unknownKey: 'value' }] },
+          },
+        ],
+      });
+
+      useStore.getState().resetInsight('ins');
+
+      expect(useStore.getState().explorerInsightStates.ins.interactions).toEqual([
+        { type: 'filter', value: '' },
+      ]);
+    });
+
+    it("falls back to type 'scatter' when the cached config has no type at all", () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: { ...useStore.getState().explorerInsightStates.ins, isNew: false },
+        },
+        insights: [{ name: 'ins', config: { props: {} } }],
+      });
+
+      useStore.getState().resetInsight('ins');
+
+      expect(useStore.getState().explorerInsightStates.ins.type).toBe('scatter');
+    });
+  });
+
+  describe('restorePropsFromCache — nested (dot-notation) path branch', () => {
+    it('builds a nested object from a dotted cache key (e.g. marker.color)', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            props: {},
+            typePropsCache: { _shared: { 'marker.color': 'red', 'marker.size': '8' } },
+          },
+        },
+      });
+
+      useStore.getState().restorePropsFromCache('ins', ['marker.color', 'marker.size']);
+
+      expect(useStore.getState().explorerInsightStates.ins.props.marker).toEqual({
+        color: 'red',
+        size: '8',
+      });
+    });
+  });
+
+  describe('updateInsightInteraction', () => {
+    it('is a no-op when the insight does not exist', () => {
+      const before = useStore.getState().explorerInsightStates;
+      useStore.getState().updateInsightInteraction('missing', 0, { value: 'x' });
+      expect(useStore.getState().explorerInsightStates).toBe(before);
+    });
+
+    it('merges the update into the interaction at the given index, leaving others untouched', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().addInsightInteraction('ins', { type: 'filter', value: 'a' });
+      useStore.getState().addInsightInteraction('ins', { type: 'sort', value: 'b' });
+
+      useStore.getState().updateInsightInteraction('ins', 0, { value: 'a_updated' });
+
+      const interactions = useStore.getState().explorerInsightStates.ins.interactions;
+      expect(interactions[0]).toEqual({ type: 'filter', value: 'a_updated' });
+      expect(interactions[1]).toEqual({ type: 'sort', value: 'b' });
+    });
+  });
+
+  describe('replaceChartLayout', () => {
+    it('wholesale-replaces the chart layout (not a merge)', () => {
+      useStore.getState().setChartLayout({ title: 'old', keep: 'me' });
+      useStore.getState().replaceChartLayout({ title: 'new' });
+      expect(useStore.getState().explorerChartLayout).toEqual({ title: 'new' });
+    });
+  });
+
+  describe('closeChart', () => {
+    it('resets chart name/layout/insights to a clean slate', () => {
+      useStore.getState().setChartName('c1');
+      useStore.getState().createInsight('ins');
+      useStore.getState().setChartLayout({ title: 'x' });
+
+      useStore.getState().closeChart();
+
+      const state = useStore.getState();
+      expect(state.explorerChartName).toBeNull();
+      expect(state.explorerChartLayout).toEqual({});
+      expect(state.explorerChartInsightNames).toEqual([]);
+      expect(state.explorerActiveInsightName).toBeNull();
+      expect(state.explorerInsightStates).toEqual({});
+      expect(state.explorerDiffResult).toBeNull();
+    });
+  });
+
+  describe('resetChart', () => {
+    it('is a no-op when no cached chart matches the current chart name', () => {
+      useStore.getState().setChartName('c1');
+      useStore.setState({ charts: [] });
+      const before = useStore.getState().explorerChartLayout;
+      useStore.getState().resetChart();
+      expect(useStore.getState().explorerChartLayout).toBe(before);
+    });
+
+    it('restores layout + insight names from the cached chart object', () => {
+      useStore.getState().setChartName('c1');
+      useStore.setState({
+        charts: [
+          {
+            name: 'c1',
+            config: { layout: { title: 'Cached' }, insights: ['${ref(ins_a)}', '${ref(ins_b)}'] },
+          },
+        ],
+      });
+
+      useStore.getState().resetChart();
+
+      const state = useStore.getState();
+      expect(state.explorerChartLayout).toEqual({ title: 'Cached' });
+      expect(state.explorerChartInsightNames).toEqual(['ins_a', 'ins_b']);
+      expect(state.explorerActiveInsightName).toBe('ins_a');
+    });
+  });
+
+  describe('loadChart — clears an auto-created empty model tab that is clutter', () => {
+    it('drops an auto-created (isNew, no sql) tab when loading a chart, so it never lingers as clutter', () => {
+      useStore.getState().createModelTab('scratch');
+      expect(useStore.getState().explorerModelTabs).toContain('scratch');
+
+      const chart = { name: 'c', config: { insights: [], layout: {} } };
+      useStore.getState().loadChart(chart, [], []);
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).not.toContain('scratch');
+      expect(state.explorerModelStates.scratch).toBeUndefined();
+    });
+
+    it('keeps a tab that already has real SQL (not clutter)', () => {
+      useStore.getState().createModelTab('real_query');
+      useStore.getState().setActiveModelSql('SELECT 1');
+
+      const chart = { name: 'c', config: { insights: [], layout: {} } };
+      useStore.getState().loadChart(chart, [], []);
+
+      expect(useStore.getState().explorerModelTabs).toContain('real_query');
+    });
+  });
+
+  describe('buildExplorationSeedState — unsupported type', () => {
+    it('returns null for a type with no seeding rule (e.g. dashboard)', () => {
+      expect(
+        useStore.getState().buildExplorationSeedState({ type: 'dashboard', name: 'kpis' })
+      ).toBeNull();
+    });
+  });
+
+  describe('fetchExplorerDiff — failure path', () => {
+    it('sets explorerDiffResult to null and returns null when the request rejects', async () => {
+      fetchDiff.mockRejectedValueOnce(new Error('network down'));
+      const result = await useStore.getState().fetchExplorerDiff();
+      expect(result).toBeNull();
+      expect(useStore.getState().explorerDiffResult).toBeNull();
+    });
+
+    it('includes a chart payload when a chart is loaded', async () => {
+      useStore.getState().setChartName('c1');
+      useStore.getState().createInsight('ins');
+      useStore.getState().setChartLayout({ title: 'x' });
+      await useStore.getState().fetchExplorerDiff();
+      const payload = fetchDiff.mock.calls[0][0];
+      expect(payload.chart).toMatchObject({ name: 'c1', insights: ['ref(ins)'] });
+    });
+  });
+
+  describe('validateExplorerExpression', () => {
+    it('returns valid:true with the translated expression + detected type on success', async () => {
+      translateExpressions.mockResolvedValueOnce({
+        errors: [],
+        translations: [{ name: '__validate__', duckdb_expression: 'SUM(x)', detected_type: 'metric' }],
+      });
+      const result = await useStore.getState().validateExplorerExpression('sum(x)', 'duckdb');
+      expect(result).toEqual({ valid: true, duckdbExpression: 'SUM(x)', detectedType: 'metric' });
+    });
+
+    it('defaults detectedType to "dimension" and echoes the input expression when the API omits them', async () => {
+      translateExpressions.mockResolvedValueOnce({ errors: [], translations: [] });
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: true, duckdbExpression: 'x', detectedType: 'dimension' });
+    });
+
+    it('returns valid:false with the API-reported error message', async () => {
+      translateExpressions.mockResolvedValueOnce({
+        errors: [{ name: '__validate__', error: 'unknown column' }],
+        translations: [],
+      });
+      const result = await useStore.getState().validateExplorerExpression('bogus', 'duckdb');
+      expect(result).toEqual({ valid: false, error: 'unknown column' });
+    });
+
+    it('returns valid:false when the API call itself throws', async () => {
+      translateExpressions.mockRejectedValueOnce(new Error('network down'));
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: false, error: 'network down' });
+    });
+
+    it('tolerates a response that omits `errors`/`translations` entirely (not just empty arrays)', async () => {
+      translateExpressions.mockResolvedValueOnce({});
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: true, duckdbExpression: 'x', detectedType: 'dimension' });
+    });
+
+    it('falls back to a generic message when a thrown error has no .message', async () => {
+      translateExpressions.mockRejectedValueOnce({});
+      const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
+      expect(result).toEqual({ valid: false, error: 'Validation failed' });
+    });
+  });
+
+  describe('autoLoadModelData (via addExistingInsightToChart pulling in a new model)', () => {
+    it('auto-loads cached parquet rows into a newly-added model tab when available', async () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'ins',
+            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
+          },
+        ],
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      fetchModelData.mockResolvedValueOnce({
+        available: true,
+        columns: ['month'],
+        rows: [{ month: 'Jan' }],
+        row_count: 1,
+        truncated: false,
+      });
+
+      useStore.getState().addExistingInsightToChart('ins');
+      // Flush the microtask chain the dynamic import + two chained promises run on.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const modelState = useStore.getState().explorerModelStates.orders;
+      expect(modelState.queryResult).toEqual({
+        columns: ['month'],
+        rows: [{ month: 'Jan' }],
+        row_count: 1,
+        truncated: false,
+      });
+    });
+
+    it('leaves queryResult null when no cached parquet data is available', async () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'ins',
+            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
+          },
+        ],
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
+      });
+      fetchModelData.mockResolvedValueOnce({ available: false });
+
+      useStore.getState().addExistingInsightToChart('ins');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(useStore.getState().explorerModelStates.orders.queryResult).toBeNull();
+    });
+  });
+
+  describe('transformInsightToUiState — malformed interaction fallback (via buildExplorationSeedState)', () => {
+    it('defaults an interaction with neither a filter/split/sort key nor a type+value shape to an empty filter', () => {
+      useStore.setState({
+        insights: [
+          {
+            name: 'weird_ins',
+            config: { type: 'scatter', props: {}, interactions: [{ mystery: true }] },
+          },
+        ],
+        models: [],
+      });
+      const snapshot = useStore
+        .getState()
+        .buildExplorationSeedState({ type: 'insight', name: 'weird_ins' });
+      expect(snapshot.insightStates.weird_ins.interactions).toEqual([
+        { type: 'filter', value: '' },
+      ]);
+    });
+  });
+
+  describe('matchSourceName — no match at all (via buildExplorationSeedState model seeding)', () => {
+    it('falls back to the extracted (unmatched) source name when no configured source matches', () => {
+      useStore.setState({
+        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(totally_unknown_source)' } }],
+        explorerSources: [{ source_name: 'pg' }, { source_name: 'warehouse-pg' }],
+      });
+      const snapshot = useStore.getState().buildExplorationSeedState({ type: 'model', name: 'orders' });
+      // Neither exact nor suffix match against 'pg'/'warehouse-pg' — matchSourceName
+      // returns null, and resolvedSourceName falls back to the extracted name itself.
+      expect(snapshot.modelStates.query_1.sourceName).toBe('totally_unknown_source');
+    });
+  });
   });
 });

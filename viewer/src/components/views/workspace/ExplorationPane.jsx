@@ -10,6 +10,7 @@ import useInlineRename from '../../../hooks/useInlineRename';
 import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import { legacyStateToDraft, draftToLegacyState } from './explorationLegacyBridge';
 import { computeExplorationStaleness } from './explorationStaleness';
+import { isExplorationVisibleInGallery } from './explorationLifecycle';
 import CenteredFrameState from '../common/CenteredFrameState';
 import { emitWorkspaceEvent } from './telemetry';
 
@@ -186,14 +187,55 @@ const ExplorationPane = ({ id }) => {
   // Live debounced persist while the tab is open and being edited — bounds
   // data loss on a crash/hard-reload to ~1 debounce window (02 §1/§8).
   const liveSyncTimerRef = useRef(null);
+  // Tracks whether THIS pane has a debounced write that hasn't fired yet —
+  // distinct from `liveSyncTimerRef` itself, which (deliberately, so a
+  // *new* edit's debounce can supersede an old one) holds the last timer ID
+  // it ever set and is never nulled out when that timer fires naturally.
+  // `flushNow` below needs the narrower "is something actually still
+  // pending" signal, not "has this pane ever scheduled a sync" — see its
+  // own comment for the regression this ref exists to prevent.
+  const liveSyncPendingRef = useRef(false);
   useEffect(() => {
     if (readyId !== id) return undefined;
     if (skipNextLiveSyncRef.current) {
       skipNextLiveSyncRef.current = false;
       return undefined;
     }
+    // VIS-1110 (spurious "unsaved changes" dialog + a redundant draft POST on
+    // every source-tile browse): a browse-only seed's generic model tab can
+    // be silently auto-renamed by `ExplorationBuildRail`'s live-suggestion
+    // effect (T3, D11) the instant a source anchor is available — that
+    // rename touches the SAME `explorerModelTabs`/`explorerModelStates`
+    // fields this effect watches, even though nothing the user actually
+    // authored has changed. Arming the debounce below for that alone would
+    // eventually flip `syncStatus` to 'saving' (the tab's dirty dot, which
+    // routes a close through the confirm dialog) and fire a backend POST,
+    // purely from opening and looking at a browse tile.
+    //
+    // Gate on the SAME `isExplorationVisibleInGallery` predicate the Home
+    // gallery and the tab-close GC (`closeWorkspaceTab`) already use as the
+    // single source of truth for "is this seed still just a browse gesture"
+    // — evaluated against a FRESH live snapshot (not the possibly-stale
+    // persisted `record`), so a rename that lands the same tick this effect
+    // fires is judged on what it actually changed, not last cycle's draft.
+    // If the exploration still isn't "real" yet even with this tick's
+    // change folded in, there is nothing here worth persisting — skip
+    // arming the debounce entirely for this tick. A record that's ALREADY
+    // visible (no seed, already renamed, already promoted, or already has
+    // real content) is untouched by this gate: `isExplorationVisibleInGallery`
+    // short-circuits true immediately for those, so every ordinary edit on
+    // an ordinary exploration arms the debounce exactly as before. And a
+    // genuine first real edit on a browse seed (SQL typed, a second model
+    // added, …) makes the SAME predicate true the moment it lands — this
+    // effect re-runs on every one of those watched-field changes, so real
+    // content is never silently dropped, only ever delayed until it exists.
+    if (record && !isExplorationVisibleInGallery({ ...record, draft: legacyStateToDraft(snapshotExplorerWorkingState()) })) {
+      return undefined;
+    }
     if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current);
+    liveSyncPendingRef.current = true;
     liveSyncTimerRef.current = setTimeout(() => {
+      liveSyncPendingRef.current = false;
       const snapshot = snapshotExplorerWorkingState();
       updateExplorationDraft(id, legacyStateToDraft(snapshot));
     }, LIVE_SYNC_DEBOUNCE_MS);
@@ -211,6 +253,115 @@ const ExplorationPane = ({ id }) => {
     explorerLeftNavCollapsed,
     explorerCenterMode,
     explorerIsEditorCollapsed,
+  ]);
+
+  // Phase 6c-T5 (ux-audit.md "⚠ conflicts-with-e2e Reload silently discards
+  // recent SQL edits (autosave debounce race)" / its MINOR duplicate "Edits
+  // made seconds before closing the browser are silently lost"):
+  //
+  // THE BUG: this pane's own live-sync debounce (600ms above) plus the
+  // slice's backend-persist debounce (`updateExplorationDraft`'s internal
+  // ~1s, `workspaceExplorationsStore.js`) stack into a combined ~1.6s window
+  // where a just-typed edit sits in memory only. A reload/close inside that
+  // window loses it — older edits (outside the window) DO autosave, so the
+  // bug reads as "sometimes" losing work, which is exactly what the audit
+  // reproduced.
+  //
+  // THE FIX: flush BOTH debounces immediately, synchronously, the instant
+  // the page starts to go away — `visibilitychange`→'hidden' fires on tab
+  // close/reload/backgrounding, reliably BEFORE the page is torn down (an
+  // in-flight fetch has real odds of completing); `pagehide`/`beforeunload`
+  // are a second, later-firing net for browsers/paths that skip visibility
+  // events. All three read the CURRENT legacy working state (not a stale
+  // closure) and go through the exact same `updateExplorationDraft` +
+  // `flushExplorationSync` primitives the deactivate-cleanup effect already
+  // uses — this is that same safety net, just triggered by "the page itself
+  // is leaving" instead of "React is unmounting this pane component" (a
+  // real browser close/reload fires neither of THOSE — this effect's
+  // listeners are the only thing that ever runs in that case).
+  //
+  // Best-effort by nature: a fetch started this late can still be aborted by
+  // an instantaneous hard browser kill — no client-side flush can fully
+  // close that window (only `sendBeacon`/service-worker background sync
+  // could, and neither fits this contract cleanly) — but this closes the
+  // window the audit actually reproduced (~1s of normal typing-then-reload),
+  // which is the realistic, common case.
+  //
+  // GUARD (found via e2e, #19 cross-tab-concurrency; refined via VIS-1107):
+  // re-snapshotting and pushing a FRESH `updateExplorationDraft` only
+  // happens if `liveSyncPendingRef` says an edit hasn't even been handed
+  // off to the backend-persist debounce yet. Without this, `flushNow` used
+  // to unconditionally re-POST this pane's CURRENT client snapshot on every
+  // reload/hide — including when nothing had changed locally since the
+  // debounce last fired. That's harmless when this tab's own snapshot is
+  // the freshest thing around, but not on the losing side of a cross-tab
+  // last-write-wins race (a sibling tab/browser context wrote AFTER this
+  // tab's own snapshot was taken): reloading the LOSING tab would silently
+  // re-push its stale snapshot and clobber the winner's already-persisted
+  // draft, right as the page reloaded to go read it back.
+  //
+  // VIS-1107 (Urgent, found via e2e — `exploration-reload-persistence.
+  // spec.mjs:129`'s x/y-pill scenario): that guard alone was too narrow.
+  // `liveSyncPendingRef` only tracks THIS effect's own 600ms client timer —
+  // it does NOT track `workspaceExplorationsStore.js`'s SEPARATE ~1s
+  // backend-persist debounce (`_pendingSyncTimers`) that `updateExploration
+  // Draft` (re)arms every time it's called, including from the 600ms
+  // timer's OWN natural-fire callback above (which calls
+  // `updateExplorationDraft` but deliberately does NOT force-flush it — a
+  // normal, un-hurried edit is meant to ride out its own ~1s window). So:
+  // edit → 600ms timer fires naturally → hands off to the ~1s backend
+  // debounce → `liveSyncPendingRef` is now false (the OUTER layer says
+  // "done") → reload happens before that ~1s INNER timer completes → the
+  // old guard treated "outer layer idle" as "nothing to flush" and
+  // skipped calling `flushExplorationSync` entirely, so the still-queued
+  // inner write was silently dropped along with the page.
+  //
+  // THE FIX: `flushExplorationSync` is already a safe no-op when nothing is
+  // queued in `_pendingSyncTimers` (checked internally, keyed by id) — so
+  // it can ALWAYS be called unconditionally here without risk of reviving
+  // or clobbering anything. Only the "capture a FRESH snapshot and hand it
+  // to `updateExplorationDraft`" step stays gated on `liveSyncPendingRef`,
+  // since that's the part that could push a stale snapshot in the cross-tab
+  // clobber scenario — forcing through whatever the store ALREADY has
+  // queued carries no such risk, since it isn't reintroducing a snapshot,
+  // just accelerating a write the store already decided to make.
+  //
+  // Verified empirically (not just reasoned about): an instrumented repro
+  // showed the natural-fire → reload sequence above producing ZERO network
+  // requests around the reload in the x/y-pill case, vs. a completed POST
+  // in the SQL-only case (which reloads before the outer timer ever fires
+  // naturally) — see VIS-1107 for the full request/console timeline.
+  useEffect(() => {
+    if (readyId !== id) return undefined;
+    const flushNow = () => {
+      if (liveSyncPendingRef.current) {
+        if (liveSyncTimerRef.current) {
+          clearTimeout(liveSyncTimerRef.current);
+          liveSyncTimerRef.current = null;
+        }
+        liveSyncPendingRef.current = false;
+        const snapshot = snapshotExplorerWorkingState();
+        updateExplorationDraft(id, legacyStateToDraft(snapshot));
+      }
+      flushExplorationSync(id);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushNow();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', flushNow);
+    window.addEventListener('beforeunload', flushNow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', flushNow);
+      window.removeEventListener('beforeunload', flushNow);
+    };
+  }, [
+    id,
+    readyId,
+    snapshotExplorerWorkingState,
+    updateExplorationDraft,
+    flushExplorationSync,
   ]);
 
   const handleRename = useCallback(

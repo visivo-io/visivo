@@ -26,7 +26,7 @@ import {
 } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
 import { futureFlags } from '../../../../router-config';
-import Library from './Library';
+import Library, { libraryFooterHint } from './Library';
 import useStore from '../../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../telemetry';
 
@@ -234,11 +234,48 @@ describe('Library', () => {
     });
   });
 
+  test('clicking a row is a safe no-op when openWorkspaceTab is unavailable — telemetry still fires', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    seedStore({ openWorkspaceTab: undefined });
+    renderLibrary();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('library-row-chart-waterfall'))
+    ).not.toThrow();
+    expect(events.find(e => e.eventName === 'library_row_selected')).toBeTruthy();
+    unsubscribe();
+  });
+
   test('clicking a Data-Layer row also delegates to openWorkspaceTab', () => {
     const openWorkspaceTab = jest.fn();
     seedStore({ openWorkspaceTab });
     renderLibrary();
+    fireEvent.click(screen.getByTestId('library-row-model-monthly_revenue'));
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'model:monthly_revenue',
+      type: 'model',
+      name: 'monthly_revenue',
+    });
+  });
+
+  // Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
+  // navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): a source row
+  // is the ONE Data-Layer row type that does NOT delegate its body click to
+  // openWorkspaceTab anymore — clicking it expands the source's table/column
+  // drill-down in place (LibrarySourceRow's own test file covers this in
+  // depth; this pins the integration point through the full Library tree).
+  test('clicking a SOURCE row body expands it in place instead of navigating; the explicit Open button still navigates', () => {
+    const openWorkspaceTab = jest.fn();
+    seedStore({ openWorkspaceTab });
+    renderLibrary();
     fireEvent.click(screen.getByTestId('library-row-source-local-duck'));
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+    expect(screen.getByTestId('library-row-source-local-duck-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('library-row-source-local-duck-open'));
     expect(openWorkspaceTab).toHaveBeenCalledWith({
       id: 'source:local-duck',
       type: 'source',
@@ -407,6 +444,59 @@ describe('Library', () => {
       );
     });
 
+    test('"Explore this" seeds with a null legacy override when buildExplorationSeedState is unavailable', async () => {
+      const openWorkspaceTab = jest.fn();
+      const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new2' });
+      seedStore({ openWorkspaceTab, createExploration, buildExplorationSeedState: undefined });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      fireEvent.click(within(menu).getByText('Explore this'));
+
+      await waitFor(() =>
+        expect(createExploration).toHaveBeenCalledWith(
+          { type: 'insight', name: 'revenue_growth' },
+          null,
+          null
+        )
+      );
+    });
+
+    test('"Explore this" never opens a tab when the mint fails', async () => {
+      const openWorkspaceTab = jest.fn();
+      const createExploration = jest.fn().mockResolvedValue({ success: false });
+      seedStore({ openWorkspaceTab, createExploration });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      fireEvent.click(within(menu).getByText('Explore this'));
+
+      await waitFor(() => expect(createExploration).toHaveBeenCalled());
+      expect(openWorkspaceTab).not.toHaveBeenCalled();
+    });
+
+    test('a context action with no wired handler (e.g. "Show lineage") only emits telemetry — no crash, no store call', () => {
+      const events = [];
+      const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+      const openWorkspaceTab = jest.fn();
+      const createExploration = jest.fn();
+      const addObjectToActiveExploration = jest.fn();
+      seedStore({ openWorkspaceTab, createExploration, addObjectToActiveExploration });
+      renderLibrary();
+
+      fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+      const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
+      expect(() => fireEvent.click(within(menu).getByText('Show lineage'))).not.toThrow();
+
+      expect(createExploration).not.toHaveBeenCalled();
+      expect(addObjectToActiveExploration).not.toHaveBeenCalled();
+      const ctx = events.find(e => e.eventName === 'library_row_context_action');
+      expect(ctx.payload).toEqual({ type: 'insight', name: 'revenue_growth', action: 'showLineage' });
+      unsubscribe();
+    });
+
     test('"Add to exploration" is offered only when the active tab is an exploration, and calls addObjectToActiveExploration', () => {
       const addObjectToActiveExploration = jest.fn();
       seedStore({
@@ -510,6 +600,46 @@ describe('Library', () => {
     );
   });
 
+  test('"+ New" → Chart scoped to a dashboard is a no-op if createExploration/openWorkspaceTab are unavailable', () => {
+    seedStore({ createExploration: undefined, openWorkspaceTab: undefined });
+    renderLibrary('/workspace/dashboard/overview');
+    openNewMenu();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('library-new-object-chart'))
+    ).not.toThrow();
+  });
+
+  test('"+ New" → Chart scoped to a dashboard: a failed mint never opens a tab', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: false });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createExploration, openWorkspaceTab });
+    renderLibrary('/workspace/dashboard/overview');
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-chart'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('"+ New" → any other type is a no-op if createWorkspaceObject is unavailable', () => {
+    seedStore({ createWorkspaceObject: undefined });
+    renderLibrary();
+    openNewMenu();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('library-new-object-model'))
+    ).not.toThrow();
+  });
+
+  test('"+ New" → a create that fails (or returns no name) never opens a tab', async () => {
+    const createWorkspaceObject = jest.fn().mockResolvedValue({ success: false });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab });
+    renderLibrary();
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-model'));
+    await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('model'));
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
   test('"+ New" → Model drafts a model and opens its tab', async () => {
     const createWorkspaceObject = jest
       .fn()
@@ -593,6 +723,30 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
   });
 
+  test('the header "+ New" menu stays open on a non-Escape key', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+  });
+
+  test('the header "+ New" menu dismisses on a pointerdown outside it', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
+  });
+
+  test('a pointerdown INSIDE the "+ New" menu does not dismiss it', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    const menu = screen.getByTestId('library-new-object-menu');
+    fireEvent.mouseDown(menu);
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+  });
+
   test('shows the empty placeholder when a subsection has no rows', () => {
     seedStore({ charts: [], models: [], csvScriptModels: [], localMergeModels: [] });
     renderLibrary();
@@ -616,6 +770,36 @@ describe('Library', () => {
     expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
     // The selected model row is now visible.
     expect(screen.getByTestId('library-row-model-monthly_revenue')).toBeInTheDocument();
+  });
+
+  test('expanding the rail maps a csvScriptModel/localMergeModel active object onto the single "model" subsection', () => {
+    seedStore({
+      workspaceActiveObject: { type: 'csvScriptModel', name: 'monthly_revenue' },
+      workspaceActiveTabId: 'model:monthly_revenue',
+      libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
+    });
+    renderLibrary();
+    // Reveals the shared "model" subsection, not a nonexistent "csvScriptModel" one.
+    expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
+  });
+
+  test('expanding the rail actually calls scrollIntoView on the now-visible active row', async () => {
+    const scrollIntoView = jest.fn();
+    // jsdom doesn't implement scrollIntoView at all by default — the
+    // production guard (`typeof el.scrollIntoView === 'function'`) exists
+    // for exactly that gap; polyfill it here to exercise the real call.
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      seedStore({
+        workspaceActiveObject: { type: 'model', name: 'monthly_revenue' },
+        workspaceActiveTabId: 'model:monthly_revenue',
+        libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
+      });
+      renderLibrary();
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' }));
+    } finally {
+      delete window.HTMLElement.prototype.scrollIntoView;
+    }
   });
 
   // The old per-surface Project/Explorer/Semantic buttons (and their tests)
@@ -663,6 +847,18 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
   });
 
+  test('the "layout" group filter narrows to Layout-Item subsections (the mirror of the "data" group test)', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-option-group-layout'));
+    ['chart', 'table', 'markdown', 'input', 'dashboard'].forEach(t =>
+      expect(screen.getByTestId(`library-subsection-${t}`)).toBeInTheDocument()
+    );
+    ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t =>
+      expect(screen.queryByTestId(`library-subsection-${t}`)).not.toBeInTheDocument()
+    );
+  });
+
   test('Clear drops every active filter and restores the full list', () => {
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-filter-toggle'));
@@ -698,6 +894,16 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
   });
 
+  test('a search matching NOTHING at all shows the whole-list empty state', async () => {
+    renderLibrary();
+    fireEvent.change(screen.getByTestId('library-search'), {
+      target: { value: 'zzz_no_such_object_zzz' },
+    });
+    expect(await screen.findByTestId('library-empty')).toHaveTextContent(
+      'No objects match “zzz_no_such_object_zzz”.'
+    );
+  });
+
   test('highlights the row corresponding to the active workspace tab', () => {
     // Regression: Library never threaded selectedRowId into its sections, so
     // the selected row had no visual highlight even though LibraryRow already
@@ -715,4 +921,79 @@ describe('Library', () => {
     );
   });
 
+  // ux-audit.md "Left-rail footer help text is context-blind" + "Sidebar
+  // footer shows dashboard-canvas help text ('Drag a layout item onto the
+  // canvas...') on the Explorer surface" — the footer must not advertise a
+  // canvas that doesn't exist on the current surface.
+  describe('libraryFooterHint (pure function — every scope branch)', () => {
+    test('exploration selectedItem wins regardless of scope', () => {
+      expect(
+        libraryFooterHint({ scope: 'item', selectedItem: { type: 'exploration', name: 'exp_1' } })
+      ).toMatch(/exploration/);
+    });
+
+    test('explorer scope (Explorer home, no tab)', () => {
+      expect(libraryFooterHint({ scope: 'explorer', selectedItem: null })).toMatch(
+        /start exploring/
+      );
+    });
+
+    test('dashboard scope keeps the canvas-drag hint', () => {
+      expect(libraryFooterHint({ scope: 'dashboard', selectedItem: null })).toMatch(
+        /Drag a layout item onto the canvas/
+      );
+    });
+
+    test('semantic-layer scope', () => {
+      expect(libraryFooterHint({ scope: 'semantic-layer', selectedItem: null })).toMatch(
+        /diagram/
+      );
+    });
+
+    test('root/item/anything-else falls back to the plain default', () => {
+      expect(libraryFooterHint({ scope: 'root', selectedItem: null })).toBe(
+        'Click a data object to edit it.'
+      );
+      expect(libraryFooterHint({ scope: 'item', selectedItem: { type: 'model', name: 'x' } })).toBe(
+        'Click a data object to edit it.'
+      );
+    });
+
+    test('fails safe on a missing/undefined scope object', () => {
+      expect(libraryFooterHint(undefined)).toBe('Click a data object to edit it.');
+      expect(libraryFooterHint({})).toBe('Click a data object to edit it.');
+    });
+  });
+
+  describe('footer hint (context-aware, not canvas-blind)', () => {
+    test('on a dashboard, keeps the canvas hint (there really is one)', () => {
+      seedStore();
+      renderLibrary('/workspace/dashboard/overview');
+      expect(screen.getByTestId('library-footer-hint')).toHaveTextContent(
+        'Drag a layout item onto the canvas'
+      );
+    });
+
+    test('on the Project root (no dashboard, no tab open), drops the canvas hint', () => {
+      seedStore();
+      renderLibrary('/workspace');
+      expect(screen.getByTestId('library-footer-hint')).not.toHaveTextContent(
+        'Drag a layout item onto the canvas'
+      );
+      expect(screen.getByTestId('library-footer-hint')).toHaveTextContent(
+        'Click a data object to edit it.'
+      );
+    });
+
+    test('on an open exploration tab, shows exploration-specific guidance, never the canvas line', () => {
+      seedStore({
+        workspaceTabs: [{ id: 'exploration:exp_1', type: 'exploration', name: 'exp_1', dirty: false }],
+        workspaceActiveTabId: 'exploration:exp_1',
+      });
+      renderLibrary();
+      const hint = screen.getByTestId('library-footer-hint');
+      expect(hint).not.toHaveTextContent('Drag a layout item onto the canvas');
+      expect(hint).toHaveTextContent('exploration');
+    });
+  });
 });

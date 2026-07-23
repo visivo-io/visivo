@@ -464,6 +464,19 @@ const PillMenuPopover = ({
         </span>
         Save as metric…
       </button>
+      {/* ux-audit.md "Save-as-metric flow is solid but 'Save as metric'
+          disabled state gives no visible reason" — a native `title` only
+          shows on hover, and the pill's aggregate state was chosen two menus
+          ago, so a Dimension pill's disabled item read as unexplained. A
+          visible line, not just a tooltip. */}
+      {!saveAsMetricEnabled && (
+        <p
+          data-testid="pill-menu-save-as-metric-disabled-hint"
+          className="px-3 pb-1 text-[10px] leading-snug text-gray-400"
+        >
+          Only an aggregate pill (SUM, AVG, …) can be saved as a metric.
+        </p>
+      )}
       <Divider />
       <button
         type="button"

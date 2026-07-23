@@ -405,6 +405,12 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     // `insight-toggle-${badInsightName}` COLLAPSED the already-open section
     // instead of opening it, hiding the y-slot and hanging the next locator.
     await page.getByTestId('right-panel-add-insight').click();
+    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
+    // of letting you pick an existing one"): the button now opens a picker
+    // (existing insights + "New blank insight"); these specs want the OLD
+    // "always create a fresh blank insight" behavior, so drive the new
+    // secondary action explicitly.
+    await page.getByTestId('add-insight-menu-create-new').click();
     const insightNames = await page.evaluate(() => window.useStore.getState().explorerChartInsightNames);
     const badInsightName = insightNames[insightNames.length - 1];
     const ySlot = page
@@ -465,10 +471,13 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
       timeout: 10000,
     });
 
-    // Explorer Home card shows the promotion count.
+    // Explorer Home card shows the promotion count. D11 — "saved to
+    // project" is the user-facing vocabulary; "promote"/"promoted" are
+    // internal-only now (08-ux-overhaul.md's decision D11).
     await gotoExplorerHome(page);
-    await expect(page.getByTestId(`exploration-card-${id}-summary`)).toContainText('promoted', {
-      timeout: 15000,
-    });
+    await expect(page.getByTestId(`exploration-card-${id}-summary`)).toContainText(
+      'saved to project',
+      { timeout: 15000 }
+    );
   });
 });

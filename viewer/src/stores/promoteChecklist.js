@@ -39,7 +39,11 @@
 import { validateRecordConfig } from '../components/views/workspace/validateAgainstSchema';
 import { checkRefTargets } from '../components/views/workspace/refPreflight';
 import { checkExpressions } from '../components/views/workspace/expressionPreflight';
-import { expandDotNotationProps } from './explorerStore';
+import {
+  expandDotNotationProps,
+  isMeaningfulInsightState,
+  computeChartHasContent,
+} from './explorerStore';
 
 /** Metric/Dimension configs carry a frontend-only `parentModel` scoping field
  * (consumed by the backend save endpoint to set the Pydantic `_parent_name`
@@ -118,11 +122,34 @@ export const buildPromoteChecklist = async getState => {
     }
   }
 
+  // Phase 6c-T5 (VIS-1102 / ux-audit.md's promote-roundtrip "no naming step
+  // — project polluted with 'query_1' and 'insight'" finding): tracks which
+  // insights actually cleared the "authored, not scaffold" bar below — the
+  // chart-candidate guard further down needs this to tell "references a
+  // real insight" from "references only the auto-created empty one".
+  const meaningfulInsightNames = new Set();
+
   for (const [name, is] of Object.entries(state.explorerInsightStates || {})) {
     const expandedProps = expandDotNotationProps(is.props || {});
     const backendInteractions = (is.interactions || [])
       .filter(i => i.value)
       .map(i => ({ [i.type]: i.value }));
+    // A brand-new insight the user hasn't bound ANYTHING into yet — no
+    // props, no interactions — is exactly the auto-created scaffold every
+    // exploration mounts with (`useExplorerWorkbenchInit`'s "auto-create one
+    // insight on first mount"), never something the user actually authored.
+    // Without this guard it was offered for "Save to Project" the instant a
+    // source tile was clicked, before a single keystroke. An insight that
+    // came from an EXISTING promoted object (`isNew === false`) is exempt —
+    // its bare presence here means the user opened it to edit, and the
+    // backend diff (below) is what decides whether it actually changed.
+    // (`isMeaningfulInsightState` — shared with `ExplorationBuildRail`'s live
+    // chart auto-naming effect, VIS-1109 — is the single source of truth for
+    // this "authored, not scaffold" bar.)
+    if (!isMeaningfulInsightState(is)) {
+      continue;
+    }
+    meaningfulInsightNames.add(name);
     candidates.push({
       tier: 'insight',
       type: 'insight',
@@ -147,7 +174,13 @@ export const buildPromoteChecklist = async getState => {
     });
   }
 
-  if (state.explorerChartName) {
+  // Same guard as the insight loop above, for the chart the workbench
+  // auto-creates a name for: a chart that references ONLY scaffold insights
+  // (the ones just filtered out above) and carries no layout config of its
+  // own is scaffolding too, not authored content — referencing the
+  // auto-created empty insight doesn't count as "content".
+  const chartHasContent = computeChartHasContent(state, meaningfulInsightNames);
+  if (state.explorerChartName && chartHasContent) {
     candidates.push({
       tier: 'chart',
       type: 'chart',

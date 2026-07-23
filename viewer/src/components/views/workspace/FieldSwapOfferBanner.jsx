@@ -96,8 +96,9 @@ const FieldSwapOfferBanner = ({ offers = [], onDismiss }) => {
           <div className="flex-1 min-w-0">
             <p>
               <span className="font-semibold">{offer.slots.length}</span> other reference
-              {offer.slots.length === 1 ? '' : 's'} match the promoted {offer.promotedType}{' '}
-              <span className="font-mono font-semibold">{offer.promotedName}</span> — swap to it?
+              {offer.slots.length === 1 ? '' : 's'} match the {offer.promotedType} you just saved
+              to project, <span className="font-mono font-semibold">{offer.promotedName}</span> —
+              swap to it?
             </p>
             <div className="mt-1 flex gap-2">
               <button

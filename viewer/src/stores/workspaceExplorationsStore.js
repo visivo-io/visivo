@@ -90,6 +90,7 @@ import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap'
 import { emitWorkspaceEvent, markExplorationCreated } from '../components/views/workspace/telemetry';
 import { buildInsightFreshnessSignature } from '../utils/insightFreshnessSignature';
 import { computeSeedContentSignature } from '../components/views/workspace/explorationStaleness';
+import { seedDefaultName } from '../components/views/workspace/explorationLifecycle';
 
 const SYNC_DEBOUNCE_MS = 1000;
 
@@ -340,6 +341,15 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           : null;
         const payload = seedWithSignature ? { seeded_from: mapSeedToApi(seedWithSignature) } : {};
         if (returnTo) payload.return_to = returnTo;
+        // Phase 6c-T5 (naming coherence, ux-audit.md "Seeded exploration
+        // naming is incoherent"): a seeded create gets a deterministic,
+        // human-readable default name derived from what was explored
+        // ('local-duckdb exploration') instead of the backend's generic
+        // 'Exploration N' counter — this is also the SAME name
+        // `isExplorationRenamedFromSeedDefault` (explorationLifecycle.js)
+        // compares against to detect an explicit rename.
+        const defaultName = seed ? seedDefaultName(seed) : null;
+        if (defaultName) payload.name = defaultName;
         const seedLegacyState = legacyStateOverride || (seed ? legacyStateForSeed(seed) : null);
         if (seedLegacyState) payload.draft = mapDraftToApi(legacyStateToDraft(seedLegacyState));
         const created = await explorationsApi.createExploration(payload);

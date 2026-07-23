@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { PiPlus, PiCircleNotch } from 'react-icons/pi';
+import { PiPlus, PiCompass } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import SubBar from '../SubBar';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import { useConfirm } from '../../../common/ConfirmDialog';
 import ExplorationCard from './ExplorationCard';
 import { computeExplorationStaleness } from '../explorationStaleness';
+import { isExplorationVisibleInGallery } from '../explorationLifecycle';
 
 const ExplorerIcon = getTypeIcon('explorer');
 const EXPLORER_COLORS = getTypeColors('explorer');
@@ -17,19 +18,27 @@ const SOURCE_COLORS = getTypeColors('source');
  * replacing the Phase 0 placeholder). Rendered when `activeView === 'explorer'`
  * and no document tab is active (01-ux-spec.md §2):
  *
- *   - Header + "+ New exploration" — mints via the slice, opens its tab.
+ *   - Header + "+ New exploration" — mints via the slice, opens its tab. An
+ *     explicit, deliberate create — always real, always shown immediately.
  *   - "Start from a source" tiles — one click mints an exploration seeded
  *     with `{type:'source', name}` (`legacyStateForSeed` pre-wires the SQL
- *     editor to that source on first open) and opens its tab.
+ *     editor to that source on first open) and opens its tab. A BROWSE
+ *     gesture, not a commitment: the record persists (stable id from the
+ *     first render) but stays OUT of this gallery — and gets cleaned up if
+ *     its tab closes untouched — until the user actually does something
+ *     with it (`isExplorationVisibleInGallery`, `explorationLifecycle.js`).
+ *     This is the Phase 6c-T5 fix for ux-audit.md's "clicking a source tile
+ *     silently creates a new persistent exploration every time" / "every
+ *     source-tile click mints a new auto-named exploration" / the phantom
+ *     'Scratch' seed (deleted below — a genuinely empty gallery is now a
+ *     real, honest state, not one papered over with fabricated history).
  *   - "Recent explorations" — cards (name / edit time / draft summary /
- *     provenance, `ExplorationCard`) with Open / rename / duplicate / delete.
+ *     provenance, `ExplorationCard`) with Open / rename / duplicate / delete,
+ *     filtered to only the explorations that clear the "real" bar above.
  *     Delete goes through `useConfirm()`; if that exploration's tab happens
  *     to be open (even parked), the slice force-closes it with a toast
  *     (`deleteExploration`, 01-ux-spec.md §4) — this pane doesn't need to
  *     know that happened, it just calls delete.
- *   - Lazily seeds one auto-named "Scratch" exploration when the list is
- *     empty (after the fetch has settled — never race a real list) so the
- *     first visit is never empty.
  *
  * Promotion count (Phase 4) and the staleness badge (Phase 5,
  * `computeExplorationStaleness`) are both wired now — the mock's end state.
@@ -51,6 +60,20 @@ const ExplorerHomePane = () => {
     [explorations]
   );
 
+  // Phase 6c-T5 (ux-audit.md "Phantom 'Scratch' exploration" /
+  // "clicking a source tile silently creates a new persistent exploration"):
+  // the gallery only ever shows explorations that clear the "real" bar —
+  // see `explorationLifecycle.js`'s docstring. A blank "+ New exploration"
+  // record always clears it; a source-tile/"Explore this" seed only does
+  // once it has real content, has been renamed, or has been promoted. There
+  // is deliberately no more lazy auto-seed here — a brand-new project's
+  // gallery is genuinely empty, and the empty state below says so honestly
+  // instead of fabricating a 'Scratch' card with a fake edit history.
+  const visibleExplorations = useMemo(
+    () => orderedExplorations.filter(isExplorationVisibleInGallery),
+    [orderedExplorations]
+  );
+
   // VIS-1070 — staleness badge (01-ux-spec.md §2's "⚠ stale (orders
   // changed)" end-state). Computed once per card here (not inside
   // ExplorationCard itself) so the check runs against a SINGLE consistent
@@ -58,39 +81,15 @@ const ExplorerHomePane = () => {
   const stalenessById = useMemo(() => {
     const state = useStore.getState();
     const map = {};
-    orderedExplorations.forEach(exploration => {
+    visibleExplorations.forEach(exploration => {
       map[exploration.id] = computeExplorationStaleness(exploration, state);
     });
     return map;
-  }, [orderedExplorations]);
+  }, [visibleExplorations]);
 
   const openExploration = id => {
     openWorkspaceTab({ id: `exploration:${id}`, type: 'exploration', name: id });
   };
-
-  // Seed one auto-named "Scratch" exploration when the list is genuinely
-  // empty (never before the fetch settles — that would race a real list
-  // that just hasn't landed yet). Guarded so it only ever fires once per
-  // mount even if this effect re-runs before the created record lands in
-  // `order`.
-  //
-  // `seedPromiseRef` additionally guards a SEPARATE race: a user (or a fast
-  // automated click) triggering "+ New exploration" / a source tile WHILE
-  // this seed's own `createExploration()` call is still in flight — both
-  // read the list as empty and would otherwise fire concurrent creates. The
-  // repository names by `count(existing)` (`_default_name`,
-  // exploration_repository.py) with no lock between the read and the write,
-  // so two requests landing before either has persisted can even mint the
-  // SAME name. Manual creates await this ref first — harmless once the seed
-  // has resolved (an awaited resolved promise is a no-op) — so the seed's
-  // write always lands before any manual create's read.
-  const seedingRef = useRef(false);
-  const seedPromiseRef = useRef(null);
-  useEffect(() => {
-    if (!fetched || orderedExplorations.length > 0 || seedingRef.current) return;
-    seedingRef.current = true;
-    seedPromiseRef.current = createExploration();
-  }, [fetched, orderedExplorations.length, createExploration]);
 
   // VIS-1084: `handleNew`/`handleSourceTile` await a real network round-trip
   // before navigating. If the user switches destinations (ViewSwitcher row,
@@ -135,7 +134,6 @@ const ExplorerHomePane = () => {
     creatingRef.current = true;
     setCreating(true);
     try {
-      if (seedPromiseRef.current) await seedPromiseRef.current;
       const result = await createExploration();
       if (result?.success && mountedRef.current) openExploration(result.id);
     } finally {
@@ -149,7 +147,6 @@ const ExplorerHomePane = () => {
     creatingRef.current = true;
     setCreating(true);
     try {
-      if (seedPromiseRef.current) await seedPromiseRef.current;
       const result = await createExploration({ type: 'source', name: sourceName });
       if (result?.success && mountedRef.current) openExploration(result.id);
     } finally {
@@ -170,7 +167,7 @@ const ExplorerHomePane = () => {
   const handleDelete = async exploration => {
     const ok = await confirm({
       title: `Delete "${exploration.name}"?`,
-      body: 'This removes the exploration and its draft. Anything already promoted to the project is unaffected.',
+      body: 'This removes the exploration and its draft. Anything already saved to the project is unaffected.',
       confirmLabel: 'Delete',
       danger: true,
       testId: 'exploration-delete-confirm',
@@ -238,13 +235,24 @@ const ExplorerHomePane = () => {
           <h2 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-gray-500">
             Recent explorations
           </h2>
-          {orderedExplorations.length === 0 ? (
+          {!fetched ? (
+            <div
+              data-testid="explorer-home-loading"
+              className="rounded-lg border border-dashed border-gray-300 p-6 text-[13px] text-gray-400"
+            >
+              Loading…
+            </div>
+          ) : visibleExplorations.length === 0 ? (
+            // Phase 6c-T5: a genuinely empty gallery, honestly presented —
+            // no fabricated 'Scratch' card, no fake "edited 0 seconds ago"
+            // history (ux-audit.md's phantom-exploration finding). Points at
+            // the two real ways to start one.
             <div
               data-testid="explorer-home-empty"
               className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 p-6 text-[13px] text-gray-500"
             >
-              <PiCircleNotch className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Setting up your first exploration…
+              <PiCompass className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+              No explorations yet — click a source above or "New exploration" to start one.
             </div>
           ) : (
             <div
@@ -252,7 +260,7 @@ const ExplorerHomePane = () => {
               className="grid gap-4"
               style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
             >
-              {orderedExplorations.map(exploration => (
+              {visibleExplorations.map(exploration => (
                 <ExplorationCard
                   key={exploration.id}
                   exploration={exploration}
@@ -260,8 +268,14 @@ const ExplorerHomePane = () => {
                   onRename={handleRename}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
-                  stale={!!stalenessById[exploration.id]?.stale}
-                  danglingRefs={stalenessById[exploration.id]?.danglingRefs || []}
+                  // No `?.`/`|| []` fallback needed: `stalenessById` is built
+                  // by iterating this SAME `orderedExplorations` array in the
+                  // SAME render (the `useMemo` above), and
+                  // `computeExplorationStaleness` always returns both
+                  // `stale`/`danglingRefs` — so every id rendered here is
+                  // guaranteed to have an entry.
+                  stale={stalenessById[exploration.id].stale}
+                  danglingRefs={stalenessById[exploration.id].danglingRefs}
                 />
               ))}
             </div>

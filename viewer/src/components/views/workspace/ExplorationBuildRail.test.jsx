@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- VIS-1109 fixtures use literal Visivo `${ref(...)}` strings */
 /**
  * ExplorationBuildRail (Explore 2.0 Phase 3b, VIS-1059) — replaces the
  * retired `ExplorerRightPanel` for the exploration surface. Ported test
@@ -9,10 +10,21 @@
  * the plain "Save to Project" button.
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorationBuildRail from './ExplorationBuildRail';
 import useStore from '../../../stores/store';
+import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
+import { validateRecordConfig } from './validateAgainstSchema';
+import { checkRefTargets } from './refPreflight';
+import { checkExpressions } from './expressionPreflight';
+
+// Only exercised by the VIS-1109 integration describe block below (every
+// other test in this file mocks `ExplorationPromoteModal` wholesale, so none
+// of them ever reach `buildPromoteChecklist`'s real validation gates).
+jest.mock('./validateAgainstSchema', () => ({ validateRecordConfig: jest.fn() }));
+jest.mock('./refPreflight', () => ({ checkRefTargets: jest.fn() }));
+jest.mock('./expressionPreflight', () => ({ checkExpressions: jest.fn() }));
 
 jest.mock('./InsightBuildSection', () => {
   return function MockInsightBuildSection({ insightName, isExpanded, onToggleExpand }) {
@@ -63,6 +75,15 @@ const defaultState = {
   explorerChartName: 'my_chart',
   explorerChartLayout: {},
   workspaceExplorations: { byId: {}, order: [] },
+  insights: [],
+  // `zustand`'s `setState` is a shallow MERGE, not a replace — any key a
+  // prior test set but this object doesn't list stays carried over into the
+  // next test. `models`/`charts` are read by `getAllKnownNames` for
+  // collision-avoidance (the model/insight/chart auto-naming effect, and its
+  // VIS-1109 chart extension), so a test that sets one of these to check a
+  // collision case must not leak it into whichever test runs next.
+  models: [],
+  charts: [],
 };
 
 describe('ExplorationBuildRail', () => {
@@ -73,11 +94,19 @@ describe('ExplorationBuildRail', () => {
     originalActions = {
       setActiveInsight: s.setActiveInsight,
       createInsight: s.createInsight,
+      addExistingInsightToChart: s.addExistingInsightToChart,
     };
   });
 
   beforeEach(() => {
     useStore.setState({ ...originalActions, ...defaultState });
+    // Harmless default for every test — only the VIS-1109 integration
+    // describe block below ever calls `buildPromoteChecklist` (which is the
+    // only path that reaches these gates); everything else mocks
+    // `ExplorationPromoteModal` wholesale and never touches them.
+    validateRecordConfig.mockResolvedValue({ valid: true, errors: [] });
+    checkRefTargets.mockReturnValue({ valid: true, errors: [] });
+    checkExpressions.mockResolvedValue({ valid: true, errors: [] });
   });
 
   it('renders InsightBuildSection for each insight', () => {
@@ -128,12 +157,89 @@ describe('ExplorationBuildRail', () => {
     expect(screen.queryByTestId('explorer-save-modal')).not.toBeInTheDocument();
   });
 
-  it('renders the add-insight button and calls createInsight', () => {
-    const createInsight = jest.fn();
-    useStore.setState({ createInsight });
-    render(<ExplorationBuildRail />);
-    fireEvent.click(screen.getByTestId('right-panel-add-insight'));
-    expect(createInsight).toHaveBeenCalled();
+  // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight
+  // instead of letting you pick an existing one" finding): the button now
+  // opens a picker offering "New blank insight" alongside existing insights
+  // in the project not already on this chart, instead of instantly
+  // manufacturing a blank one.
+  describe('"+ Add Insight" picker (Phase 6c-T5)', () => {
+    it('clicking the button opens a menu instead of immediately creating a blank insight', () => {
+      const createInsight = jest.fn();
+      useStore.setState({ createInsight, insights: [] });
+      render(<ExplorationBuildRail />);
+      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+      expect(screen.getByTestId('add-insight-menu')).toBeInTheDocument();
+      expect(createInsight).not.toHaveBeenCalled();
+    });
+
+    it('"New blank insight" still creates a blank insight (secondary action, not gone)', () => {
+      const createInsight = jest.fn();
+      useStore.setState({ createInsight, insights: [] });
+      render(<ExplorationBuildRail />);
+      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+      fireEvent.click(screen.getByTestId('add-insight-menu-create-new'));
+      expect(createInsight).toHaveBeenCalled();
+      expect(screen.queryByTestId('add-insight-menu')).not.toBeInTheDocument();
+    });
+
+    it('offers existing project insights NOT already on this chart, and picking one adds it via addExistingInsightToChart', () => {
+      const addExistingInsightToChart = jest.fn();
+      useStore.setState({
+        addExistingInsightToChart,
+        insights: [
+          { name: 'insight_a', config: {} }, // already on the chart — excluded
+          { name: 'churn_by_cohort', config: {} },
+          { name: 'revenue_over_time', config: {} },
+        ],
+      });
+      render(<ExplorationBuildRail />);
+      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+
+      expect(screen.queryByTestId('add-insight-menu-existing-insight_a')).not.toBeInTheDocument();
+      expect(screen.getByTestId('add-insight-menu-existing-churn_by_cohort')).toBeInTheDocument();
+      expect(screen.getByTestId('add-insight-menu-existing-revenue_over_time')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('add-insight-menu-existing-churn_by_cohort'));
+      expect(addExistingInsightToChart).toHaveBeenCalledWith('churn_by_cohort');
+      expect(screen.queryByTestId('add-insight-menu')).not.toBeInTheDocument();
+    });
+
+    it('the search box filters the pickable list by name', () => {
+      useStore.setState({
+        insights: [
+          { name: 'churn_by_cohort', config: {} },
+          { name: 'revenue_over_time', config: {} },
+        ],
+      });
+      render(<ExplorationBuildRail />);
+      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+      fireEvent.change(screen.getByTestId('add-insight-menu-search'), {
+        target: { value: 'churn' },
+      });
+      expect(screen.getByTestId('add-insight-menu-existing-churn_by_cohort')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('add-insight-menu-existing-revenue_over_time')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows an honest empty state when there are no other insights to pick', () => {
+      useStore.setState({ insights: [] });
+      render(<ExplorationBuildRail />);
+      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+      expect(screen.getByTestId('add-insight-menu')).toHaveTextContent(
+        'No other insights in this project yet.'
+      );
+    });
+
+    it('shows a distinct "no matches" message when every OTHER insight is already on this chart', () => {
+      useStore.setState({ insights: [{ name: 'insight_a', config: {} }] });
+      render(<ExplorationBuildRail />);
+      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
+      expect(screen.getByTestId('add-insight-menu')).toHaveTextContent(
+        'No matches — every other insight is already on this chart.'
+      );
+    });
+
   });
 
   it('toggling the active insight deactivates it; toggling an inactive one activates it', () => {
@@ -171,7 +277,20 @@ describe('ExplorationBuildRail', () => {
     it('shows the empty-state hint when no explorationId is given', () => {
       render(<ExplorationBuildRail />);
       expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
-        'Objects you Save to Project will appear here.'
+        'Objects you save to project will appear here.'
+      );
+    });
+
+    it('shows the empty-state hint when the exploration record has no `promoted` key at all', () => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: { exp_a1: { id: 'exp_a1' } }, // no `promoted` key
+          order: ['exp_a1'],
+        },
+      });
+      render(<ExplorationBuildRail explorationId="exp_a1" />);
+      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
+        'Objects you save to project will appear here.'
       );
     });
 
@@ -181,7 +300,7 @@ describe('ExplorationBuildRail', () => {
       useStore.setState({ workspaceExplorations: { byId: {}, order: [] } });
       render(<ExplorationBuildRail explorationId="exp_not_loaded_yet" />);
       expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
-        'Objects you Save to Project will appear here.'
+        'Objects you save to project will appear here.'
       );
     });
 
@@ -194,7 +313,7 @@ describe('ExplorationBuildRail', () => {
       });
       render(<ExplorationBuildRail explorationId="exp_a1" />);
       expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
-        'Objects you Save to Project will appear here.'
+        'Objects you save to project will appear here.'
       );
     });
 
@@ -219,7 +338,7 @@ describe('ExplorationBuildRail', () => {
         screen.getByTestId('exploration-promoted-item-insight-churn_by_cohort')
       ).toBeInTheDocument();
       expect(
-        screen.queryByText('Objects you Save to Project will appear here.')
+        screen.queryByText('Objects you save to project will appear here.')
       ).not.toBeInTheDocument();
     });
 
@@ -245,5 +364,492 @@ describe('ExplorationBuildRail', () => {
         name: 'orders_q',
       });
     });
+
+    // D11 / ux-audit.md "PROMOTED ledger duplicates entries (query_1 · model
+    // listed twice)": the backend record is an append-only log, so the same
+    // object can legitimately appear more than once across repeated saves —
+    // the trail must still show each object exactly once.
+    it('dedupes repeated entries for the same object, keeping only one row', () => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: {
+            exp_a1: {
+              id: 'exp_a1',
+              promoted: [
+                { type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:00:00Z' },
+                { type: 'insight', name: 'insight_1', promoted_at: '2026-01-01T00:00:01Z' },
+                { type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:05:00Z' },
+              ],
+            },
+          },
+          order: ['exp_a1'],
+        },
+      });
+      render(<ExplorationBuildRail explorationId="exp_a1" />);
+      expect(
+        screen.getAllByTestId('exploration-promoted-item-model-orders_q')
+      ).toHaveLength(1);
+      expect(
+        screen.getByTestId('exploration-promoted-item-insight-insight_1')
+      ).toBeInTheDocument();
+    });
+
+    it('shows the pending-commit caption once anything has been saved to project', () => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: {
+            exp_a1: {
+              id: 'exp_a1',
+              promoted: [{ type: 'model', name: 'orders_q', promoted_at: '2026-01-01T00:00:00Z' }],
+            },
+          },
+          order: ['exp_a1'],
+        },
+      });
+      render(<ExplorationBuildRail explorationId="exp_a1" />);
+      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent('pending commit');
+    });
+
+    it('does not show the pending-commit caption while nothing has been saved yet', () => {
+      render(<ExplorationBuildRail />);
+      expect(screen.getByTestId('exploration-promoted-trail')).not.toHaveTextContent(
+        'pending commit'
+      );
+    });
+  });
+
+  // D11 — the single user-facing verb for this whole chain is "Save to
+  // project", never "Promote".
+  it('the CTA reads "Save to project…", never "Promote"', () => {
+    render(<ExplorationBuildRail />);
+    const button = screen.getByTestId('explorer-save-button');
+    expect(button).toHaveTextContent('Save to project…');
+    expect(button).not.toHaveTextContent(/promote/i);
+  });
+
+  // D11 (walkthrough finding, post-Wave-1): "the chip is still labelled
+  // model/insight during live editing" — the fix is a proactive effect that
+  // applies the SAME suggestion logic `promoteNaming.js` already used at
+  // save time, live, the moment a placeholder-named tab/insight has a real
+  // anchor. These assert against the store directly (not the chip DOM —
+  // `ExplorationQueryChips` isn't mounted by this component at all) since
+  // that's the one true source the chip, the tab strip, and the promote
+  // checklist all read from.
+  describe('live auto-suggest naming (D11 proactive — chip still read "model"/"insight" while editing)', () => {
+    it('renames a generic-named model tab to <source>_query the moment it has a bound source', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: {
+          model: { isNew: true, sourceName: 'orders_db', sql: '' },
+        },
+        defaults: { source_name: 'orders_db' },
+      });
+      render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+      });
+      expect(useStore.getState().explorerModelStates['orders_db_query']).toBeTruthy();
+      expect(useStore.getState().explorerModelStates.model).toBeUndefined();
+    });
+
+    it('renames a generic-named insight to <model>_insight once its model already has a real name', async () => {
+      useStore.setState({
+        explorerModelTabs: ['orders_db_query'],
+        explorerModelStates: { orders_db_query: { isNew: true, sourceName: 'orders_db' } },
+        explorerChartInsightNames: ['insight'],
+        explorerActiveInsightName: 'insight',
+        explorerInsightStates: {
+          insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+        },
+      });
+      render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerChartInsightNames).toEqual(['orders_db_query_insight']);
+      });
+    });
+
+    it('leaves a generic-named model tab untouched when it has no bound source yet — never guesses', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: null } },
+        defaults: { source_name: 'orders_db' },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+    });
+
+    it('never touches a model tab that already has a real, user-given name', async () => {
+      useStore.setState({
+        explorerModelTabs: ['orders_query'],
+        explorerModelStates: { orders_query: { isNew: true, sourceName: 'orders_db' } },
+        defaults: { source_name: 'orders_db' },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['orders_query']);
+    });
+
+    it('never touches a "modified" (update-by-name) tab even if its name happens to look generic', async () => {
+      // renameModelTab's own isNew guard is the safety net here — this pins
+      // that the live effect relies on it rather than re-deriving new-ness.
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: false, sourceName: 'orders_db' } },
+        defaults: { source_name: 'orders_db' },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+    });
+
+    it('does NOT rename a model tab off its source while project defaults have not loaded yet (VIS-1082 cold-session race)', async () => {
+      // Regression pin: `useExplorerWorkbenchInit.js`'s rebind effect
+      // (`applyResolvedDefaultSource`) corrects a cold-session tab's
+      // TEMPORARY fallback source by looking the tab up by its ORIGINAL
+      // name once `defaults` lands. If this effect had already renamed the
+      // tab off that temporary source first, the rebind's name lookup would
+      // silently miss and the real default would never land — caught by
+      // `explorer-cold-session-default-source.spec.mjs`. `defaults: null`
+      // (the actual initial store value before `fetchDefaults()` resolves)
+      // must keep this effect from touching the name at all.
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'local-sqlite' } },
+        defaults: null,
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+    });
+
+    it('renames off the source once defaults load, even when the fallback source already happened to match (no other state change to re-trigger the effect)', async () => {
+      // The common non-racy case: `applyResolvedDefaultSource` no-ops when
+      // the fallback source already equals the real default, so
+      // `explorerModelStates` never changes once `defaults` arrives — this
+      // effect must still notice (via `defaults` in its own dependency
+      // array) and suggest a name rather than leaving the tab generic
+      // forever.
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
+        defaults: null,
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['model']);
+
+      act(() => {
+        useStore.setState({ defaults: { source_name: 'orders_db' } });
+      });
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+      });
+    });
+
+    it('is idempotent — the rename fires once and does not oscillate on re-render', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
+        defaults: { source_name: 'orders_db' },
+      });
+      const { rerender } = render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+      });
+      rerender(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+    });
+
+    it('leaves a generic-named insight untouched when there is no model tab at all to anchor on', async () => {
+      useStore.setState({
+        explorerModelTabs: [],
+        explorerModelStates: {},
+        explorerChartInsightNames: ['insight'],
+        explorerActiveInsightName: 'insight',
+        explorerInsightStates: {
+          insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+        },
+      });
+      render(<ExplorationBuildRail />);
+      await screen.findByTestId('exploration-build-rail');
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['insight']);
+    });
+
+    it('a suggested name that collides with an existing object falls back to a disambiguated one', async () => {
+      useStore.setState({
+        explorerModelTabs: ['model'],
+        explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
+        models: [{ name: 'orders_db_query' }],
+        defaults: { source_name: 'orders_db' },
+      });
+      render(<ExplorationBuildRail />);
+      await waitFor(() => {
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query_2']);
+      });
+    });
+
+    // VIS-1109: the effect above already carries the naming cascade through
+    // model -> insight but stopped there — the chart itself was NEVER
+    // auto-named, so a query -> bind x/y -> Save to project flow left
+    // `explorerChartName` null forever (the Build rail showed "Chart:
+    // Untitled") even though the chart was rendering a live, meaningful
+    // scatter. `buildPromoteChecklist` gates the chart's checklist row on
+    // `explorerChartName && chartHasContent` — an unnamed chart never became
+    // a candidate, so it was silently dropped from "Save to project" with no
+    // row and no notice. These extend the SAME cascade one link further
+    // (`<name>_query -> _insight -> _chart`, promoteNaming.js's own
+    // documented chain) so a content-bearing chart always ends up named.
+    describe('chart naming (VIS-1109 — the chart used to be the one link in the cascade that never fired)', () => {
+      it('auto-names the chart <insightAnchor>_chart the moment it has real bound content', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerActiveInsightName: 'orders_db_query_insight',
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{${ref(orders_db_query).x}}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+        });
+      });
+
+      it('falls back to <modelAnchor>_chart when there is no meaningful insight to anchor on but the chart has real layout content', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['insight'],
+          explorerInsightStates: {
+            insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true }, // still scaffold
+          },
+          explorerChartName: null,
+          explorerChartLayout: { title: 'Revenue over time' },
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_chart');
+        });
+      });
+
+      it('leaves the chart unnamed while it is still pure scaffolding (VIS-1102 gating must still hold — never offers a scaffold chart)', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: '' },
+          },
+          explorerChartInsightNames: ['insight'],
+          explorerInsightStates: {
+            insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await screen.findByTestId('exploration-build-rail');
+        expect(useStore.getState().explorerChartName).toBeNull();
+      });
+
+      it('never renames a chart that already has a real name, even once content is bound', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{1}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: 'my_custom_chart_name',
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await screen.findByTestId('exploration-build-rail');
+        expect(useStore.getState().explorerChartName).toBe('my_custom_chart_name');
+      });
+
+      it('a suggested chart name that collides with an existing object falls back to a disambiguated one', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{1}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          charts: [{ name: 'orders_db_query_insight_chart' }],
+          defaults: { source_name: 'orders_db' },
+        });
+        render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart_2');
+        });
+      });
+
+      it('is idempotent — the chart auto-name fires once and does not oscillate on re-render', async () => {
+        useStore.setState({
+          explorerModelTabs: ['orders_db_query'],
+          explorerModelStates: {
+            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+          },
+          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerInsightStates: {
+            orders_db_query_insight: {
+              type: 'scatter',
+              props: { x: '?{1}' },
+              interactions: [],
+              typePropsCache: {},
+              isNew: true,
+            },
+          },
+          explorerChartName: null,
+          explorerChartLayout: {},
+          defaults: { source_name: 'orders_db' },
+        });
+        const { rerender } = render(<ExplorationBuildRail />);
+        await waitFor(() => {
+          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+        });
+        rerender(<ExplorationBuildRail />);
+        await screen.findByTestId('exploration-build-rail');
+        expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+      });
+    });
+  });
+});
+
+// VIS-1109 — full-stack proof: the actual bug the user hit was "Save to
+// project" itself silently dropping the chart, not merely an internal name
+// staying null. This exercises the REAL `buildPromoteChecklist` (only the
+// three low-level validation gates it calls out to over HTTP/AJV are
+// mocked — same mocking boundary `promoteChecklist.test.js` itself uses)
+// against the store state `ExplorationBuildRail`'s real, mounted naming
+// effect produces, proving the checklist row appears end-to-end once the
+// effect has run — not just that some internal name field changed.
+describe('VIS-1109 — a bound-but-unnamed chart is no longer silently dropped from Save to project', () => {
+  let originalActions;
+
+  beforeAll(() => {
+    const s = useStore.getState();
+    originalActions = {
+      setActiveInsight: s.setActiveInsight,
+      createInsight: s.createInsight,
+      addExistingInsightToChart: s.addExistingInsightToChart,
+    };
+  });
+
+  beforeEach(() => {
+    useStore.setState({ ...originalActions, ...defaultState });
+    validateRecordConfig.mockResolvedValue({ valid: true, errors: [] });
+    checkRefTargets.mockReturnValue({ valid: true, errors: [] });
+    checkExpressions.mockResolvedValue({ valid: true, errors: [] });
+  });
+
+  it('produces a chart-tier checklist row once the mounted build rail has auto-named the content-bearing chart', async () => {
+    useStore.setState({
+      explorerModelTabs: ['orders_db_query'],
+      explorerModelStates: {
+        orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x, 10 as y' },
+      },
+      explorerChartInsightNames: ['orders_db_query_insight'],
+      explorerActiveInsightName: 'orders_db_query_insight',
+      explorerInsightStates: {
+        orders_db_query_insight: {
+          type: 'scatter',
+          props: {
+            x: '?{${ref(orders_db_query).x}}',
+            y: '?{${ref(orders_db_query).y}}',
+          },
+          interactions: [],
+          typePropsCache: {},
+          isNew: true,
+        },
+      },
+      explorerChartName: null,
+      explorerChartLayout: {},
+      defaults: { source_name: 'orders_db' },
+      fetchExplorerDiff: jest.fn().mockResolvedValue({}),
+    });
+
+    render(<ExplorationBuildRail />);
+
+    // Pre-fix, `explorerChartName` never leaves `null` — this `waitFor`
+    // times out and the test fails right here, reproducing the real bug:
+    // the chart never becomes a checklist candidate at all (buildPromoteChecklist
+    // gates the chart row on `explorerChartName` being truthy), so "Save to
+    // project" silently offers only the model + insight rows, exactly the
+    // "Save 2 to project" silent-drop the user hit.
+    await waitFor(() => {
+      expect(useStore.getState().explorerChartName).toBeTruthy();
+    });
+
+    const rows = await buildPromoteChecklist(() => useStore.getState());
+    const chartRow = rows.find(r => r.tier === 'chart');
+    expect(chartRow).toBeTruthy();
+    expect(chartRow.name).toBe('orders_db_query_insight_chart');
+    expect(chartRow.status).toBe('new');
+  });
+
+  it('VIS-1102 regression pin: an untouched exploration (scaffold model/insight/chart, nothing bound) still produces an EMPTY checklist — auto-naming must never start offering scaffolding', async () => {
+    useStore.setState({
+      explorerModelTabs: ['query_1'],
+      explorerModelStates: {
+        query_1: { isNew: true, sourceName: 'orders_db', sql: '' },
+      },
+      explorerChartInsightNames: ['insight'],
+      explorerActiveInsightName: 'insight',
+      explorerInsightStates: {
+        insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+      },
+      explorerChartName: null,
+      explorerChartLayout: {},
+      defaults: { source_name: 'orders_db' },
+      fetchExplorerDiff: jest.fn().mockResolvedValue({}),
+    });
+
+    render(<ExplorationBuildRail />);
+    await screen.findByTestId('exploration-build-rail');
+
+    // Give any (would-be) effect a chance to settle before asserting nothing
+    // fired.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(useStore.getState().explorerChartName).toBeNull();
+    const rows = await buildPromoteChecklist(() => useStore.getState());
+    expect(rows).toEqual([]);
   });
 });

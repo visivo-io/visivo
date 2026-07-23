@@ -385,7 +385,7 @@ const ExplorerChartPreview = () => {
           data-testid="chart-preview-promoted-poll-failed"
           className="px-3 py-1.5 text-xs text-highlight-700 bg-highlight-50 border-b border-highlight-200"
         >
-          Couldn&apos;t load the promoted chart&apos;s data
+          Couldn&apos;t load this chart&apos;s saved data
           {promotedFetchError ? `: ${promotedFetchError.message || promotedFetchError}` : ' yet'}.
           It may still be running server-side — try reopening this exploration.
         </div>

@@ -53,6 +53,8 @@ import {
   viewForDocumentType,
   DEFAULT_WORKSPACE_VIEW,
 } from '../components/views/workspace/higherLevelViews';
+import { isExplorationVisibleInGallery } from '../components/views/workspace/explorationLifecycle';
+import { legacyStateToDraft } from '../components/views/workspace/explorationLegacyBridge';
 
 /**
  * Two `{ type, name }` selection descriptors identify the same object.
@@ -521,6 +523,69 @@ const createWorkspaceSlice = (set, get) => ({
         state.workspaceUrlNavigate(workspaceTabUrl(newActive, state.workspaceUrlBase));
       } else {
         state.workspaceUrlNavigate(workspaceViewUrl(activeView, state.workspaceUrlBase));
+      }
+    }
+
+    // Phase 6c-T5 (ux-audit.md Lifecycle findings) — GARBAGE-COLLECT AN
+    // UNTOUCHED SEEDED EXPLORATION ON CLOSE. A source-tile / "Explore this"
+    // seed still mints its backend record eagerly (keeps its id stable for
+    // the tab's whole life — no id-swap machinery needed anywhere else), but
+    // that record is a pure browse gesture until the user actually does
+    // something with it (`isExplorationVisibleInGallery`, which is why it
+    // never showed up in the Home gallery either). Closing its tab without
+    // ever crossing that bar means the user looked and moved on — leave no
+    // trace, exactly like never having created it. Fire-and-forget: this
+    // runs AFTER the tab is already removed from `workspaceTabs` above, so
+    // `deleteExploration`'s own (redundant, harmless) tab-close call is a
+    // no-op, and a failed delete just leaves an invisible, never-surfaced
+    // record behind — never a user-visible regression.
+    //
+    // Deliberately fires for EVERY close path (the plain × on a clean tab,
+    // AND "Close without saving" on a dirty one via `confirmCloseWorkspaceTab`
+    // calling `discardExploration` immediately before this) — a discard
+    // reverts the draft to its opening snapshot synchronously before this
+    // runs, so `isExplorationVisibleInGallery` here always reflects the
+    // POST-discard content, never edits that were just thrown away.
+    if (closing.type === 'exploration' && tabId.startsWith('exploration:')) {
+      const explorationId = tabId.slice('exploration:'.length);
+      const record = get().workspaceExplorations?.byId?.[explorationId];
+      if (record) {
+        // VIS-1108 (URGENT, DATA LOSS): `record.draft` is the store's
+        // PERSISTED draft — it only reflects what ExplorationPane's own
+        // live-sync effect has already pushed via `updateExplorationDraft`,
+        // which is itself debounced by ~600ms behind the legacy
+        // `explorerStore.js` working-state (the thing the user is actually
+        // typing into). This GC runs SYNCHRONOUSLY, inside the same tick as
+        // the tab strip's own click handler — well before React ever gets
+        // to run ExplorationPane's unmount cleanup (a *deferred* effect
+        // cleanup), let alone that pane's 600ms timer. Deciding "untouched"
+        // off `record.draft` alone means a fast type-then-close always sees
+        // the STALE, still-blank draft and deletes the record — and the
+        // typed SQL along with it, since it never existed anywhere else.
+        //
+        // Trusting `record.draft` alone is only safe once we know it can't
+        // be lagging — which is exactly when this exploration's tab was NOT
+        // the active one (`wasActive`, computed above from the PRE-close
+        // active tab): a parked/background tab's legacy state was already
+        // flushed into the draft the moment it was last deactivated, so
+        // there is nothing live left to consult. When it WAS active, the
+        // legacy store is (or very recently was) genuinely hot for this
+        // exploration, so take a synchronous snapshot of it RIGHT NOW and
+        // fold it into the visibility check too — never delete unless BOTH
+        // the persisted draft and the live working-state agree there's
+        // nothing meaningful yet. This is additive, not a replacement: it
+        // only ever makes the GC more conservative (never deletes something
+        // the OLD check would have kept), so the existing "GC a genuinely
+        // untouched browse" contract keeps working unchanged.
+        const alreadyVisible = isExplorationVisibleInGallery(record);
+        let stillUntouched = !alreadyVisible;
+        if (stillUntouched && wasActive && typeof get().snapshotExplorerWorkingState === 'function') {
+          const liveDraft = legacyStateToDraft(get().snapshotExplorerWorkingState());
+          stillUntouched = !isExplorationVisibleInGallery({ ...record, draft: liveDraft });
+        }
+        if (stillUntouched) {
+          get().deleteExploration?.(explorationId);
+        }
       }
     }
   },

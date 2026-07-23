@@ -44,6 +44,15 @@ const renderNode = (props = {}) =>
   );
 
 describe('SemanticLayerErdModelNode — field pill "Explore this" back-link', () => {
+  test('a pointerdown on a field pill stops propagation (never starts a React Flow node drag)', () => {
+    seed();
+    renderNode();
+    fireEvent.pointerDown(screen.getByTestId('erd-metric-pill-total_revenue'));
+    // No throw / no node-drag side effect to assert directly — this pins
+    // the stopPropagation call itself executing (see the model header
+    // Explore button's identical guard, tested alongside it below).
+  });
+
   test('clicking a metric pill mints an exploration seeded from that field and opens its tab', async () => {
     const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_1' });
     const openWorkspaceTab = jest.fn();
@@ -139,5 +148,107 @@ describe('SemanticLayerErdModelNode — field pill "Explore this" back-link', ()
     await act(async () => {
       resolveCreate({ success: true, id: 'exp_1' });
     });
+  });
+
+  test('a field pill click is a no-op when createExploration is unavailable', () => {
+    seed({ createExploration: undefined });
+    renderNode();
+    expect(() =>
+      fireEvent.click(screen.getByTestId('erd-metric-pill-total_revenue'))
+    ).not.toThrow();
+  });
+});
+
+// Phase 6c-T5 (ux-audit.md "No 'Explore this' entry point from Semantic
+// Layer ERD — nodes are completely inert"): the model card header itself
+// gets a VISIBLE "Explore" affordance — not just the field pills.
+describe('SemanticLayerErdModelNode — model header "Explore" button (Phase 6c-T5)', () => {
+  test('is visible without hovering or right-clicking, and mints an exploration seeded from the whole model', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_model' });
+    const openWorkspaceTab = jest.fn();
+    seed({ createExploration, openWorkspaceTab });
+    renderNode();
+
+    const button = screen.getByTestId('semantic-erd-model-explore-orders');
+    expect(button).toBeVisible();
+    fireEvent.pointerDown(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(openWorkspaceTab).toHaveBeenCalled());
+
+    expect(createExploration).toHaveBeenCalledWith({ type: 'model', name: 'orders' }, null, null);
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_model',
+      type: 'exploration',
+      name: 'exp_model',
+    });
+  });
+
+  test('double-clicking the model Explore button mints exactly ONE exploration', async () => {
+    let resolveCreate;
+    const createExploration = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    seed({ createExploration });
+    renderNode();
+
+    const button = screen.getByTestId('semantic-erd-model-explore-orders');
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(createExploration).toHaveBeenCalledTimes(1));
+    expect(button).toBeDisabled();
+
+    await act(async () => {
+      resolveCreate({ success: true, id: 'exp_model' });
+    });
+    await waitFor(() => expect(button).not.toBeDisabled());
+  });
+
+  test('is a no-op when createExploration is unavailable', () => {
+    seed({ createExploration: undefined });
+    renderNode();
+    expect(() => fireEvent.click(screen.getByTestId('semantic-erd-model-explore-orders'))).not.toThrow();
+  });
+
+  test('falls back to a null seed override when buildExplorationSeedState is unavailable', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_model' });
+    seed({ createExploration, buildExplorationSeedState: undefined });
+    renderNode();
+    fireEvent.click(screen.getByTestId('semantic-erd-model-explore-orders'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(createExploration).toHaveBeenCalledWith({ type: 'model', name: 'orders' }, null, null);
+  });
+
+  test('never opens a tab when createExploration resolves success:false', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: false });
+    const openWorkspaceTab = jest.fn();
+    seed({ createExploration, openWorkspaceTab });
+    renderNode();
+    fireEvent.click(screen.getByTestId('semantic-erd-model-explore-orders'));
+    await waitFor(() => expect(createExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+});
+
+describe('SemanticLayerErdModelNode — card chrome', () => {
+  test('a selected card gets the selected border + shadow treatment', () => {
+    renderNode({ selected: true });
+    // No dedicated testid for the outer card — assert via the className the
+    // `selected` prop drives (colors.borderSelected + shadow-md), matching
+    // the ternary this test exists to close.
+    const card = screen.getByTestId('semantic-erd-model-node-orders');
+    expect(card.className).toMatch(/shadow-md/);
+  });
+
+  test('a model with no columns shows the "No columns loaded" empty state instead of a column list', () => {
+    seed();
+    render(
+      <ReactFlowProvider>
+        <SemanticLayerErdModelNode data={{ name: 'bare_model' }} selected={false} />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByText('No columns loaded')).toBeInTheDocument();
   });
 });

@@ -535,4 +535,122 @@ test.describe('Exploration lifecycle (Explore 2.0 Phase 2)', () => {
       timeout: 10000,
     });
   });
+
+  // jared/e20-w2-lifecycle-fixes (VIS-1108/VIS-1110): the ephemeral-lifecycle
+  // × T3-live-rename seam. A source-tile browse mints its backend record
+  // eagerly (`legacyStateForSeed`) and has its generic `query_1` model
+  // renamed by `ExplorationBuildRail`'s T3 auto-suggest effect (D11) the
+  // moment a source anchor is available — a mutation that touches the SAME
+  // `explorerModelTabs`/`explorerModelStates` fields ExplorationPane's own
+  // live-sync effect watches.
+  test.describe('Fast-close-after-type data loss + spurious dirty from T3 auto-rename (VIS-1108/1110)', () => {
+    async function newSourceTileExploration(page) {
+      await page.getByTestId('explorer-home-source-tile-local-sqlite').click();
+      await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+      await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
+      return new URL(page.url()).pathname.split('/').pop();
+    }
+
+    // VIS-1108 (URGENT, DATA LOSS): typing then closing fast enough that the
+    // pane's own ~600ms live-sync debounce hasn't fired yet used to delete
+    // BOTH the backend record AND the typed SQL — `closeWorkspaceTab`'s GC
+    // read the still-blank PERSISTED draft (the only place it looked) and
+    // concluded the exploration was untouched.
+    test('typing then closing a browse tab within the live-sync debounce window never deletes the record or the typed SQL', async ({
+      page,
+    }) => {
+      await gotoExplorerHome(page);
+      const id = await newSourceTileExploration(page);
+
+      // Let any EARLIER auto-rename-triggered sync cycle (VIS-1110's own
+      // mechanism, live on pre-fix code) fully settle first, so this test
+      // isolates VIS-1108's mechanism cleanly regardless of VIS-1110's fix
+      // state — otherwise a slow-to-load `defaults` fetch could race T3's
+      // rename into firing WHILE we're still typing, dirtying the tab for a
+      // reason that has nothing to do with what this test is proving.
+      await page.waitForTimeout(2000);
+
+      // Type, then close as fast as the UI allows — well inside the pane's
+      // own 600ms live-sync debounce, so `updateExplorationDraft` has not
+      // yet pushed this edit into the persisted draft the GC used to trust
+      // exclusively.
+      await typeSqlReliably(page, 'SELECT 4242 AS vis_1108_marker');
+      const closeBtn = page.getByTestId(`workspace-tab-close-exploration:${id}`);
+      await closeBtn.click();
+
+      // This fast a close never had time to flip the tab dirty — a direct
+      // close, no confirm dialog.
+      await expect(page.getByTestId('tab-close-confirm-dialog')).not.toBeVisible();
+      await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).not.toBeVisible();
+      await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible();
+
+      // THE BUG: the record — and the typed SQL, which existed nowhere
+      // else — used to be deleted outright right here. Now that the GC
+      // consults the live legacy working-state (not just the lagging
+      // persisted draft) before deciding, the record survives, and the
+      // pane's own unmount-cleanup flush (already proven lossless for
+      // park/switch elsewhere in this file) lands the edit for real.
+      await expect(async () => {
+        const res = await page.request.get(`${API}/api/explorations/${id}/`);
+        expect(res.ok()).toBe(true);
+        const data = await res.json();
+        expect(data?.draft?.queries?.[0]?.sql || '').toContain('vis_1108_marker');
+      }).toPass({ timeout: 10000 });
+
+      // Cleanup (this test's own record) — the shared `afterEach` diff-based
+      // sweep already covers this, but delete explicitly since keeping it
+      // around defeats that sweep's "created vs pre-existing" diff for nothing.
+      await page.request.delete(`${API}/api/explorations/${id}/`).catch(() => {});
+    });
+
+    // VIS-1110 (HIGH): T3's auto-rename of the seed's generic model name
+    // touches the SAME fields a real edit would — left unguarded, it arms
+    // the live-sync debounce, flips `syncStatus` to 'saving' (the tab's
+    // dirty dot), and pops the "unsaved changes?" dialog on close for a tab
+    // the user only ever looked at.
+    test('an untouched browse closed during T3’s auto-rename window shows no spurious "unsaved changes" dialog, and is still garbage-collected', async ({
+      page,
+    }) => {
+      await gotoExplorerHome(page);
+      const id = await newSourceTileExploration(page);
+
+      // Do nothing — actively POLL the real `syncStatus` for the ENTIRE old
+      // bug window (the auto-rename effect settling, the 600ms live-sync
+      // debounce, and the ~1s backend debounce it used to arm) rather than a
+      // single point-in-time check after a fixed wait — the whole cycle
+      // (dirty -> synced again) fires and clears well inside 2.5s, so a
+      // check only AFTER waiting that long would pass whether or not the bug
+      // ever fired. `waitForFunction` resolving means we caught it firing;
+      // timing out (rejecting) means it never did, which is what we want.
+      const becameSaving = await page
+        .waitForFunction(
+          id => window.useStore.getState().workspaceExplorations.byId[id]?.syncStatus === 'saving',
+          id,
+          { timeout: 2500 }
+        )
+        .then(() => true)
+        .catch(() => false);
+      // THE BUG: a pure system rename (no user edit at all) used to flip
+      // `syncStatus` to 'saving' — this proves it never does, for the whole
+      // window the old bug fired in.
+      expect(becameSaving).toBe(false);
+
+      const closeBtn = page.getByTestId(`workspace-tab-close-exploration:${id}`);
+      await closeBtn.click();
+
+      // No dirty dot ever appeared above, so this is a direct close — no
+      // confirm dialog for a tab the user never touched.
+      await expect(page.getByTestId('tab-close-confirm-dialog')).not.toBeVisible();
+      await expect(page.getByTestId(`workspace-tab-exploration:${id}`)).not.toBeVisible();
+      await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible();
+
+      // Still garbage-collected — an untouched browse must leave no trace,
+      // exactly as before this fix (the pre-existing contract must not
+      // regress).
+      await expect(async () => {
+        const res = await page.request.get(`${API}/api/explorations/${id}/`);
+        expect(res.status()).toBe(404);
+      }).toPass({ timeout: 10000 });
+    });
+  });
 });
