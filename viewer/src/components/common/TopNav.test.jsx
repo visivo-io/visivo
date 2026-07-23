@@ -61,6 +61,26 @@ describe('TopNav', () => {
     expect(screen.getByText('Local')).toBeInTheDocument();
   });
 
+  // ux-audit.md "Top-left 'Project' pill appears to do nothing" (the same
+  // finding covers the adjacent Stage segment) — a non-opening stage pill
+  // now explains itself via a title tooltip.
+  it('a non-opening (single, no onAllStages) stage pill explains itself via a title tooltip', () => {
+    renderNav();
+    expect(screen.getByRole('button', { name: 'Local' })).toHaveAttribute(
+      'title',
+      expect.stringContaining('only environment')
+    );
+  });
+
+  it('a stage pill that DOES open (multiple stages) carries no such tooltip', () => {
+    const stages = [
+      { id: 'local', name: 'Local', color: '#6b7280', desc: 'serve', isDefault: true, flag: 'Default' },
+      { id: 'prod', name: 'Prod', color: '#16a34a', desc: 'production' },
+    ];
+    renderNav({ tools: [], stages, currentStage: stages[0] });
+    expect(screen.getByRole('button', { name: 'Local' })).not.toHaveAttribute('title');
+  });
+
   it('shows Commit but not Deploy when there are uncommitted changes', () => {
     renderNav({ hasUncommittedChanges: true });
     expect(screen.getByTitle('Commit changes')).toBeInTheDocument();
@@ -319,6 +339,22 @@ describe('TopNav', () => {
       renderNav({ projects: [projects[0]], currentProject: projects[0] });
       fireEvent.click(screen.getByText('Alpha'));
       expect(screen.queryByText('PROJECTS')).not.toBeInTheDocument();
+    });
+
+    // ux-audit.md "Top-left 'Project' pill appears to do nothing" — a
+    // non-interactive pill (nothing to switch to) now explains itself via a
+    // tooltip instead of silently doing nothing on click.
+    it('a single project pill explains itself via a title tooltip rather than doing nothing', () => {
+      renderNav({ projects: [projects[0]], currentProject: projects[0] });
+      expect(screen.getByRole('button', { name: 'Alpha' })).toHaveAttribute(
+        'title',
+        expect.stringContaining('only project')
+      );
+    });
+
+    it('a multi-project pill carries no such tooltip (it really does open a menu)', () => {
+      renderNav({ projects, currentProject: projects[0] });
+      expect(screen.getByRole('button', { name: 'Alpha' })).not.toHaveAttribute('title');
     });
   });
 

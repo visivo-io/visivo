@@ -167,7 +167,7 @@ const ExplorerHomePane = () => {
   const handleDelete = async exploration => {
     const ok = await confirm({
       title: `Delete "${exploration.name}"?`,
-      body: 'This removes the exploration and its draft. Anything already promoted to the project is unaffected.',
+      body: 'This removes the exploration and its draft. Anything already saved to the project is unaffected.',
       confirmLabel: 'Delete',
       danger: true,
       testId: 'exploration-delete-confirm',
@@ -268,8 +268,14 @@ const ExplorerHomePane = () => {
                   onRename={handleRename}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
-                  stale={!!stalenessById[exploration.id]?.stale}
-                  danglingRefs={stalenessById[exploration.id]?.danglingRefs || []}
+                  // No `?.`/`|| []` fallback needed: `stalenessById` is built
+                  // by iterating this SAME `orderedExplorations` array in the
+                  // SAME render (the `useMemo` above), and
+                  // `computeExplorationStaleness` always returns both
+                  // `stale`/`danglingRefs` — so every id rendered here is
+                  // guaranteed to have an entry.
+                  stale={stalenessById[exploration.id].stale}
+                  danglingRefs={stalenessById[exploration.id].danglingRefs}
                 />
               ))}
             </div>

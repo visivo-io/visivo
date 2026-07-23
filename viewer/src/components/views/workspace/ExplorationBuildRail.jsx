@@ -1,7 +1,9 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { PiPlus, PiFloppyDisk, PiCheckCircle, PiMagnifyingGlass, PiSparkle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
-import { selectHasModifications } from '../../../stores/explorerStore';
+import { selectHasModifications, getAllKnownNames } from '../../../stores/explorerStore';
+import { generateUniqueName } from '../../../utils/uniqueName';
+import { isGenericPromoteName } from './promoteNaming';
 import InsightBuildSection from './InsightBuildSection';
 import ChartBuildSection from './ChartBuildSection';
 import ExplorationPromoteModal from './ExplorationPromoteModal';
@@ -133,12 +135,138 @@ const ExplorationBuildRail = ({ explorationId }) => {
   const addExistingInsightToChart = useStore(s => s.addExistingInsightToChart);
   const hasChanges = useStore(selectHasModifications);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
-  const promoted = useStore(s =>
+  const promotedRaw = useStore(s =>
     explorationId ? s.workspaceExplorations?.byId?.[explorationId]?.promoted || EMPTY_PROMOTED : EMPTY_PROMOTED
   );
+  // D11 / ux-audit.md "PROMOTED ledger duplicates entries (query_1 · model
+  // listed twice)": the backend record is an append-only log (each promote
+  // run appends a fresh entry, even for an object saved before), so the
+  // SAME object can legitimately appear more than once. The trail is a
+  // status list ("what's in my project"), not a history — dedupe by
+  // `type:name`, keeping the LAST (most recent) entry for each.
+  const promoted = useMemo(() => {
+    const byKey = new Map();
+    promotedRaw.forEach(p => byKey.set(`${p.type}:${p.name}`, p));
+    return Array.from(byKey.values());
+  }, [promotedRaw]);
 
   const [chartExpanded, setChartExpanded] = useState(true);
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // D11 (walkthrough finding, post-Wave-1): "Save to project" already
+  // suggests a real name for a brand-new placeholder-named row
+  // (`promoteNaming.js`'s `suggestPromoteNames`) — but only at save time, so
+  // a chip sat on screen literally labeled "model"/"insight" for the whole
+  // life of the draft up to that point (the single most visible copy issue
+  // left in this phase). This mirrors that same suggestion live, the moment
+  // a placeholder-named model tab has a source to anchor on (every fresh
+  // tab gets one immediately — project default or first available source,
+  // `createModelTab`) or a placeholder-named insight has a real model to
+  // anchor on. `renameModelTab`/`renameInsight` already refuse to touch
+  // anything that isn't a brand-new draft (their own `isNew` guard) and are
+  // a no-op on a name that's already real, so this only ever fires once per
+  // object — after the rename, the tab/insight name is no longer generic,
+  // so the effect naturally stops re-firing for it. The one deliberate
+  // tradeoff: a user who manually retypes a chip's name back to literally
+  // "model"/"insight" would see it renamed again too — an accepted, narrow
+  // edge case for keeping this simple and not tracking "did the user ever
+  // touch this name" separately from the store's own isNew/name state.
+  //
+  // VIS-1082 interaction (cold-session default-source race,
+  // useExplorerWorkbenchInit.js): on a genuinely cold session, a model tab
+  // can be auto-created with a TEMPORARY "first available source" fallback
+  // before `defaults` has loaded; a dedicated effect there
+  // (`applyResolvedDefaultSource`) rebinds it to the real project default
+  // once `defaults` lands, looking the tab up BY ITS ORIGINAL NAME. An
+  // earlier version of this effect had no dependency on `defaults` at all,
+  // so it could rename that tab off the temporary fallback source (e.g.
+  // `local-sqlite_query`) before the rebind ran — the rebind's name lookup
+  // then silently missed (the tab no longer existed under its original
+  // name) and the source correction was lost entirely, caught by
+  // `explorer-cold-session-default-source.spec.mjs` failing after this
+  // effect was introduced. Gating model-tab renaming on `defaults` having
+  // already loaded closes the window: while `defaults` is still null, no
+  // source-based rename fires at all, so the rebind's name lookup always
+  // still finds the tab; once `defaults` loads and the rebind (if any)
+  // corrects `sourceName`, THIS effect naturally re-fires (its own
+  // `explorerModelStatesForNaming` dependency changes) and suggests off the
+  // now-correct source. No new dependency-array entry is needed for
+  // `defaults` itself — the rebind's `set()` call is what actually retriggers
+  // this effect, by changing `explorerModelStatesForNaming`.
+  const explorerModelTabsForNaming = useStore(s => s.explorerModelTabs);
+  const explorerModelStatesForNaming = useStore(s => s.explorerModelStates);
+  const explorerDefaultsForNaming = useStore(s => s.defaults);
+  const renameModelTab = useStore(s => s.renameModelTab);
+  const renameInsight = useStore(s => s.renameInsight);
+  useEffect(() => {
+    const used = new Set(Array.from(getAllKnownNames(useStore.getState()).keys()));
+
+    let modelAnchor = null;
+    for (const name of explorerModelTabsForNaming) {
+      if (!isGenericPromoteName('model', name)) {
+        modelAnchor = name;
+        continue;
+      }
+      // Defaults haven't loaded yet — this tab's `sourceName` may still be
+      // the temporary "first available" fallback pending correction (see
+      // the VIS-1082 note above). Leave it generic/editable rather than
+      // naming it off a source that's about to change out from under it.
+      if (!explorerDefaultsForNaming) continue;
+      const sourceName = explorerModelStatesForNaming?.[name]?.sourceName || null;
+      if (!sourceName) continue; // no anchor yet — leave editable, never guess
+      // No `suggested === name` short-circuit here: `suggested` is always of
+      // the form `<sourceName>_query`(`_N`), which can never coincide with
+      // `name` (already established above to be exactly `model` or
+      // `query_<digits>`) — and `renameModelTab` already no-ops on an
+      // identical name anyway, so there's nothing to guard twice.
+      const suggested = generateUniqueName(`${sourceName}_query`, used);
+      used.add(suggested);
+      try {
+        renameModelTab(name, suggested);
+        modelAnchor = suggested;
+      } catch {
+        // A collision the suggestion logic couldn't see — fail open, leave
+        // the placeholder in place; still editable by hand via the chip's
+        // rename menu.
+      }
+    }
+
+    for (const name of chartInsightNames) {
+      if (!isGenericPromoteName('insight', name)) continue;
+      if (!modelAnchor) continue; // no model to anchor on — leave editable
+      // Same non-coincidence argument as the model loop above: `suggested`
+      // is always `<modelAnchor>_insight`(`_N`), which can't equal `name`
+      // (already `insight`/`insight_<digits>`) — `renameInsight` no-ops on
+      // an identical name regardless.
+      const suggested = generateUniqueName(`${modelAnchor}_insight`, used);
+      used.add(suggested);
+      try {
+        renameInsight(name, suggested);
+      } catch {
+        // same fail-open as above
+      }
+    }
+    // Deliberately excludes `chartInsightNames`'s own identity churn concerns
+    // beyond re-running when it changes — this effect is idempotent and
+    // self-terminating (see comment above), so re-running it on every
+    // relevant state change is safe and cheap (no network calls).
+    // `explorerDefaultsForNaming` IS listed below even though the common
+    // path (a rebind actually correcting `sourceName`) would re-trigger this
+    // effect via `explorerModelStatesForNaming` alone — the fallback source
+    // can coincidentally already equal the real default (single-source
+    // projects; `applyResolvedDefaultSource` itself no-ops when they match),
+    // in which case `explorerModelStatesForNaming` never changes once
+    // `defaults` arrives, and without `defaults` as its own dependency this
+    // effect would never re-run to notice it's now safe to suggest a name.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    explorerModelTabsForNaming,
+    explorerModelStatesForNaming,
+    explorerDefaultsForNaming,
+    chartInsightNames,
+    renameModelTab,
+    renameInsight,
+  ]);
 
   const handleOpenPromoted = useCallback(
     p => {
@@ -226,34 +354,48 @@ const ExplorationBuildRail = ({ explorationId }) => {
           )}
         </Dropdown>
 
-        {/* Promoted trail (01-ux-spec.md §3b) — each entry links to its real,
-            now-published object. */}
+        {/* Saved-to-project trail (01-ux-spec.md §3b) — each entry links to
+            its real, now-published object. D11: "promote" is internal-only
+            vocabulary now — this heading and its caption use the single
+            user-facing verb ("Save to project") and signpost the SECOND,
+            separate step (global Commit) rather than leaving the user to
+            infer it from an unexplained "Commit" button appearing in the
+            nav (ux-audit.md "Save / Promote / Commit: three words, one
+            journey, zero signposting"). */}
         <div data-testid="exploration-promoted-trail" className="border-t border-gray-100 pt-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wide">
-            Promoted
+          <label className="block text-xs font-medium text-gray-400 mb-0.5 uppercase tracking-wide">
+            Saved to project
           </label>
           {promoted.length === 0 ? (
             <p className="text-xs text-gray-400 py-1">
-              Objects you Save to Project will appear here.
+              Objects you save to project will appear here.
             </p>
           ) : (
-            <ul className="space-y-1">
-              {promoted.map((p, i) => (
-                <li key={`${p.type}:${p.name}:${i}`}>
-                  <button
-                    type="button"
-                    data-testid={`exploration-promoted-item-${p.type}-${p.name}`}
-                    onClick={() => handleOpenPromoted(p)}
-                    className="flex w-full items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 hover:underline text-left"
-                  >
-                    <PiCheckCircle size={12} className="text-green-500 flex-shrink-0" />
-                    <span className="truncate">{p.name}</span>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-gray-400">{p.type}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p
+                className="text-[10px] text-gray-400 mb-1"
+                title="Saved objects are written to your project files but not committed yet — use Commit in the top bar to make them permanent."
+              >
+                pending commit
+              </p>
+              <ul className="space-y-1">
+                {promoted.map(p => (
+                  <li key={`${p.type}:${p.name}`}>
+                    <button
+                      type="button"
+                      data-testid={`exploration-promoted-item-${p.type}-${p.name}`}
+                      onClick={() => handleOpenPromoted(p)}
+                      className="flex w-full items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 hover:underline text-left"
+                    >
+                      <PiCheckCircle size={12} className="text-green-500 flex-shrink-0" />
+                      <span className="truncate">{p.name}</span>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-gray-400">{p.type}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       </div>
@@ -267,7 +409,7 @@ const ExplorationBuildRail = ({ explorationId }) => {
           className="flex items-center justify-center gap-2 w-full py-2 px-4 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <PiFloppyDisk size={16} />
-          Save to Project
+          Save to project…
         </button>
       </div>
       {showSaveModal && (
