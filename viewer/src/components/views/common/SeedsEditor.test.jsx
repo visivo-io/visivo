@@ -65,6 +65,23 @@ describe('SeedsEditor', () => {
     expect(onChangeSpy).toHaveBeenLastCalledWith([{ table_name: 'raw_orders', args: ['cat'] }]);
   });
 
+  test('preserves multi-line arg values (e.g. a CSV piped to echo)', () => {
+    const csv = 'a,b,x,y\n1,5,2,3\n2,6,3,4';
+    const onChangeSpy = jest.fn();
+    render(
+      <Harness initial={[{ table_name: 'raw', args: ['echo', csv] }]} onChangeSpy={onChangeSpy} />
+    );
+
+    // The multi-line value is shown intact (newlines kept, not collapsed onto one line).
+    const argField = screen.getByLabelText('Seed 1 argument 2');
+    expect(argField).toHaveValue(csv);
+
+    // Editing to a new multi-line value preserves its newlines.
+    const next = 'p,q\n7,8\n9,10';
+    fireEvent.change(argField, { target: { value: next } });
+    expect(onChangeSpy).toHaveBeenLastCalledWith([{ table_name: 'raw', args: ['echo', next] }]);
+  });
+
   test('args can be added and removed within a seed', () => {
     const onChangeSpy = jest.fn();
     render(

@@ -137,21 +137,25 @@ const SeedsEditor = ({ seeds, onChange }) => {
               </button>
             </div>
             {(seed.args || []).map((arg, argIndex) => (
-              <div key={argIndex} className="flex items-center gap-2">
-                <input
-                  type="text"
+              <div key={argIndex} className="flex items-start gap-2">
+                {/* textarea (not input) so a multi-line arg — e.g. a CSV piped to
+                    echo — keeps its newlines instead of being collapsed onto one
+                    line; it auto-sizes to the content and is resizable. */}
+                <textarea
                   aria-label={`Seed ${seedIndex + 1} argument ${argIndex + 1}`}
                   value={arg}
                   onChange={e => updateArg(seedIndex, argIndex, e.target.value)}
                   placeholder={argIndex === 0 ? 'command (e.g. cat, python)' : 'argument'}
-                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  rows={Math.min(12, Math.max(1, String(arg || '').split('\n').length))}
+                  spellCheck={false}
+                  className="flex-1 px-2 py-1.5 text-sm font-mono border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 resize-y"
                 />
                 {(seed.args || []).length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeArg(seedIndex, argIndex)}
                     aria-label={`Remove argument ${argIndex + 1} from seed ${seedIndex + 1}`}
-                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                    className="mt-1 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                   >
                     <RemoveIcon fontSize="small" />
                   </button>

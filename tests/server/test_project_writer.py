@@ -200,6 +200,35 @@ def test_new_named_child(simple_writer, simple_project_file):
     assert any(c["name"] == "New Component" and c["value"] == "new" for c in components)
 
 
+def test_writes_multiline_arg_as_yaml_block_scalar(simple_writer, simple_project_file):
+    """A multi-line seed arg (e.g. a CSV echoed into a table) is written as a YAML
+    ``|`` block scalar and round-trips exactly — not a ``\\n``-escaped one-liner."""
+    import ruamel.yaml
+
+    csv = "a,b,x,y\n1,5,2,3\n2,6,3,4"
+    simple_writer.named_children["local-source"] = {
+        "status": "New",
+        "new_file_path": simple_project_file,
+        "type_key": "sources",
+        "config": {
+            "name": "local-source",
+            "type": "duckdb",
+            "seeds": [{"table_name": "raw", "args": ["echo", csv]}],
+        },
+    }
+    simple_writer._new("local-source")
+    simple_writer.write()
+
+    with open(simple_project_file, "r") as f:
+        text = f.read()
+    # Block scalar (each CSV row on its own line), not an escaped one-liner.
+    assert "\\n" not in text
+    assert "1,5,2,3" in text and "2,6,3,4" in text
+    # And it parses back to the exact multi-line string.
+    reparsed = ruamel.yaml.YAML(typ="rt").load(open(simple_project_file))
+    assert reparsed["sources"][0]["seeds"][0]["args"][1] == csv
+
+
 def test_delete_named_child(simple_writer, simple_project_file):
     """Test deleting a named child"""
     # Update the existing component to be deleted
