@@ -1,11 +1,90 @@
-import React, { useState, useCallback } from 'react';
-import { PiPlus, PiFloppyDisk, PiCheckCircle } from 'react-icons/pi';
+import React, { useMemo, useState, useCallback } from 'react';
+import { PiPlus, PiFloppyDisk, PiCheckCircle, PiMagnifyingGlass, PiSparkle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { selectHasModifications } from '../../../stores/explorerStore';
 import InsightBuildSection from './InsightBuildSection';
 import ChartBuildSection from './ChartBuildSection';
 import ExplorationPromoteModal from './ExplorationPromoteModal';
 import { recordOnboardingAction } from '../../onboarding/onboardingState';
+import Dropdown from '../../common/Dropdown';
+import { getTypeIcon } from '../common/objectTypeConfigs';
+
+const InsightIcon = getTypeIcon('insight');
+
+/**
+ * AddInsightMenu — Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank
+ * insight instead of letting you pick an existing one" finding). The picker
+ * is primary (project insights not already on this chart, searchable); "New
+ * blank insight" is a clearly-labeled secondary action, not the only option
+ * a click on "+ Add Insight" ever produced.
+ */
+const AddInsightMenu = ({ onPickExisting, onCreateNew, close }) => {
+  const allInsights = useStore(s => s.insights || []);
+  const chartInsightNames = useStore(s => s.explorerChartInsightNames);
+  const [query, setQuery] = useState('');
+
+  const pickable = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allInsights
+      .filter(i => !chartInsightNames.includes(i.name))
+      .filter(i => !q || i.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allInsights, chartInsightNames, query]);
+
+  return (
+    <div data-testid="add-insight-menu" className="flex max-h-80 flex-col">
+      <button
+        type="button"
+        data-testid="add-insight-menu-create-new"
+        onClick={() => {
+          onCreateNew();
+          close();
+        }}
+        className="flex w-full items-center gap-2 border-b border-gray-100 px-3 py-2 text-left text-xs font-medium text-purple-600 hover:bg-purple-50"
+      >
+        <PiSparkle size={14} />
+        New blank insight
+      </button>
+      <div className="flex items-center gap-1.5 border-b border-gray-100 px-2 py-1.5">
+        <PiMagnifyingGlass size={12} className="shrink-0 text-gray-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Find an insight to add…"
+          data-testid="add-insight-menu-search"
+          className="w-full border-none bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400"
+          autoFocus
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto py-1">
+        {pickable.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-gray-400">
+            {allInsights.length === 0
+              ? 'No other insights in this project yet.'
+              : 'No matches — every other insight is already on this chart.'}
+          </p>
+        ) : (
+          pickable.map(insight => (
+            <button
+              key={insight.name}
+              type="button"
+              data-testid={`add-insight-menu-existing-${insight.name}`}
+              onClick={() => {
+                onPickExisting(insight.name);
+                close();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
+            >
+              {InsightIcon && <InsightIcon size={13} className="shrink-0 text-purple-500" />}
+              <span className="truncate">{insight.name}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
 
 // A single stable reference for the "no promoted entries" case — a fresh `[]`
 // literal returned from a Zustand selector on every render breaks the
@@ -51,6 +130,7 @@ const ExplorationBuildRail = ({ explorationId }) => {
   const activeInsightName = useStore(s => s.explorerActiveInsightName);
   const setActiveInsight = useStore(s => s.setActiveInsight);
   const createInsight = useStore(s => s.createInsight);
+  const addExistingInsightToChart = useStore(s => s.addExistingInsightToChart);
   const hasChanges = useStore(selectHasModifications);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const promoted = useStore(s =>
@@ -82,10 +162,23 @@ const ExplorationBuildRail = ({ explorationId }) => {
     setChartExpanded(prev => !prev);
   }, []);
 
-  const handleAddInsight = useCallback(() => {
+  const handleCreateNewInsight = useCallback(() => {
     createInsight();
     recordOnboardingAction('insight_added');
   }, [createInsight]);
+
+  // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight
+  // instead of letting you pick an existing one" finding): reuses the SAME
+  // pull-in logic the Library's "Add to exploration" context action and
+  // drag-and-drop already go through — an existing insight added this way
+  // brings its referenced models along automatically.
+  const handlePickExistingInsight = useCallback(
+    insightName => {
+      addExistingInsightToChart?.(insightName);
+      recordOnboardingAction('insight_added');
+    },
+    [addExistingInsightToChart]
+  );
 
   return (
     <div
@@ -110,15 +203,28 @@ const ExplorationBuildRail = ({ explorationId }) => {
           />
         ))}
 
-        <button
-          data-testid="right-panel-add-insight"
-          data-onb-target="right-panel-add-insight"
-          onClick={handleAddInsight}
-          className="flex items-center gap-1.5 w-full px-3 py-2 text-xs font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-md border border-dashed border-purple-300 transition-colors"
+        <Dropdown
+          width={260}
+          trigger={
+            <button
+              type="button"
+              data-testid="right-panel-add-insight"
+              data-onb-target="right-panel-add-insight"
+              className="flex items-center gap-1.5 w-full px-3 py-2 text-xs font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-md border border-dashed border-purple-300 transition-colors"
+            >
+              <PiPlus size={14} />
+              Add Insight
+            </button>
+          }
         >
-          <PiPlus size={14} />
-          Add Insight
-        </button>
+          {close => (
+            <AddInsightMenu
+              onPickExisting={handlePickExistingInsight}
+              onCreateNew={handleCreateNewInsight}
+              close={close}
+            />
+          )}
+        </Dropdown>
 
         {/* Promoted trail (01-ux-spec.md §3b) — each entry links to its real,
             now-published object. */}

@@ -9,7 +9,7 @@
  * item gating + commit wiring.
  */
 import React, { useRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CanvasContextMenu from './CanvasContextMenu';
 import useStore from '../../../../stores/store';
@@ -239,6 +239,286 @@ describe('CanvasContextMenu (VIS-781)', () => {
       rightClick('r0i0');
       expect(screen.queryByTestId('canvas-ctx-open')).not.toBeInTheDocument();
       expect(screen.queryByTestId('canvas-ctx-open-new-tab')).not.toBeInTheDocument();
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // Phase 6c-T5 (ux-audit.md "No 'Explore this' from a dashboard chart's
+  // context menu", ⚠ conflicts-with-e2e) — the highest-intent moment for
+  // exploration (looking at a rendered chart) had no explore affordance.
+  // ------------------------------------------------------------------
+  describe('"Explore this" (Phase 6c-T5)', () => {
+    let createExploration;
+    let buildExplorationSeedState;
+    let openWorkspaceTab;
+
+    beforeEach(() => {
+      createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_1' });
+      buildExplorationSeedState = jest.fn(() => null);
+      openWorkspaceTab = jest.fn();
+      useStore.setState({ createExploration, buildExplorationSeedState, openWorkspaceTab });
+    });
+
+    test('a chart leaf offers "Explore this"', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0'); // the chart leaf → subject { type: 'chart', name: 'a' }
+      expect(screen.getByTestId('canvas-ctx-explore-this')).toBeInTheDocument();
+    });
+
+    test('a table leaf does NOT offer "Explore this" (not an explorable type yet)', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i1'); // the table leaf → subject { type: 'table', name: 'b' }
+      expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
+    });
+
+    test('clicking "Explore this" mints an exploration seeded from the chart and opens it, dismissing the menu', async () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-explore-this'));
+
+      // The menu dismisses immediately (doesn't wait on the async create).
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+
+      await waitFor(() => expect(openWorkspaceTab).toHaveBeenCalled());
+      expect(createExploration).toHaveBeenCalledWith({ type: 'chart', name: 'a' }, null, null);
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'exploration:exp_1',
+        type: 'exploration',
+        name: 'exp_1',
+      });
+    });
+
+    test('a container item never offers "Explore this"', () => {
+      useStore.setState({ dashboards: [CONTAINER_DASH] });
+      renderHost({ commit: jest.fn(), structure: 'container' });
+      rightClick('r0i0');
+      expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
+    });
+  });
+
+  // Phase 6c-T5 coverage completion — closes pre-existing gaps this track's
+  // diff surfaced (Jared's 95%+ requirement applies to the whole file).
+  describe('coverage completion', () => {
+    test('a leaf with neither chart nor table (e.g. markdown) offers no Open/Open-in-new-tab/Explore this', () => {
+      const MARKDOWN_DASH = {
+        name: 'dash',
+        config: {
+          rows: [{ height: 'medium', items: [{ width: 12, markdown: 'ref(notes)' }] }],
+        },
+      };
+      useStore.setState({ dashboards: [MARKDOWN_DASH] });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-open')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-open-new-tab')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
+      // Still a leaf — Wrap is offered regardless of subject type.
+      expect(screen.getByTestId('canvas-ctx-wrap')).toBeInTheDocument();
+    });
+
+    test('"Add row inside" (on a container) commits a config with a nested row added', () => {
+      useStore.setState({ dashboards: [CONTAINER_DASH] });
+      const commit = jest.fn();
+      renderHost({ commit, structure: 'container' });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-add-row-inside'));
+
+      expect(commit).toHaveBeenCalledTimes(1);
+      const [name, nextConfig] = commit.mock.calls[0];
+      expect(name).toBe('dash');
+      expect(nextConfig.rows[0].items[0].rows.length).toBeGreaterThan(1);
+      expect(emitWorkspaceEvent).toHaveBeenCalledWith(
+        'canvas_action',
+        expect.objectContaining({ kind: 'add_row_inside' })
+      );
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('"Add item to row" (on a leaf\'s parent row) commits a config with an extra item', () => {
+      const commit = jest.fn();
+      renderHost({ commit });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-add-item'));
+
+      expect(commit).toHaveBeenCalledTimes(1);
+      const [name, nextConfig] = commit.mock.calls[0];
+      expect(name).toBe('dash');
+      expect(nextConfig.rows[0].items.length).toBeGreaterThan(2);
+      expect(emitWorkspaceEvent).toHaveBeenCalledWith(
+        'canvas_action',
+        expect.objectContaining({ kind: 'add_item_to_row' })
+      );
+    });
+
+    test('a pointerdown INSIDE the menu (not on a specific item) never dismisses it', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      const menu = screen.getByTestId('canvas-context-menu');
+      fireEvent.pointerDown(menu);
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+    });
+
+    test('a pointerdown OUTSIDE the menu dismisses it', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+      fireEvent.pointerDown(screen.getByTestId('host'));
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('right-clicking the chrome background (no data-canvas-path ancestor) never opens a menu — falls through to the browser default', () => {
+      renderHost({ commit: jest.fn() });
+      fireEvent.contextMenu(screen.getByTestId('host'), { clientX: 5, clientY: 5 });
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('no dashboards entry matches the mounted dashboardName ("dash") — renders nothing at all, even after a valid-looking right-click', () => {
+      useStore.setState({ dashboards: [{ name: 'some-other-dashboard', config: { rows: [] } }] });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('an item whose chart/table value is an object (not a ref string) resolves the subject via its .name', () => {
+      const OBJECT_VALUE_DASH = {
+        name: 'dash',
+        config: {
+          rows: [{ height: 'medium', items: [{ width: 12, chart: { name: 'obj_chart' } }] }],
+        },
+      };
+      // Sets its own openWorkspaceTab spy rather than relying on the real
+      // store action's derived state — an earlier describe block in this
+      // file ("Explore this") permanently replaces `openWorkspaceTab` with a
+      // bare `jest.fn()` via `useStore.setState` (this file's outer
+      // `beforeEach` only resets `dashboards`, not action fields), so by the
+      // time this test runs the "real" action is already gone. Asserting on
+      // an explicit local mock's call args is the same pattern the
+      // "Explore this" tests above use, and sidesteps that cross-test state
+      // entirely instead of fighting it.
+      const openWorkspaceTab = jest.fn();
+      useStore.setState({ dashboards: [OBJECT_VALUE_DASH], openWorkspaceTab });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.getByTestId('canvas-ctx-open')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('canvas-ctx-open'));
+      expect(openWorkspaceTab).toHaveBeenCalledWith({ id: 'chart:obj_chart', type: 'chart', name: 'obj_chart' });
+    });
+
+    test('an item with an empty-string chart AND table offers no Open/Explore actions (exhausts the type loop, no subject)', () => {
+      const EMPTY_LEAF_DASH = {
+        name: 'dash',
+        config: {
+          rows: [{ height: 'medium', items: [{ width: 12, chart: '', table: '' }] }],
+        },
+      };
+      useStore.setState({ dashboards: [EMPTY_LEAF_DASH] });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.queryByTestId('canvas-ctx-open')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-explore-this')).not.toBeInTheDocument();
+    });
+
+    test('a non-Escape keydown while the menu is open does not dismiss it', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.keyDown(document, { key: 'Enter' });
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+    });
+
+    test('"Open in new tab" is a no-op (menu still dismisses) when openWorkspaceTabBackground is unavailable', () => {
+      useStore.setState({ openWorkspaceTabBackground: undefined, workspaceTabs: [] });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-open-new-tab'));
+      expect(useStore.getState().workspaceTabs).toEqual([]);
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('"Explore this" never opens a tab when createExploration resolves success:false', async () => {
+      const createExploration = jest.fn().mockResolvedValue({ success: false });
+      const openWorkspaceTab = jest.fn();
+      useStore.setState({ createExploration, buildExplorationSeedState: jest.fn(() => null), openWorkspaceTab });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-explore-this'));
+      await waitFor(() => expect(createExploration).toHaveBeenCalled());
+      expect(openWorkspaceTab).not.toHaveBeenCalled();
+    });
+
+    test('an object-shaped chart/table value with no .name falls back to .path, and a name-less value in BOTH types continues to the next type', () => {
+      const PATH_FALLBACK_DASH = {
+        name: 'dash',
+        config: {
+          rows: [{ height: 'medium', items: [{ width: 12, chart: {}, table: { path: 'my/path' } }] }],
+        },
+      };
+      const openWorkspaceTab = jest.fn();
+      useStore.setState({ dashboards: [PATH_FALLBACK_DASH], openWorkspaceTab });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-open'));
+      expect(openWorkspaceTab).toHaveBeenCalledWith({ id: 'table:my/path', type: 'table', name: 'my/path' });
+    });
+
+    test('tolerates state.dashboards being entirely undefined (pre-hydration) — renders nothing, never crashes', () => {
+      useStore.setState({ dashboards: undefined });
+      renderHost({ commit: jest.fn() });
+      expect(() => rightClick('r0i0')).not.toThrow();
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('a bare dashboards entry with no .config wrapper (the entry itself IS the config) still resolves', () => {
+      const BARE_DASH = { name: 'dash', rows: [{ height: 'medium', items: [{ width: 12, chart: 'ref(a)' }] }] };
+      useStore.setState({ dashboards: [BARE_DASH] });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
+      expect(screen.getByTestId('canvas-ctx-open')).toBeInTheDocument();
+    });
+
+    test('commit is a no-op (no crash) when no commit function is provided by the WorkspaceCommitContext', () => {
+      renderHost({ commit: undefined });
+      rightClick('r0i0');
+      expect(() => fireEvent.click(screen.getByTestId('canvas-ctx-wrap'))).not.toThrow();
+      expect(emitWorkspaceEvent).not.toHaveBeenCalled();
+    });
+
+    test('"Open" (not new tab) is a no-op when openWorkspaceTab is unavailable', () => {
+      useStore.setState({ openWorkspaceTab: undefined });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(() => fireEvent.click(screen.getByTestId('canvas-ctx-open'))).not.toThrow();
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('"Explore this" is a no-op when createExploration is unavailable (no store action wired)', () => {
+      useStore.setState({ createExploration: undefined, buildExplorationSeedState: jest.fn(() => null) });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(() => fireEvent.click(screen.getByTestId('canvas-ctx-explore-this'))).not.toThrow();
+    });
+
+    test('"Explore this" falls back to a null seed override when buildExplorationSeedState is unavailable', async () => {
+      const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_9' });
+      useStore.setState({ createExploration, buildExplorationSeedState: undefined, openWorkspaceTab: jest.fn() });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-explore-this'));
+      await waitFor(() => expect(createExploration).toHaveBeenCalled());
+      expect(createExploration).toHaveBeenCalledWith({ type: 'chart', name: 'a' }, null, null);
+    });
+
+    test('the mount effect tolerates a rootRef whose .current is never attached to any DOM node (no crash)', () => {
+      const detachedRef = { current: null };
+      render(
+        <MemoryRouter future={futureFlags}>
+          <WorkspaceCommitProvider value={jest.fn()}>
+            <CanvasContextMenu rootRef={detachedRef} dashboardName="dash" />
+          </WorkspaceCommitProvider>
+        </MemoryRouter>
+      );
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
     });
   });
 });

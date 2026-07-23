@@ -100,6 +100,41 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
   });
 
+  test('activateWorkspaceTab delegates to activateWorkspaceView for a view-typed payload', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().activateWorkspaceTab({ type: 'explorer', name: 'explorer' });
+    });
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('explorer');
+    // Delegating to activateWorkspaceView parks the document tab (per its own
+    // contract) rather than leaving the dashboard tab active.
+    expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  test('switchWorkspaceTab routes the URL via workspaceUrlNavigate when one is registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().switchWorkspaceTab('dashboard:d1');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+    expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('closeWorkspaceTab routes the URL to the newly-focused tab via workspaceUrlNavigate when one is registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('chart:revenue');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+  });
+
   // activateWorkspaceTab is the URL→store write called directly by
   // useWorkspaceUrlSync for a deep link / browser back-forward — a
   // VIEW-typed payload (a stale `?edit=project:...`-shaped URL, or a legacy
@@ -350,6 +385,126 @@ describe('workspace store slice', () => {
     const s = useStore.getState();
     expect(s.workspaceTabs).toHaveLength(0);
     expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  // Phase 6c-T5 (ux-audit.md Lifecycle findings, VIS-1102) — GC an untouched
+  // seeded exploration when its tab closes ------------------------------
+  describe('closeWorkspaceTab garbage-collects an untouched seeded exploration', () => {
+    test('deletes the backend record when a seeded exploration with no meaningful content closes', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'local-duckdb exploration',
+                seededFrom: { type: 'source', name: 'local-duckdb' },
+                draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                promoted: [],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('does NOT delete a seeded exploration that has real content', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'local-duckdb exploration',
+                seededFrom: { type: 'source', name: 'local-duckdb' },
+                draft: {
+                  queries: [],
+                  insights: [],
+                  chart: null,
+                  computedColumns: [],
+                  legacyState: {
+                    modelStates: { query_1: { sql: 'SELECT * FROM t' } },
+                    insightStates: {},
+                    chartLayout: {},
+                  },
+                },
+                promoted: [],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    test('does NOT delete a blank "+ New exploration" record (no seededFrom), even with an empty draft', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'Exploration 2',
+                seededFrom: null,
+                draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                promoted: [],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    test('does NOT delete a seeded exploration that has already been promoted', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'local-duckdb exploration',
+                seededFrom: { type: 'source', name: 'local-duckdb' },
+                draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                promoted: [{ type: 'model', name: 'query_1' }],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    test('closing a non-exploration tab never touches deleteExploration', () => {
+      const deleteExploration = jest.fn();
+      act(() => {
+        useStore.setState({ deleteExploration });
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+        useStore.getState().closeWorkspaceTab('dashboard:d1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
   });
 
   // Dirty-close guard (VIS-812 / Track O O-3) --------------------------------

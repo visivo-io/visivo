@@ -8,8 +8,11 @@
  *
  *   1. The gallery: header, "+ New exploration", "Start from a source"
  *      tiles, "Recent explorations" cards.
- *   2. A fresh project lazily seeds one "Scratch" exploration so the first
- *      visit is never empty.
+ *   2. Phase 6c-T5 (ux-audit.md "Phantom 'Scratch' exploration on a
+ *      brand-new user's home"): a genuinely empty project shows an HONEST
+ *      empty state — no fabricated 'Scratch' card, no lazy auto-seed. A
+ *      source-tile click stays OUT of the gallery until it has real content
+ *      (`isExplorationVisibleInGallery`, `explorationLifecycle.js`).
  *   3. "+ New exploration" mints a record and opens its tab.
  *   4. A source tile mints a seeded exploration and opens its tab.
  *   5. Card actions: rename (inline), duplicate (opens a sibling tab),
@@ -86,13 +89,74 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
     await expect(page.getByTestId('explorer-home-source-tile-local-sqlite')).toBeVisible();
   });
 
-  test('a fresh project lazily seeds one "Scratch" exploration so the first visit is never empty', async ({
+  // Phase 6c-T5 (ux-audit.md "Phantom 'Scratch' exploration on a brand-new
+  // user's home" finding): the lazy auto-seed that used to fabricate a
+  // 'Scratch' card (stamped 'edited 0 seconds ago' before the user had done
+  // anything) is GONE. A genuinely empty exploration list shows the honest
+  // empty state, never a phantom card, and never fires a create request on
+  // its own.
+  test('a genuinely empty project shows the honest empty state — no phantom "Scratch" card, no auto-create', async ({
+    page,
+  }) => {
+    // This test specifically needs a genuinely empty list — clear whatever
+    // this serial project's shared `.visivo/explorations/` repository
+    // currently holds (safe: `exploration-mutations` runs with no
+    // concurrent worker touching the same directory).
+    const existing = await listExplorationIds(page);
+    for (const id of existing) {
+      await page.request.delete(`${API}/api/explorations/${id}/`).catch(() => {});
+    }
+
+    let createPostFired = false;
+    page.on('request', req => {
+      if (req.url().endsWith('/api/explorations/') && req.method() === 'POST') {
+        createPostFired = true;
+      }
+    });
+
+    await gotoExplorerHome(page);
+    await expect(page.getByTestId('explorer-home-empty')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('Scratch')).not.toBeVisible();
+    await expect(page.getByTestId('explorer-home-gallery')).not.toBeVisible();
+
+    // Give any errant auto-seed effect a real chance to fire before asserting
+    // it never did.
+    await page.waitForTimeout(1000);
+    expect(createPostFired).toBe(false);
+    expect(await listExplorationIds(page)).toHaveLength(0);
+  });
+
+  // Companion case: a source-tile click DOES mint a backend record (kept
+  // for stable ids/discard semantics — see `explorationLifecycle.js`'s
+  // docstring), but it stays invisible in the gallery — and does not linger
+  // once its tab closes untouched — until it has real content.
+  test('a source tile click stays OUT of the gallery until it has real content, and is cleaned up if closed untouched', async ({
     page,
   }) => {
     await gotoExplorerHome(page);
-    await expect(page.getByTestId('explorer-home-gallery')).toBeVisible({ timeout: 30000 });
-    const cardCount = await page.locator('[data-testid^="exploration-card-"][data-testid$="-name"]').count();
-    expect(cardCount).toBeGreaterThanOrEqual(1);
+    await page.getByTestId('explorer-home-source-tile-local-sqlite').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await page.waitForURL(/\/workspace\/exploration\/exp_/, { timeout: 10000 });
+    const explorationId = new URL(page.url()).pathname.split('/').pop();
+
+    // Back to Home WITHOUT closing the tab (park it) — still hidden, even
+    // though the backend record genuinely exists right now.
+    await page.getByTestId('workspace-view-switcher-explorer').click();
+    await expect(page.getByTestId(`exploration-card-${explorationId}-name`)).not.toBeVisible();
+    const backendCheckWhileParked = await page.request.get(
+      `${API}/api/explorations/${explorationId}/`
+    );
+    expect(backendCheckWhileParked.ok()).toBe(true);
+
+    // Close the still-untouched tab — the record is garbage-collected
+    // (ux-audit.md: "Don't create durable state from a browse gesture").
+    await page.getByTestId(`workspace-tab-close-exploration:${explorationId}`).click();
+    await expect(async () => {
+      const backendCheckAfterClose = await page.request.get(
+        `${API}/api/explorations/${explorationId}/`
+      );
+      expect(backendCheckAfterClose.status()).toBe(404);
+    }).toPass({ timeout: 10000 });
   });
 
   test('"+ New exploration" mints a record and opens its tab', async ({ page }) => {
@@ -160,6 +224,18 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
 
   test('duplicate opens a sibling exploration tab', async ({ page }) => {
     await gotoExplorerHome(page);
+    // Unlike its sibling tests, this one doesn't seed its own content and
+    // used to just assume the gallery already had a card in it — true only
+    // by accident, when some OTHER spec in the same serial project happened
+    // to run first and leak an exploration. Running this file (or this
+    // test) in isolation hit a genuinely empty gallery and hung forever on
+    // the card locator below. Mint one explicitly, same as every other test
+    // in this file — the afterEach cleanup already tracks and deletes it.
+    await page.getByTestId('explorer-home-new-exploration').click();
+    await expect(page.getByTestId('workspace-middle-exploration')).toBeVisible({ timeout: 30000 });
+    await page.getByTestId('workspace-view-switcher-explorer').click();
+    await expect(page.getByTestId('explorer-home-gallery')).toBeVisible();
+
     // Scoped to the workspace tab strip — `[role="tab"]` isn't unique to it
     // (the Right Rail's Outline/Edit switcher, RightRail.jsx, also renders
     // `role="tab"`, and the legacy workbench opened below auto-selects an

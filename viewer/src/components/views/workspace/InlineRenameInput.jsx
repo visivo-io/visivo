@@ -42,6 +42,13 @@ const InlineRenameInput = ({ name, onCommit, onCancel, testIdPrefix = 'inline-re
         onBlur={commit}
         onClick={e => e.stopPropagation()}
         onKeyDown={e => {
+          // Phase 6c-T5: a caller may render this input inside its own
+          // keyboard-activatable container (ExplorationCard's whole-card
+          // onClick/onKeyDown, VIS-1059-ish "Enter/Space opens the card").
+          // Without stopPropagation, Enter here both commits the rename AND
+          // bubbles up as "Enter pressed on the card", firing the card's own
+          // open handler mid-rename. Stop it here, once, for every caller.
+          e.stopPropagation();
           if (e.key === 'Enter') commit();
           else if (e.key === 'Escape') onCancel();
         }}
@@ -51,7 +58,16 @@ const InlineRenameInput = ({ name, onCommit, onCancel, testIdPrefix = 'inline-re
       <button
         type="button"
         onMouseDown={e => e.preventDefault()}
-        onClick={commit}
+        onClick={e => {
+          // Same bubble guard as the input's own onClick/onKeyDown above —
+          // found via manual walkthrough (Phase 6c-T5): clicking Save here
+          // was ALSO opening the exploration tab, because this click event
+          // bubbled up to ExplorationCard's whole-card onClick unabated.
+          // Only the input itself stopped propagation; these two buttons
+          // never did.
+          e.stopPropagation();
+          commit();
+        }}
         title="Save name"
         data-testid={`${testIdPrefix}-commit`}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-primary-600 hover:bg-primary-100"
@@ -61,7 +77,10 @@ const InlineRenameInput = ({ name, onCommit, onCancel, testIdPrefix = 'inline-re
       <button
         type="button"
         onMouseDown={e => e.preventDefault()}
-        onClick={onCancel}
+        onClick={e => {
+          e.stopPropagation();
+          onCancel();
+        }}
         title="Cancel"
         data-testid={`${testIdPrefix}-cancel`}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100"

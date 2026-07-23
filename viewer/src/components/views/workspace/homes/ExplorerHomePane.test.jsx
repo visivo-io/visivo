@@ -2,9 +2,10 @@
 /**
  * ExplorerHomePane (Explore 2.0 Phase 2 — replaces the Phase 0 placeholder):
  * header + "+ New exploration", "Start from a source" tiles, "Recent
- * explorations" gallery, lazy "Scratch" seeding, and the delete confirm ->
- * force-close-with-toast flow (delete itself lives in the slice; this pane
- * just has to call it after confirming).
+ * explorations" gallery (filtered to "real" explorations per
+ * `explorationLifecycle.js`, Phase 6c-T5 — no more lazy "Scratch" seeding),
+ * and the delete confirm -> force-close-with-toast flow (delete itself
+ * lives in the slice; this pane just has to call it after confirming).
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
@@ -320,41 +321,205 @@ describe('ExplorerHomePane — recent explorations gallery', () => {
       name: 'exp_1',
     });
   });
+
+  // Phase 6c-T5 coverage completion: the gallery's own Duplicate/Rename menu
+  // wiring (distinct from ExplorationCard's internal handling) had never
+  // actually been driven end-to-end via a click.
+  test('the card kebab\'s Duplicate action calls duplicateExploration and opens the new tab on success', async () => {
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_copy' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-duplicate-action'));
+
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalledWith('exp_1'));
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'exploration:exp_copy',
+        type: 'exploration',
+        name: 'exp_copy',
+      })
+    );
+  });
+
+  test('a failed duplicate never opens a tab', async () => {
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-duplicate-action'));
+
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('the card kebab\'s Rename action calls renameExploration with the new name', () => {
+    const renameExploration = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
+      renameExploration,
+    });
+    render(<ExplorerHomePane />);
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-menu'));
+    fireEvent.click(screen.getByTestId('exploration-card-exp_1-rename-action'));
+    const input = screen.getByTestId('exploration-card-exp_1-rename-input');
+    fireEvent.change(input, { target: { value: 'Renamed exploration' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(renameExploration).toHaveBeenCalledWith('exp_1', 'Renamed exploration');
+  });
 });
 
-describe('ExplorerHomePane — lazy Scratch seeding', () => {
-  test('seeds a "Scratch" exploration once the list is fetched and genuinely empty', async () => {
-    const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_scratch' });
+// Phase 6c-T5 (ux-audit.md "Phantom 'Scratch' exploration on a brand-new
+// user's home" / "clicking a source tile silently creates a new persistent
+// exploration"): the lazy auto-seed is GONE — a fresh project's gallery is
+// genuinely empty and says so honestly, and a seeded (source-tile/"Explore
+// this") record only shows up once it clears the "real" bar
+// (`explorationLifecycle.js`).
+describe('ExplorerHomePane — no more phantom Scratch seeding (Phase 6c-T5)', () => {
+  test('never auto-creates anything, even on a genuinely empty, fetched list', () => {
+    const createExploration = jest.fn();
     seed({
       workspaceExplorations: { byId: {}, order: [] },
       workspaceExplorationsFetched: true,
       createExploration,
     });
     render(<ExplorerHomePane />);
-    await waitFor(() => expect(createExploration).toHaveBeenCalledTimes(1));
-    expect(createExploration).toHaveBeenCalledWith();
+    expect(createExploration).not.toHaveBeenCalled();
   });
 
-  test('does NOT seed while the list is still loading (fetched:false)', () => {
-    const createExploration = jest.fn();
+  test('shows a loading placeholder (not the empty state) while the list is still fetching', () => {
     seed({
       workspaceExplorations: { byId: {}, order: [] },
       workspaceExplorationsFetched: false,
-      createExploration,
     });
     render(<ExplorerHomePane />);
-    expect(createExploration).not.toHaveBeenCalled();
-    expect(screen.getByTestId('explorer-home-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('explorer-home-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('explorer-home-empty')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('explorer-home-gallery')).not.toBeInTheDocument();
   });
 
-  test('does NOT seed when explorations already exist', () => {
-    const createExploration = jest.fn();
+  test('shows the honest empty state once fetched and genuinely empty — no fabricated card', () => {
     seed({
-      workspaceExplorations: { byId: { exp_1: explorationRecord() }, order: ['exp_1'] },
-      createExploration,
+      workspaceExplorations: { byId: {}, order: [] },
+      workspaceExplorationsFetched: true,
     });
     render(<ExplorerHomePane />);
-    expect(createExploration).not.toHaveBeenCalled();
+    expect(screen.getByTestId('explorer-home-empty')).toBeInTheDocument();
+    expect(screen.queryByText('Scratch')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('explorer-home-gallery')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExplorerHomePane — gallery visibility of seeded explorations (Phase 6c-T5)', () => {
+  test('an untouched source-tile seed (empty draft, default name) is hidden from the gallery', () => {
+    seed({
+      workspaceExplorations: {
+        byId: {
+          exp_1: explorationRecord({
+            id: 'exp_1',
+            name: 'local-duckdb exploration',
+            seededFrom: { type: 'source', name: 'local-duckdb' },
+            draft: {
+              queries: [{ name: 'query_1', sql: '', source: 'local-duckdb' }],
+              insights: [{ name: 'insight', props: {} }],
+              chart: null,
+              computedColumns: [],
+            },
+          }),
+        },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorerHomePane />);
+    expect(screen.getByTestId('explorer-home-empty')).toBeInTheDocument();
+    expect(screen.queryByTestId('exploration-card-exp_1-name')).not.toBeInTheDocument();
+  });
+
+  test('a source-tile seed with real SQL typed IS shown in the gallery', () => {
+    seed({
+      workspaceExplorations: {
+        byId: {
+          exp_1: explorationRecord({
+            id: 'exp_1',
+            name: 'local-duckdb exploration',
+            seededFrom: { type: 'source', name: 'local-duckdb' },
+            draft: {
+              queries: [{ name: 'query_1', sql: 'SELECT * FROM t', source: 'local-duckdb' }],
+              insights: [{ name: 'insight', props: {} }],
+              chart: null,
+              computedColumns: [],
+            },
+          }),
+        },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorerHomePane />);
+    expect(screen.getByTestId('exploration-card-exp_1-name')).toBeInTheDocument();
+  });
+
+  test('a source-tile seed renamed away from its default name IS shown, even with an empty draft', () => {
+    seed({
+      workspaceExplorations: {
+        byId: {
+          exp_1: explorationRecord({
+            id: 'exp_1',
+            name: 'Revenue deep-dive',
+            seededFrom: { type: 'source', name: 'local-duckdb' },
+            draft: {
+              queries: [{ name: 'query_1', sql: '', source: 'local-duckdb' }],
+              insights: [],
+              chart: null,
+              computedColumns: [],
+            },
+          }),
+        },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorerHomePane />);
+    expect(screen.getByTestId('exploration-card-exp_1-name')).toBeInTheDocument();
+  });
+
+  test('a source-tile seed with something already promoted IS shown, regardless of current draft content', () => {
+    seed({
+      workspaceExplorations: {
+        byId: {
+          exp_1: explorationRecord({
+            id: 'exp_1',
+            name: 'local-duckdb exploration',
+            seededFrom: { type: 'source', name: 'local-duckdb' },
+            draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+            promoted: [{ type: 'model', name: 'query_1' }],
+          }),
+        },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorerHomePane />);
+    expect(screen.getByTestId('exploration-card-exp_1-name')).toBeInTheDocument();
+  });
+
+  test('a blank "+ New exploration" record (no seededFrom) is always shown, even fully empty', () => {
+    seed({
+      workspaceExplorations: {
+        byId: { exp_1: explorationRecord({ id: 'exp_1', name: 'Exploration 2', seededFrom: null }) },
+        order: ['exp_1'],
+      },
+    });
+    render(<ExplorerHomePane />);
+    expect(screen.getByTestId('exploration-card-exp_1-name')).toBeInTheDocument();
   });
 });
 

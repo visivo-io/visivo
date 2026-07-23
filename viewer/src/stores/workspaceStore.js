@@ -53,6 +53,7 @@ import {
   viewForDocumentType,
   DEFAULT_WORKSPACE_VIEW,
 } from '../components/views/workspace/higherLevelViews';
+import { isExplorationVisibleInGallery } from '../components/views/workspace/explorationLifecycle';
 
 /**
  * Two `{ type, name }` selection descriptors identify the same object.
@@ -521,6 +522,34 @@ const createWorkspaceSlice = (set, get) => ({
         state.workspaceUrlNavigate(workspaceTabUrl(newActive, state.workspaceUrlBase));
       } else {
         state.workspaceUrlNavigate(workspaceViewUrl(activeView, state.workspaceUrlBase));
+      }
+    }
+
+    // Phase 6c-T5 (ux-audit.md Lifecycle findings) — GARBAGE-COLLECT AN
+    // UNTOUCHED SEEDED EXPLORATION ON CLOSE. A source-tile / "Explore this"
+    // seed still mints its backend record eagerly (keeps its id stable for
+    // the tab's whole life — no id-swap machinery needed anywhere else), but
+    // that record is a pure browse gesture until the user actually does
+    // something with it (`isExplorationVisibleInGallery`, which is why it
+    // never showed up in the Home gallery either). Closing its tab without
+    // ever crossing that bar means the user looked and moved on — leave no
+    // trace, exactly like never having created it. Fire-and-forget: this
+    // runs AFTER the tab is already removed from `workspaceTabs` above, so
+    // `deleteExploration`'s own (redundant, harmless) tab-close call is a
+    // no-op, and a failed delete just leaves an invisible, never-surfaced
+    // record behind — never a user-visible regression.
+    //
+    // Deliberately fires for EVERY close path (the plain × on a clean tab,
+    // AND "Close without saving" on a dirty one via `confirmCloseWorkspaceTab`
+    // calling `discardExploration` immediately before this) — a discard
+    // reverts the draft to its opening snapshot synchronously before this
+    // runs, so `isExplorationVisibleInGallery` here always reflects the
+    // POST-discard content, never edits that were just thrown away.
+    if (closing.type === 'exploration' && tabId.startsWith('exploration:')) {
+      const explorationId = tabId.slice('exploration:'.length);
+      const record = get().workspaceExplorations?.byId?.[explorationId];
+      if (record && !isExplorationVisibleInGallery(record)) {
+        get().deleteExploration?.(explorationId);
       }
     }
   },

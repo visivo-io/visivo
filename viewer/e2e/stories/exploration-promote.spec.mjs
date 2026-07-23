@@ -405,6 +405,12 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     // `insight-toggle-${badInsightName}` COLLAPSED the already-open section
     // instead of opening it, hiding the y-slot and hanging the next locator.
     await page.getByTestId('right-panel-add-insight').click();
+    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
+    // of letting you pick an existing one"): the button now opens a picker
+    // (existing insights + "New blank insight"); these specs want the OLD
+    // "always create a fresh blank insight" behavior, so drive the new
+    // secondary action explicitly.
+    await page.getByTestId('add-insight-menu-create-new').click();
     const insightNames = await page.evaluate(() => window.useStore.getState().explorerChartInsightNames);
     const badInsightName = insightNames[insightNames.length - 1];
     const ySlot = page

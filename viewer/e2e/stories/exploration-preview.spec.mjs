@@ -496,6 +496,12 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
     // Add a SECOND insight with a permanently dangling ref — its compile
     // pass will keep erroring.
     await page.getByTestId('right-panel-add-insight').click();
+    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
+    // of letting you pick an existing one"): the button now opens a picker
+    // (existing insights + "New blank insight"); these specs want the OLD
+    // "always create a fresh blank insight" behavior, so drive the new
+    // secondary action explicitly.
+    await page.getByTestId('add-insight-menu-create-new').click();
     const insightNames = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames
     );
@@ -620,6 +626,12 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
     // to A's elements below is now scoped to A's own section testid, and A
     // is explicitly re-expanded before being touched again.
     await page.getByTestId('right-panel-add-insight').click();
+    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
+    // of letting you pick an existing one"): the button now opens a picker
+    // (existing insights + "New blank insight"); these specs want the OLD
+    // "always create a fresh blank insight" behavior, so drive the new
+    // secondary action explicitly.
+    await page.getByTestId('add-insight-menu-create-new').click();
     const insightNames = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames
     );

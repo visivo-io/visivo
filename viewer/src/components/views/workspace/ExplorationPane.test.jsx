@@ -103,6 +103,278 @@ describe('ExplorationPane — ready state', () => {
     expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
   });
 
+  // Phase 6c-T5 (ux-audit.md "⚠ conflicts-with-e2e Reload silently discards
+  // recent SQL edits (autosave debounce race)" / "Edits made seconds before
+  // closing the browser are silently lost"): flush BOTH the live-sync
+  // debounce and the backend-persist debounce the instant the page starts
+  // to leave — `visibilitychange`→'hidden' is the primary signal (fires
+  // reliably before teardown); `pagehide`/`beforeunload` are the fallback
+  // net. A real browser close/reload triggers NEITHER a React unmount nor
+  // an `id` change, so nothing else in this component would ever catch it.
+  describe('flush-on-page-leaving (Phase 6c-T5)', () => {
+    const fireDocumentVisibilityHidden = () => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+    };
+
+    afterEach(() => {
+      // Restore jsdom's default so later tests in this file (and other
+      // files sharing the jsdom document) see a normal 'visible' state.
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      });
+    });
+
+    test('document going hidden (tab close / reload / backgrounding) flushes a genuinely PENDING debounced edit immediately', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      const snapshotExplorerWorkingState = jest.fn(() => ({ modelTabs: ['query_1'] }));
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+        snapshotExplorerWorkingState,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      // Clear the mount-time calls (restore/snapshot bookkeeping) so the
+      // assertion below is unambiguously about the visibilitychange flush.
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      // Arm the live-sync debounce (an edit just happened) — flushNow only
+      // acts when something is genuinely pending (see the "never re-pushes
+      // a stale snapshot" test below for why that guard exists).
+      act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
+
+      fireDocumentVisibilityHidden();
+
+      expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+      expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('pagehide also flushes a pending edit immediately (fallback net alongside visibilitychange)', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
+
+      act(() => {
+        window.dispatchEvent(new Event('pagehide'));
+      });
+
+      expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+      expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('beforeunload also flushes a pending edit immediately', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
+
+      act(() => {
+        window.dispatchEvent(new Event('beforeunload'));
+      });
+
+      expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+      expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+    });
+
+    // Regression test (#19 cross-tab-concurrency, found live via e2e): the
+    // ORIGINAL flush-on-hide fix unconditionally re-SNAPSHOTTED this pane's
+    // current legacy working state on every hide/reload — including when
+    // nothing had changed locally, because the debounce had already fired
+    // and synced. That's dangerous specifically when this tab's own
+    // snapshot has gone STALE relative to the server (e.g. a sibling
+    // browser context won a last-write-wins race after this tab's debounce
+    // already sent its own, now-losing, edit): reloading the LOSING tab
+    // would silently re-push its stale snapshot and clobber the winner's
+    // already-persisted draft.
+    //
+    // NOTE this does NOT assert `flushExplorationSync` is skipped — VIS-1107
+    // found that flushNow must call it UNCONDITIONALLY (it's a safe no-op
+    // in the real store when nothing is queued in `_pendingSyncTimers`, but
+    // skipping it here entirely was what silently dropped an
+    // already-handed-off-but-not-yet-persisted write on reload). This test
+    // only guards the narrower claim: no FRESH snapshot gets pushed via
+    // `updateExplorationDraft` when nothing local has changed since the
+    // last hand-off.
+    test('never re-snapshots/re-pushes via updateExplorationDraft on hide/reload when nothing new is pending (no stale-clobber on the losing side of a cross-tab race)', () => {
+      jest.useFakeTimers();
+      try {
+        const updateExplorationDraft = jest.fn();
+        const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+        seed({
+          workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+          updateExplorationDraft,
+          flushExplorationSync,
+        });
+        render(<ExplorationPane id="exp_1" />);
+        updateExplorationDraft.mockClear();
+        flushExplorationSync.mockClear();
+
+        // An edit happens, and its debounce fires NATURALLY (not via a page
+        // hide) — by the time the page later goes away, nothing NEW is
+        // pending anymore; some OTHER context may since have written a
+        // newer draft.
+        act(() => {
+          useStore.setState({ explorerModelTabs: ['query_1'] });
+        });
+        act(() => {
+          jest.advanceTimersByTime(600);
+        });
+        expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+        updateExplorationDraft.mockClear();
+        flushExplorationSync.mockClear();
+
+        act(() => {
+          window.dispatchEvent(new Event('pagehide'));
+        });
+
+        expect(updateExplorationDraft).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    // VIS-1107 (Urgent — blocked the T5 PR): the OUTER 600ms live-sync
+    // timer firing naturally only hands the write off to
+    // workspaceExplorationsStore.js's SEPARATE ~1s backend-persist debounce
+    // (`_pendingSyncTimers`) — it does NOT force-flush it. If a reload
+    // lands after the outer timer fires but before that inner ~1s timer
+    // completes, `liveSyncPendingRef` is already false (the outer layer's
+    // job is done), so the OLD flushNow — which skipped calling
+    // `flushExplorationSync` entirely whenever nothing was pending on the
+    // outer ref — silently dropped the still-queued inner write along with
+    // the reloading page. Root-caused via an instrumented live repro (see
+    // VIS-1107): the x/y-pill e2e case produced ZERO network requests
+    // around the reload under the old code, vs. a completed POST for a
+    // SQL-only edit that reloads before the outer timer ever fires
+    // naturally. The fix: call `flushExplorationSync` UNCONDITIONALLY on
+    // every flush (it's already a safe no-op in the real store when
+    // nothing is queued) — only the "capture a fresh snapshot" step stays
+    // gated on `liveSyncPendingRef`.
+    test('VIS-1107: flushExplorationSync is called even when the OUTER live-sync ref is already idle — forces through whatever the backend-persist debounce still has queued', () => {
+      jest.useFakeTimers();
+      try {
+        const updateExplorationDraft = jest.fn();
+        const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+        seed({
+          workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+          updateExplorationDraft,
+          flushExplorationSync,
+        });
+        render(<ExplorationPane id="exp_1" />);
+        updateExplorationDraft.mockClear();
+        flushExplorationSync.mockClear();
+
+        // The outer 600ms timer fires NATURALLY, handing off to the (here
+        // mocked, in reality separately-debounced) backend persist — this
+        // is the exact moment `liveSyncPendingRef` flips back to false,
+        // even though the real store's inner ~1s timer is still running.
+        act(() => {
+          useStore.setState({ explorerModelTabs: ['query_1'] });
+        });
+        act(() => {
+          jest.advanceTimersByTime(600);
+        });
+        expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+        flushExplorationSync.mockClear();
+
+        // Reload happens before the (real, separately-timed) inner backend
+        // debounce would have completed on its own.
+        act(() => {
+          window.dispatchEvent(new Event('pagehide'));
+        });
+
+        // Must be called — this is what lets the real store's
+        // `flushExplorationSync` force through whatever it still has
+        // queued in `_pendingSyncTimers`, instead of silently doing
+        // nothing because the OUTER ref alone looked idle.
+        expect(flushExplorationSync).toHaveBeenCalledWith('exp_1');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    test('a visibilitychange event that does NOT transition to hidden (e.g. regaining focus) never flushes', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      render(<ExplorationPane id="exp_1" />);
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      // Arm a pending edit so a bug here couldn't hide behind the
+      // already-nothing-pending guard tested above.
+      act(() => {
+        useStore.setState({ explorerModelTabs: ['query_1'] });
+      });
+
+      // jsdom's default visibilityState is 'visible' — dispatch the event
+      // without overriding it, simulating e.g. the tab regaining focus.
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(updateExplorationDraft).not.toHaveBeenCalled();
+      expect(flushExplorationSync).not.toHaveBeenCalled();
+    });
+
+    test('unmounting removes the listeners — no stale flush against a closed pane', () => {
+      const updateExplorationDraft = jest.fn();
+      const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+      seed({
+        workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+        updateExplorationDraft,
+        flushExplorationSync,
+      });
+      const { unmount } = render(<ExplorationPane id="exp_1" />);
+      unmount();
+      updateExplorationDraft.mockClear();
+      flushExplorationSync.mockClear();
+
+      act(() => {
+        window.dispatchEvent(new Event('pagehide'));
+      });
+
+      expect(updateExplorationDraft).not.toHaveBeenCalled();
+      expect(flushExplorationSync).not.toHaveBeenCalled();
+    });
+  });
+
   test('switching id flushes the OLD exploration and restores the NEW one — two-tab isolation', () => {
     const restoreExplorerWorkingState = jest.fn();
     const updateExplorationDraft = jest.fn();
@@ -146,6 +418,112 @@ describe('ExplorationPane — ready state', () => {
     });
     render(<ExplorationPane id="exp_1" />);
     expect(setWorkspaceTabDirty).toHaveBeenCalledWith('exploration:exp_1', false);
+  });
+});
+
+// Phase 6c-T5 coverage completion: the live-sync debounce itself (the actual
+// "autosave while editing" mechanism this whole track is about) had never
+// been exercised past its arm-and-schedule step — every existing test only
+// asserted the unmount/deactivate flush, never the timer firing on its own,
+// nor the flush-on-page-leaving effect cancelling an already-armed one.
+describe('ExplorationPane — live-sync debounce firing (Phase 6c-T5)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('editing (a watched field changing) arms the debounce, which persists the CURRENT snapshot once it fires', () => {
+    const updateExplorationDraft = jest.fn();
+    const snapshotExplorerWorkingState = jest.fn(() => ({ modelTabs: ['query_1'] }));
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1'] });
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+  });
+
+  test('a SECOND edit before the first debounce fires re-arms the timer (only the LATEST snapshot persists)', () => {
+    const updateExplorationDraft = jest.fn();
+    let snapshotCallCount = 0;
+    const snapshotExplorerWorkingState = jest.fn(() => {
+      snapshotCallCount += 1;
+      return { modelTabs: [`query_${snapshotCallCount}`] };
+    });
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1'] });
+    });
+    // Well before the 600ms debounce — a second edit re-arms it rather than
+    // letting the first one fire.
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1', 'query_2'] });
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    // Only ONE persist fired — the re-armed one — not two.
+    expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+  });
+
+  test('flush-on-page-leaving cancels an ALREADY-ARMED live-sync timer instead of double-firing', () => {
+    const updateExplorationDraft = jest.fn();
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      flushExplorationSync,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+    flushExplorationSync.mockClear();
+
+    // Arm the live-sync timer (an edit just happened) but don't let it fire yet.
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1'] });
+    });
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+
+    // The page starts leaving before the debounce would have fired on its own.
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
+    expect(flushExplorationSync).toHaveBeenCalledTimes(1);
+
+    // Advancing time past the original debounce window must NOT fire a
+    // second, stale persist — the timer was cancelled, not just raced.
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -413,6 +791,24 @@ describe('ExplorationPane — duplicate', () => {
       type: 'exploration',
       name: 'exp_2',
     });
+  });
+
+  test('a failed duplicate never opens a tab', async () => {
+    const flushExplorationSync = jest.fn().mockResolvedValue({ success: true });
+    const duplicateExploration = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      flushExplorationSync,
+      duplicateExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorationPane id="exp_1" />);
+
+    fireEvent.click(screen.getByTestId('exploration-duplicate-button'));
+    await waitFor(() => expect(duplicateExploration).toHaveBeenCalled());
+
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
   });
 
   // VIS-1086: double-clicking Duplicate must never fire two duplicate

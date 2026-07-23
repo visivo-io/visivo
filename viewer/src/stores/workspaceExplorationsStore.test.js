@@ -222,6 +222,10 @@ describe('createExploration', () => {
       // doesn't seed one) — see the drift-detection tests below for the
       // populated-collection case.
       seeded_from: { type: 'model', name: 'orders', content_signature: null },
+      // Phase 6c-T5 (naming coherence): a seeded create gets a deterministic
+      // default name derived from what was explored, rather than the
+      // backend's generic 'Exploration N' counter.
+      name: 'orders exploration',
     });
     expect(useStore.getState().workspaceExplorations.byId.exp_1.seededFrom).toEqual({
       type: 'model',
@@ -1645,6 +1649,32 @@ describe('promoteExploration', () => {
     expect(result.success).toBe(true);
     expect(result.results).toEqual([
       { type: 'model', name: 'orders_q', tier: 'model', success: true, error: null },
+    ]);
+  });
+
+  test('a row whose save action is not registered on the store fails cleanly (defensive guard)', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    // Simulate store-composition drift: SAVE_ACTION says 'model' -> 'saveModel',
+    // but the action itself is missing from the composed store.
+    act(() => {
+      useStore.setState({ saveModel: undefined });
+    });
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.results).toEqual([
+      {
+        type: 'model',
+        name: 'orders_q',
+        tier: 'model',
+        success: false,
+        error: 'No save action registered for type "model"',
+      },
     ]);
   });
 
