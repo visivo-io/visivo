@@ -1029,3 +1029,145 @@ describe('ExplorationPane — live debounced persist while editing (02 §1/§8)'
     expect(updateExplorationDraft).toHaveBeenCalledTimes(1);
   });
 });
+
+// VIS-1110 (HIGH): a source-tile browse seeds a generic model name
+// (`query_1`) that T3's live auto-rename effect (`ExplorationBuildRail.jsx`)
+// renames to `<source>_query` the moment a source anchor is available. That
+// rename touches the SAME `explorerModelTabs`/`explorerModelStates` fields
+// this pane's live-sync effect watches — left unguarded, it arms the
+// debounce below exactly like a real edit would, eventually flips
+// `syncStatus` to 'saving' (the tab's dirty dot) and fires a redundant
+// backend POST, purely from opening a browse tile and never touching it.
+describe('ExplorationPane — VIS-1110 a pure rename-of-a-generic-seed must not dirty an untouched browse', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // The exploration's OWN name matches `seedDefaultName` exactly (so it does
+  // NOT already count as "renamed away from the seed default" per
+  // `isExplorationRenamedFromSeedDefault`) — a genuinely untouched browse.
+  const browseSeedRecord = () =>
+    record({
+      name: 'local-duckdb exploration',
+      seededFrom: { type: 'source', name: 'local-duckdb' },
+      draft: { queries: [], insights: [], chart: null, computedColumns: [], legacyState: null },
+    });
+
+  test('T3’s auto-rename of the seed model (query_1 -> <source>_query, still no SQL) never arms the live-sync debounce', () => {
+    const updateExplorationDraft = jest.fn();
+    // Mirrors exactly what `renameModelTab` produces: the model KEY changes,
+    // but there is still no SQL, no extra model/insight, no chart layout —
+    // a pure cosmetic rename of an untouched browse seed.
+    const snapshotExplorerWorkingState = jest.fn(() => ({
+      modelTabs: ['local-duckdb_query'],
+      modelStates: {
+        'local-duckdb_query': { sql: '', sourceName: 'local-duckdb', isNew: true, computedColumns: [] },
+      },
+      insightStates: {},
+      chartLayout: {},
+      chartInsightNames: [],
+    }));
+    seed({
+      workspaceExplorations: { byId: { exp_1: browseSeedRecord() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+
+    // T3's rename effect fires: explorerModelTabs/explorerModelStates change
+    // from the seed default to the source-anchored name — the SAME
+    // dependency this pane's live-sync effect watches.
+    act(() => {
+      useStore.setState({
+        explorerModelTabs: ['local-duckdb_query'],
+        explorerModelStates: {
+          'local-duckdb_query': { sql: '', sourceName: 'local-duckdb', isNew: true, computedColumns: [] },
+        },
+      });
+    });
+
+    // Advance well past BOTH debounces (600ms live-sync + 1s backend) — if
+    // the gate is missing, `updateExplorationDraft` (and therefore
+    // `syncStatus: 'saving'` / the dirty dot / the eventual backend POST)
+    // would already have fired by now.
+    act(() => {
+      jest.advanceTimersByTime(1600);
+    });
+
+    // THE BUG: this used to fire regardless of whether the change was a
+    // real edit or a pure system rename, dirtying a tab the user never
+    // touched.
+    expect(updateExplorationDraft).not.toHaveBeenCalled();
+  });
+
+  test('once the user actually types real SQL, the live-sync debounce still fires normally (the gate never blocks a real edit)', () => {
+    const updateExplorationDraft = jest.fn();
+    const snapshotExplorerWorkingState = jest.fn(() => ({
+      modelTabs: ['local-duckdb_query'],
+      modelStates: {
+        'local-duckdb_query': {
+          sql: 'SELECT * FROM orders',
+          sourceName: 'local-duckdb',
+          isNew: true,
+          computedColumns: [],
+        },
+      },
+      insightStates: {},
+      chartLayout: {},
+      chartInsightNames: [],
+    }));
+    seed({
+      workspaceExplorations: { byId: { exp_1: browseSeedRecord() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+
+    act(() => {
+      useStore.setState({
+        explorerModelTabs: ['local-duckdb_query'],
+        explorerModelStates: {
+          'local-duckdb_query': {
+            sql: 'SELECT * FROM orders',
+            sourceName: 'local-duckdb',
+            isNew: true,
+            computedColumns: [],
+          },
+        },
+      });
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+  });
+
+  test('an exploration that is already visible in the gallery (no seed) still syncs immediately on any watched change — the gate never touches an ordinary exploration', () => {
+    const updateExplorationDraft = jest.fn();
+    const snapshotExplorerWorkingState = jest.fn(() => ({ modelTabs: ['query_1'] }));
+    seed({
+      // `record()` defaults to `seededFrom: null` — always visible regardless
+      // of content.
+      workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] },
+      updateExplorationDraft,
+      snapshotExplorerWorkingState,
+    });
+    render(<ExplorationPane id="exp_1" />);
+    updateExplorationDraft.mockClear();
+
+    act(() => {
+      useStore.setState({ explorerModelTabs: ['query_1'] });
+    });
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+    expect(updateExplorationDraft).toHaveBeenCalledWith('exp_1', expect.any(Object));
+  });
+});

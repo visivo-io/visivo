@@ -10,6 +10,7 @@ import useInlineRename from '../../../hooks/useInlineRename';
 import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import { legacyStateToDraft, draftToLegacyState } from './explorationLegacyBridge';
 import { computeExplorationStaleness } from './explorationStaleness';
+import { isExplorationVisibleInGallery } from './explorationLifecycle';
 import CenteredFrameState from '../common/CenteredFrameState';
 import { emitWorkspaceEvent } from './telemetry';
 
@@ -198,6 +199,37 @@ const ExplorationPane = ({ id }) => {
     if (readyId !== id) return undefined;
     if (skipNextLiveSyncRef.current) {
       skipNextLiveSyncRef.current = false;
+      return undefined;
+    }
+    // VIS-1110 (spurious "unsaved changes" dialog + a redundant draft POST on
+    // every source-tile browse): a browse-only seed's generic model tab can
+    // be silently auto-renamed by `ExplorationBuildRail`'s live-suggestion
+    // effect (T3, D11) the instant a source anchor is available — that
+    // rename touches the SAME `explorerModelTabs`/`explorerModelStates`
+    // fields this effect watches, even though nothing the user actually
+    // authored has changed. Arming the debounce below for that alone would
+    // eventually flip `syncStatus` to 'saving' (the tab's dirty dot, which
+    // routes a close through the confirm dialog) and fire a backend POST,
+    // purely from opening and looking at a browse tile.
+    //
+    // Gate on the SAME `isExplorationVisibleInGallery` predicate the Home
+    // gallery and the tab-close GC (`closeWorkspaceTab`) already use as the
+    // single source of truth for "is this seed still just a browse gesture"
+    // — evaluated against a FRESH live snapshot (not the possibly-stale
+    // persisted `record`), so a rename that lands the same tick this effect
+    // fires is judged on what it actually changed, not last cycle's draft.
+    // If the exploration still isn't "real" yet even with this tick's
+    // change folded in, there is nothing here worth persisting — skip
+    // arming the debounce entirely for this tick. A record that's ALREADY
+    // visible (no seed, already renamed, already promoted, or already has
+    // real content) is untouched by this gate: `isExplorationVisibleInGallery`
+    // short-circuits true immediately for those, so every ordinary edit on
+    // an ordinary exploration arms the debounce exactly as before. And a
+    // genuine first real edit on a browse seed (SQL typed, a second model
+    // added, …) makes the SAME predicate true the moment it lands — this
+    // effect re-runs on every one of those watched-field changes, so real
+    // content is never silently dropped, only ever delayed until it exists.
+    if (record && !isExplorationVisibleInGallery({ ...record, draft: legacyStateToDraft(snapshotExplorerWorkingState()) })) {
       return undefined;
     }
     if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current);
