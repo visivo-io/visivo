@@ -1,7 +1,12 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { PiPlus, PiFloppyDisk, PiCheckCircle, PiMagnifyingGlass, PiSparkle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
-import { selectHasModifications, getAllKnownNames } from '../../../stores/explorerStore';
+import {
+  selectHasModifications,
+  getAllKnownNames,
+  computeChartHasContent,
+  computeMeaningfulInsightNames,
+} from '../../../stores/explorerStore';
 import { generateUniqueName } from '../../../utils/uniqueName';
 import { isGenericPromoteName } from './promoteNaming';
 import InsightBuildSection from './InsightBuildSection';
@@ -198,6 +203,25 @@ const ExplorationBuildRail = ({ explorationId }) => {
   const explorerDefaultsForNaming = useStore(s => s.defaults);
   const renameModelTab = useStore(s => s.renameModelTab);
   const renameInsight = useStore(s => s.renameInsight);
+  // VIS-1109 (ux-audit.md's D11 naming cascade never reached the LAST link):
+  // the two loops below already carry a fresh query -> chart build through
+  // `<source>_query` -> `<...>_insight` — the chart itself was the one step
+  // of promoteNaming.js's own documented chain (`_query -> _insight ->
+  // _chart`) this effect never took. `explorerChartName` stays `null`
+  // ("Chart: Untitled" in the Build rail) even after the user binds real x/y
+  // content, and `buildPromoteChecklist` gates the chart's entire checklist
+  // row on `explorerChartName` being truthy — so a fully live, rendering
+  // chart was silently dropped from "Save to project" with no row and no
+  // notice. These three read the same "has real content" state
+  // `buildPromoteChecklist` itself gates on (`computeChartHasContent`,
+  // shared from `explorerStore.js` so the two can never drift apart) —
+  // exactly so a chart referencing only scaffold insights, with no layout of
+  // its own, stays unnamed and editable, same as an unbound model/insight
+  // does above (VIS-1102's "never offer scaffolding" bar still holds).
+  const explorerChartNameForNaming = useStore(s => s.explorerChartName);
+  const explorerChartLayoutForNaming = useStore(s => s.explorerChartLayout);
+  const explorerInsightStatesForNaming = useStore(s => s.explorerInsightStates);
+  const setChartName = useStore(s => s.setChartName);
   useEffect(() => {
     const used = new Set(Array.from(getAllKnownNames(useStore.getState()).keys()));
 
@@ -246,6 +270,50 @@ const ExplorationBuildRail = ({ explorationId }) => {
         // same fail-open as above
       }
     }
+
+    // VIS-1109 — the chart naming step promoteNaming.js's cascade always
+    // documented but this effect never actually took. Only fires once the
+    // chart is genuinely content-bearing (never for pure scaffolding — same
+    // bar `buildPromoteChecklist` itself gates the chart row on) and only
+    // while it's still unnamed; once named, `explorerChartNameForNaming`
+    // flips truthy and this branch naturally stops re-firing, exactly like
+    // the model/insight loops above.
+    if (!explorerChartNameForNaming) {
+      // Read fresh, post-rename state — the loops above may have just
+      // renamed the very insight(s) this reads by name via `renameInsight`
+      // (a synchronous `set()`), so `chartInsightNames`/
+      // `explorerInsightStatesForNaming` captured at the top of this render
+      // could still be the PRE-rename names.
+      const freshState = useStore.getState();
+      const meaningfulInsightNames = computeMeaningfulInsightNames(freshState);
+      if (computeChartHasContent(freshState, meaningfulInsightNames)) {
+        const insightAnchor =
+          (freshState.explorerChartInsightNames || []).find(n => meaningfulInsightNames.has(n)) ||
+          null;
+        // Same cascade fallback `promoteNaming.js` uses at save time: anchor
+        // on the meaningful insight if there is one, otherwise the model —
+        // covers a chart made valid by real layout config alone (D12-style
+        // "chart with a title but no insight bound yet").
+        const base = insightAnchor
+          ? `${insightAnchor}_chart`
+          : modelAnchor
+            ? `${modelAnchor}_chart`
+            : null;
+        // No usable anchor at all (no model loaded either) — leave it
+        // unnamed/editable rather than guessing, same as the loops above.
+        if (base) {
+          const suggested = generateUniqueName(base, used);
+          used.add(suggested);
+          try {
+            setChartName(suggested);
+          } catch {
+            // A collision the suggestion logic couldn't see — fail open,
+            // leave the chart unnamed; still editable by hand via
+            // `ChartBuildSection`'s own rename input.
+          }
+        }
+      }
+    }
     // Deliberately excludes `chartInsightNames`'s own identity churn concerns
     // beyond re-running when it changes — this effect is idempotent and
     // self-terminating (see comment above), so re-running it on every
@@ -258,6 +326,12 @@ const ExplorationBuildRail = ({ explorationId }) => {
     // in which case `explorerModelStatesForNaming` never changes once
     // `defaults` arrives, and without `defaults` as its own dependency this
     // effect would never re-run to notice it's now safe to suggest a name.
+    // `explorerChartNameForNaming`/`explorerChartLayoutForNaming`/
+    // `explorerInsightStatesForNaming`/`setChartName` (VIS-1109) follow the
+    // exact same reasoning as the model/insight dependencies above: the
+    // chart-naming branch needs to re-run whenever any of them changes (a
+    // prop gets bound, layout gets edited, the chart gets named/renamed) to
+    // notice newly-arrived content or to stop once a real name is in place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     explorerModelTabsForNaming,
@@ -266,6 +340,10 @@ const ExplorationBuildRail = ({ explorationId }) => {
     chartInsightNames,
     renameModelTab,
     renameInsight,
+    explorerChartNameForNaming,
+    explorerChartLayoutForNaming,
+    explorerInsightStatesForNaming,
+    setChartName,
   ]);
 
   const handleOpenPromoted = useCallback(
