@@ -136,6 +136,59 @@ async function waitForDraftInsightData(page, insightName, timeout = 20000) {
   return page.evaluate(name => window.useStore.getState().insightJobs[`__draft__:${name}`].data, insightName);
 }
 
+/** Force a draft insight to bear the EXACT same name as an already-promoted
+ * insight from a DIFFERENT exploration (VIS-1091's precondition).
+ *
+ * T3's live auto-rename (`ExplorationBuildRail.jsx`'s naming effect, Wave 2)
+ * scopes `generateUniqueName` GLOBALLY (`getAllKnownNames` unions every
+ * cached collection, project-wide — not per exploration), so two
+ * independently-created explorations no longer mint the same default name
+ * "for free": whichever names second sees the first's already-promoted
+ * insight in `state.insights` (refreshed by `saveInsight`'s post-save
+ * `fetchInsights()`) and uniquifies away from it. The collision this test
+ * exists to guard against must therefore be created explicitly.
+ *
+ * The obvious way to force it — the real rename affordance
+ * (`InsightBuildSection`'s inline-rename UI, which calls the exact same
+ * `renameInsight` store action a bare `page.evaluate` would) — refuses to
+ * cooperate: confirmed by live reproduction against this sandbox, BOTH the
+ * UI path (shows "already in use by a insight" inline and leaves the name
+ * untouched) and `window.useStore.getState().renameInsight(...)` (throws
+ * `NameCollisionError`) reject renaming anything to a name `assertNameUnique`
+ * already finds in `state.insights` — which `insightNameA` now is, globally,
+ * regardless of which exploration promoted it. That guard is correct,
+ * intentional, and separately tested (`explorerStore.test.js`'s "throws
+ * NameCollisionError when new name collides with cached object"); it isn't
+ * specific to this bug, and this test must not weaken it to route around it.
+ *
+ * `exploration-promote.spec.mjs`'s `seedDraftWithExistingNames` hit the
+ * identical wall for its own same-name (UPDATE-BY-NAME) scenario and
+ * resolved it the same way: seed the store directly with the target name
+ * already in place — what the (documented, still out-of-scope) "Explore
+ * this" flow would eventually produce — without touching the correct,
+ * guarded rename path. This mirrors that precedent, remapping ONLY the
+ * insight's key: its bound props/content stay exactly what this exploration
+ * independently created, so the forced collision is a NAME match over
+ * genuinely independent content — precisely the scenario VIS-1091 guards
+ * against, not an artificial one. */
+async function forceInsightNameCollision(page, oldName, newName) {
+  await page.evaluate(
+    ({ oldName, newName }) => {
+      const state = window.useStore.getState();
+      const { [oldName]: insightState, ...restInsightStates } = state.explorerInsightStates;
+      window.useStore.setState({
+        explorerInsightStates: { ...restInsightStates, [newName]: insightState },
+        explorerChartInsightNames: state.explorerChartInsightNames.map(n =>
+          n === oldName ? newName : n
+        ),
+        explorerActiveInsightName:
+          state.explorerActiveInsightName === oldName ? newName : state.explorerActiveInsightName,
+      });
+    },
+    { oldName, newName }
+  );
+}
+
 test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () => {
   let idsBeforeTest = [];
   const createdObjects = [];
@@ -405,10 +458,17 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
       { segment: 'insights', name: insightNameA }
     );
 
-    // Exploration B: a FRESH, UNRELATED exploration. `generateUniqueName`
-    // scopes auto-naming to each exploration's OWN state, so B's first
-    // insight is very likely named identically to A's — assert the
-    // collision precondition explicitly rather than assuming it.
+    // Exploration B: a FRESH, UNRELATED exploration, bound to its OWN
+    // model/column — genuinely independent content from A's. Pre-T3,
+    // `generateUniqueName` only disambiguated against each exploration's OWN
+    // working state, so B's default-named first insight naturally collided
+    // with A's. T3 (Wave 2) scopes it GLOBALLY instead
+    // (`ExplorationBuildRail.jsx`'s naming effect unions every cached
+    // collection via `getAllKnownNames`), so B now sees A's just-promoted
+    // `insightNameA` in `state.insights` and correctly uniquifies away from
+    // it — the collision no longer happens "for free". Force it explicitly
+    // instead (see `forceInsightNameCollision`'s docstring for why the real
+    // rename affordance can't be used here).
     await gotoExplorerHome(page);
     await newExploration(page);
     await typeSql(page, `SELECT * FROM ${TABLE}`);
@@ -417,10 +477,12 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
     const { locator: columnB } = await firstNumericColumn(page, tableRowB);
     const xSlotB = page.locator('[data-testid*="droppable-property-x"]').first();
     await dragAndDrop(page, columnB, xSlotB);
-    const insightNameB = await page.evaluate(
+    const draftInsightNameB = await page.evaluate(
       () => window.useStore.getState().explorerChartInsightNames[0]
     );
-    expect(insightNameB).toBe(insightNameA);
+
+    await forceInsightNameCollision(page, draftInsightNameB, insightNameA);
+    const insightNameB = insightNameA;
 
     // The SAME browser session/store still holds A's REAL data under
     // `insightJobs[insightNameA]` (nothing clears it on tab switch) — this
