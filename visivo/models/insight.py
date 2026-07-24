@@ -116,18 +116,17 @@ class Insight(NamedModel, ParentModel):
         return children
 
     def get_all_dependent_models(self, dag):
-        """Get all dependent models (SqlModel, CsvScriptModel, LocalMergeModel, etc.)
+        """Get all models this insight depends on.
 
         Excludes models only reachable through Input nodes, since inputs resolve
         their model dependencies independently (for options/defaults). The insight
         query only needs the input's runtime value, not its source models.
 
         Models are treated as leaves — we do not recurse into their own
-        dependencies. A LocalMergeModel like ``join_table`` already encapsulates
-        its joins inside its own SQL, so an insight that references
-        ``${ref(join_table)}`` only needs ``join_table`` itself, not the
-        underlying tables it merges. Walking past the model would produce a
-        bogus multi-model query that the relation graph can't join.
+        dependencies. A model encapsulates its joins inside its own SQL, so an
+        insight that references ``${ref(joined)}`` only needs ``joined`` itself,
+        not the underlying tables it reads. Walking past the model would produce
+        a bogus multi-model query that the relation graph can't join.
         """
         from visivo.models.models.model import Model
         from visivo.models.inputs.input import Input

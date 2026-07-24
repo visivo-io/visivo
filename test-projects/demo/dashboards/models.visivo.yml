@@ -1,23 +1,36 @@
+sources:
+  - name: Echo CSV-source
+    type: duckdb
+    database: target/seeds/echo_csv.duckdb
+    seeds:
+      - table_name: csv
+        args:
+          - echo
+          - |-
+            x,y
+            1,9
+            2,1
+            3,2
+            4,3
+            5,5
+            6,8
+  - name: Create CSV Script-source
+    type: duckdb
+    database: target/seeds/create_csv_script.duckdb
+    seeds:
+      - table_name: processes
+        args:
+          - python
+          - create_processes_csv.py
+          - "&&"
+          - cat target/processes.csv
 models:
   - name: Echo CSV
-    table_name: csv
-    args:
-      - echo
-      - |-
-        x,y
-        1,9
-        2,1
-        3,2
-        4,3
-        5,5
-        6,8
+    source: ${ref(Echo CSV-source)}
+    sql: select * from csv
   - name: Create CSV Script
-    table_name: processes
-    args:
-      - python
-      - create_processes_csv.py
-      - "&&"
-      - cat target/processes.csv
+    source: ${ref(Create CSV Script-source)}
+    sql: select * from processes
   - name: Relational
     source: ${ref(postgres)}
     sql: "select * from fibonacci"

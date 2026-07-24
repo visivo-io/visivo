@@ -13,8 +13,6 @@ import MarkdownNode from './MarkdownNode';
 import ChartNode from './ChartNode';
 import TableNode from './TableNode';
 import DashboardNode from './DashboardNode';
-import CsvScriptModelNode from './CsvScriptModelNode';
-import LocalMergeModelNode from './LocalMergeModelNode';
 import InputNode from './InputNode';
 import { Button } from '../../styled/Button';
 import { getTypeByValue } from '../common/objectTypeConfigs';
@@ -68,8 +66,6 @@ const Lineage = ({
   const fetchCharts = useStore(state => state.fetchCharts);
   const fetchTables = useStore(state => state.fetchTables);
   const fetchDashboards = useStore(state => state.fetchDashboards);
-  const fetchCsvScriptModels = useStore(state => state.fetchCsvScriptModels);
-  const fetchLocalMergeModels = useStore(state => state.fetchLocalMergeModels);
   const fetchInputs = useStore(state => state.fetchInputs);
   const fetchDefaults = useStore(state => state.fetchDefaults);
 
@@ -130,13 +126,11 @@ const Lineage = ({
       fetchCharts(),
       fetchTables(),
       fetchDashboards(),
-      fetchCsvScriptModels(),
-      fetchLocalMergeModels(),
       fetchInputs(),
       fetchDefaults(),
     ]).then(() => setInitialLoadDone(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [embedded, fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
+  }, [embedded, fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchInputs, fetchDefaults]);
 
   // Re-seed the internal selector when the externally-supplied scope changes.
   // The manual input mutates `selector` freely between scope changes; this
@@ -347,8 +341,6 @@ const Lineage = ({
       chartNode: ChartNode,
       tableNode: TableNode,
       dashboardNode: DashboardNode,
-      csvScriptModelNode: CsvScriptModelNode,
-      localMergeModelNode: LocalMergeModelNode,
       inputNode: InputNode,
     }),
     []

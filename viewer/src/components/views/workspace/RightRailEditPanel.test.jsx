@@ -142,8 +142,6 @@ jest.mock('../common/SourceEditForm', () => stubForm('source-edit-form-stub', 's
 jest.mock('../common/InsightEditForm', () => stubForm('insight-edit-form-stub', 'insight'));
 jest.mock('../common/ModelEditForm', () => stubForm('model-edit-form-stub', 'model'));
 // VIS-980 (folded into VIS-996): csv/local-merge script models now edit INLINE.
-jest.mock('../common/CsvScriptModelEditForm', () => stubForm('csv-script-model-edit-form-stub', 'model'));
-jest.mock('../common/LocalMergeModelEditForm', () => stubForm('local-merge-model-edit-form-stub', 'model'));
 // VIS-996: dimension/metric/relation now render through the SINGLE generic
 // SchemaLeafForm (type-keyed), replacing the three bespoke *EditForm files. The
 // stub keys its testid off `props.type` so the existing per-type routing +
@@ -529,8 +527,6 @@ describe('RightRailEditPanel Library-row routing (GAP-1/GAP-2 inline forms)', ()
     ['relation', 'relations', 'relation-edit-form-stub', 'orders_to_users'],
     ['input', 'inputs', 'input-edit-form-stub', 'date_input'],
     // VIS-980 fold: csv/local-merge models now edit inline, not "open elsewhere".
-    ['csvScriptModel', 'csvScriptModels', 'csv-script-model-edit-form-stub', 'seed_csv'],
-    ['localMergeModel', 'localMergeModels', 'local-merge-model-edit-form-stub', 'merged'],
   ];
 
   test.each(CASES)(

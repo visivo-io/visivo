@@ -1,34 +1,42 @@
+sources:
+  - name: contour-data-source
+    type: duckdb
+    database: target/seeds/contour_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z
+            1,1,10
+            2,1,15
+            3,1,20
+            4,1,25
+            5,1,30
+            1,2,5
+            2,2,10
+            3,2,15
+            4,2,20
+            5,2,25
+            1,3,0
+            2,3,5
+            3,3,10
+            4,3,15
+            5,3,20
+            1,4,5
+            2,4,10
+            3,4,15
+            4,4,20
+            5,4,25
+            1,5,10
+            2,5,15
+            3,5,20
+            4,5,25
+            5,5,30
 models:
   - name: contour-data
-    args:
-      - echo
-      - |
-        x,y,z
-        1,1,10
-        2,1,15
-        3,1,20
-        4,1,25
-        5,1,30
-        1,2,5
-        2,2,10
-        3,2,15
-        4,2,20
-        5,2,25
-        1,3,0
-        2,3,5
-        3,3,10
-        4,3,15
-        5,3,20
-        1,4,5
-        2,4,10
-        3,4,15
-        4,4,20
-        5,4,25
-        1,5,10
-        2,5,15
-        3,5,20
-        4,5,25
-        5,5,30
+    source: ${ref(contour-data-source)}
+    sql: select * from model
 charts:
   - name: simple-contour-chart
     layout:

@@ -1,19 +1,27 @@
+sources:
+  - name: histogram-data-source
+    type: duckdb
+    database: target/seeds/histogram_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            value
+            10
+            20
+            15
+            10
+            5
+            25
+            30
+            15
+            20
+            10
 models:
   - name: histogram-data
-    args:
-      - echo
-      - |
-        value
-        10
-        20
-        15
-        10
-        5
-        25
-        30
-        15
-        20
-        10
+    source: ${ref(histogram-data-source)}
+    sql: select * from model
 charts:
   - name: simple-histogram-chart
     layout:

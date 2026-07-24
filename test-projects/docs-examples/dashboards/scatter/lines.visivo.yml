@@ -1,14 +1,22 @@
+sources:
+  - name: scatter-data-lines-source
+    type: duckdb
+    database: target/seeds/scatter_data_lines.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,5
+            2,10
+            3,8
+            4,15
+            5,12
 models:
   - name: scatter-data-lines
-    args:
-      - echo
-      - |
-        x,y
-        1,5
-        2,10
-        3,8
-        4,15
-        5,12
+    source: ${ref(scatter-data-lines-source)}
+    sql: select * from model
 charts:
   - name: scatter-chart-with-lines
     layout:

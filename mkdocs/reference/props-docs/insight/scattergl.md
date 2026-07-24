@@ -31,17 +31,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attri
         ![](../../../assets/example-charts/props/scattergl/simple-scattergl.png)
 
         ```yaml
+        sources:
+          - name: scattergl-data-source
+            type: duckdb
+            database: target/seeds/scattergl_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,10
+                    2,20
+                    3,15
+                    4,25
+                    5,30
         models:
           - name: scattergl-data
-            args:
-              - echo
-              - |
-                x,y
-                1,10
-                2,20
-                3,15
-                4,25
-                5,30
+            source: ${ref(scattergl-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scattergl Insight
             props:
@@ -68,17 +76,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attri
         ![](../../../assets/example-charts/props/scattergl/lines-scattergl.png)
 
         ```yaml
+        sources:
+          - name: scattergl-data-lines-source
+            type: duckdb
+            database: target/seeds/scattergl_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,10
+                    3,8
+                    4,15
+                    5,12
         models:
           - name: scattergl-data-lines
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,10
-                3,8
-                4,15
-                5,12
+            source: ${ref(scattergl-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scattergl Insight with Lines
             props:
@@ -105,17 +121,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attri
         ![](../../../assets/example-charts/props/scattergl/custom-markers-scattergl.png)
 
         ```yaml
+        sources:
+          - name: scattergl-data-custom-source
+            type: duckdb
+            database: target/seeds/scattergl_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,size,color
+                    1,5,10,#1f77b4
+                    2,10,15,#ff7f0e
+                    3,8,20,#2ca02c
+                    4,15,25,#d62728
+                    5,12,30,#9467bd
         models:
           - name: scattergl-data-custom
-            args:
-              - echo
-              - |
-                x,y,size,color
-                1,5,10,#1f77b4
-                2,10,15,#ff7f0e
-                3,8,20,#2ca02c
-                4,15,25,#d62728
-                5,12,30,#9467bd
+            source: ${ref(scattergl-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scattergl Insight with Custom Markers
             props:

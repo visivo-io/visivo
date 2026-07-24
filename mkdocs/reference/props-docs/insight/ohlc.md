@@ -31,18 +31,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes
         ![](../../../assets/example-charts/props/ohlc/simple-ohlc.png)
 
         ```yaml
+        sources:
+          - name: ohlc-data-source
+            type: duckdb
+            database: target/seeds/ohlc_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    date,open,high,low,close
+                    2023-01-01,100,105,95,102
+                    2023-01-02,102,108,101,107
+                    2023-01-03,107,110,105,109
+                    2023-01-04,109,112,107,111
+                    2023-01-05,111,114,110,113
+
         models:
           - name: ohlc-data
-            args:
-              - echo
-              - |
-                date,open,high,low,close
-                2023-01-01,100,105,95,102
-                2023-01-02,102,108,101,107
-                2023-01-03,107,110,105,109
-                2023-01-04,109,112,107,111
-                2023-01-05,111,114,110,113
-
+            source: ${ref(ohlc-data-source)}
+            sql: select * from model
         insights:
           - name: Simple OHLC Insight
             props:
@@ -79,18 +87,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes
         ![](../../../assets/example-charts/props/ohlc/custom-width-ohlc.png)
 
         ```yaml
+        sources:
+          - name: ohlc-data-width-source
+            type: duckdb
+            database: target/seeds/ohlc_data_width.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    date,open,high,low,close
+                    2023-02-01,200,205,195,202
+                    2023-02-02,202,208,201,207
+                    2023-02-03,207,210,205,209
+                    2023-02-04,209,212,207,211
+                    2023-02-05,211,214,210,213
+
         models:
           - name: ohlc-data-width
-            args:
-              - echo
-              - |
-                date,open,high,low,close
-                2023-02-01,200,205,195,202
-                2023-02-02,202,208,201,207
-                2023-02-03,207,210,205,209
-                2023-02-04,209,212,207,211
-                2023-02-05,211,214,210,213
-
+            source: ${ref(ohlc-data-width-source)}
+            sql: select * from model
         insights:
           - name: OHLC with Custom Width
             props:
@@ -129,19 +145,27 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes
         ![](../../../assets/example-charts/props/ohlc/multi-stock-ohlc.png)
 
         ```yaml
+        sources:
+          - name: ohlc-data-multi-source
+            type: duckdb
+            database: target/seeds/ohlc_data_multi.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    stock,date,open,high,low,close
+                    AAPL,2023-03-01,150,155,145,152
+                    AAPL,2023-03-02,152,158,150,156
+                    AAPL,2023-03-03,156,160,154,159
+                    MSFT,2023-03-01,250,255,245,252
+                    MSFT,2023-03-02,252,258,250,256
+                    MSFT,2023-03-03,256,260,254,259
+
         models:
           - name: ohlc-data-multi
-            args:
-              - echo
-              - |
-                stock,date,open,high,low,close
-                AAPL,2023-03-01,150,155,145,152
-                AAPL,2023-03-02,152,158,150,156
-                AAPL,2023-03-03,156,160,154,159
-                MSFT,2023-03-01,250,255,245,252
-                MSFT,2023-03-02,252,258,250,256
-                MSFT,2023-03-03,256,260,254,259
-
+            source: ${ref(ohlc-data-multi-source)}
+            sql: select * from model
         insights:
           - name: OHLC for AAPL
             props:

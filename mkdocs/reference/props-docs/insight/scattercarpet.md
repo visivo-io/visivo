@@ -29,34 +29,49 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#a
         This example shows a `scattercarpet` insight with a visible carpet grid:
 
         ```yaml
+        sources:
+          - name: carpet-grid-source
+            type: duckdb
+            database: target/seeds/carpet_grid.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,y
+                    4,1,2
+                    4,2,3.5
+                    4,3,4
+                    4.5,1,3
+                    4.5,2,4.5
+                    4.5,3,5
+                    5,1,5.5
+                    5,2,6.5
+                    5,3,7.5
+                    6,1,8
+                    6,2,8.5
+                    6,3,10
+          - name: scattercarpet-data-source
+            type: duckdb
+            database: target/seeds/scattercarpet_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,value
+                    4,1.5,15
+                    4.5,2.5,25
+                    5,1.5,30
+                    6,2.5,40
+
         models:
           - name: carpet-grid
-            args:
-              - echo
-              - |
-                a,b,y
-                4,1,2
-                4,2,3.5
-                4,3,4
-                4.5,1,3
-                4.5,2,4.5
-                4.5,3,5
-                5,1,5.5
-                5,2,6.5
-                5,3,7.5
-                6,1,8
-                6,2,8.5
-                6,3,10
+            source: ${ref(carpet-grid-source)}
+            sql: select * from model
           - name: scattercarpet-data
-            args:
-              - echo
-              - |
-                a,b,value
-                4,1.5,15
-                4.5,2.5,25
-                5,1.5,30
-                6,2.5,40
-
+            source: ${ref(scattercarpet-data-source)}
+            sql: select * from model
         insights:
           - name: Carpet Grid
             props:
@@ -95,35 +110,50 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#a
     === "Scattercarpet Plot with Lines"
 
         ```yaml
+        sources:
+          - name: carpet-grid-lines-source
+            type: duckdb
+            database: target/seeds/carpet_grid_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,y
+                    4,1,2
+                    4,2,3.5
+                    4,3,4
+                    4.5,1,3
+                    4.5,2,4.5
+                    4.5,3,5
+                    5,1,5.5
+                    5,2,6.5
+                    5,3,7.5
+                    6,1,8
+                    6,2,8.5
+                    6,3,10
+          - name: scattercarpet-data-lines-source
+            type: duckdb
+            database: target/seeds/scattercarpet_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,value
+                    4,1,7
+                    4.5,2,12
+                    5,1.5,10
+                    6,2.5,18
+                    5,2,17
+
         models:
           - name: carpet-grid-lines
-            args:
-              - echo
-              - |
-                a,b,y
-                4,1,2
-                4,2,3.5
-                4,3,4
-                4.5,1,3
-                4.5,2,4.5
-                4.5,3,5
-                5,1,5.5
-                5,2,6.5
-                5,3,7.5
-                6,1,8
-                6,2,8.5
-                6,3,10
+            source: ${ref(carpet-grid-lines-source)}
+            sql: select * from model
           - name: scattercarpet-data-lines
-            args:
-              - echo
-              - |
-                a,b,value
-                4,1,7
-                4.5,2,12
-                5,1.5,10
-                6,2.5,18
-                5,2,17
-
+            source: ${ref(scattercarpet-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Carpet Grid Lines
             props:
@@ -152,35 +182,50 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#a
     === "Scattercarpet Plot with Custom Marker Sizes and Colors"
 
         ```yaml
+        sources:
+          - name: carpet-grid-markers-source
+            type: duckdb
+            database: target/seeds/carpet_grid_markers.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,y
+                    4,1,2
+                    4,2,3.5
+                    4,3,4
+                    4.5,1,3
+                    4.5,2,4.5
+                    4.5,3,5
+                    5,1,5.5
+                    5,2,6.5
+                    5,3,7.5
+                    6,1,8
+                    6,2,8.5
+                    6,3,10
+          - name: scattercarpet-data-custom-source
+            type: duckdb
+            database: target/seeds/scattercarpet_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    a,b,size,color
+                    4,1,10,#1f77b4
+                    4.5,2,15,#ff7f0e
+                    5,1.5,20,#2ca02c
+                    6,2.5,25,#d62728
+                    5,2,30,#9467bd
+
         models:
           - name: carpet-grid-markers
-            args:
-              - echo
-              - |
-                a,b,y
-                4,1,2
-                4,2,3.5
-                4,3,4
-                4.5,1,3
-                4.5,2,4.5
-                4.5,3,5
-                5,1,5.5
-                5,2,6.5
-                5,3,7.5
-                6,1,8
-                6,2,8.5
-                6,3,10
+            source: ${ref(carpet-grid-markers-source)}
+            sql: select * from model
           - name: scattercarpet-data-custom
-            args:
-              - echo
-              - |
-                a,b,size,color
-                4,1,10,#1f77b4
-                4.5,2,15,#ff7f0e
-                5,1.5,20,#2ca02c
-                6,2.5,25,#d62728
-                5,2,30,#9467bd
-
+            source: ${ref(scattercarpet-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Carpet Grid Markers
             props:

@@ -1,27 +1,35 @@
+sources:
+  - name: layout-data-source
+    type: duckdb
+    database: target/seeds/layout_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category,value
+            A,1
+            B,2
+            C,3
+            D,4
+            E,5
+            F,6
+            G,7
+            H,8
+            I,9
+            J,10
 models:
   - name: layout-data
-    args:
-      - echo
-      - |
-        category,value
-        A,1
-        B,2
-        C,3
-        D,4
-        E,5
-        F,6
-        G,7
-        H,8
-        I,9
-        J,10
+    source: ${ref(layout-data-source)}
+    sql: select * from model
 charts:
   - name: Warm Earth Tones
     layout:
       colorway: Warm Earth Tones
       title:
         text: "'Warm Earth Tones' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -31,8 +39,8 @@ charts:
       colorway: Sunset Over Water
       title:
         text: "'Sunset Over Water' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -42,8 +50,8 @@ charts:
       colorway: Muted Vintage
       title:
         text: "'Muted Vintage' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -53,8 +61,8 @@ charts:
       colorway: Retro Pop
       title:
         text: "'Retro Pop' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -64,8 +72,8 @@ charts:
       colorway: Forest Nightfall
       title:
         text: "'Forest Nightfall' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -75,8 +83,8 @@ charts:
       colorway: Desert Sunrise
       title:
         text: "'Desert Sunrise' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -86,8 +94,8 @@ charts:
       colorway: Urban Dusk
       title:
         text: "'Urban Dusk' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -97,8 +105,8 @@ charts:
       colorway: Botanical Garden
       title:
         text: "'Botanical Garden' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -108,8 +116,8 @@ charts:
       colorway: Autumn Ember
       title:
         text: "'Autumn Ember' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -119,8 +127,8 @@ charts:
       colorway: Coastal Breeze
       title:
         text: "'Coastal Breeze' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -130,8 +138,8 @@ charts:
       colorway: Muted Vintage II
       title:
         text: "'Muted Vintage II' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -141,8 +149,8 @@ charts:
       colorway: Muted Rosewood
       title:
         text: "'Muted Rosewood' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -152,8 +160,8 @@ charts:
       colorway: Muted Classic
       title:
         text: "'Muted Classic' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -163,8 +171,8 @@ charts:
       colorway: Vintage Pastel
       title:
         text: "'Vintage Pastel' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -174,8 +182,8 @@ charts:
       colorway: Classic Faded
       title:
         text: "'Classic Faded' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -185,8 +193,8 @@ charts:
       colorway: Spring Blossom
       title:
         text: "'Spring Blossom' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -196,8 +204,8 @@ charts:
       colorway: Mint Dream
       title:
         text: "'Mint Dream' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -207,8 +215,8 @@ charts:
       colorway: Soft Sunset
       title:
         text: "'Soft Sunset' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -218,8 +226,8 @@ charts:
       colorway: Lavender Fields
       title:
         text: "'Lavender Fields' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -229,8 +237,8 @@ charts:
       colorway: Summer Breeze
       title:
         text: "'Summer Breeze' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -240,8 +248,8 @@ charts:
       colorway: Mint Dream Contrast
       title:
         text: "'Mint Dream Contrast' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -251,8 +259,8 @@ charts:
       colorway: Mint Dream Dark
       title:
         text: "'Mint Dream Dark' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -262,8 +270,8 @@ charts:
       colorway: Mint Dream Deep
       title:
         text: "'Mint Dream Deep' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -273,8 +281,8 @@ charts:
       colorway: Mint Dream Bold
       title:
         text: "'Mint Dream Bold' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -284,8 +292,8 @@ charts:
       colorway: High Contrast
       title:
         text: "'High Contrast' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}
@@ -295,8 +303,8 @@ charts:
       colorway: High Contrast Earth
       title:
         text: "'High Contrast Earth' Palette"
-      xaxis: { showgrid: false, showticklabels: false }
-      yaxis: { title: { text: "Order" }, dtick: 1 }
+      xaxis: {showgrid: false, showticklabels: false}
+      yaxis: {title: {text: "Order"}, dtick: 1}
       showlegend: false
     insights:
       - ${ref(color-palette-example)}

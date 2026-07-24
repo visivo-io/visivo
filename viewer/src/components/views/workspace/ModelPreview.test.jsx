@@ -190,21 +190,15 @@ describe('ModelPreview (VIS-801)', () => {
 
   test('fetches each collection at most once when it legitimately resolves EMPTY (unbounded-loop regression)', () => {
     const fetchModels = emptyRefetcher('models');
-    const fetchCsvScriptModels = emptyRefetcher('csvScriptModels');
-    const fetchLocalMergeModels = emptyRefetcher('localMergeModels');
     const fetchSources = emptyRefetcher('sources');
     act(() => {
       useStore.setState({
         models: [],
-        csvScriptModels: [],
-        localMergeModels: [],
         sources: [],
         defaults: { source_name: 'db' },
         dimensions: [],
         metrics: [],
         fetchModels,
-        fetchCsvScriptModels,
-        fetchLocalMergeModels,
         fetchSources,
         fetchDefaults: jest.fn(),
         fetchDimensions: jest.fn(),
@@ -213,8 +207,6 @@ describe('ModelPreview (VIS-801)', () => {
     });
     render(<ModelPreview activeObject={{ type: 'model', name: 'missing' }} />);
     expect(fetchModels).toHaveBeenCalledTimes(1);
-    expect(fetchCsvScriptModels).toHaveBeenCalledTimes(1);
-    expect(fetchLocalMergeModels).toHaveBeenCalledTimes(1);
     expect(fetchSources).toHaveBeenCalledTimes(1);
   });
 
@@ -224,10 +216,6 @@ describe('ModelPreview (VIS-801)', () => {
     seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
     act(() => {
       useStore.setState({
-        csvScriptModels: [],
-        localMergeModels: [],
-        fetchCsvScriptModels: jest.fn(),
-        fetchLocalMergeModels: jest.fn(),
         fetchDimensions,
         fetchMetrics,
       });

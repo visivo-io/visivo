@@ -1,14 +1,22 @@
+sources:
+  - name: funnelarea-data-custom-source
+    type: duckdb
+    database: target/seeds/funnelarea_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            stage,value,color
+            Awareness,5000,"#1f77b4"
+            Interest,3000,"#ff7f0e"
+            Consideration,1500,"#2ca02c"
+            Decision,700,"#d62728"
+            Purchase,300,"#9467bd"
 models:
   - name: funnelarea-data-custom
-    args:
-      - echo
-      - |
-        stage,value,color
-        Awareness,5000,"#1f77b4"
-        Interest,3000,"#ff7f0e"
-        Consideration,1500,"#2ca02c"
-        Decision,700,"#d62728"
-        Purchase,300,"#9467bd"
+    source: ${ref(funnelarea-data-custom-source)}
+    sql: select * from model
 charts:
   - name: funnelarea-chart-with-custom-colors
     layout:

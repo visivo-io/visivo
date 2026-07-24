@@ -1,16 +1,24 @@
+sources:
+  - name: area-plot-data-source
+    type: duckdb
+    database: target/seeds/area_plot_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,5
+            2,7
+            3,10
+            4,8
+            5,12
+            6,9
+            7,11
 models:
   - name: area-plot-data
-    args:
-      - echo
-      - |
-        x,y
-        1,5
-        2,7
-        3,10
-        4,8
-        5,12
-        6,9
-        7,11
+    source: ${ref(area-plot-data-source)}
+    sql: select * from model
 charts:
   - name: area-plot-chart
     layout:

@@ -1,18 +1,26 @@
+sources:
+  - name: histogram2dcontour-data-bins-source
+    type: duckdb
+    database: target/seeds/histogram2dcontour_data_bins.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,5
+            2,6
+            3,7
+            2,4
+            3,5
+            4,6
+            5,8
+            4,3
+            5,4
 models:
   - name: histogram2dcontour-data-bins
-    args:
-      - echo
-      - |
-        x,y
-        1,5
-        2,6
-        3,7
-        2,4
-        3,5
-        4,6
-        5,8
-        4,3
-        5,4
+    source: ${ref(histogram2dcontour-data-bins-source)}
+    sql: select * from model
 charts:
   - name: 2d-contour-histogram-with-custom-bins-chart
     layout:

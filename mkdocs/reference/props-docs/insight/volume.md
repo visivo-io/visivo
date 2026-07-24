@@ -27,21 +27,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Volume/#attribut
     === "Simple Volume Insight"
 
         ```yaml
+        sources:
+          - name: isosurface-data-simple-source
+            type: duckdb
+            database: target/seeds/isosurface_data_simple.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    idx,x,y,z,value
+                    0,0,0,1,1
+                    1,0,1,1,2
+                    2,0,0,0,3
+                    3,0,1,0,4
+                    4,1,0,1,5
+                    5,1,1,1,6
+                    6,1,0,0,7
+                    7,1,1,0,8
+
         models:
           - name: isosurface-data-simple
-            args:
-              - echo
-              - |
-                idx,x,y,z,value
-                0,0,0,1,1
-                1,0,1,1,2
-                2,0,0,0,3
-                3,0,1,0,4
-                4,1,0,1,5
-                5,1,1,1,6
-                6,1,0,0,7
-                7,1,1,0,8
-
+            source: ${ref(isosurface-data-simple-source)}
+            sql: select * from model
         insights:
           - name: Simple Isosurface Insight
             props:

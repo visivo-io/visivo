@@ -2,6 +2,7 @@ from typing import Optional, Dict, List, Any
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.base_model import StringOrEnvVar, SecretStrOrEnvVar
 from visivo.models.base.env_var_string import EnvVarString
+from visivo.models.sources.seed import Seed
 from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
 
@@ -110,6 +111,30 @@ class Source(ABC, NamedModel):
         """
         raise NotImplementedError(f"No get_table_preview method implemented for {self.type}")
 
+    def write_dataframe(self, table_name: str, data_frame, replace: bool = True):
+        """Write a Polars DataFrame to a table on this source.
+
+        Used to materialize seeds before any model queries the source. Sources that
+        cannot be written to leave this unimplemented so the failure is explicit
+        rather than a silently discarded load.
+
+        Args:
+            table_name: The table to create or overwrite
+            data_frame: A Polars DataFrame holding the rows to write
+            replace: Replace the table's contents when it already exists
+        """
+        raise NotImplementedError(f"No write_dataframe method implemented for {self.type}")
+
+    def table_exists(self, table_name: str) -> bool:
+        """Whether ``table_name`` already exists on this source.
+
+        Backs a seed's ``existing_table="skip"``: when a table is already present
+        the seed run is skipped. This is a single, targeted existence check (not a full
+        schema introspection). Defaults to ``False`` so a source that can't answer simply
+        re-runs the seed rather than wrongly skipping it.
+        """
+        return False
+
     def connect(self):
         return Connection(source=self)
 
@@ -133,6 +158,10 @@ class ServerSource(Source):
     )
     db_schema: Optional[StringOrEnvVar] = Field(
         None, description="The schema that the Visivo project will use in queries."
+    )
+    seeds: List[Seed] = Field(
+        [],
+        description="Commands whose csv output is loaded into tables on this source before any model queries it.",
     )
 
     def _resolve_field(self, field_value) -> Optional[str]:

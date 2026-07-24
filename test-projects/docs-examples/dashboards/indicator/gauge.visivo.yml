@@ -1,11 +1,19 @@
+sources:
+  - name: indicator-data-gauge-source
+    type: duckdb
+    database: target/seeds/indicator_data_gauge.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |-
+            value,x
+            65,0.5
+            75,0.6
 models:
   - name: indicator-data-gauge
-    args:
-      - echo
-      - |-
-        value,x
-        65,0.5
-        75,0.6
+    source: ${ref(indicator-data-gauge-source)}
+    sql: select * from model
 charts:
   - name: gauge-indicator-chart
     layout:

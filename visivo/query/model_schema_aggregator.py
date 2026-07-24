@@ -43,7 +43,7 @@ class ModelSchemaAggregator:
         Args:
             name_hash: The model's ``name_hash()`` (alpha hash of its name).
             model_name: The model's plain name (so consumers never hash).
-            model_type: One of ``"sql"`` / ``"csv_script"`` / ``"local_merge"``.
+            model_type: The kind of model the schema describes, e.g. ``"sql"``.
             columns: Either ``{col_name: type_string}`` (SqlModel / DuckDB
                 ``information_schema``) or ``{col_name: {"type", "nullable"}}``.
                 ``type`` values may be ``None`` (SQLGlot annotation can fail);

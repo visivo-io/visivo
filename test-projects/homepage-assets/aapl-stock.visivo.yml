@@ -1,10 +1,17 @@
+sources:
+  - name: aapl-stock-price-source
+    type: duckdb
+    database: target/seeds/aapl_stock_price.duckdb
+    seeds:
+      - table_name: aapl_stock_price
+        args:
+          - cat
+          - data/aapl-stock-price.csv
+
 models:
   - name: aapl-stock-price
-    table_name: aapl_stock_price
-    args:
-      - cat
-      - data/aapl-stock-price.csv
-
+    source: ${ref(aapl-stock-price-source)}
+    sql: select * from aapl_stock_price
 insights:
   - name: aapl-candlestick
     props:

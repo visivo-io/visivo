@@ -1,15 +1,23 @@
+sources:
+  - name: custom-radial-data-source
+    type: duckdb
+    database: target/seeds/custom_radial_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            direction,radial_start,radial_end
+            0,1,3
+            60,2,5
+            120,3,6
+            180,1,4
+            240,2,7
+            300,3,5
 models:
   - name: custom-radial-data
-    args:
-      - echo
-      - |
-        direction,radial_start,radial_end
-        0,1,3
-        60,2,5
-        120,3,6
-        180,1,4
-        240,2,7
-        300,3,5
+    source: ${ref(custom-radial-data-source)}
+    sql: select * from model
 charts:
   - name: custom-radial-barpolar-chart
     layout:

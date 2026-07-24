@@ -13,8 +13,6 @@ from tests.factories.model_factories import (
     InsightFactory,
     ChartFactory,
     SqlModelFactory,
-    CsvScriptModelFactory,
-    LocalMergeModelFactory,
     DimensionFactory,
     MetricFactory,
     RelationFactory,
@@ -159,8 +157,6 @@ def test_collect_deploy_resources_emits_all_deploy_types():
                 metrics=[MetricFactory(name="mt1")],
             ),
             SqlModelFactory(name="m2"),
-            CsvScriptModelFactory(name="csv_m"),
-            LocalMergeModelFactory(name="merge_m"),
         ],
         relations=[RelationFactory(name="r1", condition="${ref(m1).id} = ${ref(m2).id}")],
         dashboards=[],
@@ -174,8 +170,6 @@ def test_collect_deploy_resources_emits_all_deploy_types():
     assert set(layer) == {
         "sources",
         "models",
-        "csv-script-models",
-        "local-merge-models",
         "dimensions",
         "metrics",
         "relations",
@@ -188,8 +182,6 @@ def test_collect_deploy_resources_emits_all_deploy_types():
 
     assert {s["name"] for s in layer["sources"]} >= {"source"}
     assert {m["name"] for m in layer["models"]} >= {"m1", "m2"}
-    assert {m["name"] for m in layer["csv-script-models"]} == {"csv_m"}
-    assert {m["name"] for m in layer["local-merge-models"]} == {"merge_m"}
     assert {d["name"] for d in layer["dimensions"]} >= {"d1"}
     assert {m["name"] for m in layer["metrics"]} >= {"mt1"}
     assert {r["name"] for r in layer["relations"]} == {"r1"}

@@ -1,11 +1,18 @@
+sources:
+  - name: Waterfall Model-source
+    type: duckdb
+    database: target/seeds/waterfall_model.duckdb
+    seeds:
+      - table_name: appl_pl
+        args:
+          - curl
+          - -s
+          - https://raw.githubusercontent.com/visivo-io/visivo/main/test-projects/integration/data/aapl_pl.csv
+
 models:
   - name: Waterfall Model
-    table_name: appl_pl
-    args:
-      - curl
-      - -s
-      - https://raw.githubusercontent.com/visivo-io/visivo/main/test-projects/integration/data/aapl_pl.csv
-
+    source: ${ref(Waterfall Model-source)}
+    sql: select * from appl_pl
 insights:
   - name: Fibonacci Waterfall Trace
     props:

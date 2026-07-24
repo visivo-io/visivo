@@ -139,8 +139,6 @@ function buildTypeIndex(storeApi) {
   };
   register('source', storeApi.sources);
   register('model', storeApi.models);
-  register('model', storeApi.csvScriptModels);
-  register('model', storeApi.localMergeModels);
   register('dimension', storeApi.dimensions);
   register('metric', storeApi.metrics);
   register('relation', storeApi.relations);
@@ -167,8 +165,6 @@ function buildReverseIndex(storeApi) {
     });
   };
   scan('model', storeApi.models);
-  scan('model', storeApi.csvScriptModels);
-  scan('model', storeApi.localMergeModels);
   scan('insight', storeApi.insights);
   scan('chart', storeApi.charts);
   scan('table', storeApi.tables);
@@ -471,8 +467,6 @@ const MiniLineageCard = ({
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
   const setWorkspaceLensIntent = useStore(s => s.setWorkspaceLensIntent);
-  const csvScriptModels = useStore(s => s.csvScriptModels);
-  const localMergeModels = useStore(s => s.localMergeModels);
   const defaults = useStore(s => s.defaults);
   const fetchDefaults = useStore(s => s.fetchDefaults);
   const fetchCharts = useStore(s => s.fetchCharts);
@@ -559,8 +553,6 @@ const MiniLineageCard = ({
       markdowns,
       inputs,
       allDashboards: dashboardsForWalker,
-      csvScriptModels,
-      localMergeModels,
       defaults,
     }),
     [
@@ -575,8 +567,6 @@ const MiniLineageCard = ({
       markdowns,
       inputs,
       dashboardsForWalker,
-      csvScriptModels,
-      localMergeModels,
       defaults,
     ]
   );

@@ -1,14 +1,22 @@
+sources:
+  - name: carpet-data-axes-source
+    type: duckdb
+    database: target/seeds/carpet_data_axes.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            a,b,x,y
+            1,5,2,3
+            2,6,3,4
+            3,7,4,5
+            4,8,5,6
+            5,9,6,7
 models:
   - name: carpet-data-axes
-    args:
-      - echo
-      - |
-        a,b,x,y
-        1,5,2,3
-        2,6,3,4
-        3,7,4,5
-        4,8,5,6
-        5,9,6,7
+    source: ${ref(carpet-data-axes-source)}
+    sql: select * from model
 charts:
   - name: simple-carpet-chart
     layout:

@@ -5,7 +5,7 @@
  * Lifted out of RightRailEditPanel so the right rail, `useCanvasRecord`, and the
  * object-canvas registry all key off ONE map and can never drift. The store's
  * fetch action for a collection is `fetch` + PascalCase(collectionKey)
- * (e.g. `csvScriptModels` → `fetchCsvScriptModels`).
+ * (e.g. `models` → `fetchModels`).
  */
 export const COLLECTION_KEY = {
   chart: 'charts',
@@ -14,8 +14,6 @@ export const COLLECTION_KEY = {
   input: 'inputs',
   source: 'sources',
   model: 'models',
-  csvScriptModel: 'csvScriptModels',
-  localMergeModel: 'localMergeModels',
   dimension: 'dimensions',
   metric: 'metrics',
   relation: 'relations',
@@ -41,8 +39,6 @@ export const SAVE_ACTION = {
   chart: 'saveChart',
   table: 'saveTable',
   dashboard: 'saveDashboard',
-  csvScriptModel: 'saveCsvScriptModel',
-  localMergeModel: 'saveLocalMergeModel',
   input: 'saveInput',
 };
 
@@ -63,8 +59,6 @@ export const DELETE_ACTION = {
   chart: 'deleteChart',
   table: 'deleteTable',
   dashboard: 'deleteDashboard',
-  csvScriptModel: 'deleteCsvScriptModel',
-  localMergeModel: 'deleteLocalMergeModel',
   input: 'deleteInput',
 };
 

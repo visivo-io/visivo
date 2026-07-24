@@ -13,12 +13,10 @@ from flask import Flask
 
 from tests.factories.model_factories import (
     ChartFactory,
-    CsvScriptModelFactory,
     DashboardFactory,
     DefaultsFactory,
     DimensionFactory,
     InsightFactory,
-    LocalMergeModelFactory,
     MetricFactory,
     MultiSelectInputFactory,
     RelationFactory,
@@ -42,8 +40,6 @@ MANAGER_SPECS = [
     ("chart_manager", "chart", lambda: ChartFactory()),
     ("table_manager", "table", lambda: TableFactory()),
     ("dashboard_manager", "dashboard", lambda: DashboardFactory()),
-    ("csv_script_model_manager", "csvScriptModel", lambda: CsvScriptModelFactory()),
-    ("local_merge_model_manager", "localMergeModel", lambda: LocalMergeModelFactory()),
     ("input_manager", "input", lambda: MultiSelectInputFactory()),
 ]
 

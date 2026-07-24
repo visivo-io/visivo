@@ -1,21 +1,29 @@
+sources:
+  - name: funnel-data-cohorts-source
+    type: duckdb
+    database: target/seeds/funnel_data_cohorts.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            stage,value,product
+            Awareness,5000,Product A
+            Interest,3000,Product A
+            Consideration,1500,Product A
+            Purchase,700,Product A
+            Awareness,4500,Product B
+            Interest,2800,Product B
+            Consideration,1200,Product B
+            Purchase,500,Product B
+            Awareness,3800,Product C
+            Interest,2200,Product C
+            Consideration,900,Product C
+            Purchase,300,Product C
 models:
   - name: funnel-data-cohorts
-    args:
-      - echo
-      - |
-        stage,value,product
-        Awareness,5000,Product A
-        Interest,3000,Product A
-        Consideration,1500,Product A
-        Purchase,700,Product A
-        Awareness,4500,Product B
-        Interest,2800,Product B
-        Consideration,1200,Product B
-        Purchase,500,Product B
-        Awareness,3800,Product C
-        Interest,2200,Product C
-        Consideration,900,Product C
-        Purchase,300,Product C
+    source: ${ref(funnel-data-cohorts-source)}
+    sql: select * from model
 charts:
   - name: funnel-chart-with-cohorts
     layout:

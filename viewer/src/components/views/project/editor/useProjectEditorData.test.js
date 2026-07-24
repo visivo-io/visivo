@@ -81,16 +81,14 @@ describe('groupDashboardsByLevel', () => {
 });
 
 describe('buildHealthSummary', () => {
-  test('counts each collection and collapses the three model stores', () => {
+  test('counts each collection', () => {
     const summary = buildHealthSummary({
       dashboards: [1, 2, 3, 4],
       insights: new Array(14).fill(0),
       models: [1, 2, 3, 4, 5],
-      csvScriptModels: [1, 2],
-      localMergeModels: [1],
       sources: [1, 2, 3],
     });
-    expect(summary).toEqual({ dashboards: 4, insights: 14, models: 8, sources: 3 });
+    expect(summary).toEqual({ dashboards: 4, insights: 14, models: 5, sources: 3 });
   });
 
   test('defaults missing collections to zero', () => {

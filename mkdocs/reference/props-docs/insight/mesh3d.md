@@ -33,17 +33,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Mesh3d/#attribut
         You can copy this code below to create this chart in your project:
 
         ```yaml
+        sources:
+          - name: mesh3d-data-source
+            type: duckdb
+            database: target/seeds/mesh3d_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    idx,x,y,z,i,j,k,color
+                    0,0,0,0,0,1,2,#1f77b4
+                    1,1,0,2,0,2,3,#ff7f0e
+                    2,2,1,0,0,3,1,#2ca02c
+                    3,0,2,1,1,2,3,#9467bd
+
         models:
           - name: mesh3d-data
-            args:
-              - echo
-              - |
-                idx,x,y,z,i,j,k,color
-                0,0,0,0,0,1,2,#1f77b4
-                1,1,0,2,0,2,3,#ff7f0e
-                2,2,1,0,0,3,1,#2ca02c
-                3,0,2,1,1,2,3,#9467bd
-
+            source: ${ref(mesh3d-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Mesh3D Insight
             props:

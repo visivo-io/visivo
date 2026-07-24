@@ -1,9 +1,17 @@
+sources:
+  - name: splom-data-source
+    type: duckdb
+    database: target/seeds/splom_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - curl
+          - "-s"
+          - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
 models:
   - name: splom-data
-    args:
-      - curl
-      - "-s"
-      - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
+    source: ${ref(splom-data-source)}
+    sql: select * from model
 charts:
   - name: simple-splom-chart
     layout:

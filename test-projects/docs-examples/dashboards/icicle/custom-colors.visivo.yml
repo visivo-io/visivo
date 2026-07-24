@@ -1,15 +1,23 @@
+sources:
+  - name: icicle-data-custom-source
+    type: duckdb
+    database: target/seeds/icicle_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category,parent,value,color
+            A,,100,"#1f77b4"
+            B,A,50,"#ff7f0e"
+            C,A,30,"#2ca02c"
+            D,A,20,"#d62728"
+            E,B,25,"#9467bd"
+            F,B,15,"#8c564b"
 models:
   - name: icicle-data-custom
-    args:
-      - echo
-      - |
-        category,parent,value,color
-        A,,100,"#1f77b4"
-        B,A,50,"#ff7f0e"
-        C,A,30,"#2ca02c"
-        D,A,20,"#d62728"
-        E,B,25,"#9467bd"
-        F,B,15,"#8c564b"
+    source: ${ref(icicle-data-custom-source)}
+    sql: select * from model
 charts:
   - name: custom-colors-icicle-chart
     layout:

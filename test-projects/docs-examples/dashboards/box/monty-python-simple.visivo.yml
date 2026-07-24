@@ -1,9 +1,17 @@
+sources:
+  - name: monty-python-quest-data-unique-source
+    type: duckdb
+    database: target/seeds/monty_python_quest_data_unique.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - curl
+          - "-s"
+          - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 models:
   - name: monty-python-quest-data-unique
-    args:
-      - curl
-      - "-s"
-      - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+    source: ${ref(monty-python-quest-data-unique-source)}
+    sql: select * from model
 charts:
   - name: rewards-distribution-box-plot
     layout:

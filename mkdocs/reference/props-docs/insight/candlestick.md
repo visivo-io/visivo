@@ -31,18 +31,26 @@ _**See the [Attributes](../../configuration/Insight/Props/Candlestick/#attribute
         ![](../../../assets/example-charts/props/candlestick/simple-candlestick.png)
 
         ```yaml
+        sources:
+          - name: stock-data-source
+            type: duckdb
+            database: target/seeds/stock_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    date,open,high,low,close
+                    2024-01-01,100,105,95,102
+                    2024-01-02,102,108,99,104
+                    2024-01-03,104,110,100,108
+                    2024-01-04,108,112,101,107
+                    2024-01-05,107,109,98,103
+
         models:
           - name: stock-data
-            args:
-              - echo
-              - |
-                date,open,high,low,close
-                2024-01-01,100,105,95,102
-                2024-01-02,102,108,99,104
-                2024-01-03,104,110,100,108
-                2024-01-04,108,112,101,107
-                2024-01-05,107,109,98,103
-
+            source: ${ref(stock-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Candlestick Plot
             props:
@@ -77,18 +85,26 @@ _**See the [Attributes](../../configuration/Insight/Props/Candlestick/#attribute
         ![](../../../assets/example-charts/props/candlestick/candlestick-plus-volume.png)
 
         ```yaml
+        sources:
+          - name: stock-data-with-volume-source
+            type: duckdb
+            database: target/seeds/stock_data_with_volume.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    date,open,high,low,close,volume
+                    2024-01-01,100,105,95,102,1000000
+                    2024-01-02,102,108,99,104,1200000
+                    2024-01-03,104,110,100,108,1500000
+                    2024-01-04,108,112,101,107,1100000
+                    2024-01-05,107,109,98,103,1300000
+
         models:
           - name: stock-data-with-volume
-            args:
-              - echo
-              - |
-                date,open,high,low,close,volume
-                2024-01-01,100,105,95,102,1000000
-                2024-01-02,102,108,99,104,1200000
-                2024-01-03,104,110,100,108,1500000
-                2024-01-04,108,112,101,107,1100000
-                2024-01-05,107,109,98,103,1300000
-
+            source: ${ref(stock-data-with-volume-source)}
+            sql: select * from model
         insights:
           - name: Candlestick Plot with Volume
             props:
@@ -141,18 +157,26 @@ _**See the [Attributes](../../configuration/Insight/Props/Candlestick/#attribute
         ![](../../../assets/example-charts/props/candlestick/colored-candlestick.png)
 
         ```yaml
+        sources:
+          - name: stock-data-colored-source
+            type: duckdb
+            database: target/seeds/stock_data_colored.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    date,open,high,low,close
+                    2024-01-01,100,105,95,102
+                    2024-01-02,102,108,99,104
+                    2024-01-03,104,110,100,108
+                    2024-01-04,108,112,101,107
+                    2024-01-05,107,109,98,103
+
         models:
           - name: stock-data-colored
-            args:
-              - echo
-              - |
-                date,open,high,low,close
-                2024-01-01,100,105,95,102
-                2024-01-02,102,108,99,104
-                2024-01-03,104,110,100,108
-                2024-01-04,108,112,101,107
-                2024-01-05,107,109,98,103
-
+            source: ${ref(stock-data-colored-source)}
+            sql: select * from model
         insights:
           - name: Colored Candlestick Plot
             props:

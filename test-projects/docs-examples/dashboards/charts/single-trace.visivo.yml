@@ -1,6 +1,14 @@
+sources:
+  - name: array-of-numbers-source
+    type: duckdb
+    database: target/seeds/array_of_numbers.duckdb
+    seeds:
+      - table_name: model
+        args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 models:
   - name: array-of-numbers
-    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+    source: ${ref(array-of-numbers-source)}
+    sql: select * from model
 
 charts:
   - name: single-trace-chart

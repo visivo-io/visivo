@@ -43,6 +43,6 @@ class TestDeprecationChecker:
 
             assert mock_instance.warn.call_count >= 3
 
-    def test_checkers_list_is_empty_by_default(self):
+    def test_registers_the_model_type_checker(self):
         checker = DeprecationChecker()
-        assert checker.checkers == []
+        assert [type(c).__name__ for c in checker.checkers] == ["ModelTypeDeprecationChecker"]

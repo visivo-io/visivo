@@ -1,15 +1,23 @@
+sources:
+  - name: multiple_points_data-source
+    type: duckdb
+    database: target/seeds/multiple_points_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,5
+            2,8
+            3,3
+            4,10
+            5,6
+
 models:
   - name: multiple_points_data
-    args:
-      - echo
-      - |
-        x,y
-        1,5
-        2,8
-        3,3
-        4,10
-        5,6
-
+    source: ${ref(multiple_points_data-source)}
+    sql: select * from model
 charts:
   - name: point-annotations-example
     layout:

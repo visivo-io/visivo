@@ -1,9 +1,17 @@
+sources:
+  - name: streamtube-data-source
+    type: duckdb
+    database: target/seeds/streamtube_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - curl
+          - -sL
+          - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
 models:
   - name: streamtube-data
-    args:
-      - curl
-      - -sL
-      - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
+    source: ${ref(streamtube-data-source)}
+    sql: select * from model
 charts:
   - name: simple-streamtube-chart
     layout:

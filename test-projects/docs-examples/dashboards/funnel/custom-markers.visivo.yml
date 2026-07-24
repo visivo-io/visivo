@@ -1,14 +1,22 @@
+sources:
+  - name: funnel-data-custom-source
+    type: duckdb
+    database: target/seeds/funnel_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            stage,value,color
+            Leads,1200,"#1f77b4"
+            MQL,900,"#ff7f0e"
+            SQL,600,"#2ca02c"
+            Proposal,300,"#d62728"
+            Won,100,"#9467bd"
 models:
   - name: funnel-data-custom
-    args:
-      - echo
-      - |
-        stage,value,color
-        Leads,1200,"#1f77b4"
-        MQL,900,"#ff7f0e"
-        SQL,600,"#2ca02c"
-        Proposal,300,"#d62728"
-        Won,100,"#9467bd"
+    source: ${ref(funnel-data-custom-source)}
+    sql: select * from model
 charts:
   - name: funnel-chart-with-custom-markers
     layout:

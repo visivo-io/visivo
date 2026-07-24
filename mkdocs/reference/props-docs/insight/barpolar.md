@@ -32,21 +32,29 @@ _**See the [Attributes](../../configuration/Insight/Props/Barpolar/#attributes) 
         ![](../../../assets/example-charts/props/barpolar/simple-barpolar.png)
 
         ```yaml
+        sources:
+          - name: activity-data-source
+            type: duckdb
+            database: target/seeds/activity_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    direction,activity_level
+                    0,5
+                    45,10
+                    90,2
+                    135,8
+                    180,4
+                    225,6
+                    270,7
+                    315,3
+
         models:
           - name: activity-data
-            args:
-              - echo
-              - |
-                direction,activity_level
-                0,5
-                45,10
-                90,2
-                135,8
-                180,4
-                225,6
-                270,7
-                315,3
-
+            source: ${ref(activity-data-source)}
+            sql: select * from model
         insights:
           - name: Activity Level by Direction
             props:
@@ -86,37 +94,45 @@ _**See the [Attributes](../../configuration/Insight/Props/Barpolar/#attributes) 
         ![](../../../assets/example-charts/props/barpolar/wind-rose.png)
 
         ```yaml
+        sources:
+          - name: wind-data-source
+            type: duckdb
+            database: target/seeds/wind_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    cardinal_order,direction,speed,count
+                    1,N,0-1 m/s,2
+                    1,N,1-2 m/s,3
+                    1,N,2-3 m/s,5
+                    2,NE,0-1 m/s,1
+                    2,NE,1-2 m/s,4
+                    2,NE,2-3 m/s,6
+                    3,E,0-1 m/s,2
+                    3,E,1-2 m/s,5
+                    3,E,2-3 m/s,3
+                    4,SE,0-1 m/s,3
+                    4,SE,1-2 m/s,2
+                    4,SE,2-3 m/s,4
+                    5,S,0-1 m/s,4
+                    5,S,1-2 m/s,5
+                    5,S,2-3 m/s,2
+                    6,SW,0-1 m/s,2
+                    6,SW,1-2 m/s,3
+                    6,SW,2-3 m/s,5
+                    7,W,0-1 m/s,1
+                    7,W,1-2 m/s,4
+                    7,W,2-3 m/s,6
+                    8,NW,0-1 m/s,2
+                    8,NW,1-2 m/s,5
+                    8,NW,2-3 m/s,3
+
         models:
           - name: wind-data
-            args:
-              - echo
-              - |
-                cardinal_order,direction,speed,count
-                1,N,0-1 m/s,2
-                1,N,1-2 m/s,3
-                1,N,2-3 m/s,5
-                2,NE,0-1 m/s,1
-                2,NE,1-2 m/s,4
-                2,NE,2-3 m/s,6
-                3,E,0-1 m/s,2
-                3,E,1-2 m/s,5
-                3,E,2-3 m/s,3
-                4,SE,0-1 m/s,3
-                4,SE,1-2 m/s,2
-                4,SE,2-3 m/s,4
-                5,S,0-1 m/s,4
-                5,S,1-2 m/s,5
-                5,S,2-3 m/s,2
-                6,SW,0-1 m/s,2
-                6,SW,1-2 m/s,3
-                6,SW,2-3 m/s,5
-                7,W,0-1 m/s,1
-                7,W,1-2 m/s,4
-                7,W,2-3 m/s,6
-                8,NW,0-1 m/s,2
-                8,NW,1-2 m/s,5
-                8,NW,2-3 m/s,3
-
+            source: ${ref(wind-data-source)}
+            sql: select * from model
         insights:
           - name: Wind Rose
             props:
@@ -157,19 +173,27 @@ _**See the [Attributes](../../configuration/Insight/Props/Barpolar/#attributes) 
         ![](../../../assets/example-charts/props/barpolar/custom-radial.png)
 
         ```yaml
+        sources:
+          - name: custom-radial-data-source
+            type: duckdb
+            database: target/seeds/custom_radial_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    direction,radial_start,radial_end
+                    0,1,3
+                    60,2,5
+                    120,3,6
+                    180,1,4
+                    240,2,7
+                    300,3,5
+
         models:
           - name: custom-radial-data
-            args:
-              - echo
-              - |
-                direction,radial_start,radial_end
-                0,1,3
-                60,2,5
-                120,3,6
-                180,1,4
-                240,2,7
-                300,3,5
-
+            source: ${ref(custom-radial-data-source)}
+            sql: select * from model
         insights:
           - name: Custom Radial Barpolar
             props:

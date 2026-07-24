@@ -1,14 +1,22 @@
+sources:
+  - name: ohlc-data-source
+    type: duckdb
+    database: target/seeds/ohlc_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            date,open,high,low,close
+            2023-01-01,100,105,95,102
+            2023-01-02,102,108,101,107
+            2023-01-03,107,110,105,109
+            2023-01-04,109,112,107,111
+            2023-01-05,111,114,110,113
 models:
   - name: ohlc-data
-    args:
-      - echo
-      - |
-        date,open,high,low,close
-        2023-01-01,100,105,95,102
-        2023-01-02,102,108,101,107
-        2023-01-03,107,110,105,109
-        2023-01-04,109,112,107,111
-        2023-01-05,111,114,110,113
+    source: ${ref(ohlc-data-source)}
+    sql: select * from model
 charts:
   - name: simple-ohlc-chart
     layout:

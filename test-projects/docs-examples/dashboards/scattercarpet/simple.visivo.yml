@@ -1,30 +1,45 @@
+sources:
+  - name: carpet-grid-source
+    type: duckdb
+    database: target/seeds/carpet_grid.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            a,b,y
+            4,1,2
+            4,2,3.5
+            4,3,4
+            4.5,1,3
+            4.5,2,4.5
+            4.5,3,5
+            5,1,5.5
+            5,2,6.5
+            5,3,7.5
+            6,1,8
+            6,2,8.5
+            6,3,10
+  - name: scattercarpet-data-source
+    type: duckdb
+    database: target/seeds/scattercarpet_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            a,b,value
+            4,1.5,15
+            4.5,2.5,25
+            5,1.5,30
+            6,2.5,40
 models:
   - name: carpet-grid
-    args:
-      - echo
-      - |
-        a,b,y
-        4,1,2
-        4,2,3.5
-        4,3,4
-        4.5,1,3
-        4.5,2,4.5
-        4.5,3,5
-        5,1,5.5
-        5,2,6.5
-        5,3,7.5
-        6,1,8
-        6,2,8.5
-        6,3,10
+    source: ${ref(carpet-grid-source)}
+    sql: select * from model
   - name: scattercarpet-data
-    args:
-      - echo
-      - |
-        a,b,value
-        4,1.5,15
-        4.5,2.5,25
-        5,1.5,30
-        6,2.5,40
+    source: ${ref(scattercarpet-data-source)}
+    sql: select * from model
 charts:
   - name: simple-scattercarpet-chart
     layout:

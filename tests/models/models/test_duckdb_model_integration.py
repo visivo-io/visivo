@@ -3,28 +3,30 @@ import tempfile
 import os
 import threading
 import time
-from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.sources.duckdb_source import DuckdbSource
+from visivo.models.sources.seed import Seed
+from visivo.jobs.run_source_schema_job import run_seeds
+
+
+def seeded_source(temp_dir, name, seeds):
+    return DuckdbSource(name=name, database=f"{temp_dir}/{name}.duckdb", type="duckdb", seeds=seeds)
 
 
 class TestDuckDBModelIntegration:
-    """Test CSV script and local merge models for hanging issues."""
+    """Test seeded DuckDB sources for hanging issues."""
 
-    def test_csv_script_model_write_operations(self):
-        """Test that CSV script model properly uses read-write connections."""
+    def test_seed_write_operations(self):
+        """Test that loading a seed properly uses read-write connections."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            csv_model = CsvScriptModel(
-                name="test_csv_model",
-                table_name="test_table",
-                args=["echo", "id,name\n1,test\n2,example"],
-                allow_empty=False,
+            source = seeded_source(
+                temp_dir,
+                "test_seed_source",
+                [Seed(table_name="test_table", args=["echo", "id,name\n1,test\n2,example"])],
             )
 
             # This should not hang and should properly create the database
-            csv_model.insert_csv_to_duckdb(output_dir=temp_dir)
+            run_seeds(source)
 
-            # Verify the data was created
-            source = csv_model.get_duckdb_source(output_dir=temp_dir)
             with source.connect(read_only=True) as conn:
                 result = conn.execute("SELECT COUNT(*) FROM test_table").fetchone()
                 assert result[0] == 2
@@ -33,18 +35,22 @@ class TestDuckDBModelIntegration:
                 assert data[0] == (1, "test")
                 assert data[1] == (2, "example")
 
-    def test_csv_script_model_concurrent_access(self):
-        """Test that CSV script models don't hang with concurrent access."""
+    def test_seeded_sources_concurrent_access(self):
+        """Test that seeded sources don't hang with concurrent access."""
         with tempfile.TemporaryDirectory() as temp_dir:
 
             def create_csv_model(model_id):
-                csv_model = CsvScriptModel(
-                    name=f"test_csv_model_{model_id}",
-                    table_name="test_table",
-                    args=["echo", f"id,name\n{model_id},test{model_id}"],
-                    allow_empty=False,
+                source = seeded_source(
+                    temp_dir,
+                    f"test_seed_source_{model_id}",
+                    [
+                        Seed(
+                            table_name="test_table",
+                            args=["echo", f"id,name\n{model_id},test{model_id}"],
+                        )
+                    ],
                 )
-                csv_model.insert_csv_to_duckdb(output_dir=temp_dir)
+                run_seeds(source)
                 return model_id
 
             results = []
@@ -68,7 +74,7 @@ class TestDuckDBModelIntegration:
             for thread in threads:
                 thread.join(timeout=10.0)
                 if thread.is_alive():
-                    pytest.fail("Thread hanging - CSV script model concurrency issue")
+                    pytest.fail("Thread hanging - seeded source concurrency issue")
 
             # Verify all operations succeeded
             assert len(exceptions) == 0, f"Exceptions occurred: {exceptions}"
@@ -109,19 +115,14 @@ class TestDuckDBModelIntegration:
     def test_mixed_read_write_operations_no_hang(self):
         """Test mixed read/write operations don't cause hanging."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Create CSV model
-            csv_model = CsvScriptModel(
-                name="test_csv",
-                table_name="csv_data",
-                args=["echo", "id,value\n1,from_csv\n2,more_csv"],
-                allow_empty=False,
+            source = seeded_source(
+                temp_dir,
+                "test_csv",
+                [Seed(table_name="csv_data", args=["echo", "id,value\n1,from_csv\n2,more_csv"])],
             )
 
-            # Create the CSV data
-            csv_model.insert_csv_to_duckdb(output_dir=temp_dir)
-
-            # Get the source and test read operations immediately after write
-            source = csv_model.get_duckdb_source(output_dir=temp_dir)
+            # Load the seed, then read immediately after the write
+            run_seeds(source)
 
             # Multiple read operations should not hang
             for i in range(5):

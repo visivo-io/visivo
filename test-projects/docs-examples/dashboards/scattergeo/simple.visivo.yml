@@ -1,14 +1,22 @@
+sources:
+  - name: scattergeo-data-source
+    type: duckdb
+    database: target/seeds/scattergeo_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            lon,lat
+            -75,40
+            -80,25
+            -120,47
+            -100,35
+            -90,30
 models:
   - name: scattergeo-data
-    args:
-      - echo
-      - |
-        lon,lat
-        -75,40
-        -80,25
-        -120,47
-        -100,35
-        -90,30
+    source: ${ref(scattergeo-data-source)}
+    sql: select * from model
 charts:
   - name: simple-scattergeo-chart
     layout:

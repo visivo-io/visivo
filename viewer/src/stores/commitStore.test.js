@@ -36,8 +36,6 @@ jest.mock('../components/views/workspace/telemetry', () => ({
 const FETCHER_KEYS = [
   'fetchSources',
   'fetchModels',
-  'fetchCsvScriptModels',
-  'fetchLocalMergeModels',
   'fetchDimensions',
   'fetchMetrics',
   'fetchRelations',

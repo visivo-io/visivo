@@ -16,6 +16,7 @@ import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
+import SeedsEditor, { sourceTypeSupportsSeeds } from './SeedsEditor';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
@@ -109,9 +110,24 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
       }
     });
 
+    // A seed needs somewhere to land and something to run
+    const incomplete = (formValues.seeds || []).some(
+      seed => !seed.table_name?.trim() || !(seed.args || []).some(arg => arg.trim())
+    );
+    if (incomplete) {
+      newErrors.seeds = 'Every seed needs a table name and at least one command argument';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  /** Drop the blank arg rows the editor leaves behind. */
+  const cleanedSeeds = () =>
+    (formValues.seeds || []).map(seed => ({
+      ...seed,
+      args: (seed.args || []).filter(arg => arg.trim()),
+    }));
 
   const handleTestConnection = async () => {
     if (!validateForm()) return;
@@ -131,10 +147,18 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
     setSaving(true);
     setSaveError(null);
 
-    // Build config - embedded sources don't include name
+    // Build config - embedded sources don't include name. `seeds` is omitted
+    // entirely when empty so a source that never had one keeps the same shape.
+    const values = { ...formValues };
+    const seeds = sourceTypeSupportsSeeds(sourceType) ? cleanedSeeds() : [];
+    if (seeds.length) {
+      values.seeds = seeds;
+    } else {
+      delete values.seeds;
+    }
     const config = isEmbedded
-      ? { type: sourceType, ...formValues }
-      : { name, type: sourceType, ...formValues };
+      ? { type: sourceType, ...values }
+      : { name, type: sourceType, ...values };
 
     // Call unified save - parent handles embedded vs standalone routing
     const result = await onSave('source', name, config);
@@ -208,6 +232,17 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
             onChange={setFormValues}
             errors={errors}
           />
+
+          {/* Seeds — only on source types the backend accepts them on */}
+          {sourceTypeSupportsSeeds(sourceType) && (
+            <div>
+              <SeedsEditor
+                seeds={formValues.seeds}
+                onChange={seeds => setFormValues({ ...formValues, seeds })}
+              />
+              {errors.seeds && <p className="mt-1 text-xs text-red-500">{errors.seeds}</p>}
+            </div>
+          )}
 
           {/* Connection Status */}
           {currentConnectionStatus && (

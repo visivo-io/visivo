@@ -15,8 +15,6 @@ import createInputSlice from './inputStore';
 import createInsightSlice from './insightStore';
 import createTableSlice from './tableStore';
 import createMarkdownSlice from './markdownStore';
-import createCsvScriptModelSlice from './csvScriptModelStore';
-import createLocalMergeModelSlice from './localMergeModelStore';
 import * as chartsApi from '../api/charts';
 import * as dimensionsApi from '../api/dimensions';
 import * as metricsApi from '../api/metrics';
@@ -27,8 +25,6 @@ import * as inputsApi from '../api/inputs';
 import * as insightsApi from '../api/insights';
 import * as tablesApi from '../api/tables';
 import * as markdownsApi from '../api/markdowns';
-import * as csvScriptModelsApi from '../api/csvScriptModels';
-import * as localMergeModelsApi from '../api/localMergeModels';
 
 jest.mock('../api/charts');
 jest.mock('../api/dimensions');
@@ -40,8 +36,6 @@ jest.mock('../api/inputs');
 jest.mock('../api/insights');
 jest.mock('../api/tables');
 jest.mock('../api/markdowns');
-jest.mock('../api/csvScriptModels');
-jest.mock('../api/localMergeModels');
 
 // Minimal stand-in for a zustand store: compose the slice over a mutable state
 // object with set/get, exactly as zustand's create() would.
@@ -69,19 +63,6 @@ const STORES = [
   { name: 'insight', slice: createInsightSlice, api: insightsApi },
   { name: 'table', slice: createTableSlice, api: tablesApi },
   { name: 'markdown', slice: createMarkdownSlice, api: markdownsApi },
-  // These two map a snake_case api payload key onto a camelCase state key.
-  {
-    name: 'csvScriptModel',
-    slice: createCsvScriptModelSlice,
-    api: csvScriptModelsApi,
-    dataKey: 'csv_script_models',
-  },
-  {
-    name: 'localMergeModel',
-    slice: createLocalMergeModelSlice,
-    api: localMergeModelsApi,
-    dataKey: 'local_merge_models',
-  },
 ];
 
 describe.each(STORES)('$name store slice', ({ slice, api, dataKey }) => {

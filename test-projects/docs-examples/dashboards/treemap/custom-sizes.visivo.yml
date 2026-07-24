@@ -1,19 +1,27 @@
+sources:
+  - name: treemap-data-tiling-source
+    type: duckdb
+    database: target/seeds/treemap_data_tiling.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            labels,parents,values
+            Total,,100
+            A,Total,40
+            B,Total,30
+            C,Total,30
+            D,A,15
+            E,A,25
+            F,B,10
+            G,B,20
+            H,C,15
+            I,C,15
 models:
   - name: treemap-data-tiling
-    args:
-      - echo
-      - |
-        labels,parents,values
-        Total,,100
-        A,Total,40
-        B,Total,30
-        C,Total,30
-        D,A,15
-        E,A,25
-        F,B,10
-        G,B,20
-        H,C,15
-        I,C,15
+    source: ${ref(treemap-data-tiling-source)}
+    sql: select * from model
 charts:
   - name: treemap-chart-with-custom-tiling
     layout:

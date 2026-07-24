@@ -41,8 +41,6 @@ const seedStore = () => {
         { name: 'monthly_revenue', child_item_names: ['local_postgres'] },
         { name: 'customers', child_item_names: ['local_postgres'] },
       ],
-      csvScriptModels: [],
-      localMergeModels: [],
       sources: [{ name: 'local_postgres', child_item_names: [] }],
       tables: [],
       markdowns: [],
@@ -397,8 +395,6 @@ describe('buildLineageRelations', () => {
     markdowns: useStore.getState().markdowns,
     inputs: useStore.getState().inputs,
     allDashboards: useStore.getState().allDashboards,
-    csvScriptModels: [],
-    localMergeModels: [],
   });
 
   test('returns both upstream and downstream relations for a chart with default unbounded scope', () => {

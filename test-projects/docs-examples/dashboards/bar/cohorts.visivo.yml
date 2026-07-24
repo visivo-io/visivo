@@ -1,9 +1,17 @@
+sources:
+  - name: monty-python-quest-data-source
+    type: duckdb
+    database: target/seeds/monty_python_quest_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - curl
+          - "-s"
+          - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 models:
   - name: monty-python-quest-data
-    args:
-      - curl
-      - "-s"
-      - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+    source: ${ref(monty-python-quest-data-source)}
+    sql: select * from model
 charts:
   - name: count-times-enemy-was-encountered-by-knight
     layout:

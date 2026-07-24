@@ -1,15 +1,23 @@
+sources:
+  - name: violin-data-source
+    type: duckdb
+    database: target/seeds/violin_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category,value
+            A,23
+            A,25
+            A,27
+            B,30
+            B,35
+            B,28
 models:
   - name: violin-data
-    args:
-      - echo
-      - |
-        category,value
-        A,23
-        A,25
-        A,27
-        B,30
-        B,35
-        B,28
+    source: ${ref(violin-data-source)}
+    sql: select * from model
 charts:
   - name: simple-violin-chart
     layout:

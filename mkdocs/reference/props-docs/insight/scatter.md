@@ -36,23 +36,31 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
         ![](../../../assets/example-charts/props/scatter/simple-scatter.png)
 
         ```yaml
+        sources:
+          - name: scatter-data-source
+            type: duckdb
+            database: target/seeds/scatter_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,10
+                    2,20
+                    3,15
+                    4,25
+                    5,30
+                    1.5,5
+                    2.5,22
+                    3.5,9
+                    4.5,21
+                    5.5,15
+
         models:
           - name: scatter-data
-            args:
-              - echo
-              - |
-                x,y
-                1,10
-                2,20
-                3,15
-                4,25
-                5,30
-                1.5,5
-                2.5,22
-                3.5,9
-                4.5,21
-                5.5,15
-
+            source: ${ref(scatter-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scatter Plot
             props:
@@ -73,18 +81,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
         ![](../../../assets/example-charts/props/scatter/lines-scatter.png)
 
         ```yaml
+        sources:
+          - name: scatter-data-lines-source
+            type: duckdb
+            database: target/seeds/scatter_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,10
+                    3,8
+                    4,15
+                    5,12
+
         models:
           - name: scatter-data-lines
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,10
-                3,8
-                4,15
-                5,12
-
+            source: ${ref(scatter-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Markers and Line
             props:
@@ -115,18 +131,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
         ![](../../../assets/example-charts/props/scatter/custom-markers-scatter.png)
 
         ```yaml
+        sources:
+          - name: scatter-data-custom-source
+            type: duckdb
+            database: target/seeds/scatter_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,size,color
+                    1,5,10,#1f77b4
+                    2,10,15,#ff7f0e
+                    3,8,20,#2ca02c
+                    4,15,25,#d62728
+                    5,12,30,#9467bd
+
         models:
           - name: scatter-data-custom
-            args:
-              - echo
-              - |
-                x,y,size,color
-                1,5,10,#1f77b4
-                2,10,15,#ff7f0e
-                3,8,20,#2ca02c
-                4,15,25,#d62728
-                5,12,30,#9467bd
-
+            source: ${ref(scatter-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scatter Plot with Custom Markers
             props:
@@ -148,20 +172,28 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
         ![](../../../assets/example-charts/props/scatter/area-plot.png)
 
         ```yaml
+        sources:
+          - name: area-plot-data-source
+            type: duckdb
+            database: target/seeds/area_plot_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,7
+                    3,10
+                    4,8
+                    5,12
+                    6,9
+                    7,11
+
         models:
           - name: area-plot-data
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,7
-                3,10
-                4,8
-                5,12
-                6,9
-                7,11
-
+            source: ${ref(area-plot-data-source)}
+            sql: select * from model
         insights:
           - name: Area Plot
             props:

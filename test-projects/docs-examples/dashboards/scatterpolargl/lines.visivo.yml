@@ -1,14 +1,22 @@
+sources:
+  - name: scatterpolargl-data-lines-source
+    type: duckdb
+    database: target/seeds/scatterpolargl_data_lines.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            theta,r
+            0,5
+            45,15
+            90,20
+            135,10
+            180,25
 models:
   - name: scatterpolargl-data-lines
-    args:
-      - echo
-      - |
-        theta,r
-        0,5
-        45,15
-        90,20
-        135,10
-        180,25
+    source: ${ref(scatterpolargl-data-lines-source)}
+    sql: select * from model
 charts:
   - name: scatterpolargl-chart-with-lines
     layout:

@@ -1,24 +1,32 @@
+sources:
+  - name: violin-data-split-source
+    type: duckdb
+    database: target/seeds/violin_data_split.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category,sub_category,value
+            A,X,23
+            A,Y,25
+            A,Y,70
+            A,Y,15
+            A,X,27
+            A,X,13
+            A,X,21
+            A,X,81
+            B,X,30
+            B,X,35
+            B,X,4
+            B,Y,35
+            B,Y,6
+            B,Y,5
+            B,X,28
 models:
   - name: violin-data-split
-    args:
-      - echo
-      - |
-        category,sub_category,value
-        A,X,23
-        A,Y,25
-        A,Y,70
-        A,Y,15
-        A,X,27
-        A,X,13
-        A,X,21
-        A,X,81
-        B,X,30
-        B,X,35
-        B,X,4
-        B,Y,35
-        B,Y,6
-        B,Y,5
-        B,X,28
+    source: ${ref(violin-data-split-source)}
+    sql: select * from model
 charts:
   - name: violin-chart-with-split-categories
     layout:

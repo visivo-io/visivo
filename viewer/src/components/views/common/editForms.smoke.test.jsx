@@ -10,8 +10,6 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import MarkdownEditForm from './MarkdownEditForm';
 import ProjectDefaultsEditForm from './ProjectDefaultsEditForm';
-import CsvScriptModelEditForm from './CsvScriptModelEditForm';
-import LocalMergeModelEditForm from './LocalMergeModelEditForm';
 import SourceEditForm from './SourceEditForm';
 import ChartEditForm from './ChartEditForm';
 import DashboardEditForm from './DashboardEditForm';
@@ -24,7 +22,7 @@ jest.mock('../../../stores/store', () => {
   const listKeys = new Set([
     'charts', 'insights', 'sources', 'models', 'dimensions', 'metrics', 'relations',
     'tables', 'inputs', 'markdowns', 'dashboards', 'pendingChanges', 'selectedTags',
-    'allDashboards', 'csvScriptModels', 'localMergeModels',
+    'allDashboards',
   ]);
   const actionRe = /^(save|delete|fetch|check|update|set|open|close|run|test|clear|initialize|get|add|remove)/;
   const STATE = new Proxy(
@@ -74,8 +72,6 @@ jest.mock('../../sources/SourceTypeSelector', () => ({
 const FORMS = [
   ['MarkdownEditForm', MarkdownEditForm],
   ['ProjectDefaultsEditForm', ProjectDefaultsEditForm],
-  ['CsvScriptModelEditForm', CsvScriptModelEditForm],
-  ['LocalMergeModelEditForm', LocalMergeModelEditForm],
   ['SourceEditForm', SourceEditForm],
   ['ChartEditForm', ChartEditForm],
   ['DashboardEditForm', DashboardEditForm],

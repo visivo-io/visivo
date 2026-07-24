@@ -31,22 +31,30 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attri
         ![](../../../assets/example-charts/props/histogram/simple-histogram.png)
 
         ```yaml
+        sources:
+          - name: histogram-data-source
+            type: duckdb
+            database: target/seeds/histogram_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    value
+                    10
+                    20
+                    15
+                    10
+                    5
+                    25
+                    30
+                    15
+                    20
+                    10
         models:
           - name: histogram-data
-            args:
-              - echo
-              - |
-                value
-                10
-                20
-                15
-                10
-                5
-                25
-                30
-                15
-                20
-                10
+            source: ${ref(histogram-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Histogram Insight
             props:
@@ -78,35 +86,43 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attri
         ![](../../../assets/example-charts/props/histogram/horizontal-histogram.png)
 
         ```yaml
+        sources:
+          - name: histogram-data-horizontal-source
+            type: duckdb
+            database: target/seeds/histogram_data_horizontal.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    value
+                    1
+                    3
+                    2
+                    5
+                    4
+                    3
+                    3
+                    3
+                    3
+                    4
+                    1
+                    3
+                    4
+                    3
+                    3
+                    4
+                    1
+                    2
+                    3
+                    5
+                    2
+                    3
+                    4
         models:
           - name: histogram-data-horizontal
-            args:
-              - echo
-              - |
-                value
-                1
-                3
-                2
-                5
-                4
-                3
-                3
-                3
-                3
-                4
-                1
-                3
-                4
-                3
-                3
-                4
-                1
-                2
-                3
-                5
-                2
-                3
-                4
+            source: ${ref(histogram-data-horizontal-source)}
+            sql: select * from model
         insights:
           - name: Horizontal Histogram Insight
             props:
@@ -139,21 +155,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attri
         ![](../../../assets/example-charts/props/histogram/stacked-histogram.png)
 
         ```yaml
+        sources:
+          - name: histogram-data-stacked-source
+            type: duckdb
+            database: target/seeds/histogram_data_stacked.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    group,value
+                    A,1
+                    A,2
+                    A,2
+                    A,3
+                    B,3
+                    B,4
+                    B,5
+                    B,5
+                    B,6
         models:
           - name: histogram-data-stacked
-            args:
-              - echo
-              - |
-                group,value
-                A,1
-                A,2
-                A,2
-                A,3
-                B,3
-                B,4
-                B,5
-                B,5
-                B,6
+            source: ${ref(histogram-data-stacked-source)}
+            sql: select * from model
         insights:
           - name: Histogram Groups
             props:

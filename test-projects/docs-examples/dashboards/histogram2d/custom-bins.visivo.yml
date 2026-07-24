@@ -1,18 +1,26 @@
+sources:
+  - name: histogram2d-data-bins-source
+    type: duckdb
+    database: target/seeds/histogram2d_data_bins.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,5
+            2,6
+            3,7
+            2,4
+            1,5
+            3,3
+            4,8
+            5,9
+            4,4
 models:
   - name: histogram2d-data-bins
-    args:
-      - echo
-      - |
-        x,y
-        1,5
-        2,6
-        3,7
-        2,4
-        1,5
-        3,3
-        4,8
-        5,9
-        4,4
+    source: ${ref(histogram2d-data-bins-source)}
+    sql: select * from model
 charts:
   - name: 2d-histogram-with-custom-bins-chart
     layout:

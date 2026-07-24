@@ -37,13 +37,11 @@ describe('useCanvasRecord', () => {
     expect(fetchCharts).toHaveBeenCalled();
   });
 
-  test('csvScriptModel resolves from its own collection (not models)', () => {
+  test('model resolves from the models collection', () => {
     seed({
-      csvScriptModels: [{ name: 'seed', config: { table: 'x' } }],
-      fetchCsvScriptModels: jest.fn(),
-      models: [],
+      models: [{ name: 'seed', config: { name: 'seed', table: 'x' } }],
     });
-    const { result } = renderHook(() => useCanvasRecord('csvScriptModel', 'seed'));
+    const { result } = renderHook(() => useCanvasRecord('model', 'seed'));
     expect(result.current.status).toBe('ready');
     expect(result.current.config).toEqual({ name: 'seed', table: 'x' });
   });

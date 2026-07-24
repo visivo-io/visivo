@@ -1,14 +1,22 @@
+sources:
+  - name: splom-data-sizes-source
+    type: duckdb
+    database: target/seeds/splom_data_sizes.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            var1,var2,var3,size
+            1,2,3,10
+            2,3,4,15
+            3,4,5,20
+            4,5,6,25
+            5,6,7,30
 models:
   - name: splom-data-sizes
-    args:
-      - echo
-      - |
-        var1,var2,var3,size
-        1,2,3,10
-        2,3,4,15
-        3,4,5,20
-        4,5,6,25
-        5,6,7,30
+    source: ${ref(splom-data-sizes-source)}
+    sql: select * from model
 charts:
   - name: splom-chart-with-custom-sizes
     layout:

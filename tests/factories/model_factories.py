@@ -5,12 +5,12 @@ import factory
 from visivo.models.alert import Alert
 from visivo.models.defaults import Defaults
 from visivo.models.destinations.console_destination import ConsoleDestination
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.sources.seed import Seed
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
+from visivo.models.sources.duckdb_source import DuckdbSource
 from visivo.models.sources.redshift_source import RedshiftSource
 from visivo.models.sources.bigquery_source import BigQuerySource
 from visivo.models.test import Test
@@ -167,6 +167,14 @@ class BigQuerySourceFactory(factory.Factory):
     type = "bigquery"
 
 
+class SeedFactory(factory.Factory):
+    class Meta:
+        model = Seed
+
+    table_name = "model"
+    args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
+
+
 class SourceFactory(factory.Factory):
     class Meta:
         model = SqliteSource
@@ -174,6 +182,21 @@ class SourceFactory(factory.Factory):
     name = "source"
     database = "tmp/test.sqlite"
     type = "sqlite"
+
+    class Params:
+        seeded = factory.Trait(seeds=factory.List([factory.SubFactory(SeedFactory)]))
+
+
+class DuckdbSourceFactory(factory.Factory):
+    class Meta:
+        model = DuckdbSource
+
+    name = "source"
+    database = "target/test.duckdb"
+    type = "duckdb"
+
+    class Params:
+        seeded = factory.Trait(seeds=factory.List([factory.SubFactory(SeedFactory)]))
 
 
 class InsightPropsFactory(factory.Factory):
@@ -196,24 +219,6 @@ class SqlModelFactory(factory.Factory):
     class Params:
         source_include = factory.Trait(source=factory.SubFactory(SourceFactory))
         source_default = factory.Trait(source=None)
-
-
-class CsvScriptModelFactory(factory.Factory):
-    class Meta:
-        model = CsvScriptModel
-
-    name = "model"
-    table_name = "model"
-    args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
-
-
-class LocalMergeModelFactory(factory.Factory):
-    class Meta:
-        model = LocalMergeModel
-
-    name = "local_merge_model"
-    sql = "select * from test_table"
-    models = factory.List([factory.SubFactory(SqlModelFactory) for _ in range(1)])
 
 
 class InsightFactory(factory.Factory):

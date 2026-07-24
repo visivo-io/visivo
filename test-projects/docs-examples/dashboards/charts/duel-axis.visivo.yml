@@ -1,6 +1,14 @@
+sources:
+  - name: series-of-numbers-source
+    type: duckdb
+    database: target/seeds/series_of_numbers.duckdb
+    seeds:
+      - table_name: model
+        args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 models:
   - name: series-of-numbers
-    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+    source: ${ref(series-of-numbers-source)}
+    sql: select * from model
 
 charts:
   - name: duel-axis

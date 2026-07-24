@@ -44,8 +44,6 @@ from visivo.server.jobs.save_run_executor import request_run
 RESOURCE_META = {
     "sources": ("source_manager", "whole", True),
     "models": ("model_manager", "whole", True),
-    "csv-script-models": ("csv_script_model_manager", "whole", True),
-    "local-merge-models": ("local_merge_model_manager", "whole", True),
     "dimensions": ("dimension_manager", "whole", True),
     "metrics": ("metric_manager", "whole", True),
     "relations": ("relation_manager", "whole", True),
@@ -58,8 +56,8 @@ RESOURCE_META = {
 }
 
 # Detail routes (``/api/<segment>/<name>/``) for the mapped resources — derived
-# from RESOURCE_META so the two can't drift. Longest-first alternation so e.g.
-# ``local-merge-models`` isn't shadowed by ``models``.
+# from RESOURCE_META so the two can't drift. Longest-first alternation so a
+# segment can never be shadowed by another that is a prefix of it.
 _RESOURCE_ROUTE_RE = re.compile(
     r"^/api/("
     + "|".join(re.escape(s) for s in sorted(RESOURCE_META, key=len, reverse=True))

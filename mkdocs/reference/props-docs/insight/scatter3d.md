@@ -31,18 +31,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attri
         ![](../../../assets/example-charts/props/scatter3d/simple-scatter3d.png)
 
         ```yaml
+        sources:
+          - name: scatter3d-data-source
+            type: duckdb
+            database: target/seeds/scatter3d_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    1,10,15
+                    2,20,25
+                    3,15,30
+                    4,25,35
+                    5,30,40
+
         models:
           - name: scatter3d-data
-            args:
-              - echo
-              - |
-                x,y,z
-                1,10,15
-                2,20,25
-                3,15,30
-                4,25,35
-                5,30,40
-
+            source: ${ref(scatter3d-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scatter3D Plot
             props:
@@ -65,18 +73,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attri
         ![](../../../assets/example-charts/props/scatter3d/lines-scatter3d.png)
 
         ```yaml
+        sources:
+          - name: scatter3d-data-lines-source
+            type: duckdb
+            database: target/seeds/scatter3d_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    1,5,7
+                    2,10,12
+                    3,8,10
+                    4,15,18
+                    5,12,17
+
         models:
           - name: scatter3d-data-lines
-            args:
-              - echo
-              - |
-                x,y,z
-                1,5,7
-                2,10,12
-                3,8,10
-                4,15,18
-                5,12,17
-
+            source: ${ref(scatter3d-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scatter3D Plot with Lines
             props:
@@ -99,18 +115,26 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attri
         ![](../../../assets/example-charts/props/scatter3d/custom-markers-scatter3d.png)
 
         ```yaml
+        sources:
+          - name: scatter3d-data-custom-source
+            type: duckdb
+            database: target/seeds/scatter3d_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z,size,color
+                    1,5,10,15,#1f77b4
+                    2,10,12,20,#ff7f0e
+                    3,8,10,25,#2ca02c
+                    4,15,18,30,#d62728
+                    5,12,20,35,#9467bd
+
         models:
           - name: scatter3d-data-custom
-            args:
-              - echo
-              - |
-                x,y,z,size,color
-                1,5,10,15,#1f77b4
-                2,10,12,20,#ff7f0e
-                3,8,10,25,#2ca02c
-                4,15,18,30,#d62728
-                5,12,20,35,#9467bd
-
+            source: ${ref(scatter3d-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scatter3D Plot with Custom Markers
             props:

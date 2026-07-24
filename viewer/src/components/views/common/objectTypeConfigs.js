@@ -8,8 +8,6 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import TerminalIcon from '@mui/icons-material/Terminal';
-import MergeIcon from '@mui/icons-material/Merge';
 import TuneIcon from '@mui/icons-material/Tune';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HomeIcon from '@mui/icons-material/Home';
@@ -29,7 +27,7 @@ import CompassCalibrationIcon from '@mui/icons-material/CompassCalibration';
  * - colors: Tailwind color classes for consistent styling
  *
  * Objects are ordered by standard hierarchy and colors follow rainbow spectrum (red→violet):
- * sources, models, csv_script_models, local_merge_models, dimensions, metrics,
+ * sources, models, dimensions, metrics,
  * relations, inputs, insights, markdown, tables, charts, dashboards
  */
 export const OBJECT_TYPES = [
@@ -73,42 +71,6 @@ export const OBJECT_TYPES = [
       nodeSelected: 'bg-amber-100 border-amber-400',
       // For connection handles in lineage view
       connectionHandle: '#f59e0b', // amber-500
-    },
-  },
-  {
-    value: 'csvScriptModel',
-    label: 'CSV Script Models',
-    singularLabel: 'CSV Script Model',
-    icon: TerminalIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-lime-100',
-      text: 'text-lime-800',
-      border: 'border-lime-200',
-      bgHover: 'hover:bg-lime-50',
-      bgSelected: 'bg-lime-100',
-      borderSelected: 'border-lime-300',
-      node: 'bg-lime-50 border-lime-200',
-      nodeSelected: 'bg-lime-100 border-lime-400',
-      connectionHandle: '#84cc16', // lime-500
-    },
-  },
-  {
-    value: 'localMergeModel',
-    label: 'Local Merge Models',
-    singularLabel: 'Local Merge Model',
-    icon: MergeIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-green-100',
-      text: 'text-green-800',
-      border: 'border-green-200',
-      bgHover: 'hover:bg-green-50',
-      bgSelected: 'bg-green-100',
-      borderSelected: 'border-green-300',
-      node: 'bg-green-50 border-green-200',
-      nodeSelected: 'bg-green-100 border-green-400',
-      connectionHandle: '#22c55e', // green-500
     },
   },
   {

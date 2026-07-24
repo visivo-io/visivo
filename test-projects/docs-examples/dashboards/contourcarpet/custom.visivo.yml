@@ -1,18 +1,26 @@
+sources:
+  - name: contourcarpet-data-custom-source
+    type: duckdb
+    database: target/seeds/contourcarpet_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            a,b,x,y,z
+            0,0,1,1,10
+            1,0,2,2,20
+            2,0,3,3,30
+            0,1,4,4,40
+            1,1,5,5,50
+            2,1,6,6,60
+            0,2,7,7,70
+            1,2,8,8,80
+            2,2,9,9,90
 models:
   - name: contourcarpet-data-custom
-    args:
-      - echo
-      - |
-        a,b,x,y,z
-        0,0,1,1,10
-        1,0,2,2,20
-        2,0,3,3,30
-        0,1,4,4,40
-        1,1,5,5,50
-        2,1,6,6,60
-        0,2,7,7,70
-        1,2,8,8,80
-        2,2,9,9,90
+    source: ${ref(contourcarpet-data-custom-source)}
+    sql: select * from model
 charts:
   - name: custom-contourcarpet-chart
     layout:

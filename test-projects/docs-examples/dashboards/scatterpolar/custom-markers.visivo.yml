@@ -1,14 +1,22 @@
+sources:
+  - name: scatterpolar-data-custom-source
+    type: duckdb
+    database: target/seeds/scatterpolar_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            theta,r,size,color
+            0,5,10,#1f77b4
+            45,15,15,#ff7f0e
+            90,20,20,#2ca02c
+            135,10,25,#d62728
+            180,25,30,#9467bd
 models:
   - name: scatterpolar-data-custom
-    args:
-      - echo
-      - |
-        theta,r,size,color
-        0,5,10,#1f77b4
-        45,15,15,#ff7f0e
-        90,20,20,#2ca02c
-        135,10,25,#d62728
-        180,25,30,#9467bd
+    source: ${ref(scatterpolar-data-custom-source)}
+    sql: select * from model
 charts:
   - name: scatterpolar-chart-with-custom-markers
     layout:

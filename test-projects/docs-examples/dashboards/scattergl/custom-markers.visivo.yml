@@ -1,14 +1,22 @@
+sources:
+  - name: scattergl-data-custom-source
+    type: duckdb
+    database: target/seeds/scattergl_data_custom.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,size,color
+            1,5,10,#1f77b4
+            2,10,15,#ff7f0e
+            3,8,20,#2ca02c
+            4,15,25,#d62728
+            5,12,30,#9467bd
 models:
   - name: scattergl-data-custom
-    args:
-      - echo
-      - |
-        x,y,size,color
-        1,5,10,#1f77b4
-        2,10,15,#ff7f0e
-        3,8,20,#2ca02c
-        4,15,25,#d62728
-        5,12,30,#9467bd
+    source: ${ref(scattergl-data-custom-source)}
+    sql: select * from model
 charts:
   - name: scattergl-chart-with-custom-markers
     layout:

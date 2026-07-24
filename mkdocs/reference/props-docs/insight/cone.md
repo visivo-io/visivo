@@ -31,20 +31,28 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Cone/#attributes
         ![](../../../assets/example-charts/props/cone/simple-cone.png)
 
         ```yaml
+        sources:
+          - name: vector-field-data-source
+            type: duckdb
+            database: target/seeds/vector_field_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z,u,v,w
+                    0,0,0,1,0,0
+                    0,1,0,0,1,0
+                    1,0,0,0,0,1
+                    1,1,0,1,1,1
+                    0,0,1,-1,0,0
+                    0,1,1,0,-1,0
+                    1,0,1,0,0,-1
+                    1,1,1,-1,-1,-1
         models:
           - name: vector-field-data
-            args:
-              - echo
-              - |
-                x,y,z,u,v,w
-                0,0,0,1,0,0
-                0,1,0,0,1,0
-                1,0,0,0,0,1
-                1,1,0,1,1,1
-                0,0,1,-1,0,0
-                0,1,1,0,-1,0
-                1,0,1,0,0,-1
-                1,1,1,-1,-1,-1
+            source: ${ref(vector-field-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Cone Plot
             props:
@@ -80,17 +88,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Cone/#attributes
         ![](../../../assets/example-charts/props/cone/wind-cone.png)
 
         ```yaml
+        sources:
+          - name: wind-data-source
+            type: duckdb
+            database: target/seeds/wind_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z,u,v,w,speed
+                    0,0,0,5,5,0,7.07
+                    1,1,0,-5,5,0,7.07
+                    2,2,0,-5,-5,0,7.07
+                    3,3,0,5,-5,0,7.07
+                    4,4,0,0,0,5,5.00
         models:
           - name: wind-data
-            args:
-              - echo
-              - |
-                x,y,z,u,v,w,speed
-                0,0,0,5,5,0,7.07
-                1,1,0,-5,5,0,7.07
-                2,2,0,-5,-5,0,7.07
-                3,3,0,5,-5,0,7.07
-                4,4,0,0,0,5,5.00
+            source: ${ref(wind-data-source)}
+            sql: select * from model
         insights:
           - name: Wind Direction Cone Plot
             props:

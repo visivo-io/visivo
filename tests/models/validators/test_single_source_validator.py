@@ -3,11 +3,10 @@
 import pytest
 from visivo.models.project import Project
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.metric import Metric
 from visivo.models.dimension import Dimension
-from tests.factories.model_factories import SourceFactory
+from visivo.models.sources.seed import Seed
+from tests.factories.model_factories import SourceFactory, DuckdbSourceFactory
 
 
 class TestSingleSourceValidator:
@@ -57,49 +56,44 @@ class TestSingleSourceValidator:
         )
         assert project is not None
 
-    def test_metric_with_csv_model_has_no_source(self):
-        """Test that metrics with CsvScriptModel have no source to validate."""
-        csv_model = CsvScriptModel(
-            name="data",
-            table_name="data",
-            args=["echo", "x,y\n1,2"],
-        )
+    def test_metric_with_sourceless_model_has_no_source(self):
+        """A model with no source and no project default ties back to nothing."""
+        model = SqlModel(name="data", sql="SELECT * FROM data")
 
         metric = Metric(name="total_x", expression="SUM(${ref(data).x})")
 
-        # CsvScriptModel has no source, so validation should fail
         with pytest.raises(ValueError) as exc_info:
             Project(
                 name="test_project",
-                models=[csv_model],
+                models=[model],
                 metrics=[metric],
                 dashboards=[],
             )
 
-        assert "does not tie back to any source" in str(exc_info.value)
+        assert "does not specify a source" in str(exc_info.value)
 
-    def test_metric_ties_back_through_local_merge_model(self):
-        """Test that metrics trace through LocalMergeModel to underlying source."""
-        source = SourceFactory()
-        base_model = SqlModel(
-            name="base",
+    def test_metric_ties_back_through_model_on_seeded_source(self):
+        """A model reading seeded tables still traces to the source that holds them.
+
+        This is the shape that replaces LocalMergeModel: the join lives in the
+        model's own SQL over tables seeded onto one source.
+        """
+        source = DuckdbSourceFactory(
+            name="seeded",
+            seeds=[Seed(table_name="base_table", args=["echo", "id\n1"])],
+        )
+        merged_model = SqlModel(
+            name="merged",
             sql="SELECT * FROM base_table",
             source=f"ref({source.name})",
         )
 
-        merge_model = LocalMergeModel(
-            name="merged",
-            sql="SELECT * FROM base",
-            models=["ref(base)"],
-        )
-
         metric = Metric(name="total_count", expression="COUNT(${ref(merged).id})")
 
-        # Should not raise - metric traces through merge_model to base_model to source
         project = Project(
             name="test_project",
             sources=[source],
-            models=[base_model, merge_model],
+            models=[merged_model],
             metrics=[metric],
             dashboards=[],
         )

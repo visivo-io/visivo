@@ -31,21 +31,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#att
         ![](../../../assets/example-charts/props/histogram2d/simple-histogram2d.png)
 
         ```yaml
+        sources:
+          - name: histogram2d-data-source
+            type: duckdb
+            database: target/seeds/histogram2d_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,2
+                    2,3
+                    3,4
+                    2,2
+                    1,3
+                    3,2
+                    4,4
+                    5,6
+                    4,2
         models:
           - name: histogram2d-data
-            args:
-              - echo
-              - |
-                x,y
-                1,2
-                2,3
-                3,4
-                2,2
-                1,3
-                3,2
-                4,4
-                5,6
-                4,2
+            source: ${ref(histogram2d-data-source)}
+            sql: select * from model
         insights:
           - name: Simple 2D Histogram Plot
             props:
@@ -75,21 +83,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#att
         ![](../../../assets/example-charts/props/histogram2d/custom-bins-histogram2d.png)
 
         ```yaml
+        sources:
+          - name: histogram2d-data-bins-source
+            type: duckdb
+            database: target/seeds/histogram2d_data_bins.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,5
+                    2,6
+                    3,7
+                    2,4
+                    1,5
+                    3,3
+                    4,8
+                    5,9
+                    4,4
         models:
           - name: histogram2d-data-bins
-            args:
-              - echo
-              - |
-                x,y
-                1,5
-                2,6
-                3,7
-                2,4
-                1,5
-                3,3
-                4,8
-                5,9
-                4,4
+            source: ${ref(histogram2d-data-bins-source)}
+            sql: select * from model
         insights:
           - name: 2D Histogram with Custom Bins
             props:
@@ -123,21 +139,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#att
         ![](../../../assets/example-charts/props/histogram2d/density-histogram2d.png)
 
         ```yaml
+        sources:
+          - name: histogram2d-data-density-source
+            type: duckdb
+            database: target/seeds/histogram2d_data_density.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,1
+                    2,2
+                    3,3
+                    2,1
+                    3,2
+                    4,3
+                    5,4
+                    4,1
+                    5,2
         models:
           - name: histogram2d-data-density
-            args:
-              - echo
-              - |
-                x,y
-                1,1
-                2,2
-                3,3
-                2,1
-                3,2
-                4,3
-                5,4
-                4,1
-                5,2
+            source: ${ref(histogram2d-data-density-source)}
+            sql: select * from model
         insights:
           - name: 2D Histogram with Density Mode
             props:

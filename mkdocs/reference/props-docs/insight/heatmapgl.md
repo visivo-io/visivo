@@ -31,21 +31,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attri
         ![](../../../assets/example-charts/props/heatmapgl/simple-heatmapgl.png)
 
         ```yaml
+        sources:
+          - name: heatmapgl-data-source
+            type: duckdb
+            database: target/seeds/heatmapgl_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    A,1,10
+                    A,2,20
+                    A,3,30
+                    B,1,40
+                    B,2,50
+                    B,3,60
+                    C,1,70
+                    C,2,80
+                    C,3,90
         models:
           - name: heatmapgl-data
-            args:
-              - echo
-              - |
-                x,y,z
-                A,1,10
-                A,2,20
-                A,3,30
-                B,1,40
-                B,2,50
-                B,3,60
-                C,1,70
-                C,2,80
-                C,3,90
+            source: ${ref(heatmapgl-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Heatmapgl Insight
             props:
@@ -76,21 +84,29 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attri
         ![](../../../assets/example-charts/props/heatmapgl/custom-colorscale-heatmapgl.png)
 
         ```yaml
+        sources:
+          - name: heatmapgl-data-custom-source
+            type: duckdb
+            database: target/seeds/heatmapgl_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    1,1,0.5
+                    1,2,0.6
+                    1,3,0.7
+                    2,1,0.8
+                    2,2,0.9
+                    2,3,1.0
+                    3,1,0.1
+                    3,2,0.2
+                    3,3,0.3
         models:
           - name: heatmapgl-data-custom
-            args:
-              - echo
-              - |
-                x,y,z
-                1,1,0.5
-                1,2,0.6
-                1,3,0.7
-                2,1,0.8
-                2,2,0.9
-                2,3,1.0
-                3,1,0.1
-                3,2,0.2
-                3,3,0.3
+            source: ${ref(heatmapgl-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Heatmapgl with Custom Colorscale
             props:
@@ -123,27 +139,35 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attri
         ![](../../../assets/example-charts/props/heatmapgl/heatmapgl-large-dataset.png)
 
         ```yaml
+        sources:
+          - name: heatmapgl-data-large-source
+            type: duckdb
+            database: target/seeds/heatmapgl_data_large.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y,z
+                    1,1,1
+                    1,2,2
+                    1,3,3
+                    1,4,4
+                    1,5,5
+                    2,1,6
+                    2,2,7
+                    2,3,8
+                    2,4,9
+                    2,5,10
+                    3,1,11
+                    3,2,12
+                    3,3,13
+                    3,4,14
+                    3,5,15
         models:
           - name: heatmapgl-data-large
-            args:
-              - echo
-              - |
-                x,y,z
-                1,1,1
-                1,2,2
-                1,3,3
-                1,4,4
-                1,5,5
-                2,1,6
-                2,2,7
-                2,3,8
-                2,4,9
-                2,5,10
-                3,1,11
-                3,2,12
-                3,3,13
-                3,4,14
-                3,5,15
+            source: ${ref(heatmapgl-data-large-source)}
+            sql: select * from model
         insights:
           - name: Heatmapgl for Large Datasets
             props:

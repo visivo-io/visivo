@@ -57,9 +57,10 @@ def write_pydantic_md_files():
     configuration_path = "mkdocs/reference/configuration"
     if os.path.isdir(configuration_path):
         shutil.rmtree(configuration_path)
-    for model, path in mkdocs.model_to_path_map.items():
+    for model, paths in mkdocs.model_to_paths_map.items():
         content = mkdocs.get_md_content(model_name=model)
-        write_file(path, content)
+        for path in paths:
+            write_file(path, content)
 
 
 if __name__ == "__main__":

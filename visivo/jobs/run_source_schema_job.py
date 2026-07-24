@@ -17,20 +17,85 @@ from time import time
 from typing import List, Optional
 
 
+def run_seeds(source: Source, working_dir: str = None) -> int:
+    """Load each of the source's seeds into a table on that source.
+
+    Runs before schema introspection so the seeded tables are discoverable, and before
+    any model job, which the Model->Source DAG edge already guarantees.
+
+    Each seed's command is run to completion and its stdout is validated as CSV *before*
+    the database connection is opened — a subprocess holding a connection open while the
+    writer waits on it has deadlocked here before.
+
+    Returns:
+        The number of seeds loaded
+    """
+    import io
+    import subprocess
+
+    import click
+    import polars as pl
+
+    seeds = getattr(source, "seeds", None) or []
+    for seed in seeds:
+        # existing_table governs what happens when the table already exists:
+        #   skip      -> leave it, don't run (only this mode needs the existence check)
+        #   append    -> run and insert into it (write_dataframe replace=False)
+        #   overwrite -> run and replace it (write_dataframe replace=True)
+        # An absent table always runs and creates it, regardless of the mode.
+        mode = getattr(seed, "existing_table", "skip")
+        if mode == "skip" and source.table_exists(seed.table_name):
+            Logger.instance().debug(
+                f"Source {source.name}: seed {seed.table_name} already present, "
+                "skipping (existing_table=skip)"
+            )
+            continue
+        replace = mode != "append"
+        Logger.instance().debug(f"Source {source.name}: running seed {seed.table_name}")
+        process = subprocess.Popen(
+            seed.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir
+        )
+        stdout, stderr = process.communicate()
+
+        if process.returncode != 0:
+            raise click.ClickException(
+                f"Command for seed {seed.table_name} on source {source.name} failed with "
+                f"return code {process.returncode}. stderr: {stderr.decode()}"
+            )
+
+        csv_stream = io.StringIO(stdout.decode())
+        seed.validate_stream_is_csv(csv_stream)
+
+        if not csv_stream.read().strip():
+            csv_stream.seek(0)
+            Logger.instance().debug(
+                f"Source {source.name}: seed {seed.table_name} returned no data, skipping write"
+            )
+            continue
+        csv_stream.seek(0)
+
+        source.write_dataframe(seed.table_name, pl.read_csv(csv_stream), replace=replace)
+        Logger.instance().debug(f"Source {source.name}: seed {seed.table_name} loaded")
+
+    return len(seeds)
+
+
 def action(
     source_to_build: Source,
     table_names: Optional[List[str]] = None,
     output_dir: str = None,
     run_id: str = DEFAULT_RUN_ID,
+    working_dir: str = None,
 ):
     """
-    Build schema for a source and store it using SchemaAggregator.
+    Load the source's seeds, then build its schema and store it using SchemaAggregator.
 
     Args:
-        source_to_build: The source to build schema for
+        source_to_build: The source to seed and build schema for
         table_names: Optional list of table names to include
         output_dir: Directory to store schema data
         run_id: Run identifier for schema storage location
+        working_dir: Directory seed commands are run from
 
     Returns:
         JobResult indicating success or failure
@@ -39,6 +104,9 @@ def action(
 
     try:
         start_time = time()
+
+        # Seeds must land before introspection so their tables appear in the schema
+        seed_count = run_seeds(source_to_build, working_dir=working_dir)
 
         # Build schema using source's get_schema method
         schema_data = source_to_build.get_schema(table_names=table_names)
@@ -67,9 +135,10 @@ def action(
         total_tables = metadata.get("total_tables", 0)
         total_columns = metadata.get("total_columns", 0)
 
+        seed_details = f"{seed_count} seeds, " if seed_count else ""
         details = (
             f"Built schema for source \033[4m{source_to_build.name}\033[0m "
-            f"({total_tables} tables, {total_columns} columns)"
+            f"({seed_details}{total_tables} tables, {total_columns} columns)"
         )
 
         success_message = format_message_success(
@@ -95,18 +164,20 @@ def job(
     table_names: Optional[List[str]] = None,
     output_dir: str = None,
     run_id: str = None,
+    working_dir: str = None,
 ):
     """
-    Create a Job instance for building source schema.
+    Create a Job instance for seeding a source and building its schema.
 
     Args:
-        source: The source to build schema for
+        source: The source to seed and build schema for
         table_names: Optional list of table names to include
         output_dir: Directory to store schema data
         run_id: Run identifier for schema storage location
+        working_dir: Directory seed commands are run from
 
     Returns:
-        Job instance configured for schema building
+        Job instance configured for seeding and schema building
     """
     kwargs = {
         "item": source,
@@ -118,4 +189,6 @@ def job(
     }
     if run_id is not None:
         kwargs["run_id"] = run_id
+    if working_dir is not None:
+        kwargs["working_dir"] = working_dir
     return Job(**kwargs)

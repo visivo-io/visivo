@@ -29,16 +29,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermap/#attr
         Here's a simple `scattermap` insight showing data points on a MapLibre map:
 
         ```yaml
+        sources:
+          - name: scattermap-data-source
+            type: duckdb
+            database: target/seeds/scattermap_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat
+                    -73.9857,40.7484
+                    -118.2437,34.0522
+                    -0.1276,51.5074
+                    139.6917,35.6895
         models:
           - name: scattermap-data
-            args:
-              - echo
-              - |
-                lon,lat
-                -73.9857,40.7484
-                -118.2437,34.0522
-                -0.1276,51.5074
-                139.6917,35.6895
+            source: ${ref(scattermap-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Scattermap Insight
             props:
@@ -67,16 +75,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermap/#attr
         This example demonstrates a `scattermap` insight with lines connecting geographic points:
 
         ```yaml
+        sources:
+          - name: scattermap-data-lines-source
+            type: duckdb
+            database: target/seeds/scattermap_data_lines.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat
+                    -73.9857,40.7484
+                    -118.2437,34.0522
+                    -0.1276,51.5074
+                    139.6917,35.6895
         models:
           - name: scattermap-data-lines
-            args:
-              - echo
-              - |
-                lon,lat
-                -73.9857,40.7484
-                -118.2437,34.0522
-                -0.1276,51.5074
-                139.6917,35.6895
+            source: ${ref(scattermap-data-lines-source)}
+            sql: select * from model
         insights:
           - name: Scattermap Insight with Lines
             props:
@@ -105,16 +121,24 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermap/#attr
         Here's a `scattermap` insight with custom marker sizes and colors:
 
         ```yaml
+        sources:
+          - name: scattermap-data-custom-source
+            type: duckdb
+            database: target/seeds/scattermap_data_custom.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    lon,lat,size,color
+                    -73.9857,40.7484,10,#1f77b4
+                    -118.2437,34.0522,15,#ff7f0e
+                    -0.1276,51.5074,20,#2ca02c
+                    139.6917,35.6895,25,#d62728
         models:
           - name: scattermap-data-custom
-            args:
-              - echo
-              - |
-                lon,lat,size,color
-                -73.9857,40.7484,10,#1f77b4
-                -118.2437,34.0522,15,#ff7f0e
-                -0.1276,51.5074,20,#2ca02c
-                139.6917,35.6895,25,#d62728
+            source: ${ref(scattermap-data-custom-source)}
+            sql: select * from model
         insights:
           - name: Scattermap Insight with Custom Markers
             props:

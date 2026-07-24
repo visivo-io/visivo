@@ -70,9 +70,9 @@ def _execute(flask_app, run_id, dag_filter):
             soft_failure=True,
             dag_filter=dag_filter,
             server_url="",
-            # The serve working dir — NOT project.path. CsvScriptModel commands,
-            # local-merge models, and relative `file:` sources resolve their
-            # paths against this; the canonical run (run_phase) uses the same.
+            # The serve working dir — NOT project.path. Source seed commands and
+            # relative `file:` sources resolve their paths against this; the
+            # canonical run (run_phase) uses the same.
             working_dir=flask_app._working_dir,
             run_id=DEFAULT_RUN_ID,
         )

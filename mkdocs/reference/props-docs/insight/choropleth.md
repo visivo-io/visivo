@@ -31,21 +31,29 @@ The `choropleth` insight allows you to control the region coloring based on a va
         You can copy this code below to create this chart in your project:
 
         ```yaml
+        sources:
+          - name: country-population-data-source
+            type: duckdb
+            database: target/seeds/country_population_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    country,population_density
+                    USA,38
+                    BRA,25
+                    ARG,17
+                    UK,286
+                    CAN,4
+                    RUS,9
+                    CHN,153
+                    IND,450
+                    COD,48
         models:
           - name: country-population-data
-            args:
-              - echo
-              - |
-                country,population_density
-                USA,38
-                BRA,25
-                ARG,17
-                UK,286
-                CAN,4
-                RUS,9
-                CHN,153
-                IND,450
-                COD,48
+            source: ${ref(country-population-data-source)}
+            sql: select * from model
         insights:
           - name: Simple Choropleth Map
             props:

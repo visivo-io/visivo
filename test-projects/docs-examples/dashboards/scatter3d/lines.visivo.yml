@@ -1,14 +1,22 @@
+sources:
+  - name: scatter3d-data-lines-source
+    type: duckdb
+    database: target/seeds/scatter3d_data_lines.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y,z
+            1,5,7
+            2,10,12
+            3,8,10
+            4,15,18
+            5,12,17
 models:
   - name: scatter3d-data-lines
-    args:
-      - echo
-      - |
-        x,y,z
-        1,5,7
-        2,10,12
-        3,8,10
-        4,15,18
-        5,12,17
+    source: ${ref(scatter3d-data-lines-source)}
+    sql: select * from model
 charts:
   - name: scatter3d-chart-with-lines
     layout:

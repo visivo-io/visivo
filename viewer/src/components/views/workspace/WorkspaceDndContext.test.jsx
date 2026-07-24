@@ -658,21 +658,10 @@ describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)',
     expect(result).toBe('erd_add_model');
   });
 
-  test('csvScriptModel + localMergeModel are accepted as models too', () => {
-    const onAddModel = jest.fn();
-    ['csvScriptModel', 'localMergeModel'].forEach(type => {
-      onAddModel.mockClear();
-      const result = routeWorkspaceDragEnd(
-        {
-          active: { data: { current: { source: 'library', type, name: `m_${type}` } } },
-          over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
-        },
-        {}
-      );
-      expect(result).toBe('erd_add_model');
-      expect(onAddModel).toHaveBeenCalledWith(`m_${type}`);
-    });
-  });
+  // (The old 'csvScriptModel + localMergeModel are accepted as models too'
+  // test was dropped in the main merge: #533 removed those two model types —
+  // they became seeds — and the ERD-accept branch now recognizes only
+  // `type === 'model'`, so those drops are correctly rejected, not accepted.)
 
   test('a non-model Library row dropped on the ERD is rejected (no add)', () => {
     const onAddModel = jest.fn();

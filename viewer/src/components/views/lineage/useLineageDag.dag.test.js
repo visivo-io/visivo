@@ -29,8 +29,6 @@ function mockStoreState(state) {
     dashboards: [],
     defaults: {},
     inputs: [],
-    csvScriptModels: [],
-    localMergeModels: [],
     ...state,
   };
   useStore.mockImplementation(selector => selector(fullState));
@@ -137,8 +135,6 @@ describe('useLineageDag full project graph', () => {
         child_item_names: ['db', 'db', 'ghost'],
       },
     ],
-    csvScriptModels: [{ name: 'csvm', child_item_names: ['db'] }],
-    localMergeModels: [{ name: 'lmm', config: { sql: 'SELECT 2' }, child_item_names: ['users'] }],
     dimensions: [
       { name: 'dim_region', config: { sql: 'region' }, child_item_names: ['users'] },
     ],
@@ -190,8 +186,6 @@ describe('useLineageDag full project graph', () => {
     const expectations = [
       ['source-db', 'sourceNode'],
       ['model-users', 'modelNode'],
-      ['csvScriptModel-csvm', 'csvScriptModelNode'],
-      ['localMergeModel-lmm', 'localMergeModelNode'],
       ['dimension-dim_region', 'dimensionNode'],
       ['metric-total_rev', 'metricNode'],
       ['relation-rel_a', 'relationNode'],
@@ -230,7 +224,6 @@ describe('useLineageDag full project graph', () => {
     });
     expect(findNode(nodes, 'dimension-dim_region').data.sql).toBe('region');
     expect(findNode(nodes, 'metric-total_rev').data.sql).toBe('SUM(x)');
-    expect(findNode(nodes, 'localMergeModel-lmm').data.sql).toBe('SELECT 2');
   });
 
   it('wires edges from child_item_names for every collection, deduping and skipping unknown children', () => {
@@ -244,8 +237,6 @@ describe('useLineageDag full project graph', () => {
     expect(edges.some(e => e.source.includes('ghost') || e.target.includes('ghost'))).toBe(false);
 
     // Each downstream collection hangs off its parents.
-    expect(findEdge(edges, 'source-db', 'csvScriptModel-csvm')).toBeDefined();
-    expect(findEdge(edges, 'model-users', 'localMergeModel-lmm')).toBeDefined();
     expect(findEdge(edges, 'model-users', 'dimension-dim_region')).toBeDefined();
     expect(findEdge(edges, 'model-users', 'metric-total_rev')).toBeDefined();
     expect(findEdge(edges, 'model-users', 'relation-rel_a')).toBeDefined();
@@ -288,8 +279,6 @@ describe('useLineageDag full project graph', () => {
     mockStoreState({
       sources: [{ name: 's' }],
       models: [{ name: 'm' }],
-      csvScriptModels: [{ name: 'c' }],
-      localMergeModels: [{ name: 'l' }],
       dimensions: [{ name: 'd' }],
       metrics: [{ name: 'me' }],
       relations: [{ name: 'r' }],
@@ -303,7 +292,7 @@ describe('useLineageDag full project graph', () => {
     const { result } = renderHook(() => useLineageDag());
     const { nodes, edges } = result.current;
 
-    expect(nodes).toHaveLength(13);
+    expect(nodes).toHaveLength(11);
     expect(edges).toEqual([]);
     // Optional config fields resolve to undefined rather than crashing.
     expect(findNode(nodes, 'source-s').data.type).toBeUndefined();

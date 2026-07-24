@@ -1,17 +1,25 @@
+sources:
+  - name: activity-data-source
+    type: duckdb
+    database: target/seeds/activity_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            direction,activity_level
+            0,5
+            45,10
+            90,2
+            135,8
+            180,4
+            225,6
+            270,7
+            315,3
 models:
   - name: activity-data
-    args:
-      - echo
-      - |
-        direction,activity_level
-        0,5
-        45,10
-        90,2
-        135,8
-        180,4
-        225,6
-        270,7
-        315,3
+    source: ${ref(activity-data-source)}
+    sql: select * from model
 charts:
   - name: activity-level-polar-chart
     layout:

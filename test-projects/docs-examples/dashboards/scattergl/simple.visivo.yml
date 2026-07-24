@@ -1,14 +1,22 @@
+sources:
+  - name: scattergl-data-source
+    type: duckdb
+    database: target/seeds/scattergl_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            x,y
+            1,10
+            2,20
+            3,15
+            4,25
+            5,30
 models:
   - name: scattergl-data
-    args:
-      - echo
-      - |
-        x,y
-        1,10
-        2,20
-        3,15
-        4,25
-        5,30
+    source: ${ref(scattergl-data-source)}
+    sql: select * from model
 charts:
   - name: simple-scattergl-chart
     layout:

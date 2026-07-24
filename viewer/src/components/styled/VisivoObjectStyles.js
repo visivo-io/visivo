@@ -5,7 +5,7 @@ import {
   HiOutlineSelector,
   HiOutlineTable,
 } from 'react-icons/hi';
-import { MdScatterPlot, MdOutlineTableView } from 'react-icons/md';
+import { MdScatterPlot } from 'react-icons/md';
 import { FaExternalLinkAlt } from 'react-icons/fa';
 import { FaGear } from 'react-icons/fa6';
 import {
@@ -55,12 +55,6 @@ export const TYPE_STYLE_MAP = {
     text: 'text-blue-800',
     border: 'border-blue-200',
     icon: HiOutlineChartBar,
-  },
-  CsvScriptModel: {
-    bg: 'bg-green-100',
-    text: 'text-green-800',
-    border: 'border-green-200',
-    icon: GrDocumentCsv,
   },
   CSVFileSource: {
     bg: 'bg-teal-100',
@@ -115,12 +109,6 @@ export const TYPE_STYLE_MAP = {
     text: 'text-yellow-800',
     border: 'border-yellow-200',
     icon: SiDuckdb,
-  },
-  LocalMergeModel: {
-    bg: 'bg-indigo-100',
-    text: 'text-indigo-800',
-    border: 'border-indigo-200',
-    icon: MdOutlineTableView,
   },
   MysqlSource: {
     bg: 'bg-orange-100',

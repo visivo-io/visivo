@@ -1,13 +1,21 @@
+sources:
+  - name: parcats-data-source
+    type: duckdb
+    database: target/seeds/parcats_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            category_1,category_2,value
+            A,X,30
+            A,Y,20
+            B,X,25
+            B,Y,25
 models:
   - name: parcats-data
-    args:
-      - echo
-      - |
-        category_1,category_2,value
-        A,X,30
-        A,Y,20
-        B,X,25
-        B,Y,25
+    source: ${ref(parcats-data-source)}
+    sql: select * from model
 charts:
   - name: simple-parcats-chart
     layout:

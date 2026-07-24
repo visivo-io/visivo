@@ -54,8 +54,6 @@ const Workspace = () => {
   const fetchInputs = useStore(s => s.fetchInputs);
   const fetchSources = useStore(s => s.fetchSources);
   const fetchModels = useStore(s => s.fetchModels);
-  const fetchCsvScriptModels = useStore(s => s.fetchCsvScriptModels);
-  const fetchLocalMergeModels = useStore(s => s.fetchLocalMergeModels);
   const fetchDimensions = useStore(s => s.fetchDimensions);
   const fetchMetrics = useStore(s => s.fetchMetrics);
   const fetchRelations = useStore(s => s.fetchRelations);
@@ -79,8 +77,6 @@ const Workspace = () => {
       fetchInputs(),
       fetchSources(),
       fetchModels(),
-      fetchCsvScriptModels(),
-      fetchLocalMergeModels(),
       fetchDimensions(),
       fetchMetrics(),
       fetchRelations(),
@@ -95,8 +91,6 @@ const Workspace = () => {
     fetchInputs,
     fetchSources,
     fetchModels,
-    fetchCsvScriptModels,
-    fetchLocalMergeModels,
     fetchDimensions,
     fetchMetrics,
     fetchRelations,

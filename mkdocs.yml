@@ -154,6 +154,8 @@ nav:
                   - reference/configuration/Dashboards/Dashboard/index.md
                   - Row:
                       - reference/configuration/Dashboards/Dashboard/Row/index.md
+                      - HeightEnum:
+                          - reference/configuration/Dashboards/Dashboard/Row/HeightEnum/index.md
                       - Item:
                           - reference/configuration/Dashboards/Dashboard/Row/Item/index.md
               - ExternalDashboard:
@@ -200,13 +202,8 @@ nav:
               - reference/configuration/Markdown/index.md
           - Metric:
               - reference/configuration/Metric/index.md
-          - Models:
-              - SqlModel:
-                  - reference/configuration/Models/SqlModel/index.md
-              - CsvScriptModel:
-                  - reference/configuration/Models/CsvScriptModel/index.md
-              - LocalMergeModel:
-                  - reference/configuration/Models/LocalMergeModel/index.md
+          - SqlModel:
+              - reference/configuration/SqlModel/index.md
           - Relation:
               - reference/configuration/Relation/index.md
           - Sources:
@@ -214,26 +211,42 @@ nav:
                   - reference/configuration/Sources/SqliteSource/index.md
                   - Attachment:
                       - reference/configuration/Sources/SqliteSource/Attachment/index.md
+                  - Seed:
+                      - reference/configuration/Sources/SqliteSource/Seed/index.md
               - PostgresqlSource:
                   - reference/configuration/Sources/PostgresqlSource/index.md
+                  - Seed:
+                      - reference/configuration/Sources/PostgresqlSource/Seed/index.md
               - MysqlSource:
                   - reference/configuration/Sources/MysqlSource/index.md
+                  - Seed:
+                      - reference/configuration/Sources/MysqlSource/Seed/index.md
               - SnowflakeSource:
                   - reference/configuration/Sources/SnowflakeSource/index.md
+                  - Seed:
+                      - reference/configuration/Sources/SnowflakeSource/Seed/index.md
               - BigQuerySource:
                   - reference/configuration/Sources/BigQuerySource/index.md
+                  - Seed:
+                      - reference/configuration/Sources/BigQuerySource/Seed/index.md
               - RedshiftSource:
                   - reference/configuration/Sources/RedshiftSource/index.md
+                  - Seed:
+                      - reference/configuration/Sources/RedshiftSource/Seed/index.md
               - DuckdbSource:
                   - reference/configuration/Sources/DuckdbSource/index.md
                   - DuckdbAttachment:
                       - reference/configuration/Sources/DuckdbSource/DuckdbAttachment/index.md
+                  - Seed:
+                      - reference/configuration/Sources/DuckdbSource/Seed/index.md
               - CSVFileSource:
                   - reference/configuration/Sources/CSVFileSource/index.md
               - ExcelFileSource:
                   - reference/configuration/Sources/ExcelFileSource/index.md
               - ClickhouseSource:
                   - reference/configuration/Sources/ClickhouseSource/index.md
+                  - Seed:
+                      - reference/configuration/Sources/ClickhouseSource/Seed/index.md
           - Table:
               - reference/configuration/Table/index.md
               - FormatCells:

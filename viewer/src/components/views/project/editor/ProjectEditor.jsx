@@ -141,8 +141,6 @@ const ProjectEditor = () => {
   const fetchDashboards = useStore(s => s.fetchDashboards);
   const insights = useStore(s => s.insights);
   const models = useStore(s => s.models);
-  const csvScriptModels = useStore(s => s.csvScriptModels);
-  const localMergeModels = useStore(s => s.localMergeModels);
   const sources = useStore(s => s.sources);
   const defaults = useStore(s => s.defaults);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
@@ -187,11 +185,9 @@ const ProjectEditor = () => {
         dashboards: dashboards || [],
         insights: insights || [],
         models: models || [],
-        csvScriptModels: csvScriptModels || [],
-        localMergeModels: localMergeModels || [],
         sources: sources || [],
       }),
-    [dashboards, insights, models, csvScriptModels, localMergeModels, sources]
+    [dashboards, insights, models, sources]
   );
 
   const filteredDashboards = useMemo(() => {

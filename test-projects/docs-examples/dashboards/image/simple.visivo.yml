@@ -1,10 +1,18 @@
+sources:
+  - name: image-data-source
+    type: duckdb
+    database: target/seeds/image_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            z
+            [[0,0,1,1],[1,0,0,1],[1,1,0,0]]
 models:
   - name: image-data
-    args:
-      - echo
-      - |
-        z
-        [[0,0,1,1],[1,0,0,1],[1,1,0,0]]
+    source: ${ref(image-data-source)}
+    sql: select * from model
 charts:
   - name: simple-image-chart
     layout:

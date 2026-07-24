@@ -19,8 +19,6 @@ import { getTypeByValue } from '../common/objectTypeConfigs';
 import { ObjectStatus } from '../../../stores/store';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
-import CsvScriptModelNode from './CsvScriptModelNode';
-import LocalMergeModelNode from './LocalMergeModelNode';
 import DimensionNode from './DimensionNode';
 import MetricNode from './MetricNode';
 import RelationNode from './RelationNode';
@@ -49,8 +47,6 @@ jest.mock('reactflow', () => {
 const NODE_CASES = [
   { title: 'SourceNode', Component: SourceNode, typeValue: 'source' },
   { title: 'ModelNode', Component: ModelNode, typeValue: 'model' },
-  { title: 'CsvScriptModelNode', Component: CsvScriptModelNode, typeValue: 'csvScriptModel' },
-  { title: 'LocalMergeModelNode', Component: LocalMergeModelNode, typeValue: 'localMergeModel' },
   { title: 'DimensionNode', Component: DimensionNode, typeValue: 'dimension' },
   { title: 'MetricNode', Component: MetricNode, typeValue: 'metric' },
   { title: 'RelationNode', Component: RelationNode, typeValue: 'relation' },

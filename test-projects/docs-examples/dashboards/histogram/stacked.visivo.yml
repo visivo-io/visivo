@@ -1,18 +1,26 @@
+sources:
+  - name: histogram-data-stacked-source
+    type: duckdb
+    database: target/seeds/histogram_data_stacked.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            group,value
+            A,1
+            A,2
+            A,2
+            A,3
+            B,3
+            B,4
+            B,5
+            B,5
+            B,6
 models:
   - name: histogram-data-stacked
-    args:
-      - echo
-      - |
-        group,value
-        A,1
-        A,2
-        A,2
-        A,3
-        B,3
-        B,4
-        B,5
-        B,5
-        B,6
+    source: ${ref(histogram-data-stacked-source)}
+    sql: select * from model
 charts:
   - name: stacked-histogram-chart
     layout:
