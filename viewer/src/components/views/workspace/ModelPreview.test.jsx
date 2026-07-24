@@ -301,8 +301,8 @@ describe('ModelPreview (VIS-801)', () => {
     expect(results).toHaveTextContent('2');
   });
 
-  test('a `providedRecord` prop is used directly, bypassing the models/csvScriptModels/localMergeModels lookup', () => {
-    // No model named 'orders' exists in any collection — only providedRecord
+  test('a `providedRecord` prop is used directly, bypassing the models lookup', () => {
+    // No model named 'orders' exists in the store — only providedRecord
     // supplies the config, proving the frame's own resolved record wins.
     seed([], [{ name: 'db' }]);
     render(
@@ -316,55 +316,13 @@ describe('ModelPreview (VIS-801)', () => {
     expect(mockExecuteQuery).toHaveBeenCalledWith('db', 'SELECT 42');
   });
 
-  test('resolves a csvScriptModel record (not present in `models`) by name', () => {
-    act(() => {
-      useStore.setState({
-        models: [],
-        csvScriptModels: [{ name: 'csv_orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }],
-        localMergeModels: [],
-        sources: [{ name: 'db' }],
-        defaults: null,
-        dimensions: [],
-        metrics: [],
-        fetchModels: jest.fn(),
-        fetchCsvScriptModels: jest.fn(),
-        fetchLocalMergeModels: jest.fn(),
-        fetchSources: jest.fn(),
-        fetchDefaults: jest.fn(),
-        fetchDimensions: jest.fn(),
-        fetchMetrics: jest.fn(),
-      });
-    });
-    render(<ModelPreview activeObject={{ type: 'model', name: 'csv_orders' }} />);
-    expect(screen.getByTestId('model-preview')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('model-preview-run'));
-    expect(mockExecuteQuery).toHaveBeenCalledWith('db', 'SELECT 1');
-  });
-
-  test('resolves a localMergeModel record (not present in `models` or `csvScriptModels`) by name', () => {
-    act(() => {
-      useStore.setState({
-        models: [],
-        csvScriptModels: [],
-        localMergeModels: [{ name: 'merged', config: { sql: 'SELECT 2', source: '${ref(db)}' } }],
-        sources: [{ name: 'db' }],
-        defaults: null,
-        dimensions: [],
-        metrics: [],
-        fetchModels: jest.fn(),
-        fetchCsvScriptModels: jest.fn(),
-        fetchLocalMergeModels: jest.fn(),
-        fetchSources: jest.fn(),
-        fetchDefaults: jest.fn(),
-        fetchDimensions: jest.fn(),
-        fetchMetrics: jest.fn(),
-      });
-    });
-    render(<ModelPreview activeObject={{ type: 'model', name: 'merged' }} />);
-    expect(screen.getByTestId('model-preview')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('model-preview-run'));
-    expect(mockExecuteQuery).toHaveBeenCalledWith('db', 'SELECT 2');
-  });
+  // NOTE: #533 (main merge) removed the csvScriptModel/localMergeModel model
+  // types — CSV-script and local-merge configs became `seed`s. ModelPreview's
+  // record resolution now looks up ONLY the `models` collection (see
+  // ModelPreview.jsx: `find(models) || null`), so the former "resolves a
+  // csvScriptModel/localMergeModel by name" cases were deleted along with the
+  // behavior they covered. The `models`-only resolution + not-found fallthrough
+  // remain exercised by the tests below.
 
   test('SemanticFieldsStrip resolves ownership via config.model when parentModel is absent', () => {
     seed(
@@ -417,22 +375,19 @@ describe('ModelPreview (VIS-801)', () => {
     expect(screen.getByTestId('model-preview')).toHaveTextContent('No source resolved');
   });
 
-  test('tolerates `csvScriptModels`/`localMergeModels` being non-arrays when resolving a record', () => {
+  test('shows "not found" (no throw) when the name is absent from `models`', () => {
     act(() => {
       useStore.setState({
-        // 'orders' is NOT in `models` — the lookup must fall through to
-        // csvScriptModels/localMergeModels (both non-arrays here) rather
-        // than short-circuiting on a `models` match.
+        // 'orders' is NOT in `models` (only 'something_else' is) — the lookup
+        // resolves null and the empty state renders "not found" rather than
+        // throwing. Post-#533 there are no other model collections to fall
+        // through to; `models` is the sole resolution source.
         models: [{ name: 'something_else', config: { sql: 'SELECT 1', source: '${ref(db)}' } }],
-        csvScriptModels: undefined,
-        localMergeModels: undefined,
         sources: [{ name: 'db' }],
         defaults: null,
         dimensions: [],
         metrics: [],
         fetchModels: jest.fn(),
-        fetchCsvScriptModels: jest.fn(),
-        fetchLocalMergeModels: jest.fn(),
         fetchSources: jest.fn(),
         fetchDefaults: jest.fn(),
         fetchDimensions: jest.fn(),

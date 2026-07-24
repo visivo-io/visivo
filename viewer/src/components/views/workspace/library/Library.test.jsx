@@ -750,16 +750,11 @@ describe('Library', () => {
     expect(screen.getByTestId('library-row-model-monthly_revenue')).toBeInTheDocument();
   });
 
-  test('expanding the rail maps a csvScriptModel/localMergeModel active object onto the single "model" subsection', () => {
-    seedStore({
-      workspaceActiveObject: { type: 'csvScriptModel', name: 'monthly_revenue' },
-      workspaceActiveTabId: 'model:monthly_revenue',
-      libraryCollapsedSubsections: { ...ALL_EXPANDED, model: true },
-    });
-    renderLibrary();
-    // Reveals the shared "model" subsection, not a nonexistent "csvScriptModel" one.
-    expect(useStore.getState().libraryCollapsedSubsections.model).toBe(false);
-  });
+  // NOTE: #533 (main merge) removed the csvScriptModel/localMergeModel types
+  // (they became seeds). The former "a csvScriptModel/localMergeModel active
+  // object reveals the shared 'model' subsection" case tested a mapping that no
+  // longer exists — the subsection reveal keys off `active.type` directly, and
+  // the surviving `type: 'model'` reveal path is covered by the test above.
 
   test('expanding the rail actually calls scrollIntoView on the now-visible active row', async () => {
     const scrollIntoView = jest.fn();

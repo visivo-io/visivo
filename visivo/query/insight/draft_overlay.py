@@ -78,6 +78,25 @@ def _inject_draft_objects(project, draft_objects):
             validated = [adapter.validate_python(c) for c in configs]
         except ValidationError as e:
             raise DraftOverlayError(f"Invalid draft {field_name}: {e}") from e
+        # A DRAFT model exists solely to be compiled + executed for this
+        # insight preview, so it MUST carry executable SQL. Before #533,
+        # ``ModelField`` was a discriminated union whose discriminator returned
+        # no tag for a dict lacking a ``sql`` (/``args``/``models``) key, so a
+        # SQL-less model dict failed validation outright. #533 collapsed the
+        # union to a bare ``SqlModel`` (csv-script / local-merge models became
+        # seeds) whose ``sql`` is Optional — a *published* SqlModel may legally
+        # be a pure metric/dimension container. That dropped the implicit gate:
+        # a ``{"name": ...}`` draft model now validates with ``sql=None`` and
+        # silently slips downstream, where ``get_query_info`` fails with a
+        # "model not run" marker (a 422) instead of the intended clean 400.
+        # Re-assert the gate explicitly for the draft flow only.
+        if field_name == "models":
+            for obj in validated:
+                if getattr(obj, "sql", None) is None:
+                    raise DraftOverlayError(
+                        f"Invalid draft models: model '{obj.name}' defines no `sql` — "
+                        "a draft model must carry an executable SQL query."
+                    )
         obj_list = list(getattr(project, field_name, None) or [])
         new_objects = [(obj.name, obj) for obj in validated]
         setattr(project, field_name, merge_objects_into_list(obj_list, new_objects))

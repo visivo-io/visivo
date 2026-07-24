@@ -44,8 +44,11 @@ describe('getDefNameForType', () => {
   });
 
   test('is case-insensitive (camelCase / PascalCase / lowercase)', () => {
-    expect(getDefNameForType('Model')).toBe('Model');
-    expect(getDefNameForType('MODEL')).toBe('Model');
+    // `model` maps to the concrete `SqlModel` def (Phase-4 fix — the bare
+    // `Model` base def rejects a real `{sql, source}` config). Case-folding
+    // is what's under test here; both spellings resolve the same target.
+    expect(getDefNameForType('Model')).toBe('SqlModel');
+    expect(getDefNameForType('MODEL')).toBe('SqlModel');
   });
 
   test('returns null for unknown / bad input', () => {
