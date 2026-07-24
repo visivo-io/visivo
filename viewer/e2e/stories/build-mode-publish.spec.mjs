@@ -2,8 +2,10 @@
  * Story: Build-mode commit + discard via the shared TopNav (VIS-806 / Track H H-1).
  *
  * The Workspace now renders UNDER Home's shared <TopNav>; commit / deploy live
- * in that nav (a Commit button surfaces only when there are uncommitted draft
- * changes), and the commit-confirm + Discard flow is the layout-level
+ * in that nav — mutually exclusive by dirty state (main's merged
+ * Commit-XOR-Deploy TopNav): a Commit button surfaces when there are
+ * uncommitted draft changes, and a Deploy button surfaces when the project is
+ * clean. The commit-confirm + Discard flow is the layout-level
  * <CommitModal>. Every canvas action auto-saves to the backend draft cache,
  * which flips the nav into the dirty state; Commit flushes the cache to YAML;
  * Discard (in the modal) drops the cache and the canvas reverts.
@@ -48,8 +50,10 @@ const PROJECT_YML = path.resolve(
 
 test.use({ viewport: { width: 1600, height: 1400 } });
 
-// The commit affordance is now the shared TopNav Commit button (title "Commit
-// changes"); it exists ONLY when the project is dirty. Clean = it's absent.
+// Commit and Deploy are the shared TopNav's mutually-exclusive action button
+// (main's merged Commit-XOR-Deploy-by-dirty-state contract): the Commit button
+// (title "Commit changes") renders ONLY when the project is dirty, and the
+// Deploy button (title "Deploy") renders ONLY when the project is clean.
 const navCommit = page => page.getByTitle('Commit changes');
 const navDeploy = page => page.getByTitle('Deploy');
 
@@ -135,13 +139,15 @@ test.describe('Build-mode commit + discard via shared TopNav (VIS-806 / H-1)', (
     await page.close();
   });
 
-  test('clean baseline: no Commit/Deploy in the nav, and the nav is the interactive top surface', async ({
+  test('clean baseline: Deploy visible (not Commit) in the nav, and the nav is the interactive top surface', async ({
     request,
   }) => {
     await startClean(page, request);
-    // Clean ⇒ nothing to commit or deploy, so the action slot is empty.
+    // Clean ⇒ Deploy is the visible action and Commit is absent (main's merged
+    // Commit-XOR-Deploy-by-dirty-state TopNav; the old feature-branch nav showed
+    // NEITHER button when clean).
+    await expect(navDeploy(page)).toBeVisible();
     await expect(navCommit(page)).toHaveCount(0);
-    await expect(navDeploy(page)).toHaveCount(0);
 
     // Regression guard for the un-overlay: the workspace must sit UNDER the
     // shared sticky TopNav now — the element at the very top is the <nav>,
@@ -154,23 +160,28 @@ test.describe('Build-mode commit + discard via shared TopNav (VIS-806 / H-1)', (
     await page.screenshot({ path: `${SCREENS}/vis806-01-clean-nav.png` });
   });
 
-  test('a canvas action surfaces Commit + Deploy in the nav; Deploy opens the deploy modal', async ({
+  test('a canvas action surfaces Commit and hides Deploy; Deploy (clean state) opens the deploy modal', async ({
     request,
   }) => {
     await startClean(page, request);
-    await addRowViaCanvas(page);
 
-    await expect(navCommit(page)).toBeVisible({ timeout: WAIT });
-    // The Commit button badges the live pending-change count.
-    await expect(navCommit(page)).toContainText('1');
-    await expect(navDeploy(page)).toBeVisible({ timeout: WAIT });
-    await page.screenshot({ path: `${SCREENS}/vis806-02-dirty-nav.png` });
-
+    // Clean ⇒ Deploy is the visible action (main's merged Commit-XOR-Deploy-by-
+    // dirty-state TopNav), so the deploy modal is exercised from the clean state.
     // The nav Deploy opens Home's deploy modal.
+    await expect(navDeploy(page)).toBeVisible({ timeout: WAIT });
     await navDeploy(page).click();
     await expect(page.getByText('Project Deployment')).toBeVisible({ timeout: WAIT });
     await page.getByRole('button', { name: '×' }).click();
     await expect(page.getByText('Project Deployment')).toHaveCount(0);
+
+    // A canvas action auto-saves → the project goes dirty → the nav swaps Deploy
+    // out for Commit (Commit-XOR-Deploy: dirty shows Commit, Deploy is absent).
+    await addRowViaCanvas(page);
+    await expect(navCommit(page)).toBeVisible({ timeout: WAIT });
+    // The Commit button badges the live pending-change count.
+    await expect(navCommit(page)).toContainText('1');
+    await expect(navDeploy(page)).toHaveCount(0);
+    await page.screenshot({ path: `${SCREENS}/vis806-02-dirty-nav.png` });
   });
 
   test('Discard (in the commit modal) drops the draft cache → canvas reverts', async ({
@@ -192,10 +203,12 @@ test.describe('Build-mode commit + discard via shared TopNav (VIS-806 / H-1)', (
     await page.screenshot({ path: `${SCREENS}/vis806-03-discard-confirm.png` });
     await page.getByTestId('commit-modal-discard-confirm-button').click();
 
-    // Modal closes, the nav Commit button is gone, and the canvas re-renders
-    // from last-committed state (the added row is dropped).
+    // Modal closes, the nav swaps Commit back out for Deploy (main's merged
+    // Commit-XOR-Deploy-by-dirty-state TopNav: discard returns to clean), and
+    // the canvas re-renders from last-committed state (the added row is dropped).
     await expect(page.getByTestId('commit-modal-pending-list')).toHaveCount(0, { timeout: WAIT });
     await expect(navCommit(page)).toHaveCount(0, { timeout: WAIT });
+    await expect(navDeploy(page)).toBeVisible({ timeout: WAIT });
     await expect
       .poll(async () => (await readRows(page)).length, { timeout: WAIT })
       .toBe(baselineRows);
@@ -220,9 +233,11 @@ test.describe('Build-mode commit + discard via shared TopNav (VIS-806 / H-1)', (
 
     await modalCommit.click();
 
-    // The modal closes and the nav returns clean (no Commit button).
+    // The modal closes and the nav returns clean: Commit is gone and Deploy is
+    // back (main's merged Commit-XOR-Deploy-by-dirty-state TopNav).
     await expect(page.getByTestId('commit-modal-pending-list')).toHaveCount(0, { timeout: WAIT });
     await expect(navCommit(page)).toHaveCount(0, { timeout: WAIT });
+    await expect(navDeploy(page)).toBeVisible({ timeout: WAIT });
 
     // YAML round-trip: the file actually changed on disk and the backend
     // reports a clean draft cache.
@@ -240,14 +255,23 @@ test.describe('Build-mode commit + discard via shared TopNav (VIS-806 / H-1)', (
   test('the nav commit/deploy actions stay on-screen at 1280px', async ({ request }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await startClean(page, request);
-    await addRowViaCanvas(page);
 
-    for (const action of [navCommit(page), navDeploy(page)]) {
-      await expect(action).toBeVisible({ timeout: WAIT });
-      const box = await action.boundingBox();
-      expect(box, 'action button is rendered').toBeTruthy();
-      expect(box.x + box.width, 'fits inside 1280px').toBeLessThanOrEqual(1280);
-    }
+    // Commit and Deploy are mutually exclusive by dirty state (main's merged
+    // Commit-XOR-Deploy TopNav), so only one action ever renders — assert each
+    // fits inside 1280px in the state that shows it, not both at once.
+    // Clean ⇒ Deploy is the on-screen action.
+    await expect(navDeploy(page)).toBeVisible({ timeout: WAIT });
+    let box = await navDeploy(page).boundingBox();
+    expect(box, 'Deploy button is rendered').toBeTruthy();
+    expect(box.x + box.width, 'Deploy fits inside 1280px').toBeLessThanOrEqual(1280);
+
+    // Dirty ⇒ Deploy is swapped out for the Commit button.
+    await addRowViaCanvas(page);
+    await expect(navCommit(page)).toBeVisible({ timeout: WAIT });
+    box = await navCommit(page).boundingBox();
+    expect(box, 'Commit button is rendered').toBeTruthy();
+    expect(box.x + box.width, 'Commit fits inside 1280px').toBeLessThanOrEqual(1280);
+
     await page.screenshot({ path: `${SCREENS}/vis806-06-1280-nav.png` });
 
     // Clean up the extra draft so afterAll's restore starts from a known state.

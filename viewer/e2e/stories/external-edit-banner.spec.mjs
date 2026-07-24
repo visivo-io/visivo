@@ -116,9 +116,26 @@ test.describe('External-edit banner (VIS-808 / H-2)', () => {
     await expect(page.getByTitle('Commit changes')).toBeVisible({ timeout: WAIT });
     expect((await readRows(page)).length).toBe(baselineRows + 1);
 
-    // External edit: touch the YAML outside Visivo (comment append — a real
-    // file change for the watcher, parse-identical for the compiler).
-    fs.writeFileSync(PROJECT_YML, `${originalYaml}\n# external edit ${process.pid}\n`);
+    // External edit: a MATERIAL change to the compiled project, made outside
+    // Visivo. The drop-drafts guard is `has_draft_changes() &&
+    // !matches_served_project(recompiled)`, so the edit must genuinely alter the
+    // recompiled project — a parse-identical no-op (e.g. a bare comment append)
+    // deliberately does NOT drop drafts (a comment must never nuke unsaved
+    // work). This spec previously appended a comment and only "passed" because
+    // the pre-#533 csv-script/local-merge models serialized non-deterministically,
+    // incidentally tripping matches_served_project=false; #533 made the project
+    // serialize deterministically (those models became seeds), so we now mutate
+    // a real leaf value — an input `label`, isolated from `simple-dashboard`'s
+    // rows so the baseline-row assertion below is unaffected — to force
+    // recompiled ≠ served ⇒ drafts_dropped ⇒ the banner.
+    const externalEdit = originalYaml.replace(
+      'label: "Split Threshold (Dropdown)"',
+      `label: "Split Threshold (Dropdown) [ext ${process.pid}]"`
+    );
+    // Guard: prove the mutation actually changed the file, so this can never
+    // silently regress back into the no-op case the comment append became.
+    expect(externalEdit).not.toBe(originalYaml);
+    fs.writeFileSync(PROJECT_YML, externalEdit);
 
     // The banner appears once the hot-reload pipeline lands...
     await expect(page.getByTestId('external-edit-banner')).toBeVisible({
