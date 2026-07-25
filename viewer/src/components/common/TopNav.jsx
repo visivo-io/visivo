@@ -8,7 +8,7 @@ import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
-import { PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
+import { PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
 import { useMediaQuery, useTheme } from '@mui/material';
 
@@ -30,20 +30,18 @@ const LOCAL_STAGE = {
   isDefault: true,
 };
 
-// Intra-project tools. The Workspace subsumes the legacy Editor and Lineage
-// surfaces (both `/editor` and `/lineage` now redirect into `/workspace`), so
-// the switcher is four: explore (Explorer), build (Workspace), the local
-// run-on-save history (Runs), and view (Dashboards).
+// Intra-project tools. The Workspace subsumes the legacy Editor, Lineage, and
+// Explorer surfaces — `/editor`, `/lineage`, and the Explorer all live inside
+// `/workspace` now (the Explorer is a Workspace view, reached from the shell's
+// own view switcher; `/explorer` and `/workspace/exploration` remain valid
+// routes for old links / onboarding, they just no longer get a top-nav tab).
+// So the top-nav switcher is three: build (Workspace), the local run-on-save
+// history (Runs), and view (Dashboards).
 // `onbTarget` (optional): the onboarding coach's `data-onb-target` anchor id
 // for a tool's nav Link (see `ToolSwitch` below) — B14 part 1, Explore 2.0
 // Phase 2. Only `project` carries one today (`onboardingManifest.js`'s
 // `view_project` item); the others have their own anchors elsewhere.
-// Explore 2.0 Phase 3b cutover: the `explorer` pill repoints into the
-// Workspace shell's own Explorer destination — `/explorer` still exists as a
-// permanent redirect (old links, onboarding), but the live pill goes
-// straight to the real route.
 const DEFAULT_TOOLS = [
-  { id: 'explorer', label: 'Explorer', to: '/workspace/exploration', icon: PiMagnifyingGlass },
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
   { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate, onbTarget: 'top-nav-project' },
@@ -501,14 +499,11 @@ const TopNav = ({
   const resolvedStage = currentStage || stages[0];
   const resolvedProjects = projects && projects.length ? projects : currentProject ? [currentProject] : [{ id: 'project', name: 'Project' }];
   const resolvedProject = currentProject || resolvedProjects[0];
-  // Active tool: explicit prop wins; otherwise match the current route's
-  // tail — OR any path NESTED under a tool's route (delta-review fix: the
-  // Explorer pill went dark while inside an open exploration tab, since
-  // `/workspace/exploration/:id` doesn't END WITH `/workspace/exploration`,
-  // it merely starts with it + a trailing segment). `tools.find` returns the
-  // first match, and `explorer` (`/workspace/exploration`) is declared before
-  // `workspace` (`/workspace`) in `DEFAULT_TOOLS`, so a exploration path
-  // resolves to Explorer rather than the coarser Workspace match.
+  // Active tool: explicit prop wins; otherwise match the current route's tail
+  // — OR any path NESTED under a tool's route. The Explorer is a Workspace view
+  // now (no top-nav tab of its own), so `/workspace/exploration[/:id]` — like
+  // any other `/workspace/...` sub-route — starts with `/workspace/` and
+  // correctly lights the Workspace pill. `tools.find` returns the first match.
   const resolvedActive =
     activeTool ||
     (tools.find(

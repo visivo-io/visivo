@@ -124,9 +124,11 @@ test('restricts the tools to Dashboards when capabilities say not-a-draft', asyn
 
 test('keeps the full tool set while on an editable draft', async () => {
   renderWithStore({ capabilities: { is_draft: true } });
-  expect(await screen.findByTitle('Explorer')).toBeInTheDocument();
-  expect(screen.getByTitle('Workspace')).toBeInTheDocument();
+  expect(await screen.findByTitle('Workspace')).toBeInTheDocument();
+  expect(screen.getByTitle('Runs')).toBeInTheDocument();
   expect(screen.getByTitle('Dashboards')).toBeInTheDocument();
+  // The Explorer is a Workspace view now — it has no top-nav tab.
+  expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
 });
 
 test('Deploy button toggles the deploy modal open', async () => {

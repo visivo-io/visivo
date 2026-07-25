@@ -24,36 +24,42 @@ describe('TopNav', () => {
     useMediaQuery.mockImplementation(() => false);
   });
 
-  it('renders the three intra-project tools (Workspace subsumes Editor + Lineage)', () => {
+  it('renders the three intra-project tools (Workspace subsumes Editor + Lineage + Explorer)', () => {
     renderNav();
-    ['Explorer', 'Workspace', 'Dashboards'].forEach(label => {
+    ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
       expect(screen.getByTitle(label)).toBeInTheDocument();
     });
-    // The legacy Editor / Lineage tools are gone — folded into Workspace.
+    // The legacy Editor / Lineage tools AND the Explorer are gone from the top
+    // nav — all folded into Workspace (the Explorer is a Workspace view now,
+    // reached from the shell's own view switcher).
     expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Lineage')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
-  // Delta-review fix: the Explorer pill went dark while inside an open
-  // exploration tab — `/workspace/exploration/:id` doesn't END WITH
-  // `/workspace/exploration` (the old matcher), it merely starts with it plus
-  // a trailing id segment. Only the ACTIVE tool renders its label text
-  // alongside the icon (`ToolSwitch`'s `{on && t.label}`), so asserting the
-  // label is visible is the same signal the component itself uses for "on".
-  it('the Explorer pill stays active on a nested exploration-detail route', () => {
+  // The Explorer is a Workspace view now (no top-nav tab of its own), so every
+  // `/workspace/...` route — including the Explorer's own
+  // `/workspace/exploration[/:id]` — lights the WORKSPACE pill. Only the ACTIVE
+  // tool renders its label text alongside the icon (`ToolSwitch`'s
+  // `{on && t.label}`), so asserting the label text is visible is the same
+  // signal the component itself uses for "on". The Explorer tab is gone
+  // entirely — its title never renders anywhere in the nav.
+  it('the Workspace pill is active on a nested exploration-detail route', () => {
     renderNav({}, ['/workspace/exploration/exp_a1b2c3']);
-    expect(screen.getByText('Explorer')).toBeInTheDocument();
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
-  it('the Explorer pill is active on the Explorer home route too', () => {
+  it('the Workspace pill is active on the Explorer home route too', () => {
     renderNav({}, ['/workspace/exploration']);
-    expect(screen.getByText('Explorer')).toBeInTheDocument();
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
-  it('the Workspace pill (not Explorer) is active on a plain workspace document route', () => {
+  it('the Workspace pill is active on a plain workspace document route', () => {
     renderNav({}, ['/workspace?edit=chart:revenue']);
     expect(screen.getByText('Workspace')).toBeInTheDocument();
-    expect(screen.queryByText('Explorer')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
   it('defaults to the single Local stage (the viewer has no real stages)', () => {
@@ -149,7 +155,7 @@ describe('TopNav', () => {
 
   it('account variant (no tools, no stages) shows neither tools nor a capsule', () => {
     renderNav({ tools: [], stages: [] });
-    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
     expect(screen.queryByText('Local')).not.toBeInTheDocument();
   });
 
@@ -157,7 +163,7 @@ describe('TopNav', () => {
     const stages = [{ id: 'prod', name: 'Production', color: '#16a34a', isDefault: true }];
     renderNav({ tools: [], stages, currentStage: stages[0], onAllStages: () => {} });
     expect(screen.getByText('Production')).toBeInTheDocument();
-    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
   });
 
   it('stage dropdown always shows the search and lists DEFAULT before STARRED', () => {
@@ -441,7 +447,7 @@ describe('TopNav', () => {
 
     it('still renders the tools, capsule, and user menu', () => {
       renderNav();
-      ['Explorer', 'Workspace', 'Dashboards'].forEach(label => {
+      ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
         expect(screen.getByTitle(label)).toBeInTheDocument();
       });
       expect(screen.getByText('Local')).toBeInTheDocument();
