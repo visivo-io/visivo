@@ -77,6 +77,42 @@ class TestCompileDraftHappyPath:
         assert data["type"] == "scatter"
         assert {"name": "orders_q", "name_hash": alpha_hash("orders_q")} in data["models"]
 
+    def test_aggregate_insight_reports_requires_full_source_true(self, client, tmp_path):
+        """The default payload's y is sum(...) — an aggregate — so the client
+        must be told to route this preview to the server (Phase 3)."""
+        from visivo.models.base.named_model import alpha_hash
+
+        write_schema(
+            tmp_path, "orders_q", alpha_hash("orders_q"), {"region": "VARCHAR", "amount": "DOUBLE"}
+        )
+        resp = client.post("/api/insight-compile-draft/", json=insight_payload())
+        assert resp.status_code == 200
+        assert resp.get_json()["requires_full_source"] is True
+
+    def test_raw_column_insight_reports_requires_full_source_false(self, client, tmp_path):
+        """Raw columns on a single model are a pure projection — previewable
+        client-side over the sample, so requires_full_source is False."""
+        from visivo.models.base.named_model import alpha_hash
+
+        write_schema(
+            tmp_path, "orders_q", alpha_hash("orders_q"), {"region": "VARCHAR", "amount": "DOUBLE"}
+        )
+        resp = client.post(
+            "/api/insight-compile-draft/",
+            json={
+                "insight": {
+                    "name": "raw_draft",
+                    "props": {
+                        "type": "scatter",
+                        "x": "?{${ref(orders_q).region}}",
+                        "y": "?{${ref(orders_q).amount}}",
+                    },
+                }
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["requires_full_source"] is False
+
     def test_never_writes_to_disk_or_the_output_dir(self, client, tmp_path):
         from visivo.models.base.named_model import alpha_hash
 

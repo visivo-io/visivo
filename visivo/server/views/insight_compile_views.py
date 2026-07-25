@@ -156,6 +156,14 @@ def register_insight_compile_views(app, flask_app, output_dir):
                     "static_props": query_info.static_props,
                     "props_slices": query_info.props_slices,
                     "split_key": query_info.split_key,
+                    # Explore 2.0 Phase 3: the client reads this to pick the
+                    # preview lane — False → project instantly client-side over
+                    # the fetched sample; True → the query aggregates/windows/
+                    # splits/joins, so it must execute against the FULL source
+                    # (POST /api/insight-execute-draft/) to be correct. Computed
+                    # dialect-independently, so this force_dynamic=True build
+                    # already carries it.
+                    "requires_full_source": query_info.requires_full_source,
                     "type": insight_type,
                     "models": [
                         {"name": m.name, "name_hash": m.name_hash()} for m in dependent_models

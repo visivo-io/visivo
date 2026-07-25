@@ -977,6 +977,38 @@ class InsightQueryBuilder:
 
         return self._combine_conditions_with_and(qualify_conditions)
 
+    def _requires_full_source(self):
+        """Explore 2.0 state fix, Phase 3 — classify this insight's query as a
+        pure row-level PROJECTION of its model rows (safe to preview instantly
+        client-side over the fetched sample) vs one that must execute against
+        the FULL source to be correct.
+
+        True iff the query aggregates, uses a window function, splits, or spans
+        more than one model (a relation join). Deliberately does NOT key off
+        GROUP BY presence: ``_build_group_by`` emits ``GROUP BY x, y``
+        unconditionally (a plain projection compiles to a DISTINCT-style
+        group-by), so group-by presence would misclassify every projection.
+        Reads only the resolved statement strings + model count + split_key, so
+        it is identical whether the surrounding build ran force_dynamic True or
+        False. A Metric ref always resolves to an aggregate, and a lone
+        Dimension ref stays row-level, so both fall out of the aggregate check
+        without special-casing.
+        """
+        if len(self.models) > 1:
+            return True
+        if self.split_key:
+            return True
+        for _key, statement in self.resolved_query_statements or []:
+            if not statement:
+                continue
+            safe_statement, _ = replace_input_placeholders_for_parsing(
+                statement, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+            )
+            parsed = parse_expression(safe_statement, "duckdb")
+            if parsed and (has_aggregate_function(parsed) or has_window_function(parsed)):
+                return True
+        return False
+
     def _build_order_by(self):
         """
         Find order_by statements that have aggregates in the resolved sql via
@@ -1207,6 +1239,7 @@ class InsightQueryBuilder:
             "split_key": self.split_key,
             "static_props": self.static_props,
             "props_slices": props_slices,
+            "requires_full_source": self._requires_full_source(),
         }
 
         insight_query_info = InsightQueryInfo(**data)
