@@ -311,4 +311,73 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
       expect(res.ok()).toBe(true);
     }).toPass({ timeout: 20000 });
   });
+
+  // Explore 2.0 state fix — Phase 1 (non-destructive guard), integration level.
+  // The reported bug: dragging a column into a chart could drop the WHOLE chart
+  // to the "Run your query" blocked state. Root cause was the draft-preview hook
+  // DELETING the rendered frame (removeInsightJob) whenever a recompile found the
+  // referenced model's cached rows momentarily absent (mid re-run, cache
+  // eviction, cross-tab). The render layer already suppresses the blocked state
+  // while data exists, so the fix is simply to stop deleting a good frame. Here
+  // we build a real chart, then induce exactly that transient — the referenced
+  // model's results vanish, which (via buildModelsSignature's row-count term)
+  // fires a real recompile that hits the unloadedModel guard — and assert the
+  // chart SURVIVES rather than blanking. The unit suite covers the mechanism with
+  // mocks; this proves the real render layer + store + hook keep the chart. NOTE:
+  // reverting the guard to an unconditional removeInsightJob makes this fail (the
+  // blocked panel takes over and the plotly surface disappears).
+  test('a transient loss of the referenced model results keeps the rendered chart, never blanking it', async ({
+    page,
+  }) => {
+    await gotoExplorerHome(page);
+    createdId = await newExploration(page);
+
+    await typeSql(page, SQL);
+    await runQuery(page);
+    await drag(page, '[data-testid="draggable-col-x"]', '[data-testid="droppable-property-x"]');
+    await drag(page, '[data-testid="draggable-col-y"]', '[data-testid="droppable-property-y"]');
+    await expectLiveChart(page, 'baseline chart before the induced transient');
+
+    // Induce the exact guard condition: the referenced model's cached rows
+    // momentarily vanish. Nulling queryResult/enrichedResult changes the model's
+    // freshness signature (its row-count term), so the draft-preview hook
+    // re-fires and its unloadedModel guard runs against an empty result — the
+    // precise moment that used to delete the frame.
+    await page.evaluate(() => {
+      const s = window.useStore.getState();
+      const name = s.explorerActiveModelName;
+      window.useStore.setState(st => ({
+        explorerModelStates: {
+          ...st.explorerModelStates,
+          [name]: { ...st.explorerModelStates[name], queryResult: null, enrichedResult: null },
+        },
+      }));
+    });
+
+    // Let the debounced recompile fire and hit the guard (COMPILE_DEBOUNCE_MS + slack).
+    await page.waitForTimeout(2000);
+
+    // Assert the guard's CONTRACT: the rendered insight frame is preserved, not
+    // deleted. We check this at the store level rather than via the plotly
+    // surface: the artificial results-clearing collapses the results-grid layout
+    // (a real re-run REPLACES rows rather than emptying them to "not yet run"),
+    // which can transiently zero-size the chart — orthogonal to whether the
+    // frame survives. Reverting the guard to an unconditional removeInsightJob
+    // makes this false (the recompile's unloadedModel guard deletes the frame).
+    const framePreserved = await page.evaluate(() => {
+      const s = window.useStore.getState();
+      const name = s.explorerChartInsightNames[0];
+      return s.insightJobs?.[`__draft__:${name}`]?.data != null;
+    });
+    expect(
+      framePreserved,
+      'the rendered insight frame must survive a transient loss of the model results'
+    ).toBe(true);
+    // ...and the guided "run your query" blocked panel must NOT have taken over
+    // the insight preview (it is suppressed while a frame exists).
+    await expect(
+      page.getByText(/Run your query/i),
+      'the non-destructive guard must not surface the blocked state while a frame exists'
+    ).toHaveCount(0);
+  });
 });

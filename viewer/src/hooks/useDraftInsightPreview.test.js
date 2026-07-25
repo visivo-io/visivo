@@ -263,6 +263,76 @@ describe('useDraftInsightPreview', () => {
     expect(result.current.blockedReason).toBeNull();
   });
 
+  // Explore 2.0 state fix — Phase 1 (non-destructive guard). A transient "the
+  // model has no rows right now" outcome (mid re-run, results just cleared, a
+  // name skew) must NOT delete an insight that already has a rendered frame:
+  // the render layer keeps showing data while it exists, so preserving the
+  // frame is what keeps a built chart on screen instead of dropping it to the
+  // "Run your query" blocked state. (Reverting `clearDraftUnlessRendered` back
+  // to an unconditional `removeInsightJob` makes both of these fail.)
+  test('a compiled model with no rows KEEPS an already-rendered frame instead of blanking it', async () => {
+    const draftKey = draftInsightKey('my_insight');
+    seedState({
+      explorerModelStates: {
+        orders_q: { sql: 'select * from orders', sourceName: 'warehouse', queryResult: null },
+      },
+      insightJobs: { [draftKey]: { name: draftKey, data: [{ region: 'west', amount: 10 }] } },
+    });
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [{ name: 'orders_q', name_hash: 'mhash1' }],
+    });
+
+    const { result } = renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // The frame survives...
+    expect(useStore.getState().insightJobs[draftKey]).toBeDefined();
+    expect(useStore.getState().insightJobs[draftKey].data).toEqual([{ region: 'west', amount: 10 }]);
+    // ...and the blocked state is suppressed so the chart is never regressed.
+    expect(result.current.blockedReason).toBeNull();
+    expect(result.current.blockedModel).toBeNull();
+  });
+
+  test('a model_not_run compile error KEEPS an already-rendered frame instead of blanking it', async () => {
+    const draftKey = draftInsightKey('my_insight');
+    seedState({
+      insightJobs: { [draftKey]: { name: draftKey, data: [{ region: 'west', amount: 10 }] } },
+    });
+    const err = new Error('Missing schema for model: orders_q.');
+    err.errorType = 'model_not_run';
+    err.modelName = 'orders_q';
+    compileDraftInsight.mockRejectedValueOnce(err);
+
+    const { result } = renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(useStore.getState().insightJobs[draftKey]?.data).toEqual([{ region: 'west', amount: 10 }]);
+    expect(result.current.blockedReason).toBeNull();
+  });
+
+  // Explore 2.0 state fix — Phase 1 (no first-field stall). The COMPILE is
+  // debounced, but the STATUS must flip immediately: an insight that has data
+  // props but no rendered frame yet should read as loading the instant the
+  // effect runs, not sit on its stale pre-drop state for the whole debounce
+  // window. (Reverting the synchronous pre-pass makes this false — isLoading
+  // only becomes true inside the debounced callback after 1000ms.)
+  test('an insight with data props but no frame flips to loading synchronously, before the debounce', () => {
+    const { result } = renderHook(() => useDraftInsightPreview());
+    // No timers advanced — the debounced compile has not fired yet.
+    expect(result.current.isLoading).toBe(true);
+    expect(compileDraftInsight).not.toHaveBeenCalled();
+  });
+
   test('removing an insight from the chart cleans up its synthetic entry', async () => {
     compileDraftInsight.mockResolvedValue({
       post_query: 'SELECT 1',

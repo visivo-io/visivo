@@ -199,6 +199,29 @@ const useDraftInsightPreview = () => {
 
     if (!db || chartInsightNames.length === 0) return undefined;
 
+    // Immediate feedback (Explore 2.0 state fix, Phase 1): the COMPILE is
+    // debounced, but the STATUS must not lag it. An insight that just gained its
+    // first data prop otherwise sits on its stale pre-drop state
+    // ('no_data_props' → "Nothing to preview yet") for the whole debounce window
+    // before the callback below flips it to isLoading — reading as "the drop did
+    // nothing" for ~1s. Flip any insight that now has data props but no rendered
+    // frame to loading synchronously, so the preview shows a building state the
+    // instant the column lands. Insights that already have a frame keep it
+    // (non-destructive); ones with nothing mapped stay untouched (the debounced
+    // pass sets their guided 'no_data_props' empty state). perInsight status is
+    // not in this effect's dependency array, so this cannot re-trigger the pass.
+    for (const name of chartInsightNames) {
+      const state = insightStates[name];
+      if (!state) continue;
+      const hasDataProps = Object.keys(state.props || {}).some(
+        k => state.props[k] !== undefined && state.props[k] !== ''
+      );
+      const hasRenderedData = useStore.getState().insightJobs?.[draftInsightKey(name)]?.data != null;
+      if (hasDataProps && !hasRenderedData) {
+        setInsightStatus(name, { isLoading: true, error: null, blockedReason: null, blockedModel: null });
+      }
+    }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       // VIS-1094 — this pass's identity. Any write below whose captured
@@ -206,6 +229,23 @@ const useDraftInsightPreview = () => {
       // NEWER debounce fire has since started) is stale and skipped.
       const myGeneration = ++compileGenerationRef.current;
       const isStale = () => compileGenerationRef.current !== myGeneration;
+
+      // Non-destructive block (Explore 2.0 state fix, Phase 1): a transient
+      // "model has no rows right now" outcome must NOT blank an insight that
+      // already has a rendered frame on screen. The render layer
+      // (ExplorerChartPreview's `anyInsightAlreadyHasData`) already SUPPRESSES
+      // the blocked/error states while `insightJobs[draftKey].data` exists — the
+      // only thing that dropped a good chart to the "Run your query" state was
+      // this hook DELETING that data via `removeInsightJob`. So: keep the last
+      // good frame when there is one, and only clear + surface the blocked state
+      // when there is genuinely nothing to preserve (a first render that never
+      // succeeded). Returns true when it actually cleared.
+      const clearDraftUnlessRendered = draftKey => {
+        if (useStore.getState().insightJobs?.[draftKey]?.data != null) return false;
+        removeInsightJob(draftKey);
+        seenDraftKeysRef.current.delete(draftKey);
+        return true;
+      };
 
       for (const name of chartInsightNames) {
         const state = insightStates[name];
@@ -296,13 +336,12 @@ const useDraftInsightPreview = () => {
           });
           if (unloadedModel) {
             if (!isStale()) {
-              removeInsightJob(draftKey);
-              seenDraftKeysRef.current.delete(draftKey);
+              const cleared = clearDraftUnlessRendered(draftKey);
               setInsightStatus(name, {
                 isLoading: false,
                 error: null,
-                blockedReason: 'model_not_run',
-                blockedModel: unloadedModel.name,
+                blockedReason: cleared ? 'model_not_run' : null,
+                blockedModel: cleared ? unloadedModel.name : null,
               });
             }
             continue;
@@ -382,13 +421,12 @@ const useDraftInsightPreview = () => {
         } catch (err) {
           if (isStale()) continue;
           if (err?.errorType === 'model_not_run') {
-            removeInsightJob(draftKey);
-            seenDraftKeysRef.current.delete(draftKey);
+            const cleared = clearDraftUnlessRendered(draftKey);
             setInsightStatus(name, {
               isLoading: false,
               error: null,
-              blockedReason: 'model_not_run',
-              blockedModel: err.modelName || null,
+              blockedReason: cleared ? 'model_not_run' : null,
+              blockedModel: cleared ? err.modelName || null : null,
             });
           } else if (HASHED_TABLE_ERROR_PATTERN.test(err?.message || '')) {
             // Belt-and-braces (ux-audit.md's own fix direction): the guard
@@ -396,20 +434,18 @@ const useDraftInsightPreview = () => {
             // other path ever reaches DuckDB against an unregistered draft
             // table, treat it the same as "run the query first" rather than
             // leaking the raw hashed table name in `error`.
-            removeInsightJob(draftKey);
-            seenDraftKeysRef.current.delete(draftKey);
+            const cleared = clearDraftUnlessRendered(draftKey);
             setInsightStatus(name, {
               isLoading: false,
               error: null,
-              blockedReason: 'model_not_run',
+              blockedReason: cleared ? 'model_not_run' : null,
               blockedModel: null,
             });
           } else {
-            removeInsightJob(draftKey);
-            seenDraftKeysRef.current.delete(draftKey);
+            const cleared = clearDraftUnlessRendered(draftKey);
             setInsightStatus(name, {
               isLoading: false,
-              error: err?.message || String(err),
+              error: cleared ? err?.message || String(err) : null,
               blockedReason: null,
               blockedModel: null,
             });
