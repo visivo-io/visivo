@@ -17,7 +17,18 @@ import { buildModelsSignature } from '../utils/insightFreshnessSignature';
  * chart config is the only place that references this key. */
 export const draftInsightKey = name => `__draft__:${name}`;
 
+// The debounce coalesces rapid edits before hitting the server compile +
+// DuckDB. Free-text expression typing needs the full window (a user types
+// several characters within a second). But a STRUCTURAL edit — a field added or
+// removed by a drop, a chart-type switch, an interaction added/removed — is a
+// single deliberate commit, not a keystroke burst, so it should compile almost
+// immediately instead of making the user wait a full second to see the chart
+// respond (Explore 2.0 state fix, Phase 2 — "debounce typing, not drops"). The
+// structural-vs-value distinction is derived from the config itself (the set of
+// prop KEYS / type / interaction count changed vs only prop VALUES changed), so
+// no edit-source plumbing is needed.
 const COMPILE_DEBOUNCE_MS = 1000;
+const STRUCTURAL_DEBOUNCE_MS = 150;
 
 // Matches DuckDB's raw "Catalog Error: Table with name <hash> does not
 // exist!" — the internal draft-lane materialization table name this hook
@@ -153,6 +164,10 @@ const useDraftInsightPreview = () => {
   // below checks its own captured generation against the current one before
   // touching the store, so a stale (slower, out-of-order) pass never wins.
   const compileGenerationRef = useRef(0);
+  // Last-seen config STRUCTURE (prop key-sets / type / interaction counts +
+  // the insight list) — lets the effect tell a structural edit (drop, remove,
+  // type switch) apart from value-only typing to pick the debounce window.
+  const prevStructureRef = useRef(null);
 
   const previewInsightKeys = useMemo(
     () => chartInsightNames.map(draftInsightKey),
@@ -221,6 +236,24 @@ const useDraftInsightPreview = () => {
         setInsightStatus(name, { isLoading: true, error: null, blockedReason: null, blockedModel: null });
       }
     }
+
+    // Structural edit (drop / remove / type switch / interaction add-remove /
+    // insight-list change) → compile fast; value-only typing → coalesce.
+    // Compared against the LAST structure this effect saw, not the last data
+    // change, so a source re-run (which leaves the structure untouched) keeps
+    // the coalescing window. The very first run has no prior structure, so it
+    // is treated as structural (build the first preview promptly).
+    const structureNow = JSON.stringify(
+      chartInsightNames.map(name => ({
+        name,
+        type: insightStates[name]?.type,
+        keys: Object.keys(insightStates[name]?.props || {}).sort(),
+        interactions: (insightStates[name]?.interactions || []).length,
+      }))
+    );
+    const isStructuralEdit = structureNow !== prevStructureRef.current;
+    prevStructureRef.current = structureNow;
+    const debounceMs = isStructuralEdit ? STRUCTURAL_DEBOUNCE_MS : COMPILE_DEBOUNCE_MS;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -452,7 +485,7 @@ const useDraftInsightPreview = () => {
           }
         }
       }
-    }, COMPILE_DEBOUNCE_MS);
+    }, debounceMs);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

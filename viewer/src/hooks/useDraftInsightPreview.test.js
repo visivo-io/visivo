@@ -333,6 +333,80 @@ describe('useDraftInsightPreview', () => {
     expect(compileDraftInsight).not.toHaveBeenCalled();
   });
 
+  // Explore 2.0 state fix — Phase 2 ("debounce typing, not drops"). A STRUCTURAL
+  // edit (a field added/removed by a drop, a type switch — here the initial
+  // build, whose prop keys x/y appear) is a single deliberate commit and must
+  // compile on the SHORT window, not make the user wait the full second.
+  // (Before the adaptive debounce this fired only at 1000ms, so advancing 200ms
+  // would not have compiled — the falsifying condition.)
+  test('a structural edit compiles on the short debounce window (drops do not wait a full second)', async () => {
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [{ name: 'orders_q', name_hash: 'mhash1' }],
+    });
+    runDuckDBQuery.mockResolvedValueOnce({ fake: 'arrow-result' });
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(200); // < the 1000ms typing window, > the short one
+    });
+    expect(compileDraftInsight).toHaveBeenCalled();
+  });
+
+  // The other half of the contract: value-only typing (same prop keys, changed
+  // text) must still COALESCE on the full window, so a burst of keystrokes
+  // doesn't fire a compile per character.
+  test('a value-only edit keeps the full debounce window (typing still coalesces)', async () => {
+    compileDraftInsight.mockResolvedValue({
+      post_query: 'SELECT * FROM "mhash1"',
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [{ name: 'orders_q', name_hash: 'mhash1' }],
+    });
+    runDuckDBQuery.mockResolvedValue({ fake: 'arrow-result' });
+
+    const { rerender } = renderHook(() => useDraftInsightPreview());
+    // Initial structural build settles.
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    const afterInitial = compileDraftInsight.mock.calls.length;
+
+    // Change a prop VALUE while keeping the same keys — i.e. typing into x.
+    act(() => {
+      useStore.setState(s => ({
+        explorerInsightStates: {
+          ...s.explorerInsightStates,
+          my_insight: {
+            ...s.explorerInsightStates.my_insight,
+            props: { ...s.explorerInsightStates.my_insight.props, x: '?{${ref(orders_q).region2}}' },
+          },
+        },
+      }));
+    });
+    rerender();
+
+    // The short window is NOT enough for a value-only edit...
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+    expect(compileDraftInsight.mock.calls.length).toBe(afterInitial);
+
+    // ...the full window is.
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(compileDraftInsight.mock.calls.length).toBeGreaterThan(afterInitial);
+  });
+
   test('removing an insight from the chart cleans up its synthetic entry', async () => {
     compileDraftInsight.mockResolvedValue({
       post_query: 'SELECT 1',
