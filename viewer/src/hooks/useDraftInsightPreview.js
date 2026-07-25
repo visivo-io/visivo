@@ -5,6 +5,7 @@ import { getConnection } from '../duckdb/duckdb';
 import { runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
 import { processArrowResult } from '../duckdb/resultProcessing';
 import { compileDraftInsight } from '../api/insightCompile';
+import { executeDraftInsight } from '../api/insightExecuteDraft';
 import { inferColumnTypes } from '../utils/inferColumnTypes';
 import { expandDotNotationProps } from '../stores/explorerStore';
 import { buildModelsSignature } from '../utils/insightFreshnessSignature';
@@ -380,6 +381,60 @@ const useDraftInsightPreview = () => {
             continue;
           }
 
+          const requiredInputs = extractInputDependencies(
+            compiled.post_query,
+            compiled.static_props
+          );
+
+          // Explore 2.0 state fix, Phase 3 — server EXECUTE lane. The compile
+          // endpoint classifies whether this insight's query is a pure row-level
+          // projection (safe to run client-side over the fetched sample) or an
+          // AGGREGATE/window/split/relation-join whose result would be WRONG over
+          // a sample (a SUM over 1,000 sampled rows is not the real total). For
+          // the aggregate case, execute the query against the FULL source and
+          // bind the returned rows directly — no DuckDB registration, no
+          // post_query. A dynamic insight (unresolved input deps) can't be baked
+          // server-side; the endpoint 409s and we fall through to the client
+          // sample lane below (best effort — flagged as a known-approximate case).
+          if (compiled.requires_full_source && requiredInputs.length === 0) {
+            try {
+              const executed = await executeDraftInsight({
+                insight: {
+                  name,
+                  props: { type: state.type, ...expandedProps },
+                  ...(backendInteractions.length > 0
+                    ? { interactions: backendInteractions }
+                    : {}),
+                },
+                draftModels,
+                modelSchemas,
+              });
+              if (isStale()) continue;
+              updateInsightJob(draftKey, {
+                name: draftKey,
+                data: executed.rows,
+                props_mapping: executed.props_mapping,
+                static_props: executed.static_props,
+                props_slices: executed.props_slices,
+                split_key: executed.split_key,
+                type: executed.type,
+                pendingInputs: null,
+                inputDependencies: requiredInputs,
+              });
+              seenDraftKeysRef.current.add(draftKey);
+              setInsightStatus(name, EMPTY_INSIGHT_STATUS);
+              // Server lane complete — skip the client DuckDB register + run.
+              continue;
+            } catch (execErr) {
+              if (isStale()) continue;
+              // 409 requires_client_lane → fall through to the client sample
+              // lane below. Any other failure (422 model_not_run, a real error)
+              // is raised to the shared catch, which applies the non-destructive
+              // guard (never blanks an already-rendered frame).
+              if (execErr?.errorType !== 'requires_client_lane') throw execErr;
+            }
+          }
+
           // Register each dependent model's ALREADY-FETCHED rows (the
           // SQL/results lane, `modelStates[name].queryResult`) as a DuckDB
           // table named by the model's hash — the exact table name
@@ -412,7 +467,6 @@ const useDraftInsightPreview = () => {
           }
           if (isStale()) continue;
 
-          const requiredInputs = extractInputDependencies(compiled.post_query, compiled.static_props);
           const missingInputs = requiredInputs.filter(inputName => !inputJobs[inputName]);
 
           if (missingInputs.length > 0) {

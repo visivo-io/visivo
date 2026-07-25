@@ -142,6 +142,11 @@ const URL_PATTERNS = {
     // /api/insights/ — see insight_compile_views.py's docstring for why.
     insightCompileDraft: '/api/insight-compile-draft/',
 
+    // Explore 2.0 state fix, Phase 3 — server-side execute for an aggregate
+    // draft preview (executes the query against the FULL source; the compile
+    // endpoint's `requires_full_source` decides when the client routes here).
+    insightExecuteDraft: '/api/insight-execute-draft/',
+
     // Workspace telemetry forwarding endpoint (VIS-822) — the local Flask
     // server relays workspace events through the CLI's PostHog client so the
     // CLI telemetry opt-out + anonymization apply to frontend events.
@@ -275,6 +280,7 @@ const URL_PATTERNS = {
 
     // Insight compile-draft endpoint (not available in dist — no Flask server)
     insightCompileDraft: null,
+    insightExecuteDraft: null,
 
     // Workspace telemetry forwarding (not available in dist — no Flask server)
     workspaceTelemetry: null,

@@ -6,6 +6,7 @@ import { useDuckDB } from '../contexts/DuckDBContext';
 import { getConnection } from '../duckdb/duckdb';
 import { runDuckDBQuery } from '../duckdb/queries';
 import { compileDraftInsight } from '../api/insightCompile';
+import { executeDraftInsight } from '../api/insightExecuteDraft';
 import { processArrowResult } from '../duckdb/resultProcessing';
 
 jest.mock('../contexts/DuckDBContext', () => ({ useDuckDB: jest.fn() }));
@@ -16,6 +17,7 @@ jest.mock('../duckdb/queries', () => ({
 }));
 jest.mock('../duckdb/resultProcessing', () => ({ processArrowResult: jest.fn() }));
 jest.mock('../api/insightCompile', () => ({ compileDraftInsight: jest.fn() }));
+jest.mock('../api/insightExecuteDraft', () => ({ executeDraftInsight: jest.fn() }));
 
 const FAKE_DB = { registerFileText: jest.fn(), dropFile: jest.fn() };
 const FAKE_CONN = { query: jest.fn() };
@@ -405,6 +407,121 @@ describe('useDraftInsightPreview', () => {
       jest.advanceTimersByTime(1000);
     });
     expect(compileDraftInsight.mock.calls.length).toBeGreaterThan(afterInitial);
+  });
+
+  // Explore 2.0 state fix — Phase 3 (projection vs server-execute routing).
+  const AGG_MODELS = [{ name: 'orders_q', name_hash: 'mhash1' }];
+
+  test('a projection insight (requires_full_source false) runs the CLIENT DuckDB lane, never the server', async () => {
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      props_mapping: { 'props.x': 'a' },
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: AGG_MODELS,
+      requires_full_source: false,
+    });
+    runDuckDBQuery.mockResolvedValueOnce({ fake: 'arrow-result' });
+    processArrowResult.mockReturnValueOnce([{ a: 1 }]);
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(executeDraftInsight).not.toHaveBeenCalled();
+    expect(runDuckDBQuery).toHaveBeenCalled();
+    expect(useStore.getState().insightJobs[draftInsightKey('my_insight')].data).toEqual([{ a: 1 }]);
+  });
+
+  test('an aggregate insight (requires_full_source true, no inputs) EXECUTES on the server and binds the rows directly', async () => {
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'bar',
+      models: AGG_MODELS,
+      requires_full_source: true,
+    });
+    executeDraftInsight.mockResolvedValueOnce({
+      rows: [
+        { region: 'west', total: 30 },
+        { region: 'east', total: 120 },
+      ],
+      props_mapping: { 'props.y': 'total' },
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'bar',
+    });
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(executeDraftInsight).toHaveBeenCalled();
+    // Server lane: NO client-side DuckDB registration and NO post_query run.
+    expect(FAKE_DB.registerFileText).not.toHaveBeenCalled();
+    expect(runDuckDBQuery).not.toHaveBeenCalled();
+    expect(useStore.getState().insightJobs[draftInsightKey('my_insight')].data).toEqual([
+      { region: 'west', total: 30 },
+      { region: 'east', total: 120 },
+    ]);
+  });
+
+  test('a 409 requires_client_lane from the server falls through to the client DuckDB lane', async () => {
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'bar',
+      models: AGG_MODELS,
+      requires_full_source: true,
+    });
+    const err = new Error('dynamic');
+    err.errorType = 'requires_client_lane';
+    executeDraftInsight.mockRejectedValueOnce(err);
+    runDuckDBQuery.mockResolvedValueOnce({ fake: 'arrow-result' });
+    processArrowResult.mockReturnValueOnce([{ a: 1 }]);
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(executeDraftInsight).toHaveBeenCalled();
+    expect(runDuckDBQuery).toHaveBeenCalled(); // fell through to the client lane
+    expect(useStore.getState().insightJobs[draftInsightKey('my_insight')].data).toEqual([{ a: 1 }]);
+  });
+
+  test('an aggregate insight WITH unresolved input deps does not hit the server (cannot bake inputs) — client lane', async () => {
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1" WHERE x IN (${region_filter.values})',
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'bar',
+      models: AGG_MODELS,
+      requires_full_source: true,
+    });
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // requiredInputs.length > 0, so the server branch is skipped entirely.
+    expect(executeDraftInsight).not.toHaveBeenCalled();
+    const entry = useStore.getState().insightJobs[draftInsightKey('my_insight')];
+    expect(entry.pendingInputs).toContain('region_filter');
   });
 
   test('removing an insight from the chart cleans up its synthetic entry', async () => {
