@@ -380,4 +380,50 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
       'the non-destructive guard must not surface the blocked state while a frame exists'
     ).toHaveCount(0);
   });
+
+  // Explore 2.0 state fix — Phase 3 (server-execute routing), integration level.
+  // A raw-column PROJECTION previews instantly client-side over the fetched
+  // sample and must NEVER hit the server. An AGGREGATE (SUM/GROUP BY) would be
+  // wrong over a sample, so it must route to /api/insight-execute-draft/ and
+  // render from the FULL-source result. Asserted at the network level: no
+  // execute call while it's a projection, an execute call once it aggregates.
+  test('a raw projection previews client-side; an aggregate routes to the server execute lane', async ({
+    page,
+  }) => {
+    const executeCalls = [];
+    page.on('request', req => {
+      if (req.url().includes('/api/insight-execute-draft/')) executeCalls.push(req.url());
+    });
+
+    await gotoExplorerHome(page);
+    createdId = await newExploration(page);
+    await typeSql(page, SQL);
+    await runQuery(page);
+
+    // Raw projection: x and y are bare columns → client DuckDB lane, no server.
+    await drag(page, '[data-testid="draggable-col-x"]', '[data-testid="droppable-property-x"]');
+    await drag(page, '[data-testid="draggable-col-y"]', '[data-testid="droppable-property-y"]');
+    await expectLiveChart(page, 'raw projection renders client-side');
+    // Give any (wrong) server call time to have fired before asserting it didn't.
+    await page.waitForTimeout(1500);
+    expect(
+      executeCalls,
+      'a raw-column projection must NOT hit the server execute lane'
+    ).toEqual([]);
+
+    // Make y an aggregate via the SUM preset → the preview must now execute
+    // server-side (sum over the full source, not the fetched sample).
+    const ySlot = page.getByTestId('droppable-property-y');
+    await ySlot.getByTestId('pill-menu-trigger').click();
+    await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('pill-menu-preset-sum').click();
+
+    await expect
+      .poll(() => executeCalls.length, {
+        message: 'an aggregate insight must preview via /api/insight-execute-draft/',
+        timeout: 20000,
+      })
+      .toBeGreaterThan(0);
+    await expectLiveChart(page, 'aggregate renders via the server execute lane');
+  });
 });
