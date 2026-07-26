@@ -92,7 +92,11 @@ def _inject_draft_objects(project, draft_objects):
         # Re-assert the gate explicitly for the draft flow only.
         if field_name == "models":
             for obj in validated:
-                if getattr(obj, "sql", None) is None:
+                # Blank / whitespace-only sql is as unexecutable as sql=None —
+                # gate both here so they produce the same clean 400 rather than
+                # letting an empty string slip through to a confusing downstream
+                # "model not run" 422.
+                if not (getattr(obj, "sql", None) or "").strip():
                     raise DraftOverlayError(
                         f"Invalid draft models: model '{obj.name}' defines no `sql` — "
                         "a draft model must carry an executable SQL query."

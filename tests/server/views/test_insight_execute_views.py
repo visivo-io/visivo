@@ -169,6 +169,67 @@ def test_insight_referencing_an_input_is_409_requires_client_lane(duckdb_file, t
     assert resp.get_json()["error_type"] == "requires_client_lane"
 
 
+def test_multi_source_insight_is_rejected_400_multi_source(duckdb_file, tmp_path):
+    # Two models on two DIFFERENT sources: the built query would embed both
+    # sources' CTEs but can only execute against one, so the endpoint must reject
+    # it cleanly (Phase 4 review fix) instead of executing against an arbitrary
+    # source and surfacing a raw "table does not exist" driver error.
+    db2 = str(tmp_path / "warehouse2.duckdb")
+    con = duckdb.connect(db2)
+    con.execute("CREATE TABLE users (id INTEGER)")
+    con.execute("INSERT INTO users VALUES (1), (2)")
+    con.close()
+
+    source1 = DuckdbSource(name="warehouse", database=duckdb_file, type="duckdb")
+    source2 = DuckdbSource(name="warehouse2", database=db2, type="duckdb")
+    model_a = SqlModel(name="orders_q", sql="SELECT * FROM orders", source="ref(warehouse)")
+    model_b = SqlModel(name="users_q", sql="SELECT * FROM users", source="ref(warehouse2)")
+    insight = Insight(
+        name="cross",
+        props=InsightProps(
+            type="scatter",
+            x="?{${ref(orders_q).amount}}",
+            y="?{${ref(users_q).id}}",
+        ),
+    )
+    proj = Project(
+        name="p", sources=[source1, source2], models=[model_a, model_b], insights=[insight]
+    )
+    app = Flask(__name__)
+    register_insight_execute_views(app, FlaskAppStub(proj), str(tmp_path))
+    client = app.test_client()
+
+    resp = client.post(
+        "/api/insight-execute-draft/",
+        json={
+            "insight": {
+                "name": "cross",
+                "props": {
+                    "type": "scatter",
+                    "x": "?{${ref(orders_q).amount}}",
+                    "y": "?{${ref(users_q).id}}",
+                },
+            },
+            "model_schemas": {
+                "orders_q": {"amount": "INTEGER"},
+                "users_q": {"id": "INTEGER"},
+            },
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error_type"] == "multi_source"
+
+
+def test_model_schemas_as_non_dict_is_400_not_500(client):
+    # Phase 4 review fix: a truthy non-dict model_schemas (a JSON list) must be a
+    # clean 400, never an unhandled AttributeError → raw 500.
+    resp = client.post(
+        "/api/insight-execute-draft/",
+        json={**_aggregate_payload(), "model_schemas": [1, 2]},
+    )
+    assert resp.status_code == 400
+
+
 def test_malformed_body_is_400(client):
     assert client.post("/api/insight-execute-draft/", data="not json").status_code == 400
     assert (

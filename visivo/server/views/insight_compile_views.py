@@ -28,58 +28,30 @@ Response contract:
         `model` is the extracted model name when the message shape allows it.
 """
 
-import re
-
 from flask import request, jsonify
 
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.query.insight.draft_overlay import build_draft_overlay, DraftOverlayError
-
-# FieldResolver has TWO independent missing-schema code paths with two
-# different exception shapes (found via direct testing, not assumption): the
-# SQLGlot-AST path (`_qualify_expression`) raises `ValueError("Schema not
-# found for model '<name>'. Has the model been executed yet?")`; the dynamic/
-# raw-string-assembly path this endpoint ALWAYS takes (`force_dynamic=True`,
-# `resolve_ref`) raises a bare `Exception("Missing schema for model:
-# <name>.")` instead. Both mean the exact same thing — a never-run scratch
-# model — so both markers map to the same graceful 422. The regexes below
-# extract the model name from EACH message shape (not SQL parsing — just
-# picking the name back out of our own error string) so the response can name
-# it for the "run <model> first" UI state.
-_MODEL_NOT_RUN_MARKERS = ("Has the model been executed yet?", "Missing schema for model")
-_MODEL_NAME_PATTERNS = (
-    re.compile(r"Schema not found for model '([^']+)'"),
-    re.compile(r"Missing schema for model:\s*([^.]+)\."),
+from visivo.server.views.insight_draft_common import (
+    parse_draft_request,
+    build_schema_overrides,
+    is_model_not_run_error,
+    extract_model_not_run_name,
 )
-
-
-def _extract_model_not_run_name(message: str):
-    for pattern in _MODEL_NAME_PATTERNS:
-        match = pattern.search(message)
-        if match:
-            return match.group(1).strip()
-    return None
 
 
 def register_insight_compile_views(app, flask_app, output_dir):
     @app.route("/api/insight-compile-draft/", methods=["POST"])
     def compile_draft_insight():
-        data = request.get_json(silent=True)
-        if not isinstance(data, dict):
-            return jsonify({"error": "Request body must be a JSON object"}), 400
-
-        insight_config = data.get("insight")
-        if not isinstance(insight_config, dict) or not insight_config.get("name"):
-            return (
-                jsonify({"error": "'insight' (an object with at least a 'name') is required"}),
-                400,
-            )
-
-        draft_models = data.get("draft_models") or []
-        draft_metrics = data.get("draft_metrics") or []
-        draft_dimensions = data.get("draft_dimensions") or []
-        model_schemas = data.get("model_schemas") or {}
+        fields, error = parse_draft_request(request.get_json(silent=True))
+        if error:
+            return error
+        insight_config = fields["insight_config"]
+        draft_models = fields["draft_models"]
+        draft_metrics = fields["draft_metrics"]
+        draft_dimensions = fields["draft_dimensions"]
+        model_schemas = fields["model_schemas"]
 
         try:
             project, dag, insight = build_draft_overlay(
@@ -95,24 +67,7 @@ def register_insight_compile_views(app, flask_app, output_dir):
             Logger.instance().error(f"compile-draft: overlay build failed: {e}")
             return jsonify({"error": str(e)}), 400
 
-        # Client-supplied schema override for a scratch model that has no
-        # server-side schemas/<model>/schema.json yet — e.g. the client ran it
-        # once through the SQL/results lane (`/api/model-query-jobs/`) and
-        # already knows its columns. Keyed by model name; FieldResolver's
-        # `_schema_cache` (which this seeds) is itself keyed by model name and
-        # expects the SAME shape a real schema.json read returns:
-        # `{model_hash: {column: type}}`.
-        schema_overrides = {}
-        for model_name, columns in model_schemas.items():
-            if not isinstance(columns, dict):
-                continue
-            try:
-                model_node = dag.get_descendant_by_name(model_name)
-            except Exception:
-                continue
-            model_hash = getattr(model_node, "name_hash", lambda: None)()
-            if model_hash:
-                schema_overrides[model_name] = {model_hash: columns}
+        schema_overrides = build_schema_overrides(dag, model_schemas)
 
         run_output_dir = f"{output_dir}/{DEFAULT_RUN_ID}"
         try:
@@ -124,13 +79,13 @@ def register_insight_compile_views(app, flask_app, output_dir):
             )
         except Exception as e:
             message = str(e)
-            if any(marker in message for marker in _MODEL_NOT_RUN_MARKERS):
+            if is_model_not_run_error(message):
                 return (
                     jsonify(
                         {
                             "error": message,
                             "error_type": "model_not_run",
-                            "model": _extract_model_not_run_name(message),
+                            "model": extract_model_not_run_name(message),
                         }
                     ),
                     422,

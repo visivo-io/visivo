@@ -36,36 +36,28 @@ from flask import request, jsonify
 
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
-from visivo.query.insight.draft_overlay import build_draft_overlay, DraftOverlayError
 from visivo.jobs.run_model_data_job import execute_and_get_result
-
-# The graceful never-run-scratch-model markers + name extractor are the compile
-# endpoint's; reuse them verbatim so both draft endpoints report the exact same
-# 422 shape for the exact same condition.
-from visivo.server.views.insight_compile_views import (
-    _MODEL_NOT_RUN_MARKERS,
-    _extract_model_not_run_name,
+from visivo.jobs.utils import get_source_for_model
+from visivo.query.insight.draft_overlay import build_draft_overlay, DraftOverlayError
+from visivo.server.views.insight_draft_common import (
+    parse_draft_request,
+    build_schema_overrides,
+    is_model_not_run_error,
+    extract_model_not_run_name,
 )
 
 
 def register_insight_execute_views(app, flask_app, output_dir):
     @app.route("/api/insight-execute-draft/", methods=["POST"])
     def execute_draft_insight():
-        data = request.get_json(silent=True)
-        if not isinstance(data, dict):
-            return jsonify({"error": "Request body must be a JSON object"}), 400
-
-        insight_config = data.get("insight")
-        if not isinstance(insight_config, dict) or not insight_config.get("name"):
-            return (
-                jsonify({"error": "'insight' (an object with at least a 'name') is required"}),
-                400,
-            )
-
-        draft_models = data.get("draft_models") or []
-        draft_metrics = data.get("draft_metrics") or []
-        draft_dimensions = data.get("draft_dimensions") or []
-        model_schemas = data.get("model_schemas") or {}
+        fields, error = parse_draft_request(request.get_json(silent=True))
+        if error:
+            return error
+        insight_config = fields["insight_config"]
+        draft_models = fields["draft_models"]
+        draft_metrics = fields["draft_metrics"]
+        draft_dimensions = fields["draft_dimensions"]
+        model_schemas = fields["model_schemas"]
 
         try:
             project, dag, insight = build_draft_overlay(
@@ -81,23 +73,41 @@ def register_insight_execute_views(app, flask_app, output_dir):
             Logger.instance().error(f"execute-draft: overlay build failed: {e}")
             return jsonify({"error": str(e)}), 400
 
-        # Same client-supplied schema seeding as compile-draft: a scratch model
-        # with no server-side schemas/<model>/schema.json yet is closed by the
-        # columns the client already introspected. Keyed by model name, value
-        # shape {model_hash: {column: type}}.
-        schema_overrides = {}
-        for model_name, columns in model_schemas.items():
-            if not isinstance(columns, dict):
-                continue
-            try:
-                model_node = dag.get_descendant_by_name(model_name)
-            except Exception:
-                continue
-            model_hash = getattr(model_node, "name_hash", lambda: None)()
-            if model_hash:
-                schema_overrides[model_name] = {model_hash: columns}
-
+        schema_overrides = build_schema_overrides(dag, model_schemas)
         run_output_dir = f"{output_dir}/{DEFAULT_RUN_ID}"
+
+        # Reject a genuinely MULTI-SOURCE insight up front (before the query
+        # build). A relation-join insight spans >1 model and the built pre_query
+        # embeds every model's CTE, so all dependent models must resolve to ONE
+        # source for a single source.read_sql to be correct. get_dependent_source
+        # picks an ARBITRARY model's source rather than enforcing this, so a
+        # two-source insight would otherwise execute against one source and
+        # surface a raw "table does not exist" driver error for the other's
+        # tables. `dependent_models` is reused for the response payload below.
+        try:
+            dependent_models = insight.get_all_dependent_models(dag)
+            source_names = {
+                src.name
+                for src in (get_source_for_model(m, dag, run_output_dir) for m in dependent_models)
+                if src
+            }
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+        if len(source_names) > 1:
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            f"Insight '{insight.name}' references models from more than one "
+                            f"source ({', '.join(sorted(source_names))}) and cannot be "
+                            "previewed server-side."
+                        ),
+                        "error_type": "multi_source",
+                    }
+                ),
+                400,
+            )
+
         try:
             query_info = insight.get_query_info(
                 dag,
@@ -109,13 +119,13 @@ def register_insight_execute_views(app, flask_app, output_dir):
             )
         except Exception as e:
             message = str(e)
-            if any(marker in message for marker in _MODEL_NOT_RUN_MARKERS):
+            if is_model_not_run_error(message):
                 return (
                     jsonify(
                         {
                             "error": message,
                             "error_type": "model_not_run",
-                            "model": _extract_model_not_run_name(message),
+                            "model": extract_model_not_run_name(message),
                         }
                     ),
                     422,
@@ -137,10 +147,12 @@ def register_insight_execute_views(app, flask_app, output_dir):
                 409,
             )
 
+        # `dependent_models` and the single-source guarantee were established
+        # above, so this resolves the one shared source for execution.
         try:
             source = insight.get_dependent_source(dag, run_output_dir)
         except Exception as e:
-            # No resolvable source, or the single-source assumption is violated.
+            # No dependent models, or no resolvable source for them.
             return jsonify({"error": str(e)}), 400
 
         try:
@@ -155,11 +167,7 @@ def register_insight_execute_views(app, flask_app, output_dir):
         if insight.props is not None and insight.props.type is not None:
             insight_type = insight.props.type.value
 
-        try:
-            dependent_models = insight.get_all_dependent_models(dag)
-        except Exception:
-            dependent_models = []
-
+        # `dependent_models` is already resolved above (the multi-source check).
         return (
             jsonify(
                 {

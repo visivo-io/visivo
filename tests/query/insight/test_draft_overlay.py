@@ -130,6 +130,18 @@ class TestBuildDraftOverlayValidation:
                 draft_models=[{"name": "missing_sql_field"}],
             )
 
+    @pytest.mark.parametrize("blank_sql", ["", "   ", "\n\t"])
+    def test_a_blank_or_whitespace_only_sql_is_gated_like_missing_sql(self, flask_app, blank_sql):
+        # Phase 4 review fix: the gate must treat "" / "   " the same as
+        # sql=None (both are unexecutable), producing the clean DraftOverlayError
+        # rather than slipping through to a confusing downstream "model not run".
+        with pytest.raises(DraftOverlayError):
+            build_draft_overlay(
+                flask_app,
+                insight_config(),
+                draft_models=[{"name": "blank_sql_model", "sql": blank_sql}],
+            )
+
 
 class TestBuildDraftOverlayNameShadowing:
     def test_a_draft_model_reusing_a_real_published_name_shadows_it_in_the_ephemeral_copy_only(
