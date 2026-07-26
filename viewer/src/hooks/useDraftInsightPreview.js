@@ -9,6 +9,7 @@ import { executeDraftInsight } from '../api/insightExecuteDraft';
 import { inferColumnTypes } from '../utils/inferColumnTypes';
 import { expandDotNotationProps } from '../stores/explorerStore';
 import { buildModelsSignature } from '../utils/insightFreshnessSignature';
+import { collectInsightRefNames } from '../utils/refWalk';
 
 /** Draft-namespaced insightJobs key (S2 draft-rendering-decision.md's
  * `__draft__:<insightName>` example) — never collides with a real published
@@ -188,7 +189,16 @@ const useDraftInsightPreview = () => {
       const s = insightStates[name];
       return { name, type: s?.type, props: s?.props, interactions: s?.interactions };
     });
-    const modelsSig = buildModelsSignature(modelStates);
+    // Fold ONLY the models the charted insights actually reference (union of
+    // each insight's `collectInsightRefNames`) — the EXACT set the promoted-
+    // lane freshness check scopes to per-insight (P6-D2), so an unrelated
+    // model's edit/rename never triggers a spurious recompile here nor a
+    // spurious staleness there.
+    const referencedNames = new Set();
+    chartInsightNames.forEach(name => {
+      collectInsightRefNames(insightStates[name]).forEach(n => referencedNames.add(n));
+    });
+    const modelsSig = buildModelsSignature(modelStates, referencedNames);
     return JSON.stringify({ insightsSig, modelsSig });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartInsightNames, insightStates, modelStates]);
