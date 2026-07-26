@@ -1535,10 +1535,6 @@ describe('routeWorkspaceDragEnd — canvas-insert type guard (Explore 2.0 Phase 
 describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
   const baseDeps = () => ({
     activeModelName: 'preview_model',
-    activeInsightName: 'ins_1',
-    setInsightProp: jest.fn(),
-    addComputedColumn: jest.fn(),
-    setActiveModelSource: jest.fn(),
     updateInsightInteraction: jest.fn(),
     addExistingInsightToChart: jest.fn(),
     seedModelTabFromTable: jest.fn(),
@@ -1564,189 +1560,10 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
 
   test('an `active` with no `.data.current` (dragData undefined) is a noop', () => {
     const result = routeExplorationDragEnd(
-      { active: { data: {} }, over: { data: { current: { type: 'axis-zone', fieldName: 'x' } } } },
+      { active: { data: {} }, over: { data: { current: { type: 'interaction-zone', index: 0 } } } },
       baseDeps()
     );
     expect(result).toBe('noop');
-  });
-
-  describe('axis-zone / property-zone', () => {
-    test('a plain column drop resolves against the active model (preview_model fallback)', () => {
-      const deps = baseDeps();
-      routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'col_a', type: 'column' } } },
-          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
-        },
-        deps
-      );
-      expect(deps.setInsightProp).toHaveBeenCalledWith(
-        'ins_1',
-        'x',
-        '?{${ref(preview_model).col_a}}'
-      );
-    });
-
-    test('a sourceColumn (D9 schema drill-down) resolves the same way a plain column does', () => {
-      const deps = { ...baseDeps(), activeModelName: 'orders_q' };
-      routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'region', type: 'sourceColumn', sourceName: 'warehouse' } } },
-          over: { data: { current: { path: 'marker.color', type: 'property-zone' } } },
-        },
-        deps
-      );
-      expect(deps.setInsightProp).toHaveBeenCalledWith(
-        'ins_1',
-        'marker.color',
-        '?{${ref(orders_q).region}}'
-      );
-    });
-
-    test('a sourceTable drop is rejected — a whole table is not a scalar ref', () => {
-      const deps = baseDeps();
-      const result = routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'orders', type: 'sourceTable', sourceName: 'warehouse' } } },
-          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
-        },
-        deps
-      );
-      expect(result).toBe('noop');
-      expect(deps.setInsightProp).not.toHaveBeenCalled();
-    });
-
-    test('a model-scoped metric drop qualifies the ref with parentModel', () => {
-      const deps = baseDeps();
-      routeExplorationDragEnd(
-        {
-          active: {
-            data: { current: { name: 'total_revenue', type: 'metric', parentModel: 'orders_model' } },
-          },
-          over: { data: { current: { fieldName: 'y', type: 'axis-zone' } } },
-        },
-        deps
-      );
-      expect(deps.setInsightProp).toHaveBeenCalledWith(
-        'ins_1',
-        'y',
-        '?{${ref(orders_model).total_revenue}}'
-      );
-    });
-
-    test('an unscoped metric drop is a bare ref (no parentModel)', () => {
-      const deps = baseDeps();
-      routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'composite_metric', type: 'metric' } } },
-          over: { data: { current: { fieldName: 'y', type: 'axis-zone' } } },
-        },
-        deps
-      );
-      expect(deps.setInsightProp).toHaveBeenCalledWith('ins_1', 'y', '?{${ref(composite_metric)}}');
-    });
-
-    test('a multi-select input drop yields the .values accessor', () => {
-      const deps = baseDeps();
-      routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'region_filter', type: 'input', inputType: 'multi-select' } } },
-          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
-        },
-        deps
-      );
-      expect(deps.setInsightProp).toHaveBeenCalledWith(
-        'ins_1',
-        'x',
-        '?{${ref(region_filter).values}}'
-      );
-    });
-
-    test('a single-select input drop yields the .value accessor', () => {
-      const deps = baseDeps();
-      routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'region_filter', type: 'input', inputType: 'single-select' } } },
-          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
-        },
-        deps
-      );
-      expect(deps.setInsightProp).toHaveBeenCalledWith('ins_1', 'x', '?{${ref(region_filter).value}}');
-    });
-
-    test('inserts at cursor instead of replacing the whole value when the drop target has an active cursor', () => {
-      const listener = jest.fn();
-      render(
-        <div data-testid="droppable-property-x">
-          <span
-            data-has-cursor="true"
-            ref={el => el && el.addEventListener('ref-insert-at-cursor', listener)}
-          />
-        </div>
-      );
-
-      const deps = baseDeps();
-      routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'col_a', type: 'column' } } },
-          over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
-        },
-        deps
-      );
-
-      expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener.mock.calls[0][0].detail.refExpr).toBe('${ref(preview_model).col_a}');
-      expect(deps.setInsightProp).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('data-table-drop (computed column)', () => {
-    test('a metric drop adds a computed column with its expression', () => {
-      const deps = baseDeps();
-      const result = routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'churn_rate', type: 'metric', expression: 'sum(x)/count(x)' } } },
-          over: { data: { current: { type: 'data-table-drop' } } },
-        },
-        deps
-      );
-      expect(result).toBe('exploration_computed_column_drop');
-      expect(deps.addComputedColumn).toHaveBeenCalledWith({
-        name: 'churn_rate',
-        expression: 'sum(x)/count(x)',
-        type: 'metric',
-      });
-    });
-
-    test('a metric drop with NO `expression` on the drag data falls back to the bare name', () => {
-      const deps = baseDeps();
-      const result = routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'churn_rate', type: 'metric' } } }, // no expression
-          over: { data: { current: { type: 'data-table-drop' } } },
-        },
-        deps
-      );
-      expect(result).toBe('exploration_computed_column_drop');
-      expect(deps.addComputedColumn).toHaveBeenCalledWith({
-        name: 'churn_rate',
-        expression: 'churn_rate',
-        type: 'metric',
-      });
-    });
-
-    test('a non metric/dimension drop is a noop', () => {
-      const deps = baseDeps();
-      const result = routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'orders', type: 'sourceTable' } } },
-          over: { data: { current: { type: 'data-table-drop' } } },
-        },
-        deps
-      );
-      expect(result).toBe('noop');
-      expect(deps.addComputedColumn).not.toHaveBeenCalled();
-    });
   });
 
   describe('interaction-zone', () => {
@@ -1801,34 +1618,6 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
         deps
       );
       expect(result).toBe('exploration_interaction_drop');
-    });
-  });
-
-  describe('source-zone', () => {
-    test('a source drop sets the active model source', () => {
-      const deps = baseDeps();
-      const result = routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'warehouse', type: 'source' } } },
-          over: { data: { current: { type: 'source-zone' } } },
-        },
-        deps
-      );
-      expect(result).toBe('exploration_source_drop');
-      expect(deps.setActiveModelSource).toHaveBeenCalledWith('warehouse');
-    });
-
-    test('a non-source drop is a noop', () => {
-      const deps = baseDeps();
-      const result = routeExplorationDragEnd(
-        {
-          active: { data: { current: { name: 'x', type: 'metric' } } },
-          over: { data: { current: { type: 'source-zone' } } },
-        },
-        deps
-      );
-      expect(result).toBe('noop');
-      expect(deps.setActiveModelSource).not.toHaveBeenCalled();
     });
   });
 
@@ -1946,16 +1735,16 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
   });
 
   test('routeWorkspaceDragEnd dispatches exploration zone kinds through routeExplorationDragEnd', () => {
-    const setActiveModelSource = jest.fn();
+    const addExistingInsightToChart = jest.fn();
     const result = routeWorkspaceDragEnd(
       {
-        active: { data: { current: { name: 'warehouse', type: 'source' } } },
-        over: { data: { current: { type: 'source-zone' } } },
+        active: { data: { current: { name: 'my_insight', type: 'insight' } } },
+        over: { data: { current: { type: 'insight-zone' } } },
       },
-      { exploration: { setActiveModelSource } }
+      { exploration: { addExistingInsightToChart } }
     );
-    expect(result).toBe('exploration_source_drop');
-    expect(setActiveModelSource).toHaveBeenCalledWith('warehouse');
+    expect(result).toBe('exploration_insight_drop');
+    expect(addExistingInsightToChart).toHaveBeenCalledWith('my_insight');
   });
 
   test('dispatches to routeExplorationDragEnd even when `exploration` deps are entirely omitted (exploration||{} fallback)', () => {
@@ -1964,8 +1753,8 @@ describe('routeExplorationDragEnd (Explore 2.0 Phase 3a)', () => {
     // rather than throwing.
     const result = routeWorkspaceDragEnd(
       {
-        active: { data: { current: { name: 'warehouse', type: 'source' } } },
-        over: { data: { current: { type: 'source-zone' } } },
+        active: { data: { current: { name: 'my_insight', type: 'insight' } } },
+        over: { data: { current: { type: 'insight-zone' } } },
       },
       {}
     );

@@ -318,20 +318,19 @@ export const routeWorkspaceDragEnd = (
   // sections at once (each with its own `TracePropsEditor`/`FieldGroupList`),
   // and every `PropertyRow` in every section handles its OWN drop
   // independent of the others. `PropertyRow.jsx`'s droppable data key is
-  // `kind` (S5 §1 renamed it from `type` — nothing else consumed the old key)
-  // so this branch is unambiguous even though the now-legacy
-  // `axis-zone`/`property-zone`/etc. zone kinds below (still keyed on `type`,
-  // ported from the deleted `ExplorerDndContext`) used the same string value.
+  // `kind` (S5 §1 renamed it from `type` — nothing else consumed the old key),
+  // so this branch is unambiguous. (The legacy `type`-keyed exploration zones
+  // that once shared the `property-zone` string were removed as dead code in
+  // Phase 4 — see Branch 4 below.)
   //
   // `dragData.type === 'column'` (integration-gate fix): `DraggableColumnHeader`
   // — the live query-RESULTS-grid column header, `sourceType: 'data-table'` —
   // never carried `source: 'library'`, so a results-grid column dropped on a
-  // property-zone slot fell through EVERY branch (this one on the `source`
-  // guard, the legacy `type`-keyed branch below on the `kind`-vs-`type` key
-  // mismatch) and silently no-op'd. `handleDropField` (InsightBuildSection.jsx)
-  // already has a generic non-metric/dimension/input fallback that resolves a
-  // bare `column` against the active model correctly, so admitting it here is
-  // the fix rather than adding a second parallel handler.
+  // property-zone slot used to fall through EVERY branch and silently no-op.
+  // Admitting `column` here routes it to `handleDropField`
+  // (InsightBuildSection.jsx), which already has a generic
+  // non-metric/dimension/input fallback that resolves a bare `column` against
+  // the active model correctly — the fix rather than a second parallel handler.
   //
   // `dragData.source === 'pill'` (T4): a pill dragged OUT of its own slot
   // (see `PropertyRow.jsx`'s `useDraggable`) targeting another property-zone
@@ -521,26 +520,18 @@ export const routeWorkspaceDragEnd = (
   // ── Branch 4: Exploration surface drop zones (Explore 2.0 Phase 3a's DnD
   // unification, 02-architecture.md §4) ────────────────────────────────────
   // `ExplorerDndContext` (+ the standalone `/explorer` route it served) is
-  // fully deleted at the Phase 3b cutover. Of the legacy right panel's
-  // `type`-keyed zone kinds ported here verbatim in Phase 3a, only
-  // `interaction-zone` (InsightBuildSection's InteractionRow) and
-  // `insight-zone` (ChartBuildSection's insight drop zone) still have live
-  // producers post-cutover — both components were carried into the rebuilt
-  // Build rail unchanged. `axis-zone`, the OLD `type`-keyed `property-zone`
-  // (superseded by S5/Phase 3b's `kind`-keyed branch above, Branch 2c),
-  // `source-zone`, and `data-table-drop` have ZERO remaining producers
-  // (verified) — inert, not broken; left in place (with their unit tests)
-  // as a scoped-out cleanup rather than folded into this already-large
-  // cutover. `sql-editor-drop` is D9 (still alive, `SQLEditor.jsx`): Library
-  // table → seeds a new scratch query; Library column → inserts at the SQL
-  // editor's cursor.
+  // fully deleted at the Phase 3b cutover. Post-cutover the surviving
+  // `type`-keyed exploration zones are: `interaction-zone` (InsightBuildSection's
+  // InteractionRow), `insight-zone` (ChartBuildSection's insight drop zone), and
+  // `sql-editor-drop` (D9, `SQLEditor.jsx`: Library table → seed a scratch
+  // query; Library column → insert at the SQL editor's cursor). The legacy
+  // `axis-zone`, the OLD `type`-keyed `property-zone` (superseded by Branch 2c's
+  // `kind`-keyed one above), `source-zone`, and `data-table-drop` zones had zero
+  // remaining producers and were removed as dead code (Explore 2.0 state fix,
+  // Phase 4), along with their routeExplorationDragEnd handlers.
   if (
-    dropData.type === 'axis-zone' ||
-    dropData.type === 'property-zone' ||
     dropData.type === 'interaction-zone' ||
-    dropData.type === 'source-zone' ||
     dropData.type === 'insight-zone' ||
-    dropData.type === 'data-table-drop' ||
     dropData.type === 'sql-editor-drop'
   ) {
     return routeExplorationDragEnd(event, exploration || {});
@@ -565,10 +556,6 @@ export const routeWorkspaceDragEnd = (
  * @param {string} deps.activeModelName - the exploration's active query/model
  *   name (already resolved with its `'preview_model'` fallback by the
  *   caller).
- * @param {string|null} deps.activeInsightName
- * @param {Function} deps.setInsightProp
- * @param {Function} deps.addComputedColumn
- * @param {Function} deps.setActiveModelSource
  * @param {Function} deps.updateInsightInteraction
  * @param {Function} deps.addExistingInsightToChart
  * @param {Function} deps.seedModelTabFromTable - `({ tableName, sourceName }) => void`,
@@ -584,10 +571,6 @@ export const routeExplorationDragEnd = (event, deps) => {
 
   const {
     activeModelName,
-    activeInsightName,
-    setInsightProp,
-    addComputedColumn,
-    setActiveModelSource,
     updateInsightInteraction,
     addExistingInsightToChart,
     seedModelTabFromTable,
@@ -611,42 +594,6 @@ export const routeExplorationDragEnd = (event, deps) => {
     return formatRefExpression(activeModelName, dragData.name);
   };
 
-  if (dropData.type === 'axis-zone' || dropData.type === 'property-zone') {
-    // A whole table isn't a scalar ref — only a column-shaped drag resolves.
-    if (dragData.type === 'sourceTable') return 'noop';
-    const fieldName = dropData.type === 'axis-zone' ? dropData.fieldName : dropData.path;
-    const refExpr = buildRefExpr();
-    const dropEl = document.querySelector(
-      dropData.type === 'axis-zone'
-        ? `[data-testid="droppable-property-${fieldName}"]`
-        : `[data-testid="droppable-property-${dropData.path}"]`
-    );
-    const hasCursor = dropEl?.querySelector('[data-has-cursor="true"]');
-    if (hasCursor && activeInsightName) {
-      hasCursor.dispatchEvent(
-        new CustomEvent('ref-insert-at-cursor', { detail: { refExpr }, bubbles: false })
-      );
-    } else if (activeInsightName && typeof setInsightProp === 'function') {
-      setInsightProp(activeInsightName, fieldName, '?{' + refExpr + '}');
-    }
-    return 'exploration_prop_drop';
-  }
-
-  if (dropData.type === 'data-table-drop') {
-    if (
-      (dragData.type === 'metric' || dragData.type === 'dimension') &&
-      typeof addComputedColumn === 'function'
-    ) {
-      addComputedColumn({
-        name: dragData.name,
-        expression: dragData.expression || dragData.name,
-        type: dragData.type,
-      });
-      return 'exploration_computed_column_drop';
-    }
-    return 'noop';
-  }
-
   if (dropData.type === 'interaction-zone') {
     if (dragData.type === 'sourceTable') return 'noop';
     const { insightName, index } = dropData;
@@ -662,14 +609,6 @@ export const routeExplorationDragEnd = (event, deps) => {
       updateInsightInteraction(insightName, index, { value: `?{${refExpr}}` });
     }
     return 'exploration_interaction_drop';
-  }
-
-  if (dropData.type === 'source-zone') {
-    if (dragData.type === 'source' && typeof setActiveModelSource === 'function') {
-      setActiveModelSource(dragData.name);
-      return 'exploration_source_drop';
-    }
-    return 'noop';
   }
 
   if (dropData.type === 'insight-zone') {
@@ -901,10 +840,6 @@ const WorkspaceDndContext = ({ children }) => {
   // to `'preview_model'` (matching the resolution the now-deleted
   // `ExplorerDndContext.jsx` used to do for the standalone route).
   const explorerActiveModelName = useStore(s => s.explorerActiveModelName) || 'preview_model';
-  const explorerActiveInsightName = useStore(s => s.explorerActiveInsightName);
-  const setInsightProp = useStore(s => s.setInsightProp);
-  const addActiveModelComputedColumn = useStore(s => s.addActiveModelComputedColumn);
-  const setActiveModelSource = useStore(s => s.setActiveModelSource);
   const updateInsightInteraction = useStore(s => s.updateInsightInteraction);
   const addExistingInsightToChart = useStore(s => s.addExistingInsightToChart);
   const seedModelTabFromTable = useStore(s => s.seedModelTabFromTable);
@@ -981,10 +916,6 @@ const WorkspaceDndContext = ({ children }) => {
         emit: emitWorkspaceEvent,
         exploration: {
           activeModelName: explorerActiveModelName,
-          activeInsightName: explorerActiveInsightName,
-          setInsightProp,
-          addComputedColumn: addActiveModelComputedColumn,
-          setActiveModelSource,
           updateInsightInteraction,
           addExistingInsightToChart,
           seedModelTabFromTable,
@@ -998,10 +929,6 @@ const WorkspaceDndContext = ({ children }) => {
       moveLevel,
       commitCanvasConfig,
       explorerActiveModelName,
-      explorerActiveInsightName,
-      setInsightProp,
-      addActiveModelComputedColumn,
-      setActiveModelSource,
       updateInsightInteraction,
       addExistingInsightToChart,
       seedModelTabFromTable,
