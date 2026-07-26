@@ -30,11 +30,14 @@ describe('DraggableColumnHeader', () => {
     expect(screen.getByTestId('draggable-col-order_id')).toBeInTheDocument();
   });
 
-  it('passes draggable id based on column name', () => {
+  it('passes a sourceType-namespaced draggable id based on column name', () => {
     render(<DraggableColumnHeader column={mockColumn} />);
 
+    // Now sourced from the shared DraggableTh, which namespaces the dnd id by
+    // sourceType ('data-table') so the Explorer and ModelPreview grids can't
+    // collide. The drop router reads the `data` payload, never this id.
     const wrapper = screen.getByTestId('draggable-col-order_id');
-    expect(wrapper.dataset.draggableId).toBe('column-order_id');
+    expect(wrapper.dataset.draggableId).toBe('data-table-column-order_id');
   });
 
   // B9 (04-bug-inventory.md) / VIS-1071: metric/dimension styling now

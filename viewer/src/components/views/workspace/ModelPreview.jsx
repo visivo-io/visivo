@@ -6,6 +6,7 @@ import useStore from '../../../stores/store';
 import { useModelQueryJob } from '../../../hooks/useModelQueryJob';
 import { parseRefValue } from '../../../utils/refString';
 import FieldPill from '../common/FieldPill';
+import DraggableTh from '../common/DraggableTh';
 
 /**
  * SemanticFieldsStrip — the model's dimension + metric pills (VIS-1009 secondary).
@@ -256,9 +257,16 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 {columns.map(col => (
-                  <th key={col} className="px-3 py-1.5 font-semibold text-gray-700">
+                  <DraggableTh
+                    key={col}
+                    as="th"
+                    name={col}
+                    sourceType="model-preview"
+                    className="px-3 py-1.5 font-semibold text-gray-700"
+                    dataTestId={`model-preview-col-${col}`}
+                  >
                     {col}
-                  </th>
+                  </DraggableTh>
                 ))}
               </tr>
             </thead>

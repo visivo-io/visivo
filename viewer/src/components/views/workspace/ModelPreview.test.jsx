@@ -104,6 +104,24 @@ describe('ModelPreview (VIS-801)', () => {
     expect(results).toHaveTextContent('2');
   });
 
+  test('result-table column headers are draggable sources (Phase 4b Step 3)', () => {
+    // The ModelPreview grid used to render plain <th> cells — columns there
+    // could not be dragged onto an insight at all (only the Explorer grid
+    // could). Each header is now the shared DraggableTh, so a column drags
+    // into a property/interaction zone identically to the Explorer grid.
+    mockJobState.status = 'completed';
+    mockJobState.result = { columns: ['region', 'amount'], rows: [{ region: 'w', amount: 3 }] };
+    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    fireEvent.click(screen.getByTestId('model-preview-run'));
+
+    const header = screen.getByTestId('model-preview-col-amount');
+    expect(header.tagName).toBe('TH');
+    // The grab affordance is proof it's the draggable wrapper, not a plain <th>.
+    expect(header.className).toContain('cursor-grab');
+    expect(header).toHaveTextContent('amount');
+  });
+
   test('falls back to the first available source when the model has none and no project default', () => {
     seed([{ name: 'orders', config: { sql: 'SELECT 1' } }], [{ name: 'fallback_db' }]);
     render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);

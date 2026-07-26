@@ -1,6 +1,6 @@
 import React from 'react';
-import { useDraggable } from '@dnd-kit/core';
 import DataTableHeader from '../common/DataTableHeader';
+import DraggableTh from '../views/common/DraggableTh';
 import { getTypeColors } from '../views/common/objectTypeConfigs';
 
 // B9 (04-bug-inventory.md) / VIS-1071 restyle sweep: metric/dimension
@@ -27,21 +27,16 @@ const computedHeaderStyle = column => {
 };
 
 const DraggableColumnHeader = ({ column, sorting, onSortChange, onInfoClick }) => {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `column-${column.name}`,
-    data: { name: column.name, type: 'column', sourceType: 'data-table' },
-  });
-
   const { className: computedClassName, style: computedStyle } = computedHeaderStyle(column);
 
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''} ${computedClassName}`}
+    <DraggableTh
+      as="div"
+      name={column.name}
+      sourceType="data-table"
+      className={computedClassName}
       style={computedStyle}
-      data-testid={`draggable-col-${column.name}`}
+      dataTestId={`draggable-col-${column.name}`}
       title={column.computedError || undefined}
     >
       <DataTableHeader
@@ -50,7 +45,7 @@ const DraggableColumnHeader = ({ column, sorting, onSortChange, onInfoClick }) =
         onSortChange={onSortChange}
         onInfoClick={onInfoClick}
       />
-    </div>
+    </DraggableTh>
   );
 };
 
