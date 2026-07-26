@@ -1192,4 +1192,74 @@ describe('useDraftInsightPreview', () => {
     unmount();
     expect(useStore.getState().insightJobs[draftInsightKey('my_insight')]).toBeUndefined();
   });
+
+  test('renaming a model drops the orphaned old-hash DuckDB table (Phase 4b Step 2 GC)', async () => {
+    // Pass 1: insight references `orders_q` (compiled name_hash mhash1) — the
+    // hook registers DuckDB table "mhash1".
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      pre_query: null,
+      props_mapping: { 'props.x': 'a' },
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [{ name: 'orders_q', name_hash: 'mhash1' }],
+    });
+    runDuckDBQuery.mockResolvedValue({ fake: 'arrow' });
+    processArrowResult.mockReturnValue([{ a: 1 }]);
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(FAKE_CONN.query).toHaveBeenCalledWith(expect.stringContaining('"mhash1"'));
+    expect(
+      FAKE_CONN.query.mock.calls.some(([q]) => /DROP TABLE IF EXISTS "mhash1"/.test(q))
+    ).toBe(false); // nothing orphaned yet
+
+    // Pass 2: the model is RENAMED orders_q -> orders_q2. Its name_hash moves
+    // to mhash2, the props re-reference the new name, and compile-draft now
+    // returns mhash2. mhash1's table is now an orphan.
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash2"',
+      pre_query: null,
+      props_mapping: { 'props.x': 'a' },
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [{ name: 'orders_q2', name_hash: 'mhash2' }],
+    });
+    seedState({
+      explorerInsightStates: {
+        my_insight: {
+          type: 'scatter',
+          props: { x: '?{${ref(orders_q2).region}}', y: '?{sum(${ref(orders_q2).amount})}' },
+          interactions: [],
+        },
+      },
+      explorerModelStates: {
+        orders_q2: {
+          sql: 'select * from orders',
+          sourceName: 'warehouse',
+          queryResult: { columns: ['region', 'amount'], rows: [{ region: 'west', amount: 10 }] },
+        },
+      },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // GUARD: the orphaned mhash1 table is dropped and the fresh mhash2 table
+    // is registered. Remove the post-pass sweep and the DROP never fires.
+    expect(
+      FAKE_CONN.query.mock.calls.some(([q]) => /DROP TABLE IF EXISTS "mhash1"/.test(q))
+    ).toBe(true);
+    expect(FAKE_CONN.query).toHaveBeenCalledWith(expect.stringContaining('"mhash2"'));
+    // The rename resolved cleanly — no HASHED_TABLE_ERROR blanked the insight.
+    expect(useStore.getState().insightJobs[draftInsightKey('my_insight')]?.data).toEqual([
+      { a: 1 },
+    ]);
+  });
 });

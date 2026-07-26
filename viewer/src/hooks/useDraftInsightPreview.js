@@ -291,6 +291,13 @@ const useDraftInsightPreview = () => {
         return true;
       };
 
+      // Every DuckDB draft-table name_hash any charted insight actually
+      // depends on THIS pass (populated in the register loop below). After the
+      // pass, any hash still in `registeredTablesRef` but absent here is an
+      // orphan — a renamed model minted a new hash, or a model was removed /
+      // switched to the server-execute lane — and gets dropped + evicted.
+      const neededHashes = new Set();
+
       for (const name of chartInsightNames) {
         const state = insightStates[name];
         const draftKey = draftInsightKey(name);
@@ -453,6 +460,9 @@ const useDraftInsightPreview = () => {
           // already known (via the guard above) to have fetched rows.
           const conn = await getConnection(db);
           for (const model of compiled.models || []) {
+            // A live dependency of this pass — its table must survive the
+            // post-pass orphan sweep even if it has no rows to (re)register.
+            neededHashes.add(model.name_hash);
             const result = visibleResult(modelStates[model.name]);
             const rows = result?.rows || [];
             if (!rows.length) continue;
@@ -546,6 +556,34 @@ const useDraftInsightPreview = () => {
               blockedReason: null,
               blockedModel: null,
             });
+          }
+        }
+      }
+
+      // Orphan-table GC (Phase 4b Step 2). A model's DuckDB draft table is
+      // named by its `name_hash` (a hash of the model NAME), so renaming a
+      // model mints a NEW hash and leaves the OLD-hash table registered
+      // forever — an unbounded leak in both DuckDB-WASM and
+      // `registeredTablesRef`, and the stale hash is exactly the kind of dead
+      // table `post_query` could later qualify against (HASHED_TABLE_ERROR).
+      // Drop every registered hash no charted insight still depends on, and
+      // evict it. Skipped when the pass is stale (a newer fire owns the tables
+      // now) so we never drop a table the winning pass just registered.
+      if (!isStale()) {
+        const staleHashes = [...registeredTablesRef.current.keys()].filter(
+          hash => !neededHashes.has(hash)
+        );
+        if (staleHashes.length) {
+          const conn = await getConnection(db);
+          for (const hash of staleHashes) {
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              await conn.query(`DROP TABLE IF EXISTS "${hash}"`);
+            } catch {
+              // A table that never materialised (a no-rows model) is already
+              // gone — dropping it is a no-op; never let GC failure surface.
+            }
+            registeredTablesRef.current.delete(hash);
           }
         }
       }
