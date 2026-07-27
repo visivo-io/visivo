@@ -42,6 +42,20 @@ export const buildModelsSignature = (modelStates, referencedNames) =>
       sql: s?.sql,
       sourceName: s?.sourceName,
       rowCount: s?.queryResult?.rows?.length || 0,
+      // The preview compiles against — and registers its DuckDB table from —
+      // the model's ENRICHED result (raw columns PLUS client-computed
+      // columns). A computed column only appears there once async DuckDB
+      // enrichment lands, which can be AFTER the drop that referenced it has
+      // already compiled and 400'd "Column '<x>' not found on model". Folding
+      // the enriched column set + the computed-column definitions in means
+      // enrichment completion (and any later expression edit) re-triggers the
+      // compile — so the preview SELF-HEALS instead of sticking on the stale
+      // "column not found" error, and editing a computed column's expression
+      // refreshes the chart (previously it silently did not).
+      enrichedColumns: (s?.enrichedResult?.columns || []).join(','),
+      computedColumns: (s?.computedColumns || [])
+        .map(c => `${c?.name}=${c?.expression}`)
+        .join('|'),
     }));
 
 /** Full per-insight freshness signature: the insight's own type/props/

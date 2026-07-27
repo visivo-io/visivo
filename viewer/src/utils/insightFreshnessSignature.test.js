@@ -30,6 +30,51 @@ describe('buildModelsSignature — referenced-name scoping', () => {
   });
 });
 
+describe('buildModelsSignature — tracks computed columns + enrichment', () => {
+  const base = { sql: 'select * from t', sourceName: 'db', queryResult: { rows: [{}, {}] } };
+
+  it('changes when a computed column is added (so an unenriched drop recompiles)', () => {
+    const before = JSON.stringify(buildModelsSignature({ t: base }));
+    const after = JSON.stringify(
+      buildModelsSignature({
+        t: { ...base, computedColumns: [{ name: 'combined', expression: 'a || b' }] },
+      })
+    );
+    // GUARD: drop `computedColumns` from the fold and this equality holds —
+    // adding a computed column would not refresh the preview.
+    expect(after).not.toBe(before);
+  });
+
+  it('changes when a computed column EXPRESSION is edited', () => {
+    const withCol = { ...base, computedColumns: [{ name: 'c', expression: 'a + b' }] };
+    const edited = { ...base, computedColumns: [{ name: 'c', expression: 'a - b' }] };
+    expect(JSON.stringify(buildModelsSignature({ t: edited }))).not.toBe(
+      JSON.stringify(buildModelsSignature({ t: withCol }))
+    );
+  });
+
+  it('changes when async enrichment lands the computed column (the self-heal signal)', () => {
+    // The drop compiled against the pre-enrichment result (columns a, b);
+    // enrichment then adds `combined`. The signature MUST change so the
+    // preview recompiles and resolves ref(model).combined.
+    const preEnrich = {
+      ...base,
+      computedColumns: [{ name: 'combined', expression: 'a || b' }],
+      enrichedResult: { columns: ['a', 'b'] },
+    };
+    const postEnrich = {
+      ...preEnrich,
+      enrichedResult: { columns: ['a', 'b', 'combined'] },
+    };
+    // GUARD: drop `enrichedColumns` from the fold and this equality holds —
+    // enrichment completion would not recompile, so the transient "column not
+    // found" 400 sticks permanently (the reported bug).
+    expect(JSON.stringify(buildModelsSignature({ t: postEnrich }))).not.toBe(
+      JSON.stringify(buildModelsSignature({ t: preEnrich }))
+    );
+  });
+});
+
 describe('buildInsightFreshnessSignature — scoped to referenced models', () => {
   it('does NOT change when an UNreferenced model is renamed/edited', () => {
     const before = buildInsightFreshnessSignature(insightState, modelStates);
