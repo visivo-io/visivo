@@ -96,6 +96,7 @@ export default defineConfig({
         // repository isolation need — each mints (and most delete) real
         // backend exploration records.
         '**/exploration-computed-columns.spec.mjs',
+        '**/exploration-nested-property-well.spec.mjs',
         '**/workspace-tab-close-dialog-navigation.spec.mjs',
         '**/workspace-back-forward-exploration.spec.mjs',
         '**/workspace-dnd-mid-drag-destination-switch.spec.mjs',
@@ -261,6 +262,7 @@ export default defineConfig({
         // P5-D-final-delta gap closures) — see the 'parallel' project's
         // testIgnore entry for the same files for why.
         '**/exploration-computed-columns.spec.mjs',
+        '**/exploration-nested-property-well.spec.mjs',
         '**/workspace-tab-close-dialog-navigation.spec.mjs',
         '**/workspace-back-forward-exploration.spec.mjs',
         '**/workspace-dnd-mid-drag-destination-switch.spec.mjs',

@@ -2,7 +2,11 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../../stores/store';
-import { getSourceDialect, selectInsightStatus } from '../../../stores/explorerStore';
+import {
+  getSourceDialect,
+  selectInsightStatus,
+  expandDotNotationProps,
+} from '../../../stores/explorerStore';
 import TracePropsEditor from '../common/TracePropsEditor';
 import RefTextArea from '../common/RefTextArea';
 import Select from '../../common/Select';
@@ -136,8 +140,17 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const type = insightState?.type || 'scatter';
   const interactions = insightState?.interactions || [];
 
+  // Fields read their value by NESTED path (FieldGroup's getValueAtPath, e.g.
+  // `marker.color` -> value.marker.color), but a DROP writes a FLAT dot-key
+  // (`setInsightProp` stores props['marker.color']). Without expanding here, a
+  // field dropped into any NESTED-path well (marker.color, line.dash, …) read
+  // back undefined — the well showed the empty "Type @ to insert a reference"
+  // placeholder even though the value was set and the chart rendered. Expand
+  // the flat dot-keys so the well displays what was dropped; the store
+  // self-heals to nested on the next onChange. Idempotent for already-nested
+  // (API-loaded / manually-typed) props.
   const tracePropsValue = useMemo(
-    () => ({ ...(insightState?.props || {}), type }),
+    () => ({ ...expandDotNotationProps(insightState?.props || {}), type }),
     [insightState?.props, type]
   );
 
