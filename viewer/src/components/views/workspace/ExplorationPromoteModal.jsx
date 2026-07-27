@@ -708,9 +708,9 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
             <p
               data-testid="exploration-promote-pending-commit"
               className="text-[11px] text-secondary-500 px-0.5"
-              title="Saved objects are written to your project files but not committed yet — use Commit in the top bar to make them permanent."
+              title="Written to your project's .visivo.yml files."
             >
-              Saved to project · pending commit
+              Saved to your project files
             </p>
           </div>
         )}

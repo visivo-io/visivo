@@ -394,7 +394,7 @@ describe('ExplorationBuildRail', () => {
       ).toBeInTheDocument();
     });
 
-    it('shows the pending-commit caption once anything has been saved to project', () => {
+    it('shows the "in your project files" caption once anything has been saved to project', () => {
       useStore.setState({
         workspaceExplorations: {
           byId: {
@@ -407,13 +407,15 @@ describe('ExplorationBuildRail', () => {
         },
       });
       render(<ExplorationBuildRail explorationId="exp_a1" />);
-      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent('pending commit');
+      expect(screen.getByTestId('exploration-promoted-trail')).toHaveTextContent(
+        'in your project files'
+      );
     });
 
-    it('does not show the pending-commit caption while nothing has been saved yet', () => {
+    it('does not show the saved-to-files caption while nothing has been saved yet', () => {
       render(<ExplorationBuildRail />);
       expect(screen.getByTestId('exploration-promoted-trail')).not.toHaveTextContent(
-        'pending commit'
+        'in your project files'
       );
     });
   });

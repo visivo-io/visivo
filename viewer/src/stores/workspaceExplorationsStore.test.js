@@ -1626,6 +1626,38 @@ describe('promoteExploration', () => {
     ...overrides,
   });
 
+  test('flushes promoted drafts to disk by committing after a successful save loop', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    const saveModel = jest.fn().mockResolvedValue({ success: true });
+    const commitChanges = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveModel, commitChanges });
+    });
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+    expect(saveModel).toHaveBeenCalledWith('orders_q', { sql: 'select 1' });
+    // commit is the ONLY path that writes project YAML under `visivo serve`;
+    // without it "Save to project" reported success while nothing hit disk.
+    expect(commitChanges).toHaveBeenCalledTimes(1);
+  });
+
+  test('does NOT commit when nothing was actually saved (all rows invalid)', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow({ valid: false })]);
+    const saveModel = jest.fn().mockResolvedValue({ success: true });
+    const commitChanges = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveModel, commitChanges });
+    });
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+    expect(saveModel).not.toHaveBeenCalled();
+    expect(commitChanges).not.toHaveBeenCalled();
+  });
+
   test('promotes only selected + valid rows, via the REAL saveX store action (not raw api calls)', async () => {
     buildPromoteChecklist.mockResolvedValue([
       checklistRow(),

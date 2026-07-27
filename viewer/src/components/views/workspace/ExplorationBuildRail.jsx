@@ -452,9 +452,9 @@ const ExplorationBuildRail = ({ explorationId }) => {
             <>
               <p
                 className="text-[10px] text-gray-400 mb-1"
-                title="Saved objects are written to your project files but not committed yet — use Commit in the top bar to make them permanent."
+                title="Written to your project's .visivo.yml files."
               >
-                pending commit
+                in your project files
               </p>
               <ul className="space-y-1">
                 {promoted.map(p => (
