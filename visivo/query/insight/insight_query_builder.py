@@ -402,6 +402,19 @@ class InsightQueryBuilder:
             # Frontend registers parquet files as tables using insight_hash as table name
             return f'SELECT * FROM "{self.insight_hash}"'
 
+    def _is_line_mode(self) -> bool:
+        """True when the insight renders a connected line: a scatter/scattergl
+        prop whose mode explicitly includes ``lines``. Marker-only scatters and
+        non-scatter types (bar, etc.) return False so they are never reordered."""
+        props = self.insight.props
+        if not props:
+            return False
+        prop_type = getattr(props.type, "value", props.type)
+        if prop_type not in ("scatter", "scattergl"):
+            return False
+        mode = getattr(props, "mode", None)
+        return bool(mode) and "lines" in mode
+
     def resolve(self):
         """Sets the resolved_query_statements and alias_hashes"""
         resolved_query_statements = []
@@ -417,6 +430,20 @@ class InsightQueryBuilder:
                 )
                 self.alias_hashes[key] = alias_hash
             resolved_query_statements.append((key, resolved_statement))
+
+        # Line charts connect points in row order, so an unsorted result renders
+        # a tangled web. When a line-mode insight has no explicit sort, default to
+        # ordering by the x-axis field ascending. Explicit sorts are never
+        # overridden, and non-line types (bar, marker-only scatter) are untouched.
+        has_sort = any(key == "sort" for key, _ in resolved_query_statements)
+        if not has_sort and self._is_line_mode():
+            x_statement = next(
+                (s for k, s in self.unresolved_query_statements if k == "props.x"), None
+            )
+            if x_statement:
+                default_sort = self.field_resolver.resolve_sort(expression=f"{x_statement} ASC")
+                resolved_query_statements.append(("sort", default_sort))
+
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True
 
