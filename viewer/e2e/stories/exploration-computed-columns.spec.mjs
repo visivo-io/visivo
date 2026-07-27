@@ -54,6 +54,39 @@ async function newExploration(page) {
   return new URL(page.url()).pathname.split('/').pop();
 }
 
+// Pointer-driven DnD — dnd-kit's PointerSensor needs a real move sequence, not
+// a synthetic drop event (mirrors pill-aggregation.spec.mjs's helper).
+async function dragAndDrop(page, sourceLocator, targetLocator) {
+  const s = await sourceLocator.boundingBox();
+  const t = await targetLocator.boundingBox();
+  expect(s && t, 'both drag endpoints have a box').toBeTruthy();
+  const sx = s.x + s.width / 2;
+  const sy = s.y + s.height / 2;
+  const tx = t.x + t.width / 2;
+  const ty = t.y + t.height / 2;
+  await page.mouse.move(sx, sy);
+  await page.mouse.down();
+  await page.mouse.move(sx + 10, sy, { steps: 3 });
+  await page.waitForTimeout(100);
+  await page.mouse.move(tx, ty, { steps: 12 });
+  await page.mouse.move(tx, ty, { steps: 4 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+}
+
+const activeInsightName = page =>
+  page.evaluate(() => {
+    const s = window.useStore.getState();
+    return s.explorerActiveInsightName || s.explorerChartInsightNames[0];
+  });
+
+const draftData = (page, name) =>
+  page.evaluate(n => {
+    const job = window.useStore.getState().insightJobs?.[`__draft__:${n}`];
+    return job && job.data != null ? JSON.stringify(job.data) : null;
+  }, name);
+
 test.describe('Exploration computed columns (P5-D6 ledger gap closure)', () => {
   test.describe.configure({ timeout: 60000 });
 
@@ -165,5 +198,69 @@ test.describe('Exploration computed columns (P5-D6 ledger gap closure)', () => {
 
     await pill.getByTestId('pill-remove').click();
     await expect(pill).not.toBeVisible();
+  });
+
+  // Regression (fix 43ba94fd): a custom (client-computed) DIMENSION dragged
+  // into a chart well used to stick — the preview's recompute signature
+  // ignored computed-column / enrichment state, so (a) a drop racing DuckDB
+  // enrichment 400'd "Column not found" and never recompiled once the column
+  // landed, and (b) editing the column's expression never refreshed the chart.
+  // A WIDE viewport keeps the chart-preview pane (which runs the preview hook)
+  // mounted side-by-side with the results grid so the drop is observable.
+  test('a custom dimension dragged into a chart well renders — and refreshes when its expression is edited', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    await typeSql(page, 'SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4');
+    await runQuery(page);
+
+    // Create the custom dimension (a || b -> "12" / "34").
+    await expect(page.getByTestId('data-section-toolbar')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('add-computed-column-btn').click();
+    await page.getByTestId('computed-col-name').fill('combined');
+    await page.getByTestId('computed-col-expression').fill('a || b');
+    await expect(page.getByTestId('validation-result')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('detected-type-badge')).toHaveText('Dimension', { timeout: 5000 });
+    await page.getByTestId('add-btn').click();
+    await expect(page.getByTestId('computed-pill-combined')).toBeVisible({ timeout: 10000 });
+
+    // Drag its grid header into the x well (real dnd-kit pointer drag).
+    const column = page.getByTestId('draggable-col-combined');
+    await expect(column).toBeVisible({ timeout: 10000 });
+    await dragAndDrop(page, column, page.locator('[data-testid*="droppable-property-x"]').first());
+
+    const insight = await activeInsightName(page);
+
+    // The ref was written model-qualified…
+    await expect
+      .poll(
+        () =>
+          page.evaluate(name => {
+            const props = window.useStore.getState().explorerInsightStates[name]?.props || {};
+            return Object.values(props).some(v => typeof v === 'string' && v.includes('.combined}'));
+          }, insight),
+        { timeout: 10000 }
+      )
+      .toBe(true);
+
+    // …and the preview RESOLVES it and renders data — never sticking on the
+    // "column not found" error the way it did before the fold fix.
+    await expect.poll(() => draftData(page, insight), { timeout: 25000 }).not.toBeNull();
+    const before = await draftData(page, insight);
+
+    // Editing the dimension's expression (a||b -> b||a: "21" / "43") MUST
+    // refresh the chart. Before the fix the signature ignored computed-column
+    // edits, so the preview stayed on the stale values.
+    await page.getByTestId('computed-pill-combined').click();
+    await expect(page.getByTestId('add-computed-column-popover')).toBeVisible();
+    await page.getByTestId('computed-col-expression').fill('b || a');
+    await expect(page.getByTestId('validation-result')).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('save-btn').click();
+
+    await expect
+      .poll(() => draftData(page, insight), { timeout: 25000 })
+      .not.toBe(before);
   });
 });

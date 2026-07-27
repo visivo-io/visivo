@@ -469,10 +469,19 @@ const useDraftInsightPreview = () => {
             // The column list is part of the identity: adding or removing a
             // computed column changes the shape without changing the row count
             // or the SQL, and a fingerprint blind to that would keep serving a
-            // stale table that lacks the column the user just added.
-            const fingerprint = `${rows.length}:${modelStates[model.name]?.sql}:${(
+            // stale table that lacks the column the user just added. The
+            // computed-column DEFINITIONS are part of it too: EDITING an
+            // expression (a||b -> b||a) changes the enriched VALUES while the
+            // column set, row count, and SQL all stay identical — without them
+            // here the table is never re-registered and the chart keeps
+            // rendering the pre-edit values.
+            const modelState = modelStates[model.name];
+            const computedSig = (modelState?.computedColumns || [])
+              .map(c => `${c?.name}=${c?.expression}`)
+              .join('|');
+            const fingerprint = `${rows.length}:${modelState?.sql}:${(
               result.columns || []
-            ).join(',')}`;
+            ).join(',')}:${computedSig}`;
             if (registeredTablesRef.current.get(model.name_hash) === fingerprint) continue;
             const tempFile = `draft_model_${model.name_hash}_${Date.now()}.json`;
             // eslint-disable-next-line no-await-in-loop
