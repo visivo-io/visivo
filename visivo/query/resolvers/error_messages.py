@@ -18,6 +18,19 @@ def format_column_not_found_error(
     Returns:
         Formatted error message with available columns
     """
+    # An EMPTY schema means the model resolved no columns at all — reporting a
+    # specific "column X not found" here is misleading (smoke-test bug #10: a
+    # model whose `sql` references a nonexistent table yields an UNKNOWN/empty
+    # schema, then this surfaces as "Column 'sex' not found" instead of naming
+    # the real cause). Point at the likely causes instead.
+    if not table:
+        return (
+            f"Column '{field_name}' not found on model '{model_name}' — the model "
+            f"resolved no columns at all.\n"
+            f"This usually means its `sql` references a table that does not exist "
+            f"in the source (check the table name), or the model has not been run yet."
+        )
+
     columns_table = format_available_columns(table)
 
     if is_quoted:
