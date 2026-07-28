@@ -534,14 +534,26 @@ class InsightQueryBuilder:
         # Use find_non_aggregated_expressions() to get full expressions (e.g., CASE statements)
         # that need to be in GROUP BY, then restore ${input} placeholders
         group_by_clauses = []
+        # Whether the SELECT actually aggregates. GROUP BY is only valid/needed
+        # when at least one aggregate is present; a pure projection must NOT
+        # group by its columns (see the emission gate below).
+        select_has_aggregate = False
         for select_clause in select_clauses:
+            # Strip only the TRAILING alias (`... AS "col"`), not the first
+            # ` AS `. Splitting on the first ` AS ` truncated an aggregate that
+            # contains an inner ` AS ` — e.g. SUM(CAST(x AS DOUBLE)) — into
+            # unbalanced SQL that fails to parse, so the aggregate went
+            # undetected and a NEEDED GROUP BY was dropped in the dynamic
+            # (Explorer preview) path (adversarial-review regression).
+            expr_part = re.sub(r'\s+AS\s+"[^"]+"\s*$', "", select_clause, flags=re.IGNORECASE)
             # Replace input placeholders with sample values for SQLGlot parsing
-            expr_part = select_clause.split(" AS ")[0]
             safe_expr, _ = replace_input_placeholders_for_parsing(
                 expr_part, dag=self.dag, insight=self.insight, output_dir=self.output_dir
             )
             parsed = parse_expression(safe_expr, "duckdb")
             if parsed:
+                if has_aggregate_function(parsed):
+                    select_has_aggregate = True
                 # Use find_non_aggregated_expressions to get full expressions for GROUP BY
                 # Pass duckdb dialect for dynamic queries (they run in browser DuckDB WASM)
                 non_agg_exprs = find_non_aggregated_expressions(parsed, dialect="duckdb")
@@ -606,7 +618,13 @@ class InsightQueryBuilder:
             query_parts.append("WHERE")
             query_parts.append("  " + " AND ".join(where_conditions))
 
-        if group_by_clauses:
+        # GROUP BY only when the query actually aggregates. A pure projection —
+        # e.g. a histogram/box/violin plotting RAW observations (x = bodyweight,
+        # no aggregate) — must NOT group by its columns, or it silently dedupes
+        # raw rows to distinct value-tuples and distorts the distribution
+        # (smoke-test bug #2). An aggregate in SELECT or a HAVING both imply an
+        # aggregate context.
+        if group_by_clauses and (select_has_aggregate or having_conditions):
             query_parts.append("GROUP BY")
             query_parts.append("  " + ", ".join(group_by_clauses))
 
@@ -902,6 +920,18 @@ class InsightQueryBuilder:
         # Get the SELECT expressions to analyze
         select_expressions = self._build_main_select()
 
+        # GROUP BY is only valid/needed when the query actually aggregates. A
+        # pure projection — e.g. a histogram/box/violin plotting RAW
+        # observations (x = bodyweight, no aggregate) — must NOT group by its
+        # columns, or it silently dedupes raw rows to distinct value-tuples and
+        # distorts the distribution (smoke-test bug #2). A HAVING clause also
+        # implies an aggregate context.
+        select_has_aggregate = any(
+            has_aggregate_function(select_expr) for select_expr in select_expressions
+        )
+        if not (select_has_aggregate or self._build_having() is not None):
+            return None
+
         for select_expr in select_expressions:
             # Find non-aggregated expressions in each SELECT expression
             # Pass dialect for proper identifier quoting (e.g., backticks for BigQuery)
@@ -1012,11 +1042,13 @@ class InsightQueryBuilder:
 
         True iff the query aggregates, uses a window function, splits, or spans
         more than one model (a relation join). Deliberately does NOT key off
-        GROUP BY presence: ``_build_group_by`` emits ``GROUP BY x, y``
-        unconditionally (a plain projection compiles to a DISTINCT-style
-        group-by), so group-by presence would misclassify every projection.
-        Reads only the resolved statement strings + model count + split_key, so
-        it is identical whether the surrounding build ran force_dynamic True or
+        GROUP BY presence — it is computed independently, from the resolved
+        statement strings + model count + split_key. (``_build_group_by`` now
+        emits GROUP BY only when the query actually aggregates, so a pure
+        projection is correctly ungrouped; keying off GROUP BY would still be
+        the wrong signal, since this classification must not depend on how the
+        emitted SQL happened to be shaped.) Reads only those inputs, so it is
+        identical whether the surrounding build ran force_dynamic True or
         False. A Metric ref always resolves to an aggregate, and a lone
         Dimension ref stays row-level, so both fall out of the aggregate check
         without special-casing.
