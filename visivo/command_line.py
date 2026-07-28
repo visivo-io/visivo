@@ -204,6 +204,16 @@ def safe_visivo():
         error_type = type(e).__name__
         Logger.instance().error(str(e))
         sys.exit(1)
+    except click.ClickException as e:
+        # A ClickException is already a clean, user-facing error — e.g. a YAML
+        # syntax error from load_yaml_file carrying file:line + the problem.
+        # Route it like our other user errors, NOT through the generic
+        # "unexpected error / report this issue" path below, whose issue URL
+        # percent-encodes the ENTIRE stack trace into a giant OSC-8 terminal
+        # hyperlink (smoke-test bug #14).
+        error_type = type(e).__name__
+        Logger.instance().error(e.format_message())
+        sys.exit(1)
     except Exception as e:
         error_type = type(e).__name__
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
