@@ -54,7 +54,3 @@ test-resulsts/
 # Playwright story QA screenshots (regenerated locally; not snapshot baselines)
 **/__screens__/
 
-# scripts/dev.sh syncs the sibling ../visivo checkout in here so a local runner
-# image runs the visivo you actually have. Only the placeholder is tracked.
-runner/visivo-src/*
-!runner/visivo-src/.keep
