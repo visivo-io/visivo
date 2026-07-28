@@ -223,6 +223,57 @@ class TestInsightFilterInteractions:
         # assert the actual guidance rendered.
         assert "Did you mean .value?" in message
 
+    def _build_single_select_filter(self, tmpdir, create_schema_file, filter_expr):
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table", sql="SELECT x, y FROM test_data", source=f"ref({source.name})"
+        )
+        ss = SingleSelectInput(name="ss1", label="SS", options=["Raw", "Wraps"])
+        insight = Insight(
+            name="value-filter",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(local_test_table).y}}",
+            ),
+            interactions=[InsightInteraction(filter=filter_expr)],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ss],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        return builder.build()
+
+    def test_bare_single_select_value_filter_is_quoted(self, tmpdir, create_schema_file):
+        """Smoke-test bug #13: a BARE single-select `.value` in an equality
+        resolves to a QUOTED string literal, so the client substitutes
+        `= 'Raw'`, not `= Raw` (which SQL reads as a column)."""
+        query_info = self._build_single_select_filter(
+            tmpdir, create_schema_file, "?{${ref(local_test_table).x} = ${ref(ss1).value}}"
+        )
+        assert "'${ss1.value}'" in query_info.post_query
+        assert "''" not in query_info.post_query  # not double-quoted
+
+    def test_already_quoted_single_select_value_is_not_double_quoted(
+        self, tmpdir, create_schema_file
+    ):
+        """The established manual-quote pattern stays correct (no `''...''`)."""
+        query_info = self._build_single_select_filter(
+            tmpdir, create_schema_file, "?{${ref(local_test_table).x} = '${ref(ss1).value}'}"
+        )
+        assert "'${ss1.value}'" in query_info.post_query
+        assert "''" not in query_info.post_query
+
     def test_filter_interaction_extracted_from_insight(self, tmpdir, create_schema_file):
         """Verify _get_all_interaction_query_statements returns filter statements."""
         source = SourceFactory()

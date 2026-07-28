@@ -61,3 +61,31 @@ def test_unparseable_sql_is_returned_unchanged_failsafe():
     # If SQLGlot can't parse it, never risk corrupting the query.
     sql = "this is (not )( valid sql ${pick.value}"
     assert quote_bare_string_placeholders(sql, QUOTE_ALL) == sql
+
+
+class _FakeInput:
+    def __init__(self, options=None, range=None):
+        self.options = options
+        self.range = range
+
+
+def test_input_value_type_classification():
+    from visivo.query.input_quoting import input_value_type
+
+    assert input_value_type(_FakeInput(options=["a", "b"])) == "string"  # static list
+    assert input_value_type(_FakeInput(range=object())) == "number"  # range-based
+    assert input_value_type(_FakeInput()) == "unknown"  # neither
+    assert input_value_type(_FakeInput(options="?{SELECT DISTINCT x}")) == "unknown"  # query-based
+
+
+def test_build_should_quote_predicate():
+    from visivo.query.input_quoting import build_should_quote
+
+    sq = build_should_quote(
+        {"str_in": _FakeInput(options=["a"]), "num_in": _FakeInput(range=object())}
+    )
+    assert sq("str_in", "value") is True
+    assert sq("str_in", "first") is True
+    assert sq("str_in", "values") is False  # .values IN-list is pre-quoted
+    assert sq("num_in", "value") is False  # numeric -> never quoted
+    assert sq("undefined", "value") is False

@@ -83,3 +83,34 @@ def quote_bare_string_placeholders(sql: str, should_quote: Callable[[str, str], 
         return original
 
     return _PLACEHOLDER.sub(rewrite, sql)
+
+
+def input_value_type(input_obj) -> str:
+    """Classify an input's scalar value type from the input definition — the
+    FACT the runner already holds.
+
+    - ``string``: static list ``options`` (the model types these as ``List[str]``,
+      so a selected value is always a string that must be a SQL string literal).
+    - ``number``: a range-based input (``range`` set) yields numeric values.
+    - ``unknown``: query-based options (``options`` is a QueryString, not a list)
+      — the type would need the source schema; not classified here, so callers
+      leave those placeholders untouched (conservative, never a regression).
+    """
+    options = getattr(input_obj, "options", None)
+    if isinstance(options, list):
+        return "string"
+    if getattr(input_obj, "range", None) is not None:
+        return "number"
+    return "unknown"
+
+
+def build_should_quote(inputs_by_name) -> Callable[[str, str], bool]:
+    """Build the ``should_quote(input_name, accessor)`` predicate from a mapping
+    of input name -> input object. Quotes a scalar accessor of a string-typed
+    input; never the multi-select ``.values`` accessor (already a quoted IN-list)."""
+    types = {name: input_value_type(obj) for name, obj in (inputs_by_name or {}).items()}
+
+    def should_quote(input_name: str, accessor: str) -> bool:
+        return accessor != "values" and types.get(input_name) == "string"
+
+    return should_quote

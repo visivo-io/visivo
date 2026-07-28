@@ -651,7 +651,27 @@ class InsightQueryBuilder:
             query_parts.append("ORDER BY")
             query_parts.append("  " + ", ".join(order_by_clauses))
 
-        return "\n".join(query_parts)
+        return self._quote_string_input_placeholders("\n".join(query_parts))
+
+    def _quote_string_input_placeholders(self, query: str) -> str:
+        """Bug #13: a BARE ``${input.value}`` that resolves to a string must be
+        emitted as a SQL string literal so the client substitutes
+        ``equipment = 'Raw'``, not ``equipment = Raw`` (which reads ``Raw`` as a
+        column). The value's type is a fact from the input definition; an
+        already-quoted or numeric placeholder is left untouched. Fail-safe on any
+        SQLGlot parse issue (returns the query unchanged)."""
+        from visivo.models.dag import all_descendants_of_type
+        from visivo.models.inputs.input import Input
+        from visivo.query.input_quoting import (
+            build_should_quote,
+            quote_bare_string_placeholders,
+        )
+
+        inputs = all_descendants_of_type(type=Input, dag=self.dag, from_node=self.insight)
+        if not inputs:
+            return query
+        should_quote = build_should_quote({i.name: i for i in inputs})
+        return quote_bare_string_placeholders(query, should_quote)
 
     def _build_static_query_with_sqlglot(self):
         """
