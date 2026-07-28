@@ -16,6 +16,7 @@ enough for ``Insight.get_query_info()`` to resolve refs and build query text,
 never to execute anything or write to disk.
 """
 
+import re
 from copy import deepcopy
 from typing import Optional
 
@@ -63,13 +64,78 @@ class DraftOverlayError(ValueError):
     Callers (the compile-draft view) catch this and return 400."""
 
 
+# Draft metrics/dimensions are MODEL-SCOPED: a computed column created in the
+# Explorer carries a BARE expression (``avg(amount)`` / ``CASE WHEN amount <
+# 100 ...``) that only resolves against its own model's columns — the same
+# shape a *promoted* model-scoped metric has. Each such wire dict therefore
+# carries a ``model`` key naming its parent model; it is popped before Pydantic
+# validation (``Metric``/``Dimension`` are ``extra="forbid"``) and used to
+# route the object onto that model rather than into the project-level list
+# (where a bare aggregate expression is unresolvable — the root cause of
+# bug #1, "grouping a computed metric returns the global average").
+_MODEL_SCOPED_FIELDS = ("metrics", "dimensions")
+
+
+def _unwrap_model_ref(value):
+    """Accept a plain model name or a ``ref(x)`` / ``${ref(x)}`` wrapper."""
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    match = re.search(r"ref\(\s*([^)\s]+)\s*\)", stripped)
+    return match.group(1) if match else (stripped or None)
+
+
+def _find_model(project, model_name):
+    for model in project.models or []:
+        if getattr(model, "name", None) == model_name:
+            return model
+    return None
+
+
+def _inject_model_scoped_fields(project, field_name, configs):
+    """Inject validated draft metrics/dimensions onto their named parent model
+    (model-scoped) so bare expressions resolve against that model. A config
+    with no (or an unknown) ``model`` key falls back to the project-level list
+    so the ref still has a chance to resolve and any failure surfaces as a
+    clean downstream error rather than a silent drop."""
+    adapter = _get_type_adapter(field_name)
+    if adapter is None:
+        return
+    project_level = []
+    for config in configs:
+        cfg = dict(config or {})
+        model_name = _unwrap_model_ref(cfg.pop("model", None))
+        try:
+            obj = adapter.validate_python(cfg)
+        except ValidationError as e:
+            raise DraftOverlayError(f"Invalid draft {field_name}: {e}") from e
+        target = _find_model(project, model_name) if model_name else None
+        if target is not None:
+            # Post-construction append bypasses SqlModel's after-validator, so
+            # set the parent name explicitly (the same contract
+            # metrics_views.py / dimension_views.py use) — that is what makes a
+            # bare expression resolve as model-scoped.
+            obj.set_parent_name(target.name)
+            existing = list(getattr(target, field_name, None) or [])
+            setattr(target, field_name, merge_objects_into_list(existing, [(obj.name, obj)]))
+        else:
+            project_level.append((obj.name, obj))
+    if project_level:
+        existing = list(getattr(project, field_name, None) or [])
+        setattr(project, field_name, merge_objects_into_list(existing, project_level))
+
+
 def _inject_draft_objects(project, draft_objects):
     """``draft_objects``: ``{"models": [...], "metrics": [...], "dimensions": [...]}``
     of wire-shaped config dicts -> validated Pydantic instances, merged by
     name onto ``project`` at HIGHEST priority (overrides both the published
-    project and any manager-cached-but-unsaved objects)."""
+    project and any manager-cached-but-unsaved objects). Metrics/dimensions are
+    routed model-scoped (see ``_inject_model_scoped_fields``)."""
     for field_name, configs in (draft_objects or {}).items():
         if not configs:
+            continue
+        if field_name in _MODEL_SCOPED_FIELDS:
+            _inject_model_scoped_fields(project, field_name, configs)
             continue
         adapter = _get_type_adapter(field_name)
         if adapter is None:

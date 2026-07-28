@@ -96,6 +96,7 @@ export default defineConfig({
         // repository isolation need — each mints (and most delete) real
         // backend exploration records.
         '**/exploration-computed-columns.spec.mjs',
+        '**/exploration-computed-metric-grouping.spec.mjs',
         '**/exploration-nested-property-well.spec.mjs',
         '**/workspace-tab-close-dialog-navigation.spec.mjs',
         '**/workspace-back-forward-exploration.spec.mjs',
@@ -284,6 +285,11 @@ export default defineConfig({
         // edit, type switch): mints a real exploration + computed columns
         // against the shared `.visivo/explorations/` repository.
         '**/exploration-chart-build-updates.spec.mjs',
+        // Smoke-test bug #1 regression (computed metric grouped by a
+        // dimension): mints a real exploration + a computed column and hits
+        // the draft compile/execute endpoints — same shared-repository
+        // isolation need as its computed-column siblings above.
+        '**/exploration-computed-metric-grouping.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

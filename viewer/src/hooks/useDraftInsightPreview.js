@@ -342,6 +342,28 @@ const useDraftInsightPreview = () => {
             source: `\${ref(${s.sourceName})}`,
           }));
 
+        // Bug #1 (computed-metric-treated-as-dimension): a computed column is a
+        // MODEL-SCOPED metric/dimension with a bare expression. Sending it only
+        // as a `modelSchemas` raw column made the backend treat an aggregate
+        // like `avg(total)` as a plain projection — so it ran client-side over
+        // the sample as a per-row GLOBAL constant and grouping returned the same
+        // value for every group. Sending it as a `draft_metrics`/
+        // `draft_dimensions` entry (carrying its parent `model`) lets the
+        // overlay inject it model-scoped, so the backend resolves the aggregate,
+        // flags `requires_full_source`, and GROUP BYs correctly over the full
+        // source. `modelSchemas` still lists the same names as raw columns;
+        // global-name-first resolution uses the metric/dimension definition.
+        const draftMetrics = [];
+        const draftDimensions = [];
+        Object.entries(modelStates).forEach(([modelName, s]) => {
+          (s?.computedColumns || []).forEach(col => {
+            if (!col?.name || !col?.expression) return;
+            const entry = { name: col.name, expression: col.expression, model: modelName };
+            if (col.type === 'metric') draftMetrics.push(entry);
+            else if (col.type === 'dimension') draftDimensions.push(entry);
+          });
+        });
+
         const modelSchemas = {};
         Object.entries(modelStates).forEach(([modelName, s]) => {
           const result = visibleResult(s);
@@ -360,6 +382,8 @@ const useDraftInsightPreview = () => {
               ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
             },
             draftModels,
+            draftMetrics,
+            draftDimensions,
             modelSchemas,
           });
           if (isStale()) continue;
@@ -424,6 +448,8 @@ const useDraftInsightPreview = () => {
                     : {}),
                 },
                 draftModels,
+                draftMetrics,
+                draftDimensions,
                 modelSchemas,
               });
               if (isStale()) continue;

@@ -137,20 +137,46 @@ export function PropertyRow({
   // additive, not a replacement.
   const metrics = useStore(s => s.metrics);
   const dimensions = useStore(s => s.dimensions);
+  const explorerModelStates = useStore(s => s.explorerModelStates);
   const pillFieldOpts = useMemo(() => {
     const toField = f => ({
       name: f.name,
       parentModel: f.parentModel || (typeof f.config?.model === 'string' ? f.config.model : null),
+    });
+    // Bug #1 (computed-metric-treated-as-dimension): a scratch computed column
+    // added in the Explorer is a model-scoped metric/dimension that never
+    // reaches the project-level `metrics`/`dimensions` lists, so `parse()`
+    // classified `${ref(model).avg_total}` as a bare-column DIMENSION and the
+    // pill mislabeled a metric. Fold each model's `computedColumns` (already
+    // typed metric/dimension, carrying their parent model) into the field lists
+    // so the pill classifies — and labels — them correctly. Safe: metricRef/
+    // dimensionRef pills don't expose the preset toggle (PillMenu gates it on
+    // `isColumnBacked`), so this never triggers a serialize round-trip.
+    const computedMetricFields = [];
+    const computedDimensionFields = [];
+    Object.entries(explorerModelStates || {}).forEach(([modelName, s]) => {
+      (s?.computedColumns || []).forEach(c => {
+        if (!c?.name) return;
+        const field = { name: c.name, parentModel: modelName };
+        if (c.type === 'metric') computedMetricFields.push(field);
+        else if (c.type === 'dimension') computedDimensionFields.push(field);
+      });
     });
     // Array.isArray, not just truthy — some consumers' test doubles mock the
     // WHOLE store module to a fixed non-array object regardless of selector
     // (e.g. SchemaLeafForm.test.jsx's `default: () => mockActions`), and this
     // computation runs unconditionally (hooks can't be gated on `droppable`).
     return {
-      metricFields: Array.isArray(metrics) ? metrics.map(toField) : [],
-      dimensionFields: Array.isArray(dimensions) ? dimensions.map(toField) : [],
+      metricFields: [
+        ...(Array.isArray(metrics) ? metrics.map(toField) : []),
+        ...computedMetricFields,
+      ],
+      dimensionFields: [
+        ...(Array.isArray(dimensions) ? dimensions.map(toField) : []),
+        ...computedDimensionFields,
+      ],
     };
-  }, [metrics, dimensions]);
+  }, [metrics, dimensions, explorerModelStates]);
 
   // Escape hatch back to raw-text editing ("Custom aggregation…", 06 §4/§5) —
   // per-row local state so switching one pill to raw edit never affects its

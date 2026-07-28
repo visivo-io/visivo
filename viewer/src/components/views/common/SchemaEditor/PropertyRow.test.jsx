@@ -550,6 +550,74 @@ describe('PropertyRow', () => {
       expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
     });
 
+    // Bug #1 (computed-metric-treated-as-dimension): a scratch computed column
+    // is a model-scoped metric that never reaches the project-level `metrics`
+    // list, so the pill for `${ref(orders_q).avg_total}` used to classify as a
+    // bare-column DIMENSION (label "orders_q ▸ avg_total", dimension palette).
+    // Folding the model's `computedColumns` into the pill field opts makes it
+    // classify as a METRIC (label just "avg_total", Metric in the menu header).
+    test('a computed metric ref classifies as a metric (not a dimension) via the model\'s computedColumns', () => {
+      useStore.setState({
+        metrics: [],
+        dimensions: [],
+        explorerModelStates: {
+          orders_q: {
+            computedColumns: [{ name: 'avg_total', expression: 'avg(amount)', type: 'metric' }],
+          },
+        },
+      });
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="y"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).avg_total}}"
+          droppable
+        />
+      );
+      // Metric label is the bare name; the dimension "model ▸ column" form is gone.
+      expect(screen.getByText('avg_total')).toBeInTheDocument();
+      expect(screen.queryByText('orders_q ▸ avg_total')).not.toBeInTheDocument();
+      // The PillMenu header confirms the classification is Metric.
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      const menu = screen.getByTestId('pill-menu');
+      expect(menu).toHaveTextContent('Metric');
+      // A metric ref is not column-backed, so the dimension/aggregate preset
+      // toggle (the only serialize path) is absent — no round-trip risk.
+      expect(screen.queryByTestId('pill-menu-preset-dimension')).not.toBeInTheDocument();
+    });
+
+    test('a computed dimension ref classifies as a dimension-ref (bare name label) via computedColumns', () => {
+      useStore.setState({
+        metrics: [],
+        dimensions: [],
+        explorerModelStates: {
+          orders_q: {
+            computedColumns: [
+              {
+                name: 'weight_group',
+                expression: "CASE WHEN amount < 100 THEN 'low' ELSE 'high' END",
+                type: 'dimension',
+              },
+            ],
+          },
+        },
+      });
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).weight_group}}"
+          droppable
+        />
+      );
+      expect(screen.getByText('weight_group')).toBeInTheDocument();
+      expect(screen.queryByText('orders_q ▸ weight_group')).not.toBeInTheDocument();
+    });
+
     test('a dangling ref (advisory `error` set) renders the pill in its explicit warning state, not the normal palette (delta-review fix)', () => {
       render(
         <PropertyRow

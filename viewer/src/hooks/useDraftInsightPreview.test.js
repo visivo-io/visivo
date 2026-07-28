@@ -128,6 +128,107 @@ describe('useDraftInsightPreview', () => {
     expect(entry.pendingInputs).toBeNull();
   });
 
+  // Bug #1 (computed-metric-treated-as-dimension): a model's computed columns
+  // must be forwarded as `draftMetrics`/`draftDimensions` (name + expression +
+  // parent model), NOT left as raw `modelSchemas` names — that is what lets the
+  // backend inject them model-scoped, resolve an aggregate, and GROUP BY over
+  // the full source instead of returning the global average for every group.
+  test('forwards a model\'s computed columns as draftMetrics/draftDimensions (partitioned by type, carrying the parent model)', async () => {
+    seedState({
+      explorerModelStates: {
+        orders_q: {
+          sql: 'select * from orders',
+          sourceName: 'warehouse',
+          queryResult: { columns: ['region', 'amount'], rows: [{ region: 'west', amount: 10 }] },
+          computedColumns: [
+            { name: 'avg_total', expression: 'avg(amount)', type: 'metric' },
+            {
+              name: 'weight_group',
+              expression: "CASE WHEN amount < 100 THEN 'low' ELSE 'high' END",
+              type: 'dimension',
+            },
+          ],
+        },
+      },
+    });
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      pre_query: null,
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'scatter',
+      models: [{ name: 'orders_q', name_hash: 'mhash1' }],
+    });
+    runDuckDBQuery.mockResolvedValueOnce({ fake: 'arrow-result' });
+    processArrowResult.mockReturnValueOnce([{ a: 1 }]);
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(compileDraftInsight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draftMetrics: [{ name: 'avg_total', expression: 'avg(amount)', model: 'orders_q' }],
+        draftDimensions: [
+          {
+            name: 'weight_group',
+            expression: "CASE WHEN amount < 100 THEN 'low' ELSE 'high' END",
+            model: 'orders_q',
+          },
+        ],
+      })
+    );
+  });
+
+  // The server-execute lane (requires_full_source) is the one that actually
+  // produces the corrected per-group aggregate, so it must receive the computed
+  // columns too — otherwise the full-source execution would still be missing the
+  // metric/dimension definitions.
+  test('forwards computed columns to the server-execute lane when requires_full_source', async () => {
+    seedState({
+      explorerModelStates: {
+        orders_q: {
+          sql: 'select * from orders',
+          sourceName: 'warehouse',
+          queryResult: { columns: ['region', 'amount'], rows: [{ region: 'west', amount: 10 }] },
+          computedColumns: [{ name: 'avg_total', expression: 'avg(amount)', type: 'metric' }],
+        },
+      },
+    });
+    compileDraftInsight.mockResolvedValueOnce({
+      post_query: 'SELECT * FROM "mhash1"',
+      requires_full_source: true,
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'bar',
+      models: [{ name: 'orders_q', name_hash: 'mhash1' }],
+    });
+    executeDraftInsight.mockResolvedValueOnce({
+      rows: [{ a: 1 }],
+      props_mapping: {},
+      static_props: {},
+      props_slices: {},
+      split_key: null,
+      type: 'bar',
+    });
+
+    renderHook(() => useDraftInsightPreview());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(executeDraftInsight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draftMetrics: [{ name: 'avg_total', expression: 'avg(amount)', model: 'orders_q' }],
+      })
+    );
+  });
+
   test('a required-but-missing input yields pendingInputs instead of running the query', async () => {
     compileDraftInsight.mockResolvedValueOnce({
       post_query: 'SELECT * WHERE region = ${region.value}',
