@@ -274,6 +274,44 @@ class TestInsightFilterInteractions:
         assert "'${ss1.value}'" in query_info.post_query
         assert "''" not in query_info.post_query
 
+    def test_column_picker_input_in_a_prop_stays_a_bare_identifier(
+        self, tmpdir, create_schema_file
+    ):
+        """Adversarial-review CRITICAL: a single-select used to PICK a column
+        (`y: ${ref(ycol).value}`) must stay a bare identifier — quoting it would
+        make the y-axis the constant string 'x' for every row (silent wrong
+        data). Role, not type: a projection is never a value operand."""
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table", sql="SELECT x, y FROM test_data", source=f"ref({source.name})"
+        )
+        ycol = SingleSelectInput(name="ycol", label="Y", options=["x", "y"])
+        insight = Insight(
+            name="col-picker",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(ycol).value}}",
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ycol],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        query_info = builder.build()
+        assert "${ycol.value}" in query_info.post_query
+        assert "'${ycol.value}'" not in query_info.post_query
+
     def test_filter_interaction_extracted_from_insight(self, tmpdir, create_schema_file):
         """Verify _get_all_interaction_query_statements returns filter statements."""
         source = SourceFactory()

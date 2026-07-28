@@ -89,3 +89,58 @@ def test_build_should_quote_predicate():
     assert sq("str_in", "values") is False  # .values IN-list is pre-quoted
     assert sq("num_in", "value") is False  # numeric -> never quoted
     assert sq("undefined", "value") is False
+
+
+# --- Role-awareness (adversarial-review CRITICAL): a string-typed input used as
+# an IDENTIFIER must stay bare; only value-OPERANDS get quoted. ---
+
+
+def test_column_picker_in_projection_is_not_quoted():
+    sql = 'SELECT ${col.value} AS "a" FROM "t"'
+    assert quote_bare_string_placeholders(sql, QUOTE_ALL) == sql
+
+
+def test_column_picker_in_group_by_is_not_quoted():
+    sql = 'SELECT count(*) FROM "t" GROUP BY ${col.value}'
+    assert quote_bare_string_placeholders(sql, QUOTE_ALL) == sql
+
+
+def test_column_picker_in_order_by_is_not_quoted():
+    sql = 'SELECT * FROM "t" ORDER BY ${col.value}'
+    assert quote_bare_string_placeholders(sql, QUOTE_ALL) == sql
+
+
+def test_column_picker_as_aggregate_target_is_not_quoted():
+    sql = 'SELECT sum(${col.value}) FROM "t"'
+    assert quote_bare_string_placeholders(sql, QUOTE_ALL) == sql
+
+
+def test_picker_on_lhs_of_comparison_is_not_quoted():
+    # `${col.value} = 5` — the picker is the identifier side; leave it bare.
+    sql = 'SELECT * FROM "t" WHERE ${col.value} = 5'
+    assert quote_bare_string_placeholders(sql, QUOTE_ALL) == sql
+
+
+def test_rhs_of_comparison_is_quoted():
+    sql = 'SELECT * FROM "t" WHERE "c" = ${x.value}'
+    assert (
+        quote_bare_string_placeholders(sql, QUOTE_ALL)
+        == 'SELECT * FROM "t" WHERE "c" = \'${x.value}\''
+    )
+
+
+def test_like_pattern_is_quoted():
+    sql = 'SELECT * FROM "t" WHERE "c" LIKE ${x.value}'
+    assert "'${x.value}'" in quote_bare_string_placeholders(sql, QUOTE_ALL)
+
+
+def test_between_bounds_are_quoted():
+    sql = 'SELECT * FROM "t" WHERE "c" BETWEEN ${lo.value} AND ${hi.value}'
+    out = quote_bare_string_placeholders(sql, QUOTE_ALL)
+    assert "'${lo.value}'" in out and "'${hi.value}'" in out
+
+
+def test_in_list_element_is_quoted():
+    sql = 'SELECT * FROM "t" WHERE "c" IN (${a.value}, ${b.value})'
+    out = quote_bare_string_placeholders(sql, QUOTE_ALL)
+    assert "'${a.value}'" in out and "'${b.value}'" in out

@@ -61,8 +61,37 @@ def quote_bare_string_placeholders(sql: str, should_quote: Callable[[str, str], 
     if parsed is None:
         return sql
 
-    # A marker that appears inside a string Literal was already quoted by the
-    # user (`'${x.value}'` or embedded in a larger string) — leave it alone.
+    # Only quote a placeholder that sits in a VALUE-OPERAND position — the RHS
+    # of a comparison, an IN-list element, a LIKE pattern, or a BETWEEN bound.
+    # A string-typed input used as an IDENTIFIER (a column / group-by / sort
+    # picker, a projection, an aggregate target, or the LHS of a comparison) must
+    # stay bare — quoting it would turn `SELECT ${col.value}` into the constant
+    # 'squat' for every row and break GROUP BY/ORDER BY. Type != syntactic role,
+    # so the role is read from the SQLGlot AST, not from the value's type alone.
+    comparisons = (exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)
+
+    def is_value_operand(col):
+        parent = col.parent
+        if parent is None:
+            return False
+        if isinstance(parent, comparisons):
+            return parent.expression is col  # RHS only; the LHS is an identifier
+        if isinstance(parent, exp.In):
+            return col in (parent.args.get("expressions") or [])
+        if isinstance(parent, (exp.Like, exp.ILike)):
+            return parent.expression is col  # the pattern operand
+        if isinstance(parent, exp.Between):
+            return col is parent.args.get("low") or col is parent.args.get("high")
+        return False
+
+    operand_markers = set()
+    for col in parsed.find_all(exp.Column):
+        m = re.match(r"^__vzph(\d+)__$", col.name)
+        if m and is_value_operand(col):
+            operand_markers.add(int(m.group(1)))
+
+    # A marker inside a string Literal was already quoted by the user
+    # (`'${x.value}'` or embedded in a larger string) — leave it alone.
     quoted_markers = set()
     for literal in parsed.find_all(exp.Literal):
         if getattr(literal, "is_string", False):
@@ -77,8 +106,7 @@ def quote_bare_string_placeholders(sql: str, should_quote: Callable[[str, str], 
         i = rebuild["i"]
         rebuild["i"] += 1
         input_name, accessor, original = matches[i]
-        already_quoted = i in quoted_markers
-        if not already_quoted and should_quote(input_name, accessor):
+        if i in operand_markers and i not in quoted_markers and should_quote(input_name, accessor):
             return f"'{original}'"
         return original
 
