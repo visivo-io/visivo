@@ -71,6 +71,43 @@ describe('PivotableTable', () => {
     expect(screen.getByText('Revenue')).toBeInTheDocument();
   });
 
+  // Smoke-test bug #16: a columns-only (column-select) table has no pivot, so
+  // its render error must not be labeled "Pivot error".
+  it('labels a columns-only table error "Table error", not "Pivot error"', () => {
+    mockPivotReturn = { ...mockPivotReturn, error: 'Parser Error: zero-length delimited identifier' };
+    const { container } = render(
+      <PivotableTable
+        table={{ name: 'colsel', columns: ['${ref(m).sex}'], rows_per_page: 50 }}
+        sourceData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
+    expect(container.textContent).toContain('Table error:');
+    expect(container.textContent).not.toContain('Pivot error:');
+  });
+
+  it('labels a real pivot table error "Pivot error"', () => {
+    mockPivotReturn = { ...mockPivotReturn, error: 'Parser Error: something' };
+    const { container } = render(
+      <PivotableTable
+        table={{
+          name: 'piv',
+          columns: ['${ref(m).a}'],
+          rows: ['${ref(m).b}'],
+          values: ['${ref(m).c}'],
+          rows_per_page: 50,
+        }}
+        sourceData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
+    expect(container.textContent).toContain('Pivot error:');
+  });
+
   it('renders data rows via DataTable', () => {
     render(
       <PivotableTable
