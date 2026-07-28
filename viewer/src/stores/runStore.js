@@ -44,9 +44,37 @@ const createRunSlice = (set, get) => ({
       } else if (succeeded.id !== prev) {
         // A newer run finished — bump so data hooks refetch the rebuilt output.
         set({ lastSucceededRunId: succeeded.id, runDataVersion: get().runDataVersion + 1 });
+        // The run just built (some of) the staged set, so that list and the
+        // Runs-tab dot are now stale. This is the one transition /changes/
+        // doesn't already cover: it refreshes on every save, but a run
+        // completing isn't a save. One request per successful run, not per poll.
+        get().checkCommitStatus?.();
       }
     }
     return latest;
+  },
+
+  /**
+   * Launch a run for the current project.
+   *
+   * With no argument it builds the staged set — the server derives the scope
+   * from the same data the Run view listed, so the two can't disagree. Pass
+   * `{ dagFilter: '' }` for a deliberate full rebuild ("Run all").
+   *
+   * A 409 means one is already in flight; that's a state to show, not an error.
+   */
+  triggerRun: async ({ dagFilter } = {}) => {
+    const projectId = get().project?.id;
+    if (!projectId) return { success: false, error: 'No active project' };
+    const { status, body } = await branchingApi.triggerRun(projectId, { dagFilter });
+    if (status === 201) {
+      // Adopt it immediately so the tab spinner starts on click rather than on
+      // the next poll tick.
+      set({ latestRun: body, runs: [body, ...get().runs] });
+      return { success: true, run: body };
+    }
+    await get().pollRuns();
+    return { success: false, action: body?.action, error: body?.detail };
   },
 });
 

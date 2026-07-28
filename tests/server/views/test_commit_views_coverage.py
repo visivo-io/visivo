@@ -26,6 +26,7 @@ from tests.factories.model_factories import (
 )
 from visivo.models.markdown import Markdown
 from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.managers.staged_manager import StagedManager
 from visivo.server.views.commit_views import register_commit_views
 
 # (manager attribute, pending/changes "type" string, factory for a real object)
@@ -53,6 +54,10 @@ def env():
     flask_app.project.project_file_path = "/tmp/project.yaml"
     flask_app.hot_reload_server = None
     flask_app._cached_defaults = None
+    # A real one, not a Mock: /changes/ serializes its output, and a Mock's
+    # return value isn't JSON-serializable.
+    flask_app.staged_manager = StagedManager()
+    flask_app.staged_manager.clear()
 
     for attr, _, _ in MANAGER_SPECS:
         manager = Mock()
@@ -109,7 +114,19 @@ class TestChangesEndpoint:
 
     def test_no_changes_reports_empty(self, client):
         data = client.get("/api/projects/proj1/changes/").get_json()
-        assert data == {"to_publish": [], "to_remove": [], "has_changes": False}
+        assert data["to_publish"] == []
+        assert data["to_remove"] == []
+        assert data["has_changes"] is False
+
+    def test_the_run_view_keys_ride_along(self, client):
+        """What a RUN would build, beside what a COMMIT would publish. Added as
+        extra keys rather than a new shape, so a viewer older than the server
+        keeps working — cloud vendors the SPA at a lagging release tag, and local
+        installs upgrade whenever the user does."""
+        data = client.get("/api/projects/proj1/changes/").get_json()
+        assert data["staged"] == []
+        assert data["staged_dag_filter"] == ""
+        assert data["run_trigger"] in ("automatic", "manual")
 
 
 class TestProjectScopedContract:

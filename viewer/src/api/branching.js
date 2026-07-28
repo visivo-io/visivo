@@ -103,6 +103,70 @@ export const fetchRuns = async projectId => {
 };
 
 /**
+ * Launch a run. POST /api/projects/<id>/run/.
+ *
+ * Send NO dag_filter to build what's staged — the button's normal action, scoped
+ * to exactly the list the Run view is showing. Send an explicit `dag_filter: ''`
+ * to rebuild everything ("Run all"), which is the only way back when outputs are
+ * missing but the fingerprints claim they're built. Absent and empty are
+ * genuinely different requests; don't collapse them.
+ *
+ * Returns the raw {status, body} like cancelRun/commitDraft, because 409
+ * ("a run is already in flight") is a state to render, not an exception.
+ */
+export const triggerRun = async (projectId, { dagFilter } = {}) => {
+  const response = await apiFetch(getUrl('projectRun', { projectId }), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dagFilter === undefined ? {} : { dag_filter: dagFilter }),
+  });
+  let body = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  return { status: response.status, body };
+};
+
+/**
+ * The requesting user's own preferences. GET /api/me/preferences/ ->
+ * {run_trigger}. Returns null where there's no such endpoint (dist), so the
+ * caller can simply not render the control.
+ */
+export const fetchPreferences = async () => {
+  try {
+    const response = await apiFetch(getUrl('mePreferences'));
+    if (response.status === 200) {
+      return await response.json();
+    }
+  } catch {
+    // No URL configured for this environment — same as "not available".
+  }
+  return null;
+};
+
+/**
+ * PUT /api/me/preferences/ -> the saved {run_trigger}. Returns null on failure;
+ * the caller reverts its optimistic update.
+ */
+export const savePreferences = async preferences => {
+  try {
+    const response = await apiFetch(getUrl('mePreferences'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(preferences),
+    });
+    if (response.status === 200) {
+      return await response.json();
+    }
+  } catch {
+    // fall through
+  }
+  return null;
+};
+
+/**
  * A single run's captured log. GET /api/runs/<id>/logs/ -> {state, logs,
  * error_json}. The runner streams the log live while the run executes (the
  * editor tail-polls this), then it settles into the final static log.

@@ -42,3 +42,31 @@ describe('RunsToolIcon', () => {
     expect(screen.queryByTitle('Queued…')).not.toBeInTheDocument();
   });
 });
+
+// The dot is the only thing telling a manual-trigger user they have work
+// outstanding — their edits don't start a run, so nothing else moves.
+describe('RunsToolIcon staged dot', () => {
+  const setState = state => {
+    useStore.mockImplementation(selector => selector(state));
+  };
+
+  it('appears when there are changes nobody has run', () => {
+    setState({ latestRun: { state: 'succeeded' }, stagedCount: 2 });
+    render(<RunsToolIcon />);
+    expect(screen.getByTestId('runs-tool-staged-dot')).toBeInTheDocument();
+  });
+
+  it('stays away when everything is built', () => {
+    setState({ latestRun: { state: 'succeeded' }, stagedCount: 0 });
+    render(<RunsToolIcon />);
+    expect(screen.queryByTestId('runs-tool-staged-dot')).not.toBeInTheDocument();
+  });
+
+  it('yields to the spinner while a run is in flight', () => {
+    // The run IS the answer to "there is outstanding work" at that point;
+    // showing both would say the same thing twice.
+    setState({ latestRun: { state: 'running' }, stagedCount: 2 });
+    render(<RunsToolIcon />);
+    expect(screen.queryByTestId('runs-tool-staged-dot')).not.toBeInTheDocument();
+  });
+});

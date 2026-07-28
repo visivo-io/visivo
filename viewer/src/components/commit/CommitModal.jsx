@@ -46,6 +46,7 @@ const CommitModal = () => {
   const pendingChanges = useStore(state => state.pendingChanges);
   const commitLoading = useStore(state => state.commitLoading);
   const commitError = useStore(state => state.commitError);
+  const commitAction = useStore(state => state.commitAction);
   const commitChanges = useStore(state => state.commitChanges);
   // Discard (Q14 rollback) — drops the draft cache without writing YAML. It's
   // destructive, so it confirms inline before firing. Local serve only:
@@ -96,7 +97,16 @@ const CommitModal = () => {
         </p>
 
         {commitError && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">{commitError}</div>
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+            {commitError}
+            {/* With a manual run trigger this refusal is the ordinary path, not
+                an edge case — so say where to go and do something about it. */}
+            {(commitAction === 'run_required' || commitAction === 'run_failed') && (
+              <span className="block mt-1 text-xs">
+                Open the Runs tab to see what needs building and start a run.
+              </span>
+            )}
+          </div>
         )}
 
         <div className="max-h-64 overflow-y-auto mb-6" data-testid="commit-modal-pending-list">

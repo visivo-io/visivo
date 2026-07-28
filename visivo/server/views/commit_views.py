@@ -2,6 +2,7 @@ from flask import jsonify
 from visivo.logger.logger import Logger
 from visivo.server.managers.object_manager import ObjectStatus
 from visivo.server.project_writer import ProjectWriter
+from visivo.server.user_config import get_run_trigger
 
 
 def register_commit_views(app, flask_app, output_dir):
@@ -228,11 +229,21 @@ def register_commit_views(app, flask_app, output_dir):
                             to_publish.append(entry)
             if flask_app._cached_defaults is not None:
                 to_publish.append({"name": "defaults", "type": "defaults", "status": "modified"})
+            # `staged` is a different question from `to_publish`: what a RUN
+            # would build, not what a COMMIT would publish. A chart colour edit
+            # is in the second and not the first. They share this endpoint
+            # because the editor already calls it after every resource write, so
+            # the Run view's list and the tab dot update on save rather than on
+            # the next poll — and because adding keys to an object response
+            # can't break a viewer older than the server.
             return jsonify(
                 {
                     "to_publish": to_publish,
                     "to_remove": to_remove,
                     "has_changes": bool(to_publish or to_remove),
+                    "staged": flask_app.staged_manager.list(),
+                    "staged_dag_filter": flask_app.staged_manager.dag_filter(),
+                    "run_trigger": get_run_trigger(),
                 }
             )
         except Exception as e:

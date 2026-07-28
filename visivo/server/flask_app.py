@@ -19,6 +19,7 @@ from visivo.server.managers.table_manager import TableManager
 from visivo.server.managers.dashboard_manager import DashboardManager
 from visivo.server.managers.project_manager import ProjectManager
 from visivo.server.managers.run_manager import RunManager
+from visivo.server.managers.staged_manager import StagedManager
 
 
 class FlaskApp:
@@ -38,6 +39,11 @@ class FlaskApp:
         # In-memory run registry for the run-on-save loop (mirrors the cloud Run
         # model so the viewer's run-poller / Runs view work locally).
         self.run_manager = RunManager()
+        # Which resources currently need a run — the local stand-in for the
+        # cloud's data_hash / last_built_data_hash columns. Populated on save
+        # whether or not a run fires, so a manual trigger has something to hold
+        # the change in and the Runs tab has something to list.
+        self.staged_manager = StagedManager()
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 

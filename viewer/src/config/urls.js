@@ -92,6 +92,11 @@ const URL_PATTERNS = {
     commit: '/api/commit/',
     commitDiscard: '/api/commit/discard/',
 
+    // The user's own preferences. Both servers implement it — cloud off the User
+    // row, local off ~/.visivo/config.yml — with different defaults, which is how
+    // the viewer stays free of local-vs-cloud branching.
+    mePreferences: '/api/me/preferences/',
+
     // Cloud-editing endpoints (core/Django only; 404 under local `visivo serve`)
     projectCapabilities: '/api/projects/{projectId}/capabilities/',
     projectDraft: '/api/projects/{projectId}/draft/',
@@ -223,6 +228,9 @@ const URL_PATTERNS = {
     commitPending: null,
     commit: null,
     commitDiscard: null,
+
+    // No server to hold a preference against — the toggle simply doesn't render.
+    mePreferences: null,
 
     // Cloud-editing endpoints (not available in dist)
     projectCapabilities: null,
