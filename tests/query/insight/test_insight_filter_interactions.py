@@ -120,6 +120,61 @@ class TestInsightFilterInteractions:
             "${selected_x_values.values}" in query_info.post_query
         ), f"Expected input placeholder in query: {query_info.post_query}"
 
+    def test_multiselect_first_accessor_with_default_values_keeps_where_clause(
+        self, tmpdir, create_schema_file
+    ):
+        """Smoke-test bug #3 end-to-end reproduction: a multi-select `.first`
+        accessor whose input has a `display.default.values` list must NOT drop
+        the filter. Pre-fix, get_accessor_sample_value received the list and
+        produced `"['Raw']"`, yielding malformed SQL that SQLGlot rejected, so
+        the whole filter was silently discarded (no WHERE)."""
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table",
+            sql="SELECT x, y FROM test_data",
+            source=f"ref({source.name})",
+        )
+        equip = MultiSelectInput(
+            name="equip",
+            label="Equipment",
+            options=["Raw", "Single-ply", "Multi-ply"],
+            display={"type": "dropdown", "default": {"values": ["Raw"]}},
+        )
+        insight = Insight(
+            name="first-accessor-filter",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(local_test_table).y}}",
+            ),
+            interactions=[
+                InsightInteraction(
+                    filter="?{CAST(${ref(local_test_table).x} AS VARCHAR) = '${ref(equip).first}'}"
+                )
+            ],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[equip],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        query_info = builder.build()
+
+        assert (
+            "WHERE" in query_info.post_query
+        ), f"filter was silently dropped (no WHERE): {query_info.post_query}"
+        assert (
+            "${equip.first}" in query_info.post_query
+        ), f"input placeholder missing from query: {query_info.post_query}"
+
     def test_filter_interaction_extracted_from_insight(self, tmpdir, create_schema_file):
         """Verify _get_all_interaction_query_statements returns filter statements."""
         source = SourceFactory()
@@ -405,6 +460,56 @@ class TestMultiSelectAccessorSampleValues:
 
         # Should be comma-separated quoted values
         assert sample == "'1', '2'", f"Expected \"'1', '2'\". Got: {sample}"
+
+    def test_multiselect_list_default_reduces_to_scalar_not_list_repr(self):
+        """Smoke-test bug #3: a multi-select `.first`/`.last`/`.min`/`.max`
+        accessor whose input has a `default.values` LIST must produce a SCALAR
+        sample, never the Python list-repr `"['Raw']"` (which injects malformed
+        SQL and gets the whole filter silently dropped)."""
+        options = ["Raw", "Single-ply", "Multi-ply"]
+        for accessor in ("first", "last", "min", "max", "value"):
+            sample = get_accessor_sample_value(accessor, options, default_value=["Raw"])
+            assert sample == "Raw", f"{accessor}: expected 'Raw', got {sample!r}"
+            assert (
+                "[" not in sample and "]" not in sample
+            ), f"{accessor}: sample is a list-repr ({sample!r}) — the bug"
+
+    def test_multiselect_list_default_first_vs_last(self):
+        """A multi-element default list picks the accessor-appropriate end."""
+        options = ["Raw", "Single-ply", "Multi-ply"]
+        assert get_accessor_sample_value("first", options, ["Raw", "Multi-ply"]) == "Raw"
+        assert get_accessor_sample_value("last", options, ["Raw", "Multi-ply"]) == "Multi-ply"
+
+    def test_multiselect_list_default_sample_parses_as_sql(self):
+        """The produced sample, substituted into a quoted equality, must be
+        parseable SQL — the pre-fix `'['Raw']'` was not, which is exactly why
+        SQLGlot rejected the predicate and the builder discarded the filter."""
+        sample = get_accessor_sample_value("first", ["Raw", "Single-ply"], default_value=["Raw"])
+        predicate = f"\"equipment\" = '{sample}'"
+        assert parse_expression(predicate, "duckdb") is not None, f"unparseable: {predicate}"
+
+    def test_empty_list_default_falls_back_to_options(self):
+        """An empty default list must fall back to the options, not crash."""
+        options = ["Raw", "Single-ply"]
+        assert get_accessor_sample_value("first", options, default_value=[]) == "Raw"
+        assert get_accessor_sample_value("last", options, default_value=[]) == "Single-ply"
+
+    def test_values_accessor_ignores_scalar_reducing_list_default(self):
+        """The `.values` (IN-clause) accessor is unaffected by the scalar-
+        reducing list-default logic — it samples options[:2], never the default.
+        (Options are treated as raw SQL fragments here; escaping is deliberately
+        left to the per-combination validator in input_validator.py, which owns
+        the value-substitution contract — mirroring it here would break
+        pre-quoted options like `["'red'"]`.)"""
+        assert (
+            get_accessor_sample_value("values", ["A", "B", "C"], default_value=["A"]) == "'A', 'B'"
+        )
+
+    def test_numeric_list_default_yields_unquoted_numeric_sample(self):
+        """A numeric multi-select default list reduces to a bare numeric sample
+        (no quoting/escaping), preserving the int-vs-str boundary."""
+        assert get_accessor_sample_value("first", [1, 2, 3], default_value=[1, 2]) == "1"
+        assert get_accessor_sample_value("last", [1, 2, 3], default_value=[1, 2]) == "2"
 
 
 class TestSQLGlotParsingOfFilters:
