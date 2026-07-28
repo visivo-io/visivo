@@ -20,6 +20,13 @@ const createRunSlice = (set, get) => ({
   // to record names via dag_filter. Stays [] where the endpoint 404s.
   runs: [],
   lastSucceededRunId: null,
+  // The project the baseline below was taken for. "Have we polled yet?" and
+  // "have we ever seen a succeeded run?" are different questions, and conflating
+  // them meant a draft whose FIRST run succeeded while you watched was mistaken
+  // for a baseline: neither the data refresh nor the staged-list refresh fired,
+  // so the Runs tab kept showing work that had just been built until you
+  // reloaded the page.
+  polledProjectId: null,
   runDataVersion: 0,
 
   pollRuns: async () => {
@@ -32,24 +39,24 @@ const createRunSlice = (set, get) => ({
       return null; // no run endpoint here (local serve / dist) — nothing to poll
     }
     const latest = (runs && runs[0]) || null;
-    set({ latestRun: latest, runs: runs || [] });
+    const firstPollForProject = get().polledProjectId !== projectId;
+    set({ latestRun: latest, runs: runs || [], polledProjectId: projectId });
 
     const succeeded = (runs || []).find(r => r.state === 'succeeded');
-    if (succeeded) {
-      const prev = get().lastSucceededRunId;
-      if (prev === null) {
-        // First poll: adopt the current succeeded run as the baseline. The data
-        // already on screen reflects it, so don't trigger a spurious refetch.
-        set({ lastSucceededRunId: succeeded.id });
-      } else if (succeeded.id !== prev) {
-        // A newer run finished — bump so data hooks refetch the rebuilt output.
-        set({ lastSucceededRunId: succeeded.id, runDataVersion: get().runDataVersion + 1 });
-        // The run just built (some of) the staged set, so that list and the
-        // Runs-tab dot are now stale. This is the one transition /changes/
-        // doesn't already cover: it refreshes on every save, but a run
-        // completing isn't a save. One request per successful run, not per poll.
-        get().checkCommitStatus?.();
-      }
+    if (firstPollForProject) {
+      // Adopt whatever we find as the baseline — the screen already reflects it —
+      // and reset when switching drafts so another project's run can't look like
+      // ours completing.
+      set({ lastSucceededRunId: succeeded ? succeeded.id : null });
+    } else if (succeeded && succeeded.id !== get().lastSucceededRunId) {
+      // A run finished since we started watching. Bump so data hooks refetch the
+      // rebuilt output...
+      set({ lastSucceededRunId: succeeded.id, runDataVersion: get().runDataVersion + 1 });
+      // ...and re-read what's still outstanding: the run just built (some of) the
+      // staged set, so that list and the Runs-tab dot are now stale. This is the
+      // one transition /changes/ doesn't already cover — it refreshes on every
+      // save, but a run completing isn't a save.
+      get().checkCommitStatus?.();
     }
     return latest;
   },

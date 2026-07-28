@@ -161,3 +161,66 @@ describe('runStore triggerRun', () => {
     expect(result).toMatchObject({ success: false, action: 'run_in_progress' });
   });
 });
+
+describe('runStore: the first run to succeed still counts', () => {
+  // The bug this covers: `lastSucceededRunId === null` was read as "this is the
+  // first poll, the screen already reflects it", but it really means "we have
+  // never seen a succeeded run". On a draft whose runs had only failed, the
+  // first success was therefore swallowed as a baseline — the rebuilt data was
+  // never refetched and the Runs tab kept listing changes that had just been
+  // built, until you reloaded the page.
+  const build = (initial = {}) =>
+    makeStore(createRunSlice, { project: { id: 'draft-1' }, ...initial });
+
+  test('a first success after a failure refreshes data and the staged list', async () => {
+    const checkCommitStatus = jest.fn();
+    const store = build({ checkCommitStatus });
+
+    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r-failed', state: 'failed' }]);
+    await store.get().pollRuns();
+    expect(store.get().runDataVersion).toBe(0);
+
+    branchingApi.fetchRuns.mockResolvedValueOnce([
+      { id: 'r-ok', state: 'succeeded' },
+      { id: 'r-failed', state: 'failed' },
+    ]);
+    await store.get().pollRuns();
+
+    expect(store.get().runDataVersion).toBe(1);
+    expect(checkCommitStatus).toHaveBeenCalledTimes(1);
+  });
+
+  test('a success already on screen at first poll is still a baseline', async () => {
+    // The behaviour the old code was reaching for, which must survive: arriving
+    // on a project whose last run succeeded shouldn't refetch anything.
+    const checkCommitStatus = jest.fn();
+    const store = build({ checkCommitStatus });
+    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r-ok', state: 'succeeded' }]);
+    await store.get().pollRuns();
+    expect(store.get().runDataVersion).toBe(0);
+    expect(checkCommitStatus).not.toHaveBeenCalled();
+  });
+
+  test('switching drafts re-baselines instead of firing', async () => {
+    const checkCommitStatus = jest.fn();
+    const store = build({ checkCommitStatus });
+    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'a-ok', state: 'succeeded' }]);
+    await store.get().pollRuns();
+
+    // Another draft, whose newest succeeded run is a different id.
+    store.get().project.id = 'draft-2';
+    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'b-ok', state: 'succeeded' }]);
+    await store.get().pollRuns();
+
+    expect(store.get().runDataVersion).toBe(0);
+    expect(checkCommitStatus).not.toHaveBeenCalled();
+    expect(store.get().lastSucceededRunId).toBe('b-ok');
+  });
+
+  test('a draft with no succeeded run leaves no stale baseline behind', async () => {
+    const store = build();
+    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'x', state: 'failed' }]);
+    await store.get().pollRuns();
+    expect(store.get().lastSucceededRunId).toBeNull();
+  });
+});
