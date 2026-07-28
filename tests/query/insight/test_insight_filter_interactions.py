@@ -175,6 +175,54 @@ class TestInsightFilterInteractions:
             "${equip.first}" in query_info.post_query
         ), f"input placeholder missing from query: {query_info.post_query}"
 
+    def test_single_select_values_accessor_raises_precise_message(self, tmpdir, create_schema_file):
+        """Smoke-test bug #12: a single-select input referenced with `.values`
+        now raises the precise "Did you mean .value?" message during build,
+        instead of leaving the placeholder for SQLGlot to reject with a generic
+        "Expecting )". Wires the previously test-only accessor validator into the
+        real build path."""
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+        from visivo.query.accessor_validator import AccessorValidationError
+
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table", sql="SELECT x, y FROM test_data", source=f"ref({source.name})"
+        )
+        ss = SingleSelectInput(name="ss1", label="SS", options=["a", "b"])
+        insight = Insight(
+            name="wrong-accessor",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(local_test_table).y}}",
+            ),
+            interactions=[
+                InsightInteraction(
+                    filter="?{CAST(${ref(local_test_table).x} AS VARCHAR) IN (${ref(ss1).values})}"
+                )
+            ],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ss],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        with pytest.raises(AccessorValidationError) as exc_info:
+            builder.resolve()
+            builder.build()
+        message = str(exc_info.value)
+        assert "single-select" in message
+        # Tight guard: `.value` alone is trivially a substring of `.values`, so
+        # assert the actual guidance rendered.
+        assert "Did you mean .value?" in message
+
     def test_filter_interaction_extracted_from_insight(self, tmpdir, create_schema_file):
         """Verify _get_all_interaction_query_statements returns filter statements."""
         source = SourceFactory()

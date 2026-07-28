@@ -162,6 +162,7 @@ def replace_input_placeholders_for_parsing(
     from visivo.models.dag import all_descendants_of_type
     from visivo.models.inputs.input import Input
     from visivo.query.patterns import extract_frontend_input_accessors
+    from visivo.query.accessor_validator import validate_input_accessor
 
     replacements = {}
 
@@ -182,6 +183,14 @@ def replace_input_placeholders_for_parsing(
                 f"Make sure input '{input_name}' is defined in your project."
             )
 
+        # Validate the accessor against the input's type up front. A wrong
+        # accessor (e.g. `.values` on a single-select) otherwise builds no
+        # sample value, leaving the placeholder in the SQL for SQLGlot to choke
+        # on with a generic "Expecting )" — this raises the precise, actionable
+        # "single-select but referenced with .values / Did you mean .value?"
+        # instead (smoke-test bug #12).
+        validate_input_accessor(input_name, accessor, input_map[input_name].type)
+
         sample_value = get_sample_value_for_input(
             input_map[input_name], output_dir, accessor=accessor
         )
@@ -193,12 +202,18 @@ def replace_input_placeholders_for_parsing(
         pattern = rf"\$\{{ref\({input_name}\)\.{accessor}\}}"
         result_sql = re.sub(pattern, marker, result_sql)
 
-    # Also handle JS template literal format ${input.accessor}
+    # Also handle JS template literal format ${input.accessor} (the shape the
+    # resolver rewrites ${ref(input).accessor} into before build).
     frontend_refs = extract_frontend_input_accessors(result_sql)
     for input_name, accessor in frontend_refs:
         if input_name not in input_map:
             # Not an input - skip (might be a model reference or other syntax)
             continue
+
+        # Same accessor/type validation as the YAML loop above — the resolved
+        # (frontend-format) statements are what the build path actually sees, so
+        # the precise "wrong accessor" message must fire here too (bug #12).
+        validate_input_accessor(input_name, accessor, input_map[input_name].type)
 
         sample_value = get_sample_value_for_input(
             input_map[input_name], output_dir, accessor=accessor
