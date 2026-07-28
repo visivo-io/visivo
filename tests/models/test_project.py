@@ -1,5 +1,8 @@
+import yaml
+
 from visivo.models.project import Project
 from visivo.models.item import Item
+from visivo.models.test import Test
 from pydantic import HttpUrl
 from tests.factories.model_factories import (
     AlertFactory,
@@ -13,6 +16,75 @@ from tests.factories.model_factories import (
 from pydantic import ValidationError
 
 import pytest
+
+
+class TestProjectTestsWiring:
+    """Smoke-test bug #5: `visivo test` was non-functional because the Project
+    model had no `tests` field — a top-level `tests:` key was rejected
+    ("Extra inputs are not permitted") and, since nothing wired Test into the
+    DAG, `descendants_of_type(Test)` (what test_phase.py runs) always found
+    zero tests."""
+
+    def test_project_accepts_a_top_level_tests_key(self):
+        project = Project(name="p", tests=[Test(name="t1", assertions=[">{ 1 == 1 }"])])
+        assert [t.name for t in project.tests] == ["t1"]
+
+    def test_tests_are_discoverable_via_descendants_of_type(self):
+        # This is the exact call test_phase.py makes to collect tests to run.
+        project = Project(
+            name="p",
+            tests=[
+                Test(name="t1", assertions=[">{ 1 == 1 }"]),
+                Test(name="t2", assertions=[">{ 2 == 2 }"]),
+            ],
+        )
+        found = project.descendants_of_type(type=Test)
+        assert sorted(t.name for t in found) == ["t1", "t2"]
+
+    def test_a_top_level_tests_key_was_rejected_before_the_field_existed(self):
+        # Guards the wiring: an UNKNOWN top-level key still raises, so the
+        # `tests` acceptance above is due to the real field, not lax config.
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            Project(name="p", not_a_real_key=[])
+
+    def test_documented_assertion_yaml_must_be_quoted(self):
+        # The Test docstring example quotes each `>{ ... }` assertion. Unquoted,
+        # YAML reads the leading `>` as a folded block-scalar indicator and the
+        # eval string never survives — the doc bug this fix also corrected.
+        quoted = yaml.safe_load('assertions:\n  - ">{ 1 == 1 }"\n')
+        assert quoted["assertions"] == [">{ 1 == 1 }"]
+        # Unquoted, the leading `>` makes YAML try to read a folded block scalar
+        # and it fails outright — the eval string never even reaches the parser.
+        with pytest.raises(yaml.YAMLError):
+            yaml.safe_load("assertions:\n  - >{ 1 == 1 }\n")
+
+    def test_a_name_only_test_does_not_crash_validation(self):
+        # Review-found HIGH regression: because tests are now wired into the DAG,
+        # Test.child_items runs during project validation on EVERY command. A
+        # stub test with no assertions must default to [] (not None) so it does
+        # not raise `TypeError: 'NoneType' object is not iterable`.
+        project = Project(name="p", tests=[Test(name="stub")])
+        assert project.tests[0].assertions == []
+        assert project.descendants_of_type(type=Test)[0].name == "stub"
+
+    def test_empty_tests_key_coerces_to_empty_list(self):
+        # A comment-only `tests:` parses as None; it must coerce to [] like every
+        # sibling list field (coerce_null_list_fields must include "tests").
+        assert Project(name="p", tests=None).tests == []
+
+    def test_documented_test_docstring_example_actually_validates(self):
+        # Guards the docstring fix (both the quoted `>{ }` assertions AND the
+        # `if:` eval string) against drift — build the exact example from the
+        # Test docstring.
+        import re
+        import textwrap
+
+        block = re.search(r"``` yaml\n(.*?)\n\s*```", Test.__doc__, re.DOTALL).group(1)
+        parsed = yaml.safe_load(textwrap.dedent(block))
+        built = [Test(**t) for t in parsed["tests"]]
+        assert [t.name for t in built] == ["Test One"]
+        assert len(built[0].assertions) == 2
+        assert built[0].if_ is not None
 
 
 def test_Project_simple_data():

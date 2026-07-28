@@ -23,11 +23,16 @@ class Test(NamedModel, ParentModel):
     ``` yaml
     tests:
       - name: Test One
-        if: ${ ref(Tested Insight).props.type } == "scatter"
+        if: ">{ ${ ref(Tested Insight).props.type } == 'scatter' }"
         assertions:
-          - >{ sum( ${ ref(Tested Insight).props.x } ) == 7 }
-          - >{ ${ ref(Tested Insight).props.x[0] } == 1 }
+          - ">{ sum( ${ ref(Tested Insight).props.x } ) == 7 }"
+          - ">{ ${ ref(Tested Insight).props.x[0] } == 1 }"
     ```
+
+    !!! note
+        Quote each `>{ ... }` assertion (as above). Unquoted, YAML reads a
+        leading `>` as a folded block-scalar indicator, so the assertion never
+        reaches the parser as an eval string.
 
     The [numpy](https://numpy.org/doc/stable/index.html) library is available
     in test expressions.
@@ -43,7 +48,7 @@ class Test(NamedModel, ParentModel):
         description="Whether a failure stops the test run (`exit`) or lets the remaining tests run (`continue`).",
     )
     assertions: List[EvalString] = Field(
-        None,
+        [],
         description="A list of eval strings (`>{ ... }`) that must all evaluate to true for the test to pass.",
     )
 
@@ -57,8 +62,12 @@ class Test(NamedModel, ParentModel):
     __test__ = False
 
     def child_items(self):
+        # `child_items` runs during DAG construction AND name traversal (the
+        # after-validator on every project load), so it must tolerate a test
+        # authored with no assertions (default []) or an explicit `assertions:`
+        # null — otherwise a stub test would crash validation for EVERY command.
         assertion_contexts = set()
-        for assertion in self.assertions:
+        for assertion in self.assertions or []:
             assertion_contexts.update(assertion.get_context_strings())
         if self.if_:
             assertion_contexts.update(self.if_.get_context_strings())

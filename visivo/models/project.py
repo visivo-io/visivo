@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 from visivo.models.alert import Alert
+from visivo.models.test import Test
 from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
@@ -155,6 +156,10 @@ class Project(NamedModel, ParentModel):
     )
     dimensions: List[Dimension] = Field(
         [], description="A list of project-level dimension objects that can be used across models."
+    )
+    tests: List[Test] = Field(
+        [],
+        description="A list of test objects that assert on computed insight values; run with `visivo test`.",
     )
 
     def child_items(self) -> List:
@@ -371,6 +376,7 @@ class Project(NamedModel, ParentModel):
             "metrics",
             "relations",
             "dimensions",
+            "tests",
         ]
         for name in list_field_names:
             if name in values and values[name] is None:
