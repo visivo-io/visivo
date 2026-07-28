@@ -522,6 +522,37 @@ class TestMultiModelJoins:
         with pytest.raises(NoJoinPathError):
             graph._find_minimum_spanning_tree(["a", "b", "c", "d"])
 
+    def test_two_models_with_no_relation_names_the_remedy(self, tmpdir):
+        """Smoke-test bug #11: two models with NO relation between them produced
+        a cryptic 'Cannot connect all models. Missing connections for: ...' with
+        no next step. The message must now point to defining a `relations:`
+        entry."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model_a = SqlModel(name="lifts", sql="SELECT * FROM lifts", source="ref(test_source)")
+        model_b = SqlModel(
+            name="lifts_bench", sql="SELECT * FROM lifts_bench", source="ref(test_source)"
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            relations=[],
+            dashboards=[],
+        )
+        dag = project.dag()
+        schema_base = tmpdir.mkdir("schemas")
+        for model in [model_a, model_b]:
+            schema_dir = schema_base.mkdir(model.name)
+            schema_dir.join("schema.json").write(json.dumps({model.name_hash(): {"id": "INTEGER"}}))
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        graph = RelationGraph(dag=dag, field_resolver=resolver)
+
+        with pytest.raises(NoJoinPathError) as exc_info:
+            graph._find_minimum_spanning_tree(["lifts", "lifts_bench"])
+        message = str(exc_info.value)
+        assert "Missing connections" in message
+        assert "Define" in message and "relations:" in message
+
 
 class TestJoinPlan:
     """Test join plan generation for SQL queries."""

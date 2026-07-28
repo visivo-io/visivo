@@ -321,7 +321,9 @@ class RelationGraph:
                 pair_a = missing_ordered[0] if missing_ordered else None
                 pair_b = connected[0] if connected else None
             raise NoJoinPathError(
-                f"Cannot connect all models. Missing connections for: {', '.join(missing)}",
+                f"Cannot connect all models. Missing connections for: {', '.join(missing)}. "
+                "Define a `relations:` entry joining these models so Visivo knows how to "
+                "combine them (a cross-model metric or a multi-model insight needs a join path).",
                 model_a=pair_a,
                 model_b=pair_b,
             )
