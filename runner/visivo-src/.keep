@@ -1,0 +1,3 @@
+Placeholder so the Dockerfile's COPY has something to copy.
+scripts/dev.sh replaces this directory with the sibling ../visivo checkout
+when building a local runner; every other build leaves it as-is.
