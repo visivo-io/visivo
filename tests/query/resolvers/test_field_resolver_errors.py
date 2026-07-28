@@ -368,3 +368,46 @@ class TestDialectHandling:
         # Result should have proper quoting (DuckDB style)
         # Exact format depends on sqlglot implementation
         assert '"' in result_duckdb or result_duckdb  # Has some identifier handling
+
+
+class TestSiblingMetricReferenceHint:
+    """Smoke-test bug #15: a model-scoped metric referencing a SIBLING metric by
+    bare name fails late with a generic column-resolution error. When that
+    happens, the error now explains the real cause."""
+
+    def _resolver(self, tmpdir):
+        source = DuckdbSource(name="s", database="t.duckdb", type="duckdb")
+        model = SqlModel(
+            name="lifts",
+            sql="SELECT total_kg FROM lifts",
+            source="ref(s)",
+            metrics=[
+                Metric(name="total_lifted", expression="SUM(total_kg)"),
+                Metric(name="lift_count", expression="COUNT(*)"),
+            ],
+            dimensions=[
+                Dimension(
+                    name="band", expression="CASE WHEN total_kg < 100 THEN 'lo' ELSE 'hi' END"
+                )
+            ],
+        )
+        project = Project(name="p", sources=[source], models=[model], dashboards=[])
+        project.dag()
+        resolver = FieldResolver(dag=project.dag(), output_dir=str(tmpdir), native_dialect="duckdb")
+        return resolver, model
+
+    def test_hint_names_the_sibling_metrics(self, tmpdir):
+        resolver, model = self._resolver(tmpdir)
+        hint = resolver._sibling_metric_reference_hint("total_lifted / lift_count", model)
+        assert "total_lifted" in hint and "lift_count" in hint
+        assert "metric/dimension" in hint
+        assert "project-level metric" in hint
+
+    def test_hint_covers_sibling_dimensions_too(self, tmpdir):
+        resolver, model = self._resolver(tmpdir)
+        hint = resolver._sibling_metric_reference_hint("band", model)
+        assert "band" in hint
+
+    def test_no_hint_when_only_raw_columns_are_referenced(self, tmpdir):
+        resolver, model = self._resolver(tmpdir)
+        assert resolver._sibling_metric_reference_hint("total_kg * 2", model) == ""

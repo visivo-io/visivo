@@ -163,9 +163,47 @@ class FieldResolver:
             )
             return qualified
         except Exception as e:
+            hint = self._sibling_metric_reference_hint(expression, model_node)
             raise ValueError(
-                f"Failed to qualify expression '{expression}' for model '{model_name}': {e}"
+                f"Failed to qualify expression '{expression}' for model '{model_name}': {e}{hint}"
             )
+
+    def _sibling_metric_reference_hint(self, expression: str, model_node: SqlModel) -> str:
+        """Smoke-test bug #15: a model-scoped metric/dimension whose expression
+        references a SIBLING metric/dimension by bare name (e.g.
+        ``total_lifted / lift_count``) fails LATE with a generic
+        "Column '...' could not be resolved", while the ``${ref(...)}`` form of
+        the same mistake is caught cleanly at compile. We can't move this to
+        compile-time (raw columns aren't known there), but when qualification
+        HAS already failed we can explain it: the unresolved identifier only
+        reaches here because it is not a real column, so if it matches a sibling
+        metric/dimension name it is almost certainly this mistake. Returns a
+        hint to append, or "" (never raises)."""
+        try:
+            from sqlglot import exp
+            from visivo.query.sqlglot_utils import parse_expression
+
+            sibling_names = {m.name for m in (model_node.metrics or [])} | {
+                d.name for d in (model_node.dimensions or [])
+            }
+            if not sibling_names:
+                return ""
+            parsed = parse_expression(expression, self.native_dialect)
+            if parsed is None:
+                return ""
+            referenced = {c.name for c in parsed.find_all(exp.Column)}
+            collisions = sorted(referenced & sibling_names)
+            if not collisions:
+                return ""
+            names = ", ".join(f"'{n}'" for n in collisions)
+            return (
+                f"\nNote: {names} is a metric/dimension on model '{model_node.name}'. "
+                "A model-scoped metric/dimension may only reference RAW columns of its "
+                "model, not other metrics/dimensions. To compose metrics, define a "
+                "project-level metric that references them via ${ref(model).name}."
+            )
+        except Exception:
+            return ""
 
     def _strip_trailing_alias(self, sql: str) -> str:
         """
