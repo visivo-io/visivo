@@ -116,6 +116,26 @@ export const fetchRunLog = async runId => {
 };
 
 /**
+ * Stop a run in flight. POST /api/runs/<id>/cancel/.
+ *
+ * Returns the raw {status, body} rather than throwing, because 409 isn't an
+ * error the user needs shouting about — it just means the run reached a terminal
+ * state before their click landed, and a refetch will show that.
+ *   200 {state, execution_stopped}  — canceled
+ *   409 {detail}                    — already finished
+ */
+export const cancelRun = async runId => {
+  const response = await apiFetch(getUrl('runCancel', { runId }), { method: 'POST' });
+  let body = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  return { status: response.status, body };
+};
+
+/**
  * Commit (publish) a draft. POST /api/projects/<id>/commit/ {message}.
  *
  * Returns the raw {status, body} so the caller can branch on the gates the

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import useStore from '../stores/store';
-import { fetchRuns, fetchRunLog } from '../api/branching';
+import { fetchRuns, fetchRunLog, cancelRun } from '../api/branching';
 import AnsiText from './common/AnsiText';
 
 // queued/running are the only non-terminal states — while active a run is still
@@ -18,6 +18,43 @@ const STATE_BADGE = {
 };
 
 const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'all');
+
+/**
+ * Stop a run that's still going.
+ *
+ * Only rendered for queued/running runs — cancelling a finished one is
+ * meaningless, and the endpoint 409s on it anyway. A 409 here isn't worth an
+ * error state either: it just means the run terminated between render and click,
+ * and the refetch below will show that.
+ *
+ * What cancelling guarantees is the state change: the run goes `canceled`, the
+ * spinner stops and the commit gate reopens. Stopping the compute is best-effort
+ * on the server (a Kubernetes Job is deleted; a warm-pool run finishes in the
+ * background with its results discarded), which is why the button says "Cancel
+ * run" rather than promising to kill anything.
+ */
+function CancelRunButton({ run }) {
+  const queryClient = useQueryClient();
+  const { mutate, isPending, isError } = useMutation({
+    mutationFn: () => cancelRun(run.id),
+    // Refetch either way: on 409 the list is simply out of date.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['runs'] }),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => mutate()}
+        disabled={isPending}
+        className="px-2 py-1 text-xs font-medium rounded border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isPending ? 'Cancelling…' : 'Cancel run'}
+      </button>
+      {isError && <span className="text-red-600">Couldn't cancel — try again.</span>}
+    </div>
+  );
+}
 
 function RunDetail({ run }) {
   const err = run.error_json;
@@ -46,6 +83,7 @@ function RunDetail({ run }) {
 
   return (
     <div className="space-y-3 text-xs">
+      {active && <CancelRunButton run={run} />}
       <dl className="space-y-1">
         {meta.map(([label, value, mono]) => (
           <div key={label} className="flex gap-2">
@@ -100,8 +138,8 @@ export default function RunsView() {
     <div className="p-6">
       <h2 className="text-xl font-bold text-gray-900 mb-1">Runs</h2>
       <p className="text-gray-500 text-sm mb-4">
-        Each saved change triggers a debounced run that rebuilds the affected assets. Click a
-        run for details.
+        Each saved change triggers a debounced run that rebuilds the affected assets. Click a run
+        for details.
       </p>
       {runs.length === 0 ? (
         <p className="text-gray-500">No runs yet — edit a resource to trigger one.</p>
@@ -137,7 +175,9 @@ export default function RunsView() {
                   </span>
                   <span className="flex-1 text-gray-600">{scopeLabel(run)}</span>
                   <span className="w-16 flex items-center justify-end gap-2 text-gray-400">
-                    {run.error_json && <span className="text-red-600 text-xs font-medium">error</span>}
+                    {run.error_json && (
+                      <span className="text-red-600 text-xs font-medium">error</span>
+                    )}
                     <span aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
                   </span>
                 </button>

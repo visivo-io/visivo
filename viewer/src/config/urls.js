@@ -78,8 +78,6 @@ const URL_PATTERNS = {
     dashboardDelete: '/api/dashboards/{name}/delete/',
     dashboardValidate: '/api/dashboards/{name}/validate/',
 
-
-
     // Defaults management endpoints
     defaults: '/api/defaults/',
 
@@ -103,6 +101,7 @@ const URL_PATTERNS = {
     projectDiscard: '/api/projects/{projectId}/discard/',
     projectRun: '/api/projects/{projectId}/run/',
     runLogs: '/api/runs/{runId}/logs/',
+    runCancel: '/api/runs/{runId}/cancel/',
 
     // Source schema jobs endpoints
     sourceSchemaJobsList: '/api/source-schema-jobs/',
@@ -215,8 +214,6 @@ const URL_PATTERNS = {
     dashboardSave: null,
     dashboardDelete: null,
     dashboardValidate: null,
-
-
 
     // Defaults management endpoints (not available in dist)
     defaults: null,

@@ -1,16 +1,29 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { useQuery } from '@tanstack/react-query';
 import RunsView from './RunsView';
+import { cancelRun } from '../api/branching';
 import useStore from '../stores/store';
 
 // Control the runs the view renders; the real store provides the project id.
 jest.mock('@tanstack/react-query', () => {
   const actual = jest.requireActual('@tanstack/react-query');
-  return { ...actual, useQuery: jest.fn() };
+  return {
+    ...actual,
+    useQuery: jest.fn(),
+    // The cancel button's mutation: run mutationFn immediately so a click is
+    // observable without a real QueryClient.
+    useMutation: jest.fn(({ mutationFn }) => ({
+      mutate: (...args) => mutationFn(...args),
+      isPending: false,
+      isError: false,
+    })),
+    useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+  };
 });
 jest.mock('../api/branching', () => ({
   fetchRuns: jest.fn(),
   fetchRunLog: jest.fn(),
+  cancelRun: jest.fn(),
 }));
 
 // RunsView and the expanded RunDetail each call useQuery; dispatch on the key so
@@ -30,8 +43,7 @@ const run = over => ({
   ...over,
 });
 
-const logQueryOpts = () =>
-  useQuery.mock.calls.find(([opts]) => opts.queryKey[0] === 'runLog')?.[0];
+const logQueryOpts = () => useQuery.mock.calls.find(([opts]) => opts.queryKey[0] === 'runLog')?.[0];
 
 beforeEach(() => {
   useQuery.mockReset();
@@ -97,5 +109,42 @@ describe('RunsView detail expansion', () => {
     fireEvent.click(screen.getByRole('button', { name: /failed/i }));
     expect(screen.getByText(/boom: query failed at line 3/)).toBeInTheDocument();
     expect(screen.getByText(/Error — run/)).toBeInTheDocument();
+  });
+});
+
+// Cancelling a run: the button only exists while there's something to cancel,
+// and its whole job is reopening the commit gate — the state change, not
+// killing compute (which the server does best-effort).
+describe('RunsView cancel', () => {
+  const openDetail = () => fireEvent.click(screen.getByRole('button', { expanded: false }));
+
+  test('an active run offers a cancel button', () => {
+    mockQueries({ runs: [run({ state: 'running' })], log: { logs: '' } });
+    render(<RunsView />);
+    openDetail();
+    expect(screen.getByRole('button', { name: /cancel run/i })).toBeInTheDocument();
+  });
+
+  test('a queued run offers it too — that is the one users get stuck on', () => {
+    mockQueries({ runs: [run({ state: 'queued' })], log: { logs: '' } });
+    render(<RunsView />);
+    openDetail();
+    expect(screen.getByRole('button', { name: /cancel run/i })).toBeInTheDocument();
+  });
+
+  test.each(['succeeded', 'failed', 'canceled'])('a %s run offers no cancel button', state => {
+    mockQueries({ runs: [run({ state })], log: { logs: '' } });
+    render(<RunsView />);
+    openDetail();
+    expect(screen.queryByRole('button', { name: /cancel run/i })).not.toBeInTheDocument();
+  });
+
+  test('clicking it cancels that specific run', () => {
+    cancelRun.mockResolvedValue({ status: 200, body: { state: 'canceled' } });
+    mockQueries({ runs: [run({ id: 'r-target', state: 'running' })], log: { logs: '' } });
+    render(<RunsView />);
+    openDetail();
+    fireEvent.click(screen.getByRole('button', { name: /cancel run/i }));
+    expect(cancelRun).toHaveBeenCalledWith('r-target');
   });
 });
