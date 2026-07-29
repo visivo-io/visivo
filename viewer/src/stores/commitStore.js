@@ -1,4 +1,5 @@
 import * as branchingApi from '../api/branching';
+import * as preferencesApi from '../api/preferences';
 import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
@@ -37,13 +38,40 @@ const NAMED_CHILD_FETCHERS = [
   'fetchDefaults',
 ];
 
+// What "we don't know of any changes" looks like. Used both before a project is
+// loaded and when /changes/ is unreachable — the badge and the Runs dot fail
+// closed rather than showing a stale count.
+const EMPTY_CHANGES = {
+  hasUncommittedChanges: false,
+  pendingChanges: [],
+  pendingCount: 0,
+  stagedChanges: [],
+  stagedCount: 0,
+  stagedDagFilter: '',
+};
+
 const createCommitSlice = (set, get) => ({
   // State
   hasUncommittedChanges: false,
   pendingChanges: [], // [{name, type, status}]
   pendingCount: 0,
+  // What a RUN would build, as opposed to what a COMMIT would publish. Narrower
+  // than pendingChanges: a chart colour or a dashboard layout tweak is
+  // uncommitted but needs no run, so it's absent here. Carried on the same
+  // /changes/ response, which is why the Runs tab dot updates on save rather
+  // than waiting for the next run poll.
+  stagedChanges: [], // [{name, type, status}]
+  stagedCount: 0,
+  stagedDagFilter: '',
+  // 'automatic' | 'manual' — the user's own setting, echoed here for first
+  // paint. GET/PUT /api/me/preferences/ is the source of truth.
+  runTrigger: 'automatic',
   commitLoading: false,
   commitError: null,
+  // The machine-readable reason a commit was refused ('run_required' /
+  // 'run_in_progress' / 'run_failed' / 'branch_required' / 'invalid'), so the
+  // modal can say something more useful than the raw detail string.
+  commitAction: null,
   commitModalOpen: false,
   discardLoading: false,
   // Timestamp of the last successful commit — the TopBar cluster derives
@@ -73,21 +101,42 @@ const createCommitSlice = (set, get) => ({
   checkCommitStatus: async () => {
     const projectId = get().project?.id;
     if (!projectId) {
-      set({ hasUncommittedChanges: false, pendingChanges: [], pendingCount: 0 });
+      set({ ...EMPTY_CHANGES });
       return;
     }
     try {
       const changes = await branchingApi.fetchChanges(projectId);
       const pending = [...(changes.to_publish || []), ...(changes.to_remove || [])];
+      // A server older than this viewer sends no staged keys; default them
+      // rather than rendering `undefined` as an empty-but-unknown state.
+      const staged = changes.staged || [];
       set({
         hasUncommittedChanges: !!changes.has_changes,
         pendingChanges: pending,
         pendingCount: pending.length,
+        stagedChanges: staged,
+        stagedCount: staged.length,
+        stagedDagFilter: changes.staged_dag_filter || '',
+        runTrigger: changes.run_trigger || get().runTrigger,
       });
     } catch (error) {
       // Endpoint may be unavailable (e.g. dist mode) — fail closed.
-      set({ hasUncommittedChanges: false, pendingChanges: [], pendingCount: 0 });
+      set({ ...EMPTY_CHANGES });
     }
+  },
+
+  // Flip the run trigger. Optimistic so the toggle doesn't lag the click, then
+  // reconciled with whatever the server actually stored.
+  setRunTrigger: async runTrigger => {
+    const previous = get().runTrigger;
+    set({ runTrigger });
+    const saved = await preferencesApi.savePreferences({ run_trigger: runTrigger });
+    if (!saved) {
+      set({ runTrigger: previous });
+      return false;
+    }
+    set({ runTrigger: saved.run_trigger });
+    return true;
   },
 
   // Kept for callers that fetch the list directly; same source as the badge.
@@ -104,7 +153,7 @@ const createCommitSlice = (set, get) => ({
   commitChanges: async () => {
     const projectId = get().project?.id;
     if (!projectId) return { success: false, error: 'No active project' };
-    set({ commitLoading: true, commitError: null });
+    set({ commitLoading: true, commitError: null, commitAction: null });
     let status, body;
     try {
       ({ status, body } = await branchingApi.commitDraft(projectId));
@@ -143,7 +192,10 @@ const createCommitSlice = (set, get) => ({
     // 422 invalid. Surface the action + message.
     const error =
       body.detail || (body.errors && JSON.stringify(body.errors)) || 'Failed to commit changes';
-    set({ commitLoading: false, commitError: error });
+    // Store the action too, not just the message: the modal needs to know a
+    // refusal was `run_required` to point at the Runs tab, and the detail string
+    // is not something to pattern-match on.
+    set({ commitLoading: false, commitError: error, commitAction: body.action || null });
     return { success: false, action: body.action, error };
   },
 

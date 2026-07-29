@@ -48,10 +48,20 @@ def _fire(flask_app):
         _pending_timer = None
     if not names:
         return
-    dag_filter = ",".join(f"+{name}+" for name in names)
+    run_now(flask_app, ",".join(f"+{name}+" for name in names))
+
+
+def run_now(flask_app, dag_filter):
+    """Start a run for ``dag_filter`` on a background thread and return it.
+
+    The single entry point for both triggers — the debounced run-on-save above
+    and the Run button (``POST /api/projects/<id>/run/``) — so a manual run
+    behaves identically to an automatic one.
+    """
     run = flask_app.run_manager.create(dag_filter)
     thread = threading.Thread(target=_execute, args=(flask_app, run.id, dag_filter), daemon=True)
     thread.start()
+    return run
 
 
 def _execute(flask_app, run_id, dag_filter):
@@ -82,6 +92,10 @@ def _execute(flask_app, run_id, dag_filter):
         if runner.failed_job_results:
             run_manager.set_state(run_id, RunState.FAILED, logs=logs, error_json={"phase": "run"})
         else:
+            # Record what this run built, so the staged list drops exactly the
+            # items it covered. A failure deliberately leaves them staged — the
+            # change still needs a run.
+            mark_staged_built(flask_app, dag_filter)
             run_manager.set_state(run_id, RunState.SUCCEEDED, logs=logs)
     except Exception as exc:  # compile/validation/etc. — surface as a failed run
         Logger.instance().error(f"save-run {run_id} failed: {exc}")
@@ -91,6 +105,20 @@ def _execute(flask_app, run_id, dag_filter):
             logs=str(exc),
             error_json={"phase": "run", "error": str(exc)},
         )
+
+
+def mark_staged_built(flask_app, dag_filter):
+    """Un-stage what a successful run just built.
+
+    An empty ``dag_filter`` is a full rebuild, so everything staged is now built.
+    Otherwise take the names back out of the ``+name+`` selector — the same set
+    the filter was built from.
+    """
+    staged_manager = getattr(flask_app, "staged_manager", None)
+    if staged_manager is None:
+        return
+    names = None if not dag_filter else {part.strip("+") for part in dag_filter.split(",")}
+    staged_manager.mark_built(names)
 
 
 def _format_logs(runner):
