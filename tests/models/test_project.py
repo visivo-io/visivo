@@ -462,3 +462,47 @@ def test_named_child_nodes():
     assert insight.name in named_nodes.keys()
     assert dashboard.name in named_nodes.keys()
     assert source.name in named_nodes.keys()
+
+
+def test_named_child_nodes_keeps_duplicate_model_scoped_names_distinct():
+    """Smoke-test bug #6 editor follow-up: two models each define a metric
+    `avg_total`. `named_child_nodes()` keys by NAME, so it used to collapse the
+    two into one entry — one metric silently vanished from the editor/lineage
+    surface. Model-scoped metrics/dimensions must key by `<model>.<name>` so both
+    appear, each edged to its own parent model."""
+    from visivo.models.models.sql_model import SqlModel
+    from visivo.models.metric import Metric
+
+    source = SourceFactory(name="ss")
+    model_a = SqlModel(
+        name="model_a",
+        sql="SELECT * FROM a",
+        source="ref(ss)",
+        metrics=[Metric(name="avg_total", expression="SUM(amount)")],
+    )
+    model_b = SqlModel(
+        name="model_b",
+        sql="SELECT * FROM b",
+        source="ref(ss)",
+        metrics=[Metric(name="avg_total", expression="AVG(weight)")],
+    )
+    project = Project(
+        name="development",
+        sources=[source],
+        models=[model_a, model_b],
+        dashboards=[],
+    )
+    named_nodes = project.named_child_nodes()
+
+    # Both model-scoped metrics survive, keyed by qualified <model>.<name>.
+    assert "model_a.avg_total" in named_nodes
+    assert "model_b.avg_total" in named_nodes
+    assert named_nodes["model_a.avg_total"]["type"] == "Metric"
+    # Each metric's parent edge points at its own model (also qualified-safe:
+    # a plain model name has no parent, so it stays bare).
+    assert named_nodes["model_a.avg_total"]["direct_parents"] == ["model_a"]
+    assert named_nodes["model_b.avg_total"]["direct_parents"] == ["model_b"]
+    # The models themselves keep bare-name keys and list the qualified metric.
+    assert "model_a" in named_nodes
+    assert "model_a.avg_total" in named_nodes["model_a"]["direct_children"]
+    assert "model_b.avg_total" not in named_nodes["model_a"]["direct_children"]

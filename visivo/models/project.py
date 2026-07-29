@@ -212,14 +212,42 @@ class Project(NamedModel, ParentModel):
         """
         return self._extracted_schemas
 
+    @staticmethod
+    def lineage_name(node) -> Optional[str]:
+        """Editor/lineage identity of a node.
+
+        A model-scoped metric/dimension (``_parent_name`` set) is a MODEL-LOCAL
+        alias whose bare ``name`` may repeat across models (#6), so keying the
+        lineage map / edges by bare name would collapse two same-named metrics
+        into one — silently dropping one from the editor surface. Key those by
+        ``<model>.<name>``; everything else (globally unique) keeps its bare
+        name.
+        """
+        name = getattr(node, "name", None)
+        parent = getattr(node, "_parent_name", None)
+        if parent and name:
+            return f"{parent}.{name}"
+        return name
+
     def named_child_nodes(self) -> dict:
         """
         Returns a dictionary of all named child nodes of the project, independent of the
         literal position of the child in the project file. This enables us to find
         all children even if they are nested in a dashboard or chart.
+
+        Keyed by ``lineage_name`` so two model-scoped metrics/dimensions that
+        share a bare name (each ``<model>.<name>``) stay distinct instead of
+        collapsing into one entry.
         """
         dag = self.dag()
+        named_dag = dag.get_named_nodes_subgraph()
         named_nodes = {}
+
+        def _named_lineage_names(neighbors):
+            return [
+                Project.lineage_name(n) for n in neighbors if getattr(n, "name", None) is not None
+            ]
+
         # First pass - collect all nodes and their inline dependencies
         for node in dag.nodes():
             if hasattr(node, "name"):
@@ -237,8 +265,16 @@ class Project(NamedModel, ParentModel):
                     "inline_dependent_objects", []
                 )
                 _ = fully_referenced_model_dump.pop("changed", "Not Found")
-                direct_children = dag.get_named_children(node.name)
-                direct_parents = dag.get_named_parents(node.name)
+                # Compute edges from the named subgraph OBJECTS directly (mapped
+                # to lineage names) rather than the by-name helpers, which would
+                # resolve an ambiguous duplicate name to the first match. The
+                # Project root is removed from the named subgraph, so guard it.
+                if named_dag.has_node(node):
+                    direct_children = _named_lineage_names(named_dag.predecessors(node))
+                    direct_parents = _named_lineage_names(named_dag.successors(node))
+                else:
+                    direct_children = []
+                    direct_parents = []
                 contents = {
                     "type": node.__class__.__name__,
                     "type_key": Project.get_key_for_project_child_class(node.__class__.__name__),
@@ -252,7 +288,7 @@ class Project(NamedModel, ParentModel):
                     "direct_children": direct_children,
                     "direct_parents": direct_parents,
                 }
-                named_nodes[node.name] = contents
+                named_nodes[Project.lineage_name(node)] = contents
 
         # Second pass - build the reverse mapping
         for node_name, node_data in named_nodes.items():
