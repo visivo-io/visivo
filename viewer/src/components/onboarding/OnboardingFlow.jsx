@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import './onboarding.css';
 import { CONCEPTS } from './concepts';
@@ -14,6 +13,7 @@ import { readOnboardingState, writeOnboardingState } from './onboardingState';
 import SourceEditForm from '../views/common/SourceEditForm';
 import useStore from '../../stores/store';
 import logo from '../../images/logo.png';
+import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 function buildSteps() {
   return [
@@ -27,7 +27,7 @@ function buildSteps() {
 }
 
 export default function OnboardingFlow() {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const project = useStore(s => s.project);
   const fetchProject = useStore(s => s.fetchProject);
 

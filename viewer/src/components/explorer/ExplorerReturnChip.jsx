@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { PiArrowLeft } from 'react-icons/pi';
 import { getTypeColors } from '../views/common/objectTypeConfigs';
+import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 /**
  * ExplorerReturnChip — VIS-782 / J-3.
@@ -17,7 +18,7 @@ import { getTypeColors } from '../views/common/objectTypeConfigs';
  * is untouched in the default case.
  */
 const ExplorerReturnChip = () => {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const [searchParams] = useSearchParams();
 
   const returnTo = searchParams.get('return_to');

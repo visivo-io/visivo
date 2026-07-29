@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PiPlus, PiSidebar, PiHouse, PiMagnifyingGlass, PiTreeStructure } from 'react-icons/pi';
 import LibrarySearch from './LibrarySearch';
 import LibraryFilter from './LibraryFilter';
@@ -10,6 +9,7 @@ import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
 import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
+import { useViewerNavigate } from '../../../../hooks/useViewerNavigate';
 
 /**
  * Library — VIS-769 / Track C C1 (+ C2 / C3).
@@ -56,7 +56,7 @@ const routeType = obj => obj.canonicalType || obj.type;
 
 const Library = () => {
   const data = useLibraryData();
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const scope = useWorkspaceScope();
 
   // Workspace actions — read from the store directly so the Library has no

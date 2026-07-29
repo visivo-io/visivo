@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
-import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../stores/store';
 import { useWorkspaceDrag } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
@@ -9,6 +8,7 @@ import { parseCanvasPath } from './canvasReorder';
 import ItemFlipCard from '../../../project/ItemFlipCard';
 import ItemActionMenu from '../../../project/ItemActionMenu';
 import copyItemLink from '../../../project/copyItemLink';
+import { useViewerNavigate } from '../../../../hooks/useViewerNavigate';
 
 /**
  * CanvasItemFlipLayer — VIS-785 / Track D D-6 (flip-to-lineage).
@@ -103,7 +103,7 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const dashboards = useStore(s => s.dashboards);
   const hoverKey = useStore(s => s.workspaceCanvasHoverKey);
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);

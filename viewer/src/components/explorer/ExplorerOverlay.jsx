@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { PiX, PiArrowsClockwise } from 'react-icons/pi';
 import useStore from '../../stores/store';
 import { getTypeColors } from '../views/common/objectTypeConfigs';
 import { emitWorkspaceEvent } from '../views/workspace/telemetry';
 import { ExplorerRoundTripProvider } from './ExplorerRoundTripContext';
 import ExplorerPage from './ExplorerPage';
+import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 /**
  * ExplorerOverlay — VIS-778 / J-2.
@@ -33,7 +34,7 @@ const slotLabel = slot => {
 };
 
 const ExplorerOverlay = () => {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const { dashboardName } = useParams();
   const [searchParams] = useSearchParams();
   const slot = searchParams.get('slot') || 'new';

@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useStore from '../../stores/store';
 import EmbeddedPill from '../views/lineage/EmbeddedPill';
 import Select from '../common/Select';
+import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 /**
  * Session-scoped key for remembering the last-used "After save" choice (J-1 /
@@ -66,7 +66,7 @@ const buildSlotOptions = dashboardConfig => {
  * - onClose: (function) called when the modal should close (cancel or successful save)
  */
 const ExplorerSaveModal = ({ onClose }) => {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const diffResult = useStore((s) => s.explorerDiffResult);
   const modelStates = useStore((s) => s.explorerModelStates);
   const insightStates = useStore((s) => s.explorerInsightStates);

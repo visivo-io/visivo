@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../stores/store';
 import { parseRefValue } from '../../../../utils/refString';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
+import { useViewerNavigate } from '../../../../hooks/useViewerNavigate';
 import {
   wrapItemInContainer,
   unwrapTrivialContainer,
@@ -145,7 +145,7 @@ const MenuItem = ({ testid, label, hint, onClick, danger }) => (
 );
 
 const CanvasContextMenu = ({ rootRef, dashboardName }) => {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const dashboards = useStore(s => s.dashboards);
   const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
   // Selection routed through the unified action (VIS-994). No revealEdit:
