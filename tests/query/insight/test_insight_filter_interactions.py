@@ -274,6 +274,106 @@ class TestInsightFilterInteractions:
         assert "'${ss1.value}'" in query_info.post_query
         assert "''" not in query_info.post_query
 
+    def _build_query_based_single_select_filter(
+        self, tmpdir, options_query, schema_columns, filter_expr, sample_options
+    ):
+        """Build an insight whose single-select input is QUERY-based (options
+        come from a model query), with a custom model schema so the input's
+        value type can be resolved schema-side (#13 piece 4). ``sample_options``
+        stand in for the input job's computed options (used only to make the SQL
+        parseable; the resolved TYPE comes from ``schema_columns``, not these)."""
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+
+        source = SourceFactory()
+        model = SqlModel(name="lifts", sql="SELECT * FROM lifts_data", source=f"ref({source.name})")
+        ss = SingleSelectInput(name="pick", label="Pick", options=options_query)
+        insight = Insight(
+            name="qb-value-filter",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(lifts).x}}",
+                y="?{${ref(lifts).y}}",
+            ),
+            interactions=[InsightInteraction(filter=filter_expr)],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ss],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Write a schema.json for the referenced model with the given columns.
+        schema_base = os.path.join(str(tmpdir), "schemas", model.name)
+        os.makedirs(schema_base, exist_ok=True)
+        with open(os.path.join(schema_base, "schema.json"), "w") as f:
+            json.dump({model.name_hash(): schema_columns}, f)
+
+        # Write the input job's JSON output so parsing can obtain a sample value
+        # (query-based inputs have no static options list on the model itself).
+        inputs_dir = os.path.join(str(tmpdir), "inputs")
+        os.makedirs(inputs_dir, exist_ok=True)
+        with open(os.path.join(inputs_dir, f"{ss.name}.json"), "w") as f:
+            json.dump({"static_props": {"options": sample_options}}, f)
+
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        return builder.build()
+
+    def test_query_based_string_options_value_filter_is_quoted(self, tmpdir):
+        """#13 piece 4: a query-populated dropdown whose options select a
+        STRING column (`equipment`) yields a string value, so a bare
+        `= ${ref(pick).value}` is quoted using the schema-resolved type."""
+        query_info = self._build_query_based_single_select_filter(
+            tmpdir,
+            options_query="?{ SELECT DISTINCT equipment FROM ${ref(lifts)} }",
+            schema_columns={"x": "INTEGER", "y": "INTEGER", "equipment": "VARCHAR"},
+            filter_expr="?{${ref(lifts).equipment} = ${ref(pick).value}}",
+            sample_options=["Raw", "Wraps", "Single-ply"],
+        )
+        assert "'${pick.value}'" in query_info.post_query
+        assert "''" not in query_info.post_query
+
+    def test_query_based_numeric_options_value_filter_is_not_quoted(self, tmpdir):
+        """#13 piece 4: a query-populated dropdown whose options select a
+        NUMERIC column (`age`) yields a number, so `= ${ref(pick).value}` stays
+        bare (quoting it would break `age = 25`)."""
+        query_info = self._build_query_based_single_select_filter(
+            tmpdir,
+            options_query="?{ SELECT DISTINCT age FROM ${ref(lifts)} }",
+            schema_columns={"x": "INTEGER", "y": "INTEGER", "age": "BIGINT"},
+            filter_expr="?{${ref(lifts).x} = ${ref(pick).value}}",
+            sample_options=["25", "30", "35"],
+        )
+        assert "${pick.value}" in query_info.post_query
+        assert "'${pick.value}'" not in query_info.post_query
+
+    def test_query_based_star_options_are_unknown_not_first_column(self, tmpdir):
+        """Adversarial-review MED: a `SELECT *` options query parses as a single
+        `Star`, so it must NOT be resolved to the FIRST column's type. Here the
+        first schema column is a STRING (`equipment`) but the filter compares a
+        NUMERIC column (`age`) — mis-resolving to the first column would quote a
+        number and break the SQL. Multi-column/star → unknown → bare."""
+        query_info = self._build_query_based_single_select_filter(
+            tmpdir,
+            options_query="?{ SELECT * FROM ${ref(lifts)} }",
+            # `equipment` (VARCHAR) is first, so the buggy first-column path would
+            # resolve string and wrongly quote the numeric `age` filter.
+            schema_columns={
+                "equipment": "VARCHAR",
+                "x": "INTEGER",
+                "y": "INTEGER",
+                "age": "BIGINT",
+            },
+            filter_expr="?{${ref(lifts).age} = ${ref(pick).value}}",
+            sample_options=["25", "30"],
+        )
+        assert "${pick.value}" in query_info.post_query
+        assert "'${pick.value}'" not in query_info.post_query
+
     def test_column_picker_input_in_a_prop_stays_a_bare_identifier(
         self, tmpdir, create_schema_file
     ):

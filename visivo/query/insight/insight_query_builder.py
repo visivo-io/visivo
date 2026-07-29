@@ -662,6 +662,7 @@ class InsightQueryBuilder:
         SQLGlot parse issue (returns the query unchanged)."""
         from visivo.models.dag import all_descendants_of_type
         from visivo.models.inputs.input import Input
+        from visivo.models.base.query_string import QueryString
         from visivo.query.input_quoting import (
             build_should_quote,
             quote_bare_string_placeholders,
@@ -670,8 +671,78 @@ class InsightQueryBuilder:
         inputs = all_descendants_of_type(type=Input, dag=self.dag, from_node=self.insight)
         if not inputs:
             return query
-        should_quote = build_should_quote({i.name: i for i in inputs})
+        # A query-based input's value type is not on its definition — resolve it
+        # from the options query's column in the model schema (#13 piece 4).
+        type_overrides = {}
+        for i in inputs:
+            if isinstance(getattr(i, "options", None), QueryString):
+                type_overrides[i.name] = self._query_based_input_value_type(i)
+        should_quote = build_should_quote({i.name: i for i in inputs}, type_overrides)
         return quote_bare_string_placeholders(query, should_quote)
+
+    def _query_based_input_value_type(self, input_obj) -> str:
+        """Bug #13 (piece 4): the schema-driven value type of a QUERY-based
+        input. A dropdown populated by ``options: ?{ SELECT DISTINCT equipment
+        FROM ${ref(lifts)} }`` yields a value whose type is a FACT — the type of
+        the query's single projected column in the referenced model's schema,
+        which the source job already produced. Resolves that type by qualifying
+        and annotating the options query against the stored schema. Returns
+        ``string`` | ``number`` | ``unknown``; ANY failure (schema missing,
+        multi-column, unparseable, unresolved) → ``unknown`` (bare, never a
+        regression)."""
+        from visivo.models.models.sql_model import SqlModel
+        from visivo.query.input_quoting import sql_type_category
+        from visivo.query.patterns import extract_ref_names, replace_refs
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
+        try:
+            query_value = input_obj.options.get_value()
+            if not query_value:
+                return "unknown"
+            ref_names = extract_ref_names(query_value)
+            if len(ref_names) != 1:
+                return "unknown"
+            model_name = next(iter(ref_names))
+            model = self.dag.get_descendant_by_name(model_name)
+            if not isinstance(model, SqlModel):
+                return "unknown"
+            schema = self.field_resolver._load_model_schema(model_name)
+            if not schema:
+                return "unknown"
+            model_hash = model.name_hash()
+            columns = schema.get(model_hash)
+            if not columns:
+                return "unknown"
+
+            # Replace the single ${ref(model)} with the schema-keyed table name
+            # so the options query parses and its columns bind to the schema.
+            resolved = replace_refs(query_value, lambda _name, _field: f'"{model_hash}"')
+
+            from sqlglot.optimizer.annotate_types import annotate_types
+            from sqlglot.optimizer.qualify import qualify
+            from sqlglot.schema import MappingSchema
+
+            dialect = get_sqlglot_dialect(self.native_dialect)
+            schema_dict = {model_hash: columns}
+            parsed = sqlglot.parse_one(resolved, read=dialect)
+            select = parsed.find(exp.Select)
+            if not select or len(select.expressions) != 1:
+                return "unknown"
+            qualified = qualify(parsed, schema=schema_dict, dialect=dialect)
+            annotated = annotate_types(qualified, schema=MappingSchema(schema=schema_dict))
+            annotated_select = annotated.find(exp.Select)
+            # Re-check AFTER qualify: a `SELECT *` parses as one Star node but
+            # expands to N real columns here, so the pre-qualify count guard
+            # doesn't catch it. A multi-column options query is ambiguous —
+            # never silently resolve the FIRST column's type.
+            if not annotated_select or len(annotated_select.expressions) != 1:
+                return "unknown"
+            proj = annotated_select.expressions[0]
+            if isinstance(proj, exp.Alias):
+                proj = proj.this
+            return sql_type_category(proj.type)
+        except Exception:
+            return "unknown"
 
     def _build_static_query_with_sqlglot(self):
         """

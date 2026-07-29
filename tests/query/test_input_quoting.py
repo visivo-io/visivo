@@ -91,6 +91,51 @@ def test_build_should_quote_predicate():
     assert sq("undefined", "value") is False
 
 
+# --- #13 piece 4: query-based options resolve their type from the model schema,
+# supplied to build_should_quote as a per-input override. ---
+
+
+def test_sql_type_category_classification():
+    from sqlglot import exp
+    from visivo.query.input_quoting import sql_type_category
+
+    assert sql_type_category(exp.DataType.build("VARCHAR")) == "string"
+    assert sql_type_category(exp.DataType.build("TEXT")) == "string"
+    assert sql_type_category(exp.DataType.build("BIGINT")) == "number"
+    assert sql_type_category(exp.DataType.build("DOUBLE")) == "number"
+    assert sql_type_category(exp.DataType.build("DATE")) == "unknown"  # neither -> bare
+    assert sql_type_category(None) == "unknown"
+
+
+def test_build_should_quote_override_wins_for_query_based_input():
+    from visivo.query.input_quoting import build_should_quote
+
+    # A query-based input has options == QueryString -> input_value_type is
+    # "unknown", so without an override it would never quote. A resolved
+    # "string" override flips it on; "number" keeps it off.
+    q_str = _FakeInput(options="?{SELECT DISTINCT equipment FROM x}")
+    q_num = _FakeInput(options="?{SELECT DISTINCT age FROM x}")
+    sq = build_should_quote(
+        {"q_str": q_str, "q_num": q_num},
+        type_overrides={"q_str": "string", "q_num": "number"},
+    )
+    assert sq("q_str", "value") is True
+    assert sq("q_num", "value") is False
+    # Static inputs (no override) still classify from the definition.
+    sq2 = build_should_quote({"s": _FakeInput(options=["a"])}, type_overrides={})
+    assert sq2("s", "value") is True
+
+
+def test_build_should_quote_unresolved_query_based_stays_bare():
+    from visivo.query.input_quoting import build_should_quote
+
+    # No override resolved (schema missing / expression too complex) -> unknown
+    # -> never quote (conservative fail-safe, no regression).
+    q = _FakeInput(options="?{SELECT DISTINCT equipment FROM x}")
+    sq = build_should_quote({"q": q}, type_overrides=None)
+    assert sq("q", "value") is False
+
+
 # --- Role-awareness (adversarial-review CRITICAL): a string-typed input used as
 # an IDENTIFIER must stay bare; only value-OPERANDS get quoted. ---
 

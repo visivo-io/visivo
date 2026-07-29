@@ -132,11 +132,39 @@ def input_value_type(input_obj) -> str:
     return "unknown"
 
 
-def build_should_quote(inputs_by_name) -> Callable[[str, str], bool]:
+def sql_type_category(datatype) -> str:
+    """Classify a SQLGlot ``DataType`` (or None) as ``string`` | ``number`` |
+    ``unknown``. Used to turn a schema-resolved type for a query-based input's
+    options column into the quoting decision. Anything that is neither a text
+    nor a numeric type (dates, booleans, unresolved) → ``unknown`` → bare."""
+    if datatype is None:
+        return "unknown"
+    from sqlglot import exp
+
+    this = getattr(datatype, "this", None)
+    if this in exp.DataType.TEXT_TYPES:
+        return "string"
+    if this in exp.DataType.NUMERIC_TYPES:
+        return "number"
+    return "unknown"
+
+
+def build_should_quote(inputs_by_name, type_overrides=None) -> Callable[[str, str], bool]:
     """Build the ``should_quote(input_name, accessor)`` predicate from a mapping
     of input name -> input object. Quotes a scalar accessor of a string-typed
-    input; never the multi-select ``.values`` accessor (already a quoted IN-list)."""
-    types = {name: input_value_type(obj) for name, obj in (inputs_by_name or {}).items()}
+    input; never the multi-select ``.values`` accessor (already a quoted IN-list).
+
+    ``type_overrides`` (name -> ``string``/``number``/``unknown``) takes
+    precedence over ``input_value_type`` for inputs whose type is a fact the
+    caller resolved elsewhere — specifically a QUERY-based input, whose value
+    type is the type of its options query's column in the model schema the
+    runner already holds (#13 piece 4). A static-list / range input has no
+    override and classifies from its definition. An unresolved query-based input
+    (no override) stays ``unknown`` → bare (conservative, never a regression)."""
+    overrides = type_overrides or {}
+    types = {}
+    for name, obj in (inputs_by_name or {}).items():
+        types[name] = overrides.get(name, input_value_type(obj))
 
     def should_quote(input_name: str, accessor: str) -> bool:
         return accessor != "values" and types.get(input_name) == "string"
