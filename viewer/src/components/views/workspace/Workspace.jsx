@@ -6,6 +6,7 @@ import { emitWorkspaceEvent, markBuildModeEntered } from './telemetry';
 import { useWorkspaceScope } from './useWorkspaceScope';
 import useProjectChangeListener from './useProjectChangeListener';
 import { workspaceTabFromUrl, WORKSPACE_BASE } from './workspaceUrl';
+import { getViewerBase } from '../../../contexts/viewerBase';
 
 /**
  * Workspace — route container for `/workspace` and
@@ -91,13 +92,15 @@ const Workspace = () => {
     fetchDashboards,
   ]);
 
-  // The mount prefix for this Workspace. Studio serves it at the root
-  // (`/workspace`); a host that mounts the viewer under a path prefix (the
-  // cloud app, at `/:account/:stage/:project/workspace`) needs its tab URLs to
-  // carry that prefix, or `navigate` escapes to the root and the route 404s.
-  // Derive it from the path up to and including the `workspace` segment so the
-  // same component works at either mount.
+  // The mount prefix for this Workspace's tab URLs. Prefer what the host told
+  // us (contexts/viewerBase) — it is correct before the first navigation and
+  // regardless of where we are. Fall back to deriving it from the path for a
+  // host that mounts the viewer under a prefix without setting the base; that
+  // was the only mechanism before, and it can only work once you are already on
+  // a `/workspace` URL.
   const workspaceUrlBase = useMemo(() => {
+    const base = getViewerBase();
+    if (base) return `${base}${WORKSPACE_BASE}`;
     const segments = location.pathname.split('/');
     const workspaceIndex = segments.indexOf('workspace');
     return workspaceIndex === -1

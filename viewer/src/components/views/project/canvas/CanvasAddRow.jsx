@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../stores/store';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
 import { buildTemplateRow, insertRowAtIndex } from './canvasReorder';
 import RowTemplateMenu from './RowTemplateMenu';
+import { useViewerNavigate } from '../../../../hooks/useViewerNavigate';
 
 /**
  * CanvasAddRow — VIS-794 / Track D D-7 + D-8.
@@ -64,7 +64,7 @@ const INLINE_CREATE_TYPES = [
 const CanvasAddRow = ({ rootRef, dashboardName }) => {
   const dashboards = useStore(s => s.dashboards);
   const commitCanvasConfig = useWorkspaceCommit();
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
 
   // openMenu: which trigger's menu is open. null | { kind: 'end' } |
   // { kind: 'between', index } | { kind: 'empty' }.
