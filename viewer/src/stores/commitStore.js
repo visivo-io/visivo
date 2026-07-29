@@ -1,4 +1,5 @@
 import * as branchingApi from '../api/branching';
+import * as preferencesApi from '../api/preferences';
 import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
@@ -129,7 +130,7 @@ const createCommitSlice = (set, get) => ({
   setRunTrigger: async runTrigger => {
     const previous = get().runTrigger;
     set({ runTrigger });
-    const saved = await branchingApi.savePreferences({ run_trigger: runTrigger });
+    const saved = await preferencesApi.savePreferences({ run_trigger: runTrigger });
     if (!saved) {
       set({ runTrigger: previous });
       return false;

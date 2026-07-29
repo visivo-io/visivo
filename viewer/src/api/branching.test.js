@@ -1,5 +1,6 @@
 // Coverage for the branching API (api/branching.js): the cloud-editing
-// draft / branch / discard / changes / runs / run-log / commit endpoints.
+// draft / branch / discard / changes / commit endpoints. Run and preference
+// calls live in api/runs.js and api/preferences.js with their own suites.
 // apiFetch + getUrl are mocked; getUrl echoes the key + id so we can assert the
 // endpoint hit and (for writes) the method/body. Each function's success,
 // error, and edge (non-JSON body) paths are exercised.
@@ -9,8 +10,6 @@ import {
   createBranch,
   discardDraft,
   fetchChanges,
-  fetchRuns,
-  fetchRunLog,
   commitDraft,
 } from './branching';
 import { apiFetch } from './utils';
@@ -133,21 +132,6 @@ describe('read endpoints', () => {
     await expect(fetchChanges('p1')).rejects.toThrow('Failed to fetch changes');
   });
 
-  it('fetchRuns returns json on 200, throws otherwise', async () => {
-    apiFetch.mockResolvedValueOnce(res(200, [{ id: 'r1' }]));
-    await expect(fetchRuns('p1')).resolves.toEqual([{ id: 'r1' }]);
-    expect(apiFetch).toHaveBeenCalledWith('/api/projectRun/p1');
-    apiFetch.mockResolvedValueOnce(res(503));
-    await expect(fetchRuns('p1')).rejects.toThrow('Failed to fetch runs');
-  });
-
-  it('fetchRunLog hits the run-scoped endpoint, returns json on 200, throws otherwise', async () => {
-    apiFetch.mockResolvedValueOnce(res(200, { state: 'running', logs: 'x' }));
-    await expect(fetchRunLog('run-9')).resolves.toEqual({ state: 'running', logs: 'x' });
-    expect(apiFetch).toHaveBeenCalledWith('/api/runLogs/run-9');
-    apiFetch.mockResolvedValueOnce(res(404));
-    await expect(fetchRunLog('run-9')).rejects.toThrow('Failed to fetch run log');
-  });
 });
 
 describe('commitDraft', () => {

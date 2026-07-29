@@ -1,4 +1,4 @@
-import * as branchingApi from '../api/branching';
+import * as runsApi from '../api/runs';
 
 export const ACTIVE_RUN_STATES = ['queued', 'running'];
 
@@ -34,7 +34,7 @@ const createRunSlice = (set, get) => ({
     if (!projectId) return null;
     let runs;
     try {
-      runs = await branchingApi.fetchRuns(projectId);
+      runs = await runsApi.fetchRuns(projectId);
     } catch (e) {
       return null; // no run endpoint here (local serve / dist) — nothing to poll
     }
@@ -73,7 +73,7 @@ const createRunSlice = (set, get) => ({
   triggerRun: async ({ dagFilter } = {}) => {
     const projectId = get().project?.id;
     if (!projectId) return { success: false, error: 'No active project' };
-    const { status, body } = await branchingApi.triggerRun(projectId, { dagFilter });
+    const { status, body } = await runsApi.triggerRun(projectId, { dagFilter });
     if (status === 201) {
       // Adopt it immediately so the tab spinner starts on click rather than on
       // the next poll tick.

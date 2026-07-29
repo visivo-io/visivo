@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import useStore from '../stores/store';
-import { fetchRuns, fetchRunLog, cancelRun } from '../api/branching';
+import { fetchRuns, fetchRunLog, cancelRun } from '../api/runs';
 import AnsiText from './common/AnsiText';
 import { getTypeColors, getTypeIcon } from './views/common/objectTypeConfigs';
 

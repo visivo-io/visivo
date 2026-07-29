@@ -9,12 +9,16 @@
  */
 import useStore from './store';
 import * as branchingApi from '../api/branching';
+import * as preferencesApi from '../api/preferences';
 import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
 jest.mock('../api/branching', () => ({
   fetchChanges: jest.fn(),
   commitDraft: jest.fn(),
+}));
+
+jest.mock('../api/preferences', () => ({
   savePreferences: jest.fn(),
 }));
 
@@ -374,16 +378,16 @@ describe('commitStore staged changes', () => {
   });
 
   test('setRunTrigger applies immediately and keeps what the server stored', async () => {
-    branchingApi.savePreferences.mockResolvedValue({ run_trigger: 'manual' });
+    preferencesApi.savePreferences.mockResolvedValue({ run_trigger: 'manual' });
     const ok = await useStore.getState().setRunTrigger('manual');
     expect(ok).toBe(true);
-    expect(branchingApi.savePreferences).toHaveBeenCalledWith({ run_trigger: 'manual' });
+    expect(preferencesApi.savePreferences).toHaveBeenCalledWith({ run_trigger: 'manual' });
     expect(useStore.getState().runTrigger).toBe('manual');
   });
 
   test('setRunTrigger reverts when the save fails, so the toggle never lies', async () => {
     useStore.setState({ runTrigger: 'automatic' });
-    branchingApi.savePreferences.mockResolvedValue(null);
+    preferencesApi.savePreferences.mockResolvedValue(null);
     const ok = await useStore.getState().setRunTrigger('manual');
     expect(ok).toBe(false);
     expect(useStore.getState().runTrigger).toBe('automatic');

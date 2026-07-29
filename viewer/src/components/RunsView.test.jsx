@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useQuery } from '@tanstack/react-query';
 import RunsView from './RunsView';
-import { cancelRun } from '../api/branching';
+import { cancelRun } from '../api/runs';
 import useStore from '../stores/store';
 
 // Control the runs the view renders; the real store provides the project id.
@@ -20,7 +20,7 @@ jest.mock('@tanstack/react-query', () => {
     useQueryClient: () => ({ invalidateQueries: jest.fn() }),
   };
 });
-jest.mock('../api/branching', () => ({
+jest.mock('../api/runs', () => ({
   fetchRuns: jest.fn(),
   fetchRunLog: jest.fn(),
   cancelRun: jest.fn(),
