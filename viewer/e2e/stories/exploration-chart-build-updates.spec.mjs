@@ -163,7 +163,43 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
 
     // 3. The bound pill must actually name the computed column — a preview that
     //    kept rendering the PREVIOUS x would also satisfy "a chart is visible".
-    await expect(page.getByTestId('droppable-property-x')).toContainText('less_than_4');
+    const xSlot = page.getByTestId('droppable-property-x');
+    await expect(xSlot).toContainText('less_than_4');
+
+    // 3b. DIMENSION creation is the non-aggregate counterpart to "Save as
+    //     metric" — but PillMenu.jsx has NO "Save as dimension…" durable-
+    //     promote action at all (only "Custom aggregation…", "Save as
+    //     metric…" and "Remove" live below the preset list; grep confirms no
+    //     onSaveAsDimension prop exists anywhere). save-as-metric.spec.mjs's
+    //     own last test ("'Save as metric…' stays disabled for a dimension
+    //     (non-aggregate) pill") uses the SAME preset — `pill-menu-preset-
+    //     dimension` — to produce its disabled-pill fixture; that preset IS
+    //     the real, only user-facing "make this a dimension" affordance in
+    //     this build surface (pillGrammar.js: it re-serializes the slot back
+    //     to a bare `?{${ref(model).column}}`, no aggregate wrapper).
+    //     A freshly-dragged column already parses as `kind: 'dimension'` by
+    //     default, so exercising the toggle as an observable action (not
+    //     merely the drop's default) means first pushing x to an aggregate,
+    //     then explicitly applying the Dimension preset back.
+    await xSlot.getByTestId('pill-menu-trigger').click();
+    await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 10000 });
+    // `less_than_4` is a string CASE column — SUM/AVG/MEDIAN are hidden by
+    // PillMenu's numeric-only gate (pillGrammar/PillMenu NUMERIC_ONLY_AGGS),
+    // but COUNT is offered for any column type.
+    await page.getByTestId('pill-menu-preset-count').click();
+    await expectLiveChart(page, 'after applying the COUNT preset to x');
+    await expect(xSlot).toContainText('COUNT');
+
+    await xSlot.getByTestId('pill-menu-trigger').click();
+    await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('pill-menu-preset-dimension').click();
+    await expectLiveChart(page, 'after applying the Dimension preset back to x');
+    // The pill reflects the bare dimension (column name, no aggregate label)...
+    await expect(xSlot).toContainText('less_than_4');
+    await expect(xSlot, 'no longer wrapped in the COUNT aggregate').not.toContainText('COUNT');
+    // ...and never raw ref syntax (D8) — the same contract
+    // save-as-metric.spec.mjs holds the metric-ref pill to.
+    await expect(xSlot, 'never raw ref syntax (D8)').not.toContainText('?{');
 
     // 4. A layout property edit must not blank the chart.
     await page.getByRole('button', { name: /add propert/i }).first().click();
@@ -234,6 +270,15 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
       page.getByTestId('droppable-property-x'),
       'x binding survives the type switch'
     ).toContainText('less_than_4');
+    // Not just the column name — the DIMENSION conversion itself (kind:
+    // 'dimension', no aggregate wrapper) must survive too. A pill that had
+    // silently reverted to (or never actually left) the COUNT aggregate would
+    // still satisfy the plain 'less_than_4' check above, since an aggregate
+    // pill's label also names its column (`COUNT · model ▸ less_than_4`).
+    await expect(
+      page.getByTestId('droppable-property-x'),
+      'the dimension conversion (not merely the column name) survives the type switch too'
+    ).not.toContainText('COUNT');
     await expect(
       page.getByTestId('droppable-property-y'),
       'the metric binding survives the type switch too'
