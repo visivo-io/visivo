@@ -161,11 +161,16 @@ export function useLineageDag() {
     (inputs || []).forEach(i => { objectTypeByName[i.name] = 'input'; });
 
     /**
-     * Add a node to the DAG
+     * Add a node to the DAG.
+     *
+     * `nodeKey` (defaults to `name`) is the identity used to build the node id
+     * and to match edges. Model-scoped metrics/dimensions pass a qualified
+     * `<model>.<name>` key so two that share a bare name stay distinct (#6);
+     * `data.name` still carries the bare alias for display.
      */
-    const addNode = (name, type, nodeType, data) => {
+    const addNode = (name, type, nodeType, data, nodeKey = name) => {
       nodes.push({
-        id: getNodeId(type, name),
+        id: getNodeId(type, nodeKey),
         type: nodeType,
         data: {
           name,
@@ -175,6 +180,13 @@ export function useLineageDag() {
         position: { x: 0, y: 0 }, // Will be set by layout
       });
     };
+
+    /**
+     * Lineage identity of a metric/dimension. A model-scoped one (carries a
+     * `parentModel`) is keyed `<model>.<name>` so a bare name reused across
+     * models does not collapse two nodes into one (#6).
+     */
+    const scopedKey = obj => (obj.parentModel ? `${obj.parentModel}.${obj.name}` : obj.name);
 
     /**
      * Add an edge to the DAG
@@ -233,34 +245,50 @@ export function useLineageDag() {
 
     // Build dimension nodes and edges to parent models
     (dimensions || []).forEach(dimension => {
-      addNode(dimension.name, 'dimension', 'dimensionNode', {
-        sql: dimension.config?.sql,
-        status: dimension.status,
-        dimension: dimension,
-      });
+      const dimKey = scopedKey(dimension);
+      addNode(
+        dimension.name,
+        'dimension',
+        'dimensionNode',
+        {
+          sql: dimension.config?.sql,
+          status: dimension.status,
+          parentModel: dimension.parentModel,
+          dimension: dimension,
+        },
+        dimKey
+      );
 
       const childNames = [...new Set(dimension.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
-          addEdge(childName, childType, dimension.name, 'dimension');
+          addEdge(childName, childType, dimKey, 'dimension');
         }
       });
     });
 
     // Build metric nodes and edges to parent models
     (metrics || []).forEach(metric => {
-      addNode(metric.name, 'metric', 'metricNode', {
-        sql: metric.config?.sql,
-        status: metric.status,
-        metric: metric,
-      });
+      const metricKey = scopedKey(metric);
+      addNode(
+        metric.name,
+        'metric',
+        'metricNode',
+        {
+          sql: metric.config?.sql,
+          status: metric.status,
+          parentModel: metric.parentModel,
+          metric: metric,
+        },
+        metricKey
+      );
 
       const childNames = [...new Set(metric.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
-          addEdge(childName, childType, metric.name, 'metric');
+          addEdge(childName, childType, metricKey, 'metric');
         }
       });
     });

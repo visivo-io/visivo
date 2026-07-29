@@ -261,6 +261,51 @@ describe('useLineageDag full project graph', () => {
     );
   });
 
+  it('keeps two model-scoped metrics that share a name as distinct nodes (bug #6)', () => {
+    // Two models each define a metric `avg_total`. The backend scopes each with
+    // a `parentModel`, so the lineage must key them by `<model>.<name>` — a
+    // bare `metric-avg_total` id would collapse them into one node and drop one
+    // metric (and its edge) from the graph.
+    mockStoreState({
+      sources: [{ name: 'db' }],
+      models: [
+        { name: 'model_a', child_item_names: ['db'] },
+        { name: 'model_b', child_item_names: ['db'] },
+      ],
+      metrics: [
+        {
+          name: 'avg_total',
+          parentModel: 'model_a',
+          config: { sql: 'SUM(amount)' },
+          child_item_names: ['model_a'],
+        },
+        {
+          name: 'avg_total',
+          parentModel: 'model_b',
+          config: { sql: 'AVG(weight)' },
+          child_item_names: ['model_b'],
+        },
+      ],
+    });
+    const { result } = renderHook(() => useLineageDag());
+    const { nodes, edges } = result.current;
+
+    // Both metrics survive as distinct, qualified nodes.
+    const nodeA = findNode(nodes, 'metric-model_a.avg_total');
+    const nodeB = findNode(nodes, 'metric-model_b.avg_total');
+    expect(nodeA).toBeDefined();
+    expect(nodeB).toBeDefined();
+    // Display name stays the bare alias; the parent model is available for the pill.
+    expect(nodeA.data.name).toBe('avg_total');
+    expect(nodeA.data.parentModel).toBe('model_a');
+    expect(nodeA.data.sql).toBe('SUM(amount)');
+    expect(nodeB.data.sql).toBe('AVG(weight)');
+    // Each metric edges to its OWN model — no cross-wiring or collapse.
+    expect(findEdge(edges, 'model-model_a', 'metric-model_a.avg_total')).toBeDefined();
+    expect(findEdge(edges, 'model-model_b', 'metric-model_b.avg_total')).toBeDefined();
+    expect(findEdge(edges, 'model-model_a', 'metric-model_b.avg_total')).toBeUndefined();
+  });
+
   it('returns an empty DAG when the store is empty', () => {
     mockStoreState({});
     const { result } = renderHook(() => useLineageDag());
