@@ -231,6 +231,126 @@ def test_Project_validate_insight_names():
     assert error["type"] == "value_error"
 
 
+def _semantic_layer_project_data(models):
+    """Minimal project data with a shared source for semantic-layer name tests."""
+    source = SourceFactory(name="ss")
+    return {
+        "name": "development",
+        "sources": [source],
+        "models": models,
+        "charts": [],
+        "dashboards": [],
+    }
+
+
+def test_Project_allows_same_metric_name_on_two_models():
+    """Smoke-test bug #6: a model-scoped metric name is a MODEL-LOCAL alias, so
+    two different models may each define `avg_total` (identity is <model>.<name>)."""
+    from visivo.models.models.sql_model import SqlModel
+    from visivo.models.metric import Metric
+
+    model_a = SqlModel(
+        name="model_a",
+        sql="SELECT * FROM a",
+        source="ref(ss)",
+        metrics=[Metric(name="avg_total", expression="AVG(total)")],
+    )
+    model_b = SqlModel(
+        name="model_b",
+        sql="SELECT * FROM b",
+        source="ref(ss)",
+        metrics=[Metric(name="avg_total", expression="AVG(total)")],
+    )
+    project = Project(**_semantic_layer_project_data([model_a, model_b]))
+    assert project.models[0].metrics[0].name == "avg_total"
+    assert project.models[1].metrics[0].name == "avg_total"
+
+
+def test_Project_allows_same_dimension_name_on_two_models():
+    """Smoke-test bug #6: same for dimensions (`fed` on two models)."""
+    from visivo.models.models.sql_model import SqlModel
+    from visivo.models.dimension import Dimension
+
+    model_a = SqlModel(
+        name="model_a",
+        sql="SELECT * FROM a",
+        source="ref(ss)",
+        dimensions=[Dimension(name="fed", expression="UPPER(federation)")],
+    )
+    model_b = SqlModel(
+        name="model_b",
+        sql="SELECT * FROM b",
+        source="ref(ss)",
+        dimensions=[Dimension(name="fed", expression="LOWER(federation)")],
+    )
+    project = Project(**_semantic_layer_project_data([model_a, model_b]))
+    assert len(project.models) == 2
+
+
+def test_Project_rejects_duplicate_metric_name_within_one_model():
+    """Two metrics with the same name on the SAME model is still invalid —
+    within-model uniqueness must hold (the alias would be ambiguous)."""
+    from visivo.models.models.sql_model import SqlModel
+    from visivo.models.metric import Metric
+
+    model = SqlModel(
+        name="model_a",
+        sql="SELECT * FROM a",
+        source="ref(ss)",
+        metrics=[
+            Metric(name="avg_total", expression="AVG(total)"),
+            Metric(name="avg_total", expression="AVG(other)"),
+        ],
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**_semantic_layer_project_data([model]))
+    assert "not unique in model 'model_a'" in exc_info.value.errors()[0]["msg"]
+
+
+def test_Project_rejects_duplicate_project_level_metric_name():
+    """Project-level (cross-model) metrics stay GLOBALLY unique."""
+    from visivo.models.metric import Metric
+
+    data = {
+        "name": "development",
+        "sources": [SourceFactory(name="ss")],
+        "metrics": [
+            Metric(name="revenue", expression="1"),
+            Metric(name="revenue", expression="2"),
+        ],
+        "charts": [],
+        "dashboards": [],
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**data)
+    assert "not unique in the project" in exc_info.value.errors()[0]["msg"]
+
+
+def test_Project_rejects_model_scoped_alias_shadowing_a_global_name():
+    """A model-scoped alias must not shadow a GLOBAL name (a project-level
+    metric here) — otherwise a bare `${ref(name)}` / model lookup is ambiguous."""
+    from visivo.models.models.sql_model import SqlModel
+    from visivo.models.metric import Metric
+
+    model = SqlModel(
+        name="model_a",
+        sql="SELECT * FROM a",
+        source="ref(ss)",
+        metrics=[Metric(name="revenue", expression="SUM(amount)")],
+    )
+    data = {
+        "name": "development",
+        "sources": [SourceFactory(name="ss")],
+        "models": [model],
+        "metrics": [Metric(name="revenue", expression="1")],
+        "charts": [],
+        "dashboards": [],
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**data)
+    assert "revenue" in exc_info.value.errors()[0]["msg"]
+
+
 def test_Project_validate_default_source_exists():
     source = SourceFactory()
     data = {

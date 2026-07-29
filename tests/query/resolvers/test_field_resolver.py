@@ -238,6 +238,84 @@ class TestFieldResolverResolveMetrics:
         assert "SUM" in result.upper() or "sum" in result
         assert "amount" in result
 
+    def test_resolve_same_metric_name_on_two_models_binds_to_stated_model(self, tmpdir):
+        """Smoke-test bug #6: two models each define a metric `avg_total` with a
+        DIFFERENT expression. `${ref(modelA).avg_total}` must bind to modelA's
+        expression and `${ref(modelB).avg_total}` to modelB's — a global name
+        lookup would be ambiguous (or bind the wrong one)."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model_a = SqlModel(
+            name="model_a",
+            sql="SELECT * FROM a",
+            source="ref(test_source)",
+            metrics=[Metric(name="avg_total", expression="SUM(amount)")],
+        )
+        model_b = SqlModel(
+            name="model_b",
+            sql="SELECT * FROM b",
+            source="ref(test_source)",
+            metrics=[Metric(name="avg_total", expression="AVG(weight)")],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        schema_base = tmpdir.mkdir("schemas")
+        for m, cols in [
+            (model_a, {"id": "INTEGER", "amount": "DECIMAL"}),
+            (model_b, {"id": "INTEGER", "weight": "DECIMAL"}),
+        ]:
+            d = schema_base.mkdir(m.name)
+            d.join("schema.json").write(json.dumps({m.name_hash(): cols}))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        res_a = resolver.resolve("${ref(model_a).avg_total}")
+        res_b = resolver.resolve("${ref(model_b).avg_total}")
+
+        assert "amount" in res_a and "SUM" in res_a.upper()
+        assert "weight" not in res_a
+        assert "weight" in res_b and "AVG" in res_b.upper()
+        assert "amount" not in res_b
+
+    def test_bare_ref_to_duplicated_model_scoped_name_gives_qualify_hint(self, tmpdir):
+        """Smoke-test bug #6 UX: once two models can share `avg_total`, a BARE
+        `${ref(avg_total)}` is genuinely ambiguous. Instead of the opaque
+        "Multiple nodes found" internal error, tell the user to qualify it as
+        `${ref(<model>).avg_total}`."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model_a = SqlModel(
+            name="model_a",
+            sql="SELECT * FROM a",
+            source="ref(test_source)",
+            metrics=[Metric(name="avg_total", expression="SUM(amount)")],
+        )
+        model_b = SqlModel(
+            name="model_b",
+            sql="SELECT * FROM b",
+            source="ref(test_source)",
+            metrics=[Metric(name="avg_total", expression="AVG(weight)")],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            dashboards=[],
+        )
+        dag = project.dag()
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        with pytest.raises(Exception) as exc_info:
+            resolver.resolve("${ref(avg_total)}")
+        msg = str(exc_info.value)
+        assert "avg_total" in msg
+        assert "ambiguous" in msg.lower()
+        assert "${ref(" in msg  # points at the qualified form
+
 
 class TestFieldResolverComplexExpressions:
     """Test resolution of complex expressions with multiple refs."""

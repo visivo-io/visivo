@@ -467,18 +467,44 @@ class Project(NamedModel, ParentModel):
         raise ValueError(f"Project child class '{project_child_class}' not found in project")
 
     @classmethod
-    def traverse_names(cls, names, object):
+    def traverse_names(cls, names, object, model_scoped=None):
+        """Collect object names, enforcing uniqueness in the right scope.
+
+        - GLOBAL names (models, insights, charts, project-level metrics/
+          dimensions, …) go into ``names`` and must be globally unique — as
+          before.
+        - MODEL-SCOPED metric/dimension names (a metric/dimension with
+          ``_parent_name`` set, i.e. defined under a model) are MODEL-LOCAL
+          aliases: their identity is ``<model>.<name>`` so two different models
+          may each define e.g. ``avg_total`` (smoke-test bug #6). They are
+          tracked in ``model_scoped`` (``{model_name: set(aliases)}``) and must
+          be unique only WITHIN their model. The cross-scope check (an alias
+          must not shadow a global name) runs once in ``NamesValidator`` after
+          the full traversal, where the complete global set is known.
+        """
+        if model_scoped is None:
+            model_scoped = {}
         if isinstance(object, ParentModel):
             for child_item in object.child_items():
                 if isinstance(child_item, BaseModel) and hasattr(child_item, "name"):
                     name = NamedModel.get_name(obj=child_item)
-                    if name in names:
-                        raise ValueError(
-                            f"{child_item.__class__.__name__} name '{name}' is not unique in the project"
-                        )
-                    if name:
+                    parent_name = getattr(child_item, "_parent_name", None)
+                    if parent_name and name:
+                        aliases = model_scoped.setdefault(parent_name, set())
+                        if name in aliases:
+                            raise ValueError(
+                                f"{child_item.__class__.__name__} name '{name}' "
+                                f"is not unique in model '{parent_name}'"
+                            )
+                        aliases.add(name)
+                    elif name:
+                        if name in names:
+                            raise ValueError(
+                                f"{child_item.__class__.__name__} name '{name}' is not unique in the project"
+                            )
                         names.append(name)
-                Project.traverse_names(names, child_item)
+                Project.traverse_names(names, child_item, model_scoped)
+        return names, model_scoped
 
     def find_source(self, source_name: str):
         """
