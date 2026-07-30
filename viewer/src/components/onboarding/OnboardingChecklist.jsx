@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 import './onboarding.css';
 import { hasCompletedOnboarding, readOnboardingState, writeOnboardingState } from './onboardingState';
@@ -34,7 +34,7 @@ function readPersistedPosition() {
 }
 
 export default function OnboardingChecklist() {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const createExploration = useStore(s => s.createExploration);
   // P6-D5 (e2e-gap-review.md "Phase 6 delta pass") — `routeToActiveExploration`
   // items (create_insight, define_metric) route into whatever exploration

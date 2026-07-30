@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 import './onboarding.css';
 import { hasCompletedOnboarding, readOnboardingState, writeOnboardingState } from './onboardingState';
@@ -18,7 +19,7 @@ import useChecklistProgress from './useChecklistProgress';
  */
 export default function OnboardingCoach() {
   const location = useLocation();
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const persistedRole = (readOnboardingState() || {}).role || null;
   const { currentItem } = useChecklistProgress(persistedRole);
   const [rect, setRect] = useState(null);

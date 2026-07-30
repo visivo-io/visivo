@@ -6,6 +6,7 @@ import OnboardingChecklist from './OnboardingChecklist';
 import useStore from '../../stores/store';
 import { writeOnboardingState, clearOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
+import { setViewerBase } from '../../contexts/viewerBase';
 
 jest.mock('../../stores/store');
 
@@ -25,6 +26,10 @@ beforeEach(() => {
   mockNavigate.mockReset();
   setStore({ project_json: { dashboards: [], sources: [] } });
 });
+
+// The viewer mount base is module state (contexts/viewerBase); reset it so a
+// base set by one test can't leak into the next.
+afterEach(() => setViewerBase(''));
 
 const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true };
 
@@ -60,6 +65,19 @@ describe('OnboardingChecklist', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration');
     const events = getEventBuffer().map(e => e.event);
     expect(events).toContain('onboarding_checklist_item_clicked');
+  });
+
+  test('navigation is rebased under a non-root viewer mount (#545 useViewerNavigate)', () => {
+    // When the host mounts the viewer under a prefix (the cloud app), the
+    // checklist's root-absolute navigation must land inside that base rather
+    // than escaping to the router root.
+    setViewerBase('/acme/production/analytics');
+    writeOnboardingState({ completed_at: '2026-01-01' });
+    renderChecklist();
+    fireEvent.click(screen.getByTestId('onb-checklist-build_model'));
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/acme/production/analytics/workspace/exploration'
+    );
   });
 
   // D8 (e2e-gap-review.md delta pass): `build_model`'s first coach-mark
