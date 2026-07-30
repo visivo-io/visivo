@@ -1,24 +1,17 @@
+import { pollJob } from './jobs';
 import { apiFetch } from './utils';
 
-const JOB_POLL_INTERVAL_MS = 300;
-const JOB_POLL_TIMEOUT_MS = 120000;
-
 /**
- * Run a source op to completion: start it, then poll its job to a terminal
- * state.
+ * Run an on-demand job to completion: start it, then poll to a terminal state.
  *
- * Source ops talk to a warehouse, so they take as long as the warehouse takes.
- * Both servers therefore answer `202 {job_id}` and expose a job to poll —
- * cloud because it must (the ops run on a warm runner pool whose pods deny all
- * ingress, so there is no request it could hold open), and the local server to
- * match. One contract means one code path here, and it means `visivo serve`
- * exercises the same path production does instead of leaving it to be tested
- * for the first time in cloud.
+ * Nothing here is specific to sources — any endpoint that answers
+ * `202 {job_id}` and exposes its job at `<basePath><job_id>/` can use it, which
+ * is the shape model-query-jobs already has.
  *
- * `basePath` owns the job: `<basePath><job_id>/`, mirroring model-query-jobs.
- * Returns `{ok, result, error}`.
+ * `response` is the already-issued start request, so callers keep control of
+ * the method and body. Returns `{ok, result, error}`.
  */
-const runSourceOpJob = async (basePath, response) => {
+const runOnDemandJob = async (basePath, response) => {
   if (response.status !== 202) {
     // A 4xx/5xx may carry a JSON reason, plain text, or nothing at all.
     let body = {};
@@ -33,25 +26,16 @@ const runSourceOpJob = async (basePath, response) => {
   const { job_id: jobId } = await response.json();
   if (!jobId) return { ok: false, error: 'Server accepted the job but named no id' };
 
-  const deadline = Date.now() + JOB_POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    await new Promise(resolve => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
+  return pollJob(async () => {
     const poll = await apiFetch(`${basePath}${jobId}/`);
-    if (poll.status !== 200) {
-      return { ok: false, error: 'Lost track of the job' };
-    }
-    const job = await poll.json();
-    if (job.status === 'completed') return { ok: true, result: job.result };
-    if (job.status === 'failed' || job.status === 'cancelled') {
-      return { ok: false, error: job.error || `Job ${job.status}` };
-    }
-  }
-  return { ok: false, error: 'Timed out waiting for the job' };
+    if (poll.status !== 200) throw new Error('Lost track of the job');
+    return poll.json();
+  });
 };
 
 export const fetchSourceMetadata = async () => {
   const path = '/api/project/sources_metadata/';
-  const job = await runSourceOpJob(path, await apiFetch(path));
+  const job = await runOnDemandJob(path, await apiFetch(path));
   return job.ok ? job.result : null;
 };
 
@@ -114,7 +98,7 @@ export const testSourceConnectionFromConfig = async sourceConfig => {
     },
     body: JSON.stringify(sourceConfig),
   });
-  const job = await runSourceOpJob(path, response);
+  const job = await runOnDemandJob(path, response);
   // The form renders {status, error}; a rejected request and a failed
   // connection look the same to it, which is right — both mean "didn't
   // connect", and the error text says which.
