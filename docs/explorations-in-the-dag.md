@@ -1,6 +1,6 @@
 # Explorations in the DAG — design spike
 
-**Status:** open questions, no implementation. Written after Explore 2.0 (#527)
+**Status:** open questions, no implementation. Tracked as VIS-1116. Written after Explore 2.0 (#527)
 merged, from the still-open review thread on `viewer/src/api/insightExecuteDraft.js`.
 
 ## Why
@@ -52,10 +52,25 @@ someone decided the opposite, and they have to be rewritten deliberately.
 The DAG run produces the durable assets. **The in-browser DuckDB-WASM path
 stays** for typing-speed feedback.
 
-Two execution paths coexist on purpose. An exploration is an interactive
-surface; routing every keystroke through a run — in cloud, a pool claim plus a
-poll — would trade a live preview for a spinner. The run is what makes results
-*durable and shareable*, not what makes them *appear*.
+Two execution paths coexist on purpose, and the numbers force it rather than
+merely favouring it. VIS-1115 measured a scoped run on dev:
+
+```
+runner.timing: visivo run 22.69s
+  Compile completed in 6.57s   imports: 0.03s, parse: 6.55s
+  Run finished in 0.87s
+runner.timing: total in-container 24.22s
+```
+
+**24.22 seconds to do 0.87 seconds of data work**, with cold start already at
+zero — the warm pool removed that. Roughly 4.1s is fixed CLI boot, 6.55s is
+parse, and ~10.3s is still unattributed. Until that overhead is understood and
+cut, a run cannot be in the loop of someone editing SQL. The run is what makes
+results *durable and shareable*, not what makes them *appear*.
+
+This also means the "collapse to one path" option stays open but is gated on
+VIS-1115: if per-run overhead came down far enough, revisiting is reasonable.
+It should be a measurement, not a preference.
 
 ## Open questions
 
@@ -130,9 +145,9 @@ data-relevant is question 1 wearing a different hat.
    `run_sql_model_job`; exploration entry in the `PROJECT_CHILDREN` walk;
    rewrite the two guard tests to assert the new intent.
 4. Cloud: `Exploration` + `RESOURCE_TYPES` + `data_hash` (VIS-1077).
-5. Keep the DuckDB-WASM preview throughout. Only revisit it if measurement shows
-   the run path is fast enough to be the sole one — and that measurement should
-   include cloud, where a pool claim and poll dominate.
+5. Keep the DuckDB-WASM preview throughout. Only revisit it once VIS-1115 has
+   cut per-run overhead enough that the run path could plausibly be the sole
+   one — and re-measure in cloud, where a pool claim and poll add to it.
 
 ## What is NOT in scope
 
