@@ -1198,7 +1198,6 @@ const createExplorerSlice = (set, get) => ({
         [insightName]: {
           ...insight,
           props: { ...insight.props, [path]: value },
-          typePropsCache: { ...(insight.typePropsCache || {}), [path]: value },
         },
       },
     });

@@ -1151,6 +1151,19 @@ describe('explorerStore', () => {
       expect(props.x).toBe('col_a');
       expect(props.y).toBe('col_b');
     });
+
+    it('does not pollute typePropsCache with prop-path keys', () => {
+      // typePropsCache is keyed by chart-type name (+ `_shared`); only
+      // setInsightType/restorePropsFromCache read it. Writing a prop-path key
+      // here was dead state (nothing reads typePropsCache[propPath]) that grew
+      // unbounded and risked colliding with a type name.
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'col_a');
+      useStore.getState().setInsightProp('ins', 'marker.color', 'red');
+
+      const cache = useStore.getState().explorerInsightStates.ins.typePropsCache;
+      expect(cache).toEqual({});
+    });
   });
 
   describe('removeInsightProp', () => {
