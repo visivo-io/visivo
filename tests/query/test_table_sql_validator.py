@@ -2,7 +2,7 @@
 
 import pytest
 
-from visivo.query.table_sql_validator import validate_table_sql
+from visivo.query.table_sql_validator import validate_table_sql, validate_project_table_sql
 
 
 def test_plain_data_table_is_skipped():
@@ -73,3 +73,52 @@ def test_structurally_invalid_pivot_value_is_caught():
         "t", ["${ref(i).region}"], ["${ref(i).product}"], ["${ref(i).revenue} +"]
     )
     assert err is not None
+
+
+# --- Project-level compile check (bug #7 relocated to compile phase) ---
+
+
+def _project_with_tables(tables):
+    from tests.factories.model_factories import ProjectFactory, SqlModelFactory, SourceFactory
+
+    # The table columns reference ${ref(i)...}, so model `i` must exist or the
+    # Project rejects the dangling ref before we even reach the SQL check.
+    source = SourceFactory(name="s")
+    model = SqlModelFactory(name="i", source="ref(s)")
+    return ProjectFactory(sources=[source], models=[model], tables=tables, dashboards=[])
+
+
+def test_validate_project_table_sql_all_valid_returns_none():
+    from visivo.models.table import Table
+
+    project = _project_with_tables(
+        [Table(name="ok", columns=["${ref(i).sex} as Sex", "${ref(i).total}"])]
+    )
+    assert validate_project_table_sql(project) is None
+
+
+def test_validate_project_table_sql_names_every_broken_table_with_fix_guidance():
+    from visivo.models.table import Table
+
+    project = _project_with_tables(
+        [
+            Table(name="ok", columns=["${ref(i).sex} as Sex"]),
+            Table(name="broken_a", columns=['${ref(i).sex} as ""Sex""']),
+            # A pivot whose value expression is not a valid aggregate breaks the
+            # USING clause (the pivot path does real SQLGlot validation).
+            Table(
+                name="broken_b",
+                columns=["${ref(i).region}"],
+                rows=["${ref(i).product}"],
+                values=["sum(${ref(i).revenue}) +"],
+            ),
+        ]
+    )
+    error = validate_project_table_sql(project)
+    assert error is not None
+    # Names both broken tables, not the valid one.
+    assert "broken_a" in error and "broken_b" in error
+    assert "'ok'" not in error
+    assert "2 tables" in error
+    # Carries an actionable resolution path.
+    assert "To fix" in error

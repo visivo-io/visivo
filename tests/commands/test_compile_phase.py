@@ -41,6 +41,34 @@ def test_compile_model_on_seeded_source():
     assert "project.json" not in os.listdir(f"{output_dir}")
 
 
+def test_compile_phase_rejects_table_with_invalid_generated_sql():
+    """bug #7 (relocated): a table whose columns compile to invalid SQL now fails
+    at COMPILE with one actionable message — not at model construction. The
+    model loads (so the server stays up); the CLI fails compile/run/test here."""
+    import pytest
+    from visivo.models.table import Table
+    from visivo.models.models.sql_model import SqlModel
+
+    output_dir = temp_folder()
+    source = DuckdbSourceFactory(name="s", database=f"{output_dir}/s.duckdb")
+    model = SqlModel(name="i", source="ref(s)", sql="select 1 as sex")
+    project = ProjectFactory(
+        sources=[source],
+        models=[model],
+        tables=[Table(name="broken_pivot", columns=['${ref(i).sex} as ""Sex""'])],
+        dashboards=[],
+    )
+
+    with pytest.raises(ValueError, match="compile to invalid SQL"):
+        compile_phase(
+            default_source=None,
+            working_dir=output_dir,
+            output_dir=output_dir,
+            no_deprecation_warnings=True,
+            project=project,
+        )
+
+
 def test_dashboard_new_fields():
     """Test the new dashboard fields (level, tags, description)"""
     project = ProjectFactory()

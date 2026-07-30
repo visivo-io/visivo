@@ -15,12 +15,15 @@ SQLGlot.
 
 COUPLING INVARIANT (bug #7 review, H1): SQLGlot is a *re-implementation* of
 DuckDB's grammar (pinned ``sqlglot>=27.0.0,<28.0.0``) and its parser is stricter
-than DuckDB's binder in places. Because a failure here now HARD-BLOCKS project
-load, a valid table would become unloadable if a DuckDB(-WASM) syntax/overload
-that the pinned SQLGlot cannot *parse* ever appears. The regression matrix in
+than DuckDB's binder in places. This check runs at COMPILE time (not model
+construction), so a table SQLGlot cannot parse does not block the project from
+LOADING — the server keeps serving and surfaces the error via ``error.json`` in
+the editor, and the CLI fails ``run``/``compile``/``test`` with an actionable
+message rather than a raw Pydantic validation crash. The regression matrix in
 ``tests/query/test_table_sql_validator.py`` asserts the common DuckDB
 aggregate/pivot shapes stay accepted so a SQLGlot bump that regresses them is
-caught, not shipped.
+caught, not shipped; if a valid DuckDB expression is nonetheless rejected, the
+compile error tells the user how to work around it.
 """
 
 import re
@@ -110,3 +113,41 @@ def validate_table_sql(
             f"config: {first_line}"
         )
     return None
+
+
+def validate_project_table_sql(project) -> Optional[str]:
+    """Compile-phase check: return a single actionable error naming every Table
+    in ``project`` whose column-select / pivot config compiles to invalid SQL,
+    or ``None`` if all tables are fine.
+
+    Run at COMPILE (not on model construction) so a project with a broken table
+    still LOADS — the server stays up and shows this via ``error.json``, and the
+    user gets one message listing every broken table plus how to fix it, instead
+    of a raw Pydantic validation crash on the first one.
+    """
+    from visivo.models.table import Table
+    from visivo.models.dag import all_descendants_of_type
+
+    dag = project.dag()
+    errors = []
+    for table in all_descendants_of_type(type=Table, dag=dag):
+        error = validate_table_sql(
+            table.name or "(unnamed)", table.columns, table.rows, table.values
+        )
+        if error:
+            errors.append(error)
+
+    if not errors:
+        return None
+
+    bullets = "\n".join(f"  - {e}" for e in errors)
+    plural = "s" if len(errors) > 1 else ""
+    return (
+        f"{len(errors)} table{plural} compile to invalid SQL from their "
+        f"columns/rows/values config:\n{bullets}\n\n"
+        "To fix: each column is `<expression> as <alias>` (e.g. "
+        "`${ref(model).amount} as Amount`); a pivot's `values` must be aggregate "
+        "expressions (e.g. `sum(${ref(model).amount})`). The generated SQL is "
+        "checked with SQLGlot (DuckDB dialect) — if a valid DuckDB expression is "
+        "being rejected, simplify the expression or use a `data:` table."
+    )

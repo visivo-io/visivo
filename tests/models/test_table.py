@@ -201,13 +201,14 @@ def test_Table_child_items_with_pivot():
     assert "ref(insight)" in ref_items
 
 
-def test_Table_with_invalid_generated_sql_is_rejected_at_load():
-    """Smoke-test bug #7: a column-select table whose config compiles to invalid
-    SQL (here the bug-#4 double-quoted alias shape) is now rejected at load, so
-    `visivo run`/`compile`/`test` catch it instead of exiting 0 and failing only
-    in the browser."""
-    with pytest.raises(ValidationError, match="invalid SQL"):
-        Table(name="broken", columns=['${ref(i).sex} as ""Sex""'])
+def test_Table_with_invalid_generated_sql_still_constructs():
+    """Smoke-test bug #7 (relocated): a column-select table whose config compiles
+    to invalid SQL no longer blocks project LOAD — the generated-SQL check moved
+    from the Table model validator to the COMPILE phase (see
+    tests/commands/test_compile_table_sql.py), so the model itself constructs and
+    the server can still load a project with a broken table."""
+    table = Table(name="broken", columns=['${ref(i).sex} as ""Sex""'])
+    assert table.name == "broken"
 
 
 def test_Table_with_valid_columns_still_loads():

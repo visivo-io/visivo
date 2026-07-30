@@ -154,8 +154,7 @@ class Table(NamedModel, ParentModel):
         has_data = data.get("data") is not None
         # Truthy, not `is not None`: an EMPTY list means "not specified". Treating
         # `columns: []` as present let a `columns: [], rows: [...], values: [...]`
-        # config slip past both the structural checks below AND the generated-SQL
-        # validation (which skips when columns is empty), producing an invalid
+        # config slip past the structural checks below, producing an invalid
         # empty-`ON` pivot that only failed in the browser (bug #7 review, M2).
         has_columns = bool(data.get("columns"))
         has_rows = bool(data.get("rows"))
@@ -174,17 +173,3 @@ class Table(NamedModel, ParentModel):
             raise ValueError("'columns' must be specified when using 'rows' and 'values'.")
 
         return data
-
-    @model_validator(mode="after")
-    def validate_generated_sql(self):
-        """Catch a column-select / pivot config that compiles to INVALID SQL at
-        load time (smoke-test bug #7). The viewer builds this SQL client-side in
-        DuckDB-WASM, so otherwise `visivo run`/`compile`/`test` exit 0 and the
-        failure only appears in the browser. Validated with SQLGlot (no engine
-        needed); a plain `data:` table generates no SQL and is skipped."""
-        from visivo.query.table_sql_validator import validate_table_sql
-
-        error = validate_table_sql(self.name or "(unnamed)", self.columns, self.rows, self.values)
-        if error:
-            raise ValueError(error)
-        return self
