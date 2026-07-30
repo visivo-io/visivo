@@ -141,10 +141,14 @@ def validate_project_table_sql(project) -> Optional[str]:
         return None
 
     bullets = "\n".join(f"  - {e}" for e in errors)
-    plural = "s" if len(errors) > 1 else ""
+    if len(errors) == 1:
+        header = "1 table compiles to invalid SQL from its columns/rows/values config:"
+    else:
+        header = (
+            f"{len(errors)} tables compile to invalid SQL from their columns/rows/values config:"
+        )
     return (
-        f"{len(errors)} table{plural} compile to invalid SQL from their "
-        f"columns/rows/values config:\n{bullets}\n\n"
+        f"{header}\n{bullets}\n\n"
         "To fix: each column is `<expression> as <alias>` (e.g. "
         "`${ref(model).amount} as Amount`); a pivot's `values` must be aggregate "
         "expressions (e.g. `sum(${ref(model).amount})`). The generated SQL is "

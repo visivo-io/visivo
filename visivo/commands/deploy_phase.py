@@ -871,6 +871,16 @@ def deploy_phase(
     discover = Discover(working_dir=working_dir, home_dir=user_dir, output_dir=output_dir)
     parser = ParserFactory().build(project_file=discover.project_file, files=discover.files)
     project = parser.parse()
+
+    # deploy parses directly (no compile_phase), so validate table SQL here too —
+    # otherwise a table whose columns/pivot compile to invalid SQL (bug #7) would
+    # be pushed to the cloud and fail only in the browser.
+    from visivo.query.table_sql_validator import validate_project_table_sql
+
+    table_sql_error = validate_project_table_sql(project)
+    if table_sql_error:
+        raise click.ClickException(table_sql_error)
+
     serializer = Serializer(project=project)
     project_json = json.loads(serializer.dereference().model_dump_json(exclude_none=True))
     send_progress(f"Project Compiled in {time() - deploy_start_time:.2f} seconds", "success")

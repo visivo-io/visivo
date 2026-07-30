@@ -59,7 +59,7 @@ def test_compile_phase_rejects_table_with_invalid_generated_sql():
         dashboards=[],
     )
 
-    with pytest.raises(ValueError, match="compile to invalid SQL"):
+    with pytest.raises(ValueError, match="invalid SQL"):
         compile_phase(
             default_source=None,
             working_dir=output_dir,
