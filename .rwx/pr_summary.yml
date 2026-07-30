@@ -12,12 +12,12 @@ base:
 
 tasks:
   - key: code
-    call: git/clone 1.9.5
+    call: git/clone 2.0.8
     with:
       preserve-git-dir: true
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
-      github-access-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
+      github-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
       fetch-full-depth: true
 
   - key: versions
@@ -35,7 +35,7 @@ tasks:
       python-version: ${{ tasks.versions.values.python }}
 
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     with:
       node-version: ${{ tasks.versions.values.node }}
 
@@ -48,7 +48,7 @@ tasks:
     run: npm install --global yarn
 
   - key: github-cli
-    call: github/install-cli 1.0.10
+    call: github/install-cli 1.0.11
 
   - key: cli-deps
     use: [code, poetry]

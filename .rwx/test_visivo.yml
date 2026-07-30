@@ -15,11 +15,11 @@ base:
 
 tasks:
   - key: code
-    call: git/clone 1.9.5
+    call: git/clone 2.0.8
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
-      github-access-token: ${{ github.token }}
+      github-token: ${{ github.token }}
       fetch-full-depth: true
 
   - key: versions
@@ -37,7 +37,7 @@ tasks:
       python-version: ${{ tasks.versions.values.python }}
 
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     with:
       node-version: ${{ tasks.versions.values.node }}
 

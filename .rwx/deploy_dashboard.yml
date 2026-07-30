@@ -15,12 +15,12 @@ base:
 
 tasks:
   - key: code
-    call: git/clone 1.9.5
+    call: git/clone 2.0.8
     with:
       preserve-git-dir: true
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
-      github-access-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
+      github-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
 
   - key: python
     call: python/install 1.4.5
@@ -28,7 +28,7 @@ tasks:
       python-version: 3.14.6
 
   - key: github-cli
-    call: github/install-cli 1.0.10
+    call: github/install-cli 1.0.11
 
   - key: install-visivo
     if: ${{ init.deploy }}
@@ -48,7 +48,7 @@ tasks:
     run: |
       cd test-projects/integration
       visivo --version
-      visivo run 
+      visivo run
 
   - key: sanitize-stage-name
     run: |

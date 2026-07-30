@@ -84,7 +84,7 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ github.token }} #(1)!
+          github-token: ${{ github.token }} #(1)!
       
       - key: python
         call: mint/install-python 1.1.0
@@ -146,7 +146,7 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ github.token }} #(3)!
+          github-token: ${{ github.token }} #(3)!
       
       - key: python
         call: mint/install-python 1.1.0
@@ -358,7 +358,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ github.token }} #(1)!
+          github-token: ${{ github.token }} #(1)!
       
       - key: python
         call: mint/install-python 1.1.0
@@ -405,7 +405,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ github.token }} #(1)!
+          github-token: ${{ github.token }} #(1)!
       
       - key: python
         call: mint/install-python 1.1.0
