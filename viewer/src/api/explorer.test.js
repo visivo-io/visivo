@@ -21,17 +21,27 @@ describe('explorer API functions', () => {
     console.error.mockClear();
   });
 
+  // Source ops are asynchronous on BOTH servers: 202 {job_id}, then poll
+  // <path><job_id>/ to a terminal state. Cloud has no alternative (the ops run
+  // on a warm runner pool whose pods deny all ingress, so no request can be
+  // held open) and the local server matches it, so there is one code path here
+  // and `visivo serve` exercises the same one production does.
   describe('fetchSourceMetadata', () => {
-    it('should apiFetch source metadata successfully', async () => {
+    const accepted = jobId => ({ status: 202, json: async () => ({ job_id: jobId }) });
+    const polled = body => ({ status: 200, json: async () => body });
+
+    it('starts a job and polls it to the completed tree', async () => {
       const mockData = { sources: [{ name: 'test_source' }] };
-      apiFetch.mockResolvedValueOnce({
-        status: 200,
-        json: async () => mockData,
-      });
+      apiFetch
+        .mockResolvedValueOnce(accepted('job-1'))
+        .mockResolvedValueOnce(polled({ status: 'queued' }))
+        .mockResolvedValueOnce(polled({ status: 'running' }))
+        .mockResolvedValueOnce(polled({ status: 'completed', result: mockData }));
 
       const result = await fetchSourceMetadata();
 
-      expect(apiFetch).toHaveBeenCalledWith('/api/project/sources_metadata/');
+      expect(apiFetch).toHaveBeenNthCalledWith(1, '/api/project/sources_metadata/');
+      expect(apiFetch).toHaveBeenLastCalledWith('/api/project/sources_metadata/job-1/');
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
     });
@@ -44,6 +54,81 @@ describe('explorer API functions', () => {
       const result = await fetchSourceMetadata();
 
       expect(result).toBeNull();
+    });
+
+    it('returns null when the job itself fails', async () => {
+      apiFetch
+        .mockResolvedValueOnce(accepted('job-1'))
+        .mockResolvedValueOnce(polled({ status: 'failed', error: 'no driver' }));
+
+      expect(await fetchSourceMetadata()).toBeNull();
+    });
+  });
+
+  describe('testSourceConnectionFromConfig', () => {
+    const accepted = jobId => ({ status: 202, json: async () => ({ job_id: jobId }) });
+    const polled = body => ({ status: 200, json: async () => body });
+
+    it('polls through to the connection result', async () => {
+      apiFetch
+        .mockResolvedValueOnce(accepted('job-2'))
+        .mockResolvedValueOnce(
+          polled({ status: 'completed', result: { source: 'db', status: 'connected' } })
+        );
+
+      expect(await testSourceConnectionFromConfig({ name: 'db' })).toEqual({
+        source: 'db',
+        status: 'connected',
+      });
+      expect(apiFetch).toHaveBeenLastCalledWith('/api/sources/test-connection/job-2/');
+    });
+
+    it('reports a failed connection in the shape the form renders', async () => {
+      apiFetch
+        .mockResolvedValueOnce(accepted('job-2'))
+        .mockResolvedValueOnce(polled({ status: 'failed', error: 'auth failed' }));
+
+      expect(await testSourceConnectionFromConfig({ name: 'db' })).toEqual({
+        status: 'connection_failed',
+        error: 'auth failed',
+      });
+    });
+
+    it('reports a cancelled job rather than spinning on it', async () => {
+      // The cloud reaper cancels a job no worker ever claimed.
+      apiFetch
+        .mockResolvedValueOnce(accepted('job-3'))
+        .mockResolvedValueOnce(polled({ status: 'cancelled' }));
+
+      expect(await testSourceConnectionFromConfig({ name: 'db' })).toEqual({
+        status: 'connection_failed',
+        error: 'Job cancelled',
+      });
+    });
+
+    it('surfaces a rejected request without minting a job', async () => {
+      // A malformed config is refused inline; there is nothing to poll.
+      apiFetch.mockResolvedValueOnce({
+        status: 400,
+        json: async () => ({ error: 'Source configuration is required' }),
+      });
+
+      expect(await testSourceConnectionFromConfig({})).toEqual({
+        status: 'connection_failed',
+        error: 'Source configuration is required',
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports a poll that stops answering', async () => {
+      apiFetch
+        .mockResolvedValueOnce(accepted('job-4'))
+        .mockResolvedValueOnce({ status: 404, json: async () => ({}) });
+
+      expect(await testSourceConnectionFromConfig({ name: 'db' })).toEqual({
+        status: 'connection_failed',
+        error: 'Lost track of the job',
+      });
     });
   });
 
@@ -369,97 +454,6 @@ describe('explorer API functions', () => {
       await expect(fetchTables('test', 'db')).rejects.toThrow('Connection refused');
       await expect(testSourceConnection('test')).rejects.toThrow('Connection refused');
       await expect(fetchColumns('test', 'db', 'table')).rejects.toThrow('Connection refused');
-    });
-  });
-});
-
-// --- asynchronous (cloud) source ops --------------------------------------
-//
-// The local server does the work in-request and answers 200. Cloud runs it in a
-// warm runner pool — nothing can dial into one of those pods, so the work is
-// pulled and there is no request to hold open — and answers 202 {job_id} for
-// the client to poll. Both call sites must resolve to the same value, so the
-// components above them stay unaware of which server they're talking to.
-
-describe('async source ops (202 + poll)', () => {
-  const accepted = jobId => ({ status: 202, json: async () => ({ job_id: jobId }) });
-  const polled = body => ({ status: 200, json: async () => body });
-
-  beforeEach(() => {
-    apiFetch.mockClear();
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-  afterEach(() => jest.useRealTimers());
-
-  it('polls a 202 through to the completed result', async () => {
-    apiFetch
-      .mockResolvedValueOnce(accepted('job-1'))
-      .mockResolvedValueOnce(polled({ status: 'queued' }))
-      .mockResolvedValueOnce(polled({ status: 'running' }))
-      .mockResolvedValueOnce(polled({ status: 'completed', result: { sources: [] } }));
-
-    await expect(fetchSourceMetadata()).resolves.toEqual({ sources: [] });
-    expect(apiFetch).toHaveBeenLastCalledWith('/api/runner-jobs/job-1/');
-  });
-
-  it('leaves the synchronous path untouched', async () => {
-    // The local server never returns 202, so it must never poll.
-    apiFetch.mockResolvedValueOnce(polled({ sources: [{ name: 'db' }] }));
-    await expect(fetchSourceMetadata()).resolves.toEqual({ sources: [{ name: 'db' }] });
-    expect(apiFetch).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns null when an async metadata job fails', async () => {
-    apiFetch
-      .mockResolvedValueOnce(accepted('job-1'))
-      .mockResolvedValueOnce(polled({ status: 'failed', error: 'no driver' }));
-    await expect(fetchSourceMetadata()).resolves.toBeNull();
-  });
-
-  it('surfaces a failed connection test in the shape the form renders', async () => {
-    apiFetch
-      .mockResolvedValueOnce(accepted('job-2'))
-      .mockResolvedValueOnce(polled({ status: 'failed', error: 'auth failed' }));
-
-    await expect(testSourceConnectionFromConfig({ name: 'db' })).resolves.toEqual({
-      status: 'connection_failed',
-      error: 'auth failed',
-    });
-  });
-
-  it('resolves a successful connection test to the runner result', async () => {
-    apiFetch
-      .mockResolvedValueOnce(accepted('job-2'))
-      .mockResolvedValueOnce(
-        polled({ status: 'completed', result: { source: 'db', status: 'connected' } })
-      );
-
-    await expect(testSourceConnectionFromConfig({ name: 'db' })).resolves.toEqual({
-      source: 'db',
-      status: 'connected',
-    });
-  });
-
-  it('a cancelled job is reported, not left hanging', async () => {
-    // The reaper cancels a job no worker ever claimed; the UI must resolve.
-    apiFetch
-      .mockResolvedValueOnce(accepted('job-3'))
-      .mockResolvedValueOnce(polled({ status: 'cancelled' }));
-
-    await expect(testSourceConnectionFromConfig({ name: 'db' })).resolves.toEqual({
-      status: 'connection_failed',
-      error: 'Job cancelled',
-    });
-  });
-
-  it('a poll that stops answering is reported', async () => {
-    apiFetch
-      .mockResolvedValueOnce(accepted('job-4'))
-      .mockResolvedValueOnce({ status: 404, json: async () => ({}) });
-
-    await expect(testSourceConnectionFromConfig({ name: 'db' })).resolves.toEqual({
-      status: 'connection_failed',
-      error: 'Lost track of the job',
     });
   });
 });

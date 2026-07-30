@@ -1,22 +1,34 @@
 import { apiFetch } from './utils';
 
-const JOB_POLL_INTERVAL_MS = 500;
+const JOB_POLL_INTERVAL_MS = 300;
 const JOB_POLL_TIMEOUT_MS = 120000;
 
 /**
- * Resolve a source op that the server chose to run asynchronously.
+ * Run a source op to completion: start it, then poll its job to a terminal
+ * state.
  *
- * The two servers answer differently and callers shouldn't have to care. The
- * local server does the work inside the request and returns `200` with the
- * result. Cloud runs it in a warm runner pool — nothing can dial into one of
- * those pods, so the work is pulled rather than pushed and there is no request
- * to hold open — and returns `202 {job_id}` for the client to poll.
+ * Source ops talk to a warehouse, so they take as long as the warehouse takes.
+ * Both servers therefore answer `202 {job_id}` and expose a job to poll —
+ * cloud because it must (the ops run on a warm runner pool whose pods deny all
+ * ingress, so there is no request it could hold open), and the local server to
+ * match. One contract means one code path here, and it means `visivo serve`
+ * exercises the same path production does instead of leaving it to be tested
+ * for the first time in cloud.
  *
- * Returns `{ok, result, error}`, or `null` when the response wasn't a job at
- * all, which is how a caller tells "poll finished" from "handle this yourself".
+ * `basePath` owns the job: `<basePath><job_id>/`, mirroring model-query-jobs.
+ * Returns `{ok, result, error}`.
  */
-const resolveJob = async response => {
-  if (response.status !== 202) return null;
+const runSourceOpJob = async (basePath, response) => {
+  if (response.status !== 202) {
+    // A 4xx/5xx may carry a JSON reason, plain text, or nothing at all.
+    let body = {};
+    try {
+      body = await response.json();
+    } catch {
+      // fall through to the generic message
+    }
+    return { ok: false, error: body?.error || body?.message || 'Server rejected the request' };
+  }
 
   const { job_id: jobId } = await response.json();
   if (!jobId) return { ok: false, error: 'Server accepted the job but named no id' };
@@ -24,7 +36,7 @@ const resolveJob = async response => {
   const deadline = Date.now() + JOB_POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
     await new Promise(resolve => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
-    const poll = await apiFetch(`/api/runner-jobs/${jobId}/`);
+    const poll = await apiFetch(`${basePath}${jobId}/`);
     if (poll.status !== 200) {
       return { ok: false, error: 'Lost track of the job' };
     }
@@ -38,17 +50,9 @@ const resolveJob = async response => {
 };
 
 export const fetchSourceMetadata = async () => {
-  const response = await apiFetch('/api/project/sources_metadata/');
-  const job = await resolveJob(response);
-  if (job) {
-    return job.ok ? job.result : null;
-  }
-  if (response.status === 200) {
-    const data = await response.json();
-    return data;
-  } else {
-    return null;
-  }
+  const path = '/api/project/sources_metadata/';
+  const job = await runSourceOpJob(path, await apiFetch(path));
+  return job.ok ? job.result : null;
 };
 
 // Lazy-loading API functions
@@ -102,30 +106,19 @@ export const testSourceConnection = async sourceName => {
 };
 
 export const testSourceConnectionFromConfig = async sourceConfig => {
-  const response = await apiFetch(`/api/sources/test-connection/`, {
+  const path = '/api/sources/test-connection/';
+  const response = await apiFetch(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(sourceConfig),
   });
-  const job = await resolveJob(response);
-  if (job) {
-    return job.ok
-      ? job.result
-      : { status: 'connection_failed', error: job.error };
-  }
-  if (response.status === 200) {
-    const data = await response.json();
-    return data;
-  } else {
-    const error = await response.text();
-    try {
-      return JSON.parse(error);
-    } catch {
-      return { status: 'connection_failed', error: 'Failed to test connection' };
-    }
-  }
+  const job = await runSourceOpJob(path, response);
+  // The form renders {status, error}; a rejected request and a failed
+  // connection look the same to it, which is right — both mean "didn't
+  // connect", and the error text says which.
+  return job.ok ? job.result : { status: 'connection_failed', error: job.error };
 };
 
 // POST for read: payload contains full working state (SQL, props, layout) that exceeds GET URL length limits.

@@ -48,6 +48,28 @@ class TestFlaskSourceEndpoints:
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    def _await_job(self, response, base_path):
+        """Start-response -> the job's terminal poll body.
+
+        Source ops are asynchronous on both servers: 202 {job_id}, then poll
+        <base_path><job_id>/ until terminal. The op itself runs on a background
+        thread, so poll rather than assume it has already finished.
+        """
+        import time
+
+        assert response.status_code == 202, response.data
+        job_id = json.loads(response.data)["job_id"]
+
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            poll = self.client.get(f"{base_path}{job_id}/")
+            assert poll.status_code == 200, poll.data
+            body = json.loads(poll.data)
+            if body["status"] in ("completed", "failed", "cancelled"):
+                return body
+            time.sleep(0.01)
+        raise AssertionError(f"job {job_id} never reached a terminal state")
+
     def test_test_connection_success(self):
         """Test GET /api/project/sources/<name>/test-connection."""
         with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
@@ -248,9 +270,9 @@ class TestFlaskSourceEndpoints:
                 headers={"Content-Type": "application/json"},
             )
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["status"] == "connected"
+            job = self._await_job(response, "/api/sources/test-connection/")
+            assert job["status"] == "completed"
+            assert job["result"]["status"] == "connected"
             mock_test.assert_called_once_with(source_config)
 
     def test_test_source_connection_failure(self):
@@ -271,10 +293,13 @@ class TestFlaskSourceEndpoints:
                 headers={"Content-Type": "application/json"},
             )
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["status"] == "connection_failed"
-            assert "Connection timeout" in data["error"]
+            # A refused connection is a job that COMPLETED and reported a
+            # failure — distinct from a job that failed, which means the op
+            # itself blew up. Collapsing the two would hide real crashes.
+            job = self._await_job(response, "/api/sources/test-connection/")
+            assert job["status"] == "completed"
+            assert job["result"]["status"] == "connection_failed"
+            assert "Connection timeout" in job["result"]["error"]
             mock_test.assert_called_once_with(source_config)
 
     def test_test_source_connection_no_config(self):
@@ -312,10 +337,13 @@ class TestFlaskSourceEndpoints:
                 headers={"Content-Type": "application/json"},
             )
 
-            assert response.status_code == 500
-            data = json.loads(response.data)
-            assert data["status"] == "connection_failed"
-            assert "Unexpected error" in data["error"]
+            # An op that crashes now fails its JOB rather than the start
+            # response. The viewer maps a failed job to
+            # {status: 'connection_failed', error}, so what the user sees is
+            # unchanged; what changed is that the crash is attributable.
+            job = self._await_job(response, "/api/sources/test-connection/")
+            assert job["status"] == "failed"
+            assert "Unexpected error" in job["error"]
 
     def test_sources_metadata_success(self):
         """Test GET /api/project/sources_metadata returns all metadata."""
@@ -338,10 +366,10 @@ class TestFlaskSourceEndpoints:
 
             response = self.client.get("/api/project/sources_metadata/")
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert len(data["sources"]) == 1
-            assert data["sources"][0]["name"] == "test_source"
+            job = self._await_job(response, "/api/project/sources_metadata/")
+            assert job["status"] == "completed"
+            assert len(job["result"]["sources"]) == 1
+            assert job["result"]["sources"][0]["name"] == "test_source"
             mock_gather.assert_called_once_with(self.sources_list)
 
     def test_sources_metadata_error(self):
@@ -351,9 +379,13 @@ class TestFlaskSourceEndpoints:
 
             response = self.client.get("/api/project/sources_metadata/")
 
-            assert response.status_code == 500
-            data = json.loads(response.data)
-            assert "Introspection failed" in data["message"]
+            # The op now blows up on a background thread, so the failure lands
+            # on the job rather than the start response. It must still be
+            # reported: an op that died silently would leave the viewer polling
+            # forever.
+            job = self._await_job(response, "/api/project/sources_metadata/")
+            assert job["status"] == "failed"
+            assert "Introspection failed" in job["error"]
 
     def test_endpoint_error_responses(self):
         """Test that all endpoints handle tuple error responses correctly."""

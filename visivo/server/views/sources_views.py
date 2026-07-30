@@ -1,6 +1,7 @@
 from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
+from visivo.server.managers.source_op_job_manager import SourceOpJobManager
 from visivo.server.source_metadata import (
     check_source_connection,
     gather_source_metadata,
@@ -15,13 +16,31 @@ from visivo.server.source_metadata import (
 def register_source_views(app, flask_app, output_dir):
     @app.route("/api/project/sources_metadata/", methods=["GET"])
     def sources_metadata():
+        """Start gathering the source-metadata tree; poll for the result.
+
+        Asynchronous because introspecting every source talks to every
+        warehouse, and because the cloud server has no choice — it runs this on
+        a warm runner pool that cannot be dialled into, so it cannot hold a
+        request open either. One contract for both servers means the viewer has
+        one code path, and `visivo serve` exercises the same one cloud uses.
+        """
         try:
-            # Use source_manager to include both cached and published sources
-            metadata = gather_source_metadata(flask_app.source_manager.get_sources_list())
-            return jsonify(metadata)
+            sources = flask_app.source_manager.get_sources_list()
+            job_id = SourceOpJobManager.instance().start(
+                "sources_metadata", lambda: gather_source_metadata(sources)
+            )
+            return jsonify({"job_id": job_id, "status": "queued"}), 202
         except Exception as e:
-            Logger.instance().error(f"Error gathering source metadata: {str(e)}")
+            Logger.instance().error(f"Error starting source metadata job: {str(e)}")
             return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/project/sources_metadata/<job_id>/", methods=["GET"])
+    def sources_metadata_job(job_id):
+        """Poll a sources_metadata job."""
+        job = SourceOpJobManager.instance().get_job(job_id)
+        if job is None:
+            return jsonify({"error": f"Job {job_id} not found"}), 404
+        return jsonify(job.to_dict())
 
     @app.route("/api/project/sources/<source_name>/test-connection/", methods=["GET"])
     def test_connection(source_name):
@@ -151,7 +170,11 @@ def register_source_views(app, flask_app, output_dir):
 
     @app.route("/api/sources/test-connection/", methods=["POST"])
     def test_source_connection():
-        """Test a source connection from configuration without adding to project."""
+        """Start a connection test for an (unsaved) config; poll for the result.
+
+        Validation errors still answer 400 inline — there is no point minting a
+        job for a request that was never going to run.
+        """
         try:
             source_config = request.get_json(silent=True)
             if source_config is None:
@@ -161,11 +184,21 @@ def register_source_views(app, flask_app, output_dir):
                 else:
                     return jsonify({"error": "Source configuration is required"}), 400
 
-            result = validate_source_from_config(source_config)
-            return jsonify(result)
+            job_id = SourceOpJobManager.instance().start(
+                "test_connection", lambda: validate_source_from_config(source_config)
+            )
+            return jsonify({"job_id": job_id, "status": "queued"}), 202
         except Exception as e:
-            Logger.instance().error(f"Error testing source connection: {str(e)}")
+            Logger.instance().error(f"Error starting source connection test: {str(e)}")
             return jsonify({"status": "connection_failed", "error": str(e)}), 500
+
+    @app.route("/api/sources/test-connection/<job_id>/", methods=["GET"])
+    def test_source_connection_job(job_id):
+        """Poll a test-connection job."""
+        job = SourceOpJobManager.instance().get_job(job_id)
+        if job is None:
+            return jsonify({"error": f"Job {job_id} not found"}), 404
+        return jsonify(job.to_dict())
 
     # ========== New SourceManager-based endpoints ==========
 
