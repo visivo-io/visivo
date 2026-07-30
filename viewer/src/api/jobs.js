@@ -15,6 +15,8 @@
  * with `status` in queued | running | completed | failed | cancelled.
  */
 
+import { apiFetch } from './utils';
+
 const DEFAULT_INTERVAL_MS = 300;
 const DEFAULT_TIMEOUT_MS = 120000;
 
@@ -56,4 +58,37 @@ export const pollJob = async (fetchStatus, { intervalMs, timeoutMs, onProgress }
     }
     await new Promise(resolve => setTimeout(resolve, interval));
   }
+};
+
+/**
+ * Run an on-demand job to completion: take the already-issued start response,
+ * then poll to a terminal state.
+ *
+ * `response` is passed in rather than issued here so callers keep control of
+ * the method, body, and URL resolution (some build a path, some go through
+ * URLContext). The job lives at `<basePath><job_id>/`, the shape every
+ * on-demand op follows.
+ *
+ * Returns `{ok, result, error}`.
+ */
+export const runOnDemandJob = async (basePath, response) => {
+  if (response.status !== 202) {
+    // A 4xx/5xx may carry a JSON reason, plain text, or nothing at all.
+    let body = {};
+    try {
+      body = await response.json();
+    } catch {
+      // fall through to the generic message
+    }
+    return { ok: false, error: body?.error || body?.message || 'Server rejected the request' };
+  }
+
+  const { job_id: jobId } = await response.json();
+  if (!jobId) return { ok: false, error: 'Server accepted the job but named no id' };
+
+  return pollJob(async () => {
+    const poll = await apiFetch(`${basePath}${jobId}/`);
+    if (poll.status !== 200) throw new Error('Lost track of the job');
+    return poll.json();
+  });
 };

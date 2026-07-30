@@ -16,31 +16,21 @@ from visivo.server.source_metadata import (
 def register_source_views(app, flask_app, output_dir):
     @app.route("/api/project/sources_metadata/", methods=["GET"])
     def sources_metadata():
-        """Start gathering the source-metadata tree; poll for the result.
+        """The full source-introspection tree.
 
-        Asynchronous because introspecting every source talks to every
-        warehouse, and because the cloud server has no choice — it runs this on
-        a warm runner pool that cannot be dialled into, so it cannot hold a
-        request open either. One contract for both servers means the viewer has
-        one code path, and `visivo serve` exercises the same one cloud uses.
+        Left SYNCHRONOUS, unlike test-connection. Explore 2.0 (#527) moved every
+        consumer off this feed onto the cached `source-schema-jobs` one, because
+        the live introspect returns zero databases for file sources like duckdb.
+        Nothing in the viewer calls this today, so converting it to a job would
+        add a contract with no client to honour it.
         """
         try:
-            sources = flask_app.source_manager.get_sources_list()
-            job_id = SourceOpJobManager.instance().start(
-                "sources_metadata", lambda: gather_source_metadata(sources)
-            )
-            return jsonify({"job_id": job_id, "status": "queued"}), 202
+            # Use source_manager to include both cached and published sources
+            metadata = gather_source_metadata(flask_app.source_manager.get_sources_list())
+            return jsonify(metadata)
         except Exception as e:
-            Logger.instance().error(f"Error starting source metadata job: {str(e)}")
+            Logger.instance().error(f"Error gathering source metadata: {str(e)}")
             return jsonify({"message": str(e)}), 500
-
-    @app.route("/api/project/sources_metadata/<job_id>/", methods=["GET"])
-    def sources_metadata_job(job_id):
-        """Poll a sources_metadata job."""
-        job = SourceOpJobManager.instance().get_job(job_id)
-        if job is None:
-            return jsonify({"error": f"Job {job_id} not found"}), 404
-        return jsonify(job.to_dict())
 
     @app.route("/api/project/sources/<source_name>/test-connection/", methods=["GET"])
     def test_connection(source_name):

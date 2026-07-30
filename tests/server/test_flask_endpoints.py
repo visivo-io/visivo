@@ -366,10 +366,12 @@ class TestFlaskSourceEndpoints:
 
             response = self.client.get("/api/project/sources_metadata/")
 
-            job = self._await_job(response, "/api/project/sources_metadata/")
-            assert job["status"] == "completed"
-            assert len(job["result"]["sources"]) == 1
-            assert job["result"]["sources"][0]["name"] == "test_source"
+            # Synchronous, unlike test-connection: Explore 2.0 moved every
+            # consumer off this feed, so there is no client to poll a job.
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert len(data["sources"]) == 1
+            assert data["sources"][0]["name"] == "test_source"
             mock_gather.assert_called_once_with(self.sources_list)
 
     def test_sources_metadata_error(self):
@@ -379,13 +381,9 @@ class TestFlaskSourceEndpoints:
 
             response = self.client.get("/api/project/sources_metadata/")
 
-            # The op now blows up on a background thread, so the failure lands
-            # on the job rather than the start response. It must still be
-            # reported: an op that died silently would leave the viewer polling
-            # forever.
-            job = self._await_job(response, "/api/project/sources_metadata/")
-            assert job["status"] == "failed"
-            assert "Introspection failed" in job["error"]
+            assert response.status_code == 500
+            data = json.loads(response.data)
+            assert "Introspection failed" in data["message"]
 
     def test_endpoint_error_responses(self):
         """Test that all endpoints handle tuple error responses correctly."""
