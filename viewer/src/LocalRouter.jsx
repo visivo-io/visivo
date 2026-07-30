@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, createBrowserRouter, createRoutesFromElements, useParams } from 'react-router-dom';
 import { futureFlags } from './router-config';
 import { loadProject } from './loaders/project';
@@ -9,9 +9,9 @@ import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
 import Workspace from './components/views/workspace/Workspace';
-import { DashboardExplorerRedirect } from './components/views/workspace/DashboardExplorerRedirect';
 import RunsView from './components/RunsView';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
+import useStore from './stores/store';
 
 // VIS-772: /editor/<type>/<name> redirects into Workspace with the edit selector encoded
 // as a query param. Wrapping <Navigate /> so we can pull params out of the URL.
@@ -22,11 +22,42 @@ export const EditorTypeNameRedirect = () => {
   return <Navigate to={`/workspace?edit=${encodeURIComponent(`${type}:${name}`)}`} replace />;
 };
 
-// Re-exported from its own module so the cloud app can mount this route
-// without importing THIS one: the lines just below run at module scope, and
-// importing them from core would repoint its API config and build a second
-// router.
-export { DashboardExplorerRedirect };
+/**
+ * DashboardExplorerRedirect — Explore 2.0 Phase 3b cutover
+ * (02-architecture.md §5, 01-ux-spec.md §5). The old `/workspace/dashboard/
+ * :dashboardName/explorer` route composed `<Workspace/>` + `ExplorerOverlay`
+ * (now deleted, along with the standalone `/explorer` route it round-tripped
+ * to). Its replacement: mint a FRESH exploration carrying a `return_to`
+ * placement intent (`{ dashboard: dashboardName }`) and redirect straight to
+ * its own `/workspace/exploration/:id` path — the already-proven deep-link
+ * mechanism (`exploration-lifecycle.spec.mjs`) sets `workspaceActiveView` and
+ * opens its tab with no further plumbing needed here. Consuming the intent
+ * ("Place in <dashboard>" after promote) is Phase 4/5 — this route's job is
+ * only to persist it via the existing `return_to` field/`consumeReturnTo`
+ * endpoint, both already live (07-exploration-api-contract.md).
+ */
+export const DashboardExplorerRedirect = () => {
+  const { dashboardName } = useParams();
+  const createExploration = useStore(s => s.createExploration);
+  const [targetId, setTargetId] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    createExploration(null, { dashboard: dashboardName }).then(result => {
+      if (result?.success) setTargetId(result.id);
+      else setFailed(true);
+    });
+  }, [dashboardName, createExploration]);
+
+  if (targetId) return <Navigate to={`/workspace/exploration/${targetId}`} replace />;
+  // Fail open to Explorer Home rather than stranding the user on a blank
+  // route if minting the exploration itself failed (network/API error).
+  if (failed) return <Navigate to="/workspace/exploration" replace />;
+  return null;
+};
 
 // Set global URL config early for router loaders
 export const localURLConfig = createURLConfig({ environment: 'server' });
