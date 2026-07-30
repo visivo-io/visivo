@@ -277,7 +277,7 @@ export default function OnboardingFlow() {
 
   const handleHandoff = useCallback(() => {
     let destination = '/editor';
-    if (outcome.sourceConnected) destination = '/explorer';
+    if (outcome.sourceConnected) destination = '/workspace/exploration';
     else if (outcome.path === 'sample') destination = '/project';
     setTimeout(() => completeAndNavigate(destination), 1400);
     return destination;
@@ -329,7 +329,7 @@ export default function OnboardingFlow() {
     );
   } else if (current?.kind === 'handoff') {
     let destination = '/editor';
-    if (outcome.sourceConnected) destination = '/explorer';
+    if (outcome.sourceConnected) destination = '/workspace/exploration';
     else if (outcome.path === 'sample') destination = '/project';
     body = (
       <Handoff

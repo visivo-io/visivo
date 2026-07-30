@@ -3,7 +3,7 @@ import useStore from '../../../../stores/store';
 import { parseRefValue } from '../../../../utils/refString';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
-import { useViewerNavigate } from '../../../../hooks/useViewerNavigate';
+import { EXPLORE_THIS_TYPES } from '../../workspace/library/LibraryRow';
 import {
   wrapItemInContainer,
   unwrapTrivialContainer,
@@ -145,7 +145,6 @@ const MenuItem = ({ testid, label, hint, onClick, danger }) => (
 );
 
 const CanvasContextMenu = ({ rootRef, dashboardName }) => {
-  const navigate = useViewerNavigate();
   const dashboards = useStore(s => s.dashboards);
   const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
   // Selection routed through the unified action (VIS-994). No revealEdit:
@@ -156,6 +155,12 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
   );
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
+  // Phase 6c-T5 (ux-audit.md "No 'Explore this' from a dashboard chart's
+  // context menu", ⚠ conflicts-with-e2e): the highest-intent moment for
+  // exploration — looking at a rendered chart — had no explore affordance
+  // anywhere (menu offered only Open / Wrap / Add item to row).
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
   const commitCanvasConfig = useWorkspaceCommit();
   // menu: null | { x, y, key, kind }
   const [menu, setMenu] = useState(null);
@@ -229,26 +234,6 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
     [dashboardName, commitCanvasConfig, dashboardConfig]
   );
 
-  const openInExplorer = useCallback(
-    subject => {
-      if (!subject) return;
-      const params = new URLSearchParams();
-      // The deep-load target — Explorer reads `?insight=` / engineering routing
-      // hydrates the chart's model + insight (out of scope for J-3 framing).
-      params.set(subject.type === 'table' ? 'table' : 'insight', subject.name);
-      params.set('return_to', 'workspace');
-      if (dashboardName) params.set('dashboard', dashboardName);
-      emitWorkspaceEvent('open_in_explorer', {
-        dashboardName,
-        subjectType: subject.type,
-        subjectName: subject.name,
-      });
-      setMenu(null);
-      navigate(`/explorer?${params.toString()}`);
-    },
-    [navigate, dashboardName]
-  );
-
   // VIS-811 / O-2: open the right-clicked leaf's object as a workspace tab.
   // "Open" replaces the current context (focus moves); "Open in new tab"
   // background-opens so the dashboard tab keeps focus.
@@ -268,6 +253,27 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
       setMenu(null);
     },
     [openWorkspaceTab, openWorkspaceTabBackground]
+  );
+
+  // "Explore this" — mints an exploration seeded from the chart (real SQL +
+  // props copied in via `buildExplorationSeedState`, same as every other
+  // "Explore this" entry point) and opens its tab. Closes the menu
+  // immediately (same as `openAsTab` above) rather than waiting on the
+  // async create — the menu unmounting is itself the double-click guard.
+  const handleExploreThis = useCallback(
+    subject => {
+      setMenu(null);
+      if (!subject || !createExploration) return;
+      const seed = { type: subject.type, name: subject.name };
+      const legacyStateOverride = buildExplorationSeedState ? buildExplorationSeedState(seed) : null;
+      createExploration(seed, null, legacyStateOverride).then(result => {
+        if (result?.success && openWorkspaceTab) {
+          openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+          emitWorkspaceEvent('explore_this_used', { source_type: subject.type });
+        }
+      });
+    },
+    [createExploration, buildExplorationSeedState, openWorkspaceTab]
   );
 
   if (!dashboardConfig || !menu) return null;
@@ -315,12 +321,13 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
             hint="⌘↵"
             onClick={() => openAsTab(explorerSubject, true)}
           />
-          <MenuItem
-            testid="canvas-ctx-open-in-explorer"
-            label="Open in Explorer"
-            hint="↗"
-            onClick={() => openInExplorer(explorerSubject)}
-          />
+          {EXPLORE_THIS_TYPES.includes(explorerSubject.type) && (
+            <MenuItem
+              testid="canvas-ctx-explore-this"
+              label="Explore this"
+              onClick={() => handleExploreThis(explorerSubject)}
+            />
+          )}
           <div className="my-1 h-px bg-primary-50" />
         </>
       )}

@@ -74,6 +74,28 @@ describe('objectTypeConfigs', () => {
     });
   });
 
+  // Explore 2.0 Phase 2: `exploration` is the DOCUMENT type (tabs, Home
+  // gallery cards) — distinct from the chrome `explorer` DESTINATION, which
+  // predates it (Phase 0) and stays disabled/muted.
+  describe('exploration document type', () => {
+    it('is enabled:false (never Library-creatable — minted from Explorer Home)', () => {
+      expect(getTypeByValue('exploration').enabled).toBe(false);
+    });
+
+    it('is teal and distinct from the explorer destination and dimension (both also teal-family)', () => {
+      const exploration = getTypeByValue('exploration');
+      const explorer = getTypeByValue('explorer');
+      const dimension = getTypeByValue('dimension');
+      expect(exploration.colors.connectionHandle).not.toBe(explorer.colors.connectionHandle);
+      expect(exploration.colors.connectionHandle).not.toBe(dimension.colors.connectionHandle);
+      expect(exploration.colors.text).toContain('teal');
+    });
+
+    it('has its own icon, distinct from the explorer destination', () => {
+      expect(getTypeByValue('exploration').icon).not.toBe(getTypeByValue('explorer').icon);
+    });
+  });
+
   describe('getTypeByValue', () => {
     it('should return correct type config for valid values', () => {
       expect(getTypeByValue('source').value).toBe('source');

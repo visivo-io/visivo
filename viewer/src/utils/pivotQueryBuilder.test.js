@@ -154,6 +154,34 @@ describe('buildColumnSelectQuery', () => {
     expect(sql).toBe('SELECT "revenue_hash_xyz" AS "Total Revenue" FROM "tbl"');
   });
 
+  // Smoke-test bug #4: the documented quoted-alias syntax (`as "Total Revenue"`,
+  // per the Table docstring) must NOT double-wrap the alias into
+  // `AS ""Total Revenue""` (a zero-length delimited identifier that breaks the
+  // whole table in DuckDB-WASM). The caller owns the SQL quoting; the user's
+  // quotes are stripped first.
+  it('does not double-wrap a documented quoted alias', () => {
+    const sql = buildColumnSelectQuery(
+      ['${ref(insight).revenue} as "Total Revenue"'],
+      propsMapping,
+      'tbl'
+    );
+    expect(sql).toBe('SELECT "revenue_hash_xyz" AS "Total Revenue" FROM "tbl"');
+    expect(sql).not.toContain('""');
+  });
+
+  it('strips single-quoted aliases the same way', () => {
+    const sql = buildColumnSelectQuery(["${ref(insight).region} as 'Sales Region'"], propsMapping, 'tbl');
+    expect(sql).toBe('SELECT "region_hash_abc" AS "Sales Region" FROM "tbl"');
+  });
+
+  // An empty quoted alias (`as ""`) reduces to no alias — a graceful, valid
+  // result, NOT the zero-length-identifier `AS ""` the bug produced.
+  it('drops an empty quoted alias instead of emitting a zero-length identifier', () => {
+    const sql = buildColumnSelectQuery(['${ref(insight).region} as ""'], propsMapping, 'tbl');
+    expect(sql).toBe('SELECT "region_hash_abc" FROM "tbl"');
+    expect(sql).not.toContain('""');
+  });
+
   it('handles multiple columns with mixed aliasing', () => {
     const sql = buildColumnSelectQuery(
       ['${ref(insight).region}', '${ref(insight).revenue} AS Amount'],

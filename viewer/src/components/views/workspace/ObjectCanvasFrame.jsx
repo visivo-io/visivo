@@ -18,6 +18,7 @@ import LineageCanvas from '../lineage/LineageCanvas';
 import { getCanvasDescriptor } from './objectCanvasRegistry';
 import { useCanvasRecord } from './useCanvasRecord';
 import { COLLECTION_KEY } from './collectionKeys';
+import CenteredFrameState from '../common/CenteredFrameState';
 
 /**
  * ObjectCanvasFrame — the shared shell for every per-object Workspace canvas
@@ -66,22 +67,8 @@ const safeAvailable = key => {
   }
 };
 
-const FrameState = ({ testId, title, body, icon: Icon = PiCircleDuotone }) => (
-  <div
-    data-testid={testId}
-    className="flex flex-1 items-center justify-center bg-gray-50 p-12"
-  >
-    <div className="max-w-[420px] rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <Icon className="mx-auto mb-2 h-6 w-6 text-gray-300" aria-hidden="true" />
-      <h2 className="text-[15px] font-semibold text-gray-900">{title}</h2>
-      {body && (
-        <p className="mx-auto mt-1.5 max-w-[320px] text-[13px] leading-relaxed text-gray-500">
-          {body}
-        </p>
-      )}
-    </div>
-  </div>
-);
+// VIS-1071 (01-ux-spec.md §7): local FrameState replaced by the shared
+// CenteredFrameState (viewer/src/components/views/common/CenteredFrameState.jsx).
 
 const ObjectCanvasFrame = ({ activeObject, projectId }) => {
   const name = activeObject?.name || '(unnamed)';
@@ -284,7 +271,7 @@ const CanvasBody = ({ type, lens, lensMeta, descriptor, activeObject, projectId 
   return (
     <div data-testid={`workspace-middle-${type}-${lens}`} className="flex flex-1 min-h-0 min-w-0">
       {unavailable ? (
-        <FrameState
+        <CenteredFrameState
           testId="canvas-unavailable"
           icon={PiLockSimple}
           title="Available with visivo serve"
@@ -292,7 +279,9 @@ const CanvasBody = ({ type, lens, lensMeta, descriptor, activeObject, projectId 
         />
       ) : (
         <React.Suspense
-          fallback={<FrameState testId="canvas-loading" title="Loading canvas…" />}
+          fallback={
+            <CenteredFrameState testId="canvas-loading" title="Loading canvas…" icon={PiCircleDuotone} />
+          }
         >
           <Body activeObject={activeObject} projectId={projectId} record={config} lens={lens} />
         </React.Suspense>

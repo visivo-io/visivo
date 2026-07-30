@@ -186,9 +186,14 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   }
 
   if (hasDuckDBMode && pivotError) {
+    // A columns-only (column-select) table has no pivot, so labeling its render
+    // error "Pivot error" is misleading (smoke-test bug #16). Label by mode.
+    const errorLabel = isPivotMode ? 'Pivot error' : 'Table error';
     return (
       <ItemContainer id={itemNameToSlug(table.name)}>
-        <Box sx={{ p: 2, color: 'error.main' }}>Pivot error: {pivotError}</Box>
+        <Box sx={{ p: 2, color: 'error.main', whiteSpace: 'pre-wrap' }}>
+          {errorLabel}: {pivotError}
+        </Box>
       </ItemContainer>
     );
   }

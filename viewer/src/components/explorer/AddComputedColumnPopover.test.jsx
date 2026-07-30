@@ -102,6 +102,25 @@ describe('AddComputedColumnPopover', () => {
     });
   });
 
+  // B9 (04-bug-inventory.md) / VIS-1071: the detected-type badge derives its
+  // color from objectTypeConfigs — never hand-rolled cyan/teal classes.
+  it('the detected-type badge uses the canonical objectTypeConfigs metric/dimension classes', async () => {
+    renderPopover();
+    fireEvent.click(screen.getByTestId('add-computed-column-btn'));
+    fireEvent.change(screen.getByTestId('computed-col-name'), { target: { value: 'total_revenue' } });
+    fireEvent.change(screen.getByTestId('computed-col-expression'), {
+      target: { value: 'SUM(amount)' },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(750);
+    });
+
+    const badge = await screen.findByTestId('detected-type-badge');
+    expect(badge).toHaveTextContent('Metric');
+    expect(badge.className).toContain('bg-cyan-100');
+    expect(badge.className).toContain('text-cyan-800');
+  });
+
   it('shows duplicate name error when name exists in existingNames Set', () => {
     renderPopover({ existingNames: new Set(['revenue']) });
     fireEvent.click(screen.getByTestId('add-computed-column-btn'));

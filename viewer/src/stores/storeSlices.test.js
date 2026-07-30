@@ -298,6 +298,22 @@ describe('runtime job slices', () => {
     expect(store.get().insightJobs.a).toEqual({ rows: 1, done: true });
   });
 
+  // Explore 2.0 Phase 4: explicit cleanup for synthetic draft-namespaced
+  // insightJobs entries (S2 draft-rendering-decision.md's "gap to close").
+  it('removeInsightJob deletes a single entry and leaves siblings untouched', () => {
+    const store = makeStore(createInsightJobsSlice);
+    store.get().setInsightJobs({ '__draft__:a': { rows: 1 }, b: { rows: 2 } });
+    store.get().removeInsightJob('__draft__:a');
+    expect(store.get().insightJobs).toEqual({ b: { rows: 2 } });
+  });
+
+  it('removeInsightJob on an unknown key is a no-op', () => {
+    const store = makeStore(createInsightJobsSlice);
+    store.get().setInsightJobs({ a: { rows: 1 } });
+    store.get().removeInsightJob('does-not-exist');
+    expect(store.get().insightJobs).toEqual({ a: { rows: 1 } });
+  });
+
   it('modelJobs slice merges jobs', () => {
     const store = makeStore(createModelJobsSlice);
     store.get().setModelJobs({ m1: { x: 1 } });

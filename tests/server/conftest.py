@@ -27,7 +27,11 @@ def integration_app(output_dir):
 
     create_file_database(url=source.url(), output_dir=abs_output_dir)
 
-    app = FlaskApp(abs_output_dir, project)
+    # Explicit working_dir (isolated tmp dir, not the real cwd) so anything
+    # that writes project-root workbench state — e.g. ExplorationRepository's
+    # `.visivo/explorations/` — stays inside the test's temp folder instead of
+    # leaking files into the actual repo working tree.
+    app = FlaskApp(abs_output_dir, project, working_dir=abs_output_dir)
     app.app.config["TESTING"] = True
     return app
 

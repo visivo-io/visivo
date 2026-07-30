@@ -24,6 +24,7 @@ import createInlineCreateSlice from './inlineCreateStore';
 import createExplorerSlice from './explorerStore';
 import createModelJobsSlice from './modelJobsStore';
 import createWorkspaceSlice from './workspaceStore';
+import createWorkspaceExplorationsSlice from './workspaceExplorationsStore';
 import createWorkspaceErdLayoutSlice from './workspaceErdLayoutStore';
 import createLibraryPrefsSlice from './libraryPrefsStore';
 
@@ -54,6 +55,7 @@ const useStore = create(
     ...createExplorerSlice(...a),
     ...createModelJobsSlice(...a),
     ...createWorkspaceSlice(...a),
+    ...createWorkspaceExplorationsSlice(...a),
     // Session-only ERD layout (dragged node positions + pill waypoints), kept
     // OUTSIDE persist() — ephemeral view state, not config.
     ...createWorkspaceErdLayoutSlice(...a),

@@ -13,6 +13,8 @@ import {
   setWorkspaceTelemetryListener,
   markBuildModeEntered,
   emitFirstPublishTelemetry,
+  markExplorationCreated,
+  emitTimeToFirstChart,
 } from './telemetry';
 import { postWorkspaceEvent } from '../../../api/workspaceTelemetry';
 
@@ -153,5 +155,60 @@ describe('time_to_first_publish_in_build_mode (VIS-806 / H-1)', () => {
       e => e.eventName === 'time_to_first_publish_in_build_mode'
     );
     expect(publishEvents).toHaveLength(2);
+  });
+});
+
+describe('time_to_first_chart (VIS-1072)', () => {
+  let events;
+  let unsubscribe;
+
+  beforeEach(() => {
+    events = [];
+    unsubscribe = setWorkspaceTelemetryListener(evt => events.push(evt));
+  });
+
+  afterEach(() => {
+    unsubscribe();
+  });
+
+  const chartEvents = () => events.filter(e => e.eventName === 'time_to_first_chart');
+
+  test('emits once per exploration, with elapsed ms', () => {
+    markExplorationCreated('exp_1');
+    emitTimeToFirstChart('exp_1');
+    emitTimeToFirstChart('exp_1'); // a second render — no second event
+
+    expect(chartEvents()).toHaveLength(1);
+    expect(chartEvents()[0].payload.ms).toEqual(expect.any(Number));
+    expect(chartEvents()[0].payload.ms).toBeGreaterThanOrEqual(0);
+  });
+
+  test('tracks multiple explorations independently', () => {
+    markExplorationCreated('exp_1');
+    markExplorationCreated('exp_2');
+    emitTimeToFirstChart('exp_2');
+    emitTimeToFirstChart('exp_1');
+
+    expect(chartEvents()).toHaveLength(2);
+  });
+
+  test('never fires for an id this session never saw created (e.g. resumed after a reload)', () => {
+    emitTimeToFirstChart('exp_never_created');
+    expect(chartEvents()).toHaveLength(0);
+  });
+
+  test('re-creating the SAME id re-arms the metric', () => {
+    markExplorationCreated('exp_1');
+    emitTimeToFirstChart('exp_1');
+    markExplorationCreated('exp_1');
+    emitTimeToFirstChart('exp_1');
+
+    expect(chartEvents()).toHaveLength(2);
+  });
+
+  test('no-ops (never throws) for a missing id', () => {
+    expect(() => markExplorationCreated(null)).not.toThrow();
+    expect(() => emitTimeToFirstChart(null)).not.toThrow();
+    expect(chartEvents()).toHaveLength(0);
   });
 });

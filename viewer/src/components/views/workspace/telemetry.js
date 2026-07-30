@@ -109,3 +109,35 @@ export function emitFirstPublishTelemetry() {
     msSinceBuildModeEntered: buildModeEnteredAt ? Date.now() - buildModeEnteredAt : null,
   });
 }
+
+/**
+ * `time_to_first_chart` (VIS-1072, Explore 2.0 Phase 5's flywheel metric) —
+ * mirrors `markBuildModeEntered`/`emitFirstPublishTelemetry`'s "mark an
+ * entry moment, fire once on the first qualifying event after it" shape,
+ * generalized to a Map since (unlike Build mode, a single ongoing session)
+ * many explorations can be "in flight" at once across open tabs.
+ *
+ * `markExplorationCreated(id)` — call right after `createExploration`
+ * succeeds. `emitTimeToFirstChart(id)` — call the first time a draft chart
+ * preview actually renders data for that exploration; a no-op for any
+ * SUBSEQUENT call for the same id (re-editing after the first successful
+ * render doesn't re-fire), and a no-op if this session never saw the
+ * creation (e.g. the exploration was resumed from a page that loaded after
+ * creation, or across a hard reload) — there's nothing honest to measure.
+ */
+const explorationCreatedAt = new Map();
+const firstChartEmittedFor = new Set();
+
+export function markExplorationCreated(id) {
+  if (!id) return;
+  explorationCreatedAt.set(id, Date.now());
+  firstChartEmittedFor.delete(id);
+}
+
+export function emitTimeToFirstChart(id) {
+  if (!id || firstChartEmittedFor.has(id)) return;
+  const createdAt = explorationCreatedAt.get(id);
+  if (createdAt == null) return;
+  firstChartEmittedFor.add(id);
+  emitWorkspaceEvent('time_to_first_chart', { ms: Date.now() - createdAt });
+}

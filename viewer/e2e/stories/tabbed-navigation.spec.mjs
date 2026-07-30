@@ -1,8 +1,11 @@
 /**
- * Story: Tabbed Workspace navigation — basic open / close / switch (VIS-810 / Track O O-1).
+ * Story: Tabbed Workspace navigation — basic open / close / switch (VIS-810 /
+ * Track O O-1; reworked in Explore 2.0 Phase 0 for the destination/view model).
  *
  * Drives the REAL cursor through the multi-tab happy path:
- *   1. /workspace opens with the default project tab.
+ *   1. /workspace opens on the Project destination's Home with NO document
+ *      tabs open (project left the tab model — D1) — the tab strip is
+ *      present but empty (just the `[+]` affordance).
  *   2. Clicking Library rows opens tabs (icon + name in the strip, focused).
  *   3. Clicking a tab switches the workspace context (active styling + middle pane).
  *   4. Closing via the × removes the tab and focus falls back to the left neighbour.
@@ -38,12 +41,20 @@ async function gotoWorkspace(page) {
   await expect(page.getByTestId('workspace-tab-strip')).toBeVisible({ timeout: 15000 });
 }
 
-test.describe('Tabbed navigation — open / close / switch (VIS-810)', () => {
-  test('default project tab is present and active on entry', async ({ page }) => {
+test.describe('Tabbed navigation — open / close / switch (VIS-810; Explore 2.0 Phase 0)', () => {
+  test('/workspace opens on the Project Home with an empty tab strip (no auto-hydrated tab)', async ({
+    page,
+  }) => {
     await gotoWorkspace(page);
-    const projectTab = page.locator('[data-testid^="workspace-tab-project:"]');
-    await expect(projectTab).toHaveCount(1);
-    await expect(projectTab).toHaveAttribute('data-active', 'true');
+    // No document tab is open — the strip shows only the `+` affordance.
+    await expect(page.locator('[role="tab"]')).toHaveCount(0);
+    await expect(page.getByTestId('workspace-tab-new')).toBeVisible();
+    // The view switcher shows Project active.
+    await expect(page.getByTestId('workspace-view-switcher-project')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
   });
 
   test('opening objects from the Library adds focused tabs; clicking tabs switches context', async ({
@@ -88,9 +99,35 @@ test.describe('Tabbed navigation — open / close / switch (VIS-810)', () => {
     ).toHaveAttribute('data-active', 'true');
   });
 
+  test('closing the LAST open tab returns to the Project Home (no tab left active)', async ({
+    page,
+  }) => {
+    await gotoWorkspace(page);
+    await openLibraryObject(page, 'chart', 'simple-scatter-chart');
+
+    const closeBtn = page.getByTestId('workspace-tab-close-chart:simple-scatter-chart');
+    await closeBtn.hover();
+    await closeBtn.click();
+
+    await expect(page.locator('[role="tab"]')).toHaveCount(0);
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
+    await expect(page.getByTestId('workspace-view-switcher-project')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+  });
+
   test('a dirty tab shows the unsaved-changes dot', async ({ page }) => {
     await gotoWorkspace(page);
     await openLibraryObject(page, 'chart', 'simple-scatter-chart');
+    // Wait for the tab to actually land in the store before flipping its dirty
+    // flag — `openLibraryObject`'s click routes through the URL round-trip
+    // (`openWorkspaceTab` -> navigate -> `Workspace`'s URL-sync effect ->
+    // `activateWorkspaceTab`), so evaluating immediately after the click can
+    // race the store write and silently no-op (VIS-810 flake).
+    await expect(
+      page.getByTestId('workspace-tab-chart:simple-scatter-chart')
+    ).toBeVisible();
     // Dirty wiring is Track H's job (auto-save); flip the store flag directly
     // as state setup — the assertion is about the strip's rendering.
     await page.evaluate(() => {
@@ -101,17 +138,26 @@ test.describe('Tabbed navigation — open / close / switch (VIS-810)', () => {
     ).toBeVisible();
   });
 
-  test('the + affordance focuses/opens the project tab', async ({ page }) => {
+  test('the + affordance activates the Project destination (views left the tab model)', async ({
+    page,
+  }) => {
     await gotoWorkspace(page);
     await openLibraryObject(page, 'chart', 'simple-scatter-chart');
-    await expect(page.locator(`[data-testid^="workspace-tab-project:"]`)).toHaveAttribute(
-      'data-active',
-      'false'
-    );
+    await expect(
+      page.getByTestId('workspace-tab-chart:simple-scatter-chart')
+    ).toHaveAttribute('data-active', 'true');
+
     const plus = page.getByTestId('workspace-tab-new');
     await plus.hover();
     await plus.click();
-    await expect(page.locator('[data-testid^="workspace-tab-project:"]')).toHaveAttribute(
+
+    // The chart tab is parked (still open, no longer active) — Project's
+    // Home takes the center instead of a resurrected "project tab".
+    await expect(
+      page.getByTestId('workspace-tab-chart:simple-scatter-chart')
+    ).toHaveAttribute('data-active', 'false');
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
+    await expect(page.getByTestId('workspace-view-switcher-project')).toHaveAttribute(
       'data-active',
       'true'
     );

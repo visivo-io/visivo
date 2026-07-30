@@ -21,6 +21,30 @@ VISIVO_TO_SQLGLOT_DIALECT = {
     "postgresql": "postgres",
 }
 
+# Explore 2.0 D10 pill-aggregation grammar (specs/plan/explorer-workspace-
+# unification/06-pill-aggregation-grammar.md, research/s5-droppable-retrofit-
+# design.md §4): the canonical, HAND-MAINTAINED allowlist of dialects where
+# MEDIAN is a real, correctly-transpiling aggregate. This is NOT derived from
+# a runtime sqlglot capability probe — empirically, sqlglot transpiles
+# `MEDIAN(x)` for mysql/sqlite into `PERCENTILE_CONT(x, 0.5)` with ZERO errors
+# or warnings even under `unsupported_level=ErrorLevel.WARN`, and that output
+# is silently wrong for both (MySQL's real PERCENTILE_CONT is a window
+# function with a different arg order; SQLite has no PERCENTILE_CONT at all).
+# "Does sqlglot transpile without raising" is therefore not a valid gate
+# signal here — mirrored verbatim in the viewer as
+# `viewer/src/components/views/common/pillGrammar.js`'s
+# `MEDIAN_SUPPORTED_DIALECTS` (JS constant, same values, cross-referenced back
+# to this comment — keep the two in sync by hand, per this repo's existing
+# convention for other JS-mirrors-Python grammars, e.g. queryString.js).
+MEDIAN_SUPPORTED_DIALECTS = {
+    "duckdb",
+    "snowflake",
+    "bigquery",
+    "redshift",
+    "postgres",
+    "clickhouse",
+}
+
 
 def get_sqlglot_dialect(visivo_dialect: str) -> str:
     """Convert Visivo dialect name to SQLGlot dialect name."""

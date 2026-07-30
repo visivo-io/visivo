@@ -20,9 +20,9 @@
  * serial; the draft cache is discarded in afterAll).
  */
 import { test, expect } from '@playwright/test';
+import { API } from '../helpers/sandbox.mjs';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
-const API = BASE.replace(':3001', ':8001');
 const DASHBOARD = 'simple-dashboard';
 const WAIT = 20000;
 

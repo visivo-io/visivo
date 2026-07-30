@@ -351,4 +351,59 @@ describe('dashboardStore placeChartInDashboardSlot', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  // e2e-gap-review.md P5-D3 [MEDIUM·CONFIRMED_GAP]: `dashboardExists`
+  // (ExplorationPromoteModal.jsx) and `placeChartInDashboardSlot` here both
+  // resolve their target by a BARE NAME match — neither has any notion of
+  // dashboard IDENTITY. Delete dashboard 'A' and create a brand-new,
+  // unrelated dashboard also named 'A' (or rename a different dashboard TO
+  // 'A') between minting a `return_to` intent and promoting, and both checks
+  // silently treat the NEW 'A' as the ORIGINAL target. A `slot` captured
+  // against the ORIGINAL A's row layout is now almost certainly stale
+  // against the NEW A's (probably very different) rows — `slotToInsertTarget`
+  // gracefully falls back to a "between rows" append rather than erroring,
+  // so the chart silently lands in the wrong (if same-named) dashboard
+  // object with zero signal that identity ever changed underneath the offer.
+  //
+  // This test LOCKS IN AND DOCUMENTS that defect — it does not fix it. A real
+  // fix (comparing dashboard identity, not just name) is a larger change,
+  // explicitly out of scope for this pass per the review's own recommendation.
+  test('P5-D3: a slot captured against the ORIGINAL "A" still applies via the between-rows fallback after "A" is deleted and a different dashboard is created with the SAME name — no identity check exists', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    // Original "A": 2 rows — a slot captured against it (row index 1) would
+    // have been a normal, in-range "append to row 1" placement.
+    seedPlace(
+      [
+        {
+          name: 'A',
+          config: {
+            rows: [{ items: [{ chart: 'ref(old1)' }] }, { items: [{ chart: 'ref(old2)' }] }],
+          },
+        },
+      ],
+      saveDashboard
+    );
+    const capturedSlot = '1:end'; // captured against the ORIGINAL A (2 rows)
+
+    // Simulate "delete A, then create a brand-new, unrelated dashboard also
+    // named A" — a totally different (empty) config under the SAME name, as
+    // if the exploration's `return_to.dashboard` name now resolves to a
+    // different underlying object. Nothing about `dashboards` here carries
+    // any id/version the store could have compared against the original.
+    seedPlace([{ name: 'A', config: { rows: [] } }], saveDashboard);
+
+    await act(async () => {
+      await useStore.getState().placeChartInDashboardSlot('A', 'orphaned_chart', capturedSlot);
+    });
+
+    // Silently "succeeds" — no error, no signal that the target dashboard's
+    // identity changed. slotToInsertTarget's out-of-range fallback (row index
+    // 1 doesn't exist in the NEW A's empty rows) lands the chart via a plain
+    // "between rows" append into whatever is now named "A".
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const [name, nextConfig] = saveDashboard.mock.calls[0];
+    expect(name).toBe('A');
+    expect(nextConfig.rows).toHaveLength(1);
+    expect(nextConfig.rows[0].items[0].chart).toBe('ref(orphaned_chart)');
+  });
 });

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
+import { useDroppable } from '@dnd-kit/core';
 import { PiPlay, PiStop, PiX, PiKeyboard } from 'react-icons/pi';
 import { useModelQueryJob } from '../../hooks/useModelQueryJob';
 import { useSourceSchema } from '../../hooks/useSourceSchema';
@@ -22,6 +23,13 @@ const SQLEditor = ({
   onQueryComplete,
   toolbarExtra,
   toolbarRight,
+  // Explore 2.0 Phase 3a (D9, 02-architecture.md §4): a Library column drag
+  // (schema drill-down OR the results grid) dropped on the editor inserts
+  // its bare name at the cursor. Default false/inert — `SQLEditor` is
+  // shared with the plain Workspace `ModelPreview` model-edit form, which
+  // must NOT become a drop target as a side effect of this change; only
+  // `CenterPanel` (the exploration surface) opts in.
+  dropInsertEnabled = false,
 }) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -131,6 +139,30 @@ const SQLEditor = ({
     setShowError(false);
   }, []);
 
+  // Explore 2.0 Phase 3a (D9): insert `text` at the Monaco cursor/selection.
+  // `editor.trigger('keyboard', 'type', ...)` (rather than `executeEdits`)
+  // both inserts at the live cursor position AND runs it through Monaco's
+  // normal typing pipeline, so `onChange`/`handleEditorChange` fires exactly
+  // as if the user had typed it — no separate setSql/onSave call needed.
+  const handleInsertTextAtCursor = useCallback(text => {
+    const editor = editorRef.current;
+    if (!editor || !text) return;
+    editor.focus();
+    editor.trigger('library-drop', 'type', { text });
+  }, []);
+
+  // The SQL editor as a drop target (disabled unless the caller opts in —
+  // see `dropInsertEnabled`'s docstring above). Data carries the callback
+  // itself (mirrors the `pivot-field`/`property-zone` "callback lives on the
+  // droppable" pattern) — the router (`WorkspaceDndContext.routeExplorationDragEnd`)
+  // never needs to know HOW to reach a Monaco instance, just that the
+  // droppable can insert text.
+  const { setNodeRef: setSqlDropRef, isOver: isSqlDropOver } = useDroppable({
+    id: 'sql-editor-drop',
+    data: { type: 'sql-editor-drop', onInsertText: handleInsertTextAtCursor },
+    disabled: !dropInsertEnabled,
+  });
+
   // Handle editor changes
   const handleEditorChange = useCallback(
     value => {
@@ -177,7 +209,22 @@ const SQLEditor = ({
         }
       });
 
-      editor.focus();
+      // Auto-focus on mount (nice default when a model tab first opens),
+      // but never steal focus from something the user is already editing.
+      // Monaco's chunk + mount is async, so it can settle a beat *after* a
+      // fresh exploration's build rail (e.g. a RefTextArea property field)
+      // has already been focused and is mid-keystroke — an unconditional
+      // `editor.focus()` here would yank keystrokes away from that field.
+      const activeEl = document.activeElement;
+      const isEditingElsewhere =
+        activeEl &&
+        activeEl !== document.body &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('contenteditable') === 'true');
+      if (!isEditingElsewhere) {
+        editor.focus();
+      }
     },
     [tables, tableColumns]
   );
@@ -304,7 +351,15 @@ const SQLEditor = ({
       )}
 
       {/* Editor */}
-      <div className="bg-[#1E1E1E]" style={{ height }}>
+      <div
+        ref={setSqlDropRef}
+        data-testid="sql-editor-drop-zone"
+        data-drop-over={isSqlDropOver ? 'true' : 'false'}
+        className={`bg-[#1E1E1E] ${
+          dropInsertEnabled && isSqlDropOver ? 'ring-2 ring-inset ring-primary-400' : ''
+        }`}
+        style={{ height }}
+      >
         <Editor
           height="100%"
           language="sql"

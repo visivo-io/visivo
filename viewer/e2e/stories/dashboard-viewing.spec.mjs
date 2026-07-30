@@ -26,7 +26,10 @@ test.describe('Dashboard Viewing', () => {
 
     // Lock down nav hrefs (clean paths, not -new). TopNav and Home cards
     // both expose these links, so just assert at least one of each is present.
-    await expect(page.locator('a[href="/explorer"]').first()).toBeVisible();
+    // Explore 2.0 Phase 3b cutover: the Explorer link now points straight at
+    // the Workspace shell's own route (`/explorer` still redirects there for
+    // old links, but the live nav never sends anyone through the hop).
+    await expect(page.locator('a[href="/workspace/exploration"]').first()).toBeVisible();
     await expect(page.locator('a[href="/lineage"]').first()).toBeVisible();
     await expect(page.locator('a[href="/editor"]').first()).toBeVisible();
 

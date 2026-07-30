@@ -55,14 +55,12 @@ test.describe('Right-click "Open in new tab" (VIS-811)', () => {
     await item.hover();
     await item.click();
 
-    // The chart tab joins the strip but the project tab keeps focus.
+    // The chart tab joins the strip in the background — no tab was active
+    // before (Project's Home owned the center), and none is active now.
     const chartTab = page.getByTestId('workspace-tab-chart:simple-scatter-chart');
     await expect(chartTab).toBeVisible();
     await expect(chartTab).toHaveAttribute('data-active', 'false');
-    await expect(page.locator('[data-testid^="workspace-tab-project:"]')).toHaveAttribute(
-      'data-active',
-      'true'
-    );
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
 
     // Clicking the new tab is what switches the context.
     const select = page.getByTestId('workspace-tab-select-chart:simple-scatter-chart');
@@ -88,10 +86,8 @@ test.describe('Right-click "Open in new tab" (VIS-811)', () => {
     const dashTab = page.getByTestId(`workspace-tab-dashboard:${DASHBOARD}`);
     await expect(dashTab).toBeVisible();
     await expect(dashTab).toHaveAttribute('data-active', 'false');
-    await expect(page.locator('[data-testid^="workspace-tab-project:"]')).toHaveAttribute(
-      'data-active',
-      'true'
-    );
+    // Background-open leaves the Project Home in the center — no tab focus change.
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
 
     // "Open" (foreground) on a second right-click switches the context.
     await tile.hover();
@@ -158,7 +154,7 @@ test.describe('Right-click "Open in new tab" (VIS-811)', () => {
       .getByTestId('workspace-tab-strip')
       .locator('[role="tab"]')
       .count();
-    expect(tabCount).toBeGreaterThanOrEqual(3); // project + dashboard + the node's tab
+    expect(tabCount).toBeGreaterThanOrEqual(2); // dashboard + the node's tab (project left the tab model)
     await expect(
       page.getByTestId(`workspace-tab-dashboard:${DASHBOARD}`)
     ).toHaveAttribute('data-active', 'true');

@@ -152,9 +152,13 @@ class Table(NamedModel, ParentModel):
     @classmethod
     def validate_table_config(cls, data: Any):
         has_data = data.get("data") is not None
-        has_columns = data.get("columns") is not None
-        has_rows = data.get("rows") is not None
-        has_values = data.get("values") is not None
+        # Truthy, not `is not None`: an EMPTY list means "not specified". Treating
+        # `columns: []` as present let a `columns: [], rows: [...], values: [...]`
+        # config slip past the structural checks below, producing an invalid
+        # empty-`ON` pivot that only failed in the browser (bug #7 review, M2).
+        has_columns = bool(data.get("columns"))
+        has_rows = bool(data.get("rows"))
+        has_values = bool(data.get("values"))
 
         if has_data and (has_columns or has_rows or has_values):
             raise ValueError(

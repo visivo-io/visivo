@@ -45,6 +45,17 @@ def compile_phase(
         Logger.instance().debug("    Using provided project, skipping parse phase...")
         parse_duration = 0.0
 
+    # Validate that every table's column-select / pivot config compiles to valid
+    # SQL (smoke-test bug #7). Done here, at COMPILE, rather than in the Table
+    # model validator, so a broken table doesn't block the whole project from
+    # LOADING — the server stays up and surfaces this through error.json, and the
+    # CLI fails with one actionable message naming every broken table.
+    from visivo.query.table_sql_validator import validate_project_table_sql
+
+    table_sql_error = validate_project_table_sql(project)
+    if table_sql_error:
+        raise ValueError(table_sql_error)
+
     # Run deprecation checks (non-blocking)
     if not no_deprecation_warnings:
         from visivo.models.deprecations import DeprecationChecker

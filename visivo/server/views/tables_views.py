@@ -62,6 +62,11 @@ def register_tables_views(app, flask_app, output_dir):
                 ),
                 400,
             )
+        except ValueError as e:
+            # A table whose columns/rows/values compile to invalid SQL — a
+            # client config error (bug #7), not a server fault. 400, not 500.
+            Logger.instance().debug(f"Table SQL validation failed: {e}")
+            return jsonify({"error": str(e)}), 400
         except Exception as e:
             Logger.instance().error(f"Error saving table: {str(e)}")
             return jsonify({"error": str(e)}), 500

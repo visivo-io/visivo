@@ -122,6 +122,29 @@ class TestTableManager:
         assert result["valid"] is False
         assert "error" in result
 
+    def test_validate_config_invalid_generated_sql(self):
+        """bug #7 review #1: the generated-SQL check moved off the Table model
+        validator (so a broken table no longer blocks project LOAD), but the
+        EDITOR's validate endpoint must still report it — a draft table lives
+        only in this manager's cache, never in the compile-phase DAG."""
+        manager = TableManager()
+        config = {"name": "broken", "columns": ['${ref(i).sex} as ""Sex""']}
+
+        result = manager.validate_config(config)
+
+        assert result["valid"] is False
+        assert "invalid SQL" in result["error"]
+
+    def test_save_from_config_rejects_invalid_generated_sql(self):
+        """The save (draft-cache) path also rejects a table that compiles to
+        invalid SQL, and does NOT cache it."""
+        manager = TableManager()
+        config = {"name": "broken", "columns": ['${ref(i).sex} as ""Sex""']}
+
+        with pytest.raises(ValueError, match="invalid SQL"):
+            manager.save_from_config(config)
+        assert manager.get("broken") is None  # not cached
+
     def test_extract_from_dag_with_data_ref(self):
         """Test that tables loaded from DAG have correct child_item_names for data refs."""
         insight = InsightFactory.build(name="test_insight")

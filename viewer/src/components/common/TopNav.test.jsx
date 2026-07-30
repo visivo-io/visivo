@@ -12,9 +12,9 @@ jest.mock('@mui/material', () => {
   return { ...actual, useMediaQuery: jest.fn(() => false) };
 });
 
-const renderNav = (props = {}) =>
+const renderNav = (props = {}, initialEntries = ['/workspace']) =>
   render(
-    <MemoryRouter initialEntries={['/workspace']} future={futureFlags}>
+    <MemoryRouter initialEntries={initialEntries} future={futureFlags}>
       <TopNav {...props} />
     </MemoryRouter>
   );
@@ -24,19 +24,67 @@ describe('TopNav', () => {
     useMediaQuery.mockImplementation(() => false);
   });
 
-  it('renders the three intra-project tools (Workspace subsumes Editor + Lineage)', () => {
+  it('renders the three intra-project tools (Workspace subsumes Editor + Lineage + Explorer)', () => {
     renderNav();
-    ['Explorer', 'Workspace', 'Dashboards'].forEach(label => {
+    ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
       expect(screen.getByTitle(label)).toBeInTheDocument();
     });
-    // The legacy Editor / Lineage tools are gone — folded into Workspace.
+    // The legacy Editor / Lineage tools AND the Explorer are gone from the top
+    // nav — all folded into Workspace (the Explorer is a Workspace view now,
+    // reached from the shell's own view switcher).
     expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Lineage')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+  });
+
+  // The Explorer is a Workspace view now (no top-nav tab of its own), so every
+  // `/workspace/...` route — including the Explorer's own
+  // `/workspace/exploration[/:id]` — lights the WORKSPACE pill. Only the ACTIVE
+  // tool renders its label text alongside the icon (`ToolSwitch`'s
+  // `{on && t.label}`), so asserting the label text is visible is the same
+  // signal the component itself uses for "on". The Explorer tab is gone
+  // entirely — its title never renders anywhere in the nav.
+  it('the Workspace pill is active on a nested exploration-detail route', () => {
+    renderNav({}, ['/workspace/exploration/exp_a1b2c3']);
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+  });
+
+  it('the Workspace pill is active on the Explorer home route too', () => {
+    renderNav({}, ['/workspace/exploration']);
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+  });
+
+  it('the Workspace pill is active on a plain workspace document route', () => {
+    renderNav({}, ['/workspace?edit=chart:revenue']);
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
   it('defaults to the single Local stage (the viewer has no real stages)', () => {
     renderNav();
     expect(screen.getByText('Local')).toBeInTheDocument();
+  });
+
+  // ux-audit.md "Top-left 'Project' pill appears to do nothing" (the same
+  // finding covers the adjacent Stage segment) — a non-opening stage pill
+  // now explains itself via a title tooltip.
+  it('a non-opening (single, no onAllStages) stage pill explains itself via a title tooltip', () => {
+    renderNav();
+    expect(screen.getByRole('button', { name: 'Local' })).toHaveAttribute(
+      'title',
+      expect.stringContaining('only environment')
+    );
+  });
+
+  it('a stage pill that DOES open (multiple stages) carries no such tooltip', () => {
+    const stages = [
+      { id: 'local', name: 'Local', color: '#6b7280', desc: 'serve', isDefault: true, flag: 'Default' },
+      { id: 'prod', name: 'Prod', color: '#16a34a', desc: 'production' },
+    ];
+    renderNav({ tools: [], stages, currentStage: stages[0] });
+    expect(screen.getByRole('button', { name: 'Local' })).not.toHaveAttribute('title');
   });
 
   it('shows Commit but not Deploy when there are uncommitted changes', () => {
@@ -107,7 +155,7 @@ describe('TopNav', () => {
 
   it('account variant (no tools, no stages) shows neither tools nor a capsule', () => {
     renderNav({ tools: [], stages: [] });
-    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
     expect(screen.queryByText('Local')).not.toBeInTheDocument();
   });
 
@@ -115,7 +163,7 @@ describe('TopNav', () => {
     const stages = [{ id: 'prod', name: 'Production', color: '#16a34a', isDefault: true }];
     renderNav({ tools: [], stages, currentStage: stages[0], onAllStages: () => {} });
     expect(screen.getByText('Production')).toBeInTheDocument();
-    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
   });
 
   it('stage dropdown always shows the search and lists DEFAULT before STARRED', () => {
@@ -298,6 +346,22 @@ describe('TopNav', () => {
       fireEvent.click(screen.getByText('Alpha'));
       expect(screen.queryByText('PROJECTS')).not.toBeInTheDocument();
     });
+
+    // ux-audit.md "Top-left 'Project' pill appears to do nothing" — a
+    // non-interactive pill (nothing to switch to) now explains itself via a
+    // tooltip instead of silently doing nothing on click.
+    it('a single project pill explains itself via a title tooltip rather than doing nothing', () => {
+      renderNav({ projects: [projects[0]], currentProject: projects[0] });
+      expect(screen.getByRole('button', { name: 'Alpha' })).toHaveAttribute(
+        'title',
+        expect.stringContaining('only project')
+      );
+    });
+
+    it('a multi-project pill carries no such tooltip (it really does open a menu)', () => {
+      renderNav({ projects, currentProject: projects[0] });
+      expect(screen.getByRole('button', { name: 'Alpha' })).not.toHaveAttribute('title');
+    });
   });
 
   describe('version history (cloud)', () => {
@@ -383,7 +447,7 @@ describe('TopNav', () => {
 
     it('still renders the tools, capsule, and user menu', () => {
       renderNav();
-      ['Explorer', 'Workspace', 'Dashboards'].forEach(label => {
+      ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
         expect(screen.getByTitle(label)).toBeInTheDocument();
       });
       expect(screen.getByText('Local')).toBeInTheDocument();

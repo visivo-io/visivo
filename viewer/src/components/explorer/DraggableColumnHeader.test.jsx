@@ -30,40 +30,52 @@ describe('DraggableColumnHeader', () => {
     expect(screen.getByTestId('draggable-col-order_id')).toBeInTheDocument();
   });
 
-  it('passes draggable id based on column name', () => {
+  it('passes a sourceType-namespaced draggable id based on column name', () => {
     render(<DraggableColumnHeader column={mockColumn} />);
 
+    // Now sourced from the shared DraggableTh, which namespaces the dnd id by
+    // sourceType ('data-table') so the Explorer and ModelPreview grids can't
+    // collide. The drop router reads the `data` payload, never this id.
     const wrapper = screen.getByTestId('draggable-col-order_id');
-    expect(wrapper.dataset.draggableId).toBe('column-order_id');
+    expect(wrapper.dataset.draggableId).toBe('data-table-column-order_id');
   });
 
-  it('applies metric styling for metric computed columns', () => {
+  // B9 (04-bug-inventory.md) / VIS-1071: metric/dimension styling now
+  // derives from `objectTypeConfigs` (a `bg-*` class + an inline
+  // `borderTopColor` sourced from the same `connectionHandle` hex the ERD
+  // uses) instead of hand-rolled `cyan`/`teal` classes.
+  it('applies metric styling (from objectTypeConfigs) for metric computed columns', () => {
     const metricColumn = { name: 'total_revenue', normalizedType: 'number', computedType: 'metric' };
     render(<DraggableColumnHeader column={metricColumn} />);
 
     const wrapper = screen.getByTestId('draggable-col-total_revenue');
-    expect(wrapper.className).toContain('border-t-cyan-500');
-    expect(wrapper.className).toContain('bg-cyan-50/50');
+    expect(wrapper.className).toContain('border-t-2');
+    expect(wrapper.className).toContain('bg-cyan-100');
+    expect(wrapper.style.borderTopColor).toBe('#06b6d4');
   });
 
-  it('applies dimension styling for dimension computed columns', () => {
+  it('applies dimension styling (from objectTypeConfigs) for dimension computed columns', () => {
     const dimColumn = { name: 'order_month', normalizedType: 'string', computedType: 'dimension' };
     render(<DraggableColumnHeader column={dimColumn} />);
 
     const wrapper = screen.getByTestId('draggable-col-order_month');
-    expect(wrapper.className).toContain('border-t-teal-500');
-    expect(wrapper.className).toContain('bg-teal-50/50');
+    expect(wrapper.className).toContain('border-t-2');
+    expect(wrapper.className).toContain('bg-teal-100');
+    expect(wrapper.style.borderTopColor).toBe('#14b8a6');
   });
 
   it('does not apply computed styling for regular columns', () => {
     render(<DraggableColumnHeader column={mockColumn} />);
 
     const wrapper = screen.getByTestId('draggable-col-order_id');
-    expect(wrapper.className).not.toContain('border-t-cyan');
-    expect(wrapper.className).not.toContain('border-t-teal');
+    expect(wrapper.className).not.toContain('bg-cyan');
+    expect(wrapper.className).not.toContain('bg-teal');
+    expect(wrapper.style.borderTopColor).toBeFalsy();
   });
 
-  it('applies error styling for failed computed columns', () => {
+  // B9's other half: the error state uses the shared `highlight-*` tokens,
+  // never raw `red-*`.
+  it('applies highlight (not red) error styling for failed computed columns', () => {
     const failedColumn = {
       name: 'formatted_date',
       normalizedType: 'string',
@@ -73,8 +85,9 @@ describe('DraggableColumnHeader', () => {
     render(<DraggableColumnHeader column={failedColumn} />);
 
     const wrapper = screen.getByTestId('draggable-col-formatted_date');
-    expect(wrapper.className).toContain('border-t-red-500');
-    expect(wrapper.className).toContain('bg-red-50/50');
+    expect(wrapper.className).toContain('border-t-highlight-500');
+    expect(wrapper.className).toContain('bg-highlight-50/50');
+    expect(wrapper.className).not.toMatch(/\bred-/);
   });
 
   it('error styling takes precedence over computed type styling', () => {
@@ -87,8 +100,9 @@ describe('DraggableColumnHeader', () => {
     render(<DraggableColumnHeader column={errorMetric} />);
 
     const wrapper = screen.getByTestId('draggable-col-bad_metric');
-    expect(wrapper.className).toContain('border-t-red-500');
-    expect(wrapper.className).not.toContain('border-t-cyan-500');
+    expect(wrapper.className).toContain('border-t-highlight-500');
+    expect(wrapper.className).not.toContain('bg-cyan-100');
+    expect(wrapper.style.borderTopColor).toBeFalsy();
   });
 
   it('shows error tooltip via title attribute', () => {

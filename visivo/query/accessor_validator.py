@@ -123,6 +123,25 @@ def get_accessor_sample_value(accessor: str, options: List, default_value=None) 
             return "'sample_value'"
         return "0"
 
+    # A multi-select default is a LIST (e.g. ['Raw']); every scalar accessor
+    # below needs ONE element of it, not str(list). str(['Raw']) yields the
+    # Python list-repr "['Raw']", which substituted into a quoted comparison
+    # produces malformed SQL (equipment = '['Raw']') that SQLGlot cannot parse
+    # — so the combination-validation path aborts and the ENTIRE filter is
+    # silently dropped (no WHERE, no error, unfiltered output). Reduce a list
+    # default to the scalar the accessor asks for. This value is only a
+    # build-time parse-validation sample; the real selection is substituted
+    # client-side at runtime, so any valid element is correct here. (The
+    # 'values' accessor ignores default_value — it samples options[:2] below —
+    # and is unaffected.)
+    if isinstance(default_value, list):
+        if not default_value:
+            default_value = None
+        elif accessor in ("max", "last"):
+            default_value = default_value[-1]
+        else:
+            default_value = default_value[0]
+
     if accessor == "value":
         # Single value for single-select
         return str(default_value if default_value is not None else options[0])
@@ -134,12 +153,13 @@ def get_accessor_sample_value(accessor: str, options: List, default_value=None) 
         return ", ".join(quoted)
 
     elif accessor in ("min", "first"):
-        # First/minimum value
+        # First value (positional on the default list — the sample only needs to
+        # parse, not to be the true minimum).
         value = default_value if default_value is not None else options[0]
         return str(value)
 
     elif accessor in ("max", "last"):
-        # Last/maximum value
+        # Last value (positional on the default list — see above).
         value = default_value if default_value is not None else options[-1]
         return str(value)
 

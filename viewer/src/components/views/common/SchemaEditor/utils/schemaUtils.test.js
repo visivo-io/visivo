@@ -483,3 +483,57 @@ describe('schemaUtils', () => {
     });
   });
 });
+
+describe('filterProperties ranking (found driving the chart-build flow live)', () => {
+  // Mirrors the real shape: Plotly's trace schema puts `coloraxis.colorbar.*`
+  // long before `title.*`, so schema order alone buries the property a person
+  // typing "title" actually wants.
+  const properties = [
+    { path: 'editrevision', description: 'Controls persistence of the plot title' },
+    { path: 'coloraxis.colorbar.title.side' },
+    { path: 'coloraxis.colorbar.title.text' },
+    { path: 'coloraxis.colorbar.title.font.size' },
+    { path: 'legend.grouptitlefont' },
+    { path: 'title.text' },
+    { path: 'title.font.size' },
+    { path: 'xaxis.title.text' },
+  ];
+
+  test('the top-level match outranks deeper paths that merely contain the term', () => {
+    const ranked = filterProperties(properties, 'title').map(p => p.path);
+    // The plot title is the FIRST result, not the 131st (the live behaviour
+    // before this ranking existed).
+    expect(ranked[0]).toBe('title.text');
+    expect(ranked.indexOf('title.text')).toBeLessThan(ranked.indexOf('coloraxis.colorbar.title.text'));
+    expect(ranked.indexOf('title.font.size')).toBeLessThan(ranked.indexOf('xaxis.title.text'));
+  });
+
+  test('a description-only match ranks below every path match', () => {
+    const ranked = filterProperties(properties, 'title').map(p => p.path);
+    expect(ranked[ranked.length - 1]).toBe('editrevision');
+  });
+
+  test('an exact leaf match wins over a longer path with the same leaf', () => {
+    const ranked = filterProperties(
+      [{ path: 'marker.color' }, { path: 'color' }, { path: 'marker.line.color' }],
+      'color'
+    ).map(p => p.path);
+    expect(ranked[0]).toBe('color');
+  });
+
+  test('shallower paths break ties within the same tier', () => {
+    const ranked = filterProperties(
+      [{ path: 'a.b.c.size' }, { path: 'a.size' }, { path: 'a.b.size' }],
+      'size'
+    ).map(p => p.path);
+    expect(ranked).toEqual(['a.size', 'a.b.size', 'a.b.c.size']);
+  });
+
+  test('a non-matching property is excluded entirely', () => {
+    expect(filterProperties(properties, 'zzz')).toEqual([]);
+  });
+
+  test('an empty query returns everything, untouched', () => {
+    expect(filterProperties(properties, '')).toBe(properties);
+  });
+});

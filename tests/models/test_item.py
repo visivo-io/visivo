@@ -540,3 +540,48 @@ def test_dag_does_not_double_count_row_container_item():
     # is NOT also counted as one of its children, even though its child_items()
     # returns Rows that themselves contain Items.
     assert len(item_nodes) == 2
+
+
+class TestItemInlineMarkdownString:
+    """Smoke-test bug #8: the documented inline-markdown shorthand
+    (`- markdown: "# Some inline **markdown**"`, Dashboard docstring) was
+    rejected — `generate_ref_field(Markdown)` discriminated any string as a
+    ${ ref() } and failed it against the ^ref(...)$ pattern. A plain, non-ref
+    string is now coerced to inline Markdown content."""
+
+    def test_plain_string_becomes_inline_markdown_content(self):
+        item = Item(markdown="# Some inline **markdown**")
+        assert isinstance(item.markdown, Markdown)
+        assert item.markdown.content == "# Some inline **markdown**"
+
+    def test_markdown_text_containing_ref_is_still_content_not_a_ref(self):
+        # is_ref is anchored (^ref(...)$), so prose that merely mentions "ref("
+        # is inline content, not a reference.
+        item = Item(markdown="See ref(docs) for details")
+        assert isinstance(item.markdown, Markdown)
+        assert item.markdown.content == "See ref(docs) for details"
+
+    def test_ref_forms_are_still_treated_as_references(self):
+        assert isinstance(Item(markdown="ref(welcome-text)").markdown, str)
+        # ${ ref() } context form is preserved as a context string, not content.
+        assert not isinstance(Item(markdown="${ref(welcome-text)}").markdown, Markdown)
+
+    def test_a_malformed_ref_still_errors_instead_of_being_swallowed_as_content(self):
+        # Review-found: coercion must NOT hide a typo'd ref. A string that STARTS
+        # with `ref(` is an intended reference, so a malformed one errors (as it
+        # does on chart/table/input) rather than silently rendering as markdown.
+        with pytest.raises(ValidationError):
+            Item(markdown="ref(welcome")
+
+    def test_a_bare_context_string_is_preserved_not_turned_into_content(self):
+        # A `${ ... }` string is a context string, not markdown text — preserved.
+        assert not isinstance(Item(markdown="${ project.name }").markdown, Markdown)
+
+    def test_inline_object_form_still_works(self):
+        item = Item(markdown={"content": "# Hi", "align": "center"})
+        assert isinstance(item.markdown, Markdown)
+        assert item.markdown.align == "center"
+
+    def test_mutual_exclusivity_still_enforced_with_inline_string(self):
+        with pytest.raises(ValidationError, match="only one of"):
+            Item(markdown="# x", chart="ref(c)")
