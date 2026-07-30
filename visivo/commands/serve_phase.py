@@ -94,6 +94,15 @@ def serve_phase(
                 no_deprecation_warnings=no_deprecation_warnings,
             )
             app.project = runner.project
+            # The watcher path always rebuilds, whatever the run-trigger
+            # preference says — it's the core `visivo serve` contract for editing
+            # YAML in a text editor, and it swaps app.project besides. The
+            # preference gates the EDITOR's save path only. Since this run did
+            # build the changed slice, drop those items from the staged set so
+            # the Runs tab doesn't keep asking for work that's already done.
+            from visivo.server.jobs.save_run_executor import mark_staged_built
+
+            mark_staged_built(app, changed_dag_filter)
             emit_project_changed(drafts_dropped)
             if one_shot:
                 Logger.instance().success("Closing server...")

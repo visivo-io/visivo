@@ -9,12 +9,17 @@
  */
 import useStore from './store';
 import * as branchingApi from '../api/branching';
+import * as preferencesApi from '../api/preferences';
 import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
 jest.mock('../api/branching', () => ({
   fetchChanges: jest.fn(),
   commitDraft: jest.fn(),
+}));
+
+jest.mock('../api/preferences', () => ({
+  savePreferences: jest.fn(),
 }));
 
 jest.mock('../api/commit', () => ({
@@ -315,5 +320,76 @@ describe('commitStore (VIS-806)', () => {
       expect(state.commitError).toBe('boom');
       expect(fetcherStubs.fetchDashboards).not.toHaveBeenCalled();
     });
+  });
+});
+
+/**
+ * The staged set is what a RUN would build — narrower than the commit diff, and
+ * carried on the same /changes/ response so the Runs tab dot refreshes on every
+ * save rather than on a poll.
+ */
+describe('commitStore staged changes', () => {
+  const staged = [{ name: 'db', type: 'source', status: 'modified' }];
+
+  beforeEach(() => {
+    useStore.setState({ project: { id: 'p1' } });
+  });
+
+  test('hydrates the staged keys from /changes/', async () => {
+    branchingApi.fetchChanges.mockResolvedValue({
+      to_publish: [{ name: 'db', type: 'source', status: 'modified' }],
+      to_remove: [],
+      has_changes: true,
+      staged,
+      staged_dag_filter: '+db+',
+      run_trigger: 'manual',
+    });
+    await useStore.getState().checkCommitStatus();
+    const state = useStore.getState();
+    expect(state.stagedChanges).toEqual(staged);
+    expect(state.stagedCount).toBe(1);
+    expect(state.stagedDagFilter).toBe('+db+');
+    expect(state.runTrigger).toBe('manual');
+  });
+
+  test('a server older than this viewer sends no staged keys and still works', () => {
+    // Cloud vendors the SPA at a lagging release tag and local installs upgrade
+    // whenever the user does, so viewer-newer-than-server is a real pairing.
+    branchingApi.fetchChanges.mockResolvedValue({
+      to_publish: [],
+      to_remove: [],
+      has_changes: false,
+    });
+    return useStore
+      .getState()
+      .checkCommitStatus()
+      .then(() => {
+        expect(useStore.getState().stagedChanges).toEqual([]);
+        expect(useStore.getState().stagedCount).toBe(0);
+        expect(useStore.getState().stagedDagFilter).toBe('');
+      });
+  });
+
+  test('an unreachable endpoint clears the dot rather than leaving it stale', async () => {
+    useStore.setState({ stagedChanges: staged, stagedCount: 1 });
+    branchingApi.fetchChanges.mockRejectedValue(new Error('offline'));
+    await useStore.getState().checkCommitStatus();
+    expect(useStore.getState().stagedCount).toBe(0);
+  });
+
+  test('setRunTrigger applies immediately and keeps what the server stored', async () => {
+    preferencesApi.savePreferences.mockResolvedValue({ run_trigger: 'manual' });
+    const ok = await useStore.getState().setRunTrigger('manual');
+    expect(ok).toBe(true);
+    expect(preferencesApi.savePreferences).toHaveBeenCalledWith({ run_trigger: 'manual' });
+    expect(useStore.getState().runTrigger).toBe('manual');
+  });
+
+  test('setRunTrigger reverts when the save fails, so the toggle never lies', async () => {
+    useStore.setState({ runTrigger: 'automatic' });
+    preferencesApi.savePreferences.mockResolvedValue(null);
+    const ok = await useStore.getState().setRunTrigger('manual');
+    expect(ok).toBe(false);
+    expect(useStore.getState().runTrigger).toBe('automatic');
   });
 });

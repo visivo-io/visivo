@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
-import { useNavigate } from 'react-router-dom';
 import { parseRefValue } from '../../utils/refString';
 import { parseCanvasPath } from '../views/project/canvas/canvasReorder';
 import ItemFlipCard from './ItemFlipCard';
 import ItemActionMenu from './ItemActionMenu';
 import copyItemLink from './copyItemLink';
 import { emitWorkspaceEvent } from '../views/workspace/telemetry';
+import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 /**
  * ProjectViewFlipLayer — VIS-788 / I-1 (View-mode flip gesture).
@@ -92,7 +92,7 @@ const itemAtKey = (config, key) => {
 };
 
 const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
-  const navigate = useNavigate();
+  const navigate = useViewerNavigate();
   const reducedMotion = prefersReducedMotion();
   const [hoverKey, setHoverKey] = useState(null);
   // The kebab lives in a sibling overlay, so reaching for it clears the slot

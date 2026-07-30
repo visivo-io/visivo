@@ -29,7 +29,8 @@ from flask import g, jsonify, request
 
 from visivo.logger.logger import Logger
 from visivo.server.hash.data_fingerprint import data_fingerprint
-from visivo.server.jobs.save_run_executor import request_run
+from visivo.server.jobs.save_run_executor import request_run, run_now
+from visivo.server.user_config import AUTOMATIC, get_run_trigger
 
 # URL segment -> (manager attr, fingerprint mode, data_producing). Public so the
 # resource→data-mode mapping is easy to find. Mirrors core's per-type DATA_MODE /
@@ -54,6 +55,11 @@ RESOURCE_META = {
     "markdowns": ("markdown_manager", "query", False),
     "dashboards": ("dashboard_manager", "query", False),
 }
+
+# URL segment -> the type name the viewer renders (and the one core's
+# ``unbuilt_changes`` emits). Every segment is the plural of its type, so this is
+# derived rather than a second list to keep in sync.
+RESOURCE_TYPE_NAMES = {segment: segment[:-1] for segment in RESOURCE_META}
 
 # Detail routes (``/api/<segment>/<name>/``) for the mapped resources — derived
 # from RESOURCE_META so the two can't drift. Longest-first alternation so a
@@ -111,22 +117,65 @@ def register_run_views(app, flask_app, output_dir):
                 resource = _resource_from_path(request.path)
                 if resource:
                     segment, name = resource
-                    after = _resource_fingerprint(
-                        flask_app, segment, name, deleted=(request.method == "DELETE")
-                    )
+                    deleted = request.method == "DELETE"
+                    after = _resource_fingerprint(flask_app, segment, name, deleted=deleted)
                     if after != getattr(g, "_presave_data_fingerprint", None):
-                        request_run(flask_app, [name])
+                        # Stage the change either way: the staged set is what the
+                        # Run view lists and what the Run button builds, so it has
+                        # to be recorded whether or not a run fires now.
+                        flask_app.staged_manager.record(
+                            RESOURCE_TYPE_NAMES[segment],
+                            name,
+                            after,
+                            status="deleted" if deleted else "modified",
+                        )
+                        if get_run_trigger() == AUTOMATIC:
+                            request_run(flask_app, [name])
         except Exception as e:  # never let the hook break a save response
             Logger.instance().error(f"run-on-save hook error: {str(e)}")
         return response
 
     @app.route("/api/projects/<project_id>/run/", methods=["GET"])
     def list_runs(project_id):
-        """Newest-first runs, in the cloud ``RunSerializer`` shape."""
+        """Newest-first runs, in the cloud ``RunSerializer`` shape.
+
+        Deliberately still a bare array, matching cloud: the staged set rides on
+        ``/api/projects/<id>/changes/`` instead. Changing this response shape
+        would break any viewer older than the server, and the viewer ships on its
+        own schedule at both ends (a vendored release tag in cloud, whenever the
+        user upgrades locally).
+        """
         try:
             return jsonify(flask_app.run_manager.list())
         except Exception as e:
             Logger.instance().error(f"Error listing runs: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/projects/<project_id>/run/", methods=["POST"])
+    def trigger_run(project_id):
+        """The Run button. Mirrors the cloud contract, including the distinction
+        between an absent ``dag_filter`` (build what's staged) and an explicit
+        empty one (rebuild everything — the Run-all escape hatch, and the only
+        recovery when outputs are missing but the fingerprints say built)."""
+        try:
+            active = [
+                run for run in flask_app.run_manager.list() if run["state"] in ("queued", "running")
+            ]
+            if active:
+                return (
+                    jsonify({"action": "run_in_progress", "run": active[0]}),
+                    409,
+                )
+
+            body = request.get_json(silent=True) or {}
+            if "dag_filter" in body:
+                dag_filter = body.get("dag_filter") or ""
+            else:
+                dag_filter = flask_app.staged_manager.dag_filter()
+            run = run_now(flask_app, dag_filter)
+            return jsonify(run.to_dict()), 201
+        except Exception as e:
+            Logger.instance().error(f"Error triggering run: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/runs/<run_id>/logs/", methods=["GET"])

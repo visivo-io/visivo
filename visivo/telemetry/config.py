@@ -28,17 +28,13 @@ def _check_env_disabled() -> bool:
 
 def _check_global_config_disabled() -> bool:
     """Check if telemetry is disabled in global config file."""
-    config_path = Path.home() / ".visivo" / "config.yml"
-    if not config_path.exists():
-        return False
+    # Same file as every other user-level preference — read through the shared
+    # helper so the path and the "unreadable means defaults" handling have one
+    # definition. Imported here rather than at module scope: telemetry loads
+    # very early, and server.user_config pulls in the logger.
+    from visivo.server.user_config import read_user_config
 
-    try:
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f) or {}
-            return config.get("telemetry_enabled", True) is False
-    except Exception:
-        # If we can't read the config, assume telemetry is enabled
-        return False
+    return read_user_config().get("telemetry_enabled", True) is False
 
 
 def is_telemetry_enabled(project_defaults: Optional[object] = None) -> bool:

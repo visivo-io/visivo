@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { PiWarningCircle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { findLatestRunFailureFor } from '../../../stores/runFailures';
+import { viewerPath } from '../../../contexts/viewerBase';
 
 /**
  * RecordRunStatus — VIS-993 §2 (folds VIS-981's wiring).
@@ -49,7 +50,7 @@ const RecordRunStatus = ({ name, showRunsLink = false }) => {
       </div>
       {showRunsLink && (
         <Link
-          to="/runs"
+          to={viewerPath('/runs')}
           data-testid="record-run-status-view-runs"
           className="shrink-0 text-[11px] font-medium text-highlight underline transition-colors hover:text-highlight-600"
         >

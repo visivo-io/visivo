@@ -2,13 +2,17 @@ import { getUrl } from '../contexts/URLContext';
 import { apiFetch } from './utils';
 
 /**
- * Branching API (core/Django only) — draft / branch / commit / run endpoints.
+ * Branching API — the shape of the project you are editing: capabilities,
+ * draft, branch, discard, the pending-changes set, and commit.
  *
- * These endpoints exist only in the cloud (core) backend, not in local
- * `visivo serve` (Flask). `fetchCapabilities` is the mode probe: a 200 means
- * the Edit/Branch/commit flow applies; a 404 means local serve, where the
- * legacy always-editable Flask commit flow stays in charge (see api/commit.js
- * + commitStore).
+ * Runs live in api/runs.js and user preferences in api/preferences.js. They were
+ * here once only because the cloud endpoints landed together; a run is the
+ * execution of a project, not an operation on its branching state.
+ *
+ * `fetchCapabilities` is the mode probe. Note it is no longer a cloud-only
+ * signal: local `visivo serve` implements it too (returning can_branch: false,
+ * draft_id: null), so a NULL return means "no such endpoint at all" — dist —
+ * rather than "local serve". Branch on the values, not on null.
  */
 
 /**
@@ -88,31 +92,6 @@ export const fetchChanges = async projectId => {
     return await response.json();
   }
   throw new Error('Failed to fetch changes');
-};
-
-/**
- * The draft's recent runs (status of each auto-run). GET /api/projects/<id>/run/
- * -> [{id, state, created_at, dag_filter, error_json, is_superseded, ...}].
- */
-export const fetchRuns = async projectId => {
-  const response = await apiFetch(getUrl('projectRun', { projectId }));
-  if (response.status === 200) {
-    return await response.json();
-  }
-  throw new Error('Failed to fetch runs');
-};
-
-/**
- * A single run's captured log. GET /api/runs/<id>/logs/ -> {state, logs,
- * error_json}. The runner streams the log live while the run executes (the
- * editor tail-polls this), then it settles into the final static log.
- */
-export const fetchRunLog = async runId => {
-  const response = await apiFetch(getUrl('runLogs', { runId }));
-  if (response.status === 200) {
-    return await response.json();
-  }
-  throw new Error('Failed to fetch run log');
 };
 
 /**
