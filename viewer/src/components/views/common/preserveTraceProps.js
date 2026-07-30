@@ -17,9 +17,15 @@
  * @param {string} args.newType         The trace type being switched to (e.g. 'bar').
  * @param {Object} args.newSchema       Per-type Plotly schema for `newType` ({ properties }).
  * @param {Object} [args.typePropsCache] Cache of `{ [type]: propsWithoutType }` from prior switches.
- * @returns {{ props: Object, typePropsCache: Object }}
+ * @returns {{ props: Object, typePropsCache: Object, dropped: string[] }}
  *   `props` always has `props.type === newType`.
  *   `typePropsCache` is a new object with `oldType`'s full props (minus `type`) stashed.
+ *   `dropped` (T4 / pills-buildrail #2) — top-level prop names that had a
+ *   value under `oldType` but aren't valid on `newType` (and aren't being
+ *   silently restored from a prior visit to `newType`), so the caller can
+ *   warn rather than lose them with no signal. Always `[]` when switching to
+ *   a previously-visited type (an exact snapshot is restored instead) or
+ *   when nothing was actually configured.
  */
 export function preserveTraceProps({ oldProps, oldType, newType, newSchema, typePropsCache }) {
   const safeOldProps = oldProps && typeof oldProps === 'object' ? oldProps : {};
@@ -53,15 +59,22 @@ export function preserveTraceProps({ oldProps, oldType, newType, newSchema, type
   // present in `newSchema.properties`; drop it otherwise. Carry-forward values win over
   // the restored snapshot so the most recent user edits survive a round-trip.
   const carried = {};
+  const dropped = [];
+  // A prior visit to `newType` restores its exact snapshot (`restored`), so
+  // anything not carried forward is already accounted for there — only warn
+  // about a genuine loss when this is the FIRST visit to `newType`.
+  const isFreshType = !updatedCache[newType];
   for (const [name, value] of Object.entries(oldPropsWithoutType)) {
     if (isAllowed(name)) {
       carried[name] = value;
+    } else if (isFreshType) {
+      dropped.push(name);
     }
   }
 
   const props = { ...restored, ...carried, type: newType };
 
-  return { props, typePropsCache: updatedCache };
+  return { props, typePropsCache: updatedCache, dropped };
 }
 
 export default preserveTraceProps;

@@ -40,6 +40,12 @@ describe('TabCloseConfirmDialog', () => {
     expect(screen.queryByTestId('tab-close-confirm-dialog')).not.toBeInTheDocument();
   });
 
+  test('fails safe (renders nothing) when workspaceTabs itself is undefined', () => {
+    seed({ workspaceTabs: undefined, workspacePendingCloseTabId: 'chart:revenue' });
+    render(<TabCloseConfirmDialog />);
+    expect(screen.queryByTestId('tab-close-confirm-dialog')).not.toBeInTheDocument();
+  });
+
   test('renders the dialog naming the dirty tab, with focus on the safe action', () => {
     seed({ workspacePendingCloseTabId: 'chart:revenue' });
     render(<TabCloseConfirmDialog />);
@@ -73,6 +79,14 @@ describe('TabCloseConfirmDialog', () => {
     expect(cancelCloseWorkspaceTab).toHaveBeenCalled();
   });
 
+  test('a non-Escape key is a no-op — it neither cancels nor confirms', () => {
+    const cancelCloseWorkspaceTab = jest.fn();
+    seed({ workspacePendingCloseTabId: 'chart:revenue', cancelCloseWorkspaceTab });
+    render(<TabCloseConfirmDialog />);
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(cancelCloseWorkspaceTab).not.toHaveBeenCalled();
+  });
+
   test('clicking the backdrop cancels; clicking inside the card does not', () => {
     const cancelCloseWorkspaceTab = jest.fn();
     seed({ workspacePendingCloseTabId: 'chart:revenue', cancelCloseWorkspaceTab });
@@ -81,5 +95,41 @@ describe('TabCloseConfirmDialog', () => {
     expect(cancelCloseWorkspaceTab).not.toHaveBeenCalled();
     fireEvent.pointerDown(screen.getByTestId('tab-close-confirm-backdrop'));
     expect(cancelCloseWorkspaceTab).toHaveBeenCalled();
+  });
+
+  // D11 / ux-audit.md "Close-tab dialog names the work by internal ID and
+  // contradicts autosave behavior" + shell-ia's "Unsaved-changes dialog
+  // names the tab by internal id, not its title": an exploration tab's
+  // STABLE `tab.name` is the backend id (kept stable across renames — see
+  // `TabStrip.jsx`'s `WorkspaceTab`), never what the user typed or saw.
+  describe('exploration tabs — display name, not internal id', () => {
+    const EXPLORATION_TABS = [
+      { id: 'exploration:exp_62772784', type: 'exploration', name: 'exp_62772784', dirty: true },
+    ];
+
+    test('names the exploration by its real display name, never the raw backend id', () => {
+      seed({
+        workspaceTabs: EXPLORATION_TABS,
+        workspacePendingCloseTabId: 'exploration:exp_62772784',
+        workspaceExplorations: {
+          byId: { exp_62772784: { id: 'exp_62772784', name: 'Exploration 2' } },
+          order: ['exp_62772784'],
+        },
+      });
+      render(<TabCloseConfirmDialog />);
+      const dialog = screen.getByTestId('tab-close-confirm-dialog');
+      expect(dialog).toHaveTextContent('Exploration 2');
+      expect(dialog).not.toHaveTextContent('exp_62772784');
+    });
+
+    test('falls back to the raw id only if the exploration record is missing (never blank)', () => {
+      seed({
+        workspaceTabs: EXPLORATION_TABS,
+        workspacePendingCloseTabId: 'exploration:exp_62772784',
+        workspaceExplorations: { byId: {}, order: [] },
+      });
+      render(<TabCloseConfirmDialog />);
+      expect(screen.getByTestId('tab-close-confirm-dialog')).toHaveTextContent('exp_62772784');
+    });
   });
 });

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PiPlusCircle, PiCopySimple } from 'react-icons/pi';
+import { PiPlusCircle, PiCopySimple, PiCompass } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon } from '../../common/objectTypeConfigs';
 import { formatRefExpression } from '../../../../utils/refString';
 import { generateUniqueName } from '../../../../utils/uniqueName';
+import { emitWorkspaceEvent } from '../telemetry';
 
 /**
  * ErdTableContextMenu — right-click menu for a Source-ERD table node (VIS-1005).
@@ -13,6 +14,10 @@ import { generateUniqueName } from '../../../../utils/uniqueName';
  *   - "Create a model to query this table" — builds `SELECT * FROM <schema>.<table>`,
  *     mints a unique model name, saves a SqlModel (`source: ${ref(<sourceName>)}`)
  *     via the model store, then opens it as a workspace tab.
+ *   - "Explore this" (VIS-1067) — mints a new exploration with one scratch
+ *     query pre-wired to the SAME `SELECT * FROM <schema>.<table>` + source,
+ *     and opens its tab (the D9 "start from a table" round trip, without
+ *     first publishing a real model).
  *   - "Copy qualified name" — copies the dotted qualified name to the clipboard.
  *
  * The SELECT string is CONSTRUCTED in JS (trivial identifier quoting) — this is
@@ -67,6 +72,8 @@ const ErdTableContextMenu = ({ x, y, sourceName, target, onDismiss }) => {
   const models = useStore(s => s.models);
   const saveModel = useStore(s => s.saveModel);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
   const SourceIcon = getTypeIcon('source');
 
   useEffect(() => {
@@ -113,6 +120,20 @@ const ErdTableContextMenu = ({ x, y, sourceName, target, onDismiss }) => {
     }
   };
 
+  const handleExploreThis = async () => {
+    if (!createExploration) return;
+    const sql = buildSelectStar(target);
+    const seed = { type: 'table', name: qualifiedName };
+    const legacyStateOverride = buildExplorationSeedState
+      ? buildExplorationSeedState(seed, { sql, source: sourceName })
+      : null;
+    const result = await createExploration(seed, null, legacyStateOverride);
+    if (result?.success && openWorkspaceTab) {
+      openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+      emitWorkspaceEvent('explore_this_used', { source_type: 'table' });
+    }
+  };
+
   const handleCopyQualifiedName = () => {
     try {
       navigator?.clipboard?.writeText?.(qualifiedName);
@@ -142,6 +163,15 @@ const ErdTableContextMenu = ({ x, y, sourceName, target, onDismiss }) => {
         label="Create a model to query this table"
         onClick={async () => {
           await handleCreateModel();
+          onDismiss && onDismiss();
+        }}
+      />
+      <MenuItem
+        testid="erd-table-ctx-explore-this"
+        icon={PiCompass}
+        label="Explore this"
+        onClick={async () => {
+          await handleExploreThis();
           onDismiss && onDismiss();
         }}
       />

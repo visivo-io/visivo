@@ -15,6 +15,8 @@ const reset = () => {
     useStore.setState({
       workspaceTabs: [],
       workspaceActiveTabId: null,
+      workspaceActiveObject: null,
+      workspaceActiveView: 'project',
       workspacePendingCloseTabId: null,
       workspaceUrlNavigate: null,
       workspaceUrlBase: '/workspace',
@@ -22,6 +24,17 @@ const reset = () => {
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
       workspaceLens: 'preview',
+      // VIS-1108: the GC below can consult the LIVE legacy explorerStore
+      // working-state (not just the persisted `record.draft`) when the
+      // closing tab is the active one — reset it to the same empty defaults
+      // `explorerStore.js` itself starts with so no earlier test's typed
+      // state can leak into a later test's GC assertions.
+      explorerModelTabs: [],
+      explorerModelStates: {},
+      explorerChartName: null,
+      explorerChartLayout: {},
+      explorerChartInsightNames: [],
+      explorerInsightStates: {},
     });
   });
 };
@@ -42,16 +55,23 @@ describe('workspace store slice', () => {
     expect(s.workspaceActiveTabId).toBe('dashboard:simple-dashboard');
   });
 
-  test('openWorkspaceTab routes the active selection through the registered URL navigator', () => {
+  test('openWorkspaceTab routes the active selection through the registered URL navigator AND activates immediately (VIS-1050 gate)', () => {
     const nav = jest.fn();
     act(() => {
       useStore.getState().registerWorkspaceUrlNavigate(nav);
       useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
     });
-    // It navigates to the tab's URL; the URL→store sync (in Workspace) then sets
-    // it active — it is NOT activated in-store directly here.
+    // It navigates to the tab's URL (shareable links / Back-button history /
+    // reload still read the URL as the source of truth) AND activates in the
+    // store IMMEDIATELY — it does NOT wait for the separate URL→store sync
+    // effect (Workspace.jsx), which is racy: `closeWorkspaceTab` also writes
+    // the store directly and separately navigates, so the store and the URL
+    // are independently-updating signals with no ordering guarantee between
+    // them (VIS-1050 gate: closing then reopening the SAME document could
+    // leave the effect's "already synced" memory matching the reopen even
+    // though the store no longer had the tab, hanging the reopen forever).
     expect(nav).toHaveBeenCalledWith('/workspace?edit=chart%3Arevenue');
-    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
     // The id is still returned synchronously for callers that need it.
     let id;
     act(() => {
@@ -89,6 +109,97 @@ describe('workspace store slice', () => {
     });
     expect(nav).not.toHaveBeenCalled();
     expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
+  });
+
+  test('activateWorkspaceTab delegates to activateWorkspaceView for a view-typed payload', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().activateWorkspaceTab({ type: 'explorer', name: 'explorer' });
+    });
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('explorer');
+    // Delegating to activateWorkspaceView parks the document tab (per its own
+    // contract) rather than leaving the dashboard tab active.
+    expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  test('switchWorkspaceTab routes the URL via workspaceUrlNavigate when one is registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().switchWorkspaceTab('dashboard:d1');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+    expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('closeWorkspaceTab routes the URL to the newly-focused tab via workspaceUrlNavigate when one is registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('chart:revenue');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+  });
+
+  // activateWorkspaceTab is the URL→store write called directly by
+  // useWorkspaceUrlSync for a deep link / browser back-forward — a
+  // VIEW-typed payload (a stale `?edit=project:...`-shaped URL, or a legacy
+  // persisted record) must delegate to activateWorkspaceView exactly like
+  // openWorkspaceTab does, not create a bogus tab record.
+  test('activateWorkspaceTab with a VIEW-typed payload delegates to activateWorkspaceView and returns null', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().activateWorkspaceTab({
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+    });
+    expect(returned).toBeNull();
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('semantic-layer');
+    expect(s.workspaceTabs).toHaveLength(0);
+    expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  test('openWorkspaceTab rejects bad input (missing type/name)', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().openWorkspaceTab({ type: 'chart' });
+    });
+    expect(returned).toBeNull();
+    act(() => {
+      returned = useStore.getState().openWorkspaceTab(null);
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
+  test('activateWorkspaceTab rejects bad input (missing type/name)', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().activateWorkspaceTab({ type: 'chart' });
+    });
+    expect(returned).toBeNull();
+    act(() => {
+      returned = useStore.getState().activateWorkspaceTab(null);
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
+  test('restoreWorkspaceTabs is a no-op for a non-array payload (defensive fallback)', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'keep-me' });
+      useStore.getState().restoreWorkspaceTabs(null);
+      useStore.getState().restoreWorkspaceTabs('not-an-array');
+    });
+    // The existing tab set is untouched — restoreWorkspaceTabs never ran.
+    expect(useStore.getState().workspaceTabs.map(t => t.id)).toEqual(['chart:keep-me']);
   });
 
   test('restoreWorkspaceTabs replaces the strip without focusing (dedupe + sanitize)', () => {
@@ -197,6 +308,18 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
   });
 
+  test('switchWorkspaceTab routes the URL through the registered navigator (Back button + single loop)', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd2' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().switchWorkspaceTab('dashboard:d1');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+    expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
   test('closeWorkspaceTab removes the tab and reassigns focus when the active tab closes', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
@@ -226,6 +349,45 @@ describe('workspace store slice', () => {
     expect(s.workspaceActiveTabId).toBe('dashboard:d1');
   });
 
+  test('closeWorkspaceTab with a registered navigator routes the URL to the newly-focused remaining tab', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd2' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('dashboard:d2');
+    });
+    // d1 (the remaining tab) takes over the center — the URL follows it.
+    expect(nav).toHaveBeenCalledWith('/workspace/dashboard/d1');
+    expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('closeWorkspaceTab with a registered navigator routes the URL to the owning VIEW when no tab remains', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('dashboard:d1');
+    });
+    // No tab remains — the URL must not dangle on the closed tab's `?edit=`/
+    // dashboard path; it routes to the destination that now owns the center.
+    expect(nav).toHaveBeenCalledWith('/workspace');
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+  });
+
+  test('closeWorkspaceTab of a non-active tab never touches the URL, even with a navigator registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd2' });
+      useStore.getState().switchWorkspaceTab('dashboard:d1');
+      nav.mockClear();
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().closeWorkspaceTab('dashboard:d2');
+    });
+    expect(nav).not.toHaveBeenCalled();
+  });
+
   test('closing the last tab clears the active id', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
@@ -234,6 +396,257 @@ describe('workspace store slice', () => {
     const s = useStore.getState();
     expect(s.workspaceTabs).toHaveLength(0);
     expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  // Phase 6c-T5 (ux-audit.md Lifecycle findings, VIS-1102) — GC an untouched
+  // seeded exploration when its tab closes ------------------------------
+  describe('closeWorkspaceTab garbage-collects an untouched seeded exploration', () => {
+    test('deletes the backend record when a seeded exploration with no meaningful content closes', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'local-duckdb exploration',
+                seededFrom: { type: 'source', name: 'local-duckdb' },
+                draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                promoted: [],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).toHaveBeenCalledWith('exp_1');
+    });
+
+    test('does NOT delete a seeded exploration that has real content', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'local-duckdb exploration',
+                seededFrom: { type: 'source', name: 'local-duckdb' },
+                draft: {
+                  queries: [],
+                  insights: [],
+                  chart: null,
+                  computedColumns: [],
+                  legacyState: {
+                    modelStates: { query_1: { sql: 'SELECT * FROM t' } },
+                    insightStates: {},
+                    chartLayout: {},
+                  },
+                },
+                promoted: [],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    test('does NOT delete a blank "+ New exploration" record (no seededFrom), even with an empty draft', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'Exploration 2',
+                seededFrom: null,
+                draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                promoted: [],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    test('does NOT delete a seeded exploration that has already been promoted', () => {
+      const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+      act(() => {
+        useStore.setState({
+          workspaceExplorations: {
+            byId: {
+              exp_1: {
+                id: 'exp_1',
+                name: 'local-duckdb exploration',
+                seededFrom: { type: 'source', name: 'local-duckdb' },
+                draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                promoted: [{ type: 'model', name: 'query_1' }],
+              },
+            },
+            order: ['exp_1'],
+          },
+          deleteExploration,
+        });
+        useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+        useStore.getState().closeWorkspaceTab('exploration:exp_1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    test('closing a non-exploration tab never touches deleteExploration', () => {
+      const deleteExploration = jest.fn();
+      act(() => {
+        useStore.setState({ deleteExploration });
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+        useStore.getState().closeWorkspaceTab('dashboard:d1');
+      });
+      expect(deleteExploration).not.toHaveBeenCalled();
+    });
+
+    // VIS-1108 (URGENT, DATA LOSS): typing then closing an ephemeral tab
+    // within the ExplorationPane's ~600ms live-sync debounce used to delete
+    // BOTH the record and the typed edit — the GC above read
+    // `workspaceExplorations.byId[id].draft`, but a just-typed edit lives
+    // ONLY in the legacy `explorerStore.js` working-state until that
+    // debounce pushes it into the store draft via `updateExplorationDraft`.
+    // The GC runs SYNCHRONOUSLY inside `closeWorkspaceTab`, ahead of
+    // `ExplorationPane`'s own deactivate-flush cleanup (a React effect
+    // cleanup, which only runs after this commit) — so the stale, still-
+    // blank draft always "won" and the record was deleted out from under the
+    // very edit the user just typed.
+    describe('VIS-1108 — the GC must consult the LIVE legacy working-state, not a store draft known to lag', () => {
+      test('does NOT delete a seeded exploration whose backend draft is still blank but the LIVE legacy state has just-typed SQL (fast close-after-type)', () => {
+        const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+        act(() => {
+          useStore.setState({
+            workspaceExplorations: {
+              byId: {
+                exp_1: {
+                  id: 'exp_1',
+                  name: 'local-duckdb exploration',
+                  seededFrom: { type: 'source', name: 'local-duckdb' },
+                  // The PERSISTED draft is still the blank seed — exactly
+                  // what it looks like before ExplorationPane's ~600ms
+                  // live-sync debounce has ever fired.
+                  draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                  promoted: [],
+                },
+              },
+              order: ['exp_1'],
+            },
+            deleteExploration,
+            // The legacy explorerStore working-state IS hot for this
+            // exploration (ExplorationPane's restore-on-activate put it
+            // there) — this is what the user just typed, sitting only in
+            // memory, not yet flushed into the record's draft above.
+            explorerModelTabs: ['query_1'],
+            explorerModelStates: {
+              query_1: {
+                sql: 'SELECT * FROM orders',
+                sourceName: 'local-duckdb',
+                sourceEdited: false,
+                computedColumns: [],
+                isNew: true,
+              },
+            },
+          });
+          useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+          useStore.getState().closeWorkspaceTab('exploration:exp_1');
+        });
+        // THE BUG: this used to fire unconditionally — the GC trusted the
+        // still-blank persisted draft and deleted the record, silently
+        // destroying the typed SQL along with it.
+        expect(deleteExploration).not.toHaveBeenCalled();
+      });
+
+      test('still deletes when BOTH the persisted draft AND the live legacy state genuinely have no content (no regression on the untouched-browse GC)', () => {
+        const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+        act(() => {
+          useStore.setState({
+            workspaceExplorations: {
+              byId: {
+                exp_1: {
+                  id: 'exp_1',
+                  name: 'local-duckdb exploration',
+                  seededFrom: { type: 'source', name: 'local-duckdb' },
+                  draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                  promoted: [],
+                },
+              },
+              order: ['exp_1'],
+            },
+            deleteExploration,
+            // Live legacy state mirrors the untouched seed exactly — no SQL
+            // ever typed.
+            explorerModelTabs: ['query_1'],
+            explorerModelStates: {
+              query_1: {
+                sql: '',
+                sourceName: 'local-duckdb',
+                sourceEdited: false,
+                computedColumns: [],
+                isNew: true,
+              },
+            },
+          });
+          useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+          useStore.getState().closeWorkspaceTab('exploration:exp_1');
+        });
+        expect(deleteExploration).toHaveBeenCalledWith('exp_1');
+      });
+
+      test('a background (non-active) tab close never borrows the CURRENTLY active tab’s live legacy state as its own', () => {
+        const deleteExploration = jest.fn().mockResolvedValue({ success: true });
+        act(() => {
+          useStore.setState({
+            workspaceExplorations: {
+              byId: {
+                exp_1: {
+                  id: 'exp_1',
+                  name: 'local-duckdb exploration',
+                  seededFrom: { type: 'source', name: 'local-duckdb' },
+                  draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+                  promoted: [],
+                },
+              },
+              order: ['exp_1'],
+            },
+            deleteExploration,
+          });
+          // exp_1's tab is opened, then a DIFFERENT tab is opened and
+          // becomes active — exp_1 is now parked in the background, not hot.
+          useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_1' });
+          useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+          // The legacy store is now hot for something else entirely (real
+          // typed SQL belongs to whatever the ACTIVE tab is, never exp_1,
+          // which was parked before this state existed) — the GC must not
+          // misattribute it to exp_1 just because the fields happen to be
+          // set.
+          useStore.setState({
+            explorerModelTabs: ['some_other_model'],
+            explorerModelStates: {
+              some_other_model: { sql: 'SELECT 1', sourceName: 'local-duckdb', isNew: true, computedColumns: [] },
+            },
+          });
+          useStore.getState().closeWorkspaceTab('exploration:exp_1');
+        });
+        expect(deleteExploration).toHaveBeenCalledWith('exp_1');
+      });
+    });
   });
 
   // Dirty-close guard (VIS-812 / Track O O-3) --------------------------------
@@ -284,6 +697,45 @@ describe('workspace store slice', () => {
     expect(s.workspaceActiveTabId).toBe('dashboard:d1');
   });
 
+  // VIS-1081: "Close without saving" on a dirty EXPLORATION tab must actually
+  // discard, not just close (an exploration autosaves in the background —
+  // see workspaceExplorationsStore.js's discardExploration docstring).
+  test('confirmCloseWorkspaceTab calls discardExploration for a dirty exploration tab, before closing it', () => {
+    const discardExploration = jest.fn();
+    act(() => {
+      useStore.setState({ discardExploration });
+      useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_a1' });
+      useStore.getState().setWorkspaceTabDirty('exploration:exp_a1', true);
+      useStore.getState().requestCloseWorkspaceTab('exploration:exp_a1');
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    expect(discardExploration).toHaveBeenCalledWith('exp_a1');
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
+  test('confirmCloseWorkspaceTab never calls discardExploration for a non-exploration tab', () => {
+    const discardExploration = jest.fn();
+    act(() => {
+      useStore.setState({ discardExploration });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    expect(discardExploration).not.toHaveBeenCalled();
+  });
+
+  test('confirmCloseWorkspaceTab still closes the tab even if discardExploration is missing/undefined', () => {
+    act(() => {
+      useStore.setState({ discardExploration: undefined });
+      useStore.getState().openWorkspaceTab({ type: 'exploration', name: 'exp_a1' });
+      useStore.getState().setWorkspaceTabDirty('exploration:exp_a1', true);
+      useStore.getState().requestCloseWorkspaceTab('exploration:exp_a1');
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
   test('confirmCloseWorkspaceTab with nothing pending is a no-op', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
@@ -316,6 +768,43 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspacePendingCloseTabId).toBeNull();
   });
 
+  // Cross-PR gap fix (#5, e2e-gap-review.md): navigating away (a different
+  // tab, or a destination switch) while a tab-close confirmation is pending
+  // must dismiss the dialog too — previously ONLY confirm/cancel/the closed
+  // tab's own id-match guard ever cleared `workspacePendingCloseTabId`, so
+  // it stayed parked and the dialog kept rendering over whatever the user
+  // navigated to next.
+  test('activating a DIFFERENT tab while a close is pending clears the pending id (dialog does not orphan over the new tab)', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+    });
+    expect(useStore.getState().workspacePendingCloseTabId).toBe('chart:c1');
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'dashboard', name: 'd1' });
+    });
+    const s = useStore.getState();
+    expect(s.workspacePendingCloseTabId).toBeNull();
+    // The pending tab itself is untouched (still open, still dirty) — only
+    // the confirmation dialog's pending state is dismissed, not the tab.
+    expect(s.workspaceTabs.map((t) => t.id)).toContain('chart:c1');
+  });
+
+  test('activating a view (destination switch) while a close is pending clears the pending id', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+    });
+    expect(useStore.getState().workspacePendingCloseTabId).toBe('chart:c1');
+    act(() => {
+      useStore.getState().activateWorkspaceView('semantic-layer');
+    });
+    expect(useStore.getState().workspacePendingCloseTabId).toBeNull();
+  });
+
   test('setWorkspaceTabDirty toggles the dirty flag without touching others', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
@@ -337,6 +826,101 @@ describe('workspace store slice', () => {
       useStore.getState().toggleWorkspaceRightCollapsed();
     });
     expect(useStore.getState().workspaceRightCollapsed).toBe(true);
+  });
+
+  // 6c-T2 responsive shell (BLOCKER at 1100px): applyWorkspaceAutoCollapse is
+  // a one-way NUDGE reconciled against current state, not a continuous
+  // override — see its docstring for the full contract.
+  describe('applyWorkspaceAutoCollapse (6c-T2 responsive shell)', () => {
+    test('collapses a rail that is not already collapsed, tagging it as shell-driven', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(true);
+      expect(s.workspaceLeftAutoCollapsedByShell).toBe(true);
+      expect(s.workspaceRightCollapsed).toBe(false);
+    });
+
+    test('re-expands a rail it previously auto-collapsed once space is available again', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(false);
+      expect(s.workspaceLeftAutoCollapsedByShell).toBe(false);
+    });
+
+    // Symmetric to the left-rail case above — the right rail's own re-expand
+    // branch is a separate `else if` in the reducer and must be pinned
+    // independently (a left-only regression test would never catch it).
+    test('re-expands the RIGHT rail it previously auto-collapsed once space is available again', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: true });
+      });
+      expect(useStore.getState().workspaceRightCollapsed).toBe(true);
+      expect(useStore.getState().workspaceRightAutoCollapsedByShell).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceRightCollapsed).toBe(false);
+      expect(s.workspaceRightAutoCollapsedByShell).toBe(false);
+    });
+
+    test('never auto-expands a rail the USER collapsed manually', () => {
+      act(() => {
+        useStore.getState().toggleWorkspaceLeftCollapsed(); // manual collapse
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+      act(() => {
+        // Plenty of room now — but this rail's collapse wasn't ours to undo.
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+    });
+
+    test('a manual toggle takes ownership back — clears the shell-driven bookkeeping', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      expect(useStore.getState().workspaceLeftAutoCollapsedByShell).toBe(true);
+      act(() => {
+        useStore.getState().toggleWorkspaceLeftCollapsed(); // user expands it
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(false);
+      expect(useStore.getState().workspaceLeftAutoCollapsedByShell).toBe(false);
+      // Now a later "still too narrow" measurement collapses it again, but a
+      // "fits now" measurement must NOT silently re-expand it — the user's
+      // last action (re-collapsing themselves would look identical) owns it
+      // until they touch the toggle again.
+      act(() => {
+        useStore.getState().toggleWorkspaceLeftCollapsed(); // user collapses again
+      });
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      expect(useStore.getState().workspaceLeftCollapsed).toBe(true);
+    });
+
+    test('left and right reconcile independently in the same call', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: true });
+      });
+      let s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(true);
+      expect(s.workspaceRightCollapsed).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: true });
+      });
+      s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(false);
+      expect(s.workspaceRightCollapsed).toBe(true);
+    });
   });
 
   test('reorderWorkspaceTabs moves a tab to the over slot', () => {
@@ -404,6 +988,14 @@ describe('workspace store slice', () => {
     });
     // unchanged
     expect(useStore.getState().workspaceRightTab).toBe('outline');
+  });
+
+  // 6c-T2 / D6: 'build' is the exploration scope's ONLY right-rail tab.
+  test('setWorkspaceRightTab accepts "build" (the exploration Insight+Chart CRUD tab)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceRightTab('build');
+    });
+    expect(useStore.getState().workspaceRightTab).toBe('build');
   });
 
   test('setWorkspaceLens only accepts preview | lineage', () => {
@@ -628,6 +1220,105 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceLensIntent).toBeNull();
   });
 
+  test('setWorkspaceLensIntent(null) clears the intent directly (not just via clearWorkspaceLensIntent)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceLensIntent({ objectKey: 'chart:rev', lens: 'lineage' });
+      useStore.getState().setWorkspaceLensIntent(null);
+    });
+    expect(useStore.getState().workspaceLensIntent).toBeNull();
+  });
+
+  test('workspaceSemanticLayerFocusIntent: set, validate, and clear (VIS-1069)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent({ objectKey: 'metric:revenue' });
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toEqual({
+      objectKey: 'metric:revenue',
+    });
+    // An invalid shape (no objectKey) is rejected without clobbering the
+    // current intent — mirrors `setWorkspaceLensIntent`'s guard.
+    act(() => {
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent({});
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toEqual({
+      objectKey: 'metric:revenue',
+    });
+    act(() => {
+      useStore.getState().clearWorkspaceSemanticLayerFocusIntent();
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toBeNull();
+  });
+
+  test('setWorkspaceSemanticLayerFocusIntent(null) clears the intent directly', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent({ objectKey: 'metric:revenue' });
+      useStore.getState().setWorkspaceSemanticLayerFocusIntent(null);
+    });
+    expect(useStore.getState().workspaceSemanticLayerFocusIntent).toBeNull();
+  });
+
+  // Toast queue (Explore 2.0 Phase 2) ----------------------------------------
+
+  test('showWorkspaceToast sets a message with a fresh key; a falsy message is a no-op', () => {
+    act(() => {
+      useStore.getState().showWorkspaceToast('Churn dig was deleted');
+    });
+    expect(useStore.getState().workspaceToast).toEqual(
+      expect.objectContaining({ message: 'Churn dig was deleted' })
+    );
+    act(() => {
+      useStore.setState({ workspaceToast: null });
+      useStore.getState().showWorkspaceToast('');
+    });
+    expect(useStore.getState().workspaceToast).toBeNull();
+  });
+
+  test('dismissWorkspaceToast clears the toast', () => {
+    act(() => {
+      useStore.getState().showWorkspaceToast('Something happened');
+      useStore.getState().dismissWorkspaceToast();
+    });
+    expect(useStore.getState().workspaceToast).toBeNull();
+  });
+
+  // Library source drill-down (Explore 2.0 Phase 3a / D9) --------------------
+
+  test('toggleLibrarySourceRowExpanded flips a source row; a falsy sourceName is a no-op', () => {
+    act(() => {
+      useStore.getState().toggleLibrarySourceRowExpanded('analytics_db');
+    });
+    expect(useStore.getState().librarySourceRowExpanded.analytics_db).toBe(true);
+    act(() => {
+      useStore.getState().toggleLibrarySourceRowExpanded('analytics_db');
+    });
+    expect(useStore.getState().librarySourceRowExpanded.analytics_db).toBe(false);
+    act(() => {
+      useStore.getState().toggleLibrarySourceRowExpanded('');
+      useStore.getState().toggleLibrarySourceRowExpanded(null);
+    });
+    // Neither no-op call touched the map at all.
+    expect(useStore.getState().librarySourceRowExpanded).toEqual({ analytics_db: false });
+  });
+
+  // Canvas hover key (VIS-771 follow-up) --------------------------------------
+
+  test('setWorkspaceCanvasHoverKey sets/clears the hover key, and is a reference-stable no-op when unchanged', () => {
+    act(() => {
+      useStore.getState().setWorkspaceCanvasHoverKey('row.0.item.1');
+    });
+    expect(useStore.getState().workspaceCanvasHoverKey).toBe('row.0.item.1');
+    const stateBefore = useStore.getState();
+    act(() => {
+      useStore.getState().setWorkspaceCanvasHoverKey('row.0.item.1');
+    });
+    // Same key again — the state object reference is untouched (no-op set).
+    expect(useStore.getState()).toBe(stateBefore);
+    act(() => {
+      useStore.getState().setWorkspaceCanvasHoverKey(null);
+    });
+    expect(useStore.getState().workspaceCanvasHoverKey).toBeNull();
+  });
+
   // Outline tree (VIS-793 / Track F F-3) ------------------------------------
 
   test('setWorkspaceOutlineSelectedKey updates the selection key', () => {
@@ -652,6 +1343,18 @@ describe('workspace store slice', () => {
       const s = useStore.getState();
       expect(s.workspaceActiveObject).toEqual({ type: 'chart', name: 'rev' });
       expect(s.workspaceOutlineSelectedKey).toBe('row.0.item.0');
+    });
+
+    // outlineKey is neither undefined nor null, but also not a (truthy)
+    // string — the malformed-value branch that's neither "set" nor "reset".
+    test('a non-string, non-null outlineKey is silently ignored (neither set nor reset)', () => {
+      act(() => {
+        useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
+        useStore.getState().setWorkspaceSelection({ type: 'chart', name: 'rev' }, 42);
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveObject).toEqual({ type: 'chart', name: 'rev' });
+      expect(s.workspaceOutlineSelectedKey).toBe('row.1');
     });
 
     test('clears activeObject when null passed', () => {
@@ -817,6 +1520,42 @@ describe('workspace store slice', () => {
     });
   });
 
+  describe('hydrateWorkspaceTabs edge cases', () => {
+    test('a falsy `tabs` argument hydrates an empty strip with nothing active', () => {
+      act(() => {
+        useStore.getState().hydrateWorkspaceTabs(null, null);
+      });
+      const s = useStore.getState();
+      expect(s.workspaceTabs).toEqual([]);
+      expect(s.workspaceActiveTabId).toBeNull();
+      expect(s.workspaceActiveObject).toBeNull();
+    });
+
+    test('omitting activeTabId defaults focus to the FIRST hydrated tab', () => {
+      act(() => {
+        useStore.getState().hydrateWorkspaceTabs([
+          { id: 'dashboard:d1', type: 'dashboard', name: 'd1' },
+          { id: 'chart:c1', type: 'chart', name: 'c1' },
+        ]);
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveTabId).toBe('dashboard:d1');
+      expect(s.workspaceActiveObject).toEqual({ type: 'dashboard', name: 'd1' });
+    });
+
+    test('an activeTabId that matches no hydrated tab leaves nothing active', () => {
+      act(() => {
+        useStore.getState().hydrateWorkspaceTabs(
+          [{ id: 'dashboard:d1', type: 'dashboard', name: 'd1' }],
+          'dashboard:does-not-exist'
+        );
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveTabId).toBe('dashboard:does-not-exist');
+      expect(s.workspaceActiveObject).toBeNull();
+    });
+  });
+
   // Source outline (VIS-1004) — disjoint selection key + per-source expand -----
 
   test('setWorkspaceSourceOutlineSelectedKey selects, toggles off, and stays disjoint', () => {
@@ -834,6 +1573,22 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBeNull();
   });
 
+  test('setWorkspaceSourceOutlineSelectedKey(null) explicitly clears a DIFFERENT current selection (not just the toggle-off path)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey('source-outline::db::main::table::orders');
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(null);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBeNull();
+  });
+
+  test('setWorkspaceSourceOutlineSelectedKey rejects a non-string, non-null key (leaves selection untouched)', () => {
+    act(() => {
+      useStore.setState({ workspaceSourceOutlineSelectedKey: 'source-outline::db::main' });
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(42);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe('source-outline::db::main');
+  });
+
   test('toggleWorkspaceSourceOutlineExpanded adds/removes a node per source', () => {
     act(() => {
       useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', 'node-1');
@@ -847,6 +1602,33 @@ describe('workspace store slice', () => {
     });
     expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([]);
     expect(useStore.getState().workspaceSourceOutlineExpanded.src_b).toEqual(['node-2']);
+  });
+
+  test('toggleWorkspaceSourceOutlineExpanded is a no-op without both a sourceName and a nodeKey', () => {
+    act(() => {
+      useStore.setState({ workspaceSourceOutlineExpanded: {} });
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('', 'node-1');
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', '');
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded(null, null);
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded).toEqual({});
+  });
+
+  test('setWorkspaceSourceOutlineData caches a payload, evicts on null, and no-ops without a sourceName', () => {
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineData('analytics_db', { nodes: ['t1'] });
+    });
+    expect(useStore.getState().workspaceSourceOutlineDataCache.analytics_db).toEqual({
+      nodes: ['t1'],
+    });
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineData('analytics_db', null);
+    });
+    expect(useStore.getState().workspaceSourceOutlineDataCache).not.toHaveProperty('analytics_db');
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineData('', { nodes: ['ignored'] });
+    });
+    expect(useStore.getState().workspaceSourceOutlineDataCache).toEqual({});
   });
 
   test('setWorkspaceSourceOutlineExpanded replaces a source expanded set (auto-expand)', () => {
@@ -908,6 +1690,61 @@ describe('workspace store slice', () => {
     expect(useStore.getState().saveDashboard).not.toHaveBeenCalled();
   });
 
+  test('addDashboardRow is a no-op for a falsy dashboardName (never reaches the list scan)', () => {
+    act(() => {
+      useStore.setState({ dashboards: [{ name: 'd1', config: { rows: [] } }], saveDashboard: jest.fn() });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('');
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().saveDashboard).not.toHaveBeenCalled();
+  });
+
+  test('addDashboardRow returns null when the `dashboards` collection is missing from the store entirely', () => {
+    act(() => {
+      useStore.setState({ dashboards: undefined, saveDashboard: jest.fn() });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('d1');
+    });
+    expect(returned).toBeNull();
+  });
+
+  test('addDashboardRow tolerates a config with no `rows` array yet (starts a fresh one)', () => {
+    const saveDashboard = jest.fn();
+    act(() => {
+      useStore.setState({
+        dashboards: [{ name: 'd1', config: { name: 'd1' } }], // no `rows` at all
+        saveDashboard,
+      });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('d1');
+    });
+    expect(returned).toBe(0);
+    const dash = useStore.getState().dashboards.find((d) => d.name === 'd1');
+    expect(dash.config.rows).toEqual([{ height: 'medium', items: [] }]);
+  });
+
+  test('addDashboardRow skips the persist call when saveDashboard is not wired up', () => {
+    act(() => {
+      useStore.setState({
+        dashboards: [{ name: 'd1', config: { name: 'd1', rows: [] } }],
+        saveDashboard: undefined,
+      });
+    });
+    expect(() => {
+      act(() => {
+        useStore.getState().addDashboardRow('d1');
+      });
+    }).not.toThrow();
+    expect(useStore.getState().dashboards.find((d) => d.name === 'd1').config.rows).toHaveLength(1);
+  });
+
   test('updateDashboardConfigOptimistic replaces the draft config without saving (VIS-802)', () => {
     const saveDashboard = jest.fn();
     act(() => {
@@ -937,6 +1774,28 @@ describe('workspace store slice', () => {
     let returned;
     act(() => {
       returned = useStore.getState().updateDashboardConfigOptimistic('missing', { rows: [] });
+    });
+    expect(returned).toBe(false);
+  });
+
+  test('updateDashboardConfigOptimistic is a no-op for a falsy dashboardName', () => {
+    act(() => {
+      useStore.setState({ dashboards: [{ name: 'd1', config: { rows: [] } }] });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateDashboardConfigOptimistic('', { rows: [] });
+    });
+    expect(returned).toBe(false);
+  });
+
+  test('updateDashboardConfigOptimistic tolerates a store with no `dashboards` collection at all', () => {
+    act(() => {
+      useStore.setState({ dashboards: undefined });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateDashboardConfigOptimistic('d1', { rows: [] });
     });
     expect(returned).toBe(false);
   });
@@ -1013,6 +1872,189 @@ describe('workspace store slice', () => {
     expect(useStore.getState().updateRecordConfigOptimistic('chart', 'missing', {})).toBe(false);
     expect(useStore.getState().updateRecordConfigOptimistic('chart', '', {})).toBe(false);
   });
+
+  test('updateRecordConfigOptimistic tolerates a store with no collection array at all for the type', () => {
+    act(() => {
+      useStore.setState({ charts: undefined });
+    });
+    expect(useStore.getState().updateRecordConfigOptimistic('chart', 'c1', {})).toBe(false);
+  });
+});
+
+describe('workspace VIEWS — the three destinations (D1, Explore 2.0 Phase 0)', () => {
+  beforeEach(reset);
+
+  test('activateWorkspaceView sets the active view and PARKS any active document tab', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
+
+    act(() => {
+      useStore.getState().activateWorkspaceView('semantic-layer');
+    });
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('semantic-layer');
+    // Parked, not closed — the tab record survives.
+    expect(s.workspaceActiveTabId).toBeNull();
+    expect(s.workspaceActiveObject).toBeNull();
+    expect(s.workspaceTabs.some((t) => t.id === 'chart:revenue')).toBe(true);
+  });
+
+  test('activateWorkspaceView on the SAME view with no active tab fires no telemetry (both OR operands false)', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      act(() => {
+        useStore.setState({ workspaceActiveView: 'project', workspaceActiveTabId: null });
+        useStore.getState().activateWorkspaceView('project');
+      });
+      expect(events.filter(e => e.eventName === 'view_activated')).toHaveLength(0);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  test('activateWorkspaceView on the SAME view still fires telemetry when a tab was active (parking it)', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      act(() => {
+        useStore.setState({ workspaceActiveView: 'project' });
+        useStore.getState().activateWorkspaceTab({ type: 'chart', name: 'revenue' });
+      });
+      events.length = 0;
+      act(() => {
+        // Same view the tab's owning destination already resolved to
+        // ('project'), but a tab IS currently active — the right OR operand
+        // alone must still fire the event.
+        useStore.getState().activateWorkspaceView('project');
+      });
+      expect(events.filter(e => e.eventName === 'view_activated')).toHaveLength(1);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  test('activateWorkspaceView rejects an unknown view key', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceView('bogus');
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+  });
+
+  test('openWorkspaceView routes through the registered URL navigator AND activates immediately (VIS-1050 gate); falls back to the direct write with none registered', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().openWorkspaceView('semantic-layer');
+    });
+    expect(nav).toHaveBeenCalledWith('/workspace/semantic-layer');
+    // Routed through the URL (shareable links / Back-button history / reload
+    // still read it) AND activated in the store IMMEDIATELY — see
+    // `openWorkspaceTab`'s test for the full VIS-1050 rationale.
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().registerWorkspaceUrlNavigate(null);
+      useStore.getState().openWorkspaceView('explorer');
+    });
+    // No router registered — falls back to the direct store write.
+    expect(useStore.getState().workspaceActiveView).toBe('explorer');
+  });
+
+  test('openWorkspaceView rejects an unknown view key without navigating or activating', () => {
+    const nav = jest.fn();
+    act(() => {
+      useStore.setState({ workspaceActiveView: 'project' });
+      useStore.getState().registerWorkspaceUrlNavigate(nav);
+      useStore.getState().openWorkspaceView('bogus-view');
+    });
+    expect(nav).not.toHaveBeenCalled();
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+  });
+
+  test('openWorkspaceTab / activateWorkspaceTab with a VIEW-typed payload delegate to the view actions (legacy call-site back-compat)', () => {
+    // ProjectEditor's "Semantic Layer" button still calls
+    // `openWorkspaceTab({ type: 'semantic-layer', ... })` — it must keep
+    // working as a view activation, not create a tab record.
+    act(() => {
+      useStore.getState().openWorkspaceTab({
+        id: 'semantic-layer:semantic-layer',
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+    });
+    const s = useStore.getState();
+    expect(s.workspaceActiveView).toBe('semantic-layer');
+    expect(s.workspaceTabs).toHaveLength(0);
+  });
+
+  test('deep-link rule: activateWorkspaceTab sets workspaceActiveView to the document’s OWNING destination', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'chart', name: 'revenue' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'metric', name: 'churn' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'dimension', name: 'segment' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'relation', name: 'orders_customers' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+  });
+
+  test('closeWorkspaceTab hands the view off to the newly-focused tab’s owning destination', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'metric', name: 'churn' });
+      useStore.getState().openWorkspaceTabBackground({ type: 'chart', name: 'revenue' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().closeWorkspaceTab('metric:churn');
+    });
+    // The remaining tab (chart, project-owned) takes over the center AND the view.
+    expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue');
+    expect(useStore.getState().workspaceActiveView).toBe('project');
+  });
+
+  test('closeWorkspaceTab leaves the view exactly where it was when NO tab remains (01-ux-spec.md §1 / §4 "Park")', () => {
+    act(() => {
+      useStore.getState().activateWorkspaceTab({ type: 'metric', name: 'churn' });
+    });
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+
+    act(() => {
+      useStore.getState().closeWorkspaceTab('metric:churn');
+    });
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+    expect(useStore.getState().workspaceActiveTabId).toBeNull();
+    // NOT reset to 'project' — the destination stays Semantic Layer.
+    expect(useStore.getState().workspaceActiveView).toBe('semantic-layer');
+  });
+
+  test('restoreWorkspaceTabs scrubs any persisted project/semantic-layer/explorer records (one-time tab-set migration)', () => {
+    act(() => {
+      useStore.getState().restoreWorkspaceTabs([
+        { id: 'project:analytics', type: 'project', name: 'analytics' },
+        { id: 'semantic-layer:semantic-layer', type: 'semantic-layer', name: 'semantic-layer' },
+        { id: 'explorer:explorer', type: 'explorer', name: 'explorer' },
+        { id: 'chart:revenue', type: 'chart', name: 'revenue' },
+      ]);
+    });
+    const tabs = useStore.getState().workspaceTabs;
+    expect(tabs).toHaveLength(1);
+    expect(tabs[0].id).toBe('chart:revenue');
+  });
 });
 
 describe('workspace pivot draft actions (VIS-1008)', () => {
@@ -1036,6 +2078,30 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
       rows: [],
       values: [],
     });
+  });
+
+  test('setWorkspacePivotDraft defaults a non-array `columns` to [] too (not just when omitted)', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({
+        tableName: 't',
+        columns: 'not-an-array',
+        rows: ['${ref(s).cat}'],
+        values: ['sum(${ref(s).rev})'],
+      });
+    });
+    expect(useStore.getState().workspacePivotDraft).toEqual({
+      tableName: 't',
+      columns: [],
+      rows: ['${ref(s).cat}'],
+      values: ['sum(${ref(s).rev})'],
+    });
+  });
+
+  test('setWorkspacePivotDraft defaults a missing tableName to null', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({ columns: [] });
+    });
+    expect(useStore.getState().workspacePivotDraft.tableName).toBeNull();
   });
 
   test('setWorkspacePivotDraft with a falsy value clears the draft', () => {
@@ -1134,6 +2200,73 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
     expect(result.success).toBe(false);
   });
 
+  test('commitWorkspacePivotDraft tolerates a store with no `tables` collection at all', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: undefined,
+        workspacePivotDraft: { tableName: 'ghost-table', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(result).toEqual({ success: true });
+    // No matching record at all (not even an empty `tables` list) — the merge
+    // starts from `{}` rather than throwing on a missing `.config`.
+    expect(saveTable).toHaveBeenCalledWith('ghost-table', expect.objectContaining({ name: 'ghost-table' }));
+  });
+
+  test('commitWorkspacePivotDraft merges onto `{}` when the table name has no matching record yet', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [{ name: 'unrelated-table', config: { name: 'unrelated-table' } }],
+        workspacePivotDraft: {
+          tableName: 'brand-new-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    await act(async () => {
+      await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(saveTable).toHaveBeenCalledWith(
+      'brand-new-table',
+      expect.objectContaining({ name: 'brand-new-table', columns: ['${ref(s).region}'] })
+    );
+  });
+
+  test('commitWorkspacePivotDraft merges onto the BARE record when it carries no `.config` envelope', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        // A bare (un-enveloped) record — `rows_per_page` sits directly on it,
+        // not under `.config` (VIS-1018's other collection shapes).
+        tables: [{ name: 'bare-table', rows_per_page: 50 }],
+        workspacePivotDraft: {
+          tableName: 'bare-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    await act(async () => {
+      await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(saveTable).toHaveBeenCalledWith(
+      'bare-table',
+      expect.objectContaining({ rows_per_page: 50, columns: ['${ref(s).region}'] })
+    );
+  });
+
   test('commitWorkspacePivotDraftAsNew saves a uniquely-named new table and opens its tab', async () => {
     const saveTable = jest.fn(() => Promise.resolve({ success: true }));
     act(() => {
@@ -1222,5 +2355,105 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
       result = await useStore.getState().commitWorkspacePivotDraftAsNew();
     });
     expect(result.success).toBe(false);
+  });
+
+  test('commitWorkspacePivotDraftAsNew tolerates a store with no `tables` collection at all', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: undefined,
+        workspaceTabs: [],
+        workspacePivotDraft: { tableName: null, columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(true);
+    // No source tableName at all → the generic base name, not `<name>_pivot`.
+    expect(result.name).toBe('pivot_table');
+  });
+
+  test('commitWorkspacePivotDraftAsNew carries forward a BARE source record\'s rows_per_page/format_cells (no `.config` envelope)', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        workspaceTabs: [],
+        tables: [{ name: 'source-table', rows_per_page: 25, format_cells: { a: 1 } }],
+        workspacePivotDraft: {
+          tableName: 'source-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    await act(async () => {
+      await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    const [, config] = saveTable.mock.calls[0];
+    expect(config.rows_per_page).toBe(25);
+    expect(config.format_cells).toEqual({ a: 1 });
+  });
+
+  test('commitWorkspacePivotDraftAsNew opens the new tab only when saveTable actually succeeds', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: false, error: 'rejected' }));
+    const openWorkspaceTab = jest.fn();
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab,
+        workspaceTabs: [],
+        tables: [{ name: 'src', config: { name: 'src' } }],
+        workspacePivotDraft: { tableName: 'src', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(false);
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('commitWorkspacePivotDraftAsNew still returns a name-tagged result when saveTable resolves with no result object at all', async () => {
+    const saveTable = jest.fn(() => Promise.resolve(undefined));
+    const openWorkspaceTab = jest.fn();
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab,
+        workspaceTabs: [],
+        tables: [{ name: 'src', config: { name: 'src' } }],
+        workspacePivotDraft: { tableName: 'src', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result).toEqual({ name: 'src_pivot' });
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('commitWorkspacePivotDraftAsNew never throws when openWorkspaceTab is not wired up, even on success', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab: undefined,
+        workspaceTabs: [],
+        tables: [{ name: 'src', config: { name: 'src' } }],
+        workspacePivotDraft: { tableName: 'src', columns: [], rows: [], values: [] },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(true);
   });
 });

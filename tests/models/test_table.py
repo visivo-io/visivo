@@ -199,3 +199,25 @@ def test_Table_child_items_with_pivot():
     ref_items = [i for i in items if isinstance(i, str) and i.startswith("ref(")]
     assert len(ref_items) == 1
     assert "ref(insight)" in ref_items
+
+
+def test_Table_with_invalid_generated_sql_still_constructs():
+    """Smoke-test bug #7 (relocated): a column-select table whose config compiles
+    to invalid SQL no longer blocks project LOAD — the generated-SQL check moved
+    from the Table model validator to the COMPILE phase (see
+    tests/commands/test_compile_table_sql.py), so the model itself constructs and
+    the server can still load a project with a broken table."""
+    table = Table(name="broken", columns=['${ref(i).sex} as ""Sex""'])
+    assert table.name == "broken"
+
+
+def test_Table_with_valid_columns_still_loads():
+    table = Table(name="ok", columns=["${ref(i).sex} as Sex", '${ref(i).total} as "Total Kg"'])
+    assert table.name == "ok"
+
+
+def test_Table_pivot_with_empty_columns_is_rejected():
+    """bug #7 review (M2): `columns: []` with rows/values would build an invalid
+    empty-`ON` pivot; an empty list now counts as unspecified columns."""
+    with pytest.raises(ValidationError, match="columns"):
+        Table(name="p", columns=[], rows=["${ref(i).p}"], values=["sum(${ref(i).v})"])

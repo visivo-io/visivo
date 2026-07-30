@@ -10,6 +10,26 @@ def test_chart_no_default_colorway():
     assert "colorway" not in dumped
 
 
+def test_chart_axis_automargin_boolean():
+    # Regression: layout.schema.json's xaxis/yaxis `automargin` had a malformed
+    # boolean branch `{"type": "string", "enum": [true, false]}` — the stray
+    # `type: string` made a JSON boolean fail `validate_against_schema` with
+    # "Value does not match any of the following schemas", though Plotly accepts
+    # a bool. With the `type: string` removed, `automargin: true`/`false`
+    # validates. Reverting the schema fix makes this raise ValidationError.
+    chart = ChartFactory(layout={"yaxis": {"automargin": True}, "xaxis": {"automargin": False}})
+    dumped = chart.layout.model_dump(exclude_none=True)
+    assert dumped["yaxis"]["automargin"] is True
+    assert dumped["xaxis"]["automargin"] is False
+
+
+def test_chart_axis_automargin_flaglist_still_valid():
+    # The sibling flaglist branch (a string like "height+width") must keep
+    # working — the fix only touched the boolean branch.
+    chart = ChartFactory(layout={"yaxis": {"automargin": "height+width"}})
+    assert chart.layout.model_dump(exclude_none=True)["yaxis"]["automargin"] == "height+width"
+
+
 def test_chart_predefined_colorway():
     chart = ChartFactory(layout={"title": {"text": "Test Chart"}, "colorway": "High Contrast"})
     assert chart.layout.colorway == ColorPalette.PREDEFINED_PALETTES["High Contrast"]

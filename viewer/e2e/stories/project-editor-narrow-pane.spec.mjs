@@ -1,15 +1,30 @@
 /**
  * Story: Project Editor in a narrow middle pane (user-reported viewport bug).
  *
- * At a ~1071px viewport the Workspace middle pane is only ~383px wide (left
- * rail 320 + right rail 360 + handles take the rest), yet the Project Editor
- * used VIEWPORT breakpoints (`sm:`/`lg:`) and rendered its widest layout into
- * its narrowest container: 4-across stat cards with clipped labels, the
- * Recent Edits aside squeezing the level groups, and 3-across ~57px tiles.
+ * At a ~1071px viewport the Workspace middle pane USED TO be only ~383px
+ * wide (left rail 320 + right rail 360 + handles took the rest), yet the
+ * Project Editor used VIEWPORT breakpoints (`sm:`/`lg:`) and rendered its
+ * widest layout into its narrowest container: 4-across stat cards with
+ * clipped labels, the Recent Edits aside squeezing the level groups, and
+ * 3-across ~57px tiles.
  *
  * The fix keys the layout to CONTAINER width (Tailwind v4 `@container` +
- * `@[Npx]:` variants, the BrokenRefCard pattern). This story pins the narrow
- * behavior at the user's reported viewport:
+ * `@[Npx]:` variants, the BrokenRefCard pattern) — that half is unchanged and
+ * still what this story protects. The PINNED WIDTH moved off the original
+ * 1071px report at 6c-T2 (audit shell-ia #10 / cold-start #2, BLOCKER):
+ * `WorkspaceShell` now auto-collapses the library rail (and then the right
+ * rail) once the canvas would otherwise drop below its real min-width
+ * (480px) — at 1071px with the DEFAULT rail widths that alone now leaves the
+ * middle pane ~650px+ wide, comfortably past this component's OWN 620px/
+ * 860px container-query breakpoints. That's the intended, GOOD outcome of
+ * 6c-T2 (the original bug's actual fix), but it means 1071px no longer
+ * exercises ProjectEditor's narrow-container layout at all — a real
+ * regression risk if this story kept asserting 2×2 cards at a width that
+ * now legitimately renders 4-across. 650px is the new pinned width: even
+ * with BOTH rails auto-collapsed (the shell's own floor), the remaining
+ * container is still ~540px — under both breakpoints, so the ORIGINAL
+ * container-query behavior this story exists to protect is still genuinely
+ * exercised, just at a width honest about the shell's new capability:
  *   1. Stat cards wrap to 2×2 and no label is clipped.
  *   2. The Recent Edits aside stacks BELOW the level groups.
  *   3. Dashboard tiles render ≥1 sane column (≥180px wide).
@@ -49,14 +64,18 @@ test.describe('Project Editor — narrow middle pane (container queries)', () =>
   let page;
 
   test.beforeAll(async ({ browser }) => {
-    page = await browser.newPage({ viewport: { width: 1071, height: 900 } });
+    // 650px, not the original 1071px report — see the file header (6c-T2
+    // rail auto-collapse moved the pinned width; this is still the SAME
+    // container-query behavior, just at a width the new shell can't widen
+    // out from under).
+    page = await browser.newPage({ viewport: { width: 650, height: 900 } });
   });
 
   test.afterAll(async () => {
     await page.close();
   });
 
-  test('stat cards wrap to 2×2 with no clipped labels at 1071px', async () => {
+  test('stat cards wrap to 2×2 with no clipped labels at a narrow pane', async () => {
     await openProjectEditor(page);
 
     const [d, i, m, s] = await healthCardBoxes(page);
@@ -75,10 +94,10 @@ test.describe('Project Editor — narrow middle pane (container queries)', () =>
       });
     });
     expect(clipped, 'no stat-card label is clipped').toBe(false);
-    await page.screenshot({ path: `${SCREENS}/narrow-pane-01-1071px.png`, fullPage: false });
+    await page.screenshot({ path: `${SCREENS}/narrow-pane-01-650px.png`, fullPage: false });
   });
 
-  test('Recent Edits stacks below the level groups at 1071px', async () => {
+  test('Recent Edits stacks below the level groups at a narrow pane', async () => {
     const recent = await page.getByTestId('project-editor-recent').boundingBox();
     const firstGroup = await page
       .locator('[data-testid^="level-group-dropzone-"]')
@@ -89,7 +108,7 @@ test.describe('Project Editor — narrow middle pane (container queries)', () =>
     expect(recent.width).toBeGreaterThan(250);
   });
 
-  test('dashboard tiles keep a sane width at 1071px', async () => {
+  test('dashboard tiles keep a sane width at a narrow pane', async () => {
     const tile = await page.locator('[data-testid^="project-tile-"]').first().boundingBox();
     expect(tile.width, 'tiles never collapse below ~180px').toBeGreaterThanOrEqual(180);
   });

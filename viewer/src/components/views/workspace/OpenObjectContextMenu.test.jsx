@@ -94,4 +94,36 @@ describe('OpenObjectContextMenu', () => {
     fireEvent.click(screen.getByTestId('test-ctx-open'));
     expect(hostClick).not.toHaveBeenCalled();
   });
+
+  // VIS-1067 — "Explore this" / "Add to exploration" are optional, only
+  // rendered when the consumer passes a handler.
+  describe('Explore this / Add to exploration (VIS-1067)', () => {
+    test('neither item renders when no handler is passed', () => {
+      renderMenu();
+      expect(screen.queryByTestId('test-ctx-explore-this')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('test-ctx-add-to-exploration')).not.toBeInTheDocument();
+    });
+
+    test('"Explore this" renders and fires onExploreThis with the object, then dismisses', () => {
+      const onExploreThis = jest.fn();
+      const onDismiss = jest.fn();
+      renderMenu({ onExploreThis, onDismiss });
+      const item = screen.getByTestId('test-ctx-explore-this');
+      expect(item).toHaveTextContent('Explore this');
+      fireEvent.click(item);
+      expect(onExploreThis).toHaveBeenCalledWith(OBJ);
+      expect(onDismiss).toHaveBeenCalled();
+    });
+
+    test('"Add to exploration" only renders when passed, and fires onAddToExploration', () => {
+      const onAddToExploration = jest.fn();
+      const onDismiss = jest.fn();
+      renderMenu({ onAddToExploration, onDismiss });
+      const item = screen.getByTestId('test-ctx-add-to-exploration');
+      expect(item).toHaveTextContent('Add to exploration');
+      fireEvent.click(item);
+      expect(onAddToExploration).toHaveBeenCalledWith(OBJ);
+      expect(onDismiss).toHaveBeenCalled();
+    });
+  });
 });

@@ -1,5 +1,10 @@
 /* eslint-disable no-template-curly-in-string */
-import { resolveFieldRef, resolveValueExpression, extractAggAndColumn } from './pivotRefResolver';
+import {
+  resolveFieldRef,
+  resolveValueExpression,
+  extractAggAndColumn,
+  parseColumnAlias,
+} from './pivotRefResolver';
 
 describe('resolveFieldRef', () => {
   const propsMapping = {
@@ -77,5 +82,43 @@ describe('extractAggAndColumn', () => {
 
   it('returns null for empty string', () => {
     expect(extractAggAndColumn('')).toBeNull();
+  });
+});
+
+describe('parseColumnAlias', () => {
+  it('parses an unquoted alias', () => {
+    expect(parseColumnAlias('${ref(insight).revenue} as Total Revenue')).toEqual({
+      ref: '${ref(insight).revenue}',
+      alias: 'Total Revenue',
+    });
+  });
+
+  // Smoke-test bug #4: the documented `as "Name"` syntax must yield the bare
+  // alias, NOT one still wrapped in the user's quotes (which the caller would
+  // then double-wrap into an invalid zero-length delimited identifier).
+  it('strips surrounding double quotes from the alias', () => {
+    expect(parseColumnAlias('${ref(insight).revenue} as "Total Revenue"').alias).toBe(
+      'Total Revenue'
+    );
+  });
+
+  it('strips surrounding single quotes from the alias', () => {
+    expect(parseColumnAlias("${ref(insight).region} as 'Sales Region'").alias).toBe('Sales Region');
+  });
+
+  it('leaves an unquoted single-word alias untouched', () => {
+    expect(parseColumnAlias('${ref(m).x} as Region').alias).toBe('Region');
+  });
+
+  it('does not strip a lone/mismatched quote', () => {
+    // Only a matching surrounding PAIR is stripped.
+    expect(parseColumnAlias('${ref(m).x} as "Region').alias).toBe('"Region');
+  });
+
+  it('returns null alias when there is no " as " clause', () => {
+    expect(parseColumnAlias('${ref(insight).revenue}')).toEqual({
+      ref: '${ref(insight).revenue}',
+      alias: null,
+    });
   });
 });

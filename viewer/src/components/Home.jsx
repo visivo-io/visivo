@@ -81,7 +81,7 @@ const Home = () => {
   const renderNavigationCards = () => (
     <div className="container mx-auto px-4 py-12">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        <Link to="/explorer" className="col-span-1">
+        <Link to="/workspace/exploration" className="col-span-1">
           <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200 min-h-60">
             <div className="flex flex-col items-center p-8">
               <PiMagnifyingGlass className="w-12 h-12 mb-4 text-gray-700" />

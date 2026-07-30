@@ -16,6 +16,16 @@ import useStore from '../../../stores/store';
  *
  * Escape and a backdrop click both cancel — closing a dirty tab must always
  * be the explicit choice. Focus starts on the safe action.
+ *
+ * D11 / ux-audit.md "Close-tab dialog names the work by internal ID" +
+ * shell-ia's "Unsaved-changes dialog names the tab by internal id, not its
+ * title": explorations are the one tab type whose STABLE `tab.name` (the
+ * backend id, e.g. `exp_62772784` — kept stable across a rename so URLs/
+ * lookups survive it) differs from its renamable DISPLAY name. `TabStrip`'s
+ * own `WorkspaceTab` already resolves this (see its docstring); this dialog
+ * used to read `tab.name` directly and print the raw id in quotes. Same
+ * lookup here so the user reads "Exploration 2" (or whatever they renamed
+ * it to), never the id they never saw or chose.
  */
 const TabCloseConfirmDialog = () => {
   const pendingId = useStore(s => s.workspacePendingCloseTabId);
@@ -25,6 +35,10 @@ const TabCloseConfirmDialog = () => {
 
   const cancelRef = useRef(null);
   const tab = pendingId ? (tabs || []).find(t => t.id === pendingId) : null;
+  const explorationDisplayName = useStore(s =>
+    tab && tab.type === 'exploration' ? s.workspaceExplorations?.byId?.[tab.name]?.name : null
+  );
+  const displayName = (tab && (explorationDisplayName || tab.name)) || '';
 
   useEffect(() => {
     if (!tab) return undefined;
@@ -69,7 +83,7 @@ const TabCloseConfirmDialog = () => {
               Close tab with unsaved changes?
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-gray-600">
-              <span className="font-medium text-gray-900">“{tab.name}”</span> has unsaved
+              <span className="font-medium text-gray-900">“{displayName}”</span> has unsaved
               changes. If you close it now, those changes will be discarded.
             </p>
           </div>

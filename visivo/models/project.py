@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 from visivo.models.alert import Alert
+from visivo.models.test import Test
 from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
@@ -156,6 +157,10 @@ class Project(NamedModel, ParentModel):
     dimensions: List[Dimension] = Field(
         [], description="A list of project-level dimension objects that can be used across models."
     )
+    tests: List[Test] = Field(
+        [],
+        description="A list of test objects that assert on computed insight values; run with `visivo test`.",
+    )
 
     def child_items(self) -> List:
         project_children = PROJECT_CHILDREN.copy()
@@ -207,14 +212,42 @@ class Project(NamedModel, ParentModel):
         """
         return self._extracted_schemas
 
+    @staticmethod
+    def lineage_name(node) -> Optional[str]:
+        """Editor/lineage identity of a node.
+
+        A model-scoped metric/dimension (``_parent_name`` set) is a MODEL-LOCAL
+        alias whose bare ``name`` may repeat across models (#6), so keying the
+        lineage map / edges by bare name would collapse two same-named metrics
+        into one — silently dropping one from the editor surface. Key those by
+        ``<model>.<name>``; everything else (globally unique) keeps its bare
+        name.
+        """
+        name = getattr(node, "name", None)
+        parent = getattr(node, "_parent_name", None)
+        if parent and name:
+            return f"{parent}.{name}"
+        return name
+
     def named_child_nodes(self) -> dict:
         """
         Returns a dictionary of all named child nodes of the project, independent of the
         literal position of the child in the project file. This enables us to find
         all children even if they are nested in a dashboard or chart.
+
+        Keyed by ``lineage_name`` so two model-scoped metrics/dimensions that
+        share a bare name (each ``<model>.<name>``) stay distinct instead of
+        collapsing into one entry.
         """
         dag = self.dag()
+        named_dag = dag.get_named_nodes_subgraph()
         named_nodes = {}
+
+        def _named_lineage_names(neighbors):
+            return [
+                Project.lineage_name(n) for n in neighbors if getattr(n, "name", None) is not None
+            ]
+
         # First pass - collect all nodes and their inline dependencies
         for node in dag.nodes():
             if hasattr(node, "name"):
@@ -232,8 +265,16 @@ class Project(NamedModel, ParentModel):
                     "inline_dependent_objects", []
                 )
                 _ = fully_referenced_model_dump.pop("changed", "Not Found")
-                direct_children = dag.get_named_children(node.name)
-                direct_parents = dag.get_named_parents(node.name)
+                # Compute edges from the named subgraph OBJECTS directly (mapped
+                # to lineage names) rather than the by-name helpers, which would
+                # resolve an ambiguous duplicate name to the first match. The
+                # Project root is removed from the named subgraph, so guard it.
+                if named_dag.has_node(node):
+                    direct_children = _named_lineage_names(named_dag.predecessors(node))
+                    direct_parents = _named_lineage_names(named_dag.successors(node))
+                else:
+                    direct_children = []
+                    direct_parents = []
                 contents = {
                     "type": node.__class__.__name__,
                     "type_key": Project.get_key_for_project_child_class(node.__class__.__name__),
@@ -247,7 +288,7 @@ class Project(NamedModel, ParentModel):
                     "direct_children": direct_children,
                     "direct_parents": direct_parents,
                 }
-                named_nodes[node.name] = contents
+                named_nodes[Project.lineage_name(node)] = contents
 
         # Second pass - build the reverse mapping
         for node_name, node_data in named_nodes.items():
@@ -371,6 +412,7 @@ class Project(NamedModel, ParentModel):
             "metrics",
             "relations",
             "dimensions",
+            "tests",
         ]
         for name in list_field_names:
             if name in values and values[name] is None:
@@ -461,18 +503,44 @@ class Project(NamedModel, ParentModel):
         raise ValueError(f"Project child class '{project_child_class}' not found in project")
 
     @classmethod
-    def traverse_names(cls, names, object):
+    def traverse_names(cls, names, object, model_scoped=None):
+        """Collect object names, enforcing uniqueness in the right scope.
+
+        - GLOBAL names (models, insights, charts, project-level metrics/
+          dimensions, …) go into ``names`` and must be globally unique — as
+          before.
+        - MODEL-SCOPED metric/dimension names (a metric/dimension with
+          ``_parent_name`` set, i.e. defined under a model) are MODEL-LOCAL
+          aliases: their identity is ``<model>.<name>`` so two different models
+          may each define e.g. ``avg_total`` (smoke-test bug #6). They are
+          tracked in ``model_scoped`` (``{model_name: set(aliases)}``) and must
+          be unique only WITHIN their model. The cross-scope check (an alias
+          must not shadow a global name) runs once in ``NamesValidator`` after
+          the full traversal, where the complete global set is known.
+        """
+        if model_scoped is None:
+            model_scoped = {}
         if isinstance(object, ParentModel):
             for child_item in object.child_items():
                 if isinstance(child_item, BaseModel) and hasattr(child_item, "name"):
                     name = NamedModel.get_name(obj=child_item)
-                    if name in names:
-                        raise ValueError(
-                            f"{child_item.__class__.__name__} name '{name}' is not unique in the project"
-                        )
-                    if name:
+                    parent_name = getattr(child_item, "_parent_name", None)
+                    if parent_name and name:
+                        aliases = model_scoped.setdefault(parent_name, set())
+                        if name in aliases:
+                            raise ValueError(
+                                f"{child_item.__class__.__name__} name '{name}' "
+                                f"is not unique in model '{parent_name}'"
+                            )
+                        aliases.add(name)
+                    elif name:
+                        if name in names:
+                            raise ValueError(
+                                f"{child_item.__class__.__name__} name '{name}' is not unique in the project"
+                            )
                         names.append(name)
-                Project.traverse_names(names, child_item)
+                Project.traverse_names(names, child_item, model_scoped)
+        return names, model_scoped
 
     def find_source(self, source_name: str):
         """

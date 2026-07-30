@@ -138,6 +138,23 @@ class Item(NamedModel, ParentModel):
         if not isinstance(data, dict):
             return data
 
+        # Inline-markdown shorthand (documented on the Dashboard model:
+        # `- markdown: "# Some inline **markdown**"`). A plain string that does
+        # not LOOK like a reference is treated as Markdown content. Without
+        # this, `generate_ref_field(Markdown)` discriminates ANY string as a ref
+        # and rejects it against the ^ref(...)$ pattern.
+        #
+        # We coerce only strings that don't start with `ref(` or `${` — a string
+        # that DOES start that way is an intended reference/context string, so we
+        # leave it to normal validation. That keeps a typo'd ref (`ref(welcome`),
+        # a whitespace-padded ref, or a bare `${ project.name }` context string
+        # behaving exactly as on chart/table/input (a clear error or a real
+        # ContextString) instead of being silently swallowed as markdown text.
+        # Prose that merely mentions `ref(` mid-sentence still coerces to content.
+        md = data.get("markdown")
+        if isinstance(md, str) and not md.lstrip().startswith(("ref(", "${")):
+            data = {**data, "markdown": {"content": md}}
+
         markdown, chart, table, input, rows = (
             data.get("markdown"),
             data.get("chart"),

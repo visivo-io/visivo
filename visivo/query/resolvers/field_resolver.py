@@ -4,8 +4,6 @@ from typing import Optional, Dict
 from visivo.models.base.project_dag import ProjectDag
 
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.metric import Metric
-from visivo.models.dimension import Dimension
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
@@ -35,7 +33,13 @@ class FieldResolver:
     and sqlglot's identify_column_references function.
     """
 
-    def __init__(self, dag: ProjectDag, output_dir: str, native_dialect: str):
+    def __init__(
+        self,
+        dag: ProjectDag,
+        output_dir: str,
+        native_dialect: str,
+        schema_overrides: Optional[Dict[str, dict]] = None,
+    ):
         """
         Initialize the FieldResolver.
 
@@ -43,13 +47,23 @@ class FieldResolver:
             dag: Project DAG containing all models, metrics, and dimensions
             output_dir: Directory where schema files are stored
             native_dialect: SQLGlot dialect name for proper SQL formatting
+            schema_overrides: Optional ``{model_name: schema_dict}`` pre-seed for
+                ``_schema_cache`` (same shape ``_load_model_schema`` returns —
+                ``{model_hash: {column: type_string}, ...}``). Used by the
+                Explore 2.0 compile-draft endpoint to supply a scratch model's
+                columns (learned client-side, never written to
+                ``schemas/<model>/schema.json`` on disk) so
+                ``_qualify_expression``/``_is_implicit_dimension`` resolve
+                without ever touching disk. ``None`` (the default, every real
+                run pipeline caller) preserves today's disk-read-only behavior
+                exactly.
         """
         self.dag = dag
         self.output_dir = output_dir
         self.native_dialect = native_dialect
 
         # Caches to avoid repeated file reads and detect cycles
-        self._schema_cache: Dict[str, dict] = {}
+        self._schema_cache: Dict[str, dict] = dict(schema_overrides) if schema_overrides else {}
         self._resolution_cache: Dict[str, str] = {}
         self._resolution_stack: list = []  # Track current resolution path for cycle detection
 
@@ -74,6 +88,32 @@ class FieldResolver:
         except json.JSONDecodeError as e:
             Logger.instance().error(f"Failed to parse schema file for model '{model_name}': {e}")
             return None
+
+    def _find_model_scoped_field(self, model_node, field_name: str):
+        """#6: find a metric/dimension named ``field_name`` among ``model_node``'s
+        OWN metrics/dimensions (exact, case-sensitive match on the alias, the
+        same matching ``get_descendant_by_name`` used). Returns the node or
+        ``None``. Scoped to this model only, so an alias reused across models
+        resolves to the correct model's field and never binds another model's."""
+        from visivo.models.models.sql_model import SqlModel
+
+        if not isinstance(model_node, SqlModel):
+            return None
+        for obj in list(model_node.metrics or []) + list(model_node.dimensions or []):
+            if getattr(obj, "name", None) == field_name:
+                return obj
+        return None
+
+    def _models_defining_field(self, field_name: str) -> list:
+        """#6: names of all models that define a model-scoped metric/dimension
+        called ``field_name`` — used to explain an ambiguous bare ``${ref}``."""
+        from visivo.models.models.sql_model import SqlModel
+
+        owners = []
+        for node in self.dag.nodes():
+            if isinstance(node, SqlModel) and self._find_model_scoped_field(node, field_name):
+                owners.append(node.name)
+        return owners
 
     def _is_implicit_dimension(self, model_name: str, field_name: str) -> bool:
         schema = self._load_model_schema(model_name)
@@ -147,9 +187,47 @@ class FieldResolver:
             )
             return qualified
         except Exception as e:
+            hint = self._sibling_metric_reference_hint(expression, model_node)
             raise ValueError(
-                f"Failed to qualify expression '{expression}' for model '{model_name}': {e}"
+                f"Failed to qualify expression '{expression}' for model '{model_name}': {e}{hint}"
             )
+
+    def _sibling_metric_reference_hint(self, expression: str, model_node: SqlModel) -> str:
+        """Smoke-test bug #15: a model-scoped metric/dimension whose expression
+        references a SIBLING metric/dimension by bare name (e.g.
+        ``total_lifted / lift_count``) fails LATE with a generic
+        "Column '...' could not be resolved", while the ``${ref(...)}`` form of
+        the same mistake is caught cleanly at compile. We can't move this to
+        compile-time (raw columns aren't known there), but when qualification
+        HAS already failed we can explain it: the unresolved identifier only
+        reaches here because it is not a real column, so if it matches a sibling
+        metric/dimension name it is almost certainly this mistake. Returns a
+        hint to append, or "" (never raises)."""
+        try:
+            from sqlglot import exp
+            from visivo.query.sqlglot_utils import parse_expression
+
+            sibling_names = {m.name for m in (model_node.metrics or [])} | {
+                d.name for d in (model_node.dimensions or [])
+            }
+            if not sibling_names:
+                return ""
+            parsed = parse_expression(expression, self.native_dialect)
+            if parsed is None:
+                return ""
+            referenced = {c.name for c in parsed.find_all(exp.Column)}
+            collisions = sorted(referenced & sibling_names)
+            if not collisions:
+                return ""
+            names = ", ".join(f"'{n}'" for n in collisions)
+            return (
+                f"\nNote: {names} is a metric/dimension on model '{model_node.name}'. "
+                "A model-scoped metric/dimension may only reference RAW columns of its "
+                "model, not other metrics/dimensions. To compose metrics, define a "
+                "project-level metric that references them via ${ref(model).name}."
+            )
+        except Exception:
+            return ""
 
     def _strip_trailing_alias(self, sql: str) -> str:
         """
@@ -346,65 +424,85 @@ class FieldResolver:
             # When field name is none or empty string then the model name is actually a metric or dimension.
             # This is validated in compile to be true ie. ${ref(global-metric)}
             if not field_name:
-                field_node = self.dag.get_descendant_by_name(model_name)
-            else:  # field name is not null
+                try:
+                    field_node = self.dag.get_descendant_by_name(model_name)
+                except ValueError:
+                    # #6: a bare ${ref(name)} is ambiguous when `name` is a
+                    # model-scoped alias defined on more than one model. Point
+                    # the user at the qualified form instead of surfacing the
+                    # generic "Multiple nodes found" internal error.
+                    owners = self._models_defining_field(model_name)
+                    if len(owners) > 1:
+                        qualified = " or ".join(f"${{ref({m}).{model_name}}}" for m in owners)
+                        raise ValueError(
+                            f"Reference '${{ref({model_name})}}' is ambiguous: "
+                            f"'{model_name}' is defined on models {', '.join(owners)}. "
+                            f"Qualify it, e.g. {qualified}."
+                        )
+                    raise
+            else:  # field name is not null — a MODEL-SCOPED field reference
                 model_node = self.dag.get_descendant_by_name(model_name)
                 # Strip leading dot from field_name since property_path includes it
                 # e.g., "${ref(orders).total_amount}" has property_path = ".total_amount"
                 # but the metric/dimension/column is named "total_amount"
                 field_name_stripped = field_name.lstrip(".")
-                try:
-                    # set the field node to the descenant of the model
-                    field_node = self.dag.get_descendant_by_name(field_name_stripped)
 
-                    # Only Metrics and Dimensions are valid for model-scoped field references.
-                    # Other named nodes (Inputs, Insights, etc.) with the same name should
-                    # fall through to implicit dimension lookup in the schema.
-                    if not isinstance(field_node, (Metric, Dimension)):
-                        raise ValueError(
-                            f"Found node '{field_name_stripped}' but it's a "
-                            f"{type(field_node).__name__}, not a Metric or Dimension"
-                        )
-                except ValueError:
-                    # No model found check to see if there's a matching implicit dimension in the schema
-                    model_hash = model_node.name_hash()
-                    schema = self._load_model_schema(model_node.name)
-                    if not schema:
-                        raise Exception(f"Missing schema for model: {model_node.name}.")
-                    table = schema.get(model_hash)
-                    if not table:
-                        raise Exception(f"Missing schema for model: {model_node.name}.")
-
-                    # Detect if field is quoted (e.g., ${ref(model)."Column"})
-                    # Quoted fields require exact case match; unquoted are case-insensitive
-                    is_quoted = (
-                        field_name_stripped.startswith('"')
-                        and field_name_stripped.endswith('"')
-                        and len(field_name_stripped) > 2
-                    )
-                    lookup_name = field_name_stripped
-                    if is_quoted:
-                        # Strip surrounding quotes for lookup
-                        lookup_name = field_name_stripped[1:-1]
-
-                    # Use case-insensitive lookup for unquoted, exact match for quoted
-                    actual_column_name = self._find_column_in_schema(table, lookup_name, is_quoted)
-
-                    if not actual_column_name:
-                        error_msg = format_column_not_found_error(
-                            field_name=lookup_name,
-                            model_name=model_node.name,
-                            table=table,
-                            is_quoted=is_quoted,
-                        )
-                        raise Exception(error_msg)
-
-                    # If the field name is found in the schema it's an implicit dimension
-                    # Use the ACTUAL column name from schema (preserves original case)
+                # #6: resolve the field against THIS model's OWN metrics/
+                # dimensions — never a global by-name lookup, which would be
+                # ambiguous when two models reuse an alias (or would bind another
+                # model's field). The parent is then known to be model_node, so
+                # no ambiguous get_named_parents/get_descendant_by_name walk.
+                field_node = self._find_model_scoped_field(model_node, field_name_stripped)
+                if field_node is not None:
+                    if has_CONTEXT_STRING_REF_PATTERN(field_node.expression):
+                        # Unresolved refs remain — let outer recursion handle them
+                        return field_node.expression
                     return self._qualify_expression(
-                        expression=actual_column_name, model_node=model_node
+                        expression=field_node.expression, model_node=model_node
                     )
 
+                # Not a model-scoped metric/dimension -> implicit dimension
+                # (a raw column) resolved from the model's schema.
+                model_hash = model_node.name_hash()
+                schema = self._load_model_schema(model_node.name)
+                if not schema:
+                    raise Exception(f"Missing schema for model: {model_node.name}.")
+                table = schema.get(model_hash)
+                if not table:
+                    raise Exception(f"Missing schema for model: {model_node.name}.")
+
+                # Detect if field is quoted (e.g., ${ref(model)."Column"})
+                # Quoted fields require exact case match; unquoted are case-insensitive
+                is_quoted = (
+                    field_name_stripped.startswith('"')
+                    and field_name_stripped.endswith('"')
+                    and len(field_name_stripped) > 2
+                )
+                lookup_name = field_name_stripped
+                if is_quoted:
+                    # Strip surrounding quotes for lookup
+                    lookup_name = field_name_stripped[1:-1]
+
+                # Use case-insensitive lookup for unquoted, exact match for quoted
+                actual_column_name = self._find_column_in_schema(table, lookup_name, is_quoted)
+
+                if not actual_column_name:
+                    error_msg = format_column_not_found_error(
+                        field_name=lookup_name,
+                        model_name=model_node.name,
+                        table=table,
+                        is_quoted=is_quoted,
+                    )
+                    raise Exception(error_msg)
+
+                # If the field name is found in the schema it's an implicit dimension
+                # Use the ACTUAL column name from schema (preserves original case)
+                return self._qualify_expression(
+                    expression=actual_column_name, model_node=model_node
+                )
+
+            # Only reached for the bare ${ref(name)} (no field) case — a
+            # project-level metric/dimension, globally unique.
             field_parent_name = self.dag.get_named_parents(field_node.name)[0]
             field_parent = self.dag.get_descendant_by_name(field_parent_name)
             if isinstance(field_parent, SqlModel):

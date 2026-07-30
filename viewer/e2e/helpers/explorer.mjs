@@ -1,88 +1,134 @@
 /**
- * Shared helpers for Explorer E2E tests.
+ * Shared helpers for Explorer/exploration E2E tests.
  *
- * All explorer tests run against sandbox at :3001/:8001.
- * Integration project has: 8 models, 5 metrics, 3 dimensions, 20 insights, 26 charts, 15 inputs.
- * Sources: local-sqlite (2 tables), local-duckdb (3 tables), and others.
+ * Explore 2.0 Phase 3b cutover (05-e2e-ledger.md's Helpers table): the
+ * standalone `/explorer` route and its `ExplorerLeftPanel`/`ModelTabBar`-
+ * driven navigation (`loadExplorer`/`loadExplorerWithModel`/
+ * `loadExplorerWithChart`/`createModelWithSource`) are retired along with
+ * the components they drove — `/explorer` is now a permanent redirect and
+ * every DOM target those helpers clicked no longer exists. Callers that
+ * need to open the exploration surface build their own small
+ * `gotoExplorerHome`/`newExploration` pair against the new mount (see
+ * `exploration-lifecycle.spec.mjs`, `exploration-dnd-pull-in.spec.mjs`,
+ * `exploration-build-rail.spec.mjs`, `pill-aggregation.spec.mjs` — all
+ * near-identical, kept local rather than factored here since each file
+ * already needed its own backend-polling/cleanup helpers too).
+ *
+ * What survives here is genuinely mount-agnostic: constants, Monaco SQL
+ * typing (the editor widget itself is carried forward unchanged), the Run
+ * button flow, and the console-error filter.
  */
 
 export const WAIT_FOR_PAGE = 15000;
 export const DEFAULT_TIMEOUT = 60000;
 
 /**
- * Navigate to explorer and wait for full render.
- * Waits until the "Run a query to see results" empty state text is visible,
- * which means all panels have rendered and data has loaded.
+ * Put the keyboard caret in the Monaco editor.
+ *
+ * Do NOT click `.view-lines`. Monaco stacks presentational overlays
+ * (`.scroll-decoration`, the scrollable-element container) above the line
+ * area, and which one sits under the cursor depends on the editor's scroll
+ * state at that instant — so a click there is hit-test roulette. It usually
+ * wins and occasionally spends its whole timeout losing:
+ *
+ *     locator.click: Timeout 10000ms exceeded.
+ *       - <div class="scroll-decoration"> intercepts pointer events
+ *
+ * (Observed in a gate run on `exploration-cross-tab-concurrency`, where two
+ * live contexts make the editor more likely to be mid-scroll-settle.)
+ *
+ * Monaco's real keyboard target is a dedicated hidden element. Focusing it
+ * directly skips hit-testing altogether, so no overlay can intercept it. Every
+ * caller here follows up with select-all + type, so the caret position a click
+ * would have set is irrelevant.
+ *
+ * WHICH element that is depends on the Monaco build. The version bundled here
+ * uses the EditContext API and focuses `div.native-edit-context` (tabIndex 0);
+ * its only `<textarea>` is `.ime-text-area`, which is NOT the focus target —
+ * targeting `textarea.inputarea` (the pre-EditContext name, and what most
+ * Monaco-testing advice online still says) matches nothing at all here. Both
+ * are listed so this keeps working across a Monaco upgrade in either
+ * direction, and the assertion below fails loudly rather than silently typing
+ * into the void if a future build renames them again.
  */
-export async function loadExplorer(page) {
-  await page.goto('/explorer');
-  await page.waitForLoadState('networkidle');
-  await page.getByText('Run a query to see results').waitFor({ timeout: WAIT_FOR_PAGE });
+const MONACO_INPUT = '.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea';
+
+export async function focusSqlEditor(page, { timeout = 10000 } = {}) {
+  const input = page.locator(MONACO_INPUT).first();
+  await input.waitFor({ state: 'attached', timeout });
+  await input.focus();
+  await page.waitForFunction(
+    sel => !!document.activeElement && document.activeElement.matches(sel),
+    MONACO_INPUT,
+    { timeout: 5000 }
+  );
 }
 
 /**
- * Load explorer and click a model from the left panel to create a tab.
- */
-export async function loadExplorerWithModel(page, modelName) {
-  await loadExplorer(page);
-  await page.getByRole('button', { name: modelName, exact: true }).click();
-  // Wait for the model tab to actually load (editor area becomes available)
-  await page.locator('.view-lines').first().waitFor({ timeout: 10000 });
-}
-
-/**
- * Load explorer and click a chart from the left panel.
- */
-export async function loadExplorerWithChart(page, chartName) {
-  await loadExplorer(page);
-  await page.getByRole('button', { name: chartName, exact: true }).click();
-  // Wait for the chart to load (chart name input becomes visible in right panel)
-  await page.locator('[data-testid="chart-name-input"]').waitFor({ timeout: 10000 });
-}
-
-/**
- * Create a new empty model tab and ensure a source is selected.
- * New tabs now auto-select the project default source (or first available).
- * This helper optionally overrides to a specific source if needed.
- */
-export async function createModelWithSource(page, sourceName = null) {
-  await page.getByRole('button', { name: 'Add model' }).click();
-
-  // Wait for the new model tab to appear (editor area becomes available)
-  await page.locator('.view-lines').first().waitFor({ timeout: 10000 });
-
-  // Override source if a specific one was requested
-  if (sourceName) {
-    const sourceSelect = page.locator('select').first();
-    if (await sourceSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await sourceSelect.selectOption(sourceName);
-    }
-  }
-}
-
-/**
- * Type SQL into the Monaco editor.
- * Monaco renders with a scrollable overlay that intercepts pointer events.
- * We click the visible line area, select all, then type to replace.
+ * Type SQL into the Monaco editor, replacing whatever is there.
+ *
+ * Self-verifying: keystrokes only reach the document if the editor genuinely
+ * holds focus, and `setActiveModelSql` no-ops when there is no active model
+ * (explorerStore.js) — so a mistimed call USED TO TYPE INTO THE VOID and
+ * return happily, surfacing much later as an empty `draft.queries[0].sql` in
+ * whatever backend assertion came next. Several callers had grown their own
+ * private "did it land? then type again" wrapper around this; that check
+ * belongs here, once, where it can also fail loudly instead of leaving the
+ * caller to discover the emptiness three steps downstream.
  */
 export async function typeSql(page, sql) {
-  // Click the Monaco editor's visible line area
-  const editorArea = page.locator('.view-lines');
-  await editorArea.first().click({ timeout: 10000 });
+  const attempt = async () => {
+    await focusSqlEditor(page);
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(`${modifier}+a`);
+    // Brief pause to let Monaco process the select-all before typing
+    await page.waitForTimeout(100);
+    await page.keyboard.type(sql, { delay: 5 });
+    // Monaco's onChange → store write is not synchronous with the last
+    // keystroke; poll rather than sample once.
+    return page
+      .waitForFunction(
+        expected => {
+          const s = window.useStore?.getState?.();
+          const name = s?.explorerActiveModelName;
+          return !!name && s.explorerModelStates?.[name]?.sql === expected;
+        },
+        sql,
+        { timeout: 5000 }
+      )
+      .then(
+        () => true,
+        () => false
+      );
+  };
 
-  // Select all existing content and replace
-  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-  await page.keyboard.press(`${modifier}+a`);
-  // Brief pause to let Monaco process the select-all before typing
-  await page.waitForTimeout(100);
-  await page.keyboard.type(sql, { delay: 5 });
+  if (await attempt()) return;
+  if (await attempt()) return;
+  throw new Error(
+    `typeSql: the editor never took "${sql}" (two attempts). The active model's ` +
+      `sql is still ${JSON.stringify(
+        await page.evaluate(() => {
+          const s = window.useStore?.getState?.();
+          return s?.explorerModelStates?.[s?.explorerActiveModelName]?.sql ?? null;
+        })
+      )} — check that an active model exists before typing.`
+  );
 }
 
 /**
  * Run the current SQL query via the Run button.
+ *
+ * Scoped to `[data-onb-target="sql-run-button"]` (SQLEditor.jsx's stable
+ * anchor) rather than `getByRole('button', { name: 'Run' })` — the latter's
+ * default substring+case-insensitive name match also resolves a not-yet-run
+ * query chip whose accessible name is "Not yet run <query> Options for
+ * <query>" (ExplorationQueryChips.jsx), which contains "run" too. Integration
+ * gate regression (Explore 2.0 Phase 3b): fine for the old standalone
+ * `/explorer` route (no chip row existed there), but a real ambiguity once a
+ * fresh exploration's query chip is on the same page as the Run button.
  */
 export async function runQuery(page) {
-  const runButton = page.getByRole('button', { name: 'Run' });
+  const runButton = page.locator('[data-onb-target="sql-run-button"]');
   await runButton.click();
   // Wait for either query results (row count) or error state
   await Promise.race([

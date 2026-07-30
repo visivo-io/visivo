@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.table import Table
+from visivo.query.table_sql_validator import validate_table_sql
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -36,6 +37,19 @@ class TableManager(ObjectManager[Table]):
         """
         return self._table_adapter.validate_python(obj_data)
 
+    @staticmethod
+    def _table_sql_error(table: Table) -> Optional[str]:
+        """The generated-SQL check for a single (draft) table. Project LOAD no
+        longer runs this — it moved to compile (bug #7 review) so a broken
+        published table can't block the whole project — but the EDITOR still
+        needs immediate feedback on the draft it is validating/saving, and a
+        draft table lives only in this manager's cache (never in the project
+        DAG the compile check walks), so re-run it here. Returns an actionable
+        message or None."""
+        return validate_table_sql(
+            table.name or "(unnamed)", table.columns, table.rows, table.values
+        )
+
     def extract_from_dag(self, dag) -> None:
         """
         Extract Table objects from a ProjectDag and populate published_objects.
@@ -62,6 +76,9 @@ class TableManager(ObjectManager[Table]):
             ValidationError: If the table configuration is invalid
         """
         table = self.validate_object(config)
+        sql_error = self._table_sql_error(table)
+        if sql_error:
+            raise ValueError(sql_error)
         self.save(table.name, table)
         return table
 
@@ -137,6 +154,9 @@ class TableManager(ObjectManager[Table]):
         """
         try:
             table = self.validate_object(config)
+            sql_error = self._table_sql_error(table)
+            if sql_error:
+                return {"valid": False, "error": sql_error}
             return {
                 "valid": True,
                 "name": table.name,

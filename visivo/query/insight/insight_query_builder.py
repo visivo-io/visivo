@@ -162,6 +162,7 @@ def replace_input_placeholders_for_parsing(
     from visivo.models.dag import all_descendants_of_type
     from visivo.models.inputs.input import Input
     from visivo.query.patterns import extract_frontend_input_accessors
+    from visivo.query.accessor_validator import validate_input_accessor
 
     replacements = {}
 
@@ -182,6 +183,14 @@ def replace_input_placeholders_for_parsing(
                 f"Make sure input '{input_name}' is defined in your project."
             )
 
+        # Validate the accessor against the input's type up front. A wrong
+        # accessor (e.g. `.values` on a single-select) otherwise builds no
+        # sample value, leaving the placeholder in the SQL for SQLGlot to choke
+        # on with a generic "Expecting )" — this raises the precise, actionable
+        # "single-select but referenced with .values / Did you mean .value?"
+        # instead (smoke-test bug #12).
+        validate_input_accessor(input_name, accessor, input_map[input_name].type)
+
         sample_value = get_sample_value_for_input(
             input_map[input_name], output_dir, accessor=accessor
         )
@@ -193,12 +202,18 @@ def replace_input_placeholders_for_parsing(
         pattern = rf"\$\{{ref\({input_name}\)\.{accessor}\}}"
         result_sql = re.sub(pattern, marker, result_sql)
 
-    # Also handle JS template literal format ${input.accessor}
+    # Also handle JS template literal format ${input.accessor} (the shape the
+    # resolver rewrites ${ref(input).accessor} into before build).
     frontend_refs = extract_frontend_input_accessors(result_sql)
     for input_name, accessor in frontend_refs:
         if input_name not in input_map:
             # Not an input - skip (might be a model reference or other syntax)
             continue
+
+        # Same accessor/type validation as the YAML loop above — the resolved
+        # (frontend-format) statements are what the build path actually sees, so
+        # the precise "wrong accessor" message must fire here too (bug #12).
+        validate_input_accessor(input_name, accessor, input_map[input_name].type)
 
         sample_value = get_sample_value_for_input(
             input_map[input_name], output_dir, accessor=accessor
@@ -260,7 +275,14 @@ class InsightQueryBuilder:
       - Have to collect all of the query statements from insight.props & insight.interactions
     """
 
-    def __init__(self, insight, dag: ProjectDag, output_dir):
+    def __init__(
+        self,
+        insight,
+        dag: ProjectDag,
+        output_dir,
+        schema_overrides: Optional[Dict[str, dict]] = None,
+        force_dynamic: bool = False,
+    ):
         self.logger = Logger.instance()
         self.insight = insight  # Store for placeholder replacement
         self.dag = dag
@@ -268,7 +290,14 @@ class InsightQueryBuilder:
         self.insight_hash = insight.name_hash()
         self.insight_name = insight.name
         self.unresolved_query_statements = insight.get_all_query_statements(dag)
-        self.is_dynamic = insight.is_dynamic(dag)
+        # `force_dynamic` (Explore 2.0 Phase 4 compile-draft endpoint): a draft
+        # never has server-executed `pre_query` output to read back — its
+        # `post_query` must ALWAYS be the DuckDB-dialect, model-hash-qualified
+        # form the dynamic (input-referencing) path already builds, even when
+        # the draft has zero real Input dependents. See
+        # research/s2-draft-rendering-decision.md's "endpoint should force the
+        # DuckDB/post_query-only build path regardless of is_dynamic()".
+        self.is_dynamic = force_dynamic or insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
         source = insight.get_dependent_source(dag, output_dir)
         self.default_schema = source.db_schema
@@ -276,7 +305,10 @@ class InsightQueryBuilder:
         self.source_dialect = source.get_sqlglot_dialect()
         self.native_dialect = "duckdb" if self.is_dynamic else self.source_dialect
         field_resolver = FieldResolver(
-            dag=dag, output_dir=output_dir, native_dialect=self.native_dialect
+            dag=dag,
+            output_dir=output_dir,
+            native_dialect=self.native_dialect,
+            schema_overrides=schema_overrides,
         )
         self.field_resolver = field_resolver
         # Pass relevant_models to RelationGraph to scope relation resolution
@@ -385,6 +417,19 @@ class InsightQueryBuilder:
             # Frontend registers parquet files as tables using insight_hash as table name
             return f'SELECT * FROM "{self.insight_hash}"'
 
+    def _is_line_mode(self) -> bool:
+        """True when the insight renders a connected line: a scatter/scattergl
+        prop whose mode explicitly includes ``lines``. Marker-only scatters and
+        non-scatter types (bar, etc.) return False so they are never reordered."""
+        props = self.insight.props
+        if not props:
+            return False
+        prop_type = getattr(props.type, "value", props.type)
+        if prop_type not in ("scatter", "scattergl"):
+            return False
+        mode = getattr(props, "mode", None)
+        return bool(mode) and "lines" in mode
+
     def resolve(self):
         """Sets the resolved_query_statements and alias_hashes"""
         resolved_query_statements = []
@@ -400,6 +445,20 @@ class InsightQueryBuilder:
                 )
                 self.alias_hashes[key] = alias_hash
             resolved_query_statements.append((key, resolved_statement))
+
+        # Line charts connect points in row order, so an unsorted result renders
+        # a tangled web. When a line-mode insight has no explicit sort, default to
+        # ordering by the x-axis field ascending. Explicit sorts are never
+        # overridden, and non-line types (bar, marker-only scatter) are untouched.
+        has_sort = any(key == "sort" for key, _ in resolved_query_statements)
+        if not has_sort and self._is_line_mode():
+            x_statement = next(
+                (s for k, s in self.unresolved_query_statements if k == "props.x"), None
+            )
+            if x_statement:
+                default_sort = self.field_resolver.resolve_sort(expression=f"{x_statement} ASC")
+                resolved_query_statements.append(("sort", default_sort))
+
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True
 
@@ -490,14 +549,26 @@ class InsightQueryBuilder:
         # Use find_non_aggregated_expressions() to get full expressions (e.g., CASE statements)
         # that need to be in GROUP BY, then restore ${input} placeholders
         group_by_clauses = []
+        # Whether the SELECT actually aggregates. GROUP BY is only valid/needed
+        # when at least one aggregate is present; a pure projection must NOT
+        # group by its columns (see the emission gate below).
+        select_has_aggregate = False
         for select_clause in select_clauses:
+            # Strip only the TRAILING alias (`... AS "col"`), not the first
+            # ` AS `. Splitting on the first ` AS ` truncated an aggregate that
+            # contains an inner ` AS ` — e.g. SUM(CAST(x AS DOUBLE)) — into
+            # unbalanced SQL that fails to parse, so the aggregate went
+            # undetected and a NEEDED GROUP BY was dropped in the dynamic
+            # (Explorer preview) path (adversarial-review regression).
+            expr_part = re.sub(r'\s+AS\s+"[^"]+"\s*$', "", select_clause, flags=re.IGNORECASE)
             # Replace input placeholders with sample values for SQLGlot parsing
-            expr_part = select_clause.split(" AS ")[0]
             safe_expr, _ = replace_input_placeholders_for_parsing(
                 expr_part, dag=self.dag, insight=self.insight, output_dir=self.output_dir
             )
             parsed = parse_expression(safe_expr, "duckdb")
             if parsed:
+                if has_aggregate_function(parsed):
+                    select_has_aggregate = True
                 # Use find_non_aggregated_expressions to get full expressions for GROUP BY
                 # Pass duckdb dialect for dynamic queries (they run in browser DuckDB WASM)
                 non_agg_exprs = find_non_aggregated_expressions(parsed, dialect="duckdb")
@@ -562,7 +633,13 @@ class InsightQueryBuilder:
             query_parts.append("WHERE")
             query_parts.append("  " + " AND ".join(where_conditions))
 
-        if group_by_clauses:
+        # GROUP BY only when the query actually aggregates. A pure projection —
+        # e.g. a histogram/box/violin plotting RAW observations (x = bodyweight,
+        # no aggregate) — must NOT group by its columns, or it silently dedupes
+        # raw rows to distinct value-tuples and distorts the distribution
+        # (smoke-test bug #2). An aggregate in SELECT or a HAVING both imply an
+        # aggregate context.
+        if group_by_clauses and (select_has_aggregate or having_conditions):
             query_parts.append("GROUP BY")
             query_parts.append("  " + ", ".join(group_by_clauses))
 
@@ -574,7 +651,98 @@ class InsightQueryBuilder:
             query_parts.append("ORDER BY")
             query_parts.append("  " + ", ".join(order_by_clauses))
 
-        return "\n".join(query_parts)
+        return self._quote_string_input_placeholders("\n".join(query_parts))
+
+    def _quote_string_input_placeholders(self, query: str) -> str:
+        """Bug #13: a BARE ``${input.value}`` that resolves to a string must be
+        emitted as a SQL string literal so the client substitutes
+        ``equipment = 'Raw'``, not ``equipment = Raw`` (which reads ``Raw`` as a
+        column). The value's type is a fact from the input definition; an
+        already-quoted or numeric placeholder is left untouched. Fail-safe on any
+        SQLGlot parse issue (returns the query unchanged)."""
+        from visivo.models.dag import all_descendants_of_type
+        from visivo.models.inputs.input import Input
+        from visivo.models.base.query_string import QueryString
+        from visivo.query.input_quoting import (
+            build_should_quote,
+            quote_bare_string_placeholders,
+        )
+
+        inputs = all_descendants_of_type(type=Input, dag=self.dag, from_node=self.insight)
+        if not inputs:
+            return query
+        # A query-based input's value type is not on its definition — resolve it
+        # from the options query's column in the model schema (#13 piece 4).
+        type_overrides = {}
+        for i in inputs:
+            if isinstance(getattr(i, "options", None), QueryString):
+                type_overrides[i.name] = self._query_based_input_value_type(i)
+        should_quote = build_should_quote({i.name: i for i in inputs}, type_overrides)
+        return quote_bare_string_placeholders(query, should_quote)
+
+    def _query_based_input_value_type(self, input_obj) -> str:
+        """Bug #13 (piece 4): the schema-driven value type of a QUERY-based
+        input. A dropdown populated by ``options: ?{ SELECT DISTINCT equipment
+        FROM ${ref(lifts)} }`` yields a value whose type is a FACT — the type of
+        the query's single projected column in the referenced model's schema,
+        which the source job already produced. Resolves that type by qualifying
+        and annotating the options query against the stored schema. Returns
+        ``string`` | ``number`` | ``unknown``; ANY failure (schema missing,
+        multi-column, unparseable, unresolved) → ``unknown`` (bare, never a
+        regression)."""
+        from visivo.models.models.sql_model import SqlModel
+        from visivo.query.input_quoting import sql_type_category
+        from visivo.query.patterns import extract_ref_names, replace_refs
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
+        try:
+            query_value = input_obj.options.get_value()
+            if not query_value:
+                return "unknown"
+            ref_names = extract_ref_names(query_value)
+            if len(ref_names) != 1:
+                return "unknown"
+            model_name = next(iter(ref_names))
+            model = self.dag.get_descendant_by_name(model_name)
+            if not isinstance(model, SqlModel):
+                return "unknown"
+            schema = self.field_resolver._load_model_schema(model_name)
+            if not schema:
+                return "unknown"
+            model_hash = model.name_hash()
+            columns = schema.get(model_hash)
+            if not columns:
+                return "unknown"
+
+            # Replace the single ${ref(model)} with the schema-keyed table name
+            # so the options query parses and its columns bind to the schema.
+            resolved = replace_refs(query_value, lambda _name, _field: f'"{model_hash}"')
+
+            from sqlglot.optimizer.annotate_types import annotate_types
+            from sqlglot.optimizer.qualify import qualify
+            from sqlglot.schema import MappingSchema
+
+            dialect = get_sqlglot_dialect(self.native_dialect)
+            schema_dict = {model_hash: columns}
+            parsed = sqlglot.parse_one(resolved, read=dialect)
+            select = parsed.find(exp.Select)
+            if not select or len(select.expressions) != 1:
+                return "unknown"
+            qualified = qualify(parsed, schema=schema_dict, dialect=dialect)
+            annotated = annotate_types(qualified, schema=MappingSchema(schema=schema_dict))
+            annotated_select = annotated.find(exp.Select)
+            # Re-check AFTER qualify: a `SELECT *` parses as one Star node but
+            # expands to N real columns here, so the pre-qualify count guard
+            # doesn't catch it. A multi-column options query is ambiguous —
+            # never silently resolve the FIRST column's type.
+            if not annotated_select or len(annotated_select.expressions) != 1:
+                return "unknown"
+            proj = annotated_select.expressions[0]
+            if isinstance(proj, exp.Alias):
+                proj = proj.this
+            return sql_type_category(proj.type)
+        except Exception:
+            return "unknown"
 
     def _build_static_query_with_sqlglot(self):
         """
@@ -858,6 +1026,18 @@ class InsightQueryBuilder:
         # Get the SELECT expressions to analyze
         select_expressions = self._build_main_select()
 
+        # GROUP BY is only valid/needed when the query actually aggregates. A
+        # pure projection — e.g. a histogram/box/violin plotting RAW
+        # observations (x = bodyweight, no aggregate) — must NOT group by its
+        # columns, or it silently dedupes raw rows to distinct value-tuples and
+        # distorts the distribution (smoke-test bug #2). A HAVING clause also
+        # implies an aggregate context.
+        select_has_aggregate = any(
+            has_aggregate_function(select_expr) for select_expr in select_expressions
+        )
+        if not (select_has_aggregate or self._build_having() is not None):
+            return None
+
         for select_expr in select_expressions:
             # Find non-aggregated expressions in each SELECT expression
             # Pass dialect for proper identifier quoting (e.g., backticks for BigQuery)
@@ -959,6 +1139,40 @@ class InsightQueryBuilder:
                         qualify_conditions.append(parsed_expr)
 
         return self._combine_conditions_with_and(qualify_conditions)
+
+    def _requires_full_source(self):
+        """Explore 2.0 state fix, Phase 3 — classify this insight's query as a
+        pure row-level PROJECTION of its model rows (safe to preview instantly
+        client-side over the fetched sample) vs one that must execute against
+        the FULL source to be correct.
+
+        True iff the query aggregates, uses a window function, splits, or spans
+        more than one model (a relation join). Deliberately does NOT key off
+        GROUP BY presence — it is computed independently, from the resolved
+        statement strings + model count + split_key. (``_build_group_by`` now
+        emits GROUP BY only when the query actually aggregates, so a pure
+        projection is correctly ungrouped; keying off GROUP BY would still be
+        the wrong signal, since this classification must not depend on how the
+        emitted SQL happened to be shaped.) Reads only those inputs, so it is
+        identical whether the surrounding build ran force_dynamic True or
+        False. A Metric ref always resolves to an aggregate, and a lone
+        Dimension ref stays row-level, so both fall out of the aggregate check
+        without special-casing.
+        """
+        if len(self.models) > 1:
+            return True
+        if self.split_key:
+            return True
+        for _key, statement in self.resolved_query_statements or []:
+            if not statement:
+                continue
+            safe_statement, _ = replace_input_placeholders_for_parsing(
+                statement, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+            )
+            parsed = parse_expression(safe_statement, "duckdb")
+            if parsed and (has_aggregate_function(parsed) or has_window_function(parsed)):
+                return True
+        return False
 
     def _build_order_by(self):
         """
@@ -1190,6 +1404,7 @@ class InsightQueryBuilder:
             "split_key": self.split_key,
             "static_props": self.static_props,
             "props_slices": props_slices,
+            "requires_full_source": self._requires_full_source(),
         }
 
         insight_query_info = InsightQueryInfo(**data)

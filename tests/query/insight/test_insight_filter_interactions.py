@@ -120,6 +120,298 @@ class TestInsightFilterInteractions:
             "${selected_x_values.values}" in query_info.post_query
         ), f"Expected input placeholder in query: {query_info.post_query}"
 
+    def test_multiselect_first_accessor_with_default_values_keeps_where_clause(
+        self, tmpdir, create_schema_file
+    ):
+        """Smoke-test bug #3 end-to-end reproduction: a multi-select `.first`
+        accessor whose input has a `display.default.values` list must NOT drop
+        the filter. Pre-fix, get_accessor_sample_value received the list and
+        produced `"['Raw']"`, yielding malformed SQL that SQLGlot rejected, so
+        the whole filter was silently discarded (no WHERE)."""
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table",
+            sql="SELECT x, y FROM test_data",
+            source=f"ref({source.name})",
+        )
+        equip = MultiSelectInput(
+            name="equip",
+            label="Equipment",
+            options=["Raw", "Single-ply", "Multi-ply"],
+            display={"type": "dropdown", "default": {"values": ["Raw"]}},
+        )
+        insight = Insight(
+            name="first-accessor-filter",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(local_test_table).y}}",
+            ),
+            interactions=[
+                InsightInteraction(
+                    filter="?{CAST(${ref(local_test_table).x} AS VARCHAR) = '${ref(equip).first}'}"
+                )
+            ],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[equip],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        query_info = builder.build()
+
+        assert (
+            "WHERE" in query_info.post_query
+        ), f"filter was silently dropped (no WHERE): {query_info.post_query}"
+        assert (
+            "${equip.first}" in query_info.post_query
+        ), f"input placeholder missing from query: {query_info.post_query}"
+
+    def test_single_select_values_accessor_raises_precise_message(self, tmpdir, create_schema_file):
+        """Smoke-test bug #12: a single-select input referenced with `.values`
+        now raises the precise "Did you mean .value?" message during build,
+        instead of leaving the placeholder for SQLGlot to reject with a generic
+        "Expecting )". Wires the previously test-only accessor validator into the
+        real build path."""
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+        from visivo.query.accessor_validator import AccessorValidationError
+
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table", sql="SELECT x, y FROM test_data", source=f"ref({source.name})"
+        )
+        ss = SingleSelectInput(name="ss1", label="SS", options=["a", "b"])
+        insight = Insight(
+            name="wrong-accessor",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(local_test_table).y}}",
+            ),
+            interactions=[
+                InsightInteraction(
+                    filter="?{CAST(${ref(local_test_table).x} AS VARCHAR) IN (${ref(ss1).values})}"
+                )
+            ],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ss],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        with pytest.raises(AccessorValidationError) as exc_info:
+            builder.resolve()
+            builder.build()
+        message = str(exc_info.value)
+        assert "single-select" in message
+        # Tight guard: `.value` alone is trivially a substring of `.values`, so
+        # assert the actual guidance rendered.
+        assert "Did you mean .value?" in message
+
+    def _build_single_select_filter(self, tmpdir, create_schema_file, filter_expr):
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table", sql="SELECT x, y FROM test_data", source=f"ref({source.name})"
+        )
+        ss = SingleSelectInput(name="ss1", label="SS", options=["Raw", "Wraps"])
+        insight = Insight(
+            name="value-filter",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(local_test_table).y}}",
+            ),
+            interactions=[InsightInteraction(filter=filter_expr)],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ss],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        return builder.build()
+
+    def test_bare_single_select_value_filter_is_quoted(self, tmpdir, create_schema_file):
+        """Smoke-test bug #13: a BARE single-select `.value` in an equality
+        resolves to a QUOTED string literal, so the client substitutes
+        `= 'Raw'`, not `= Raw` (which SQL reads as a column)."""
+        query_info = self._build_single_select_filter(
+            tmpdir, create_schema_file, "?{${ref(local_test_table).x} = ${ref(ss1).value}}"
+        )
+        assert "'${ss1.value}'" in query_info.post_query
+        assert "''" not in query_info.post_query  # not double-quoted
+
+    def test_already_quoted_single_select_value_is_not_double_quoted(
+        self, tmpdir, create_schema_file
+    ):
+        """The established manual-quote pattern stays correct (no `''...''`)."""
+        query_info = self._build_single_select_filter(
+            tmpdir, create_schema_file, "?{${ref(local_test_table).x} = '${ref(ss1).value}'}"
+        )
+        assert "'${ss1.value}'" in query_info.post_query
+        assert "''" not in query_info.post_query
+
+    def _build_query_based_single_select_filter(
+        self, tmpdir, options_query, schema_columns, filter_expr, sample_options
+    ):
+        """Build an insight whose single-select input is QUERY-based (options
+        come from a model query), with a custom model schema so the input's
+        value type can be resolved schema-side (#13 piece 4). ``sample_options``
+        stand in for the input job's computed options (used only to make the SQL
+        parseable; the resolved TYPE comes from ``schema_columns``, not these)."""
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+
+        source = SourceFactory()
+        model = SqlModel(name="lifts", sql="SELECT * FROM lifts_data", source=f"ref({source.name})")
+        ss = SingleSelectInput(name="pick", label="Pick", options=options_query)
+        insight = Insight(
+            name="qb-value-filter",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(lifts).x}}",
+                y="?{${ref(lifts).y}}",
+            ),
+            interactions=[InsightInteraction(filter=filter_expr)],
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ss],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Write a schema.json for the referenced model with the given columns.
+        schema_base = os.path.join(str(tmpdir), "schemas", model.name)
+        os.makedirs(schema_base, exist_ok=True)
+        with open(os.path.join(schema_base, "schema.json"), "w") as f:
+            json.dump({model.name_hash(): schema_columns}, f)
+
+        # Write the input job's JSON output so parsing can obtain a sample value
+        # (query-based inputs have no static options list on the model itself).
+        inputs_dir = os.path.join(str(tmpdir), "inputs")
+        os.makedirs(inputs_dir, exist_ok=True)
+        with open(os.path.join(inputs_dir, f"{ss.name}.json"), "w") as f:
+            json.dump({"static_props": {"options": sample_options}}, f)
+
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        return builder.build()
+
+    def test_query_based_string_options_value_filter_is_quoted(self, tmpdir):
+        """#13 piece 4: a query-populated dropdown whose options select a
+        STRING column (`equipment`) yields a string value, so a bare
+        `= ${ref(pick).value}` is quoted using the schema-resolved type."""
+        query_info = self._build_query_based_single_select_filter(
+            tmpdir,
+            options_query="?{ SELECT DISTINCT equipment FROM ${ref(lifts)} }",
+            schema_columns={"x": "INTEGER", "y": "INTEGER", "equipment": "VARCHAR"},
+            filter_expr="?{${ref(lifts).equipment} = ${ref(pick).value}}",
+            sample_options=["Raw", "Wraps", "Single-ply"],
+        )
+        assert "'${pick.value}'" in query_info.post_query
+        assert "''" not in query_info.post_query
+
+    def test_query_based_numeric_options_value_filter_is_not_quoted(self, tmpdir):
+        """#13 piece 4: a query-populated dropdown whose options select a
+        NUMERIC column (`age`) yields a number, so `= ${ref(pick).value}` stays
+        bare (quoting it would break `age = 25`)."""
+        query_info = self._build_query_based_single_select_filter(
+            tmpdir,
+            options_query="?{ SELECT DISTINCT age FROM ${ref(lifts)} }",
+            schema_columns={"x": "INTEGER", "y": "INTEGER", "age": "BIGINT"},
+            filter_expr="?{${ref(lifts).x} = ${ref(pick).value}}",
+            sample_options=["25", "30", "35"],
+        )
+        assert "${pick.value}" in query_info.post_query
+        assert "'${pick.value}'" not in query_info.post_query
+
+    def test_query_based_star_options_are_unknown_not_first_column(self, tmpdir):
+        """Adversarial-review MED: a `SELECT *` options query parses as a single
+        `Star`, so it must NOT be resolved to the FIRST column's type. Here the
+        first schema column is a STRING (`equipment`) but the filter compares a
+        NUMERIC column (`age`) — mis-resolving to the first column would quote a
+        number and break the SQL. Multi-column/star → unknown → bare."""
+        query_info = self._build_query_based_single_select_filter(
+            tmpdir,
+            options_query="?{ SELECT * FROM ${ref(lifts)} }",
+            # `equipment` (VARCHAR) is first, so the buggy first-column path would
+            # resolve string and wrongly quote the numeric `age` filter.
+            schema_columns={
+                "equipment": "VARCHAR",
+                "x": "INTEGER",
+                "y": "INTEGER",
+                "age": "BIGINT",
+            },
+            filter_expr="?{${ref(lifts).age} = ${ref(pick).value}}",
+            sample_options=["25", "30"],
+        )
+        assert "${pick.value}" in query_info.post_query
+        assert "'${pick.value}'" not in query_info.post_query
+
+    def test_column_picker_input_in_a_prop_stays_a_bare_identifier(
+        self, tmpdir, create_schema_file
+    ):
+        """Adversarial-review CRITICAL: a single-select used to PICK a column
+        (`y: ${ref(ycol).value}`) must stay a bare identifier — quoting it would
+        make the y-axis the constant string 'x' for every row (silent wrong
+        data). Role, not type: a projection is never a value operand."""
+        from visivo.models.inputs.types.single_select import SingleSelectInput
+
+        source = SourceFactory()
+        model = SqlModel(
+            name="local_test_table", sql="SELECT x, y FROM test_data", source=f"ref({source.name})"
+        )
+        ycol = SingleSelectInput(name="ycol", label="Y", options=["x", "y"])
+        insight = Insight(
+            name="col-picker",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(local_test_table).x}}",
+                y="?{${ref(ycol).value}}",
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            inputs=[ycol],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+        create_schema_file(model, str(tmpdir))
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+        query_info = builder.build()
+        assert "${ycol.value}" in query_info.post_query
+        assert "'${ycol.value}'" not in query_info.post_query
+
     def test_filter_interaction_extracted_from_insight(self, tmpdir, create_schema_file):
         """Verify _get_all_interaction_query_statements returns filter statements."""
         source = SourceFactory()
@@ -405,6 +697,56 @@ class TestMultiSelectAccessorSampleValues:
 
         # Should be comma-separated quoted values
         assert sample == "'1', '2'", f"Expected \"'1', '2'\". Got: {sample}"
+
+    def test_multiselect_list_default_reduces_to_scalar_not_list_repr(self):
+        """Smoke-test bug #3: a multi-select `.first`/`.last`/`.min`/`.max`
+        accessor whose input has a `default.values` LIST must produce a SCALAR
+        sample, never the Python list-repr `"['Raw']"` (which injects malformed
+        SQL and gets the whole filter silently dropped)."""
+        options = ["Raw", "Single-ply", "Multi-ply"]
+        for accessor in ("first", "last", "min", "max", "value"):
+            sample = get_accessor_sample_value(accessor, options, default_value=["Raw"])
+            assert sample == "Raw", f"{accessor}: expected 'Raw', got {sample!r}"
+            assert (
+                "[" not in sample and "]" not in sample
+            ), f"{accessor}: sample is a list-repr ({sample!r}) — the bug"
+
+    def test_multiselect_list_default_first_vs_last(self):
+        """A multi-element default list picks the accessor-appropriate end."""
+        options = ["Raw", "Single-ply", "Multi-ply"]
+        assert get_accessor_sample_value("first", options, ["Raw", "Multi-ply"]) == "Raw"
+        assert get_accessor_sample_value("last", options, ["Raw", "Multi-ply"]) == "Multi-ply"
+
+    def test_multiselect_list_default_sample_parses_as_sql(self):
+        """The produced sample, substituted into a quoted equality, must be
+        parseable SQL — the pre-fix `'['Raw']'` was not, which is exactly why
+        SQLGlot rejected the predicate and the builder discarded the filter."""
+        sample = get_accessor_sample_value("first", ["Raw", "Single-ply"], default_value=["Raw"])
+        predicate = f"\"equipment\" = '{sample}'"
+        assert parse_expression(predicate, "duckdb") is not None, f"unparseable: {predicate}"
+
+    def test_empty_list_default_falls_back_to_options(self):
+        """An empty default list must fall back to the options, not crash."""
+        options = ["Raw", "Single-ply"]
+        assert get_accessor_sample_value("first", options, default_value=[]) == "Raw"
+        assert get_accessor_sample_value("last", options, default_value=[]) == "Single-ply"
+
+    def test_values_accessor_ignores_scalar_reducing_list_default(self):
+        """The `.values` (IN-clause) accessor is unaffected by the scalar-
+        reducing list-default logic — it samples options[:2], never the default.
+        (Options are treated as raw SQL fragments here; escaping is deliberately
+        left to the per-combination validator in input_validator.py, which owns
+        the value-substitution contract — mirroring it here would break
+        pre-quoted options like `["'red'"]`.)"""
+        assert (
+            get_accessor_sample_value("values", ["A", "B", "C"], default_value=["A"]) == "'A', 'B'"
+        )
+
+    def test_numeric_list_default_yields_unquoted_numeric_sample(self):
+        """A numeric multi-select default list reduces to a bare numeric sample
+        (no quoting/escaping), preserving the int-vs-str boundary."""
+        assert get_accessor_sample_value("first", [1, 2, 3], default_value=[1, 2]) == "1"
+        assert get_accessor_sample_value("last", [1, 2, 3], default_value=[1, 2]) == "2"
 
 
 class TestSQLGlotParsingOfFilters:

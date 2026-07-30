@@ -1,0 +1,833 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { PiCheckCircle, PiXCircle, PiCircleNotch, PiPencilSimple } from 'react-icons/pi';
+import useStore from '../../../stores/store';
+import { useGuardedAsync } from '../../../hooks/useGuardedAsync';
+import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
+import { getAllKnownNames } from '../../../stores/explorerStore';
+import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
+import { validateName } from '../common/namedModel';
+import { suggestPromoteNames } from './promoteNaming';
+import FieldSwapOfferBanner from './FieldSwapOfferBanner';
+import Select from '../../common/Select';
+
+const TIER_HEADING = { model: 'MODELS', field: 'FIELDS', insight: 'INSIGHTS', chart: 'CHART' };
+const TIER_ORDER = ['model', 'field', 'insight', 'chart'];
+
+const rowKey = row => `${row.type}:${row.name}`;
+
+// D11 (specs/plan/explorer-workspace-unification/08-ux-overhaul.md) — the ONE
+// user-facing verb for this whole chain is "Save to project"; "promote"
+// stays as internal-only vocabulary (store/API names, test ids). A row can
+// only be RENAMED here when it's a brand-new object this run would create —
+// mirrors the `renameModelTab`/`renameInsight` store actions' own
+// `if (!x.isNew) return` guard, and keeps an update-by-name ("modified") row
+// from ever silently becoming a rename-to-a-different-object.
+const RENAMABLE_TIERS = new Set(['model', 'insight', 'chart']);
+const isRenamableRow = row => row.status === 'new' && RENAMABLE_TIERS.has(row.tier);
+
+/**
+ * Calls the ONE store action that can rename this row's kind of draft
+ * object. Each of these throws `NameCollisionError` (`.code ===
+ * 'NAME_COLLISION'`) on a real collision — callers catch and surface
+ * `err.message` inline rather than letting it propagate.
+ */
+function renameRow(row, nextName, storeState) {
+  if (row.type === 'model') {
+    storeState.renameModelTab(row.name, nextName);
+  } else if (row.type === 'insight') {
+    storeState.renameInsight(row.name, nextName);
+  } else if (row.type === 'chart') {
+    storeState.setChartName(nextName);
+  }
+}
+
+// The shared shell for a post-promote offer (return-to placement, fallback
+// dashboard, view-in-semantic-layer) — one bordered primary-50 row; each offer
+// supplies its own message + action(s) as children.
+const PromoteOfferRow = ({ testId, children }) => (
+  <div
+    data-testid={testId}
+    className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
+  >
+    {children}
+  </div>
+);
+
+// The shared inline error shown under a placement / decline action.
+const PromoteInlineError = ({ testId, children }) => (
+  <p
+    data-testid={testId}
+    className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
+  >
+    {children}
+  </p>
+);
+
+/**
+ * ExplorationPromoteModal — Explore 2.0 Phase 4 (01-ux-spec.md §3's "Save to
+ * Project" checklist mockup, 02-architecture.md §3). REPLACES
+ * `ExplorerSaveModal`/`saveExplorerObjects` (both deleted with this change) —
+ * unlike that all-or-nothing modal, this is a per-object gated promote:
+ *
+ *   MODELS        ☑ [orders_query   ] ✓ valid
+ *   FIELDS        ☑ churn_rate        ✓ valid   (→ orders_query)
+ *                 ☐ bad_ratio         ✕ expression fails: <err>
+ *   INSIGHTS      ☑ [orders_query_insight] ✓ valid
+ *   CHART         ☑ [orders_query_insight_chart] ✓ valid
+ *                            [Cancel]  [Save 4 to project ▸]
+ *
+ * Default selection: every VALID row pre-checked; failed rows are visible
+ * but flagged and un-checkable (a failed object blocks only itself — no
+ * cascade-disabling of children). "updates existing" marks a `modified` row —
+ * saving a draft seeded from an existing object of the SAME NAME updates the
+ * original (05-e2e-ledger.md resolution #1), never creates a duplicate.
+ *
+ * NAMING STEP (D11 / ux-audit.md "Promote has no naming step — project
+ * polluted with 'query_1' and 'insight'"): every NEW model/insight/chart row
+ * (never a field — those are already user-named by Save-as-metric; never a
+ * `modified` row — that's an intentional update of a real, already-named
+ * object) renders as an editable, validated name field rather than static
+ * text. A row whose name is still a recognized auto-generated placeholder
+ * (`query_1`, `model`, `insight`, `insight_2`, `chart`) is pre-filled with a
+ * suggested real name on open (`promoteNaming.js`'s `suggestPromoteNames`,
+ * anchored on the model's bound source and cascaded model -> insight ->
+ * chart) — always still editable, never a silent rename the user didn't see.
+ */
+const EMPTY_DASHBOARDS = [];
+
+const ExplorationPromoteModal = ({ explorationId, onClose }) => {
+  const promoteExploration = useStore(s => s.promoteExploration);
+  // VIS-1068 — dashboard round-trip completion: read the exploration's own
+  // one-shot `return_to` intent + the live dashboard list (for the disabled-
+  // with-tooltip case when the target dashboard no longer exists).
+  const returnTo = useStore(s =>
+    explorationId ? s.workspaceExplorations?.byId?.[explorationId]?.returnTo || null : null
+  );
+  const dashboards = useStore(s => s.dashboards || EMPTY_DASHBOARDS);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const placeChartInDashboardSlot = useStore(s => s.placeChartInDashboardSlot);
+  const consumeExplorationReturnTo = useStore(s => s.consumeExplorationReturnTo);
+  // VIS-1069 — Semantic Layer reciprocal: "View in Semantic Layer" after
+  // promoting a metric/dimension.
+  const setWorkspaceSemanticLayerFocusIntent = useStore(s => s.setWorkspaceSemanticLayerFocusIntent);
+
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [selected, setSelected] = useState(() => new Set());
+  const [promoting, setPromoting] = useState(false);
+  const [error, setError] = useState(null);
+  const [reclassificationOffers, setReclassificationOffers] = useState([]);
+  const [promotedThisRun, setPromotedThisRun] = useState(null);
+  const [placeError, setPlaceError] = useState(null);
+  const [declineError, setDeclineError] = useState(null);
+  // Naming step (D11) — draft text per renamable row, keyed by its CURRENT
+  // rowKey, plus any inline validation/collision error for that row. A row
+  // with an in-flight rename (renaming a store action + rebuilding the
+  // checklist) is tracked in `renamingKey` so its input can disable itself
+  // rather than accept a second overlapping edit.
+  const [nameDrafts, setNameDrafts] = useState(() => new Map());
+  const [nameErrors, setNameErrors] = useState(() => new Map());
+  const [renamingKey, setRenamingKey] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let built = await buildPromoteChecklist(useStore.getState);
+      if (cancelled) return;
+
+      // Suggest real names for any brand-new row still carrying a generic
+      // placeholder (query_1 / model / insight / insight_2 / chart) — see
+      // `promoteNaming.js`. Suggestions that resolve are applied through the
+      // SAME rename actions the chip/section rename menus use, so every ref
+      // across sibling insights/charts is already rewritten in the store by
+      // the time this resolves — never a bespoke rename path here.
+      //
+      // Deliberately does NOT re-run `buildPromoteChecklist` after applying
+      // these renames (a first version did, and that regressed real e2e
+      // stories — VIS gate — whose `promoteEverything`-style helpers click
+      // "Save N to project ▸" immediately after the modal becomes visible,
+      // with no wait for it to be enabled; a second full checklist rebuild
+      // here, each row re-validated over the network, pushed the modal past
+      // that assumed-instant window and timed those stories out). Patching
+      // the already-fetched rows' `name`/`parentModel` fields locally is
+      // sufficient for what this modal DISPLAYS — `promoteExploration`
+      // itself always recomputes the checklist FRESH right before the real
+      // save (see its own docstring's "Fresh get() per object"), so the
+      // saved config is correct regardless of what this preview shows.
+      const state = useStore.getState();
+      const knownNames = Array.from(getAllKnownNames(state).keys());
+      const suggestions = suggestPromoteNames(
+        built,
+        modelName => state.explorerModelStates?.[modelName]?.sourceName || null,
+        knownNames
+      );
+      if (suggestions.size > 0) {
+        const appliedRenames = new Map(); // rowKey (old) -> new name
+        for (const row of built) {
+          const suggestion = suggestions.get(rowKey(row));
+          if (!suggestion) continue;
+          try {
+            renameRow(row, suggestion, state);
+            appliedRenames.set(rowKey(row), suggestion);
+          } catch {
+            // A collision with something the suggestion logic couldn't see
+            // (fail-open, not fail-blocking) — leave the placeholder name in
+            // place; the user still gets an editable field to fix it by hand.
+          }
+        }
+        if (appliedRenames.size > 0) {
+          built = built.map(row => {
+            const newName = appliedRenames.get(rowKey(row));
+            if (newName) return { ...row, name: newName };
+            // A field row's "(→ parentModel)" suffix should follow its
+            // model's rename too, purely for display.
+            const parentNewName = row.parentModel
+              ? appliedRenames.get(`model:${row.parentModel}`)
+              : null;
+            return parentNewName ? { ...row, parentModel: parentNewName } : row;
+          });
+        }
+      }
+
+      if (cancelled) return;
+      setRows(built);
+      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
+      setSelected(new Set(built.filter(r => r.valid).map(rowKey)));
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleNameCommit = useCallback(
+    async (row, rawNextName) => {
+      const key = rowKey(row);
+      const nextName = (rawNextName || '').trim();
+      if (!nextName || nextName === row.name) {
+        // Reverting to the current value clears any stale error and just
+        // re-syncs the draft text — nothing to commit.
+        setNameDrafts(prev => new Map(prev).set(key, row.name));
+        setNameErrors(prev => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+        return;
+      }
+      const formatError = validateName(nextName);
+      if (formatError) {
+        setNameErrors(prev => new Map(prev).set(key, formatError));
+        return;
+      }
+      setRenamingKey(key);
+      try {
+        renameRow(row, nextName, useStore.getState());
+      } catch (err) {
+        setNameErrors(prev => new Map(prev).set(key, err.message));
+        setRenamingKey(null);
+        return;
+      }
+      // Rebuild so downstream rows (a chart referencing the just-renamed
+      // insight, etc.) reflect the rewritten refs — `renameModelTab`/
+      // `renameInsight` already rewrote every sibling ref synchronously, so
+      // this rebuild only needs to re-read the now-current draft state.
+      const built = await buildPromoteChecklist(useStore.getState);
+      setRows(built);
+      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
+      // Remap the selection: every OTHER row's key is unchanged, so a direct
+      // `has` lookup carries its checked state forward; the renamed row's
+      // prior checked state is looked up under its OLD key instead.
+      setSelected(prevSelected => {
+        const next = new Set();
+        built.forEach(r => {
+          const newKey = rowKey(r);
+          const priorKey = r.type === row.type && r.name === nextName ? key : newKey;
+          if (prevSelected.has(priorKey) && r.valid) next.add(newKey);
+        });
+        return next;
+      });
+      setNameErrors(prev => {
+        const nextErrors = new Map(prev);
+        nextErrors.delete(key);
+        return nextErrors;
+      });
+      setRenamingKey(null);
+    },
+    []
+  );
+
+  const toggle = useCallback((row) => {
+    if (!row.valid) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      const key = rowKey(row);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const grouped = useMemo(() => {
+    const g = {};
+    TIER_ORDER.forEach(t => (g[t] = []));
+    rows.forEach(r => g[r.tier]?.push(r));
+    return g;
+  }, [rows]);
+
+  // D11 / ux-audit.md "Update-by-name semantics conveyed only by a tiny
+  // green pill" — a single explanatory sentence up top, in addition to (not
+  // instead of) the per-row badge, so the overwrite consequence isn't only
+  // legible on hover.
+  const hasModifiedRows = useMemo(() => rows.some(r => r.status === 'modified'), [rows]);
+
+  const selectedCount = selected.size;
+
+  const handlePromote = useCallback(async () => {
+    setPromoting(true);
+    setError(null);
+    const selection = Array.from(selected).map(key => {
+      const idx = key.indexOf(':');
+      return { type: key.slice(0, idx), name: key.slice(idx + 1) };
+    });
+    const result = await promoteExploration(explorationId, selection);
+    setPromoting(false);
+    setPromotedThisRun(result);
+
+    const failed = (result.results || []).filter(r => !r.success);
+    if (failed.length > 0) {
+      setError(
+        `${failed.length} object${failed.length === 1 ? '' : 's'} failed to promote: ${failed
+          .map(f => `${f.name} (${f.error})`)
+          .join('; ')}`
+      );
+    }
+    if (result.reclassificationOffers?.length > 0) {
+      setReclassificationOffers(result.reclassificationOffers);
+    }
+    // Deliberately NEVER auto-close here, even on the common all-valid,
+    // no-collision path: `setPromotedThisRun` and a same-tick `onClose()`
+    // land in the SAME React commit, so the "Saved N objects to project"
+    // success message (and its `exploration-promote-success` testid) would
+    // never actually paint — the modal would just vanish, giving the user no
+    // confirmation of what was saved. Root-caused via live reproduction
+    // against the sandbox (integration-gate fix cycle). The "Close" button's
+    // own label already switches to "Close" once `promotedThisRun` is set
+    // (see the JSX below) — that affordance is how the user dismisses after
+    // reviewing the result, for both the success and failure/offer cases.
+  }, [selected, promoteExploration, explorationId]);
+
+  const dismissOffer = useCallback(index => {
+    setReclassificationOffers(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const totalRows = rows.length;
+
+  // P5-D2 (e2e-gap-review.md "Final delta pass") — partial promotion is
+  // documented as "normal" (handlePromote's own error-branch above handles
+  // it), so `promotedThisRun.success` (== every row succeeded) must NOT gate
+  // whether the succeeded rows' offers render. `promotedChart`/`promotedField`
+  // below already scope to per-row success; the success banner + both offer
+  // banners key off `promotedThisRun` existing and the relevant row(s) having
+  // actually succeeded, never overall-batch success.
+  const succeededCount = useMemo(
+    () => (promotedThisRun?.results || []).filter(r => r.success).length,
+    [promotedThisRun]
+  );
+
+  // VIS-1068 — the chart promoted THIS RUN (return_to placement only makes
+  // sense for a run that actually promoted a chart; older promotes in a
+  // prior session don't retroactively offer placement).
+  const promotedChart = useMemo(
+    () => (promotedThisRun?.results || []).find(r => r.success && r.type === 'chart') || null,
+    [promotedThisRun]
+  );
+  const dashboardExists = useMemo(
+    () => !!returnTo?.dashboard && dashboards.some(d => d.name === returnTo.dashboard),
+    [returnTo, dashboards]
+  );
+
+  // ux-audit.md "post-promote offers never appear" finding (⚠
+  // conflicts-with-e2e — promote-roundtrip #9): the `return_to`-driven offer
+  // above is real and works — dashboard-newchart-roundtrip.spec.mjs proves
+  // it — but `return_to` is only ever armed by ONE specific entry point
+  // (Library "+ New" -> Chart, scoped to an already-open dashboard tab). The
+  // canonical build flow this audit walked through (Explorer home -> source
+  // tile -> query -> chart -> Save to Project) never sets it, so the
+  // flywheel's own advertised "promote -> place in dashboard" round-trip had
+  // NO exit ramp at all for the single most common path — a too-narrow
+  // condition on an otherwise-correct feature, not a bug in the feature
+  // itself. This fallback reuses the exact same `placeChartInDashboardSlot`
+  // plumbing for the common case: a chart was promoted this run, there's no
+  // `return_to` intent already offering placement, and at least one
+  // dashboard exists to place it in.
+  const showFallbackDashboardOffer = !!promotedChart && !returnTo?.dashboard && dashboards.length > 0;
+  const [fallbackDashboardName, setFallbackDashboardName] = useState('');
+  useEffect(() => {
+    if (showFallbackDashboardOffer && !fallbackDashboardName) {
+      setFallbackDashboardName(dashboards[0]?.name || '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFallbackDashboardOffer, dashboards]);
+  const [fallbackPlaceError, setFallbackPlaceError] = useState(null);
+
+  // The double-click guard + `pending` flag for these placement actions lives
+  // in useGuardedAsync: `disabled={pending}` alone can't stop a real
+  // double-click (both events dispatch before React re-renders the button
+  // disabled — the VIS-1084/VIS-1086 bug class), so a synchronous in-flight ref
+  // rejects the second call. Preconditions ("no chart to place", "store action
+  // missing") are checked in the thin handlers BELOW the guarded runs, so a
+  // no-op click never flips `pending` — a clean no-op, as before.
+  const [runFallbackPlace, fallbackPlacing] = useGuardedAsync(async () => {
+    setFallbackPlaceError(null);
+    const placeResult = await placeChartInDashboardSlot(fallbackDashboardName, promotedChart.name);
+    if (!placeResult?.success) {
+      setFallbackPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
+      return;
+    }
+    openWorkspaceTab?.({
+      id: `dashboard:${fallbackDashboardName}`,
+      type: 'dashboard',
+      name: fallbackDashboardName,
+    });
+    onClose?.();
+  });
+  const handleFallbackPlace = () => {
+    if (!promotedChart || !fallbackDashboardName || !placeChartInDashboardSlot) return;
+    runFallbackPlace();
+  };
+
+  const [runPlaceInDashboard, placing] = useGuardedAsync(async () => {
+    setPlaceError(null);
+    const placeResult = await placeChartInDashboardSlot(
+      returnTo.dashboard,
+      promotedChart.name,
+      returnTo.slot
+    );
+    if (!placeResult?.success) {
+      setPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
+      return;
+    }
+    // P6-D10 (e2e-gap-review.md "Phase 6 delta pass") — the store method
+    // catches its own errors and returns `{success: false}` rather than
+    // throwing (see its docstring's unlocked read-modify-write note), so
+    // this MUST be checked, not just awaited. The chart above was already
+    // placed successfully; if only clearing the placement intent fails,
+    // `return_to` stays persisted on the record and this SAME offer would
+    // re-render on a later promote run — a second "Place" click would then
+    // call `placeChartInDashboardSlot` again for a chart already sitting
+    // in the dashboard, adding a duplicate slot. Surface the failure (the
+    // same treatment the placement failure above gets) and deliberately
+    // do NOT close/navigate — closing here would hide that the intent is
+    // still live.
+    const consumeResult = await consumeExplorationReturnTo?.(explorationId);
+    if (consumeResult && consumeResult.success === false) {
+      setPlaceError(
+        consumeResult.error || 'Chart placed, but could not clear the placement prompt — try again.'
+      );
+      return;
+    }
+    openWorkspaceTab?.({
+      id: `dashboard:${returnTo.dashboard}`,
+      type: 'dashboard',
+      name: returnTo.dashboard,
+    });
+    onClose?.();
+  });
+  const handlePlaceInDashboard = () => {
+    if (!returnTo?.dashboard || !promotedChart || !placeChartInDashboardSlot) return;
+    runPlaceInDashboard();
+  };
+
+  // "Declining also consumes" (01-ux-spec.md §5) — an explicit choice, never
+  // silent accretion of an ever-growing pile of dead placement intents.
+  //
+  // P5-D5 (e2e-gap-review.md "Final delta pass") — this used to be a bare,
+  // un-awaited fire-and-forget call: no loading/disabled state of its own, no
+  // error surfaced on failure, so a failed consume-return-to (network blip,
+  // or a concurrent write conflict on the same on-disk record — the exact
+  // unlocked read-modify-write risk `consumeExplorationReturnTo`'s own
+  // docstring calls out) silently left the offer able to resurface later
+  // with none of the accept path's rigor. The useGuardedAsync in-flight guard
+  // also stops a double-click on "Not now" from enqueuing `consumeReturnTo`
+  // twice (P6-D11).
+  const [handleDeclinePlacement, declining] = useGuardedAsync(async () => {
+    setDeclineError(null);
+    const result = await consumeExplorationReturnTo?.(explorationId);
+    if (!result?.success) {
+      setDeclineError(result?.error || 'Could not dismiss the placement offer');
+    }
+  });
+
+  // VIS-1069 — the first metric/dimension/model promoted THIS RUN (mirrors
+  // `promotedChart`'s "this run only" scoping above).
+  //
+  // ux-audit.md "post-promote offers never appear" finding (⚠
+  // conflicts-with-e2e — promote-roundtrip #9): this originally only
+  // considered `type === 'metric' || type === 'dimension'`, which is real
+  // and correct for ITS OWN narrow trigger (Save-as-metric on a pill) but is
+  // NEVER true for the single most common promote outcome — a plain
+  // query -> chart flow promotes a MODEL + an INSIGHT + a CHART, never a
+  // metric/dimension. A model is exactly as semantic-layer-visible as a
+  // metric/dimension (it's a node on the same ERD), so the same reciprocal
+  // "go look at what you just published" offer applies to it too — this was
+  // a too-narrow condition, not a discoverability gap in an otherwise-correct
+  // trigger.
+  // Composed-gate correction: `find()` over the results scans them in PROMOTE
+  // order, which is dependency-ordered — the model a metric depends on is
+  // always promoted (and therefore found) first. Broadening to models above
+  // then meant a run that published a metric offered "View <its model> in the
+  // Semantic Layer", naming the incidental dependency instead of the thing
+  // the user just built. Prefer the most specific field, fall back to the
+  // model so the plain query -> chart flow still gets an offer.
+  const promotedField = useMemo(() => {
+    const succeeded = (promotedThisRun?.results || []).filter(r => r.success);
+    return (
+      succeeded.find(r => r.type === 'metric' || r.type === 'dimension') ||
+      succeeded.find(r => r.type === 'model') ||
+      null
+    );
+  }, [promotedThisRun]);
+
+  const handleViewInSemanticLayer = useCallback(() => {
+    if (!promotedField) return;
+    setWorkspaceSemanticLayerFocusIntent?.({
+      objectKey: `${promotedField.type}:${promotedField.name}`,
+    });
+    openWorkspaceTab?.({
+      id: 'semantic-layer:semantic-layer',
+      type: 'semantic-layer',
+      name: 'semantic-layer',
+    });
+    onClose?.();
+  }, [promotedField, setWorkspaceSemanticLayerFocusIntent, openWorkspaceTab, onClose]);
+
+  return (
+    <div
+      data-testid="exploration-promote-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      onClick={e => {
+        if (e.target === e.currentTarget && !promoting) onClose?.();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Save to project"
+        className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto"
+      >
+        {/* D11: one verb, one casing — sentence-case "Save to project" here to
+            match the CTA, the trail heading and the submit button; the modal's
+            own heading + aria-label were the last "Save to Project" holdouts. */}
+        <h3 className="text-lg font-medium text-secondary-900 mb-1">Save to project</h3>
+
+        {loading ? (
+          <div className="flex items-center gap-2 py-8 justify-center text-secondary-400 text-sm">
+            <PiCircleNotch className="animate-spin" size={16} />
+            Checking your draft…
+          </div>
+        ) : totalRows === 0 ? (
+          <p className="text-sm text-secondary-500 py-4">No changes to save.</p>
+        ) : (
+          <div className="space-y-3 mt-3">
+            {hasModifiedRows && (
+              <p
+                data-testid="exploration-promote-update-notice"
+                className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5"
+              >
+                Rows marked <span className="font-medium">updates existing</span> will overwrite
+                the object of that name already in your project.
+              </p>
+            )}
+            {TIER_ORDER.filter(tier => grouped[tier].length > 0).map(tier => (
+              <div key={tier}>
+                <p className="text-xs font-medium text-secondary-400 uppercase tracking-wide mb-1">
+                  {TIER_HEADING[tier]}
+                </p>
+                <div className="space-y-1">
+                  {grouped[tier].map(row => {
+                    const colors = getTypeColors(row.type);
+                    const Icon = getTypeIcon(row.type);
+                    const key = rowKey(row);
+                    const checked = selected.has(key);
+                    const renamable = isRenamableRow(row);
+                    const nameError = nameErrors.get(key);
+                    return (
+                      <div
+                        key={key}
+                        data-testid={`promote-row-${row.type}-${row.name}`}
+                        className={`flex items-start gap-2 rounded-md px-2 py-1.5 text-[13px] ${
+                          row.valid ? 'hover:bg-gray-50' : 'opacity-70'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          data-testid={`promote-row-${row.type}-${row.name}-checkbox`}
+                          checked={checked}
+                          disabled={!row.valid}
+                          onChange={() => toggle(row)}
+                          className="mt-0.5 shrink-0"
+                        />
+                        {Icon && (
+                          <span
+                            className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded ${colors.bg} ${colors.text}`}
+                          >
+                            <Icon style={{ fontSize: 11 }} />
+                          </span>
+                        )}
+                        <span className="flex-1 min-w-0">
+                          {renamable ? (
+                            <>
+                              <input
+                                type="text"
+                                data-testid={`promote-row-${row.type}-${row.name}-name-input`}
+                                aria-label={`Name for this new ${row.type}`}
+                                value={nameDrafts.has(key) ? nameDrafts.get(key) : row.name}
+                                disabled={renamingKey === key}
+                                onChange={e =>
+                                  setNameDrafts(prev => new Map(prev).set(key, e.target.value))
+                                }
+                                onBlur={e => handleNameCommit(row, e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') e.currentTarget.blur();
+                                  else if (e.key === 'Escape') {
+                                    setNameDrafts(prev => new Map(prev).set(key, row.name));
+                                    setNameErrors(prev => {
+                                      const next = new Map(prev);
+                                      next.delete(key);
+                                      return next;
+                                    });
+                                  }
+                                }}
+                                className={`w-full min-w-0 rounded border px-1.5 py-0.5 text-[13px] font-medium text-secondary-900 outline-none focus:ring-1 ${
+                                  nameError
+                                    ? 'border-highlight-300 focus:border-highlight-400 focus:ring-highlight-200'
+                                    : 'border-gray-200 focus:border-primary-400 focus:ring-primary-200'
+                                }`}
+                              />
+                              {nameError && (
+                                <span
+                                  data-testid={`promote-row-${row.type}-${row.name}-name-error`}
+                                  className="mt-0.5 block text-[11px] text-highlight-600"
+                                >
+                                  {nameError}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="font-medium text-secondary-900">{row.name}</span>
+                          )}
+                          {row.parentModel && (
+                            <span className="text-secondary-400"> (→ {row.parentModel})</span>
+                          )}
+                        </span>
+                        {row.valid ? (
+                          row.status === 'modified' ? (
+                            <span
+                              className="flex items-center gap-1 text-amber-700 text-xs shrink-0"
+                              data-testid={`promote-row-${row.type}-${row.name}-verdict`}
+                              title="Saving will overwrite the existing object of this name in your project."
+                            >
+                              <PiPencilSimple size={12} />
+                              updates existing
+                            </span>
+                          ) : (
+                            <span
+                              className="flex items-center gap-1 text-green-600 text-xs shrink-0"
+                              data-testid={`promote-row-${row.type}-${row.name}-verdict`}
+                            >
+                              <PiCheckCircle size={13} />
+                              valid
+                            </span>
+                          )
+                        ) : (
+                          <span
+                            className="flex items-start gap-1 text-highlight-600 text-xs shrink-0 max-w-[45%] text-right"
+                            data-testid={`promote-row-${row.type}-${row.name}-verdict`}
+                            title={row.error}
+                          >
+                            <PiXCircle size={13} className="mt-0.5 shrink-0" />
+                            <span className="truncate">{row.error || 'invalid'}</span>
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {reclassificationOffers.length > 0 && (
+          <div className="mt-3">
+            <FieldSwapOfferBanner offers={reclassificationOffers} onDismiss={dismissOffer} />
+          </div>
+        )}
+
+        {error && (
+          <p
+            data-testid="exploration-promote-error"
+            className="mt-3 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
+          >
+            {error}
+          </p>
+        )}
+
+        {promotedThisRun && succeededCount > 0 && reclassificationOffers.length === 0 && (
+          <div className="mt-3 space-y-1">
+            <p
+              data-testid="exploration-promote-success"
+              className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-2.5 py-1.5"
+            >
+              Saved {succeededCount} object
+              {succeededCount === 1 ? '' : 's'} to project.
+            </p>
+            {/* D11 — the two-step journey (save to project, then commit) must
+                be signposted where the first step just completed, not left
+                for the user to discover when a green "Commit" button appears
+                in the nav with no explanation (ux-audit.md "Save / Promote /
+                Commit: three words, one journey, zero signposting"). */}
+            <p
+              data-testid="exploration-promote-pending-commit"
+              className="text-[11px] text-secondary-500 px-0.5"
+              title="Written to your project's .visivo.yml files."
+            >
+              Saved to your project files
+            </p>
+          </div>
+        )}
+
+        {/* VIS-1068 — dashboard round-trip completion. Only offered on a run
+            that actually promoted a chart while return_to is still set (a
+            reload between opening the intent-carrying exploration and
+            promoting preserves return_to — it's fetched from the backend on
+            every load, never derived from a mount-time snapshot here). A
+            return_to whose dashboard no longer exists renders the offer
+            DISABLED with a tooltip rather than hiding it (04-bug-inventory.md
+            D12's validation nit). */}
+        {promotedThisRun && returnTo?.dashboard && promotedChart && (
+          <PromoteOfferRow testId="exploration-promote-return-to-offer">
+            <span className="text-xs text-primary-800">
+              Place <span className="font-medium">{promotedChart.name}</span> in{' '}
+              <span className="font-medium">{returnTo.dashboard}</span>?
+            </span>
+            <div className="flex shrink-0 gap-1.5">
+              <button
+                type="button"
+                data-testid="exploration-promote-decline-placement"
+                onClick={handleDeclinePlacement}
+                disabled={placing || declining}
+                className="rounded-md px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+              >
+                {declining ? 'Dismissing…' : 'Not now'}
+              </button>
+              <button
+                type="button"
+                data-testid="exploration-promote-place-in-dashboard"
+                onClick={handlePlaceInDashboard}
+                disabled={placing || declining || !dashboardExists}
+                title={!dashboardExists ? `"${returnTo.dashboard}" no longer exists` : undefined}
+                className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {placing ? 'Placing…' : `Place in ${returnTo.dashboard}`}
+              </button>
+            </div>
+          </PromoteOfferRow>
+        )}
+
+        {placeError && (
+          <PromoteInlineError testId="exploration-promote-place-error">{placeError}</PromoteInlineError>
+        )}
+
+        {/* ux-audit.md "post-promote offers never appear" finding
+            (⚠ conflicts-with-e2e — promote-roundtrip #9): the fallback for
+            the common case — a chart was promoted but no return_to intent
+            was ever armed — so the promote -> dashboard round-trip still has
+            an exit ramp from the ordinary Save-to-Project flow, not just the
+            "+ New Chart from an open dashboard" entry point. */}
+        {promotedThisRun && showFallbackDashboardOffer && (
+          <PromoteOfferRow testId="exploration-promote-fallback-dashboard-offer">
+            <span className="flex min-w-0 items-center gap-1.5 text-xs text-primary-800">
+              Add <span className="font-medium">{promotedChart.name}</span> to
+              <Select
+                data-testid="exploration-promote-fallback-dashboard-select"
+                value={fallbackDashboardName}
+                onChange={setFallbackDashboardName}
+                disabled={fallbackPlacing}
+                size="sm"
+                isSearchable={false}
+                options={dashboards.map(d => ({ value: d.name, label: d.name }))}
+                className="min-w-[7rem]"
+              />
+              ?
+            </span>
+            <button
+              type="button"
+              data-testid="exploration-promote-fallback-place"
+              onClick={handleFallbackPlace}
+              disabled={fallbackPlacing || !fallbackDashboardName}
+              className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {fallbackPlacing ? 'Adding…' : 'Add'}
+            </button>
+          </PromoteOfferRow>
+        )}
+
+        {fallbackPlaceError && (
+          <PromoteInlineError testId="exploration-promote-fallback-place-error">
+            {fallbackPlaceError}
+          </PromoteInlineError>
+        )}
+
+        {declineError && (
+          <PromoteInlineError testId="exploration-promote-decline-error">
+            {declineError}
+          </PromoteInlineError>
+        )}
+
+        {/* VIS-1069 — Semantic Layer reciprocal: promoting a metric/dimension
+            offers a one-click jump to the ERD, focused on that field's
+            parent model node. */}
+        {promotedThisRun && promotedField && (
+          <PromoteOfferRow testId="exploration-promote-semantic-layer-offer">
+            <span className="text-xs text-primary-800">
+              View <span className="font-medium">{promotedField.name}</span> in the Semantic Layer?
+            </span>
+            <button
+              type="button"
+              data-testid="exploration-promote-view-in-semantic-layer"
+              onClick={handleViewInSemanticLayer}
+              className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700"
+            >
+              View in Semantic Layer
+            </button>
+          </PromoteOfferRow>
+        )}
+
+        <div className="mt-4 pt-3 border-t border-secondary-100 flex justify-end gap-2">
+          <button
+            type="button"
+            data-testid="exploration-promote-cancel"
+            onClick={() => onClose?.()}
+            disabled={promoting}
+            className="px-4 py-2 text-sm font-medium text-secondary-700 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+          >
+            {promotedThisRun ? 'Close' : 'Cancel'}
+          </button>
+          <button
+            type="button"
+            data-testid="exploration-promote-submit"
+            onClick={handlePromote}
+            disabled={promoting || selectedCount === 0 || loading}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {promoting ? 'Saving…' : `Save ${selectedCount} to project ▸`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ExplorationPromoteModal;

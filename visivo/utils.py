@@ -31,6 +31,7 @@ PROJECT_CHILDREN = [
     "relations",
     "sources",
     "tables",
+    "tests",
 ]
 """Valid child entity types within a project DAG."""
 

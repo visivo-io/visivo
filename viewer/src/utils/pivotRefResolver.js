@@ -57,8 +57,29 @@ export function extractAggAndColumn(resolvedExpr) {
 }
 
 /**
+ * Strip a single pair of matching surrounding quotes (double or single) from a
+ * parsed alias. The documented table syntax quotes aliases with spaces
+ * (`as "Total Revenue"`, Table docstring), but the caller re-wraps the alias in
+ * double quotes when building SQL — so keeping the user's quotes produced a
+ * double-wrapped `AS ""Total Revenue""` (a zero-length delimited identifier),
+ * which DuckDB rejects and the whole table fails to render. The logical alias
+ * is the unquoted text; the caller owns the SQL quoting.
+ */
+function stripSurroundingQuotes(alias) {
+  if (alias.length >= 2) {
+    const first = alias[0];
+    const last = alias[alias.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return alias.slice(1, -1);
+    }
+  }
+  return alias;
+}
+
+/**
  * Parse a column expression that may contain an alias.
  * e.g. "${ref(insight).revenue} as Total Revenue" -> { ref: "${ref(insight).revenue}", alias: "Total Revenue" }
+ * e.g. '${ref(insight).revenue} as "Total Revenue"' -> { ref: "${ref(insight).revenue}", alias: "Total Revenue" }
  * e.g. "${ref(insight).revenue}" -> { ref: "${ref(insight).revenue}", alias: null }
  *
  * @param {string} colExpr - Column expression, optionally with " as Alias"
@@ -66,7 +87,7 @@ export function extractAggAndColumn(resolvedExpr) {
  */
 export function parseColumnAlias(colExpr) {
   const match = colExpr.match(/^(.+?)\s+as\s+(.+)$/i);
-  if (match) return { ref: match[1].trim(), alias: match[2].trim() };
+  if (match) return { ref: match[1].trim(), alias: stripSurroundingQuotes(match[2].trim()) };
   return { ref: colExpr, alias: null };
 }
 

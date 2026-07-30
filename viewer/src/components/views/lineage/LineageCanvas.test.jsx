@@ -14,7 +14,7 @@
  * the contract without standing up React Flow.
  */
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import LineageCanvas from './LineageCanvas';
 import useStore from '../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../workspace/telemetry';
@@ -56,6 +56,14 @@ jest.mock('./Lineage', () => {
           }
         >
           right-click node
+        </button>
+        <button
+          data-testid="simulate-node-contextmenu-insight"
+          onClick={(e) =>
+            onNodeContextMenu && onNodeContextMenu(e, { type: 'insight', name: 'revenue_growth' })
+          }
+        >
+          right-click insight node
         </button>
       </div>
     );
@@ -221,6 +229,71 @@ describe('LineageCanvas', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('lineage-node-ctx-menu')).not.toBeInTheDocument();
     expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
+  // VIS-1067 — "Explore this" / "Add to exploration" from a DAG node.
+  describe('Explore this / Add to exploration', () => {
+    test('"Explore this" renders for a model node, mints a pre-wired exploration, and opens its tab', async () => {
+      const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new' });
+      const buildExplorationSeedState = jest.fn().mockReturnValue({ modelTabs: ['query_1'] });
+      setScope(DASHBOARD);
+      act(() => {
+        useStore.setState({ createExploration, buildExplorationSeedState });
+      });
+      render(<LineageCanvas />);
+      fireEvent.click(screen.getByTestId('simulate-node-contextmenu'));
+      const exploreThis = screen.getByTestId('lineage-node-ctx-explore-this');
+      fireEvent.click(exploreThis);
+
+      expect(buildExplorationSeedState).toHaveBeenCalledWith({
+        type: 'model',
+        name: 'monthly_revenue',
+      });
+      await waitFor(() =>
+        expect(createExploration).toHaveBeenCalledWith(
+          { type: 'model', name: 'monthly_revenue' },
+          null,
+          { modelTabs: ['query_1'] }
+        )
+      );
+      await waitFor(() => {
+        expect(useStore.getState().workspaceActiveTabId).toBe('exploration:exp_new');
+      });
+      expect(screen.queryByTestId('lineage-node-ctx-menu')).not.toBeInTheDocument();
+    });
+
+    test('"Add to exploration" never renders for a model node (model is not an EXPLORATION_DRAG_TYPE), even with an exploration active', () => {
+      setScope(DASHBOARD);
+      act(() => {
+        useStore.setState({ workspaceActiveObject: { type: 'exploration', name: 'exp_1' } });
+      });
+      render(<LineageCanvas />);
+      fireEvent.click(screen.getByTestId('simulate-node-contextmenu'));
+      expect(screen.queryByTestId('lineage-node-ctx-add-to-exploration')).not.toBeInTheDocument();
+    });
+
+    test('"Add to exploration" renders for an insight node ONLY when an exploration tab is active, and calls addObjectToActiveExploration', () => {
+      const addObjectToActiveExploration = jest.fn();
+      setScope(DASHBOARD);
+      act(() => {
+        useStore.setState({ addObjectToActiveExploration, workspaceActiveObject: null });
+      });
+      render(<LineageCanvas />);
+      fireEvent.click(screen.getByTestId('simulate-node-contextmenu-insight'));
+      expect(screen.queryByTestId('lineage-node-ctx-add-to-exploration')).not.toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      act(() => {
+        useStore.setState({ workspaceActiveObject: { type: 'exploration', name: 'exp_1' } });
+      });
+      fireEvent.click(screen.getByTestId('simulate-node-contextmenu-insight'));
+      const addToExploration = screen.getByTestId('lineage-node-ctx-add-to-exploration');
+      fireEvent.click(addToExploration);
+      expect(addObjectToActiveExploration).toHaveBeenCalledWith({
+        type: 'insight',
+        name: 'revenue_growth',
+      });
+    });
   });
 
   test('manual selector input inside Lineage still works as an override', () => {

@@ -19,6 +19,12 @@ import {
  * @param {Array<string>} props.initiallyExpanded - Properties to show by default
  * @param {boolean} props.disabled - Whether the editor is disabled
  * @param {boolean} props.droppable - Whether property rows support DnD drops
+ * @param {boolean} [props.hidePropertyCount] - D12 (pills-buildrail #8/#9,
+ *   promote-roundtrip minor): a bare "0 of 1366 properties" reads as a raw
+ *   Plotly-schema-size inventory, not guidance — hides that line. Default
+ *   false (unchanged for every existing caller); the exploration Build
+ *   rail's `ChartBuildSection` (Layout Properties, whose schema genuinely
+ *   has 1300+ leaves) opts in.
  */
 export function SchemaEditor({
   schema,
@@ -28,6 +34,7 @@ export function SchemaEditor({
   initiallyExpanded = [],
   disabled = false,
   droppable = false,
+  hidePropertyCount = false,
 }) {
   const [addedProperties, setAddedProperties] = useState(() => new Set(initiallyExpanded));
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
@@ -145,9 +152,11 @@ export function SchemaEditor({
           {showPropertyPicker ? 'Hide Properties' : 'Add Properties'}
         </button>
 
-        <span className="ml-auto text-xs text-gray-500">
-          {displayedProperties.length} of {allProperties.length} properties
-        </span>
+        {!hidePropertyCount && (
+          <span className="ml-auto text-xs text-gray-500">
+            {displayedProperties.length} of {allProperties.length} properties
+          </span>
+        )}
       </div>
 
       {/* Property search/picker */}

@@ -1,0 +1,124 @@
+"""Tests for server-side table SQL validation (smoke-test bug #7)."""
+
+import pytest
+
+from visivo.query.table_sql_validator import validate_table_sql, validate_project_table_sql
+
+
+def test_plain_data_table_is_skipped():
+    # No columns -> no generated SQL -> nothing to validate.
+    assert validate_table_sql("t", None, None, None) is None
+
+
+def test_valid_column_select_passes():
+    assert validate_table_sql("t", ["${ref(i).sex} as Sex", "${ref(i).total}"], None, None) is None
+
+
+def test_valid_quoted_alias_passes():
+    # The documented `as "Two Words"` form (bug #4 strips the user's quotes).
+    assert validate_table_sql("t", ['${ref(i).total} as "Total Revenue"'], None, None) is None
+
+
+def test_valid_pivot_passes():
+    assert (
+        validate_table_sql(
+            "t", ["${ref(i).region}"], ["${ref(i).product}"], ["sum(${ref(i).revenue})"]
+        )
+        is None
+    )
+
+
+def test_valid_pivot_without_rows_passes():
+    # NOTE: the Table model forbids `values` without `rows`, so this shape isn't
+    # reachable from persisted YAML — it exercises the builder's no-rows branch
+    # defensively (bug #7 review, M3).
+    assert validate_table_sql("t", ["${ref(i).region}"], None, ["sum(${ref(i).revenue})"]) is None
+
+
+@pytest.mark.parametrize(
+    "columns,rows,values",
+    [
+        # H1 coupling invariant (bug #7 review): common DuckDB aggregate / pivot
+        # shapes must stay ACCEPTED — if a SQLGlot bump starts rejecting one of
+        # these, it would make a valid table unloadable. Lock them in.
+        (["region"], None, None),  # plain non-ref column
+        (["${ref(i).region}", "${ref(i).seg}"], ["${ref(i).p}"], ["count(*)"]),
+        (["${ref(i).region}"], ["${ref(i).p}"], ["count(distinct ${ref(i).id})"]),
+        (["${ref(i).region}"], ["${ref(i).p}"], ["arg_max(${ref(i).a}, ${ref(i).b})"]),
+        (["${ref(i).region}"], ["${ref(i).p}"], ["quantile_cont(${ref(i).x}, 0.5)"]),
+        # realistic rich pivot: multiple ON + multiple USING
+        (
+            ["${ref(i).region}", "${ref(i).seg}"],
+            ["${ref(i).p}"],
+            ["sum(${ref(i).revenue})", "avg(${ref(i).margin})"],
+        ),
+    ],
+)
+def test_common_duckdb_shapes_are_not_rejected(columns, rows, values):
+    assert validate_table_sql("t", columns, rows, values) is None
+
+
+def test_double_wrapped_alias_is_caught():
+    # The exact bug-#4 pre-fix shape: `AS ""Sex""` is a zero-length delimited
+    # identifier — invalid SQL that only surfaced client-side before.
+    err = validate_table_sql("leaderboard", ['${ref(i).sex} as ""Sex""'], None, None)
+    assert err is not None
+    assert "leaderboard" in err
+    assert "invalid SQL" in err
+
+
+def test_structurally_invalid_pivot_value_is_caught():
+    # A value expression that isn't an aggregate call breaks the USING clause.
+    err = validate_table_sql(
+        "t", ["${ref(i).region}"], ["${ref(i).product}"], ["${ref(i).revenue} +"]
+    )
+    assert err is not None
+
+
+# --- Project-level compile check (bug #7 relocated to compile phase) ---
+
+
+def _project_with_tables(tables):
+    from tests.factories.model_factories import ProjectFactory, SqlModelFactory, SourceFactory
+
+    # The table columns reference ${ref(i)...}, so model `i` must exist or the
+    # Project rejects the dangling ref before we even reach the SQL check.
+    source = SourceFactory(name="s")
+    model = SqlModelFactory(name="i", source="ref(s)")
+    return ProjectFactory(sources=[source], models=[model], tables=tables, dashboards=[])
+
+
+def test_validate_project_table_sql_all_valid_returns_none():
+    from visivo.models.table import Table
+
+    project = _project_with_tables(
+        [Table(name="ok", columns=["${ref(i).sex} as Sex", "${ref(i).total}"])]
+    )
+    assert validate_project_table_sql(project) is None
+
+
+def test_validate_project_table_sql_names_every_broken_table_with_fix_guidance():
+    from visivo.models.table import Table
+
+    project = _project_with_tables(
+        [
+            Table(name="ok", columns=["${ref(i).sex} as Sex"]),
+            Table(name="broken_a", columns=['${ref(i).sex} as ""Sex""']),
+            # A pivot whose value expression is not a valid aggregate breaks the
+            # USING clause (the pivot path does real SQLGlot validation).
+            Table(
+                name="broken_b",
+                columns=["${ref(i).region}"],
+                rows=["${ref(i).product}"],
+                values=["sum(${ref(i).revenue}) +"],
+            ),
+        ]
+    )
+    error = validate_project_table_sql(project)
+    assert error is not None
+    # Names both broken tables, not the valid one.
+    assert "broken_a" in error and "broken_b" in error
+    assert "'ok'" not in error
+    assert "2 tables" in error
+    # Carries an actionable resolution path.
+    assert "To fix" in error

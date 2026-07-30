@@ -10,7 +10,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../../stores/store';
-import { useRelationErdDag } from './useRelationErdDag';
+import { useRelationErdDag, ERD_NODE_ID } from './useRelationErdDag';
 import { useModelColumns } from './useModelColumns';
 import { groupFieldsByModel } from './semanticFields';
 import SemanticLayerErdModelNode from './SemanticLayerErdModelNode';
@@ -19,6 +19,8 @@ import JoinOperatorPopover from './JoinOperatorPopover';
 import RelationLinkEdge from './RelationLinkEdge';
 import { mergeById } from './erdNodeMerge';
 import ErdTidyButton from './ErdTidyButton';
+import OpenObjectContextMenu from '../OpenObjectContextMenu';
+import { emitWorkspaceEvent } from '../telemetry';
 
 /**
  * SemanticLayerCanvas — the project-wide Semantic Layer ERD (VIS-1014).
@@ -65,7 +67,57 @@ const SemanticLayerCanvasInner = () => {
   const getRelationByName = useStore(s => s.getRelationByName);
   const savedPositions = erdLayout.nodes;
 
-  const { fitView } = useReactFlow();
+  // Phase 6c-T5 (ux-audit.md "No 'Explore this' entry point from Semantic
+  // Layer ERD — nodes are completely inert", ⚠ conflicts-with-e2e) — a
+  // right-click Open/Explore-this menu for model cards, same shared
+  // component `LineageCanvas` uses for its own nodes.
+  const createExploration = useStore(s => s.createExploration);
+  const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
+  const [ctxMenu, setCtxMenu] = useState(null);
+  const handleNodeContextMenu = useCallback((event, node) => {
+    if (node?.type !== 'semanticLayerModelNode' || !node.data?.name) return;
+    event.preventDefault();
+    setCtxMenu({ x: event.clientX, y: event.clientY, obj: { type: 'model', name: node.data.name } });
+  }, []);
+  const dismissCtxMenu = useCallback(() => setCtxMenu(null), []);
+  const handleCtxOpen = useCallback(
+    obj => {
+      if (setWorkspaceSelection) setWorkspaceSelection(obj);
+    },
+    [setWorkspaceSelection]
+  );
+  const handleCtxOpenInNewTab = useCallback(
+    obj => {
+      if (openWorkspaceTab) openWorkspaceTab({ id: `${obj.type}:${obj.name}`, type: obj.type, name: obj.name });
+    },
+    [openWorkspaceTab]
+  );
+  const handleCtxExploreThis = useCallback(
+    obj => {
+      if (!createExploration || !openWorkspaceTab) return;
+      const seed = { type: obj.type, name: obj.name };
+      const legacyStateOverride = buildExplorationSeedState ? buildExplorationSeedState(seed) : null;
+      createExploration(seed, null, legacyStateOverride).then(result => {
+        if (result?.success) {
+          openWorkspaceTab({ id: `exploration:${result.id}`, type: 'exploration', name: result.id });
+          emitWorkspaceEvent('explore_this_used', { source_type: obj.type });
+        }
+      });
+    },
+    [createExploration, openWorkspaceTab, buildExplorationSeedState]
+  );
+
+  // VIS-1069 — one-shot node-focus intent (mirrors `workspaceLensIntent`):
+  // promoting a metric/dimension's "View in Semantic Layer" offer sets this
+  // one statement before navigating here.
+  const focusIntent = useStore(s => s.workspaceSemanticLayerFocusIntent);
+  const clearWorkspaceSemanticLayerFocusIntent = useStore(
+    s => s.clearWorkspaceSemanticLayerFocusIntent
+  );
+
+  const { fitView, setCenter } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
 
   // Hydrate every collection the project ERD reads from.
@@ -111,7 +163,12 @@ const SemanticLayerCanvasInner = () => {
   );
   const edgeTypes = useMemo(() => ({ relationLinkEdge: RelationLinkEdge }), []);
 
-  // Click a relation node → open the existing relation editor.
+  // Click a relation node → open the existing relation editor. Click a MODEL
+  // card → select it (Phase 6c-T5, ux-audit.md "left-click doesn't even
+  // select the object (right rail still says 'Select an object from the
+  // Library or Outline')") — mirrors every other canvas's click-to-select
+  // convention (`CanvasContextMenu.jsx`'s `setSelectedKey`) without
+  // navigating away from the ERD itself.
   const onNodeClick = useCallback(
     (_event, node) => {
       if (node?.type === 'relationNode' && node.data?.relationName) {
@@ -119,9 +176,13 @@ const SemanticLayerCanvasInner = () => {
           ? getRelationByName(node.data.relationName)
           : { name: node.data.relationName };
         if (openEditRelationModal) openEditRelationModal(relation);
+        return;
+      }
+      if (node?.type === 'semanticLayerModelNode' && node.data?.name && setWorkspaceSelection) {
+        setWorkspaceSelection({ type: 'model', name: node.data.name });
       }
     },
-    [getRelationByName, openEditRelationModal]
+    [getRelationByName, openEditRelationModal, setWorkspaceSelection]
   );
 
   // Controlled nodes: keep a moved/in-flight node, overlay saved, seed new, drop
@@ -162,6 +223,47 @@ const SemanticLayerCanvasInner = () => {
     // The version bump reseeds rfNodes; fit after the reseed settles.
     setTimeout(() => fitView({ padding: 0.2, maxZoom: 1.2 }), 0);
   }, [clearErdLayout, fitView]);
+
+  // VIS-1069 — metrics/dimensions have no ERD node of their own (they're
+  // folded into their parent model's card, `fieldsByModel`); resolve a
+  // field name to the model card it lives on.
+  const resolveFieldParentModel = useCallback(
+    (type, name) => {
+      const key = type === 'metric' ? 'metrics' : 'dimensions';
+      for (const [modelName, buckets] of Object.entries(fieldsByModel)) {
+        if (buckets[key]?.includes(name)) return modelName;
+      }
+      return null;
+    },
+    [fieldsByModel]
+  );
+
+  // Consume the one-shot focus intent once its target node is actually on
+  // the canvas — pans/centers on it, then self-clears (never lingers to
+  // hijack a later, unrelated visit). A `model` intent targets its own node
+  // directly; a `metric`/`dimension` intent targets its parent model's node
+  // (fields have no node of their own). An unresolvable target is still
+  // consumed (cleared) rather than left dangling forever.
+  useEffect(() => {
+    if (!focusIntent?.objectKey || rfNodes.length === 0) return;
+    const sepIndex = focusIntent.objectKey.indexOf(':');
+    const type = focusIntent.objectKey.slice(0, sepIndex);
+    const name = focusIntent.objectKey.slice(sepIndex + 1);
+    const targetModelName =
+      type === 'metric' || type === 'dimension' ? resolveFieldParentModel(type, name) : name;
+    const node = targetModelName
+      ? rfNodes.find(n => n.id === ERD_NODE_ID(targetModelName))
+      : null;
+    if (node) {
+      const width = node.width || node.layoutSize?.width || 260;
+      const height = node.height || node.layoutSize?.height || 120;
+      setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+        zoom: 1,
+        duration: 400,
+      });
+    }
+    clearWorkspaceSemanticLayerFocusIntent?.();
+  }, [focusIntent, rfNodes, resolveFieldParentModel, setCenter, clearWorkspaceSemanticLayerFocusIntent]);
 
   const hasEdits = Object.keys(savedPositions || {}).length > 0;
 
@@ -253,6 +355,7 @@ const SemanticLayerCanvasInner = () => {
               onNodesChange={onNodesChange}
               onNodeDragStop={onNodeDragStop}
               onNodeClick={onNodeClick}
+              onNodeContextMenu={handleNodeContextMenu}
               onConnectStart={onConnectStart}
               onConnect={onConnect}
               onConnectEnd={onConnectEnd}
@@ -279,6 +382,19 @@ const SemanticLayerCanvasInner = () => {
           initialB={popover.initialB}
           onClose={closePopover}
           onSaved={handlePopoverSaved}
+        />
+      )}
+
+      {ctxMenu && (
+        <OpenObjectContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          obj={ctxMenu.obj}
+          onOpen={handleCtxOpen}
+          onOpenInNewTab={handleCtxOpenInNewTab}
+          onExploreThis={handleCtxExploreThis}
+          onDismiss={dismissCtxMenu}
+          testIdPrefix="semantic-erd-node-ctx"
         />
       )}
     </div>

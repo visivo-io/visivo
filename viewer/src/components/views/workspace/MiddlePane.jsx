@@ -1,22 +1,28 @@
 import React from 'react';
 import SubBar, { PreviewLensPicker } from './SubBar';
 import ProjectCanvas from '../project/canvas/ProjectCanvas';
-import ProjectEditor from '../project/editor/ProjectEditor';
 import LineageCanvas from '../lineage/LineageCanvas';
 import ObjectCanvasFrame from './ObjectCanvasFrame';
+import ExplorationPane from './ExplorationPane';
 import useStore from '../../../stores/store';
-import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
-
-// The Semantic Layer page (VIS-1014) is heavy (React-Flow), so lazy-load it like
-// the per-object canvas bodies — it only loads when the page is opened.
-const SemanticLayerCanvas = React.lazy(() => import('./relations/SemanticLayerCanvas'));
+import { getViewDescriptor, DEFAULT_WORKSPACE_VIEW } from './higherLevelViews';
 
 /**
- * MiddlePane — dispatches on `activeObject.type` (VIS-775 / Track B B2).
+ * MiddlePane — dispatches on the active DOCUMENT tab, else the active
+ * DESTINATION's Home pane (VIS-775 / Track B B2; Explore 2.0 Phase 0).
  *
- *   project    → ProjectEditor (Track M M-1 — health row + level groups)
+ *   no active document tab → the active destination's HomePane, resolved from
+ *                the `higherLevelViews.js` registry (Project / Semantic Layer /
+ *                Explorer — D1). Destinations are never tab records
+ *                (01-ux-spec.md §1), so this is the ONLY path that renders them
+ *                — the old hardcoded `project`/`semantic-layer` branches here
+ *                are gone, along with the per-file special-casing they invited.
  *   dashboard  → ProjectCanvas (render-only Dashboard wrapper, VIS-767) when
  *                scoped, placeholder otherwise; the Lineage lens mounts <LineageCanvas>
+ *   exploration → <ExplorationPane> (Explore 2.0 Phase 2) — explorations
+ *                mount OUTSIDE the object-canvas registry entirely (D5: no
+ *                Library-row collection to resolve through `useCanvasRecord`),
+ *                so this is its own branch, ahead of the generic dispatch below.
  *   _          → <ObjectCanvasFrame> (VIS-1001) — the shared per-object canvas
  *                shell. It resolves the type's descriptor from the object-canvas
  *                registry and mounts the right body / lens / canonical state.
@@ -44,71 +50,16 @@ const Placeholder = ({ title, body, testId }) => (
   </div>
 );
 
-const ProjectPane = ({ activeObject }) => {
-  const projectName = activeObject?.name || 'project';
-  return (
-    <section
-      data-testid="workspace-middle-project"
-      className="flex h-full w-full flex-col bg-gray-50"
-    >
-      <SubBar
-        testId="workspace-subbar-project"
-        left={
-          <div className="flex items-center gap-2 text-[12px]">
-            <span className="font-semibold text-gray-900">{projectName}</span>
-            <span className="text-gray-400">·</span>
-            <span className="text-gray-500">project</span>
-          </div>
-        }
-      />
-      <ProjectEditor />
-    </section>
-  );
+/**
+ * The active destination's Home pane, resolved through the registry. Panes
+ * import directly (not lazy at this level, see `higherLevelViews.js`) — any
+ * heavy content lazy-loads INSIDE the pane itself.
+ */
+const DestinationHome = ({ view }) => {
+  const descriptor = getViewDescriptor(view) || getViewDescriptor(DEFAULT_WORKSPACE_VIEW);
+  const HomePane = descriptor.HomePane;
+  return <HomePane />;
 };
-
-// The project-wide Semantic Layer page (VIS-1014). A NEW multi-object surface
-// (NOT a per-object canvas): an ERD of every model with its metrics + dimensions
-// and all relations as edges. Reached from the Project view's "Semantic Layer"
-// button (which opens a `{ type: 'semantic-layer' }` workspace tab).
-const RelationIcon = getTypeIcon('relation');
-const RELATION_COLORS = getTypeColors('relation');
-
-const SemanticLayerPane = () => (
-  <section
-    data-testid="workspace-middle-semantic-layer"
-    className="flex h-full w-full flex-col bg-gray-50"
-  >
-    <SubBar
-      testId="workspace-subbar-semantic-layer"
-      left={
-        <div className="flex items-center gap-2 text-[12px]">
-          <span
-            className={`inline-flex h-5 w-5 items-center justify-center rounded ${RELATION_COLORS.bg} ${RELATION_COLORS.text}`}
-          >
-            {RelationIcon && <RelationIcon style={{ fontSize: 13 }} />}
-          </span>
-          <span className="font-semibold text-gray-900">Semantic Layer</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-gray-500">models · metrics · dimensions · relations</span>
-        </div>
-      }
-    />
-    <div data-testid="workspace-middle-semantic-layer-canvas" className="flex flex-1 min-h-0">
-      <React.Suspense
-        fallback={
-          <div
-            data-testid="workspace-middle-semantic-layer-loading"
-            className="flex flex-1 items-center justify-center text-[13px] text-gray-400"
-          >
-            Loading semantic layer…
-          </div>
-        }
-      >
-        <SemanticLayerCanvas />
-      </React.Suspense>
-    </div>
-  </section>
-);
 
 const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
   const name = activeObject?.name;
@@ -170,29 +121,33 @@ const PerObjectPane = ({ activeObject, projectId }) => (
 const MiddlePane = () => {
   // Everything the dispatcher needs comes from the store — no prop-drilling.
   const activeObject = useStore(s => s.workspaceActiveObject);
+  const activeView = useStore(s => s.workspaceActiveView);
   const lens = useStore(s => s.workspaceLens);
   const onLensChange = useStore(s => s.setWorkspaceLens);
   const project = useStore(s => s.project);
   const projectId = project?.id || null;
-  const obj = activeObject || { type: 'project', name: 'project' };
 
-  if (obj.type === 'project') {
-    return <ProjectPane activeObject={obj} />;
+  // No active document tab → a destination owns the center (D1). This is the
+  // ONLY branch that can be true for `project`/`semantic-layer`/`explorer` —
+  // they left the tab model in Phase 0, so `activeObject` is never one of them.
+  if (!activeObject) {
+    return <DestinationHome view={activeView} />;
   }
-  if (obj.type === 'semantic-layer') {
-    return <SemanticLayerPane />;
-  }
-  if (obj.type === 'dashboard') {
+  if (activeObject.type === 'dashboard') {
     return (
       <DashboardPane
-        activeObject={obj}
+        activeObject={activeObject}
         lens={lens}
         onLensChange={onLensChange}
         projectId={projectId}
       />
     );
   }
-  return <PerObjectPane activeObject={obj} projectId={projectId} />;
+  // Explorations mount outside ObjectCanvasFrame (D5) — see docstring above.
+  if (activeObject.type === 'exploration') {
+    return <ExplorationPane id={activeObject.name} />;
+  }
+  return <PerObjectPane activeObject={activeObject} projectId={projectId} />;
 };
 
 export default MiddlePane;

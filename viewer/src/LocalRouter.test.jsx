@@ -8,8 +8,11 @@ import {
   useLocation,
   useParams,
 } from 'react-router-dom';
-import LocalRouter, { EditorTypeNameRedirect } from './LocalRouter';
+import LocalRouter, { EditorTypeNameRedirect, DashboardExplorerRedirect } from './LocalRouter';
 import { futureFlags } from './router-config';
+import * as explorationsApi from './api/explorations';
+
+jest.mock('./api/explorations');
 
 // Smoke test: the production router boots without crashing.
 test('renders Visivo local router', () => {
@@ -122,5 +125,95 @@ describe('VIS-772 Workspace routes + redirects', () => {
     expect(await screen.findByTestId('probe-project-dashboard')).toHaveTextContent(
       'simple-dashboard'
     );
+  });
+});
+
+// ---------- Explore 2.0 Phase 3b cutover: /explorer + the dashboard-scoped
+// explorer round-trip route ----------
+describe('Explore 2.0 Phase 3b cutover routes', () => {
+  test('/explorer is a permanent redirect to /workspace/exploration', async () => {
+    const RouteProbe = () => {
+      const location = useLocation();
+      return <p data-testid="probe-pathname">{location.pathname}</p>;
+    };
+    const router = createMemoryRouter(
+      createRoutesFromElements(
+        <>
+          <Route path="/explorer" element={<Navigate to="/workspace/exploration" replace />} />
+          <Route path="/workspace/exploration" element={<RouteProbe />} />
+        </>
+      ),
+      { initialEntries: ['/explorer'], future: futureFlags }
+    );
+    render(<RouterProvider router={router} future={futureFlags} />);
+    expect(await screen.findByTestId('probe-pathname')).toHaveTextContent(
+      '/workspace/exploration'
+    );
+  });
+
+  describe('DashboardExplorerRedirect', () => {
+    const RouteProbe = () => {
+      const location = useLocation();
+      return (
+        <div>
+          <p data-testid="probe-pathname">{location.pathname}</p>
+        </div>
+      );
+    };
+
+    const makeRedirectRouter = initialEntry =>
+      createMemoryRouter(
+        createRoutesFromElements(
+          <>
+            <Route
+              path="/workspace/dashboard/:dashboardName/explorer"
+              element={<DashboardExplorerRedirect />}
+            />
+            <Route path="/workspace/exploration" element={<RouteProbe />} />
+            <Route path="/workspace/exploration/:id" element={<RouteProbe />} />
+          </>
+        ),
+        { initialEntries: [initialEntry], future: futureFlags }
+      );
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('mints an exploration carrying return_to={dashboard} and redirects into it', async () => {
+      explorationsApi.createExploration.mockResolvedValueOnce({
+        id: 'exp_new1',
+        name: 'Scratch',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        seeded_from: null,
+        return_to: { dashboard: 'sales' },
+        draft: { queries: [], insights: [], chart: null, computed_columns: [] },
+        promoted: [],
+      });
+
+      render(
+        <RouterProvider router={makeRedirectRouter('/workspace/dashboard/sales/explorer')} future={futureFlags} />
+      );
+
+      expect(await screen.findByTestId('probe-pathname')).toHaveTextContent(
+        '/workspace/exploration/exp_new1'
+      );
+      expect(explorationsApi.createExploration).toHaveBeenCalledWith({
+        return_to: { dashboard: 'sales' },
+      });
+    });
+
+    test('fails open to Explorer Home if minting the exploration fails', async () => {
+      explorationsApi.createExploration.mockRejectedValueOnce(new Error('network down'));
+
+      render(
+        <RouterProvider router={makeRedirectRouter('/workspace/dashboard/sales/explorer')} future={futureFlags} />
+      );
+
+      expect(await screen.findByTestId('probe-pathname')).toHaveTextContent(
+        '/workspace/exploration'
+      );
+    });
   });
 });

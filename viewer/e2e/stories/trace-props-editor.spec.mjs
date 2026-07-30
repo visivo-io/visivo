@@ -110,7 +110,7 @@ test.describe('Trace-Props Editor (VIS-1020)', () => {
     const editor = page.locator(EDITOR);
 
     // TypeSelector reflects the seeded type (react-select shows the label).
-    await expect(editor.getByTestId('type-selector')).toContainText(/Scatter/i, {
+    await expect(editor.getByTestId(`type-selector-${insightName}`)).toContainText(/Scatter/i, {
       timeout: 10000,
     });
 
@@ -138,7 +138,7 @@ test.describe('Trace-Props Editor (VIS-1020)', () => {
     // Drive the TypeSelector react-select: open its menu, type to filter to
     // "Bar", then click the option. The menu portals to document.body and its
     // options carry the brand classNamePrefix `vis-select__option`.
-    const typeSelector = editor.getByTestId('type-selector');
+    const typeSelector = editor.getByTestId(`type-selector-${insightName}`);
     await typeSelector.click();
     const combobox = typeSelector.getByRole('combobox');
     await combobox.fill('Bar');
@@ -148,7 +148,7 @@ test.describe('Trace-Props Editor (VIS-1020)', () => {
 
     // Type updated: the grouped title flips to the bar type, TypeSelector shows Bar.
     await expect(editor.getByText('Key fields (bar)')).toBeVisible({ timeout: 10000 });
-    await expect(editor.getByTestId('type-selector')).toContainText('Bar');
+    await expect(editor.getByTestId(`type-selector-${insightName}`)).toContainText('Bar');
 
     // Compatible prop preserved: `x` is valid in the bar schema, so its
     // PropertyRow is still rendered after the switch (preserveTraceProps).

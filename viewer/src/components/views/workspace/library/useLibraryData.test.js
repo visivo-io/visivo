@@ -7,6 +7,7 @@
  * insight)
  * — with stable ids and model rows carrying a subtype + canonicalType.
  */
+/* eslint-disable no-template-curly-in-string -- fixtures use literal Visivo ref-string syntax, not JS template interpolation */
 import { renderHook, act } from '@testing-library/react';
 import useStore from '../../../../stores/store';
 import useLibraryData from './useLibraryData';
@@ -100,7 +101,14 @@ describe('useLibraryData', () => {
     });
     const { result } = renderHook(() => useLibraryData());
     expect(result.current.dataLayer.dimension).toEqual([
-      { id: 'dimension:period', type: 'dimension', name: 'period', status: null },
+      {
+        id: 'dimension:period',
+        type: 'dimension',
+        name: 'period',
+        status: null,
+        parentModel: null,
+        expression: null,
+      },
     ]);
     expect(result.current.dataLayer.metric[0].type).toBe('metric');
     expect(result.current.dataLayer.relation[0].type).toBe('relation');
@@ -109,6 +117,57 @@ describe('useLibraryData', () => {
     ]);
   });
 
+  // Explore 2.0 Phase 3a — 02-architecture.md §4's DnD "payload gap": a
+  // dropped field's ref-scoping and an input's `.value`/`.values` accessor
+  // both depend on data the Library row previously didn't carry.
+  test('dimensions/metrics carry parentModel + expression when model-scoped', () => {
+    act(() => {
+      useStore.setState({
+        dimensions: [
+          { name: 'scoped_dim', parentModel: 'orders', config: { expression: 'UPPER(region)' } },
+          { name: 'ref_scoped_dim', config: { model: '${ref(users)}', expression: 'region' } },
+          { name: 'unscoped_dim', config: { expression: 'count(*)' } },
+        ],
+        metrics: [
+          { name: 'scoped_metric', parentModel: 'orders', config: { expression: 'sum(amount)' } },
+        ],
+      });
+    });
+    const { result } = renderHook(() => useLibraryData());
+    const [scoped, refScoped, unscoped] = result.current.dataLayer.dimension;
+    expect(scoped.parentModel).toBe('orders');
+    expect(scoped.expression).toBe('UPPER(region)');
+    // Falls back to config.model (a ref string) when parentModel isn't set
+    // directly on the record — mirrors useFieldParentModel.js's resolution.
+    expect(refScoped.parentModel).toBe('${ref(users)}');
+    expect(unscoped.parentModel).toBeNull();
+
+    const [scopedMetric] = result.current.dataLayer.metric;
+    expect(scopedMetric.parentModel).toBe('orders');
+    expect(scopedMetric.expression).toBe('sum(amount)');
+  });
+
+  test('inputs carry inputType (single-select | multi-select)', () => {
+    act(() => {
+      useStore.setState({
+        inputs: [
+          { name: 'region', config: { type: 'single-select' } },
+          { name: 'products', config: { type: 'multi-select' } },
+          { name: 'no_config' },
+        ],
+      });
+    });
+    const { result } = renderHook(() => useLibraryData());
+    const [single, multi, noConfig] = result.current.layoutItems.input;
+    expect(single.inputType).toBe('single-select');
+    expect(multi.inputType).toBe('multi-select');
+    expect(noConfig.inputType).toBeNull();
+  });
+
+  // Renamed in the main merge: #533 removed csv-script/local-merge models
+  // (they became seeds), so the model list is no longer their union — the
+  // test now asserts the surviving sql_model's subtype + canonical routing
+  // type (main's body below).
   test('model rows carry a subtype and the canonical type used for routing', () => {
     act(() => {
       useStore.setState({

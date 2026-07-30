@@ -106,7 +106,9 @@ describe('ObjectTypeFilter — disabled (coming soon) types', () => {
 
     expect(disabledTypes.length).toBeGreaterThan(0);
     expect(screen.getByText(disabledTypes[0].label)).toBeInTheDocument();
-    expect(screen.getByText('Soon')).toBeInTheDocument();
+    // One "Soon" badge per disabled type (Explore 2.0 Phase 0 added the three
+    // workspace-destination entries alongside the pre-existing `defaults`).
+    expect(screen.getAllByText('Soon')).toHaveLength(disabledTypes.length);
   });
 
   it('clicking a disabled type does not change the selection', () => {

@@ -2,11 +2,25 @@
  * Story (HARDENING): VIS-788 / VIS-792 on a MOBILE viewport (390×844).
  *
  * Scope reality (a real finding from this pass): the Workspace BUILD canvas
- * (`/workspace/dashboard/<name>`) is a desktop tool — at 390px the left Library
- * rail consumes the full width and `project-canvas` collapses to zero width, so
- * the canvas-only broken-ref REPAIR card + ReferencePicker are not reachable on a
- * phone. The phone-facing ILC surface is VIEW mode (`/project/<name>`): the
- * flip-to-lineage gesture and the (non-interactive, Q16) broken-ref placeholder.
+ * (`/workspace/dashboard/<name>`) is a desktop tool. The phone-facing ILC
+ * surface is VIEW mode (`/project/<name>`): the flip-to-lineage gesture and
+ * the (non-interactive, Q16) broken-ref placeholder.
+ *
+ * 6c-T2 update: the build-canvas-isn't-mobile mechanism changed. Before,
+ * the left Library rail was FIXED-width and `project-canvas` had no floor
+ * (`min-w-0`), so at 390px the canvas was squeezed to near-zero width. Now
+ * `WorkspaceShell` auto-collapses both rails at a narrow viewport (the
+ * BLOCKER-at-1100px fix, shell-ia #10/cold-start #2) AND the canvas holds a
+ * real min-width (480px, `CENTER_MIN_WIDTH`) — so at 390px the canvas
+ * renders at its full 480px floor instead of collapsing, but the SHELL
+ * itself has no horizontal scroll (`overflow-hidden`), so most of that
+ * 480px is laid out past the 390px viewport edge and is genuinely
+ * inaccessible — still not a usable phone surface, just via overflow
+ * instead of collapse. (A visible side effect: what IS on-screen — the
+ * chart's left portion, both rails as thin icon strips — is considerably
+ * more legible than the old near-zero sliver, though still not "mobile
+ * ready.") The assertion below checks for that overflow instead of a
+ * near-zero width.
  *
  * This story therefore validates, at 390×844:
  *   - the View-mode flip card opens + renders the shared MiniLineageCard chain;
@@ -68,20 +82,28 @@ test.describe('ILC on mobile (VIS-788 / VIS-792)', () => {
     await page.close();
   });
 
-  test('the Workspace build canvas is NOT a phone surface (canvas collapses)', async () => {
-    // Documented finding: at 390px the build canvas is unusable (zero width). The
-    // dashboard/canvas nodes mount but the canvas has no usable width, so the
-    // canvas-only broken-ref repair is desktop-only by design (mobile users edit
-    // on desktop; they VIEW on mobile).
+  test('the Workspace build canvas is NOT a phone surface (canvas overflows, unreachable past the fold)', async () => {
+    // Documented finding, mechanism updated at 6c-T2 (see file header): the
+    // canvas now holds its real min-width (480px) instead of collapsing to
+    // zero, but the shell has no horizontal scroll, so most of it is laid
+    // out past the 390px viewport edge — still not a reachable phone
+    // surface, the canvas-only broken-ref repair is still desktop-only by
+    // design (mobile users edit on desktop; they VIEW on mobile).
     await page.goto(`${BASE}/workspace/dashboard/${DASHBOARD}`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1500);
     const canvas = page.getByTestId('project-canvas');
     await expect(canvas).toBeAttached({ timeout: WAIT });
     const box = await canvas.boundingBox();
-    // The canvas is present in the DOM but has effectively no usable width on a
-    // phone — confirming the build surface is not a mobile target.
-    expect(box === null || box.width < 40).toBeTruthy();
+    // The canvas is present and now holds a real min-width — but the shell
+    // gives it no horizontal scroll, so it extends well past the phone
+    // viewport's right edge and most of it is unreachable.
+    expect(box).not.toBeNull();
+    expect(box.width, 'canvas holds its real min-width, not a squeeze').toBeGreaterThanOrEqual(400);
+    expect(
+      box.x + box.width,
+      'canvas extends past the 390px viewport — unreachable without scroll the shell does not offer'
+    ).toBeGreaterThan(390);
     await page.screenshot({ path: `${SCREENS}/mobile-01-canvas-not-mobile.png`, fullPage: true });
   });
 

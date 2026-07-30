@@ -67,6 +67,18 @@ const GROUP_ICONS = {
  *   (VIS-1021 Field Finder). When this group owns `revealPath`, the group
  *   force-expands (overriding its persisted collapse AND the "+ N more" fold),
  *   scrolls the target row into view, and flashes a highlight ring.
+ * @param {boolean} [props.droppable] - Explore 2.0 Phase 3b (S5 §2): pure
+ *   pass-through to every `PropertyRow`, mirroring `SchemaEditor.jsx`'s
+ *   existing `droppable` forwarding exactly. Default false — a no-op for
+ *   every pre-existing caller (`TracePropsEditor` in `InsightEditForm`/
+ *   `ChartEditForm`); only the new exploration Build rail passes true.
+ * @param {(path: string, dragData: object) => void} [props.onDropField] -
+ *   per-field drop callback, curried with `field.name` before being handed to
+ *   `PropertyRow` (the same currying `onChange`/`onRemove` already use here).
+ * @param {(path: string, pillState: object) => void} [props.onSaveAsMetric] -
+ *   Explore 2.0 Phase 4: per-field "Save as metric…" callback, curried with
+ *   `field.name` the same way `onDropField` is. Undefined everywhere except
+ *   the Build rail's `InsightBuildSection`.
  */
 export function FieldGroup({
   group,
@@ -77,11 +89,14 @@ export function FieldGroup({
   errors = {},
   overrides = {},
   revealPath = null,
+  droppable = false,
+  onDropField,
+  onSaveAsMetric,
 }) {
   const { id, label, icon, objectType, alwaysOpen, defaultOpen = true, fields = [] } = group || {};
 
   const collapsedMap = useFieldGroupCollapseStore(s => s.collapsed);
-  const toggleCollapsed = useFieldGroupCollapseStore(s => s.toggleCollapsed);
+  const setCollapsed = useFieldGroupCollapseStore(s => s.setCollapsed);
   // Effective collapse: an explicit persisted entry wins; absent, fall back to
   // the group's `defaultOpen` (trace-prop Layout/Animation/Other are
   // collapsed-by-default per §3). `defaultOpen` defaults to true, so semantic
@@ -125,7 +140,16 @@ export function FieldGroup({
 
   const handleHeaderClick = () => {
     if (alwaysOpen) return;
-    toggleCollapsed(objectType, id);
+    // Bug fix (found while adding coverage): the store's own `toggleCollapsed`
+    // flips based on ITS OWN "absence -> currently expanded" convention,
+    // which disagrees with THIS component's `defaultOpen`-aware effective
+    // collapse (`persistedCollapsed` above) for any `defaultOpen: false`
+    // group (Layout/Animation/Other) that has never been explicitly toggled
+    // yet — the very first click on a collapsed-by-default group's header
+    // was a silent no-op (it takes a SECOND click to actually expand).
+    // Setting the explicit next value from `persistedCollapsed` (which
+    // already accounts for `defaultOpen`) makes the very first click work.
+    setCollapsed(objectType, id, !persistedCollapsed);
   };
 
   const handleFieldChange = (name, fieldValue) => {
@@ -159,12 +183,20 @@ export function FieldGroup({
         </span>
         <GroupIcon size={16} className="text-gray-500" />
         <span className="flex-1 text-sm font-medium text-gray-700">{label}</span>
-        <span
-          className="text-xs font-medium text-gray-500 bg-gray-200 rounded-full px-2 py-0.5"
-          data-testid={`field-group-badge-${id}`}
-        >
-          {presentCount}/{fields.length}
-        </span>
+        {/* D12 (pills-buildrail #8/#9, promote-roundtrip minor): a "0/180"
+            or "0 of 1366" badge reads as a raw schema-size inventory,
+            intimidating on first contact and adding nothing when there is
+            nothing configured to count. Once at least one field IS set, the
+            fraction is genuinely useful signal ("1/2 essentials filled in"),
+            so it still renders — only the empty, all-zero case is hidden. */}
+        {presentCount > 0 && (
+          <span
+            className="text-xs font-medium text-gray-500 bg-gray-200 rounded-full px-2 py-0.5"
+            data-testid={`field-group-badge-${id}`}
+          >
+            {presentCount}/{fields.length}
+          </span>
+        )}
       </button>
 
       {!collapsed && (
@@ -194,7 +226,16 @@ export function FieldGroup({
               );
             }
             return (
-              <div key={field.name} {...rowProps}>
+              // The reveal flash-ring lands on THIS wrapper, not on the row
+              // inside it, and a wrapper has no user-facing handle to query
+              // by — so it carries a testid purely so a test can assert the
+              // ring without reaching through `.parentElement` (banned by
+              // testing-library/no-node-access, and rightly: that couples the
+              // test to DOM nesting rather than to the element it means).
+              // Deliberately NOT in `rowProps`: the override branch above
+              // spreads those AFTER its own `data-testid`, so putting it
+              // there silently overwrites `field-override-<name>`.
+              <div key={field.name} data-testid={`field-row-${field.name}`} {...rowProps}>
                 <PropertyRow
                   path={field.name}
                   value={getValueAtPath(value, field.name)}
@@ -204,6 +245,15 @@ export function FieldGroup({
                   defs={defs}
                   description={field.schema?.description || ''}
                   disabled={disabled}
+                  droppable={droppable}
+                  onDropField={
+                    onDropField ? dragData => onDropField(field.name, dragData) : undefined
+                  }
+                  onSaveAsMetric={
+                    onSaveAsMetric
+                      ? pillState => onSaveAsMetric(field.name, pillState)
+                      : undefined
+                  }
                   error={errors[field.name]}
                 />
               </div>

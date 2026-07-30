@@ -36,13 +36,36 @@ function instancePathToDotPath(instancePath) {
     .join('.');
 }
 
+// T4 (promote-roundtrip #5): AJV's default `pattern`-keyword message is the
+// LITERAL regex source ('must match pattern "^\?\{.*\}..."') — exactly the
+// string the audit quoted verbatim as a trust-destroying validation message.
+// The `?{...}` / `${ref(...)}` query-string grammar (`$defs/query-string` in
+// every committed per-type schema — see queryString.js's own docstring for
+// the canonical pattern) is by far the most common `pattern`-constrained
+// shape a user hits (clearing or mistyping an x/y well); recognize it and
+// translate to the instruction a person can actually act on. Anything else
+// pattern-constrained (rare in the Plotly schemas) still gets a message with
+// zero raw regex syntax rather than AJV's default.
+const QUERY_STRING_PATTERN_MARKER = '\\?\\{';
+function humanizePatternError(error) {
+  const pattern = error.params?.pattern || '';
+  if (pattern.includes(QUERY_STRING_PATTERN_MARKER)) {
+    return 'Enter a query expression like ?{ref(model).column}, or drag a column here.';
+  }
+  return "This value doesn't match the format this field expects.";
+}
+
 /**
  * Build a human-readable message from an AJV error, augmenting enum errors with
  * their allowed values and additionalProperties errors with the offending key.
  * @param {object} error - an AJV error object
  * @returns {string}
  */
-function formatErrorMessage(error) {
+export function formatErrorMessage(error) {
+  if (error.keyword === 'pattern') {
+    return humanizePatternError(error);
+  }
+
   const base = error.message || 'is invalid';
 
   if (error.keyword === 'enum' && error.params?.allowedValues) {

@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import Chart from '../../items/Chart';
 import CircularProgress from '@mui/material/CircularProgress';
+import { translatePreviewError } from '../../../utils/translatePreviewError';
 
 const EDITABLE_PLOTLY_CONFIG = {
   responsive: true,
@@ -102,16 +103,30 @@ const ChartPreview = ({
   }
 
   if (error) {
-    const errorMessage = typeof error === 'string' ? error : error?.message || String(error);
+    // ux-audit.md "error translation" finding: never surface a raw
+    // engine/compile message (hashed table names, DuckDB catalog "Did you
+    // mean pg_*" suggestions, DAG-internals jargon) as the prominent copy —
+    // translate to plain language, and keep the raw message available only
+    // behind a collapsed "technical details" disclosure.
+    const rawMessage = typeof error === 'string' ? error : error?.message || String(error);
+    const { headline, hint, technical } = translatePreviewError(rawMessage);
     return (
       <div
         className="flex flex-col items-center justify-center h-full p-8 text-center"
         data-testid="chart-preview-error"
       >
-        <h3 className="text-lg font-medium text-red-600 mb-2">Preview Failed</h3>
-        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">
-          {errorMessage}
-        </p>
+        <h3 className="text-lg font-medium text-red-600 mb-2">{headline}</h3>
+        <p className="text-sm text-gray-600 max-w-sm mb-2">{hint}</p>
+        {technical && (
+          <details className="mt-1 w-full max-w-sm text-left" data-testid="chart-preview-error-technical">
+            <summary className="cursor-pointer select-none text-xs text-gray-400 hover:text-gray-600">
+              Technical details
+            </summary>
+            <p className="mt-1 whitespace-pre-wrap break-words rounded bg-red-50 p-3 font-mono text-xs text-gray-700">
+              {technical}
+            </p>
+          </details>
+        )}
       </div>
     );
   }
