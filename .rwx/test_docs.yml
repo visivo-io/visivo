@@ -12,7 +12,7 @@ base:
 
 tasks:
   - key: code
-    call: git/clone 1.9.5
+    call: git/clone 2.0.8
     with:
       repository: https://github.com/visivo-io/visivo.git
       preserve-git-dir: true

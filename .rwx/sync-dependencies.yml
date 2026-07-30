@@ -11,7 +11,7 @@ base:
 
 tasks:
   - key: visivo-code
-    call: git/clone 1.9.5
+    call: git/clone 2.0.8
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
@@ -19,7 +19,7 @@ tasks:
       github-access-token: ${{ github.token }}
 
   - key: core-code
-    call: git/clone 1.9.5
+    call: git/clone 2.0.8
     with:
       repository: https://github.com/visivo-io/core.git
       path: core
