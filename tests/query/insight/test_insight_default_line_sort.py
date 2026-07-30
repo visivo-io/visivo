@@ -38,9 +38,7 @@ def _build(insight, tmpdir, create_schema_file):
         name="line_model", sql="SELECT x, y FROM t ORDER BY x", source=f"ref({source.name})"
     )
     # rebind the insight's refs to this model name
-    project = Project(
-        name="p", sources=[source], models=[model], insights=[insight], dashboards=[]
-    )
+    project = Project(name="p", sources=[source], models=[model], insights=[insight], dashboards=[])
     dag = project.dag()
     create_schema_file(model, str(tmpdir))
     builder = InsightQueryBuilder(insight, dag, str(tmpdir))
