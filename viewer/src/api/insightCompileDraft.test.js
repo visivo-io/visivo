@@ -3,7 +3,7 @@
  * Insight compile-draft API client (Explore 2.0 Phase 4 — S2's resolved
  * design). A thin wire client mirroring `api/expressions.js`'s shape.
  */
-import { compileDraftInsight } from './insightCompile';
+import { compileDraftInsight } from './insightCompileDraft';
 import { apiFetch } from './utils';
 
 jest.mock('./utils', () => ({ apiFetch: jest.fn() }));

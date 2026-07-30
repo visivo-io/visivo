@@ -4,7 +4,7 @@ import { useDuckDB } from '../contexts/DuckDBContext';
 import { getConnection } from '../duckdb/duckdb';
 import { runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
 import { processArrowResult } from '../duckdb/resultProcessing';
-import { compileDraftInsight } from '../api/insightCompile';
+import { compileDraftInsight } from '../api/insightCompileDraft';
 import { executeDraftInsight } from '../api/insightExecuteDraft';
 import { inferColumnTypes } from '../utils/inferColumnTypes';
 import { expandDotNotationProps } from '../stores/explorerStore';

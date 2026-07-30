@@ -5,7 +5,7 @@ import useDraftInsightPreview, { draftInsightKey } from './useDraftInsightPrevie
 import { useDuckDB } from '../contexts/DuckDBContext';
 import { getConnection } from '../duckdb/duckdb';
 import { runDuckDBQuery } from '../duckdb/queries';
-import { compileDraftInsight } from '../api/insightCompile';
+import { compileDraftInsight } from '../api/insightCompileDraft';
 import { executeDraftInsight } from '../api/insightExecuteDraft';
 import { processArrowResult } from '../duckdb/resultProcessing';
 
@@ -16,7 +16,7 @@ jest.mock('../duckdb/queries', () => ({
   prepPostQuery: jest.fn(({ query }) => query),
 }));
 jest.mock('../duckdb/resultProcessing', () => ({ processArrowResult: jest.fn() }));
-jest.mock('../api/insightCompile', () => ({ compileDraftInsight: jest.fn() }));
+jest.mock('../api/insightCompileDraft', () => ({ compileDraftInsight: jest.fn() }));
 jest.mock('../api/insightExecuteDraft', () => ({ executeDraftInsight: jest.fn() }));
 
 const FAKE_DB = { registerFileText: jest.fn(), dropFile: jest.fn() };
