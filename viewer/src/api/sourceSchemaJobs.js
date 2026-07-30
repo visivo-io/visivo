@@ -1,4 +1,5 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
+import { pollJob } from './jobs';
 import { apiFetch } from './utils';
 
 /**
@@ -171,35 +172,22 @@ export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
 
   const { run_id: jobRunId } = await generateSourceSchema(sourceName);
 
-  // Poll for completion
-  const startTime = Date.now();
-  const generatedRunId = `preview-${sourceName}`;
+  // The poll loop itself lives in api/jobs.js, shared with every other
+  // on-demand op. This keeps the throwing signature callers expect.
+  const outcome = await pollJob(() => fetchSchemaGenerationStatus(jobRunId), {
+    intervalMs: pollInterval,
+    timeoutMs: maxWaitTime,
+    onProgress: job =>
+      onProgress?.(job.status, job.progress || 0, job.progress_message || ''),
+  });
+  if (!outcome.ok) throw new Error(outcome.error);
 
-  while (Date.now() - startTime < maxWaitTime) {
-    const status = await fetchSchemaGenerationStatus(jobRunId);
-
-    if (onProgress) {
-      onProgress(status.status, status.progress || 0, status.progress_message || '');
-    }
-
-    if (status.status === 'completed') {
-      // Fetch the generated schema from the preview run_id
-      const schema = await fetchSourceSchema(sourceName, generatedRunId);
-      if (!schema) {
-        throw new Error('Schema generation completed but schema not found');
-      }
-      return schema;
-    }
-
-    if (status.status === 'failed') {
-      throw new Error(status.error || 'Schema generation failed');
-    }
-
-    // Wait before next poll
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+  // Fetch the generated schema from the preview run_id
+  const schema = await fetchSourceSchema(sourceName, `preview-${sourceName}`);
+  if (!schema) {
+    throw new Error('Schema generation completed but schema not found');
   }
-
-  throw new Error(`Schema generation timed out after ${maxWaitTime}ms`);
+  return schema;
 };
 
 /**
