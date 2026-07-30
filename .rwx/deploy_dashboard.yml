@@ -20,7 +20,7 @@ tasks:
       preserve-git-dir: true
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
-      github-access-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
+      github-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
 
   - key: python
     call: python/install 1.4.5
@@ -48,7 +48,7 @@ tasks:
     run: |
       cd test-projects/integration
       visivo --version
-      visivo run 
+      visivo run
 
   - key: sanitize-stage-name
     run: |

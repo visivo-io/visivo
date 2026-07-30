@@ -16,7 +16,7 @@ tasks:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
       path: visivo
-      github-access-token: ${{ github.token }}
+      github-token: ${{ github.token }}
 
   - key: core-code
     call: git/clone 2.0.8
@@ -25,7 +25,7 @@ tasks:
       path: core
       ref: main
       preserve-git-dir: true
-      github-access-token: ${{ github.token }}
+      github-token: ${{ github.token }}
 
   - key: jq
     run: sudo apt-get update && sudo apt-get install -y jq
@@ -52,7 +52,7 @@ tasks:
       # Run the sync script
       cd core
       ./scripts/sync_dependencies.sh
-      
+
       # Check if there are changes
       if git diff --quiet app/package.json; then
         echo "false" > $MINT_VALUES/has_changes

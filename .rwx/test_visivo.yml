@@ -19,7 +19,7 @@ tasks:
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
-      github-access-token: ${{ github.token }}
+      github-token: ${{ github.token }}
       fetch-full-depth: true
 
   - key: versions

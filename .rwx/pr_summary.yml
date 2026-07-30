@@ -17,7 +17,7 @@ tasks:
       preserve-git-dir: true
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
-      github-access-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
+      github-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
       fetch-full-depth: true
 
   - key: versions
