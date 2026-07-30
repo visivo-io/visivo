@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiCheckCircle, PiXCircle, PiCircleNotch, PiPencilSimple } from 'react-icons/pi';
 import useStore from '../../../stores/store';
+import { useGuardedAsync } from '../../../hooks/useGuardedAsync';
 import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
 import { getAllKnownNames } from '../../../stores/explorerStore';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
@@ -39,6 +40,28 @@ function renameRow(row, nextName, storeState) {
     storeState.setChartName(nextName);
   }
 }
+
+// The shared shell for a post-promote offer (return-to placement, fallback
+// dashboard, view-in-semantic-layer) — one bordered primary-50 row; each offer
+// supplies its own message + action(s) as children.
+const PromoteOfferRow = ({ testId, children }) => (
+  <div
+    data-testid={testId}
+    className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
+  >
+    {children}
+  </div>
+);
+
+// The shared inline error shown under a placement / decline action.
+const PromoteInlineError = ({ testId, children }) => (
+  <p
+    data-testid={testId}
+    className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
+  >
+    {children}
+  </p>
+);
 
 /**
  * ExplorationPromoteModal — Explore 2.0 Phase 4 (01-ux-spec.md §3's "Save to
@@ -95,9 +118,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const [error, setError] = useState(null);
   const [reclassificationOffers, setReclassificationOffers] = useState([]);
   const [promotedThisRun, setPromotedThisRun] = useState(null);
-  const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState(null);
-  const [declining, setDeclining] = useState(false);
   const [declineError, setDeclineError] = useState(null);
   // Naming step (D11) — draft text per renamable row, keyed by its CURRENT
   // rowKey, plus any inline validation/collision error for that row. A row
@@ -348,106 +369,75 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showFallbackDashboardOffer, dashboards]);
-  const [fallbackPlacing, setFallbackPlacing] = useState(false);
   const [fallbackPlaceError, setFallbackPlaceError] = useState(null);
-  const fallbackPlacingRef = useRef(false);
 
-  const handleFallbackPlace = useCallback(async () => {
-    if (fallbackPlacingRef.current) return;
-    if (!promotedChart || !fallbackDashboardName || !placeChartInDashboardSlot) return;
-    fallbackPlacingRef.current = true;
-    setFallbackPlacing(true);
+  // The double-click guard + `pending` flag for these placement actions lives
+  // in useGuardedAsync: `disabled={pending}` alone can't stop a real
+  // double-click (both events dispatch before React re-renders the button
+  // disabled — the VIS-1084/VIS-1086 bug class), so a synchronous in-flight ref
+  // rejects the second call. Preconditions ("no chart to place", "store action
+  // missing") are checked in the thin handlers BELOW the guarded runs, so a
+  // no-op click never flips `pending` — a clean no-op, as before.
+  const [runFallbackPlace, fallbackPlacing] = useGuardedAsync(async () => {
     setFallbackPlaceError(null);
-    try {
-      const placeResult = await placeChartInDashboardSlot(fallbackDashboardName, promotedChart.name);
-      if (!placeResult?.success) {
-        setFallbackPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
-        return;
-      }
-      openWorkspaceTab?.({
-        id: `dashboard:${fallbackDashboardName}`,
-        type: 'dashboard',
-        name: fallbackDashboardName,
-      });
-      onClose?.();
-    } finally {
-      fallbackPlacingRef.current = false;
-      setFallbackPlacing(false);
+    const placeResult = await placeChartInDashboardSlot(fallbackDashboardName, promotedChart.name);
+    if (!placeResult?.success) {
+      setFallbackPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
+      return;
     }
-  }, [promotedChart, fallbackDashboardName, placeChartInDashboardSlot, openWorkspaceTab, onClose]);
+    openWorkspaceTab?.({
+      id: `dashboard:${fallbackDashboardName}`,
+      type: 'dashboard',
+      name: fallbackDashboardName,
+    });
+    onClose?.();
+  });
+  const handleFallbackPlace = () => {
+    if (!promotedChart || !fallbackDashboardName || !placeChartInDashboardSlot) return;
+    runFallbackPlace();
+  };
 
-  // P5-D4 (e2e-gap-review.md "Final delta pass") — `disabled={placing}` alone
-  // is not a sufficient double-click guard: a real double-click can dispatch
-  // both click events before React re-renders the button disabled (the exact
-  // bug class VIS-1084/VIS-1086 fixed for ExplorationPane's handleDuplicate,
-  // via `duplicatingRef` above). Mirrors that same synchronous-ref pattern.
-  const placingRef = useRef(false);
-
-  const handlePlaceInDashboard = useCallback(async () => {
-    if (placingRef.current) return;
-    if (!returnTo?.dashboard || !promotedChart || !placeChartInDashboardSlot) return;
-    placingRef.current = true;
-    setPlacing(true);
+  const [runPlaceInDashboard, placing] = useGuardedAsync(async () => {
     setPlaceError(null);
-    try {
-      const placeResult = await placeChartInDashboardSlot(
-        returnTo.dashboard,
-        promotedChart.name,
-        returnTo.slot
-      );
-      if (!placeResult?.success) {
-        setPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
-        return;
-      }
-      // P6-D10 (e2e-gap-review.md "Phase 6 delta pass") — the store method
-      // catches its own errors and returns `{success: false}` rather than
-      // throwing (see its docstring's unlocked read-modify-write note), so
-      // this MUST be checked, not just awaited. The chart above was already
-      // placed successfully; if only clearing the placement intent fails,
-      // `return_to` stays persisted on the record and this SAME offer would
-      // re-render on a later promote run — a second "Place" click would then
-      // call `placeChartInDashboardSlot` again for a chart already sitting
-      // in the dashboard, adding a duplicate slot. Surface the failure (the
-      // same treatment the placement failure above gets) and deliberately
-      // do NOT close/navigate — closing here would hide that the intent is
-      // still live.
-      const consumeResult = await consumeExplorationReturnTo?.(explorationId);
-      if (consumeResult && consumeResult.success === false) {
-        setPlaceError(
-          consumeResult.error ||
-            'Chart placed, but could not clear the placement prompt — try again.'
-        );
-        return;
-      }
-      openWorkspaceTab?.({
-        id: `dashboard:${returnTo.dashboard}`,
-        type: 'dashboard',
-        name: returnTo.dashboard,
-      });
-      onClose?.();
-    } finally {
-      placingRef.current = false;
-      setPlacing(false);
+    const placeResult = await placeChartInDashboardSlot(
+      returnTo.dashboard,
+      promotedChart.name,
+      returnTo.slot
+    );
+    if (!placeResult?.success) {
+      setPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
+      return;
     }
-  }, [
-    returnTo,
-    promotedChart,
-    placeChartInDashboardSlot,
-    consumeExplorationReturnTo,
-    explorationId,
-    openWorkspaceTab,
-    onClose,
-  ]);
-
-  // P6-D11 (e2e-gap-review.md "Phase 6 delta pass") — the same synchronous
-  // in-flight ref guard `placingRef` above exists for exactly this reason
-  // (`disabled={...}` alone cannot stop a real double-click — the second
-  // click's event dispatches before React re-renders the button disabled).
-  // `handleDeclinePlacement` below was made async in the same P5-D5 pass
-  // that added `placingRef` to the adjacent button, but never got its own
-  // guard — a double-click on "Not now" could enqueue `consumeReturnTo`
-  // twice.
-  const decliningRef = useRef(false);
+    // P6-D10 (e2e-gap-review.md "Phase 6 delta pass") — the store method
+    // catches its own errors and returns `{success: false}` rather than
+    // throwing (see its docstring's unlocked read-modify-write note), so
+    // this MUST be checked, not just awaited. The chart above was already
+    // placed successfully; if only clearing the placement intent fails,
+    // `return_to` stays persisted on the record and this SAME offer would
+    // re-render on a later promote run — a second "Place" click would then
+    // call `placeChartInDashboardSlot` again for a chart already sitting
+    // in the dashboard, adding a duplicate slot. Surface the failure (the
+    // same treatment the placement failure above gets) and deliberately
+    // do NOT close/navigate — closing here would hide that the intent is
+    // still live.
+    const consumeResult = await consumeExplorationReturnTo?.(explorationId);
+    if (consumeResult && consumeResult.success === false) {
+      setPlaceError(
+        consumeResult.error || 'Chart placed, but could not clear the placement prompt — try again.'
+      );
+      return;
+    }
+    openWorkspaceTab?.({
+      id: `dashboard:${returnTo.dashboard}`,
+      type: 'dashboard',
+      name: returnTo.dashboard,
+    });
+    onClose?.();
+  });
+  const handlePlaceInDashboard = () => {
+    if (!returnTo?.dashboard || !promotedChart || !placeChartInDashboardSlot) return;
+    runPlaceInDashboard();
+  };
 
   // "Declining also consumes" (01-ux-spec.md §5) — an explicit choice, never
   // silent accretion of an ever-growing pile of dead placement intents.
@@ -458,23 +448,16 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // or a concurrent write conflict on the same on-disk record — the exact
   // unlocked read-modify-write risk `consumeExplorationReturnTo`'s own
   // docstring calls out) silently left the offer able to resurface later
-  // with none of the accept path's rigor. Mirrors `handlePlaceInDashboard`'s
-  // own async/error-surfacing shape.
-  const handleDeclinePlacement = useCallback(async () => {
-    if (decliningRef.current) return;
-    decliningRef.current = true;
-    setDeclining(true);
+  // with none of the accept path's rigor. The useGuardedAsync in-flight guard
+  // also stops a double-click on "Not now" from enqueuing `consumeReturnTo`
+  // twice (P6-D11).
+  const [handleDeclinePlacement, declining] = useGuardedAsync(async () => {
     setDeclineError(null);
-    try {
-      const result = await consumeExplorationReturnTo?.(explorationId);
-      if (!result?.success) {
-        setDeclineError(result?.error || 'Could not dismiss the placement offer');
-      }
-    } finally {
-      decliningRef.current = false;
-      setDeclining(false);
+    const result = await consumeExplorationReturnTo?.(explorationId);
+    if (!result?.success) {
+      setDeclineError(result?.error || 'Could not dismiss the placement offer');
     }
-  }, [consumeExplorationReturnTo, explorationId]);
+  });
 
   // VIS-1069 — the first metric/dimension/model promoted THIS RUN (mirrors
   // `promotedChart`'s "this run only" scoping above).
@@ -724,10 +707,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
             DISABLED with a tooltip rather than hiding it (04-bug-inventory.md
             D12's validation nit). */}
         {promotedThisRun && returnTo?.dashboard && promotedChart && (
-          <div
-            data-testid="exploration-promote-return-to-offer"
-            className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
-          >
+          <PromoteOfferRow testId="exploration-promote-return-to-offer">
             <span className="text-xs text-primary-800">
               Place <span className="font-medium">{promotedChart.name}</span> in{' '}
               <span className="font-medium">{returnTo.dashboard}</span>?
@@ -753,16 +733,11 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                 {placing ? 'Placing…' : `Place in ${returnTo.dashboard}`}
               </button>
             </div>
-          </div>
+          </PromoteOfferRow>
         )}
 
         {placeError && (
-          <p
-            data-testid="exploration-promote-place-error"
-            className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
-          >
-            {placeError}
-          </p>
+          <PromoteInlineError testId="exploration-promote-place-error">{placeError}</PromoteInlineError>
         )}
 
         {/* ux-audit.md "post-promote offers never appear" finding
@@ -772,10 +747,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
             an exit ramp from the ordinary Save-to-Project flow, not just the
             "+ New Chart from an open dashboard" entry point. */}
         {promotedThisRun && showFallbackDashboardOffer && (
-          <div
-            data-testid="exploration-promote-fallback-dashboard-offer"
-            className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
-          >
+          <PromoteOfferRow testId="exploration-promote-fallback-dashboard-offer">
             <span className="flex min-w-0 items-center gap-1.5 text-xs text-primary-800">
               Add <span className="font-medium">{promotedChart.name}</span> to
               <Select
@@ -799,35 +771,26 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
             >
               {fallbackPlacing ? 'Adding…' : 'Add'}
             </button>
-          </div>
+          </PromoteOfferRow>
         )}
 
         {fallbackPlaceError && (
-          <p
-            data-testid="exploration-promote-fallback-place-error"
-            className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
-          >
+          <PromoteInlineError testId="exploration-promote-fallback-place-error">
             {fallbackPlaceError}
-          </p>
+          </PromoteInlineError>
         )}
 
         {declineError && (
-          <p
-            data-testid="exploration-promote-decline-error"
-            className="mt-2 text-xs text-highlight-600 bg-highlight-50 border border-highlight-200 rounded-md px-2.5 py-1.5"
-          >
+          <PromoteInlineError testId="exploration-promote-decline-error">
             {declineError}
-          </p>
+          </PromoteInlineError>
         )}
 
         {/* VIS-1069 — Semantic Layer reciprocal: promoting a metric/dimension
             offers a one-click jump to the ERD, focused on that field's
             parent model node. */}
         {promotedThisRun && promotedField && (
-          <div
-            data-testid="exploration-promote-semantic-layer-offer"
-            className="mt-3 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-2"
-          >
+          <PromoteOfferRow testId="exploration-promote-semantic-layer-offer">
             <span className="text-xs text-primary-800">
               View <span className="font-medium">{promotedField.name}</span> in the Semantic Layer?
             </span>
@@ -839,7 +802,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
             >
               View in Semantic Layer
             </button>
-          </div>
+          </PromoteOfferRow>
         )}
 
         <div className="mt-4 pt-3 border-t border-secondary-100 flex justify-end gap-2">
