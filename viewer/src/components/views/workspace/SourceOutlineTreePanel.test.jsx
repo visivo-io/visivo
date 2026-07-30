@@ -94,7 +94,7 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
       await screen.findByTestId(`source-outline-node-${DB_KEY}::table::orders`)
     ).toBeInTheDocument();
     // It reads from the cached feed, never the live introspect.
-    expect(fetchSourceTables).toHaveBeenCalledWith(SRC);
+    expect(fetchSourceTables).toHaveBeenCalledWith(SRC, { projectId: undefined });
   });
 
   test('expanding a table lazy-loads its columns from the cached feed', async () => {
@@ -109,7 +109,9 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     expect(fetchTableColumns).not.toHaveBeenCalled();
 
     fireEvent.click(tableToggle);
-    await waitFor(() => expect(fetchTableColumns).toHaveBeenCalledWith(SRC, 'orders'));
+    await waitFor(() =>
+      expect(fetchTableColumns).toHaveBeenCalledWith(SRC, 'orders', { projectId: undefined })
+    );
     expect(
       await screen.findByTestId(`source-outline-node-${tableKey}::col::id`)
     ).toBeInTheDocument();
@@ -163,7 +165,7 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
 
     fireEvent.click(generateBtn);
 
-    await waitFor(() => expect(generateSourceSchema).toHaveBeenCalledWith(SRC));
+    await waitFor(() => expect(generateSourceSchema).toHaveBeenCalledWith(SRC, undefined));
     // After generation completes the db node renders; expanding it reveals the
     // newly-cached `events` table.
     const dbNode = await screen.findByTestId(`source-outline-node-${DB_KEY}`);

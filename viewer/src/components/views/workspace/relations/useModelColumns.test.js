@@ -23,8 +23,10 @@ describe('useModelColumns', () => {
 
     await waitFor(() => expect(result.current.columnsByModel.orders).toEqual(['id', 'amount']));
     expect(result.current.columnsByModel.users).toEqual(['id', 'email']);
-    expect(fetchModelColumnNames).toHaveBeenCalledWith('orders');
-    expect(fetchModelColumnNames).toHaveBeenCalledWith('users');
+    // The project id rides along so cloud can scope the request; unset in
+    // this test's store, which is what an unscoped local server sends too.
+    expect(fetchModelColumnNames).toHaveBeenCalledWith('orders', undefined);
+    expect(fetchModelColumnNames).toHaveBeenCalledWith('users', undefined);
     // Schema had columns → data fallback never invoked.
     expect(fetchModelData).not.toHaveBeenCalled();
   });

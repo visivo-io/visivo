@@ -1,5 +1,6 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
 import { pollJob } from './jobs';
+import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
 
 /**
@@ -36,13 +37,13 @@ const parseErrorResponse = async response => {
  * Fetch list of all sources with cached schema availability
  * @returns {Promise<Object[]>} Array of source objects with schema metadata
  */
-export const fetchSourceSchemaJobs = async () => {
+export const fetchSourceSchemaJobs = async (projectId = null) => {
   if (!isAvailable('sourceSchemaJobsList')) {
     console.warn('Source schema jobs endpoint not available in this environment');
     return [];
   }
 
-  const url = getUrl('sourceSchemaJobsList');
+  const url = withProjectId(getUrl('sourceSchemaJobsList'), projectId);
   const response = await fetchWithContext(url, undefined, 'Loading sources');
 
   if (!response.ok) {
@@ -59,13 +60,13 @@ export const fetchSourceSchemaJobs = async () => {
  * @param {string} runId - Optional run_id to fetch from specific version (main vs preview)
  * @returns {Promise<Object|null>} Schema data or null if not cached
  */
-export const fetchSourceSchema = async (sourceName, runId = null) => {
+export const fetchSourceSchema = async (sourceName, runId = null, projectId = null) => {
   if (!isAvailable('sourceSchemaJobDetail')) {
     console.warn('Source schema endpoint not available in this environment');
     return null;
   }
 
-  let url = getUrl('sourceSchemaJobDetail', { name: sourceName });
+  let url = withProjectId(getUrl('sourceSchemaJobDetail', { name: sourceName }), projectId);
   if (runId) {
     url += `?run_id=${encodeURIComponent(runId)}`;
   }
@@ -90,12 +91,12 @@ export const fetchSourceSchema = async (sourceName, runId = null) => {
  * @param {string} sourceName - Name of the source
  * @returns {Promise<Object>} Object containing run_id
  */
-export const generateSourceSchema = async sourceName => {
+export const generateSourceSchema = async (sourceName, projectId = null) => {
   if (!isAvailable('sourceSchemaJobCreate')) {
     throw new Error('Schema generation not available in this environment');
   }
 
-  const url = getUrl('sourceSchemaJobCreate');
+  const url = withProjectId(getUrl('sourceSchemaJobCreate'), projectId);
   const response = await fetchWithContext(
     url,
     {
@@ -126,12 +127,12 @@ export const generateSourceSchema = async sourceName => {
  * @param {string} runId - Run ID from generateSourceSchema
  * @returns {Promise<Object>} Run status object
  */
-export const fetchSchemaGenerationStatus = async runId => {
+export const fetchSchemaGenerationStatus = async (runId, projectId = null) => {
   if (!isAvailable('sourceSchemaJobStatus')) {
     throw new Error('Schema generation status not available in this environment');
   }
 
-  const url = getUrl('sourceSchemaJobStatus', { runId });
+  const url = withProjectId(getUrl('sourceSchemaJobStatus', { runId }), projectId);
   const response = await fetchWithContext(url, undefined, 'Checking schema generation status');
 
   if (!response.ok) {
@@ -154,10 +155,11 @@ export const fetchSchemaGenerationStatus = async runId => {
  * @returns {Promise<Object>} Schema data
  */
 export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
-  const { pollInterval = 1000, maxWaitTime = 120000, onProgress, runId = null } = options;
+  const { pollInterval = 1000, maxWaitTime = 120000, onProgress, runId = null, projectId = null } =
+    options;
 
   // First try to get cached schema
-  const cachedSchema = await fetchSourceSchema(sourceName, runId);
+  const cachedSchema = await fetchSourceSchema(sourceName, runId, projectId);
   if (cachedSchema) {
     if (onProgress) {
       onProgress('completed', 1.0, 'Using cached schema');
@@ -170,11 +172,11 @@ export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
     onProgress('running', 0.0, 'Starting schema generation');
   }
 
-  const { run_id: jobRunId } = await generateSourceSchema(sourceName);
+  const { run_id: jobRunId } = await generateSourceSchema(sourceName, projectId);
 
   // The poll loop itself lives in api/jobs.js, shared with every other
   // on-demand op. This keeps the throwing signature callers expect.
-  const outcome = await pollJob(() => fetchSchemaGenerationStatus(jobRunId), {
+  const outcome = await pollJob(() => fetchSchemaGenerationStatus(jobRunId, projectId), {
     intervalMs: pollInterval,
     timeoutMs: maxWaitTime,
     onProgress: job =>
@@ -183,7 +185,7 @@ export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
   if (!outcome.ok) throw new Error(outcome.error);
 
   // Fetch the generated schema from the preview run_id
-  const schema = await fetchSourceSchema(sourceName, `preview-${sourceName}`);
+  const schema = await fetchSourceSchema(sourceName, `preview-${sourceName}`, projectId);
   if (!schema) {
     throw new Error('Schema generation completed but schema not found');
   }
@@ -198,7 +200,7 @@ export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
  * @param {string} options.runId - Optional run_id to fetch from specific version
  * @returns {Promise<Object[]>} Array of table objects
  */
-export const fetchSourceTables = async (sourceName, { search = '', runId = null } = {}) => {
+export const fetchSourceTables = async (sourceName, { search = '', runId = null, projectId = null } = {}) => {
   if (!isAvailable('sourceSchemaJobTables')) {
     console.warn('Source schema tables endpoint not available in this environment');
     return [];
@@ -211,6 +213,9 @@ export const fetchSourceTables = async (sourceName, { search = '', runId = null 
   }
   if (runId) {
     params.append('run_id', runId);
+  }
+  if (projectId) {
+    params.append('project_id', projectId);
   }
   if (params.toString()) {
     url += `?${params.toString()}`;
@@ -245,7 +250,7 @@ export const fetchSourceTables = async (sourceName, { search = '', runId = null 
  * @param {string} options.runId - Optional run_id to fetch from specific version
  * @returns {Promise<Object[]>} Array of column objects
  */
-export const fetchTableColumns = async (sourceName, tableName, { search = '', runId = null } = {}) => {
+export const fetchTableColumns = async (sourceName, tableName, { search = '', runId = null, projectId = null } = {}) => {
   if (!isAvailable('sourceSchemaJobColumns')) {
     console.warn('Source schema columns endpoint not available in this environment');
     return [];
@@ -258,6 +263,9 @@ export const fetchTableColumns = async (sourceName, tableName, { search = '', ru
   }
   if (runId) {
     params.append('run_id', runId);
+  }
+  if (projectId) {
+    params.append('project_id', projectId);
   }
   if (params.toString()) {
     url += `?${params.toString()}`;

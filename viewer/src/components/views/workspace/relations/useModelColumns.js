@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import useStore from '../../../../stores/store';
 import { fetchModelColumnNames } from '../../../../api/modelSchemaJobs';
 import { fetchModelData } from '../../../../api/modelData';
 
@@ -25,6 +26,10 @@ import { fetchModelData } from '../../../../api/modelData';
  *   column list are reported as-is by the caller; this hook only fills gaps.
  */
 export function useModelColumns(modelNames) {
+  // Subscribed, not read via getState() inside the async callback below: that
+  // would sample the id at request time rather than render time, and pulls the
+  // store into a tick the effect doesn't own.
+  const projectId = useStore(s => s.project?.id);
   const [columnsByModel, setColumnsByModel] = useState({});
   const [loading, setLoading] = useState(false);
   // Names whose fetch is in flight OR resolved — so re-renders (and a growing
@@ -62,7 +67,7 @@ export function useModelColumns(modelNames) {
       toFetch.map(async name => {
         try {
           // Schema artifact first (column names + types, cloud-safe).
-          const cols = await fetchModelColumnNames(name);
+          const cols = await fetchModelColumnNames(name, projectId);
           if (cols.length) return [name, cols];
           // Fallback: the model's cached run data (e.g. when the schema
           // artifact isn't available in this environment).
@@ -87,7 +92,7 @@ export function useModelColumns(modelNames) {
       });
       setLoading(false);
     });
-  }, [namesKey]);
+  }, [namesKey, projectId]);
 
   return { columnsByModel, loading };
 }

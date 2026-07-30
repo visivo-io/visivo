@@ -1,4 +1,5 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
+import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
 
 /**
@@ -12,12 +13,14 @@ import { apiFetch } from './utils';
  * @param {string} modelName - The model name
  * @returns {Promise<{available: boolean, columns?: object, model_name?: string, model_type?: string}>}
  */
-export const fetchModelSchema = async modelName => {
+export const fetchModelSchema = async (modelName, projectId = null) => {
   if (!isAvailable('modelSchemaJob')) {
     return { available: false };
   }
 
-  const res = await apiFetch(getUrl('modelSchemaJob', { name: modelName }));
+  const res = await apiFetch(
+    withProjectId(getUrl('modelSchemaJob', { name: modelName }), projectId)
+  );
 
   if (res.status === 200) {
     return { available: true, ...(await res.json()) };
@@ -32,8 +35,8 @@ export const fetchModelSchema = async modelName => {
  * @param {string} modelName - The model name
  * @returns {Promise<string[]>} Column names, or [] if unavailable / no schema.
  */
-export const fetchModelColumnNames = async modelName => {
-  const schema = await fetchModelSchema(modelName);
+export const fetchModelColumnNames = async (modelName, projectId = null) => {
+  const schema = await fetchModelSchema(modelName, projectId);
   if (!schema.available || !schema.columns) {
     return [];
   }

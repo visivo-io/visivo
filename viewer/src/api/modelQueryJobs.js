@@ -1,5 +1,6 @@
 import { getUrl } from '../contexts/URLContext.jsx';
 import { pollJob } from './jobs';
+import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
 
 /**
@@ -8,8 +9,8 @@ import { apiFetch } from './utils';
  * @param {string} sql - SQL query to execute
  * @returns {Promise<{job_id: string, status: string}>}
  */
-export const startModelQueryJob = async (sourceName, sql) => {
-  const url = getUrl('modelQueryJobs');
+export const startModelQueryJob = async (sourceName, sql, projectId = null) => {
+  const url = withProjectId(getUrl('modelQueryJobs'), projectId);
 
   const response = await apiFetch(url, {
     method: 'POST',
@@ -35,8 +36,8 @@ export const startModelQueryJob = async (sourceName, sql) => {
  * @param {string} jobId - Job ID
  * @returns {Promise<Object>} Job status and results
  */
-export const getModelQueryJobStatus = async jobId => {
-  const url = getUrl('modelQueryJobDetail', { jobId });
+export const getModelQueryJobStatus = async (jobId, projectId = null) => {
+  const url = withProjectId(getUrl('modelQueryJobDetail', { jobId }), projectId);
 
   const response = await apiFetch(url);
 
@@ -53,8 +54,8 @@ export const getModelQueryJobStatus = async jobId => {
  * @param {string} jobId - Job ID
  * @returns {Promise<{message: string, job_id: string}>}
  */
-export const cancelModelQueryJob = async jobId => {
-  const url = getUrl('modelQueryJobDetail', { jobId });
+export const cancelModelQueryJob = async (jobId, projectId = null) => {
+  const url = withProjectId(getUrl('modelQueryJobDetail', { jobId }), projectId);
 
   const response = await apiFetch(url, {
     method: 'DELETE',
@@ -87,9 +88,9 @@ export const cancelModelQueryJob = async jobId => {
  * @returns {Promise<Object>} The completed job envelope
  */
 export const pollModelQueryJob = async (jobId, options = {}) => {
-  const { interval = 500, maxAttempts = 600, onProgress } = options;
+  const { interval = 500, maxAttempts = 600, onProgress, projectId = null } = options;
 
-  const outcome = await pollJob(() => getModelQueryJobStatus(jobId), {
+  const outcome = await pollJob(() => getModelQueryJobStatus(jobId, projectId), {
     intervalMs: interval,
     timeoutMs: interval * maxAttempts,
     onProgress,

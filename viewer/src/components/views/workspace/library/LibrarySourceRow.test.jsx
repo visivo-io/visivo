@@ -175,7 +175,11 @@ describe('LibrarySourceRow', () => {
     expect(fetchTableColumns).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId('library-source-table-warehouse-orders-toggle'));
 
-    await waitFor(() => expect(fetchTableColumns).toHaveBeenCalledWith('warehouse', 'orders'));
+    await waitFor(() =>
+      expect(fetchTableColumns).toHaveBeenCalledWith('warehouse', 'orders', {
+        projectId: undefined,
+      })
+    );
     await screen.findByTestId('library-source-column-warehouse-orders-id');
     expect(screen.getByTestId('library-source-column-warehouse-orders-id')).toHaveTextContent('#');
     expect(

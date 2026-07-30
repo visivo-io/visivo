@@ -64,6 +64,10 @@ import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
  * component-render dependency entirely.
  */
 export default function useExplorerWorkbenchInit() {
+  // Subscribed at render rather than read via getState() inside an async
+  // callback: that samples the id at request time, not render time.
+  const projectId = useStore(s => s.project?.id);
+
   const modelTabs = useStore(s => s.explorerModelTabs);
   const explorerSources = useStore(s => s.explorerSources);
   const chartInsightNames = useStore(s => s.explorerChartInsightNames);
@@ -84,7 +88,7 @@ export default function useExplorerWorkbenchInit() {
   useEffect(() => {
     if (explorerSourcesLength > 0) return undefined;
     let cancelled = false;
-    fetchSourceSchemaJobs()
+    fetchSourceSchemaJobs(projectId)
       .then(data => {
         if (!cancelled) setExplorerSources(data || []);
       })
@@ -94,7 +98,7 @@ export default function useExplorerWorkbenchInit() {
     return () => {
       cancelled = true;
     };
-  }, [explorerSourcesLength, setExplorerSources]);
+  }, [explorerSourcesLength, setExplorerSources, projectId]);
 
   // Watch explorer state changes to trigger backend diff (debounced).
   const explorerModelStates = useStore(s => s.explorerModelStates);

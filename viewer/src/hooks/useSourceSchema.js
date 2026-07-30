@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import useStore from '../stores/store';
 import { fetchSourceTables, fetchTableColumns } from '../api/sourceSchemaJobs';
 
 /**
@@ -13,6 +14,10 @@ import { fetchSourceTables, fetchTableColumns } from '../api/sourceSchemaJobs';
  * @returns {Object} Schema state and controls
  */
 export const useSourceSchema = (sourceName, options = {}) => {
+  // Subscribed at render rather than read via getState() inside an async
+  // callback: that samples the id at request time, not render time.
+  const projectId = useStore(s => s.project?.id);
+
   const { runId = null } = options;
 
   const [tables, setTables] = useState([]);
@@ -31,7 +36,7 @@ export const useSourceSchema = (sourceName, options = {}) => {
     setError(null);
 
     try {
-      const fetchedTables = await fetchSourceTables(sourceName, { runId });
+      const fetchedTables = await fetchSourceTables(sourceName, { runId, projectId: projectId });
       setTables(fetchedTables || []);
 
       const columnsMap = {};
@@ -39,7 +44,10 @@ export const useSourceSchema = (sourceName, options = {}) => {
         const tableName = table.table_name || table.name;
         if (tableName) {
           try {
-            const columns = await fetchTableColumns(sourceName, tableName, { runId });
+            const columns = await fetchTableColumns(sourceName, tableName, {
+              runId,
+              projectId: projectId,
+            });
             columnsMap[tableName] = columns || [];
           } catch {
             columnsMap[tableName] = [];
@@ -54,7 +62,7 @@ export const useSourceSchema = (sourceName, options = {}) => {
     } finally {
       setIsLoading(false);
     }
-  }, [sourceName, runId]);
+  }, [sourceName, runId, projectId]);
 
   useEffect(() => {
     fetchSchema();
