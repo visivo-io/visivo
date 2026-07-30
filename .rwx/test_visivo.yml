@@ -37,7 +37,7 @@ tasks:
       python-version: ${{ tasks.versions.values.python }}
 
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     with:
       node-version: ${{ tasks.versions.values.node }}
 

@@ -69,7 +69,7 @@ tasks:
       - validate_mkdocs_build.sh
 
   - key: github-cli
-    call: github/install-cli 1.0.5
+    call: github/install-cli 1.0.11
 
   # Per-PR docs preview app. Serves the built site (site_dir: mkdocs_build) on an
   # on-demand rwx.run URL; spins down after 10 min idle and re-materializes from

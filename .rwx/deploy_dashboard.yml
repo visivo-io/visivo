@@ -28,7 +28,7 @@ tasks:
       python-version: 3.14.6
 
   - key: github-cli
-    call: github/install-cli 1.0.10
+    call: github/install-cli 1.0.11
 
   - key: install-visivo
     if: ${{ init.deploy }}

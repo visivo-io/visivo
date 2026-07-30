@@ -38,7 +38,7 @@ tasks:
       - core/app/.nvmrc
 
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     with:
       node-version: ${{ tasks.versions.values.node }}
 
@@ -62,7 +62,7 @@ tasks:
         echo "true" > $MINT_VALUES/has_changes
       fi
   - key: github-cli
-    call: github/install-cli 1.0.10
+    call: github/install-cli 1.0.11
 
   - key: create-pull-request
     use: [sync-dependencies, github-cli]
