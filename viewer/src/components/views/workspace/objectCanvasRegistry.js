@@ -34,8 +34,8 @@ const PivotPlayground = React.lazy(() => import('./pivot/PivotPlayground'));
 const InputPreview = React.lazy(() => import('./InputPreview'));
 const InsightPreview = React.lazy(() => import('./InsightPreview'));
 // SourceErd is the Source canvas body — a React-Flow ERD of the source's tables
-// (VIS-1005). It is `serve`-gated on `sourcesMetadata` because it relies on the
-// server-only introspection feed; on the dist build the frame shows its
+// (VIS-1005). It is `serve`-gated on `sourceSchemaJobsList` because it relies on
+// the server-only cached-schema feed; on the dist build the frame shows its
 // "unavailable" state instead of muting the Canvas lens to Lineage.
 const SourceErd = React.lazy(() => import('./source/SourceErd'));
 // ModelPreview is the Model canvas body; every model type shares
@@ -47,7 +47,7 @@ const ModelCanvas = React.lazy(() => import('./ModelPreview'));
 // writes relations via the relation store) and serve-only.
 const RelationErdCanvas = React.lazy(() => import('./relations/RelationErdCanvas'));
 // The Field Lens bodies (VIS-1009): a per-field studio for a dimension /
-// metric. Both `serve`-gated on `sourcesMetadata` because they evaluate the
+// metric. Both `serve`-gated on `sourceSchemaJobsList` because they evaluate the
 // field's expression against its parent model's source. DimensionInspector
 // profiles the dimension expression as a derived column; MetricPlayground
 // previews the metric as a synthetic insight with split-by + time-grain.

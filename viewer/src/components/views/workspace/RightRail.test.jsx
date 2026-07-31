@@ -18,11 +18,10 @@ import RightRail from './RightRail';
 import useStore from '../../../stores/store';
 import { setWorkspaceTelemetryListener } from './telemetry';
 
-// SourceOutlineTreePanel (mounted for source scope) hits the source-metadata +
-// schema-jobs APIs on mount — stub them so the branch test stays isolated.
-jest.mock('../../../api/explorer', () => ({
-  fetchSourceMetadata: jest.fn(() => Promise.resolve({ sources: [] })),
-}));
+// SourceOutlineTreePanel (mounted for source scope) hits the schema-jobs API on
+// mount — stub it so the branch test stays isolated. (There was also an
+// `api/explorer` mock here for `fetchSourceMetadata`; RightRail never imported
+// that module, and Explore 2.0 deleted the function.)
 jest.mock('../../../api/sourceSchemaJobs', () => ({
   // No cached schema by default → the source outline lands on the cold-source
   // "Generate schema" affordance (the cached-schema feed drives warm vs cold).

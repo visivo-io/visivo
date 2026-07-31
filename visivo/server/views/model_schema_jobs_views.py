@@ -5,7 +5,7 @@ artifact written during the run phase.
 Mirrors the source schema route (``source_schema_jobs_views.py``) but read-only:
 models are produced by the normal ``visivo run`` (not on-demand), so there is no
 POST/generate/poll surface. The schema is the cheap, cloud-shippable sibling of
-the ``/api/models/<name>/data/`` endpoint.
+the ``/api/model-jobs/`` endpoint.
 
 Routes:
 - GET /api/model-schema-jobs/<model_name>/          → the full schema envelope

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useStore from '../../../stores/store';
 import { isAvailable } from '../../../contexts/URLContext';
+import { pollJob } from '../../../api/jobs';
 import {
   fetchSourceSchemaJobs,
   generateSourceSchema,
@@ -88,6 +89,10 @@ const buildCachedTree = (sourceName, tables) => {
 };
 
 export default function useSourceOutline(sourceName) {
+  // Subscribed at render rather than read via getState() inside an async
+  // callback: that samples the id at request time, not render time.
+  const projectId = useStore(s => s.project?.id);
+
   // The cached tree is the source of truth; `null` until first load completes.
   const [nodes, setNodes] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
@@ -116,13 +121,13 @@ export default function useSourceOutline(sourceName) {
   const readHasCachedSchema = useCallback(async () => {
     if (!isAvailable('sourceSchemaJobsList')) return null;
     try {
-      const jobs = await fetchSourceSchemaJobs();
+      const jobs = await fetchSourceSchemaJobs(projectId);
       const job = (jobs || []).find(j => (j.source_name || j.name) === sourceName);
       return job ? !!job.has_cached_schema : null;
     } catch {
       return null;
     }
-  }, [sourceName]);
+  }, [sourceName, projectId]);
 
   /**
    * Load the cached flat tables and cache the result. Mirrors
@@ -166,7 +171,7 @@ export default function useSourceOutline(sourceName) {
         return;
       }
 
-      const tables = await fetchSourceTables(sourceName);
+      const tables = await fetchSourceTables(sourceName, { projectId: projectId });
       if (stale()) return;
       const tree = buildCachedTree(sourceName, tables);
       setNodes(tree);
@@ -184,7 +189,7 @@ export default function useSourceOutline(sourceName) {
       setError(e.message);
       setNodes([]);
     }
-  }, [sourceName, available, readHasCachedSchema]);
+  }, [sourceName, available, readHasCachedSchema, projectId]);
 
   useEffect(() => {
     // Reset transient per-source state (switching never bleeds it).
@@ -223,48 +228,52 @@ export default function useSourceOutline(sourceName) {
     setGenerating({ status: 'starting', progress: 0, message: '' });
     setError(null);
     try {
-      const { run_id: runId } = await generateSourceSchema(sourceName);
-      const maxWaitTime = 120000;
-      const pollInterval = 2000;
-      const startTime = Date.now();
+      const { run_id: runId } = await generateSourceSchema(sourceName, projectId);
 
-      while (Date.now() - startTime < maxWaitTime) {
-        if (stale()) return;
-        const st = await fetchSchemaGenerationStatus(runId);
-        if (stale()) return;
-        setGenerating({
-          status: st.status,
-          progress: st.progress || 0,
-          message: st.progress_message || '',
-        });
-
-        if (st.status === 'completed') {
-          const tables = await fetchSourceTables(sourceName);
-          if (stale()) return;
-          const tree = buildCachedTree(sourceName, tables);
-          setNodes(tree);
-          setHasCachedSchema(true);
-          setStatus('ready');
-          setGenerating(null);
-          useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
-            nodes: tree,
-            tables,
-            hasCachedSchema: true,
-          });
-          return;
+      // The loop is the shared `pollJob` (api/jobs.js). The epoch guard lives
+      // in the fetch callback: throwing is how we abandon a poll whose source
+      // selection has moved on, since pollJob has no cancel of its own.
+      const ABANDONED = 'source-outline: superseded';
+      const outcome = await pollJob(
+        () => {
+          if (stale()) throw new Error(ABANDONED);
+          return fetchSchemaGenerationStatus(runId, projectId);
+        },
+        {
+          intervalMs: 2000,
+          timeoutMs: 120000,
+          onProgress: st =>
+            setGenerating({
+              status: st.status,
+              progress: st.progress || 0,
+              message: st.progress_message || '',
+            }),
         }
-        if (st.status === 'failed') {
-          throw new Error(st.error || 'Schema generation failed');
-        }
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      );
+      if (stale()) return;
+      if (!outcome.ok) {
+        if (outcome.error === ABANDONED) return;
+        throw new Error(outcome.error);
       }
-      throw new Error('Schema generation timed out');
+
+      const tables = await fetchSourceTables(sourceName);
+      if (stale()) return;
+      const tree = buildCachedTree(sourceName, tables);
+      setNodes(tree);
+      setHasCachedSchema(true);
+      setStatus('ready');
+      setGenerating(null);
+      useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
+        nodes: tree,
+        tables,
+        hasCachedSchema: true,
+      });
     } catch (e) {
       if (stale()) return;
       setGenerating(null);
       setError(e.message);
     }
-  }, [sourceName]);
+  }, [sourceName, projectId]);
 
   /**
    * Lazy-load columns for a cached table on expand (the cached path carries no
@@ -280,7 +289,7 @@ export default function useSourceOutline(sourceName) {
       const tableName = match ? match[1] : null;
       if (!tableName) return;
       try {
-        const cols = await fetchTableColumns(sourceName, tableName);
+        const cols = await fetchTableColumns(sourceName, tableName, { projectId: projectId });
         if (stale()) return;
         setFlatColumns(prev => ({
           ...prev,
@@ -299,7 +308,7 @@ export default function useSourceOutline(sourceName) {
         setFlatColumns(prev => ({ ...prev, [tKey]: { error: e.message } }));
       }
     },
-    [sourceName, flatColumns]
+    [sourceName, flatColumns, projectId]
   );
 
   // A source is "cold" (offer Generate) when the API authoritatively reports no

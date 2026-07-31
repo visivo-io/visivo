@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { runOnDemandJob } from './jobs';
 import { apiFetch } from './utils';
 
 /**
@@ -79,22 +80,30 @@ export const validateSource = async (name, config) => {
 };
 
 /**
- * Test a source connection from configuration
+ * Test a source connection from configuration.
+ *
+ * Asynchronous on both servers: the POST answers `202 {job_id}` and the job is
+ * polled at `<path><job_id>/`. Cloud has no alternative — the test runs on a
+ * warm runner pool whose pods deny all ingress, so there is no request it could
+ * hold open — and the local server matches so there is one code path.
+ *
+ * The return shape is unchanged, so callers (`sourceStore.testConnection`,
+ * `SourceEditForm`, `SourceEditorModal`) are untouched: the resolved result on
+ * success, `{status: 'connection_failed', error}` otherwise. A rejected request
+ * and a refused connection look the same to the form, which is right — both
+ * mean "didn't connect", and the error text says which.
  */
 export const testSourceConnection = async config => {
-  const response = await apiFetch(getUrl('sourceTestConnection'), {
+  const path = getUrl('sourceTestConnection');
+  const response = await apiFetch(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(config),
   });
-  if (response.status === 200) {
-    return await response.json();
-  }
-  const errorData = await response.json().catch(() => ({}));
-  return {
-    status: 'connection_failed',
-    error: errorData.error || 'Connection test failed',
-  };
+  const job = await runOnDemandJob(path, response);
+  return job.ok
+    ? job.result
+    : { status: 'connection_failed', error: job.error || 'Connection test failed' };
 };

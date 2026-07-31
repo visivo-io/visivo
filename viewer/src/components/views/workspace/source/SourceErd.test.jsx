@@ -102,7 +102,7 @@ describe('SourceErd (VIS-1005)', () => {
     expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
     expect(screen.getByTestId('source-erd-node-users')).toBeInTheDocument();
     // It reads the cached feed, never the live introspect.
-    expect(fetchSourceTables).toHaveBeenCalledWith(SRC);
+    expect(fetchSourceTables).toHaveBeenCalledWith(SRC, { projectId: undefined });
   });
 
   test('passes column-aware layoutSize heights to computeLayout so tall tables do not overlap', async () => {

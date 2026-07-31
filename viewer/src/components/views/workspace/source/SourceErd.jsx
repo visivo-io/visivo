@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useStore from '../../../../stores/store';
 import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { PiGraph } from 'react-icons/pi';
@@ -45,6 +46,10 @@ const MAX_LAYOUT_ROWS = 12; // matches TableErdNode's column cap
 const nodeTypes = { tableErdNode: TableErdNode };
 
 const SourceErdCanvas = ({ activeObject }) => {
+  // Subscribed at render rather than read via getState() inside an async
+  // callback: that samples the id at request time, not render time.
+  const projectId = useStore(s => s.project?.id);
+
   const sourceName = activeObject?.name || null;
   const available = useMemo(() => {
     try {
@@ -84,7 +89,7 @@ const SourceErdCanvas = ({ activeObject }) => {
       try {
         // Authoritative cached-schema check (same feed SourceBrowser uses). No
         // cache → 'missing' → the "Generate from the Data tab" empty state.
-        const jobs = await fetchSourceSchemaJobs();
+        const jobs = await fetchSourceSchemaJobs(projectId);
         if (cancelledRef.current) return;
         const job = (jobs || []).find(j => (j.source_name || j.name) === sourceName);
         if (!job || !job.has_cached_schema) {
@@ -95,14 +100,14 @@ const SourceErdCanvas = ({ activeObject }) => {
 
         // Load the flat cached tables, then each table's columns. Shape them into
         // the `{ databases: [{ name, tables }] }` entry useSourceErdDag flattens.
-        const tables = await fetchSourceTables(sourceName);
+        const tables = await fetchSourceTables(sourceName, { projectId: projectId });
         if (cancelledRef.current) return;
         const tableEntries = await Promise.all(
           (tables || []).map(async t => {
             const name = typeof t === 'string' ? t : t.name;
             let columns = [];
             try {
-              const cols = await fetchTableColumns(sourceName, name);
+              const cols = await fetchTableColumns(sourceName, name, { projectId: projectId });
               columns = (cols || []).map(c =>
                 typeof c === 'string' ? { name: c } : { name: c.name, type: c.type }
               );
@@ -131,7 +136,7 @@ const SourceErdCanvas = ({ activeObject }) => {
     return () => {
       cancelledRef.current = true;
     };
-  }, [sourceName, available]);
+  }, [sourceName, available, projectId]);
 
   const { nodes: rawNodes, edges } = useSourceErdDag(sourceName, entry);
 

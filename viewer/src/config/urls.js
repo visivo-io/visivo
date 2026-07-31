@@ -10,6 +10,7 @@ const URL_PATTERNS = {
     error: '/api/error/',
     insightJobsQuery: '/api/insight-jobs/',
     inputJobsQuery: '/api/input-jobs/',
+    modelJobsQuery: '/api/model-jobs/',
     dashboardQuery: '/api/dashboards/{name}/',
     dashboardThumbnail: '/api/dashboards/{name}.png/',
 
@@ -127,7 +128,6 @@ const URL_PATTERNS = {
     expressionsValidate: '/api/expressions/validate/',
 
     // Model data endpoint
-    modelData: '/api/models/{name}/data/',
 
     // Model schema endpoints (run-phase column schema artifact)
     modelSchemaJob: '/api/model-schema-jobs/{name}/',
@@ -163,6 +163,8 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
     inputJobsQuery: '/data/inputs.json',
+    // No static model-jobs manifest in a dist build.
+    modelJobsQuery: null,
     dashboardQuery: '/data/dashboards/{name}.json',
     dashboardThumbnail: '/data/dashboards/{name}.png',
 
@@ -266,7 +268,6 @@ const URL_PATTERNS = {
     modelQueryJobDetail: null,
 
     // Model data endpoint (not available in dist)
-    modelData: null,
 
     // Model schema endpoints — null in dist for now. The dist build does NOT
     // yet copy {output_dir}/main/schemas/{model}/schema.json into /data/ (see

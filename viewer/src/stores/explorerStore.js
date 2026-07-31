@@ -198,40 +198,6 @@ const replaceRefsInObject = (obj, oldName, newName) => {
 };
 
 /**
- * Auto-load pre-existing parquet data for a model if available.
- */
-const autoLoadModelData = (modelName, get, set) => {
-  import('../api/modelData')
-    .then(({ fetchModelData }) => {
-      fetchModelData(modelName)
-        .then((data) => {
-          if (data.available && data.rows?.length > 0) {
-            const currentState = get();
-            if (currentState.explorerModelStates[modelName]) {
-              set({
-                explorerModelStates: {
-                  ...currentState.explorerModelStates,
-                  [modelName]: {
-                    ...currentState.explorerModelStates[modelName],
-                    queryResult: {
-                      columns: data.columns,
-                      rows: data.rows,
-                      row_count: data.row_count,
-                      truncated: data.truncated || false,
-                    },
-                    queryError: null,
-                  },
-                },
-              });
-            }
-          }
-        })
-        .catch(() => {});
-    })
-    .catch(() => {});
-};
-
-/**
  * Create an empty model state entry.
  */
 const createEmptyModelState = (isNew = true) => ({
@@ -969,11 +935,6 @@ const createExplorerSlice = (set, get) => ({
       explorerModelStates: newModelStates,
     });
 
-    // Auto-load parquet data for newly added models
-    for (const modelName of newlyAddedModelNames) {
-      autoLoadModelData(modelName, get, set);
-    }
-
     // Refresh diff status
     get().fetchExplorerDiff?.();
   },
@@ -1367,7 +1328,6 @@ const createExplorerSlice = (set, get) => ({
       },
     });
 
-    autoLoadModelData(modelName, get, set);
   },
 
   loadChart: (chartObject, insightObjects, modelObjects) => {
@@ -1425,10 +1385,6 @@ const createExplorerSlice = (set, get) => ({
       explorerActiveInsightName: insightNames.length > 0 ? insightNames[0] : null,
     });
 
-    // Auto-load parquet data for each model
-    for (const modelName of loadedModels) {
-      autoLoadModelData(modelName, get, set);
-    }
   },
 
   /**
