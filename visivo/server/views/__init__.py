@@ -8,6 +8,7 @@ from visivo.server.views.file_views import register_file_views
 from visivo.server.views.input_jobs_views import register_input_jobs_views
 from visivo.server.views.inputs_views import register_inputs_views
 from visivo.server.views.insight_jobs_views import register_insight_jobs_views
+from visivo.server.views.model_jobs_views import register_model_jobs_views
 from visivo.server.views.insights_views import register_insights_views
 from visivo.server.views.markdowns_views import register_markdowns_views
 from visivo.server.views.charts_views import register_charts_views
@@ -41,6 +42,7 @@ def register_views(app, flask_app, output_dir):
     register_projects_views(app, flask_app, output_dir)
     register_dashboard_views(app, flask_app, output_dir)
     register_insight_jobs_views(app, flask_app, output_dir)
+    register_model_jobs_views(app, flask_app, output_dir)
     register_insights_views(app, flask_app, output_dir)
     register_inputs_views(app, flask_app, output_dir)
     register_markdowns_views(app, flask_app, output_dir)

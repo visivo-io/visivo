@@ -10,6 +10,7 @@ const URL_PATTERNS = {
     error: '/api/error/',
     insightJobsQuery: '/api/insight-jobs/',
     inputJobsQuery: '/api/input-jobs/',
+    modelJobsQuery: '/api/model-jobs/',
     dashboardQuery: '/api/dashboards/{name}/',
     dashboardThumbnail: '/api/dashboards/{name}.png/',
 
@@ -163,6 +164,8 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
     inputJobsQuery: '/data/inputs.json',
+    // No static model-jobs manifest in a dist build.
+    modelJobsQuery: null,
     dashboardQuery: '/data/dashboards/{name}.json',
     dashboardThumbnail: '/data/dashboards/{name}.png',
 
