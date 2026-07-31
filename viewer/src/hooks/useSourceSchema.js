@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import useStore from '../stores/store';
-import { fetchSourceTables, fetchTableColumns } from '../api/sourceSchemaJobs';
+import {
+  fetchSourceSchema,
+  tablesFromEnvelope,
+  columnsFromEnvelope,
+} from '../api/sourceSchemaJobs';
 
 /**
  * Hook for fetching and managing source schema data for SQL autocomplete.
@@ -36,23 +40,18 @@ export const useSourceSchema = (sourceName, options = {}) => {
     setError(null);
 
     try {
-      const fetchedTables = await fetchSourceTables(sourceName, { runId, projectId: projectId });
-      setTables(fetchedTables || []);
+      // One request for the whole envelope, then slice locally. This used to
+      // fetch the table list and then every table's columns in a SEQUENTIAL
+      // loop — a source with 40 tables was 41 serialized round trips before
+      // autocomplete worked at all. Every column was fetched either way, so
+      // there was nothing to be gained by asking for them separately.
+      const envelope = await fetchSourceSchema(sourceName, runId, projectId);
+      const fetchedTables = tablesFromEnvelope(envelope);
+      setTables(fetchedTables);
 
       const columnsMap = {};
-      for (const table of fetchedTables || []) {
-        const tableName = table.table_name || table.name;
-        if (tableName) {
-          try {
-            const columns = await fetchTableColumns(sourceName, tableName, {
-              runId,
-              projectId: projectId,
-            });
-            columnsMap[tableName] = columns || [];
-          } catch {
-            columnsMap[tableName] = [];
-          }
-        }
+      for (const table of fetchedTables) {
+        columnsMap[table.name] = columnsFromEnvelope(envelope, table.name);
       }
       setTableColumns(columnsMap);
     } catch (err) {
