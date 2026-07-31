@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import useStore from '../../../../stores/store';
 import { fetchModelColumnNames } from '../../../../api/modelSchemaJobs';
-import { fetchModelData } from '../../../../api/modelData';
 
 /**
  * useModelColumns — hydrate real column names for a set of models (VIS-1006a).
@@ -16,8 +15,9 @@ import { fetchModelData } from '../../../../api/modelData';
  * reflects the model's actual output schema (post-SQL, post-join) without
  * re-running the query or guessing a table name from the SQL. When the schema
  * artifact is unavailable (e.g. dist, until the dist build ships it) the hook
- * falls back to the model's cached run DATA (`fetchModelData`) and takes its
- * `columns` list. Either way we keep only the names.
+ * The schema artifact is the only source: it is the cloud-safe one (small
+ * inline JSON, no parquet read) and it is populated by the same run that
+ * builds the data, so a model with data always has a schema.
  *
  * @param {string[]} modelNames - the model names to hydrate (the ERD's models).
  * @returns {{ columnsByModel: Record<string,string[]>, loading: boolean }}
@@ -66,16 +66,13 @@ export function useModelColumns(modelNames) {
     Promise.all(
       toFetch.map(async name => {
         try {
-          // Schema artifact first (column names + types, cloud-safe).
-          const cols = await fetchModelColumnNames(name, projectId);
-          if (cols.length) return [name, cols];
-          // Fallback: the model's cached run data (e.g. when the schema
-          // artifact isn't available in this environment).
-          const data = await fetchModelData(name);
-          return [name, Array.isArray(data?.columns) ? data.columns.filter(Boolean) : []];
+          // The schema artifact is the only source: small inline JSON, no
+          // parquet read, and written by the same run that builds the data —
+          // so a model with data has a schema.
+          return [name, await fetchModelColumnNames(name, projectId)];
         } catch {
-          // A model with no schema or cached data (never run) just resolves to
-          // no columns; the card keeps its empty state rather than throwing.
+          // A model that was never run resolves to no columns; the card keeps
+          // its empty state rather than throwing.
           return [name, []];
         }
       })

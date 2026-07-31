@@ -11,8 +11,7 @@ import { DEFAULT_RUN_ID } from '../constants';
  * `signed_data_file_url` (DuckDB-WASM, via `loadInsightParquetFiles`), which is
  * how insight data has always been read.
  *
- * Two reasons this exists rather than `api/modelData.js`'s
- * `/api/models/<name>/data/`:
+ * Two reasons this replaced the old `/api/models/<name>/data/`:
  *
  * 1. That endpoint reads the parquet server-side and inlines up to 10k rows —
  *    the server pays the memory and the result is silently truncated.

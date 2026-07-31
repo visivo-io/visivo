@@ -14,13 +14,11 @@ def register_model_jobs_views(app, flask_app, output_dir):
     them: ``(project_id, model_names[])`` in, one record per model out, each
     carrying a ``signed_data_file_url`` the client then fetches.
 
-    It exists because the model equivalent was the odd one out. The older
-    ``/api/models/<name>/data/`` reads the parquet server-side and inlines up
-    to 10k rows in the response — so the server pays the memory, the rows are
-    silently truncated, and in cloud the artifact bytes are pushed back through
-    the API instead of being fetched from storage directly. That is exactly
-    what handing back a URL avoids, which is why every other artifact type
-    already does it.
+    It replaced ``/api/models/<name>/data/``, which read the parquet
+    server-side and inlined up to 10k rows — so the server paid the memory, the
+    rows were silently truncated, and in cloud the artifact bytes travelled back
+    through the API instead of being fetched from storage. Handing back a URL is
+    what avoids that, which is why every other artifact type already did.
 
     ``project_id`` is accepted and ignored here, as in the sibling views: this
     server has one project. Cloud requires it, and the viewer is the same code

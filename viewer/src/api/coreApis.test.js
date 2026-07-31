@@ -7,7 +7,6 @@ import { getCommitStatus, getPendingChanges, commitChanges } from './commit';
 import { fetchDefaults, saveDefaults } from './defaults';
 import { fetchError } from './error';
 import { translateExpressions } from './expressions';
-import { fetchModelData } from './modelData';
 import { fetchProjectFilePath } from './projectFilePath';
 import { fetchDashboard } from './dashboard';
 import {
@@ -125,21 +124,6 @@ describe('expressions api', () => {
     await expect(translateExpressions([], 'mysql')).rejects.toThrow(
       'Failed to translate expressions'
     );
-  });
-});
-
-describe('modelData api', () => {
-  it('reports unavailable without calling the server in dist mode', async () => {
-    isAvailable.mockReturnValue(false);
-    await expect(fetchModelData('m')).resolves.toEqual({ available: false });
-    expect(apiFetch).not.toHaveBeenCalled();
-  });
-
-  it('returns json on 200 and the unavailable shape on a non-200', async () => {
-    apiFetch.mockResolvedValueOnce(ok({ available: true, row_count: 2 }));
-    await expect(fetchModelData('m')).resolves.toEqual({ available: true, row_count: 2 });
-    apiFetch.mockResolvedValueOnce(fail(404));
-    await expect(fetchModelData('m')).resolves.toEqual({ available: false });
   });
 });
 

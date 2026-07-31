@@ -1,16 +1,13 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useModelColumns } from './useModelColumns';
 import { fetchModelColumnNames } from '../../../../api/modelSchemaJobs';
-import { fetchModelData } from '../../../../api/modelData';
 
 jest.mock('../../../../api/modelSchemaJobs');
-jest.mock('../../../../api/modelData');
 
 describe('useModelColumns', () => {
   beforeEach(() => {
     // Default: schema artifact has the columns (the happy, schema-first path).
     fetchModelColumnNames.mockResolvedValue([]);
-    fetchModelData.mockResolvedValue({ available: false });
   });
   afterEach(() => jest.clearAllMocks());
 
@@ -28,24 +25,10 @@ describe('useModelColumns', () => {
     expect(fetchModelColumnNames).toHaveBeenCalledWith('orders', undefined);
     expect(fetchModelColumnNames).toHaveBeenCalledWith('users', undefined);
     // Schema had columns → data fallback never invoked.
-    expect(fetchModelData).not.toHaveBeenCalled();
-  });
-
-  it('falls back to model DATA when the schema artifact is empty', async () => {
-    fetchModelColumnNames.mockResolvedValue([]);
-    fetchModelData.mockResolvedValue({ available: true, columns: ['id', 'fallback_col'] });
-
-    const { result } = renderHook(() => useModelColumns(['legacy_model']));
-
-    await waitFor(() =>
-      expect(result.current.columnsByModel.legacy_model).toEqual(['id', 'fallback_col'])
-    );
-    expect(fetchModelData).toHaveBeenCalledWith('legacy_model');
   });
 
   it('resolves a model with neither schema nor data to an empty column list', async () => {
     fetchModelColumnNames.mockResolvedValue([]);
-    fetchModelData.mockResolvedValue({ available: false });
 
     const { result } = renderHook(() => useModelColumns(['empty_model']));
 

@@ -128,7 +128,6 @@ const URL_PATTERNS = {
     expressionsValidate: '/api/expressions/validate/',
 
     // Model data endpoint
-    modelData: '/api/models/{name}/data/',
 
     // Model schema endpoints (run-phase column schema artifact)
     modelSchemaJob: '/api/model-schema-jobs/{name}/',
@@ -269,7 +268,6 @@ const URL_PATTERNS = {
     modelQueryJobDetail: null,
 
     // Model data endpoint (not available in dist)
-    modelData: null,
 
     // Model schema endpoints — null in dist for now. The dist build does NOT
     // yet copy {output_dir}/main/schemas/{model}/schema.json into /data/ (see
