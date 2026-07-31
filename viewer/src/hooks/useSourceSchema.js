@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import useStore from '../stores/store';
 import {
   fetchSourceSchema,
@@ -29,7 +29,19 @@ export const useSourceSchema = (sourceName, options = {}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Per-invocation cancellation, the same guard useSourceOutline carries.
+  // SQLEditor keeps ONE hook instance and swaps `sourceName`, so without this a
+  // slow response for the source you just left lands after the new one and
+  // leaves autocomplete offering columns that do not exist on the current
+  // source. A single shared boolean would not do: the next effect resets it,
+  // which is the bug rather than the fix. Each run captures its own epoch.
+  const epochRef = useRef(0);
+
   const fetchSchema = useCallback(async () => {
+    epochRef.current += 1;
+    const epoch = epochRef.current;
+    const superseded = () => epochRef.current !== epoch;
+
     if (!sourceName) {
       setTables([]);
       setTableColumns({});
@@ -46,6 +58,7 @@ export const useSourceSchema = (sourceName, options = {}) => {
       // autocomplete worked at all. Every column was fetched either way, so
       // there was nothing to be gained by asking for them separately.
       const envelope = await fetchSourceSchema(sourceName, runId, projectId);
+      if (superseded()) return;
       const fetchedTables = tablesFromEnvelope(envelope);
       setTables(fetchedTables);
 
@@ -55,11 +68,12 @@ export const useSourceSchema = (sourceName, options = {}) => {
       }
       setTableColumns(columnsMap);
     } catch (err) {
+      if (superseded()) return;
       setError(err.message);
       setTables([]);
       setTableColumns({});
     } finally {
-      setIsLoading(false);
+      if (!superseded()) setIsLoading(false);
     }
   }, [sourceName, runId, projectId]);
 
