@@ -8,8 +8,6 @@ import {
   generateSourceSchema,
   fetchSchemaGenerationStatus,
   fetchOrGenerateSchema,
-  fetchSourceTables,
-  fetchTableColumns,
   tablesFromEnvelope,
   columnsFromEnvelope,
 } from './sourceSchemaJobs';
@@ -139,54 +137,6 @@ describe('fetchOrGenerateSchema', () => {
       .mockResolvedValueOnce(ok({ run_id: 'r1' })) // generateSourceSchema
       .mockResolvedValueOnce(ok({ status: 'failed', error: 'introspection blew up' })); // status poll
     await expect(fetchOrGenerateSchema('src')).rejects.toThrow('introspection blew up');
-  });
-});
-
-describe('fetchSourceTables', () => {
-  it('returns [] when unavailable', async () => {
-    isAvailable.mockReturnValue(false);
-    await expect(fetchSourceTables('src')).resolves.toEqual([]);
-  });
-
-  it('appends search + run_id, returns json on 200', async () => {
-    apiFetch.mockResolvedValueOnce(ok([{ name: 't1' }]));
-    await expect(fetchSourceTables('src', { search: 'ord', runId: 'main' })).resolves.toEqual([
-      { name: 't1' },
-    ]);
-    const url = apiFetch.mock.calls[0][0];
-    expect(url).toContain('search=ord');
-    expect(url).toContain('run_id=main');
-  });
-
-  it('returns [] on 404 and throws on other errors', async () => {
-    apiFetch.mockResolvedValueOnce(fail(404));
-    await expect(fetchSourceTables('src')).resolves.toEqual([]);
-    apiFetch.mockResolvedValueOnce(fail(500));
-    await expect(fetchSourceTables('src')).rejects.toThrow(/Loading tables for 'src' failed/);
-  });
-});
-
-describe('fetchTableColumns', () => {
-  it('returns [] when unavailable', async () => {
-    isAvailable.mockReturnValue(false);
-    await expect(fetchTableColumns('src', 't1')).resolves.toEqual([]);
-  });
-
-  it('returns json on 200 and [] on 404', async () => {
-    apiFetch.mockResolvedValueOnce(ok([{ name: 'col' }]));
-    await expect(fetchTableColumns('src', 't1', { search: 'id' })).resolves.toEqual([
-      { name: 'col' },
-    ]);
-    expect(apiFetch.mock.calls[0][0]).toContain('search=id');
-    apiFetch.mockResolvedValueOnce(fail(404));
-    await expect(fetchTableColumns('src', 't1')).resolves.toEqual([]);
-  });
-
-  it('throws on a non-404 error', async () => {
-    apiFetch.mockResolvedValueOnce(fail(500, { message: 'bad table' }));
-    await expect(fetchTableColumns('src', 't1')).rejects.toThrow(
-      /Loading columns for 'src\.t1' failed \(500\): bad table/
-    );
   });
 });
 
