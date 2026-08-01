@@ -3,6 +3,7 @@ Schema aggregation utilities for storing SQLGlot schemas from sources.
 """
 
 import os
+from pathlib import Path
 import json
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -36,7 +37,7 @@ class SchemaAggregator:
             run_id: Run identifier for schema storage location
         """
         try:
-            schema_dir = f"{output_dir}/{run_id}/schemas/{source_name}"
+            schema_dir = f"{output_dir}/{run_id}/schemas"
             os.makedirs(schema_dir, exist_ok=True)
 
             # Prepare schema data for storage
@@ -72,7 +73,7 @@ class SchemaAggregator:
             storage_data["metadata"]["total_columns"] = total_columns
 
             # Write to file
-            schema_file = f"{schema_dir}/schema.json"
+            schema_file = f"{schema_dir}/{source_name}.json"
             with open(schema_file, "w") as fp:
                 json.dump(storage_data, fp, indent=2, default=str)
 
@@ -212,7 +213,7 @@ class SchemaAggregator:
             Schema data dictionary or None if not found
         """
         try:
-            schema_file = f"{output_dir}/{run_id}/schemas/{source_name}/schema.json"
+            schema_file = f"{output_dir}/{run_id}/schemas/{source_name}.json"
             if not os.path.exists(schema_file):
                 return None
 
@@ -328,29 +329,37 @@ class SchemaAggregator:
             return schemas
 
         try:
-            for source_name in os.listdir(schemas_dir):
-                source_dir = os.path.join(schemas_dir, source_name)
-                if os.path.isdir(source_dir):
-                    schema_file = os.path.join(source_dir, "schema.json")
-                    if os.path.exists(schema_file):
-                        try:
-                            with open(schema_file, "r") as fp:
-                                schema_data = json.load(fp)
-                                schemas.append(
-                                    {
-                                        "source_name": schema_data.get("source_name", source_name),
-                                        "source_type": schema_data.get("source_type", "unknown"),
-                                        "generated_at": schema_data.get("generated_at"),
-                                        "total_tables": schema_data.get("metadata", {}).get(
-                                            "total_tables", 0
-                                        ),
-                                        "total_columns": schema_data.get("metadata", {}).get(
-                                            "total_columns", 0
-                                        ),
-                                    }
-                                )
-                        except Exception as e:
-                            Logger.instance().debug(f"Error reading schema file {schema_file}: {e}")
+            for entry in os.listdir(schemas_dir):
+                # The old layout used a directory per name, so `os.path.isdir`
+                # was the de-facto "is this a schema" filter. With flat files
+                # the extension has to do that job instead.
+                if not entry.endswith(".json"):
+                    continue
+                schema_file = os.path.join(schemas_dir, entry)
+                if not os.path.isfile(schema_file):
+                    continue
+
+                # The name fallback moves from the directory name to the stem.
+                # `Path.stem` strips only the final `.json`, so a source name
+                # containing a dot round-trips.
+                source_name = Path(entry).stem
+                try:
+                    with open(schema_file, "r") as fp:
+                        schema_data = json.load(fp)
+                except Exception as e:
+                    Logger.instance().debug(f"Error reading schema file {schema_file}: {e}")
+                    continue
+
+                metadata = schema_data.get("metadata", {})
+                schemas.append(
+                    {
+                        "source_name": schema_data.get("source_name", source_name),
+                        "source_type": schema_data.get("source_type", "unknown"),
+                        "generated_at": schema_data.get("generated_at"),
+                        "total_tables": metadata.get("total_tables", 0),
+                        "total_columns": metadata.get("total_columns", 0),
+                    }
+                )
 
         except Exception as e:
             Logger.instance().debug(f"Error listing schemas: {e}")

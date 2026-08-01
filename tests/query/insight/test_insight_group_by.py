@@ -28,9 +28,9 @@ def build_sql(tmpdir):
             name="p", sources=[source], models=[model], insights=[insight], dashboards=[]
         )
         dag = project.dag()
-        schema_dir = os.path.join(str(tmpdir), "schemas", model.name)
+        schema_dir = os.path.join(str(tmpdir), "schemas")
         os.makedirs(schema_dir, exist_ok=True)
-        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        with open(os.path.join(schema_dir, f"{model.name}.json"), "w") as f:
             json.dump({model.name_hash(): schema}, f)
         from visivo.query.insight.insight_query_builder import InsightQueryBuilder
 

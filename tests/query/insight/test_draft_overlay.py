@@ -57,9 +57,9 @@ class TestBuildDraftOverlayHappyPath:
     def test_the_overlay_resolves_against_an_already_published_model(self, flask_app, tmp_path):
         _, dag, insight = build_draft_overlay(flask_app, insight_config())
         model_node = dag.get_descendant_by_name("orders_q")
-        schema_dir = tmp_path / "schemas" / "orders_q"
+        schema_dir = tmp_path / "schemas"
         schema_dir.mkdir(parents=True)
-        (schema_dir / "schema.json").write_text(
+        (schema_dir / "orders_q.json").write_text(
             json.dumps({model_node.name_hash(): {"region": "VARCHAR", "amount": "DOUBLE"}})
         )
         query_info = insight.get_query_info(dag, str(tmp_path), force_dynamic=True)

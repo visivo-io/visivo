@@ -92,8 +92,7 @@ class TestSchemaFileCorrupted:
         # Create schema directory but with invalid JSON
         schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_file.write("{ invalid json content ")
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
@@ -125,8 +124,7 @@ class TestSchemaFileCorrupted:
 
         # Create empty schema file
         schema_base = tmpdir.mkdir("schemas")
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_file.write("{}")
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
@@ -155,8 +153,7 @@ class TestSchemaFieldMissing:
         # Create schema with specific columns
         schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
 
@@ -247,8 +244,7 @@ class TestResolutionStackTracking:
         # Create schema
         schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_data = {model_hash: {"id": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
 
@@ -283,8 +279,7 @@ class TestCacheInvalidation:
         # Create schema
         schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
 
@@ -321,8 +316,7 @@ class TestCacheInvalidation:
         # Create schema
         schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_data = {model_hash: {"id": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
 
@@ -356,8 +350,7 @@ class TestDialectHandling:
         # Create schema
         schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_data = {model_hash: {"id": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
 

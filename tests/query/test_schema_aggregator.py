@@ -336,9 +336,7 @@ class TestSchemaAggregatorRunId:
             run_id="test-run-id",
         )
 
-        expected_path = os.path.join(
-            temp_dir, "test-run-id", "schemas", "test_source", "schema.json"
-        )
+        expected_path = os.path.join(temp_dir, "test-run-id", "schemas", "test_source.json")
         assert os.path.exists(expected_path)
 
     def test_aggregate_default_run_id(self, temp_dir):
@@ -356,9 +354,7 @@ class TestSchemaAggregatorRunId:
             output_dir=temp_dir,
         )
 
-        expected_path = os.path.join(
-            temp_dir, DEFAULT_RUN_ID, "schemas", "test_source", "schema.json"
-        )
+        expected_path = os.path.join(temp_dir, DEFAULT_RUN_ID, "schemas", "test_source.json")
         assert os.path.exists(expected_path)
 
     def test_load_from_specific_run_id(self, temp_dir):

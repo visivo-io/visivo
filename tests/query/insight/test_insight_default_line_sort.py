@@ -24,9 +24,9 @@ from tests.factories.model_factories import SourceFactory
 @pytest.fixture
 def create_schema_file(tmpdir):
     def _create_schema(model, output_dir):
-        schema_dir = os.path.join(output_dir, "schemas", model.name)
+        schema_dir = os.path.join(output_dir, "schemas")
         os.makedirs(schema_dir, exist_ok=True)
-        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        with open(os.path.join(schema_dir, f"{model.name}.json"), "w") as f:
             json.dump({model.name_hash(): {"x": "INTEGER", "y": "INTEGER"}}, f)
 
     return _create_schema

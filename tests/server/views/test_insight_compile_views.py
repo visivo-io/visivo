@@ -57,9 +57,9 @@ def insight_payload(name="draft_insight", model_name="orders_q"):
 
 
 def write_schema(tmp_path, model_name, model_hash, columns):
-    schema_dir = tmp_path / "main" / "schemas" / model_name
+    schema_dir = tmp_path / "main" / "schemas"
     schema_dir.mkdir(parents=True)
-    (schema_dir / "schema.json").write_text(json.dumps({model_hash: columns}))
+    (schema_dir / f"{model_name}.json").write_text(json.dumps({model_hash: columns}))
 
 
 class TestCompileDraftHappyPath:
