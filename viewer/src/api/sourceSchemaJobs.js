@@ -1,5 +1,4 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
-import { pollJob } from './jobs';
 import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
 
@@ -147,55 +146,6 @@ export const fetchSchemaGenerationStatus = async (runId, projectId = null) => {
   }
 
   return response.json();
-};
-
-/**
- * Fetch or generate schema with automatic polling
- * Returns cached schema if available, otherwise triggers generation and polls for completion
- * @param {string} sourceName - Name of the source
- * @param {Object} options - Options for generation
- * @param {number} options.pollInterval - Polling interval in ms (default: 1000)
- * @param {number} options.maxWaitTime - Maximum wait time in ms (default: 120000)
- * @param {function} options.onProgress - Progress callback (status, progress, message)
- * @param {string} options.runId - Optional run_id to fetch from specific version
- * @returns {Promise<Object>} Schema data
- */
-export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
-  const { pollInterval = 1000, maxWaitTime = 120000, onProgress, runId = null, projectId = null } =
-    options;
-
-  // First try to get cached schema
-  const cachedSchema = await fetchSourceSchema(sourceName, runId, projectId);
-  if (cachedSchema) {
-    if (onProgress) {
-      onProgress('completed', 1.0, 'Using cached schema');
-    }
-    return cachedSchema;
-  }
-
-  // No cached schema, trigger generation
-  if (onProgress) {
-    onProgress('running', 0.0, 'Starting schema generation');
-  }
-
-  const { run_id: jobRunId } = await generateSourceSchema(sourceName, projectId);
-
-  // The poll loop itself lives in api/jobs.js, shared with every other
-  // on-demand op. This keeps the throwing signature callers expect.
-  const outcome = await pollJob(() => fetchSchemaGenerationStatus(jobRunId, projectId), {
-    intervalMs: pollInterval,
-    timeoutMs: maxWaitTime,
-    onProgress: job =>
-      onProgress?.(job.status, job.progress || 0, job.progress_message || ''),
-  });
-  if (!outcome.ok) throw new Error(outcome.error);
-
-  // Fetch the generated schema from the preview run_id
-  const schema = await fetchSourceSchema(sourceName, `preview-${sourceName}`, projectId);
-  if (!schema) {
-    throw new Error('Schema generation completed but schema not found');
-  }
-  return schema;
 };
 
 // ---------------------------------------------------------------------------

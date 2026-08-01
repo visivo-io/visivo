@@ -1,8 +1,8 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useModelColumns } from './useModelColumns';
-import { fetchModelColumnNames } from '../../../../api/modelSchemaJobs';
+import { fetchModelColumnNames } from '../../../../api/modelSchema';
 
-jest.mock('../../../../api/modelSchemaJobs');
+jest.mock('../../../../api/modelSchema');
 
 describe('useModelColumns', () => {
   beforeEach(() => {
@@ -22,8 +22,8 @@ describe('useModelColumns', () => {
     expect(result.current.columnsByModel.users).toEqual(['id', 'email']);
     // The project id rides along so cloud can scope the request; unset in
     // this test's store, which is what an unscoped local server sends too.
-    expect(fetchModelColumnNames).toHaveBeenCalledWith('orders', undefined);
-    expect(fetchModelColumnNames).toHaveBeenCalledWith('users', undefined);
+    expect(fetchModelColumnNames).toHaveBeenCalledWith('orders', { projectId: undefined });
+    expect(fetchModelColumnNames).toHaveBeenCalledWith('users', { projectId: undefined });
     // Schema had columns → data fallback never invoked.
   });
 
