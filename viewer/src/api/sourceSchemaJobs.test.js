@@ -10,6 +10,8 @@ import {
   fetchOrGenerateSchema,
   fetchSourceTables,
   fetchTableColumns,
+  tablesFromEnvelope,
+  columnsFromEnvelope,
 } from './sourceSchemaJobs';
 import { apiFetch } from './utils';
 import { isAvailable } from '../contexts/URLContext';
@@ -185,5 +187,61 @@ describe('fetchTableColumns', () => {
     await expect(fetchTableColumns('src', 't1')).rejects.toThrow(
       /Loading columns for 'src\.t1' failed \(500\): bad table/
     );
+  });
+});
+
+// The envelope slicers. These have to reproduce the server's shapes exactly —
+// they exist so a caller that needs every column can fetch once and slice
+// locally instead of paying 1 + N requests, and that only works if the sliced
+// result is indistinguishable from what the endpoints return.
+describe('tablesFromEnvelope / columnsFromEnvelope', () => {
+  const envelope = {
+    tables: {
+      users: { columns: { id: { type: 'INTEGER', nullable: false } }, metadata: { rows: 9 } },
+      orders: {
+        columns: {
+          id: { type: 'INTEGER', nullable: false },
+          amount: { type: 'DOUBLE' },
+        },
+      },
+    },
+  };
+
+  it('matches the /tables/ shape: name, column_count, metadata', () => {
+    expect(tablesFromEnvelope(envelope)).toEqual([
+      { name: 'orders', column_count: 2, metadata: {} },
+      { name: 'users', column_count: 1, metadata: { rows: 9 } },
+    ]);
+  });
+
+  it('matches the /columns/ shape, defaulting nullable to true like the server', () => {
+    expect(columnsFromEnvelope(envelope, 'orders')).toEqual([
+      { name: 'amount', type: 'DOUBLE', nullable: true },
+      { name: 'id', type: 'INTEGER', nullable: false },
+    ]);
+  });
+
+  it('sorts by name, as the endpoints do', () => {
+    expect(tablesFromEnvelope(envelope).map(t => t.name)).toEqual(['orders', 'users']);
+    expect(columnsFromEnvelope(envelope, 'orders').map(c => c.name)).toEqual(['amount', 'id']);
+  });
+
+  it('filters on search, case-insensitively', () => {
+    expect(tablesFromEnvelope(envelope, { search: 'ORD' }).map(t => t.name)).toEqual(['orders']);
+    expect(
+      columnsFromEnvelope(envelope, 'orders', { search: 'amo' }).map(c => c.name)
+    ).toEqual(['amount']);
+  });
+
+  it('returns [] for an unknown table, the same answer the endpoint gives', () => {
+    expect(columnsFromEnvelope(envelope, 'nope')).toEqual([]);
+  });
+
+  it('survives a missing or malformed envelope rather than throwing', () => {
+    for (const bad of [null, undefined, {}, { tables: null }]) {
+      expect(tablesFromEnvelope(bad)).toEqual([]);
+      expect(columnsFromEnvelope(bad, 'orders')).toEqual([]);
+    }
+    expect(columnsFromEnvelope({ tables: { t: {} } }, 't')).toEqual([]);
   });
 });

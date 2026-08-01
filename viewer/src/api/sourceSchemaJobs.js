@@ -290,3 +290,52 @@ export const fetchTableColumns = async (sourceName, tableName, { search = '', ru
 
   return response.json();
 };
+
+// ---------------------------------------------------------------------------
+// Deriving the sliced shapes from a whole envelope
+//
+// `fetchSourceSchema` returns the entire stored envelope, which already
+// contains everything the `/tables/` and `/tables/<t>/columns/` endpoints
+// return — those endpoints load the same record and throw most of it away.
+//
+// A caller that needs EVERY column (the ERD, SQL autocomplete) is therefore
+// strictly better off fetching once and slicing here: one request instead of
+// 1 + N. The tree browser still uses the endpoints, because it shows a few of
+// many tables and a wide warehouse envelope is ~840KB at 300 tables.
+//
+// These reproduce the server's shapes exactly, so a caller can be repointed
+// without changing how it reads the result.
+// ---------------------------------------------------------------------------
+
+/** `[{name, column_count, metadata}]`, matching `GET .../<name>/tables/`. */
+export const tablesFromEnvelope = (envelope, { search = '' } = {}) => {
+  const tables = (envelope || {}).tables || {};
+  const needle = (search || '').trim().toLowerCase();
+  return Object.entries(tables)
+    .filter(([name]) => !needle || name.toLowerCase().includes(needle))
+    .map(([name, table]) => ({
+      name,
+      column_count: Object.keys((table || {}).columns || {}).length,
+      metadata: (table || {}).metadata || {},
+    }))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+};
+
+/**
+ * `[{name, type, nullable}]` for one table, matching
+ * `GET .../<name>/tables/<table>/columns/`. Unknown table -> `[]`, the same
+ * answer the endpoint gives.
+ */
+export const columnsFromEnvelope = (envelope, tableName, { search = '' } = {}) => {
+  const table = ((envelope || {}).tables || {})[tableName] || {};
+  const columns = table.columns || {};
+  const needle = (search || '').trim().toLowerCase();
+  return Object.entries(columns)
+    .filter(([name]) => !needle || name.toLowerCase().includes(needle))
+    .map(([name, meta]) => ({
+      name,
+      type: (meta || {}).type,
+      nullable: (meta || {}).nullable ?? true,
+    }))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+};

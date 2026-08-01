@@ -6,8 +6,9 @@ import { PiGraph } from 'react-icons/pi';
 import { isAvailable } from '../../../../contexts/URLContext';
 import {
   fetchSourceSchemaJobs,
-  fetchSourceTables,
-  fetchTableColumns,
+  fetchSourceSchema,
+  tablesFromEnvelope,
+  columnsFromEnvelope,
 } from '../../../../api/sourceSchemaJobs';
 import { getTypeColors } from '../../common/objectTypeConfigs';
 import { computeLayout } from '../../lineage/useLineageDag';
@@ -98,26 +99,20 @@ const SourceErdCanvas = ({ activeObject }) => {
           return;
         }
 
-        // Load the flat cached tables, then each table's columns. Shape them into
-        // the `{ databases: [{ name, tables }] }` entry useSourceErdDag flattens.
-        const tables = await fetchSourceTables(sourceName, { projectId: projectId });
+        // One request for the whole envelope, then slice locally into the
+        // `{ databases: [{ name, tables }] }` entry useSourceErdDag flattens.
+        // The ERD needs every column to draw its nodes, so it was already
+        // fetching all of them — just as 1 + N requests via Promise.all rather
+        // than one. Nothing is fetched now that wasn't fetched before.
+        const envelope = await fetchSourceSchema(sourceName, null, projectId);
         if (cancelledRef.current) return;
-        const tableEntries = await Promise.all(
-          (tables || []).map(async t => {
-            const name = typeof t === 'string' ? t : t.name;
-            let columns = [];
-            try {
-              const cols = await fetchTableColumns(sourceName, name, { projectId: projectId });
-              columns = (cols || []).map(c =>
-                typeof c === 'string' ? { name: c } : { name: c.name, type: c.type }
-              );
-            } catch {
-              columns = [];
-            }
-            return { name, columns };
-          })
-        );
-        if (cancelledRef.current) return;
+        const tableEntries = tablesFromEnvelope(envelope).map(t => ({
+          name: t.name,
+          columns: columnsFromEnvelope(envelope, t.name).map(c => ({
+            name: c.name,
+            type: c.type,
+          })),
+        }));
         // Single pseudo-database named after the source — the cached feed is flat
         // (no db/schema layer), matching how useSourceOutline renders it.
         setEntry({
