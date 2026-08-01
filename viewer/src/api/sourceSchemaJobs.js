@@ -66,7 +66,10 @@ export const fetchSourceSchema = async (sourceName, runId = null, projectId = nu
     return null;
   }
 
-  let url = withProjectId(getUrl('sourceSchemaJobDetail', { name: sourceName }), projectId);
+  let url = withProjectId(
+    getUrl('sourceSchemaJobDetail', { identifier: sourceName }),
+    projectId
+  );
   if (runId) {
     url += `?run_id=${encodeURIComponent(runId)}`;
   }
@@ -92,11 +95,12 @@ export const fetchSourceSchema = async (sourceName, runId = null, projectId = nu
  * @returns {Promise<Object>} Object containing run_id
  */
 export const generateSourceSchema = async (sourceName, projectId = null) => {
-  if (!isAvailable('sourceSchemaJobCreate')) {
+  if (!isAvailable('sourceSchemaJobsList')) {
     throw new Error('Schema generation not available in this environment');
   }
 
-  const url = withProjectId(getUrl('sourceSchemaJobCreate'), projectId);
+  // POST to the collection — same path the list GET uses.
+  const url = withProjectId(getUrl('sourceSchemaJobsList'), projectId);
   const response = await fetchWithContext(
     url,
     {
@@ -128,11 +132,13 @@ export const generateSourceSchema = async (sourceName, projectId = null) => {
  * @returns {Promise<Object>} Run status object
  */
 export const fetchSchemaGenerationStatus = async (runId, projectId = null) => {
-  if (!isAvailable('sourceSchemaJobStatus')) {
+  if (!isAvailable('sourceSchemaJobDetail')) {
     throw new Error('Schema generation status not available in this environment');
   }
 
-  const url = withProjectId(getUrl('sourceSchemaJobStatus', { runId }), projectId);
+  // Same route as fetchSourceSchema: the server's detail segment is an
+  // `<identifier>` that accepts either a source name or a run id.
+  const url = withProjectId(getUrl('sourceSchemaJobDetail', { identifier: runId }), projectId);
   const response = await fetchWithContext(url, undefined, 'Checking schema generation status');
 
   if (!response.ok) {
@@ -190,105 +196,6 @@ export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
     throw new Error('Schema generation completed but schema not found');
   }
   return schema;
-};
-
-/**
- * Fetch list of tables for a source
- * @param {string} sourceName - Name of the source
- * @param {Object} options - Options object
- * @param {string} options.search - Optional search string to filter tables
- * @param {string} options.runId - Optional run_id to fetch from specific version
- * @returns {Promise<Object[]>} Array of table objects
- */
-export const fetchSourceTables = async (sourceName, { search = '', runId = null, projectId = null } = {}) => {
-  if (!isAvailable('sourceSchemaJobTables')) {
-    console.warn('Source schema tables endpoint not available in this environment');
-    return [];
-  }
-
-  let url = getUrl('sourceSchemaJobTables', { name: sourceName });
-  const params = new URLSearchParams();
-  if (search) {
-    params.append('search', search);
-  }
-  if (runId) {
-    params.append('run_id', runId);
-  }
-  if (projectId) {
-    params.append('project_id', projectId);
-  }
-  if (params.toString()) {
-    url += `?${params.toString()}`;
-  }
-
-  const response = await fetchWithContext(
-    url,
-    undefined,
-    `Loading tables for '${sourceName}'`
-  );
-
-  if (response.status === 404) {
-    return [];
-  }
-
-  if (!response.ok) {
-    const errorDetail = await parseErrorResponse(response);
-    throw new Error(
-      `Loading tables for '${sourceName}' failed (${response.status}): ${errorDetail}`
-    );
-  }
-
-  return response.json();
-};
-
-/**
- * Fetch columns for a table in a source
- * @param {string} sourceName - Name of the source
- * @param {string} tableName - Name of the table
- * @param {Object} options - Options object
- * @param {string} options.search - Optional search string to filter columns
- * @param {string} options.runId - Optional run_id to fetch from specific version
- * @returns {Promise<Object[]>} Array of column objects
- */
-export const fetchTableColumns = async (sourceName, tableName, { search = '', runId = null, projectId = null } = {}) => {
-  if (!isAvailable('sourceSchemaJobColumns')) {
-    console.warn('Source schema columns endpoint not available in this environment');
-    return [];
-  }
-
-  let url = getUrl('sourceSchemaJobColumns', { name: sourceName, table: tableName });
-  const params = new URLSearchParams();
-  if (search) {
-    params.append('search', search);
-  }
-  if (runId) {
-    params.append('run_id', runId);
-  }
-  if (projectId) {
-    params.append('project_id', projectId);
-  }
-  if (params.toString()) {
-    url += `?${params.toString()}`;
-  }
-
-  const response = await fetchWithContext(
-    url,
-    undefined,
-    `Loading columns for '${sourceName}.${tableName}'`
-  );
-
-  if (response.status === 404) {
-    return [];
-  }
-
-  if (!response.ok) {
-    const errorDetail = await parseErrorResponse(response);
-    throw new Error(
-      `Loading columns for '${sourceName}.${tableName}' failed (${response.status}): ${errorDetail}`
-    );
-  }
-
-  return response.json();
 };
 
 // ---------------------------------------------------------------------------

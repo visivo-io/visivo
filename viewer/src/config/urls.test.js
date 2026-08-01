@@ -26,9 +26,16 @@ describe('URLConfig.getUrl — server environment', () => {
     );
   });
 
-  test('interpolates multiple distinct parameters', () => {
-    expect(config.getUrl('sourceSchemaJobColumns', { name: 'pg', table: 'orders' })).toBe(
-      '/api/source-schema-jobs/pg/tables/orders/columns/'
+  test('the source-schema detail route takes a source name OR a run id', () => {
+    // One server route (`<identifier>`), so one key. It used to be two —
+    // `sourceSchemaJobDetail` with {name} and `sourceSchemaJobStatus` with
+    // {runId} — which read as two endpoints and hid that polling a generation
+    // run and reading a cached schema hit the same place.
+    expect(config.getUrl('sourceSchemaJobDetail', { identifier: 'pg' })).toBe(
+      '/api/source-schema-jobs/pg/'
+    );
+    expect(config.getUrl('sourceSchemaJobDetail', { identifier: 'preview-pg' })).toBe(
+      '/api/source-schema-jobs/preview-pg/'
     );
   });
 
@@ -57,6 +64,20 @@ describe('URLConfig.getUrl — dist environment', () => {
     expect(() => config.getUrl('commit')).toThrow(
       "URL key 'commit' is not available in 'dist' environment"
     );
+  });
+
+  test('every server endpoint is known to dist, so none can be forgotten', () => {
+    // dist derives its keys from server rather than listing ~70 explicit
+    // nulls. That makes a new server endpoint unavailable-by-default instead
+    // of *unknown* in dist — the difference between "not available in 'dist'"
+    // and a confusing "Unknown URL key", and one fewer list to keep in sync.
+    const serverConfig = createURLConfig({ environment: 'server' });
+    const serverKeys = ['projectRun', 'runLogs', 'expressionsTranslate', 'sourcesList'];
+    for (const key of serverKeys) {
+      expect(serverConfig.isAvailable(key)).toBe(true);
+      expect(config.isAvailable(key)).toBe(false);
+      expect(() => config.getUrl(key)).toThrow(`not available in 'dist' environment`);
+    }
   });
 });
 
