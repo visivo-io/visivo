@@ -1,0 +1,83 @@
+{
+  "_comment": [
+    "Golden cases for model output-column inference — the CROSS-REPO contract.",
+    "",
+    "visivo and core each implement this independently: visivo in",
+    "visivo/query/model_schema_inference.py, core in",
+    "api/apps/deploys/services/sqlglot_utils.py. Core cannot import visivo (only",
+    "the runner image ships it; pulling it into the Django web image would drag",
+    "every warehouse driver along), so the logic exists twice on purpose.",
+    "",
+    "This file is the single source of truth that keeps them honest. visivo's",
+    "tests/contracts/test_model_schema_inference_contract.py and core's",
+    "apps/deploys/tests/test_model_schema_contract.py both read THIS file and",
+    "assert the same answers. Core locates it via a sibling ../visivo checkout,",
+    "which is how its CI already vendors the viewer.",
+    "",
+    "Add a case here when you change inference in either repo."
+  ],
+  "cases": [
+    {
+      "name": "named columns resolve their types from the source schema",
+      "dialect": "postgres",
+      "sql": "SELECT id, amount FROM orders",
+      "sqlglot_schema": {
+        "orders": { "id": "INT", "amount": "DECIMAL", "region": "VARCHAR" }
+      },
+      "expected": { "id": "INT", "amount": "DECIMAL" }
+    },
+    {
+      "name": "star expands from the source schema",
+      "dialect": "postgres",
+      "sql": "SELECT * FROM orders",
+      "sqlglot_schema": {
+        "orders": { "id": "INT", "amount": "DECIMAL", "region": "VARCHAR" }
+      },
+      "expected": { "id": "INT", "amount": "DECIMAL", "region": "VARCHAR" }
+    },
+    {
+      "name": "aliases are the output names",
+      "dialect": "postgres",
+      "sql": "SELECT id AS order_id, amount AS total FROM orders",
+      "sqlglot_schema": { "orders": { "id": "INT", "amount": "DECIMAL" } },
+      "expected": { "order_id": "INT", "total": "DECIMAL" }
+    },
+    {
+      "name": "an unknown table resolves nothing, and is not an error",
+      "dialect": "postgres",
+      "sql": "SELECT * FROM never_introspected",
+      "sqlglot_schema": { "orders": { "id": "INT" } },
+      "expected": {}
+    },
+    {
+      "name": "unparseable SQL resolves nothing, and is not an error",
+      "dialect": "postgres",
+      "sql": "SELECT FROM WHERE ((",
+      "sqlglot_schema": { "orders": { "id": "INT" } },
+      "expected": {}
+    },
+    {
+      "name": "no cached source schema still resolves literal projections",
+      "dialect": "postgres",
+      "sql": "SELECT 1 AS one",
+      "sqlglot_schema": {},
+      "expected": { "one": "INT" }
+    },
+    {
+      "name": "a nested schema block (source with named schemas) resolves",
+      "dialect": "snowflake",
+      "sql": "SELECT col1 FROM EDW.fact_order",
+      "sqlglot_schema": {
+        "EDW": { "fact_order": { "col1": "INT", "col2": "VARCHAR" } }
+      },
+      "expected": { "col1": "INT" }
+    },
+    {
+      "name": "SQL comments do not break column resolution",
+      "dialect": "postgres",
+      "sql": "SELECT id /* the key */, amount FROM orders",
+      "sqlglot_schema": { "orders": { "id": "INT", "amount": "DECIMAL" } },
+      "expected": { "id": "INT", "amount": "DECIMAL" }
+    }
+  ]
+}

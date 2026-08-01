@@ -85,6 +85,9 @@ def register_model_schema_views(app, flask_app, output_dir):
             sqlglot_dialect=source.get_sqlglot_dialect(),
             model_hash=model_hash,
             stored_source_schema=stored_source_schema,
+            # The editor asks on every keystroke; half-written SQL is normal.
+            # A parse failure is "nothing resolved yet", not a 500.
+            strict=False,
         )
         return jsonify(
             {

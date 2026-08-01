@@ -74,8 +74,9 @@ def infer_model_columns(
     sqlglot_dialect: str,
     model_hash: str,
     stored_source_schema: Optional[Dict[str, Any]] = None,
+    strict: bool = True,
 ) -> Dict[str, Any]:
-    """Infer the output columns of ``sql`` as ``{column_name: DataType}``.
+    """Infer the output columns of ``sql`` as ``{column_name: type_name}``.
 
     Args:
         sql: The model's SQL.
@@ -86,6 +87,16 @@ def infer_model_columns(
             ``sqlglot_schema`` and ``metadata``). ``None`` or a missing block is
             valid and simply means fewer columns can be resolved, not a failure
             — a query that names its columns literally still annotates fine.
+        strict: Whether SQL that will not parse is an error.
+
+            ``True`` (the run): raise. A model whose SQL does not parse is a
+            broken model, and the run has to say so rather than persist an
+            empty schema that later reads as "this model has no columns".
+
+            ``False`` (the endpoints): return ``{}``. The editor asks on every
+            keystroke, so half-written SQL is the normal state — "nothing
+            resolved yet", not a server error. This is also what core's
+            reimplementation does unconditionally, since it has no run path.
 
     Returns:
         ``{column_name: type_name}``, where the type is SQLGlot's type *name*
@@ -101,13 +112,19 @@ def infer_model_columns(
         f"Inferring columns against {len(schema)} schema entries, default: {default_schema}"
     )
 
-    query_result_schema = schema_from_sql(
-        sqlglot_dialect=sqlglot_dialect,
-        sql=sql,
-        schema=schema,
-        model_hash=model_hash,
-        default_schema=default_schema,
-    )
+    try:
+        query_result_schema = schema_from_sql(
+            sqlglot_dialect=sqlglot_dialect,
+            sql=sql,
+            schema=schema,
+            model_hash=model_hash,
+            default_schema=default_schema,
+        )
+    except Exception:
+        if strict:
+            raise
+        Logger.instance().debug("Inference could not resolve the SQL; returning no columns")
+        return {}
     columns = query_result_schema.get(model_hash, {})
 
     # A surviving `*` means qualify could not expand it — the cached schema has
