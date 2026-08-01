@@ -70,28 +70,28 @@ class TestFlaskSourceEndpoints:
             time.sleep(0.01)
         raise AssertionError(f"job {job_id} never reached a terminal state")
 
-    def test_test_connection_success(self):
-        """Test GET /api/project/sources/<name>/test-connection."""
-        with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
-            mock_test.return_value = {"source": "test_source", "status": "connected"}
+    def test_endpoint_paths_with_special_characters(self):
+        """Path params survive dashes, underscores and dots.
 
-            response = self.client.get("/api/project/sources/test_source/test-connection/")
+        Was written against the source test-connection route, which is gone
+        (nothing called it). The property belongs to the URL converter, not to
+        that endpoint, so it moved to the sibling that still has a {name}
+        segment rather than being deleted with the route.
+        """
+        special_names = [
+            "source-with-dash",
+            "source_with_underscore",
+            "source.with.dot",
+        ]
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["status"] == "connected"
-            mock_test.assert_called_once_with(self.sources_list, "test_source")
+        for source_name in special_names:
+            with patch("visivo.server.views.sources_views.get_source_databases") as mock_get_dbs:
+                mock_get_dbs.return_value = {"source": source_name, "databases": []}
 
-    def test_test_connection_not_found(self):
-        """Test connection test for non-existent source."""
-        with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
-            mock_test.return_value = ({"error": "Source 'bad_source' not found"}, 404)
+                response = self.client.get(f"/api/project/sources/{source_name}/databases/")
 
-            response = self.client.get("/api/project/sources/bad_source/test-connection/")
-
-            assert response.status_code == 404
-            data = json.loads(response.data)
-            assert "not found" in data["error"]
+                assert response.status_code == 200
+                mock_get_dbs.assert_called_with(self.sources_list, source_name)
 
     def test_list_source_databases_success(self):
         """Test GET /api/project/sources/<name>/databases."""
@@ -389,7 +389,6 @@ class TestFlaskSourceEndpoints:
         """Test that all endpoints handle tuple error responses correctly."""
         # Test each endpoint that checks for tuple responses
         endpoints_and_mocks = [
-            ("/api/project/sources/test/test-connection/", "check_source_connection"),
             ("/api/project/sources/test/databases/", "get_source_databases"),
             ("/api/project/sources/test/databases/db/schemas/", "get_database_schemas"),
             ("/api/project/sources/test/databases/db/tables/", "get_schema_tables"),
@@ -405,23 +404,6 @@ class TestFlaskSourceEndpoints:
                 assert response.status_code == 400
                 data = json.loads(response.data)
                 assert data["error"] == "Custom error"
-
-    def test_endpoint_paths_with_special_characters(self):
-        """Test endpoints handle special characters in path parameters."""
-        special_names = [
-            "source-with-dash",
-            "source_with_underscore",
-            "source.with.dot",
-        ]
-
-        for source_name in special_names:
-            with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
-                mock_test.return_value = {"source": source_name, "status": "connected"}
-
-                response = self.client.get(f"/api/project/sources/{source_name}/test-connection/")
-
-                assert response.status_code == 200
-                mock_test.assert_called_with(self.sources_list, source_name)
 
     def test_multiple_path_parameters(self):
         """Test endpoints with multiple path parameters."""

@@ -69,15 +69,6 @@ def _test_source_connection(source: Source, source_name: str) -> Dict[str, Any]:
         return {"source": source_name, "status": "connection_failed", "error": str(e)}
 
 
-def check_source_connection(sources, source_name):
-    """Test connection to a specific source."""
-    src = _find_source(sources, source_name)
-    if not src:
-        return _source_not_found_error(source_name)
-
-    return _test_source_connection(src, source_name)
-
-
 def get_source_databases(sources, source_name):
     """Return list of databases for a specific source."""
     src = _find_source(sources, source_name)

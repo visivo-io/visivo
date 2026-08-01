@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from visivo.server.source_metadata import (
-    check_source_connection,
     get_source_databases,
     get_database_schemas,
     get_schema_tables,
@@ -47,81 +46,6 @@ class TestSourceMetadata:
     def teardown_method(self):
         """Clean up patches."""
         self.isinstance_patcher.stop()
-
-    def test_test_source_connection_success(self):
-        """Test successful source connection test."""
-        # Setup - the new simplified logic uses read_sql first
-        self.mock_source.read_sql = Mock(return_value=[{"test": 1}])
-        sources = [self.mock_source]
-
-        # Execute
-        with patch("visivo.server.source_metadata.Logger"):
-            result = check_source_connection(sources, "test_source")
-
-        # Assert
-        assert result == {"source": "test_source", "status": "connected"}
-        self.mock_source.read_sql.assert_called_once_with("SELECT 1 as test_column LIMIT 1")
-
-    def test_test_source_connection_with_read_only_param(self):
-        """Test connection test using read_sql method."""
-        # Setup - simplified logic now uses read_sql directly
-        self.mock_source.read_sql = Mock(return_value=[{"test": 1}])
-        sources = [self.mock_source]
-
-        # Execute
-        with patch("visivo.server.source_metadata.Logger"):
-            result = check_source_connection(sources, "test_source")
-
-        # Assert
-        assert result == {"source": "test_source", "status": "connected"}
-        self.mock_source.read_sql.assert_called_once_with("SELECT 1 as test_column LIMIT 1")
-
-    def test_test_source_connection_failure(self):
-        """Test failed source connection test."""
-
-        # Setup - the new simplified logic uses read_sql first, so make it fail
-        self.mock_source.read_sql = Mock(side_effect=Exception("Connection failed"))
-        sources = [self.mock_source]
-
-        # Execute
-        with patch("visivo.server.source_metadata.Logger"):
-            result = check_source_connection(sources, "test_source")
-
-        # Assert
-        assert result["source"] == "test_source"
-        assert result["status"] == "connection_failed"
-        assert "Connection failed" in result["error"]
-
-    def test_test_source_connection_not_found(self):
-        """Test connection test with non-existent source."""
-        sources = [self.mock_source]
-
-        result = check_source_connection(sources, "non_existent")
-
-        assert result == ({"error": "Source 'non_existent' not found"}, 404)
-
-    def test_test_source_connection_fallback_to_connect(self):
-        """Test connection test fallback to connect() when read_sql is not available."""
-        # Setup - no read_sql method, should fall back to connect()
-        self.mock_source.read_sql = Mock(
-            side_effect=AttributeError("'MockSource' object has no attribute 'read_sql'")
-        )
-
-        # Mock the connect method
-        mock_conn = Mock()
-        self.mock_source.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        self.mock_source.connect.return_value.__exit__ = Mock(return_value=None)
-
-        sources = [self.mock_source]
-
-        # Execute
-        with patch("visivo.server.source_metadata.Logger"):
-            result = check_source_connection(sources, "test_source")
-
-        # Assert
-        assert result == {"source": "test_source", "status": "connected"}
-        self.mock_source.read_sql.assert_called_once_with("SELECT 1 as test_column LIMIT 1")
-        self.mock_source.connect.assert_called_once()
 
     def test_get_source_databases_success(self):
         """Test successful database listing."""
@@ -493,10 +417,6 @@ class TestSourceMetadata:
             mock_isinstance_local.side_effect = isinstance_side_effect_local
 
             # Test each function
-            assert check_source_connection(sources, "not_sqlalchemy") == (
-                {"error": "Source 'not_sqlalchemy' not found"},
-                404,
-            )
             assert get_source_databases(sources, "not_sqlalchemy") == (
                 {"error": "Source 'not_sqlalchemy' not found"},
                 404,
