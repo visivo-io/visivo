@@ -253,7 +253,7 @@ class TestFlaskSourceEndpoints:
             )
 
     def test_test_source_connection_success(self):
-        """Test POST /api/sources/test-connection/ with valid config."""
+        """Test POST /api/source-connections/ with valid config."""
         with patch("visivo.server.views.sources_views.validate_source_from_config") as mock_test:
             mock_test.return_value = {"status": "connected", "source": "test_source"}
 
@@ -265,18 +265,18 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.post(
-                "/api/sources/test-connection/",
+                "/api/source-connections/",
                 json=source_config,
                 headers={"Content-Type": "application/json"},
             )
 
-            job = self._await_job(response, "/api/sources/test-connection/")
+            job = self._await_job(response, "/api/source-connections/")
             assert job["status"] == "completed"
             assert job["result"]["status"] == "connected"
             mock_test.assert_called_once_with(source_config)
 
     def test_test_source_connection_failure(self):
-        """Test POST /api/sources/test-connection/ with connection failure."""
+        """Test POST /api/source-connections/ with connection failure."""
         with patch("visivo.server.views.sources_views.validate_source_from_config") as mock_test:
             mock_test.return_value = {"status": "connection_failed", "error": "Connection timeout"}
 
@@ -288,7 +288,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.post(
-                "/api/sources/test-connection/",
+                "/api/source-connections/",
                 json=source_config,
                 headers={"Content-Type": "application/json"},
             )
@@ -296,16 +296,16 @@ class TestFlaskSourceEndpoints:
             # A refused connection is a job that COMPLETED and reported a
             # failure — distinct from a job that failed, which means the op
             # itself blew up. Collapsing the two would hide real crashes.
-            job = self._await_job(response, "/api/sources/test-connection/")
+            job = self._await_job(response, "/api/source-connections/")
             assert job["status"] == "completed"
             assert job["result"]["status"] == "connection_failed"
             assert "Connection timeout" in job["result"]["error"]
             mock_test.assert_called_once_with(source_config)
 
     def test_test_source_connection_no_config(self):
-        """Test POST /api/sources/test-connection/ with missing config."""
+        """Test POST /api/source-connections/ with missing config."""
         response = self.client.post(
-            "/api/sources/test-connection/", headers={"Content-Type": "application/json"}
+            "/api/source-connections/", headers={"Content-Type": "application/json"}
         )
 
         assert response.status_code == 400
@@ -313,9 +313,9 @@ class TestFlaskSourceEndpoints:
         assert "Source configuration is required" in data["error"]
 
     def test_test_source_connection_invalid_json(self):
-        """Test POST /api/sources/test-connection/ with invalid JSON."""
+        """Test POST /api/source-connections/ with invalid JSON."""
         response = self.client.post(
-            "/api/sources/test-connection/",
+            "/api/source-connections/",
             data="invalid json",
             headers={"Content-Type": "application/json"},
         )
@@ -325,14 +325,14 @@ class TestFlaskSourceEndpoints:
         assert "Invalid JSON in request body" in data["error"]
 
     def test_test_source_connection_exception(self):
-        """Test POST /api/sources/test-connection/ with unexpected exception."""
+        """Test POST /api/source-connections/ with unexpected exception."""
         with patch("visivo.server.views.sources_views.validate_source_from_config") as mock_test:
             mock_test.side_effect = Exception("Unexpected error")
 
             source_config = {"name": "test_source", "type": "postgresql", "host": "localhost"}
 
             response = self.client.post(
-                "/api/sources/test-connection/",
+                "/api/source-connections/",
                 json=source_config,
                 headers={"Content-Type": "application/json"},
             )
@@ -341,7 +341,7 @@ class TestFlaskSourceEndpoints:
             # response. The viewer maps a failed job to
             # {status: 'connection_failed', error}, so what the user sees is
             # unchanged; what changed is that the crash is attributable.
-            job = self._await_job(response, "/api/sources/test-connection/")
+            job = self._await_job(response, "/api/source-connections/")
             assert job["status"] == "failed"
             assert "Unexpected error" in job["error"]
 

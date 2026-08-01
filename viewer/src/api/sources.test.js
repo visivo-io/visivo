@@ -36,11 +36,11 @@ describe('testSourceConnection', () => {
     });
 
     const [startUrl, options] = apiFetch.mock.calls[0];
-    expect(startUrl).toBe('/api/sourceTestConnection/');
+    expect(startUrl).toBe('/api/sourceConnections/');
     expect(options.method).toBe('POST');
     expect(JSON.parse(options.body)).toEqual({ name: 'db' });
     // The job hangs off the same path the start request used.
-    expect(apiFetch).toHaveBeenLastCalledWith('/api/sourceTestConnection/job-1/');
+    expect(apiFetch).toHaveBeenLastCalledWith('/api/sourceConnections/job-1/');
   });
 
   it('reports a refused connection in the shape the form renders', async () => {

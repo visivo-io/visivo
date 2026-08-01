@@ -158,7 +158,7 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error listing columns: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/sources/test-connection/", methods=["POST"])
+    @app.route("/api/source-connections/", methods=["POST"])
     def test_source_connection():
         """Start a connection test for an (unsaved) config; poll for the result.
 
@@ -182,7 +182,7 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error starting source connection test: {str(e)}")
             return jsonify({"status": "connection_failed", "error": str(e)}), 500
 
-    @app.route("/api/sources/test-connection/<job_id>/", methods=["GET"])
+    @app.route("/api/source-connections/<job_id>/", methods=["GET"])
     def test_source_connection_job(job_id):
         """Poll a test-connection job."""
         job = SourceOpJobManager.instance().get_job(job_id)
