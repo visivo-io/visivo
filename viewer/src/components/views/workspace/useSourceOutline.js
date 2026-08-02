@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useStore from '../../../stores/store';
 import { isAvailable } from '../../../contexts/URLContext';
+import { pollJob } from '../../../api/jobs';
 import {
   fetchSourceSchemaJobs,
   generateSourceSchema,
   fetchSchemaGenerationStatus,
-  fetchSourceTables,
-  fetchTableColumns,
+  fetchSourceSchema,
+  tablesFromEnvelope,
+  columnsFromEnvelope,
 } from '../../../api/sourceSchemaJobs';
 
 /**
@@ -20,11 +22,17 @@ import {
  * Mirrors SourceBrowser exactly:
  *   1. List sources via `fetchSourceSchemaJobs()` → read this source's
  *      `has_cached_schema` flag (AUTHORITATIVE — decides warm vs cold).
- *   2. WARM (cached): load the flat cached tables via `fetchSourceTables`, then
- *      lazy-load each table's columns via `fetchTableColumns` on expand.
+ *   2. WARM (cached): fetch the schema envelope ONCE via `fetchSourceSchema`,
+ *      and slice both tables and per-table columns out of it in memory.
  *   3. COLD (no cache): expose `isCold` so the panel shows the "Generate schema"
  *      prompt. `generateSchema` runs `generateSourceSchema` + polls
- *      `fetchSchemaGenerationStatus`, then loads the now-cached flat tables.
+ *      `fetchSchemaGenerationStatus`, then loads the now-cached envelope.
+ *
+ * Expanding a table used to cost a request each (`/tables/{t}/columns/`), on top
+ * of one for the table list — so browsing a 40-table source was 41 round trips
+ * for data the server had already assembled into a single stored record and was
+ * re-reading and re-slicing per call. The envelope IS that record; those two
+ * endpoints are gone.
  *
  * The cached feed is flat (source → table → column, NO db/schema layer). We
  * synthesise a single pseudo-database node so the panel's recursive renderer
@@ -88,13 +96,21 @@ const buildCachedTree = (sourceName, tables) => {
 };
 
 export default function useSourceOutline(sourceName) {
+  // Subscribed at render rather than read via getState() inside an async
+  // callback: that samples the id at request time, not render time.
+  const projectId = useStore(s => s.project?.id);
+
   // The cached tree is the source of truth; `null` until first load completes.
   const [nodes, setNodes] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [error, setError] = useState(null);
 
-  // Per-table lazy column loads, keyed by tableKey -> column nodes (or { error }).
+  // Per-table column nodes, keyed by tableKey. Sliced from the envelope on
+  // expand — populated, not fetched.
   const [flatColumns, setFlatColumns] = useState({});
+  // The fetched schema envelope for this source; every column slice comes out
+  // of it. Held so expansion needs no request of its own.
+  const [envelope, setEnvelope] = useState(null);
   const [generating, setGenerating] = useState(null); // { status, progress, message } | null
   // Authoritative "does the API have a cached schema for this source" signal
   // (from the schema-jobs list, the same one SourceBrowser uses). null = unknown.
@@ -116,17 +132,17 @@ export default function useSourceOutline(sourceName) {
   const readHasCachedSchema = useCallback(async () => {
     if (!isAvailable('sourceSchemaJobsList')) return null;
     try {
-      const jobs = await fetchSourceSchemaJobs();
+      const jobs = await fetchSourceSchemaJobs(projectId);
       const job = (jobs || []).find(j => (j.source_name || j.name) === sourceName);
       return job ? !!job.has_cached_schema : null;
     } catch {
       return null;
     }
-  }, [sourceName]);
+  }, [sourceName, projectId]);
 
   /**
-   * Load the cached flat tables and cache the result. Mirrors
-   * SourceBrowser.toggleNode(sourceKey, () => fetchSourceTables(src)).
+   * Load the cached schema envelope and cache the result. One request; columns
+   * are sliced from it on expand rather than fetched.
    */
   const loadCached = useCallback(async () => {
     if (!sourceName || !available) return;
@@ -166,16 +182,20 @@ export default function useSourceOutline(sourceName) {
         return;
       }
 
-      const tables = await fetchSourceTables(sourceName);
+      const env = await fetchSourceSchema(sourceName, null, projectId);
       if (stale()) return;
+      const tables = tablesFromEnvelope(env);
       const tree = buildCachedTree(sourceName, tables);
+      setEnvelope(env);
       setNodes(tree);
       setStatus('ready');
-      // Cache the cached-tables tree + flag so re-selecting this source is
-      // instant — no re-fetch (VIS-1004 caching fix).
+      // Cache the tree, the flag AND the envelope so re-selecting this source is
+      // instant (VIS-1004) — the envelope has to ride along, or a re-select
+      // hydrates a tree whose columns can no longer be sliced from anything.
       useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
         nodes: tree,
         tables,
+        envelope: env,
         hasCachedSchema: cachedFlag,
       });
     } catch (e) {
@@ -184,7 +204,7 @@ export default function useSourceOutline(sourceName) {
       setError(e.message);
       setNodes([]);
     }
-  }, [sourceName, available, readHasCachedSchema]);
+  }, [sourceName, available, readHasCachedSchema, projectId]);
 
   useEffect(() => {
     // Reset transient per-source state (switching never bleeds it).
@@ -198,10 +218,12 @@ export default function useSourceOutline(sourceName) {
       setNodes(cached.nodes ?? null);
       setStatus('ready');
       setHasCachedSchema(cached.hasCachedSchema ?? null);
+      setEnvelope(cached.envelope ?? null);
     } else {
       setNodes(null);
       setStatus('idle');
       setHasCachedSchema(null);
+      setEnvelope(null);
       loadCached();
     }
     return () => {
@@ -217,89 +239,93 @@ export default function useSourceOutline(sourceName) {
    * now-cached flat tables.
    */
   const generateSchema = useCallback(async () => {
-    if (!sourceName || !isAvailable('sourceSchemaJobCreate')) return;
+    if (!sourceName || !isAvailable('sourceSchemaJobsList')) return;
     const epoch = epochRef.current;
     const stale = () => epochRef.current !== epoch;
     setGenerating({ status: 'starting', progress: 0, message: '' });
     setError(null);
     try {
-      const { run_id: runId } = await generateSourceSchema(sourceName);
-      const maxWaitTime = 120000;
-      const pollInterval = 2000;
-      const startTime = Date.now();
+      const { run_id: runId } = await generateSourceSchema(sourceName, projectId);
 
-      while (Date.now() - startTime < maxWaitTime) {
-        if (stale()) return;
-        const st = await fetchSchemaGenerationStatus(runId);
-        if (stale()) return;
-        setGenerating({
-          status: st.status,
-          progress: st.progress || 0,
-          message: st.progress_message || '',
-        });
-
-        if (st.status === 'completed') {
-          const tables = await fetchSourceTables(sourceName);
-          if (stale()) return;
-          const tree = buildCachedTree(sourceName, tables);
-          setNodes(tree);
-          setHasCachedSchema(true);
-          setStatus('ready');
-          setGenerating(null);
-          useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
-            nodes: tree,
-            tables,
-            hasCachedSchema: true,
-          });
-          return;
+      // The loop is the shared `pollJob` (api/jobs.js). The epoch guard lives
+      // in the fetch callback: throwing is how we abandon a poll whose source
+      // selection has moved on, since pollJob has no cancel of its own.
+      const ABANDONED = 'source-outline: superseded';
+      const outcome = await pollJob(
+        () => {
+          if (stale()) throw new Error(ABANDONED);
+          return fetchSchemaGenerationStatus(runId, projectId);
+        },
+        {
+          intervalMs: 2000,
+          timeoutMs: 120000,
+          onProgress: st =>
+            setGenerating({
+              status: st.status,
+              progress: st.progress || 0,
+              message: st.progress_message || '',
+            }),
         }
-        if (st.status === 'failed') {
-          throw new Error(st.error || 'Schema generation failed');
-        }
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      );
+      if (stale()) return;
+      if (!outcome.ok) {
+        if (outcome.error === ABANDONED) return;
+        throw new Error(outcome.error);
       }
-      throw new Error('Schema generation timed out');
+
+      // Was `fetchSourceTables(sourceName)` — with no projectId, which in cloud
+      // reads outside the current project's scope.
+      const env = await fetchSourceSchema(sourceName, null, projectId);
+      if (stale()) return;
+      const tables = tablesFromEnvelope(env);
+      const tree = buildCachedTree(sourceName, tables);
+      setEnvelope(env);
+      setNodes(tree);
+      setHasCachedSchema(true);
+      setStatus('ready');
+      setGenerating(null);
+      useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
+        nodes: tree,
+        tables,
+        envelope: env,
+        hasCachedSchema: true,
+      });
     } catch (e) {
       if (stale()) return;
       setGenerating(null);
       setError(e.message);
     }
-  }, [sourceName]);
+  }, [sourceName, projectId]);
 
   /**
-   * Lazy-load columns for a cached table on expand (the cached path carries no
-   * eager column data). Mirrors SourceBrowser's per-table fetchTableColumns.
+   * Populate a table's columns on expand by slicing the already-fetched
+   * envelope. No request, so no failure mode and no epoch guard needed — there
+   * is nothing in flight that a source switch could land late.
+   *
+   * Kept async: the panel awaits it, and it was a request until recently.
    */
   const loadFlatColumns = useCallback(
     async tKey => {
       if (!sourceName || flatColumns[tKey]) return;
-      const epoch = epochRef.current;
-      const stale = () => epochRef.current !== epoch;
       // tableKey grammar: …::table::<name>
       const match = tKey.match(/::table::(.+)$/);
       const tableName = match ? match[1] : null;
       if (!tableName) return;
-      try {
-        const cols = await fetchTableColumns(sourceName, tableName);
-        if (stale()) return;
-        setFlatColumns(prev => ({
-          ...prev,
-          [tKey]: (cols || []).map(c => {
-            const name = typeof c === 'string' ? c : c.name;
-            return {
-              key: columnKey(tKey, name),
-              kind: 'column',
-              name,
-              type: typeof c === 'string' ? null : c.type || null,
-            };
-          }),
-        }));
-      } catch (e) {
-        if (stale()) return;
-        setFlatColumns(prev => ({ ...prev, [tKey]: { error: e.message } }));
-      }
+      // No envelope yet (cold source, or a load that errored) — leave the entry
+      // unset so a later expand can still populate it.
+      if (!envelope) return;
+      const cols = columnsFromEnvelope(envelope, tableName);
+      setFlatColumns(prev => ({
+        ...prev,
+        [tKey]: cols.map(c => ({
+          key: columnKey(tKey, c.name),
+          kind: 'column',
+          name: c.name,
+          type: c.type || null,
+        })),
+      }));
     },
-    [sourceName, flatColumns]
+    [sourceName, flatColumns, envelope]
   );
 
   // A source is "cold" (offer Generate) when the API authoritatively reports no

@@ -19,20 +19,24 @@ import {
   createURLConfig,
 } from '../../../contexts/URLContext';
 
-jest.mock('../../../api/sourceSchemaJobs', () => ({
-  fetchSourceSchemaJobs: jest.fn(),
-  generateSourceSchema: jest.fn(),
-  fetchSchemaGenerationStatus: jest.fn(),
-  fetchSourceTables: jest.fn(),
-  fetchTableColumns: jest.fn(),
-}));
+jest.mock('../../../api/sourceSchemaJobs', () => {
+  // Keep the real envelope slicers — they are pure functions over the
+  // fetched record, and mocking them would hide the derivation.
+  const actual = jest.requireActual('../../../api/sourceSchemaJobs');
+  return {
+    ...actual,
+    fetchSourceSchemaJobs: jest.fn(),
+    generateSourceSchema: jest.fn(),
+    fetchSchemaGenerationStatus: jest.fn(),
+    fetchSourceSchema: jest.fn(),
+  };
+});
 
 const {
   fetchSourceSchemaJobs,
   generateSourceSchema,
   fetchSchemaGenerationStatus,
-  fetchSourceTables,
-  fetchTableColumns,
+  fetchSourceSchema,
 } = require('../../../api/sourceSchemaJobs');
 
 const SRC = 'local-duckdb';
@@ -55,6 +59,18 @@ const setDistEnv = () => {
   setGlobalURLConfig(createURLConfig({ environment: 'dist' }));
 };
 
+/**
+ * The stored schema envelope: tables -> columns -> {type, nullable}. The panel
+ * derives BOTH the table list and each table's columns from this one record.
+ */
+const schemaEnvelope = (tables = null) => ({
+  source_name: SRC,
+  tables: tables ?? {
+    orders: { columns: { id: { type: 'INTEGER' }, amount: { type: 'DOUBLE' } } },
+    users: { columns: { id: { type: 'INTEGER' }, email: { type: 'VARCHAR' } } },
+  },
+});
+
 describe('SourceOutlineTreePanel (VIS-1004)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -64,14 +80,8 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: SRC, has_cached_schema: true },
     ]);
-    fetchSourceTables.mockResolvedValue([
-      { name: 'orders', column_count: 2 },
-      { name: 'users', column_count: 2 },
-    ]);
-    fetchTableColumns.mockResolvedValue([
-      { name: 'id', type: 'INTEGER' },
-      { name: 'amount', type: 'DOUBLE' },
-    ]);
+    // One envelope carries every table AND its columns — the panel slices it.
+    fetchSourceSchema.mockResolvedValue(schemaEnvelope());
   });
 
   afterEach(() => {
@@ -94,10 +104,10 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
       await screen.findByTestId(`source-outline-node-${DB_KEY}::table::orders`)
     ).toBeInTheDocument();
     // It reads from the cached feed, never the live introspect.
-    expect(fetchSourceTables).toHaveBeenCalledWith(SRC);
+    expect(fetchSourceSchema).toHaveBeenCalledWith(SRC, null, undefined);
   });
 
-  test('expanding a table lazy-loads its columns from the cached feed', async () => {
+  test('expanding a table shows its columns without another request', async () => {
     render(<SourceOutlineTreePanel sourceName={SRC} />);
     const tableKey = `${DB_KEY}::table::orders`;
 
@@ -105,11 +115,10 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     const tableToggle = await screen.findByTestId(
       `source-outline-node-${tableKey}-toggle`
     );
-    // Columns are NOT fetched until the table expands.
-    expect(fetchTableColumns).not.toHaveBeenCalled();
+    // The envelope arrived with the tree; expanding must not go back for more.
+    expect(fetchSourceSchema).toHaveBeenCalledTimes(1);
 
     fireEvent.click(tableToggle);
-    await waitFor(() => expect(fetchTableColumns).toHaveBeenCalledWith(SRC, 'orders'));
     expect(
       await screen.findByTestId(`source-outline-node-${tableKey}::col::id`)
     ).toBeInTheDocument();
@@ -134,14 +143,14 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
   test('re-selecting a source reads the cached tree without re-fetching', async () => {
     const { unmount } = render(<SourceOutlineTreePanel sourceName={SRC} />);
     expect(await screen.findByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
-    expect(fetchSourceTables).toHaveBeenCalledTimes(1);
+    expect(fetchSourceSchema).toHaveBeenCalledTimes(1);
 
     unmount();
     jest.clearAllMocks();
     // Re-mounting the same source hydrates from the store cache — no re-fetch.
     render(<SourceOutlineTreePanel sourceName={SRC} />);
     expect(await screen.findByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
-    expect(fetchSourceTables).not.toHaveBeenCalled();
+    expect(fetchSourceSchema).not.toHaveBeenCalled();
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 
@@ -152,18 +161,20 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     ]);
     generateSourceSchema.mockResolvedValue({ run_id: 'run-1' });
     fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed', progress: 1 });
-    fetchSourceTables.mockResolvedValue([{ name: 'events', column_count: 3 }]);
+    fetchSourceSchema.mockResolvedValue(
+      schemaEnvelope({ events: { columns: { a: {}, b: {}, c: {} } } })
+    );
 
     render(<SourceOutlineTreePanel sourceName={SRC} />);
 
     const generateBtn = await screen.findByTestId('source-outline-generate');
     expect(screen.getByTestId('source-outline-cold')).toBeInTheDocument();
     // Cold sources never fetch tables until Generate runs.
-    expect(fetchSourceTables).not.toHaveBeenCalled();
+    expect(fetchSourceSchema).not.toHaveBeenCalled();
 
     fireEvent.click(generateBtn);
 
-    await waitFor(() => expect(generateSourceSchema).toHaveBeenCalledWith(SRC));
+    await waitFor(() => expect(generateSourceSchema).toHaveBeenCalledWith(SRC, undefined));
     // After generation completes the db node renders; expanding it reveals the
     // newly-cached `events` table.
     const dbNode = await screen.findByTestId(`source-outline-node-${DB_KEY}`);
@@ -207,7 +218,7 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     expect(screen.getByText(/visivo serve/i)).toBeInTheDocument();
     // The cached feed is never called when unavailable.
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
-    expect(fetchSourceTables).not.toHaveBeenCalled();
+    expect(fetchSourceSchema).not.toHaveBeenCalled();
   });
 
   test('search filters tables and keeps ancestor groups whose CHILDREN match', async () => {

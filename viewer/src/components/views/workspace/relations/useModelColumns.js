@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchModelColumnNames } from '../../../../api/modelSchemaJobs';
-import { fetchModelData } from '../../../../api/modelData';
+import useStore from '../../../../stores/store';
+import { fetchModelColumnNames } from '../../../../api/modelSchema';
 
 /**
  * useModelColumns — hydrate real column names for a set of models (VIS-1006a).
@@ -9,14 +9,14 @@ import { fetchModelData } from '../../../../api/modelData';
  * slice never populates that field (it carries config/sql/source, not the run
  * result's columns). So cards rendered "No columns loaded".
  *
- * This hook closes that gap by reading each model's run-phase SCHEMA artifact
- * (`/api/model-schema-jobs/{name}/`, exposed via `fetchModelColumnNames`) — the
- * cheap, cloud-safe column+type metadata written during `visivo run`. It
- * reflects the model's actual output schema (post-SQL, post-join) without
- * re-running the query or guessing a table name from the SQL. When the schema
- * artifact is unavailable (e.g. dist, until the dist build ships it) the hook
- * falls back to the model's cached run DATA (`fetchModelData`) and takes its
- * `columns` list. Either way we keep only the names.
+ * This hook closes that gap by asking the server to INFER each model's output
+ * columns (`POST /api/model-schemas/{name}/`, via `fetchModelColumnNames`).
+ * Inference is SQLGlot against the source's cached schema — no query is re-run,
+ * no table name is guessed from the SQL, and no database is touched.
+ *
+ * It used to read the artifact `visivo run` wrote, which meant a model nobody
+ * had built yet showed "No columns loaded" no matter how valid its SQL was.
+ * Inference does not depend on a run, so a freshly-written model card fills in.
  *
  * @param {string[]} modelNames - the model names to hydrate (the ERD's models).
  * @returns {{ columnsByModel: Record<string,string[]>, loading: boolean }}
@@ -25,6 +25,10 @@ import { fetchModelData } from '../../../../api/modelData';
  *   column list are reported as-is by the caller; this hook only fills gaps.
  */
 export function useModelColumns(modelNames) {
+  // Subscribed, not read via getState() inside the async callback below: that
+  // would sample the id at request time rather than render time, and pulls the
+  // store into a tick the effect doesn't own.
+  const projectId = useStore(s => s.project?.id);
   const [columnsByModel, setColumnsByModel] = useState({});
   const [loading, setLoading] = useState(false);
   // Names whose fetch is in flight OR resolved — so re-renders (and a growing
@@ -61,16 +65,13 @@ export function useModelColumns(modelNames) {
     Promise.all(
       toFetch.map(async name => {
         try {
-          // Schema artifact first (column names + types, cloud-safe).
-          const cols = await fetchModelColumnNames(name);
-          if (cols.length) return [name, cols];
-          // Fallback: the model's cached run data (e.g. when the schema
-          // artifact isn't available in this environment).
-          const data = await fetchModelData(name);
-          return [name, Array.isArray(data?.columns) ? data.columns.filter(Boolean) : []];
+          // The schema artifact is the only source: small inline JSON, no
+          // parquet read, and written by the same run that builds the data —
+          // so a model with data has a schema.
+          return [name, await fetchModelColumnNames(name, { projectId })];
         } catch {
-          // A model with no schema or cached data (never run) just resolves to
-          // no columns; the card keeps its empty state rather than throwing.
+          // A model that was never run resolves to no columns; the card keeps
+          // its empty state rather than throwing.
           return [name, []];
         }
       })
@@ -87,7 +88,7 @@ export function useModelColumns(modelNames) {
       });
       setLoading(false);
     });
-  }, [namesKey]);
+  }, [namesKey, projectId]);
 
   return { columnsByModel, loading };
 }

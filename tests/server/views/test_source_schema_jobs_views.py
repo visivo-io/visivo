@@ -22,7 +22,7 @@ class TestSourceSchemaJobsViews:
     @pytest.fixture
     def sample_schema(self, temp_output_dir):
         """Create a sample cached schema file in the main run_id location."""
-        schema_dir = os.path.join(temp_output_dir, DEFAULT_RUN_ID, "schemas", "test_source")
+        schema_dir = os.path.join(temp_output_dir, DEFAULT_RUN_ID, "schemas")
         os.makedirs(schema_dir, exist_ok=True)
 
         schema_data = {
@@ -54,7 +54,7 @@ class TestSourceSchemaJobsViews:
             "metadata": {"total_tables": 2, "total_columns": 6, "databases": []},
         }
 
-        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        with open(os.path.join(schema_dir, "test_source.json"), "w") as f:
             json.dump(schema_data, f)
 
         return schema_data
@@ -63,7 +63,7 @@ class TestSourceSchemaJobsViews:
     def sample_preview_schema(self, temp_output_dir):
         """Create a sample cached schema file in the preview run_id location."""
         preview_run_id = "preview-test_source"
-        schema_dir = os.path.join(temp_output_dir, preview_run_id, "schemas", "test_source")
+        schema_dir = os.path.join(temp_output_dir, preview_run_id, "schemas")
         os.makedirs(schema_dir, exist_ok=True)
 
         schema_data = {
@@ -85,7 +85,7 @@ class TestSourceSchemaJobsViews:
             "metadata": {"total_tables": 1, "total_columns": 2, "databases": []},
         }
 
-        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        with open(os.path.join(schema_dir, "test_source.json"), "w") as f:
             json.dump(schema_data, f)
 
         return schema_data
@@ -187,73 +187,6 @@ class TestGetSourceSchema(TestSourceSchemaJobsViews):
         data = response.get_json()
         assert "message" in data
         assert "nonexistent" in data["message"]
-
-
-class TestListSourceTables(TestSourceSchemaJobsViews):
-    """Tests for GET /api/source-schema-jobs/<name>/tables/"""
-
-    def test_list_tables_success(self, client, sample_schema):
-        """Test listing tables for a source."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 2
-        table_names = [t["name"] for t in data]
-        assert "users" in table_names
-        assert "orders" in table_names
-
-    def test_list_tables_with_search(self, client, sample_schema):
-        """Test listing tables with search filter."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/?search=user")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 1
-        assert data[0]["name"] == "users"
-
-    def test_list_tables_schema_not_found(self, client):
-        """Test listing tables when schema doesn't exist."""
-        response = client.get("/api/source-schema-jobs/nonexistent/tables/")
-
-        assert response.status_code == 404
-
-
-class TestListTableColumns(TestSourceSchemaJobsViews):
-    """Tests for GET /api/source-schema-jobs/<name>/tables/<table>/columns/"""
-
-    def test_list_columns_success(self, client, sample_schema):
-        """Test listing columns for a table."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/users/columns/")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 3
-        column_names = [c["name"] for c in data]
-        assert "id" in column_names
-        assert "name" in column_names
-        assert "email" in column_names
-
-    def test_list_columns_with_search(self, client, sample_schema):
-        """Test listing columns with search filter."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/users/columns/?search=id")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 1
-        assert data[0]["name"] == "id"
-
-    def test_list_columns_table_not_found(self, client, sample_schema):
-        """Test listing columns for a non-existent table."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/nonexistent/columns/")
-
-        assert response.status_code == 404
-
-    def test_list_columns_schema_not_found(self, client):
-        """Test listing columns when schema doesn't exist."""
-        response = client.get("/api/source-schema-jobs/nonexistent/tables/users/columns/")
-
-        assert response.status_code == 404
 
 
 class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
@@ -433,26 +366,6 @@ class TestSchemaFallbackBehavior(TestSourceSchemaJobsViews):
         assert data["generated_at"] == "2024-01-01T00:00:00"
         assert data["metadata"]["total_tables"] == 2
 
-    def test_list_tables_from_preview(self, client, sample_preview_schema):
-        """Test listing tables from preview schema."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 1
-        assert data[0]["name"] == "users"
-
-    def test_list_columns_from_preview(self, client, sample_preview_schema):
-        """Test listing columns from preview schema."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/users/columns/")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 2
-        column_names = [c["name"] for c in data]
-        assert "id" in column_names
-        assert "name" in column_names
-
     def test_list_sources_with_preview_schema(self, client, app, sample_preview_schema):
         """Test listing sources finds preview schema when main is missing."""
         response = client.get("/api/source-schema-jobs/")
@@ -522,74 +435,6 @@ class TestExplicitRunIdParameter(TestSourceSchemaJobsViews):
 
         assert response.status_code == 404
 
-    def test_list_tables_with_explicit_run_id(self, client, sample_schema, sample_preview_schema):
-        """Test listing tables with explicit run_id."""
-        response = client.get(
-            "/api/source-schema-jobs/test_source/tables/?run_id=preview-test_source"
-        )
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 1
-        assert data[0]["name"] == "users"
-
-    def test_list_tables_with_explicit_main_run_id(
-        self, client, sample_schema, sample_preview_schema
-    ):
-        """Test listing tables with explicit main run_id returns main data."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/?run_id=main")
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 2
-        table_names = [t["name"] for t in data]
-        assert "users" in table_names
-        assert "orders" in table_names
-
-    def test_list_tables_with_nonexistent_run_id(self, client, sample_schema):
-        """Test listing tables with nonexistent run_id returns 404."""
-        response = client.get("/api/source-schema-jobs/test_source/tables/?run_id=nonexistent")
-
-        assert response.status_code == 404
-
-    def test_list_columns_with_explicit_run_id(self, client, sample_schema, sample_preview_schema):
-        """Test listing columns with explicit run_id."""
-        response = client.get(
-            "/api/source-schema-jobs/test_source/tables/users/columns/?run_id=preview-test_source"
-        )
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 2
-        column_names = [c["name"] for c in data]
-        assert "id" in column_names
-        assert "name" in column_names
-        assert "email" not in column_names
-
-    def test_list_columns_with_explicit_main_run_id(
-        self, client, sample_schema, sample_preview_schema
-    ):
-        """Test listing columns with explicit main run_id returns main data."""
-        response = client.get(
-            "/api/source-schema-jobs/test_source/tables/users/columns/?run_id=main"
-        )
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert len(data) == 3
-        column_names = [c["name"] for c in data]
-        assert "id" in column_names
-        assert "name" in column_names
-        assert "email" in column_names
-
-    def test_list_columns_with_nonexistent_run_id(self, client, sample_schema):
-        """Test listing columns with nonexistent run_id returns 404."""
-        response = client.get(
-            "/api/source-schema-jobs/test_source/tables/users/columns/?run_id=nonexistent"
-        )
-
-        assert response.status_code == 404
-
 
 class TestSourceSchemaInvalidation(TestSourceSchemaJobsViews):
     """Tests for schema invalidation on POST."""
@@ -642,18 +487,6 @@ class TestSourceSchemaPathTraversal(TestSourceSchemaJobsViews):
     @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
     def test_get_schema_rejects_unsafe_run_id(self, client, sample_schema, bad_run_id):
         response = client.get(f"/api/source-schema-jobs/test_source/?run_id={bad_run_id}")
-        assert response.status_code == 400
-
-    @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
-    def test_list_tables_rejects_unsafe_run_id(self, client, sample_schema, bad_run_id):
-        response = client.get(f"/api/source-schema-jobs/test_source/tables/?run_id={bad_run_id}")
-        assert response.status_code == 400
-
-    @pytest.mark.parametrize("bad_run_id", ["../../etc", "..", "a/b", "foo..bar", ""])
-    def test_list_columns_rejects_unsafe_run_id(self, client, sample_schema, bad_run_id):
-        response = client.get(
-            f"/api/source-schema-jobs/test_source/tables/users/columns/?run_id={bad_run_id}"
-        )
         assert response.status_code == 400
 
     def test_safe_run_id_still_served(self, client, sample_schema):

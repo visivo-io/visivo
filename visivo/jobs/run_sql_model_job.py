@@ -25,6 +25,7 @@ from visivo.query.sql_table_extractor import (
     extract_schema_references,
 )
 from visivo.query.sqlglot_utils import schema_from_sql
+from visivo.query.model_schema_inference import infer_model_columns
 from visivo.constants import DEFAULT_RUN_ID
 
 
@@ -107,69 +108,31 @@ def _build_and_write_schema(
                 default_schema=None,
             )
     else:
-        # Fall back to original behavior (no cache)
+        # No cache: read the source's stored schema and infer against it. This is
+        # the same call `POST /api/model-schemas/{name}/` makes, so the endpoint
+        # and the run agree by construction rather than by test.
         stored_schema = SchemaAggregator.load_source_schema(
             source_name=source.name, output_dir=output_dir
         )
-
         if stored_schema is None:
             Logger.instance().debug(f"No stored schema found for source {source.name}")
-            stored_schema = {"sqlglot_schema": {}, "metadata": {}}
 
-        # Get the default schema for unqualified table references
-        default_schema = stored_schema.get("metadata", {}).get("default_schema")
-        Logger.instance().debug(f"Default schema: {default_schema}")
-
-        # Convert stored format to DataType objects for schema_from_sql
-        # Handle both nested and flat formats
-        schema = {}
-        sqlglot_schema_data = stored_schema.get("sqlglot_schema", {})
-
-        Logger.instance().debug(
-            f"Processing schema with {len(sqlglot_schema_data)} top-level entries"
-        )
-
-        for key, value in sqlglot_schema_data.items():
-            if not isinstance(value, dict):
-                continue
-
-            first_val = next(iter(value.values()), None) if value else None
-
-            if isinstance(first_val, dict):
-                # Nested structure: {schema: {table: {col: type}}}
-                schema_name = key
-                if schema_name not in schema:
-                    schema[schema_name] = {}
-                for table_name, columns in value.items():
-                    if not isinstance(columns, dict):
-                        continue
-                    schema[schema_name][table_name] = {}
-                    for col_name, col_type_str in columns.items():
-                        schema[schema_name][table_name][col_name] = exp.DataType.build(col_type_str)
-            else:
-                # Flat structure: {table: {col: type}}
-                table_name = key
-                schema[table_name] = {}
-                for col_name, col_type_str in value.items():
-                    schema[table_name][col_name] = exp.DataType.build(col_type_str)
-
-        Logger.instance().debug(f"Schema conversion complete, calling schema_from_sql")
-
-        query_result_schema = schema_from_sql(
-            sqlglot_dialect=sqlglot_dialect,
-            sql=sql,
-            schema=schema,
-            model_hash=model_hash,
-            default_schema=default_schema,
-        )
+        query_result_schema = {
+            model_hash: infer_model_columns(
+                sql=sql,
+                sqlglot_dialect=sqlglot_dialect,
+                model_hash=model_hash,
+                stored_source_schema=stored_schema,
+            )
+        }
 
     Logger.instance().debug(f"schema_from_sql complete for {sql_model.name}")
 
     # Organize by run_id
     run_output_dir = f"{output_dir}/{run_id}"
-    schema_directory = f"{run_output_dir}/schemas/{sql_model.name}/"
+    schema_directory = f"{run_output_dir}/schemas"
     os.makedirs(schema_directory, exist_ok=True)
-    schema_file = f"{schema_directory}schema.json"
+    schema_file = f"{schema_directory}/{sql_model.name}.json"
 
     # Persist the richer envelope (legacy {name_hash: {col: type}} block preserved
     # first, for the field resolver) while serializing the resolved output schema.
@@ -274,7 +237,7 @@ def schema_only_action(
 
         # Organize by run_id
         run_output_dir = f"{output_dir}/{run_id}"
-        schema_file = f"{run_output_dir}/schemas/{sql_model.name}/schema.json"
+        schema_file = f"{run_output_dir}/schemas/{sql_model.name}.json"
         success_message = format_message_success(
             details=f"Wrote schema for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,

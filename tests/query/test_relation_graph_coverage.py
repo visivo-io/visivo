@@ -41,8 +41,7 @@ def _build_graph(tmpdir, models, relations, columns=None):
 
     schema_base = tmpdir.mkdir("schemas")
     for model in sql_models:
-        schema_dir = schema_base.mkdir(model.name)
-        schema_dir.join("schema.json").write(json.dumps({model.name_hash(): columns}))
+        schema_base.join(f"{model.name}.json").write(json.dumps({model.name_hash(): columns}))
 
     resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
     return RelationGraph(dag=dag, field_resolver=resolver)

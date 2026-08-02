@@ -109,7 +109,7 @@ class VisivoRunValidator:
 
         success = True
         for source_name in expected_sources:
-            source_schema_file = schemas_dir / source_name / "schema.json"
+            source_schema_file = schemas_dir / f"{source_name}.json"
 
             if not source_schema_file.exists():
                 self.log_error(

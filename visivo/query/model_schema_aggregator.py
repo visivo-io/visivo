@@ -4,7 +4,7 @@ column schema as a run-phase job artifact.
 
 This is the model-side parallel of ``SchemaAggregator`` (which is source-shaped:
 ``source_name`` / ``source_type`` / ``tables`` / ``sqlglot_schema``). Models and
-sources share the ``{output_dir}/{run_id}/schemas/{name}/schema.json`` namespace,
+sources share the ``{output_dir}/{run_id}/schemas/{name}.json`` namespace,
 so the two aggregators are intentionally kept separate (and independently
 testable) rather than overloaded.
 
@@ -15,6 +15,7 @@ source artifact's metadata: ``model_name`` / ``model_type`` / ``generated_at`` /
 """
 
 import os
+from pathlib import Path
 import json
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -99,7 +100,7 @@ class ModelSchemaAggregator:
             Schema data dictionary or None if not found.
         """
         try:
-            schema_file = f"{output_dir}/{run_id}/schemas/{model_name}/schema.json"
+            schema_file = f"{output_dir}/{run_id}/schemas/{model_name}.json"
             if not os.path.exists(schema_file):
                 return None
 
@@ -137,11 +138,13 @@ class ModelSchemaAggregator:
 
         try:
             for entry_name in os.listdir(schemas_dir):
-                entry_dir = os.path.join(schemas_dir, entry_name)
-                if not os.path.isdir(entry_dir):
+                # `os.path.isdir` used to be the de-facto "is this a schema"
+                # filter under the per-name-directory layout; flat files need
+                # the extension to do that job.
+                if not entry_name.endswith(".json"):
                     continue
-                schema_file = os.path.join(entry_dir, "schema.json")
-                if not os.path.exists(schema_file):
+                schema_file = os.path.join(schemas_dir, entry_name)
+                if not os.path.isfile(schema_file):
                     continue
                 try:
                     with open(schema_file, "r") as fp:
@@ -155,7 +158,7 @@ class ModelSchemaAggregator:
 
                 schemas.append(
                     {
-                        "model_name": schema_data.get("model_name", entry_name),
+                        "model_name": schema_data.get("model_name", Path(entry_name).stem),
                         "model_type": schema_data.get("model_type", "unknown"),
                         "generated_at": schema_data.get("generated_at"),
                         "total_columns": schema_data.get("metadata", {}).get("total_columns", 0),

@@ -7,9 +7,8 @@ import {
   fetchSourceSchema,
   generateSourceSchema,
   fetchSchemaGenerationStatus,
-  fetchOrGenerateSchema,
-  fetchSourceTables,
-  fetchTableColumns,
+  tablesFromEnvelope,
+  columnsFromEnvelope,
 } from './sourceSchemaJobs';
 import { apiFetch } from './utils';
 import { isAvailable } from '../contexts/URLContext';
@@ -120,70 +119,58 @@ describe('fetchSchemaGenerationStatus', () => {
   });
 });
 
-describe('fetchOrGenerateSchema', () => {
-  it('returns the cached schema and reports completion without generating', async () => {
-    const onProgress = jest.fn();
-    apiFetch.mockResolvedValueOnce(ok({ columns: ['a'] })); // cached fetchSourceSchema
-    await expect(fetchOrGenerateSchema('src', { onProgress })).resolves.toEqual({
-      columns: ['a'],
-    });
-    expect(onProgress).toHaveBeenCalledWith('completed', 1.0, 'Using cached schema');
-    expect(apiFetch).toHaveBeenCalledTimes(1);
-  });
+// The envelope slicers. These have to reproduce the server's shapes exactly —
+// they exist so a caller that needs every column can fetch once and slice
+// locally instead of paying 1 + N requests, and that only works if the sliced
+// result is indistinguishable from what the endpoints return.
+describe('tablesFromEnvelope / columnsFromEnvelope', () => {
+  const envelope = {
+    tables: {
+      users: { columns: { id: { type: 'INTEGER', nullable: false } }, metadata: { rows: 9 } },
+      orders: {
+        columns: {
+          id: { type: 'INTEGER', nullable: false },
+          amount: { type: 'DOUBLE' },
+        },
+      },
+    },
+  };
 
-  it('generates then surfaces a failed generation status', async () => {
-    apiFetch
-      .mockResolvedValueOnce(fail(404)) // no cached schema
-      .mockResolvedValueOnce(ok({ run_id: 'r1' })) // generateSourceSchema
-      .mockResolvedValueOnce(ok({ status: 'failed', error: 'introspection blew up' })); // status poll
-    await expect(fetchOrGenerateSchema('src')).rejects.toThrow('introspection blew up');
-  });
-});
-
-describe('fetchSourceTables', () => {
-  it('returns [] when unavailable', async () => {
-    isAvailable.mockReturnValue(false);
-    await expect(fetchSourceTables('src')).resolves.toEqual([]);
-  });
-
-  it('appends search + run_id, returns json on 200', async () => {
-    apiFetch.mockResolvedValueOnce(ok([{ name: 't1' }]));
-    await expect(fetchSourceTables('src', { search: 'ord', runId: 'main' })).resolves.toEqual([
-      { name: 't1' },
+  it('matches the /tables/ shape: name, column_count, metadata', () => {
+    expect(tablesFromEnvelope(envelope)).toEqual([
+      { name: 'orders', column_count: 2, metadata: {} },
+      { name: 'users', column_count: 1, metadata: { rows: 9 } },
     ]);
-    const url = apiFetch.mock.calls[0][0];
-    expect(url).toContain('search=ord');
-    expect(url).toContain('run_id=main');
   });
 
-  it('returns [] on 404 and throws on other errors', async () => {
-    apiFetch.mockResolvedValueOnce(fail(404));
-    await expect(fetchSourceTables('src')).resolves.toEqual([]);
-    apiFetch.mockResolvedValueOnce(fail(500));
-    await expect(fetchSourceTables('src')).rejects.toThrow(/Loading tables for 'src' failed/);
-  });
-});
-
-describe('fetchTableColumns', () => {
-  it('returns [] when unavailable', async () => {
-    isAvailable.mockReturnValue(false);
-    await expect(fetchTableColumns('src', 't1')).resolves.toEqual([]);
-  });
-
-  it('returns json on 200 and [] on 404', async () => {
-    apiFetch.mockResolvedValueOnce(ok([{ name: 'col' }]));
-    await expect(fetchTableColumns('src', 't1', { search: 'id' })).resolves.toEqual([
-      { name: 'col' },
+  it('matches the /columns/ shape, defaulting nullable to true like the server', () => {
+    expect(columnsFromEnvelope(envelope, 'orders')).toEqual([
+      { name: 'amount', type: 'DOUBLE', nullable: true },
+      { name: 'id', type: 'INTEGER', nullable: false },
     ]);
-    expect(apiFetch.mock.calls[0][0]).toContain('search=id');
-    apiFetch.mockResolvedValueOnce(fail(404));
-    await expect(fetchTableColumns('src', 't1')).resolves.toEqual([]);
   });
 
-  it('throws on a non-404 error', async () => {
-    apiFetch.mockResolvedValueOnce(fail(500, { message: 'bad table' }));
-    await expect(fetchTableColumns('src', 't1')).rejects.toThrow(
-      /Loading columns for 'src\.t1' failed \(500\): bad table/
-    );
+  it('sorts by name, as the endpoints do', () => {
+    expect(tablesFromEnvelope(envelope).map(t => t.name)).toEqual(['orders', 'users']);
+    expect(columnsFromEnvelope(envelope, 'orders').map(c => c.name)).toEqual(['amount', 'id']);
+  });
+
+  it('filters on search, case-insensitively', () => {
+    expect(tablesFromEnvelope(envelope, { search: 'ORD' }).map(t => t.name)).toEqual(['orders']);
+    expect(
+      columnsFromEnvelope(envelope, 'orders', { search: 'amo' }).map(c => c.name)
+    ).toEqual(['amount']);
+  });
+
+  it('returns [] for an unknown table, the same answer the endpoint gives', () => {
+    expect(columnsFromEnvelope(envelope, 'nope')).toEqual([]);
+  });
+
+  it('survives a missing or malformed envelope rather than throwing', () => {
+    for (const bad of [null, undefined, {}, { tables: null }]) {
+      expect(tablesFromEnvelope(bad)).toEqual([]);
+      expect(columnsFromEnvelope(bad, 'orders')).toEqual([]);
+    }
+    expect(columnsFromEnvelope({ tables: { t: {} } }, 't')).toEqual([]);
   });
 });

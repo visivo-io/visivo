@@ -18,22 +18,26 @@ import RightRail from './RightRail';
 import useStore from '../../../stores/store';
 import { setWorkspaceTelemetryListener } from './telemetry';
 
-// SourceOutlineTreePanel (mounted for source scope) hits the source-metadata +
-// schema-jobs APIs on mount — stub them so the branch test stays isolated.
-jest.mock('../../../api/explorer', () => ({
-  fetchSourceMetadata: jest.fn(() => Promise.resolve({ sources: [] })),
-}));
-jest.mock('../../../api/sourceSchemaJobs', () => ({
-  // No cached schema by default → the source outline lands on the cold-source
-  // "Generate schema" affordance (the cached-schema feed drives warm vs cold).
-  fetchSourceSchemaJobs: jest.fn(() =>
-    Promise.resolve([{ source_name: 'analytics_db', has_cached_schema: false }])
-  ),
-  generateSourceSchema: jest.fn(),
-  fetchSchemaGenerationStatus: jest.fn(),
-  fetchSourceTables: jest.fn(() => Promise.resolve([])),
-  fetchTableColumns: jest.fn(() => Promise.resolve([])),
-}));
+// SourceOutlineTreePanel (mounted for source scope) hits the schema-jobs API on
+// mount — stub it so the branch test stays isolated. (There was also an
+// `api/explorer` mock here for `fetchSourceMetadata`; RightRail never imported
+// that module, and Explore 2.0 deleted the function.)
+jest.mock('../../../api/sourceSchemaJobs', () => {
+  // Keep the real envelope slicers — they are pure functions over the
+  // fetched record, and mocking them would hide the derivation.
+  const actual = jest.requireActual('../../../api/sourceSchemaJobs');
+  return {
+    ...actual,
+    // No cached schema by default → the source outline lands on the cold-source
+    // "Generate schema" affordance (the cached-schema feed drives warm vs cold).
+    fetchSourceSchemaJobs: jest.fn(() =>
+      Promise.resolve([{ source_name: 'analytics_db', has_cached_schema: false }])
+    ),
+    generateSourceSchema: jest.fn(),
+    fetchSchemaGenerationStatus: jest.fn(),
+    fetchSourceSchema: jest.fn(),
+  };
+});
 // VIS-996: dimension/metric/relation render through SchemaLeafForm, whose
 // FormShell async-loads the project schema. This test asserts the rail's TAB
 // SET per object type, not form internals — stub it so the async schema load

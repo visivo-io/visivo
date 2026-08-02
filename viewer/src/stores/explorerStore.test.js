@@ -2,7 +2,6 @@
 import useStore from './store';
 import { fetchDiff } from '../api/explorer';
 import { translateExpressions } from '../api/expressions';
-import { fetchModelData } from '../api/modelData';
 import {
   expandDotNotationProps,
   getSourceDialect,
@@ -74,9 +73,6 @@ jest.mock('../api/commit', () => ({
 }));
 jest.mock('../api/expressions', () => ({
   translateExpressions: jest.fn(),
-}));
-jest.mock('../api/modelData', () => ({
-  fetchModelData: jest.fn().mockResolvedValue({ available: false }),
 }));
 
 // Helper to reset all explorer new state
@@ -3570,59 +3566,6 @@ describe('explorerStore', () => {
       translateExpressions.mockRejectedValueOnce({});
       const result = await useStore.getState().validateExplorerExpression('x', 'duckdb');
       expect(result).toEqual({ valid: false, error: 'Validation failed' });
-    });
-  });
-
-  describe('autoLoadModelData (via addExistingInsightToChart pulling in a new model)', () => {
-    it('auto-loads cached parquet rows into a newly-added model tab when available', async () => {
-      useStore.setState({
-        insights: [
-          {
-            name: 'ins',
-            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
-          },
-        ],
-        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
-      });
-      fetchModelData.mockResolvedValueOnce({
-        available: true,
-        columns: ['month'],
-        rows: [{ month: 'Jan' }],
-        row_count: 1,
-        truncated: false,
-      });
-
-      useStore.getState().addExistingInsightToChart('ins');
-      // Flush the microtask chain the dynamic import + two chained promises run on.
-      await new Promise(resolve => setTimeout(resolve, 0));
-      await new Promise(resolve => setTimeout(resolve, 0));
-
-      const modelState = useStore.getState().explorerModelStates.orders;
-      expect(modelState.queryResult).toEqual({
-        columns: ['month'],
-        rows: [{ month: 'Jan' }],
-        row_count: 1,
-        truncated: false,
-      });
-    });
-
-    it('leaves queryResult null when no cached parquet data is available', async () => {
-      useStore.setState({
-        insights: [
-          {
-            name: 'ins',
-            config: { type: 'bar', props: { x: '?{${ref(orders).month}}' }, interactions: [] },
-          },
-        ],
-        models: [{ name: 'orders', config: { sql: 'SELECT 1', source: 'ref(pg)' } }],
-      });
-      fetchModelData.mockResolvedValueOnce({ available: false });
-
-      useStore.getState().addExistingInsightToChart('ins');
-      await new Promise(resolve => setTimeout(resolve, 0));
-      await new Promise(resolve => setTimeout(resolve, 0));
-
-      expect(useStore.getState().explorerModelStates.orders.queryResult).toBeNull();
     });
   });
 

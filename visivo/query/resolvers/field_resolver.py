@@ -52,7 +52,7 @@ class FieldResolver:
                 ``{model_hash: {column: type_string}, ...}``). Used by the
                 Explore 2.0 compile-draft endpoint to supply a scratch model's
                 columns (learned client-side, never written to
-                ``schemas/<model>/schema.json`` on disk) so
+                ``schemas/<model>.json`` on disk) so
                 ``_qualify_expression``/``_is_implicit_dimension`` resolve
                 without ever touching disk. ``None`` (the default, every real
                 run pipeline caller) preserves today's disk-read-only behavior
@@ -72,7 +72,7 @@ class FieldResolver:
             return self._schema_cache[model_name]
 
         # Build path to schema file
-        schema_file = os.path.join(self.output_dir, "schemas", model_name, "schema.json")
+        schema_file = os.path.join(self.output_dir, "schemas", f"{model_name}.json")
 
         # Try to read schema file
         try:

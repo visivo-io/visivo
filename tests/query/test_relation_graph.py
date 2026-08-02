@@ -45,8 +45,7 @@ class TestRelationGraphBasics:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "name": "VARCHAR"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -82,8 +81,7 @@ class TestRelationGraphBasics:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -148,8 +146,7 @@ class TestTwoModelJoins:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -196,8 +193,7 @@ class TestTwoModelJoins:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {"id": "INTEGER", "user_id": "INTEGER", "address_id": "INTEGER"}
             }
@@ -295,8 +291,7 @@ class TestAmbiguousPaths:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {
                     "id": "INTEGER",
@@ -354,8 +349,7 @@ class TestAmbiguousPaths:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {
                     "id": "INTEGER",
@@ -414,8 +408,7 @@ class TestMultiModelJoins:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {"id": "INTEGER", "user_id": "INTEGER", "address_id": "INTEGER"}
             }
@@ -468,8 +461,7 @@ class TestMultiModelJoins:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {"id": "INTEGER", "user_id": "INTEGER", "address_id": "INTEGER"}
             }
@@ -510,8 +502,7 @@ class TestMultiModelJoins:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "a_id": "INTEGER", "c_id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -603,8 +594,7 @@ class TestJoinPlan:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -651,8 +641,7 @@ class TestJoinPlan:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_users, model_orders, model_addr]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -690,8 +679,7 @@ class TestJoinPlan:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -734,8 +722,7 @@ class TestValidation:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -772,8 +759,7 @@ class TestValidation:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -828,8 +814,7 @@ class TestDefaultRelationResolution:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {
                     "id": "INTEGER",
@@ -889,8 +874,7 @@ class TestDefaultRelationResolution:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER", "email": "VARCHAR"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -959,8 +943,7 @@ class TestRelationGraphScoping:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}
             }
@@ -1007,8 +990,7 @@ class TestRelationGraphScoping:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}
             }
@@ -1050,8 +1032,7 @@ class TestRelationGraphScoping:
         # Create schema only for orders
         schema_base = tmpdir.mkdir("schemas")
         model_hash = model_a.name_hash()
-        schema_dir = schema_base.mkdir(model_a.name)
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join(f"{model_a.name}.json")
         schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
 
@@ -1092,8 +1073,7 @@ class TestRelationGraphScoping:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -1135,8 +1115,7 @@ class TestDefaultRelationTieBreak:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER", "email": "VARCHAR"}}
             schema_file.write(json.dumps(schema_data))
 
@@ -1253,8 +1232,7 @@ class TestStructuredJoinErrorAttributes:
         schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
-            schema_dir = schema_base.mkdir(model.name)
-            schema_file = schema_dir.join("schema.json")
+            schema_file = schema_base.join(f"{model.name}.json")
             schema_data = {
                 model_hash: {
                     "id": "INTEGER",

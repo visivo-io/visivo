@@ -8,6 +8,7 @@ from visivo.server.views.file_views import register_file_views
 from visivo.server.views.input_jobs_views import register_input_jobs_views
 from visivo.server.views.inputs_views import register_inputs_views
 from visivo.server.views.insight_jobs_views import register_insight_jobs_views
+from visivo.server.views.model_jobs_views import register_model_jobs_views
 from visivo.server.views.insights_views import register_insights_views
 from visivo.server.views.markdowns_views import register_markdowns_views
 from visivo.server.views.charts_views import register_charts_views
@@ -28,10 +29,9 @@ from visivo.server.views.exploration_views import register_exploration_views
 from visivo.server.views.expression_views import register_expression_views
 from visivo.server.views.insight_compile_views import register_insight_compile_views
 from visivo.server.views.insight_execute_views import register_insight_execute_views
-from visivo.server.views.model_data_views import register_model_data_views
 from visivo.server.views.run_views import register_run_views
 from visivo.server.views.preferences_views import register_preferences_views
-from visivo.server.views.model_schema_jobs_views import register_model_schema_jobs_views
+from visivo.server.views.model_schema_views import register_model_schema_views
 
 
 def register_views(app, flask_app, output_dir):
@@ -41,6 +41,7 @@ def register_views(app, flask_app, output_dir):
     register_projects_views(app, flask_app, output_dir)
     register_dashboard_views(app, flask_app, output_dir)
     register_insight_jobs_views(app, flask_app, output_dir)
+    register_model_jobs_views(app, flask_app, output_dir)
     register_insights_views(app, flask_app, output_dir)
     register_inputs_views(app, flask_app, output_dir)
     register_markdowns_views(app, flask_app, output_dir)
@@ -66,7 +67,6 @@ def register_views(app, flask_app, output_dir):
     register_expression_views(app, flask_app, output_dir)
     register_insight_compile_views(app, flask_app, output_dir)
     register_insight_execute_views(app, flask_app, output_dir)
-    register_model_data_views(app, flask_app, output_dir)
     register_run_views(app, flask_app, output_dir)
     register_preferences_views(app, flask_app, output_dir)
-    register_model_schema_jobs_views(app, flask_app, output_dir)
+    register_model_schema_views(app, flask_app, output_dir)

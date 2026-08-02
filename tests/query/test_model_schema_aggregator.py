@@ -87,9 +87,9 @@ class TestLoadModelSchema:
             columns={"id": "INT"},
             source_dialect="duckdb",
         )
-        schema_dir = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", "orders")
+        schema_dir = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas")
         os.makedirs(schema_dir, exist_ok=True)
-        with open(os.path.join(schema_dir, "schema.json"), "w") as fp:
+        with open(os.path.join(schema_dir, "orders.json"), "w") as fp:
             json.dump(payload, fp)
 
         loaded = ModelSchemaAggregator.load_model_schema("orders", output_dir)
@@ -104,9 +104,9 @@ class TestLoadModelSchema:
             name_hash="mh", model_name="orders", model_type="sql", columns={"id": "INT"}
         )
         run_id = "preview-orders"
-        schema_dir = os.path.join(output_dir, run_id, "schemas", "orders")
+        schema_dir = os.path.join(output_dir, run_id, "schemas")
         os.makedirs(schema_dir, exist_ok=True)
-        with open(os.path.join(schema_dir, "schema.json"), "w") as fp:
+        with open(os.path.join(schema_dir, "orders.json"), "w") as fp:
             json.dump(payload, fp)
 
         # Default run_id (main) misses; explicit preview run_id hits.
@@ -120,22 +120,23 @@ class TestListStoredModelSchemas:
         output_dir = str(tmp_path)
         schemas_root = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas")
 
+        os.makedirs(schemas_root, exist_ok=True)
+
         # A model schema (has model_name).
-        model_dir = os.path.join(schemas_root, "orders")
-        os.makedirs(model_dir, exist_ok=True)
         model_payload = ModelSchemaAggregator.build_envelope(
             name_hash="mh",
             model_name="orders",
             model_type="sql",
             columns={"id": "INT", "total": "DOUBLE"},
         )
-        with open(os.path.join(model_dir, "schema.json"), "w") as fp:
+        with open(os.path.join(schemas_root, "orders.json"), "w") as fp:
             json.dump(model_payload, fp)
 
-        # A source schema (has source_name, NOT model_name) in the same dir.
-        source_dir = os.path.join(schemas_root, "my_source")
-        os.makedirs(source_dir, exist_ok=True)
-        with open(os.path.join(source_dir, "schema.json"), "w") as fp:
+        # A source schema (has source_name, NOT model_name) beside it. Models
+        # and sources share this directory, so `model_name` is what tells them
+        # apart — the flat layout removes the per-name directory that used to
+        # be incidental structure, not a filter.
+        with open(os.path.join(schemas_root, "my_source.json"), "w") as fp:
             json.dump(
                 {
                     "source_name": "my_source",

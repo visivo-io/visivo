@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import useStore from '../stores/store';
 import {
   startModelQueryJob,
   getModelQueryJobStatus,
@@ -16,6 +17,10 @@ import {
  * @returns {Object} Query job state and control functions
  */
 export const useModelQueryJob = () => {
+  // Subscribed at render rather than read via getState() inside an async
+  // callback: that samples the id at request time, not render time.
+  const projectId = useStore(s => s.project?.id);
+
   const [jobId, setJobId] = useState(null);
   const [status, setStatus] = useState(null); // 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
   const [progress, setProgress] = useState(0);
@@ -40,7 +45,7 @@ export const useModelQueryJob = () => {
       setResult(null);
       setJobId(null);
 
-      const response = await startModelQueryJob(sourceName, sql);
+      const response = await startModelQueryJob(sourceName, sql, projectId);
 
       const newJobId = response.job_id;
       currentJobIdRef.current = newJobId;
@@ -53,7 +58,7 @@ export const useModelQueryJob = () => {
       setStatus('failed');
       throw new Error(errorMsg);
     }
-  }, []);
+  }, [projectId]);
 
   /**
    * Poll for job status.
@@ -62,7 +67,7 @@ export const useModelQueryJob = () => {
    */
   const pollStatus = useCallback(async currentJobId => {
     try {
-      const jobData = await getModelQueryJobStatus(currentJobId);
+      const jobData = await getModelQueryJobStatus(currentJobId, projectId);
 
       // Ignore stale responses from previous jobs
       if (currentJobIdRef.current !== currentJobId) return;
@@ -105,7 +110,7 @@ export const useModelQueryJob = () => {
         pollingIntervalRef.current = null;
       }
     }
-  }, []);
+  }, [projectId]);
 
   /**
    * Start polling when job is started
@@ -136,7 +141,7 @@ export const useModelQueryJob = () => {
     if (!jobId) return;
 
     try {
-      await cancelModelQueryJob(jobId);
+      await cancelModelQueryJob(jobId, projectId);
       setStatus('cancelled');
       setError('Query cancelled');
       if (pollingIntervalRef.current) {
@@ -146,7 +151,7 @@ export const useModelQueryJob = () => {
     } catch (err) {
       console.error('Failed to cancel job:', err);
     }
-  }, [jobId]);
+  }, [jobId, projectId]);
 
   /**
    * Reset/clear current job state

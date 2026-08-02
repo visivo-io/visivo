@@ -15,16 +15,23 @@ import {
 } from '../../../../contexts/URLContext';
 
 // Mock the cached-schema feed.
-jest.mock('../../../../api/sourceSchemaJobs', () => ({
-  fetchSourceSchemaJobs: jest.fn(),
-  fetchSourceTables: jest.fn(),
-  fetchTableColumns: jest.fn(),
-}));
+jest.mock('../../../../api/sourceSchemaJobs', () => {
+  // The envelope slicers are pure functions over the fetched record — keep the
+  // real ones so these tests exercise the same derivation the component does.
+  const actual = jest.requireActual('../../../../api/sourceSchemaJobs');
+  return {
+    ...actual,
+    fetchSourceSchemaJobs: jest.fn(),
+    fetchSourceSchema: jest.fn(),
+  };
+});
 const {
   fetchSourceSchemaJobs,
-  fetchSourceTables,
-  fetchTableColumns,
+  fetchSourceSchema,
 } = require('../../../../api/sourceSchemaJobs');
+
+/** The stored envelope shape: tables -> columns -> {type, nullable}. */
+const envelope = tables => ({ source_name: SRC, tables });
 
 // Mock computeLayout (dagre) — return the nodes with dummy positions.
 jest.mock('../../lineage/useLineageDag', () => ({
@@ -80,14 +87,10 @@ beforeEach(() => {
   setGlobalURLConfig(createURLConfig({ environment: 'server' }));
   // Warm (cached) source with two tables by default.
   fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: true }]);
-  fetchSourceTables.mockResolvedValue([
-    { name: 'orders', column_count: 2 },
-    { name: 'users', column_count: 2 },
-  ]);
-  fetchTableColumns.mockResolvedValue([
-    { name: 'id', type: 'INTEGER' },
-    { name: 'amount', type: 'DOUBLE' },
-  ]);
+  const cols = { id: { type: 'INTEGER' }, amount: { type: 'DOUBLE' } };
+  fetchSourceSchema.mockResolvedValue(
+    envelope({ orders: { columns: cols }, users: { columns: cols } })
+  );
 });
 
 afterEach(() => {
@@ -102,7 +105,7 @@ describe('SourceErd (VIS-1005)', () => {
     expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
     expect(screen.getByTestId('source-erd-node-users')).toBeInTheDocument();
     // It reads the cached feed, never the live introspect.
-    expect(fetchSourceTables).toHaveBeenCalledWith(SRC);
+    expect(fetchSourceSchema).toHaveBeenCalledWith(SRC, null, undefined);
   });
 
   test('passes column-aware layoutSize heights to computeLayout so tall tables do not overlap', async () => {
@@ -134,7 +137,7 @@ describe('SourceErd (VIS-1005)', () => {
   });
 
   test('shows the empty state for a cached source with no tables', async () => {
-    fetchSourceTables.mockResolvedValue([]);
+    fetchSourceSchema.mockResolvedValue(envelope({}));
     render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
 
     expect(await screen.findByTestId('source-erd-empty')).toBeInTheDocument();
@@ -147,7 +150,7 @@ describe('SourceErd (VIS-1005)', () => {
 
     expect(await screen.findByTestId('source-erd-connection-failed')).toBeInTheDocument();
     // It never fetches tables for a source with no cached schema.
-    expect(fetchSourceTables).not.toHaveBeenCalled();
+    expect(fetchSourceSchema).not.toHaveBeenCalled();
   });
 
   test('shows the connection-failed state when the cached load throws', async () => {
@@ -178,11 +181,13 @@ describe('SourceErd (VIS-1005)', () => {
     expect(fetchSourceSchemaJobs).toHaveBeenCalled();
   });
 
-  test('a per-table column fetch failure degrades that table to zero columns', async () => {
-    fetchTableColumns.mockImplementation((_src, table) =>
-      table === 'orders'
-        ? Promise.reject(new Error('cols boom'))
-        : Promise.resolve([{ name: 'id', type: 'INTEGER' }])
+  test('a table carrying no columns still diagrams, with no column rows', async () => {
+    // Was "a per-table column fetch failure degrades that table": there is no
+    // longer a per-table fetch to fail. The surviving risk is the same shape —
+    // a table present in the envelope with nothing under `columns` must still
+    // draw a node rather than break the diagram.
+    fetchSourceSchema.mockResolvedValue(
+      envelope({ orders: {}, users: { columns: { id: { type: 'INTEGER' } } } })
     );
     render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
 

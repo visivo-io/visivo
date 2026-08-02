@@ -13,8 +13,7 @@ import useStore from '../../../../stores/store';
 import LibrarySourceRow from './LibrarySourceRow';
 import {
   fetchSourceSchemaJobs,
-  fetchSourceTables,
-  fetchTableColumns,
+  fetchSourceSchema,
 } from '../../../../api/sourceSchemaJobs';
 import { isAvailable } from '../../../../contexts/URLContext';
 
@@ -26,13 +25,18 @@ import { isAvailable } from '../../../../contexts/URLContext';
 jest.mock('../../../../contexts/URLContext', () => ({
   isAvailable: jest.fn(() => true),
 }));
-jest.mock('../../../../api/sourceSchemaJobs', () => ({
-  fetchSourceSchemaJobs: jest.fn(),
-  generateSourceSchema: jest.fn(),
-  fetchSchemaGenerationStatus: jest.fn(),
-  fetchSourceTables: jest.fn(),
-  fetchTableColumns: jest.fn(),
-}));
+jest.mock('../../../../api/sourceSchemaJobs', () => {
+  // Keep the real envelope slicers — they are pure functions over the
+  // fetched record, and mocking them would hide the derivation.
+  const actual = jest.requireActual('../../../../api/sourceSchemaJobs');
+  return {
+    ...actual,
+    fetchSourceSchemaJobs: jest.fn(),
+    generateSourceSchema: jest.fn(),
+    fetchSchemaGenerationStatus: jest.fn(),
+    fetchSourceSchema: jest.fn(),
+  };
+});
 
 jest.mock('@dnd-kit/core', () => {
   const actual = jest.requireActual('@dnd-kit/core');
@@ -40,6 +44,20 @@ jest.mock('@dnd-kit/core', () => {
 });
 
 const withDnd = ui => <DndContext>{ui}</DndContext>;
+
+/** The stored schema envelope: tables -> columns -> {type, nullable}. */
+const envelope = tables => ({ source_name: 'warehouse', tables });
+/** Four columns, matching the `column_count: 4` these tests used to mock. */
+const ORDERS_4 = envelope({
+  orders: {
+    columns: {
+      id: { type: 'INTEGER' },
+      region: { type: 'VARCHAR' },
+      amount: { type: 'DOUBLE' },
+      created_at: { type: 'TIMESTAMP' },
+    },
+  },
+});
 
 const SOURCE = { id: 'source:warehouse', type: 'source', name: 'warehouse', subtype: 'postgresql' };
 
@@ -93,7 +111,7 @@ describe('LibrarySourceRow', () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
-    fetchSourceTables.mockResolvedValue([{ name: 'orders', column_count: 4 }]);
+    fetchSourceSchema.mockResolvedValue(ORDERS_4);
     const onClick = jest.fn();
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
 
@@ -121,7 +139,7 @@ describe('LibrarySourceRow', () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
-    fetchSourceTables.mockResolvedValue([{ name: 'orders', column_count: 4 }]);
+    fetchSourceSchema.mockResolvedValue(ORDERS_4);
 
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
@@ -139,7 +157,7 @@ describe('LibrarySourceRow', () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
-    fetchSourceTables.mockResolvedValue([{ name: 'orders', column_count: 4 }]);
+    fetchSourceSchema.mockResolvedValue(ORDERS_4);
 
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
@@ -155,27 +173,31 @@ describe('LibrarySourceRow', () => {
     expect(fetchSourceSchemaJobs).toHaveBeenCalledTimes(1);
   });
 
-  test('expanding a table lazily loads its columns, with type glyphs', async () => {
+  test('expanding a table shows its columns, with type glyphs', async () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
-    fetchSourceTables.mockResolvedValue([{ name: 'orders', column_count: 2 }]);
-    fetchTableColumns.mockResolvedValue([
-      { name: 'id', type: 'INTEGER' },
-      { name: 'region', type: 'VARCHAR' },
-      { name: 'is_active', type: 'BOOLEAN' },
-      { name: 'created_at', type: 'TIMESTAMP' },
-      { name: 'untyped', type: null },
-    ]);
+    fetchSourceSchema.mockResolvedValue(
+      envelope({
+        orders: {
+          columns: {
+            id: { type: 'INTEGER' },
+            region: { type: 'VARCHAR' },
+            is_active: { type: 'BOOLEAN' },
+            created_at: { type: 'TIMESTAMP' },
+            untyped: { type: null },
+          },
+        },
+      })
+    );
 
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
     await screen.findByTestId('library-source-table-warehouse-orders');
 
-    expect(fetchTableColumns).not.toHaveBeenCalled();
+    // The columns arrived with the table list; expanding costs no request.
+    expect(fetchSourceSchema).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId('library-source-table-warehouse-orders-toggle'));
-
-    await waitFor(() => expect(fetchTableColumns).toHaveBeenCalledWith('warehouse', 'orders'));
     await screen.findByTestId('library-source-column-warehouse-orders-id');
     expect(screen.getByTestId('library-source-column-warehouse-orders-id')).toHaveTextContent('#');
     expect(
@@ -197,7 +219,9 @@ describe('LibrarySourceRow', () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
-    fetchSourceTables.mockResolvedValue([{ name: 'orders', column_count: 1 }]);
+    fetchSourceSchema.mockResolvedValue(
+      envelope({ orders: { columns: { amount: { type: 'DOUBLE' } } } })
+    );
 
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
@@ -215,8 +239,9 @@ describe('LibrarySourceRow', () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
-    fetchSourceTables.mockResolvedValue([{ name: 'orders', column_count: 1 }]);
-    fetchTableColumns.mockResolvedValue([{ name: 'amount', type: 'DOUBLE' }]);
+    fetchSourceSchema.mockResolvedValue(
+      envelope({ orders: { columns: { amount: { type: 'DOUBLE' } } } })
+    );
 
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
@@ -243,7 +268,7 @@ describe('LibrarySourceRow', () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
-    fetchSourceTables.mockRejectedValueOnce(new Error('backend unreachable'));
+    fetchSourceSchema.mockRejectedValueOnce(new Error('backend unreachable'));
 
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
@@ -251,7 +276,9 @@ describe('LibrarySourceRow', () => {
     await screen.findByTestId('library-source-warehouse-retry');
     expect(screen.getByText('backend unreachable')).toBeInTheDocument();
 
-    fetchSourceTables.mockResolvedValueOnce([{ name: 'orders', column_count: 2 }]);
+    fetchSourceSchema.mockResolvedValueOnce(
+      envelope({ orders: { columns: { id: { type: 'INTEGER' }, amount: { type: 'DOUBLE' } } } })
+    );
     fireEvent.click(screen.getByTestId('library-source-warehouse-retry'));
 
     await screen.findByTestId('library-source-table-warehouse-orders');
@@ -266,7 +293,7 @@ describe('LibrarySourceRow', () => {
     fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
 
     await screen.findByTestId('library-source-warehouse-generate');
-    expect(fetchSourceTables).not.toHaveBeenCalled();
+    expect(fetchSourceSchema).not.toHaveBeenCalled();
   });
 
   test('source row itself is a drag source (type source, unchanged payload shape)', () => {

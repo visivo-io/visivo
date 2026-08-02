@@ -16,7 +16,6 @@ import {
   startModelQueryJob,
   getModelQueryJobStatus,
   cancelModelQueryJob,
-  pollModelQueryJob,
 } from './modelQueryJobs';
 import { apiFetch } from './utils';
 
@@ -215,18 +214,4 @@ describe('modelQueryJobs api', () => {
     await expect(cancelModelQueryJob('j1')).rejects.toThrow(/Failed to cancel job/);
   });
 
-  it('pollModelQueryJob resolves on completion and reports progress', async () => {
-    const onProgress = jest.fn();
-    apiFetch.mockResolvedValueOnce(ok({ status: 'completed', rows: [] }));
-    await expect(pollModelQueryJob('j1', { onProgress })).resolves.toEqual({
-      status: 'completed',
-      rows: [],
-    });
-    expect(onProgress).toHaveBeenCalledWith({ status: 'completed', rows: [] });
-  });
-
-  it('pollModelQueryJob throws with the job error when it fails', async () => {
-    apiFetch.mockResolvedValueOnce(ok({ status: 'failed', error: 'query exploded' }));
-    await expect(pollModelQueryJob('j1')).rejects.toThrow('query exploded');
-  });
 });

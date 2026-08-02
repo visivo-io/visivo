@@ -102,8 +102,7 @@ class TestFieldResolverWithInputs:
         # Create schema file
         schema_base = tmpdir.mkdir("schemas")
         model_hash = orders_model.name_hash()
-        schema_dir = schema_base.mkdir("orders")
-        schema_file = schema_dir.join("schema.json")
+        schema_file = schema_base.join("orders.json")
         schema_data = {
             model_hash: {
                 "id": "INTEGER",

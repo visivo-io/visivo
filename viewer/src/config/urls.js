@@ -5,99 +5,117 @@
 
 // URL patterns for different environments
 const URL_PATTERNS = {
+  // Every value is a PATH TEMPLATE, not an operation — `{...}` segments are
+  // filled by getUrl(). Two operations on one path (list + create) share one
+  // key, because the map has nothing to say about verbs.
+  //
+  // Grouped by shape so an outlier is visible as an outlier. A resource that
+  // does not have `<plural>/` + `<plural>/{name}/` is either genuinely special
+  // or drift, and the grouping is what makes you ask which.
   server: {
-    project: '/api/project/',
-    error: '/api/error/',
-    insightJobsQuery: '/api/insight-jobs/',
-    inputJobsQuery: '/api/input-jobs/',
-    dashboardQuery: '/api/dashboards/{name}/',
-    dashboardThumbnail: '/api/dashboards/{name}.png/',
-
-    writeChanges: '/api/project/write_changes/',
-    projectFilePath: '/api/project/project_file_path/',
-    sourcesMetadata: '/api/project/sources_metadata/',
-    queryExecution: '/api/query/{projectId}/',
-
-    // Source management endpoints
+    // ---- CRUD resources -------------------------------------------------
+    // Uniform: list / detail / validate on `/api/<plural>/`. If you are adding
+    // a resource, it belongs here and it should need no comment.
     sourcesList: '/api/sources/',
     sourceDetail: '/api/sources/{name}/',
     sourceValidate: '/api/sources/{name}/validate/',
-    sourceTestConnection: '/api/sources/test-connection/',
+    // Connection tests are their own collection: the credentials being tested
+    // may not belong to a saved source yet, so there is no {name} to nest
+    // under. POST starts a job; its detail hangs off this path with the job id
+    // appended, which is what runOnDemandJob does.
+    sourceConnections: '/api/source-connections/',
 
-    // Model management endpoints
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',
     modelValidate: '/api/models/{name}/validate/',
-
-    // Model profiling endpoints
+    // OUTLIER: a sub-action on the detail route — drops the cached profile.
     modelProfileInvalidate: '/api/models/{name}/profile/invalidate/',
 
-    // Dimension management endpoints
     dimensionsList: '/api/dimensions/',
     dimensionDetail: '/api/dimensions/{name}/',
     dimensionValidate: '/api/dimensions/{name}/validate/',
 
-    // Metric management endpoints
     metricsList: '/api/metrics/',
     metricDetail: '/api/metrics/{name}/',
     metricValidate: '/api/metrics/{name}/validate/',
 
-    // Relation management endpoints
     relationsList: '/api/relations/',
     relationDetail: '/api/relations/{name}/',
     relationValidate: '/api/relations/{name}/validate/',
 
-    // Insight management endpoints
     insightsList: '/api/insights/',
     insightDetail: '/api/insights/{name}/',
     insightValidate: '/api/insights/{name}/validate/',
 
-    // Input management endpoints
     inputsList: '/api/inputs/',
     inputDetail: '/api/inputs/{name}/',
     inputValidate: '/api/inputs/{name}/validate/',
 
-    // Markdown management endpoints
     markdownsList: '/api/markdowns/',
     markdownDetail: '/api/markdowns/{name}/',
     markdownValidate: '/api/markdowns/{name}/validate/',
 
-    // Chart management endpoints
     chartsList: '/api/charts/',
     chartDetail: '/api/charts/{name}/',
     chartValidate: '/api/charts/{name}/validate/',
 
-    // Table management endpoints
     tablesList: '/api/tables/',
     tableDetail: '/api/tables/{name}/',
     tableValidate: '/api/tables/{name}/validate/',
 
-    // Dashboard management endpoints
+    projectsList: '/api/projects/',
+    projectDetail: '/api/projects/{name}/',
+    projectValidate: '/api/projects/{name}/validate/',
+
+    // OUTLIER: dashboards carry an explicit `/delete/` sub-path instead of
+    // DELETE on the detail route, and `dashboardSave` is the detail route under
+    // a second name. Every other resource above deletes via its detail route.
     dashboardsList: '/api/dashboards/',
     dashboardSave: '/api/dashboards/{name}/',
     dashboardDelete: '/api/dashboards/{name}/delete/',
     dashboardValidate: '/api/dashboards/{name}/validate/',
 
-    // Defaults management endpoints
+    // OUTLIER: a singleton — no list, no name. Correct, since a project has
+    // exactly one defaults document.
     defaults: '/api/defaults/',
 
-    // Project management endpoints (new CRUD pattern)
-    projectsList: '/api/projects/',
-    projectDetail: '/api/projects/{name}/',
-    projectValidate: '/api/projects/{name}/validate/',
+    // Explorations are per-user scratch state, keyed by id rather than name
+    // (two users' explorations can share a name), and carry two sub-actions
+    // that are state transitions rather than edits.
+    explorationsList: '/api/explorations/',
+    explorationDetail: '/api/explorations/{id}/',
+    explorationConsumeReturnTo: '/api/explorations/{id}/consume-return-to/',
+    explorationRecordPromotion: '/api/explorations/{id}/record-promotion/',
 
-    // Commit management endpoints
-    commitStatus: '/api/commit/status/',
-    commitPending: '/api/commit/pending/',
-    commit: '/api/commit/',
-    commitDiscard: '/api/commit/discard/',
+    // ---- Derived resources ----------------------------------------------
+    // Computed on request rather than stored, so they read as a collection but
+    // answer with POST — the draft form carries SQL in the body. Model schemas
+    // are inferred with SQLGlot from the source's cached schema (no database),
+    // which is why a model that has never been run still has columns.
+    modelSchemasList: '/api/model-schemas/',
+    modelSchemaDetail: '/api/model-schemas/{name}/',
 
-    // The user's own preferences. Both servers implement it — cloud off the User
-    // row, local off ~/.visivo/config.yml — with different defaults, which is how
-    // the viewer stays free of local-vs-cloud branching.
-    mePreferences: '/api/me/preferences/',
+    // ---- Job resources --------------------------------------------------
+    // Asynchronous work, all the same two-key shape: POST the list route to
+    // start, GET the detail route to read the result or poll the status. The
+    // detail segment is whatever the server accepts as an identifier — for
+    // source schemas that is EITHER a source name or a run id, which is why
+    // the param is `{identifier}` and not `{name}`.
+    sourceSchemaJobsList: '/api/source-schema-jobs/',
+    sourceSchemaJobDetail: '/api/source-schema-jobs/{identifier}/',
 
-    // Cloud-editing endpoints (core/Django only; 404 under local `visivo serve`)
+    modelQueryJobs: '/api/model-query-jobs/',
+    modelQueryJobDetail: '/api/model-query-jobs/{jobId}/',
+
+    // Read-only artifact manifests: built data, addressed in bulk. No POST —
+    // the run produced these, the client only reads them.
+    insightJobsQuery: '/api/insight-jobs/',
+    inputJobsQuery: '/api/input-jobs/',
+    modelJobsQuery: '/api/model-jobs/',
+
+    // ---- Run control (cloud) --------------------------------------------
+    // core/Django only; 404 under local `visivo serve`. Nested under a project
+    // because cloud is multi-tenant and every one of these is scoped to it.
     projectCapabilities: '/api/projects/{projectId}/capabilities/',
     projectDraft: '/api/projects/{projectId}/draft/',
     projectBranch: '/api/projects/{projectId}/branch/',
@@ -108,57 +126,54 @@ const URL_PATTERNS = {
     runLogs: '/api/runs/{runId}/logs/',
     runCancel: '/api/runs/{runId}/cancel/',
 
-    // Source schema jobs endpoints
-    sourceSchemaJobsList: '/api/source-schema-jobs/',
-    sourceSchemaJobDetail: '/api/source-schema-jobs/{name}/',
-    sourceSchemaJobTables: '/api/source-schema-jobs/{name}/tables/',
-    sourceSchemaJobColumns: '/api/source-schema-jobs/{name}/tables/{table}/columns/',
-    sourceSchemaJobCreate: '/api/source-schema-jobs/',
-    sourceSchemaJobStatus: '/api/source-schema-jobs/{runId}/',
+    // ---- Local working copy ---------------------------------------------
+    // The local server's git-ish surface: staged edits and how they land.
+    writeChanges: '/api/project/write_changes/',
+    commitStatus: '/api/commit/status/',
+    commitPending: '/api/commit/pending/',
+    commit: '/api/commit/',
+    commitDiscard: '/api/commit/discard/',
 
-    // Model query jobs endpoints
-    modelQueryJobs: '/api/model-query-jobs/',
-    modelQueryJobDetail: '/api/model-query-jobs/{jobId}/',
-
-    // Expression translation endpoint
+    // ---- Stateless compute ----------------------------------------------
+    // No stored resource behind any of these: request in, answer out. That is
+    // why they are verbs on their own segment rather than nested under the
+    // resource they happen to concern.
+    queryExecution: '/api/query/{projectId}/',
     expressionsTranslate: '/api/expressions/translate/',
-
-    // Expression parse validation (VIS-993 gate; server-only — dist/cloud fail open)
+    // VIS-993 gate; server-only — dist/cloud fail open.
     expressionsValidate: '/api/expressions/validate/',
-
-    // Model data endpoint
-    modelData: '/api/models/{name}/data/',
-
-    // Model schema endpoints (run-phase column schema artifact)
-    modelSchemaJob: '/api/model-schema-jobs/{name}/',
-    modelSchemaJobColumns: '/api/model-schema-jobs/{name}/columns/',
-
-    // Exploration persistence endpoints
-    explorationsList: '/api/explorations/',
-    explorationDetail: '/api/explorations/{id}/',
-    explorationConsumeReturnTo: '/api/explorations/{id}/consume-return-to/',
-    // Explore 2.0 Phase 4: append-only promotion trail (07-exploration-api-
-    // contract.md's record-promotion sub-action).
-    explorationRecordPromotion: '/api/explorations/{id}/record-promotion/',
-
-    // Explore 2.0 Phase 4 — stateless draft-compile endpoint (S2's resolved
-    // design). Deliberately its OWN top-level segment, NOT nested under
-    // /api/insights/ — see insight_compile_views.py's docstring for why.
+    // Deliberately its OWN top-level segment, NOT nested under /api/insights/ —
+    // see insight_compile_views.py's docstring for why.
     insightCompileDraft: '/api/insight-compile-draft/',
-
-    // Explore 2.0 state fix, Phase 3 — server-side execute for an aggregate
-    // draft preview (executes the query against the FULL source; the compile
-    // endpoint's `requires_full_source` decides when the client routes here).
+    // Executes an aggregate draft against the FULL source; the compile
+    // endpoint's `requires_full_source` decides when the client routes here.
     insightExecuteDraft: '/api/insight-execute-draft/',
 
-    // Workspace telemetry forwarding endpoint (VIS-822) — the local Flask
-    // server relays workspace events through the CLI's PostHog client so the
-    // CLI telemetry opt-out + anonymization apply to frontend events.
+    // ---- Whole-project reads --------------------------------------------
+    project: '/api/project/',
+    error: '/api/error/',
+    projectFilePath: '/api/project/project_file_path/',
+    dashboardQuery: '/api/dashboards/{name}/',
+    dashboardThumbnail: '/api/dashboards/{name}.png/',
+
+    // ---- Per-user / telemetry -------------------------------------------
+    // Both servers implement preferences — cloud off the User row, local off
+    // ~/.visivo/config.yml — with different defaults, which is how the viewer
+    // stays free of local-vs-cloud branching.
+    mePreferences: '/api/me/preferences/',
+    // The local Flask server relays workspace events through the CLI's PostHog
+    // client so the CLI telemetry opt-out + anonymization apply (VIS-822).
     workspaceTelemetry: '/api/telemetry/workspace-event/',
   },
 
+  // A dist build is static files — there is no server, so almost nothing
+  // resolves. Listing ~70 explicit `null`s buried the handful that DO, and made
+  // every new server endpoint a line someone had to remember to add here.
+  //
+  // So name only what dist actually serves; everything else in `server` is
+  // derived to null below. Unavailable-by-default is the right default, and it
+  // cannot drift.
   dist: {
-    // Static data endpoints only in dist mode
     project: '/data/project.json',
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
@@ -166,131 +181,19 @@ const URL_PATTERNS = {
     dashboardQuery: '/data/dashboards/{name}.json',
     dashboardThumbnail: '/data/dashboards/{name}.png',
 
-    // Interactive endpoints not available in dist
-    writeChanges: null,
-    projectFilePath: null,
-    sourcesMetadata: null,
-    queryExecution: null,
-    editorsInstalled: null,
-    editorsOpen: null,
-
-    // Source management endpoints (not available in dist)
-    sourcesList: null,
-    sourceDetail: null,
-    sourceValidate: null,
-    sourceTestConnection: null,
-
-    // Model management endpoints (not available in dist)
-    modelsList: null,
-    modelDetail: null,
-    modelValidate: null,
-
-    // Model profiling endpoints (not available in dist)
-    modelProfileInvalidate: null,
-
-    // Dimension management endpoints (not available in dist)
-    dimensionsList: null,
-    dimensionDetail: null,
-    dimensionValidate: null,
-
-    // Metric management endpoints (not available in dist)
-    metricsList: null,
-    metricDetail: null,
-    metricValidate: null,
-
-    // Relation management endpoints (not available in dist)
-    relationsList: null,
-    relationDetail: null,
-    relationValidate: null,
-
-    // Insight management endpoints (not available in dist)
-    insightsList: null,
-    insightDetail: null,
-    insightValidate: null,
-
-    // Input management endpoints (not available in dist)
-    inputsList: null,
-    inputDetail: null,
-    inputValidate: null,
-
-    // Markdown management endpoints (not available in dist)
-    markdownsList: null,
-    markdownDetail: null,
-    markdownValidate: null,
-
-    // Chart management endpoints (not available in dist)
-    chartsList: null,
-    chartDetail: null,
-    chartValidate: null,
-
-    // Table management endpoints (not available in dist)
-    tablesList: null,
-    tableDetail: null,
-    tableValidate: null,
-
-    // Dashboard management endpoints (not available in dist)
-    dashboardsList: null,
-    dashboardSave: null,
-    dashboardDelete: null,
-    dashboardValidate: null,
-
-    // Defaults management endpoints (not available in dist)
-    defaults: null,
-
-    // Commit management endpoints (not available in dist)
-    commitStatus: null,
-    commitPending: null,
-    commit: null,
-    commitDiscard: null,
-
-    // No server to hold a preference against — the toggle simply doesn't render.
-    mePreferences: null,
-
-    // Cloud-editing endpoints (not available in dist)
-    projectCapabilities: null,
-    projectDraft: null,
-    projectBranch: null,
-    projectChanges: null,
-    projectCommit: null,
-
-    // Source schema jobs endpoints (not available in dist)
-    sourceSchemaJobsList: null,
-    sourceSchemaJobDetail: null,
-    sourceSchemaJobTables: null,
-    sourceSchemaJobColumns: null,
-    sourceSchemaJobCreate: null,
-    sourceSchemaJobStatus: null,
-
-    // Model query jobs endpoints (not available in dist)
-    modelQueryJobs: null,
-    modelQueryJobDetail: null,
-
-    // Model data endpoint (not available in dist)
-    modelData: null,
-
-    // Model schema endpoints — null in dist for now. The dist build does NOT
-    // yet copy {output_dir}/main/schemas/{model}/schema.json into /data/ (see
-    // dist_phase.py, which copies insights.json / inputs.json / parquet but not
-    // model schemas), so there is no static JSON to point at. With these null,
-    // the frontend falls back to model data. Set modelSchemaJob to
-    // '/data/schemas/models/{name}/schema.json' once dist_phase copies them.
-    modelSchemaJob: null,
-    modelSchemaJobColumns: null,
-
-    // Exploration persistence endpoints (not available in dist)
-    explorationsList: null,
-    explorationDetail: null,
-    explorationConsumeReturnTo: null,
-    explorationRecordPromotion: null,
-
-    // Insight compile-draft endpoint (not available in dist — no Flask server)
-    insightCompileDraft: null,
-    insightExecuteDraft: null,
-
-    // Workspace telemetry forwarding (not available in dist — no Flask server)
-    workspaceTelemetry: null,
+    // Deliberately absent, though the artifacts exist:
+    //   modelJobsQuery   — a dist build writes no model-jobs manifest.
+    //   model-schemas    — inference needs a server; a dist build has none.
   },
 };
+
+// Every `server` key that dist does not serve resolves to null, so `isAvailable`
+// reports false and `getUrl` throws the "not available in 'dist'" error rather
+// than the "unknown key" one. Same behaviour the explicit nulls gave, minus the
+// chance of forgetting a line.
+URL_PATTERNS.dist = Object.fromEntries(
+  Object.keys(URL_PATTERNS.server).map(key => [key, URL_PATTERNS.dist[key] ?? null])
+);
 
 /**
  * URL Configuration Manager

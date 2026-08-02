@@ -1,22 +1,26 @@
 /**
  * useSourceOutline cancellation + load tests (VIS-1004).
  *
- * The hook feeds the right-rail source outline from the backend-cached
- * schema. The critical contract pinned here: cancellation is PER-INVOCATION
- * (an epoch captured by each async closure), so an in-flight load started for
- * source A can never write A's tables into source B's panel state after a
- * switch. (A single shared `cancelledRef` boolean was reset by the NEXT
- * source's effect, which is exactly how that cross-write happened —
- * RightRail mounts SourceOutlineTreePanel without a key, so the instance is
- * reused across source selections.)
+ * The hook feeds the right-rail source outline from the backend-cached schema.
+ * Two contracts are pinned here.
+ *
+ * 1. Cancellation is PER-INVOCATION (an epoch captured by each async closure),
+ *    so an in-flight load started for source A can never write A's tables into
+ *    source B's panel state after a switch. (A single shared `cancelledRef`
+ *    boolean was reset by the NEXT source's effect, which is exactly how that
+ *    cross-write happened — RightRail mounts SourceOutlineTreePanel without a
+ *    key, so the instance is reused across source selections.)
+ *
+ * 2. ONE request per source. Tables and columns are both sliced from a single
+ *    schema envelope; expanding a table costs nothing. It used to cost a
+ *    request per table on top of one for the list.
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useStore from '../../../stores/store';
 import useSourceOutline from './useSourceOutline';
 import {
   fetchSourceSchemaJobs,
-  fetchSourceTables,
-  fetchTableColumns,
+  fetchSourceSchema,
   generateSourceSchema,
   fetchSchemaGenerationStatus,
 } from '../../../api/sourceSchemaJobs';
@@ -24,13 +28,25 @@ import {
 jest.mock('../../../contexts/URLContext', () => ({
   isAvailable: () => true,
 }));
-jest.mock('../../../api/sourceSchemaJobs', () => ({
-  fetchSourceSchemaJobs: jest.fn(),
-  generateSourceSchema: jest.fn(),
-  fetchSchemaGenerationStatus: jest.fn(),
-  fetchSourceTables: jest.fn(),
-  fetchTableColumns: jest.fn(),
-}));
+jest.mock('../../../api/sourceSchemaJobs', () => {
+  // The slicers are pure functions over the fetched record — keep the real
+  // ones so these tests exercise the same derivation the hook does.
+  const actual = jest.requireActual('../../../api/sourceSchemaJobs');
+  return {
+    ...actual,
+    fetchSourceSchemaJobs: jest.fn(),
+    generateSourceSchema: jest.fn(),
+    fetchSchemaGenerationStatus: jest.fn(),
+    fetchSourceSchema: jest.fn(),
+  };
+});
+
+/** The stored envelope: tables -> columns -> {type, nullable}. */
+const envelope = tables => ({ source_name: 'A', tables });
+
+const ONE_TABLE = envelope({
+  t1: { columns: { id: { type: 'INTEGER' }, amount: { type: 'DOUBLE' } } },
+});
 
 describe('useSourceOutline', () => {
   beforeEach(() => {
@@ -43,7 +59,7 @@ describe('useSourceOutline', () => {
 
   test('loads the cached flat tables for a warm source', async () => {
     fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
-    fetchSourceTables.mockResolvedValue([{ name: 't1', column_count: 2 }]);
+    fetchSourceSchema.mockResolvedValue(ONE_TABLE);
 
     const { result } = renderHook(() => useSourceOutline('A'));
     await waitFor(() => expect(result.current.status).toBe('ready'));
@@ -63,25 +79,25 @@ describe('useSourceOutline', () => {
       { source_name: 'A', has_cached_schema: true },
       { source_name: 'B', has_cached_schema: true },
     ]);
-    let resolveATables;
-    const aTables = new Promise(resolve => {
-      resolveATables = resolve;
+    let resolveA;
+    const aSchema = new Promise(resolve => {
+      resolveA = resolve;
     });
-    fetchSourceTables.mockImplementation(src =>
-      src === 'A' ? aTables : Promise.resolve(['b_table'])
+    fetchSourceSchema.mockImplementation(src =>
+      src === 'A' ? aSchema : Promise.resolve(envelope({ b_table: { columns: {} } }))
     );
 
     const { result, rerender } = renderHook(({ src }) => useSourceOutline(src), {
       initialProps: { src: 'A' },
     });
-    // Switch to B while A's table fetch is still in flight. A shared boolean
+    // Switch to B while A's schema fetch is still in flight. A shared boolean
     // cancel flag gets RESET by B's effect, so A's late write would land in
     // B's panel state; the per-invocation epoch must keep A cancelled.
     rerender({ src: 'B' });
     await waitFor(() => expect(result.current.nodes?.[0]?.name).toBe('B'));
 
     await act(async () => {
-      resolveATables(['a_table']);
+      resolveA(envelope({ a_table: { columns: {} } }));
       await Promise.resolve();
     });
 
@@ -100,7 +116,7 @@ describe('useSourceOutline', () => {
     fetchSourceSchemaJobs
       .mockRejectedValueOnce(new Error('network blip'))
       .mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
-    fetchSourceTables.mockResolvedValue(['t1']);
+    fetchSourceSchema.mockResolvedValue(ONE_TABLE);
 
     const { result: firstResult, unmount: unmountFirst } = renderHook(() =>
       useSourceOutline('A')
@@ -134,15 +150,17 @@ describe('useSourceOutline', () => {
     expect(useStore.getState().workspaceSourceOutlineDataCache?.A).toMatchObject({
       hasCachedSchema: false,
     });
+    // Cold means "nothing stored yet", so there is no envelope to ask for.
+    expect(fetchSourceSchema).not.toHaveBeenCalled();
   });
 
-  test('a failing TABLES fetch (warm source) surfaces a retryable error, not a bare tree', async () => {
+  test('a failing SCHEMA fetch (warm source) surfaces a retryable error, not a bare tree', async () => {
     fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
-    fetchSourceTables.mockRejectedValue(new Error('tables boom'));
+    fetchSourceSchema.mockRejectedValue(new Error('schema boom'));
 
     const { result } = renderHook(() => useSourceOutline('A'));
     await waitFor(() => expect(result.current.status).toBe('error'));
-    expect(result.current.error).toBe('tables boom');
+    expect(result.current.error).toBe('schema boom');
     // The error is not cached — a re-select would re-fetch.
     expect(useStore.getState().workspaceSourceOutlineDataCache?.A).toBeUndefined();
   });
@@ -163,34 +181,81 @@ describe('useSourceOutline', () => {
     expect(result.current.generating).toBeNull();
     // Still cold — the user can retry Generate.
     expect(result.current.isCold).toBe(true);
-    expect(fetchSourceTables).not.toHaveBeenCalled();
+    expect(fetchSourceSchema).not.toHaveBeenCalled();
   });
 
-  test('lazy column loads record a per-table error entry instead of throwing', async () => {
+  test('expanding tables slices the envelope and issues NO further requests', async () => {
+    // The whole point of the change. Every table's columns were already in the
+    // response that produced the tree, so expansion is a local slice — a
+    // 40-table source used to be 40 sequential round trips for data the server
+    // had already assembled into one record.
     fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
-    fetchSourceTables.mockResolvedValue([{ name: 't1', column_count: 1 }]);
-    fetchTableColumns.mockRejectedValue(new Error('cols boom'));
+    fetchSourceSchema.mockResolvedValue(
+      envelope({
+        t1: { columns: { id: { type: 'INTEGER' }, amount: { type: 'DOUBLE' } } },
+        t2: { columns: { email: { type: 'VARCHAR' } } },
+      })
+    );
 
     const { result } = renderHook(() => useSourceOutline('A'));
     await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(fetchSourceSchema).toHaveBeenCalledTimes(1);
+
+    const key = t => `source-outline::A::db::A::table::${t}`;
+    await act(async () => {
+      await result.current.loadFlatColumns(key('t1'));
+      await result.current.loadFlatColumns(key('t2'));
+    });
+
+    expect(result.current.flatColumns[key('t1')]).toEqual([
+      expect.objectContaining({ kind: 'column', name: 'amount', type: 'DOUBLE' }),
+      expect.objectContaining({ kind: 'column', name: 'id', type: 'INTEGER' }),
+    ]);
+    expect(result.current.flatColumns[key('t2')]).toEqual([
+      expect.objectContaining({ name: 'email', type: 'VARCHAR' }),
+    ]);
+    // Still one. Expanding two tables added nothing.
+    expect(fetchSourceSchema).toHaveBeenCalledTimes(1);
+  });
+
+  test('a re-selected source can still expand columns from the cached envelope', async () => {
+    // The session cache has to carry the envelope, not just the tree. Caching
+    // the tree alone made re-selected sources render tables whose columns
+    // could no longer be sliced from anything — they simply never expanded.
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
+    fetchSourceSchema.mockResolvedValue(ONE_TABLE);
+
+    const { unmount } = renderHook(() => useSourceOutline('A'));
+    await waitFor(() =>
+      expect(useStore.getState().workspaceSourceOutlineDataCache?.A).toBeTruthy()
+    );
+    unmount();
+
+    fetchSourceSchema.mockClear();
+    const { result } = renderHook(() => useSourceOutline('A'));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(fetchSourceSchema).not.toHaveBeenCalled(); // served from cache
 
     const tKey = 'source-outline::A::db::A::table::t1';
     await act(async () => {
       await result.current.loadFlatColumns(tKey);
     });
-    expect(result.current.flatColumns[tKey]).toEqual({ error: 'cols boom' });
+    expect(result.current.flatColumns[tKey]).toEqual([
+      expect.objectContaining({ name: 'amount' }),
+      expect.objectContaining({ name: 'id' }),
+    ]);
+  });
 
-    // A key that is not a table key never fetches.
-    fetchTableColumns.mockClear();
+  test('a key that is not a table key populates nothing', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'A', has_cached_schema: true }]);
+    fetchSourceSchema.mockResolvedValue(ONE_TABLE);
+
+    const { result } = renderHook(() => useSourceOutline('A'));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
     await act(async () => {
       await result.current.loadFlatColumns('source-outline::A::db::A');
     });
-    expect(fetchTableColumns).not.toHaveBeenCalled();
-
-    // An already-resolved key (even an error entry) is not re-fetched.
-    await act(async () => {
-      await result.current.loadFlatColumns(tKey);
-    });
-    expect(fetchTableColumns).not.toHaveBeenCalled();
+    expect(result.current.flatColumns).toEqual({});
   });
 });
