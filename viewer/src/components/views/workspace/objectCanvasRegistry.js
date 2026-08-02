@@ -140,10 +140,10 @@ export const OBJECT_CANVAS_REGISTRY = {
   // Field Lens — instead of muting the Canvas to lineage. Both are CLI-only
   // (`serve`) because they evaluate the field's expression against a real
   // source/model. B11 (Explore 2.0 Phase 0): gated on `sourceSchemaJobsList`
-  // (the cached-schema feed), NOT the dead live-introspect `sourcesMetadata`
-  // feed — that feed returns zero databases for file sources (DuckDB), which
-  // made the Field Lens wrongly report "unavailable" for the common case.
-  // Mirrors the source ERD's fix (VIS-1005, same feed).
+  // (the cached-schema feed), NOT the live introspect that used to back this —
+  // that one returned zero databases for file sources (DuckDB), which made the
+  // Field Lens wrongly report "unavailable" for the common case. It has since
+  // been removed outright. Mirrors the source ERD's fix (VIS-1005).
   dimension: {
     Component: DimensionInspector,
     availability: 'serve',

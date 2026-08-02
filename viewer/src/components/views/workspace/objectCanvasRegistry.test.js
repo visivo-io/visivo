@@ -129,7 +129,7 @@ describe('objectCanvasRegistry', () => {
       const d = OBJECT_CANVAS_REGISTRY[type];
       expect(d).toBeTruthy();
       // serve-gated on the cached-schema feed (B11 — NOT the dead
-      // `sourcesMetadata` live-introspect feed, which returns zero databases
+      // live-introspect feed (since removed), which returned zero databases
       // for file sources like DuckDB).
       expect(d.availability).toBe('serve');
       expect(d.availabilityKey).toBe('sourceSchemaJobsList');

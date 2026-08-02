@@ -153,7 +153,6 @@ const URL_PATTERNS = {
     project: '/api/project/',
     error: '/api/error/',
     projectFilePath: '/api/project/project_file_path/',
-    sourcesMetadata: '/api/project/sources_metadata/',
     dashboardQuery: '/api/dashboards/{name}/',
     dashboardThumbnail: '/api/dashboards/{name}.png/',
 

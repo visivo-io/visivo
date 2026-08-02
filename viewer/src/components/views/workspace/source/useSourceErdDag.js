@@ -2,7 +2,7 @@
  * useSourceErdDag — flattens a source's introspection metadata into React-Flow
  * ERD nodes (VIS-1005).
  *
- * The `sourcesMetadata` feed nests db → schema → table → column (see
+ * The source-schema envelope nests db → schema → table → column (see
  * useSourceOutline's `normalizeNested`). The ERD shows ONE node per TABLE, so we
  * flatten every table across all databases/schemas into a flat node list. Each
  * node carries its qualified-name parts (`database`, `schema`, `table`) plus the
