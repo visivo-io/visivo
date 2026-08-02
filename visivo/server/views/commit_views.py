@@ -197,6 +197,11 @@ def register_commit_views(app, flask_app, output_dir):
                 "is_draft": True,
                 # No separate published project locally → no "Go to Draft".
                 "draft_id": None,
+                # `visivo serve` runs on the author's machine, so file-backed
+                # sources (duckdb/sqlite on a local path) resolve normally.
+                # Cloud reports False and the client hides what cannot work
+                # there.
+                "local_filesystem": True,
             }
         )
 

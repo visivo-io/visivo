@@ -3,6 +3,7 @@ import useStore, { ObjectStatus } from '../../../stores/store';
 import { ButtonOutline } from '../../styled/Button';
 import SourceTypeSelector from '../../sources/SourceTypeSelector';
 import SourceFormGenerator, { getSourceSchema } from '../../sources/SourceFormGenerator';
+import { canTestConnection, CONNECTION_TEST_UNAVAILABLE } from './sourceCapabilities';
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -31,6 +32,9 @@ import SeedsEditor, { sourceTypeSupportsSeeds } from './SeedsEditor';
 const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
   const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkCommitStatus } =
     useStore();
+  // Tells us whether the serving process shares a filesystem with the project,
+  // which is what decides if a file-backed source can be reached at all.
+  const capabilities = useStore(state => state.capabilities);
 
   // Form state
   const [name, setName] = useState('');
@@ -140,6 +144,14 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
 
     await testConnection(config);
   };
+
+  // A file-backed source only resolves where its file lives. In cloud there is
+  // no such file, so the test can only fail in a way that says nothing about
+  // the config — don't offer it.
+  const connectionTestable = canTestConnection(
+    { type: sourceType, ...formValues },
+    capabilities
+  );
 
   const handleSave = async () => {
     if (!validateForm()) return;
@@ -305,7 +317,12 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
           <ButtonOutline
             type="button"
             onClick={handleTestConnection}
-            disabled={!sourceType || currentConnectionStatus?.status === 'testing'}
+            disabled={
+              !sourceType ||
+              currentConnectionStatus?.status === 'testing' ||
+              !connectionTestable
+            }
+            title={connectionTestable ? undefined : CONNECTION_TEST_UNAVAILABLE}
             className="text-sm"
           >
             Test Connection
