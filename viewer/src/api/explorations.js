@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
 
 /**
@@ -17,8 +18,8 @@ const parseErrorOr = async (response, fallback) => {
 /**
  * List explorations, ordered by `updated_at` desc.
  */
-export const fetchExplorations = async () => {
-  const response = await apiFetch(getUrl('explorationsList'));
+export const fetchExplorations = async (projectId = null) => {
+  const response = await apiFetch(withProjectId(getUrl('explorationsList'), projectId));
   if (response.status === 200) {
     return await response.json();
   }
@@ -30,8 +31,8 @@ export const fetchExplorations = async () => {
  * `{ name?, seeded_from?, return_to?, draft? }` — the server mints `id` and
  * defaults `name` ("Scratch", "Exploration N") when omitted.
  */
-export const createExploration = async (payload = {}) => {
-  const response = await apiFetch(getUrl('explorationsList'), {
+export const createExploration = async (payload = {}, projectId = null) => {
+  const response = await apiFetch(withProjectId(getUrl('explorationsList'), projectId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -46,8 +47,10 @@ export const createExploration = async (payload = {}) => {
  * Fetch a single exploration by id. Returns `null` on 404 (mirrors
  * `fetchModel`'s convention) rather than throwing.
  */
-export const fetchExploration = async id => {
-  const response = await apiFetch(getUrl('explorationDetail', { id }));
+export const fetchExploration = async (id, projectId = null) => {
+  const response = await apiFetch(
+    withProjectId(getUrl('explorationDetail', { id }), projectId)
+  );
   if (response.status === 200) {
     return await response.json();
   }
@@ -63,8 +66,8 @@ export const fetchExploration = async id => {
  * (`name`/`draft`/`return_to`); `id`/`created_at`/`seeded_from`/`promoted`
  * are immutable via this route regardless of what's included.
  */
-export const updateExploration = async (id, payload) => {
-  const response = await apiFetch(getUrl('explorationDetail', { id }), {
+export const updateExploration = async (id, payload, projectId = null) => {
+  const response = await apiFetch(withProjectId(getUrl('explorationDetail', { id }), projectId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -85,8 +88,8 @@ export const updateExploration = async (id, payload) => {
 /**
  * Delete an exploration. Resolves `true` on success (204, no body).
  */
-export const deleteExploration = async id => {
-  const response = await apiFetch(getUrl('explorationDetail', { id }), {
+export const deleteExploration = async (id, projectId = null) => {
+  const response = await apiFetch(withProjectId(getUrl('explorationDetail', { id }), projectId), {
     method: 'DELETE',
   });
   if (response.status === 204) {
@@ -99,8 +102,10 @@ export const deleteExploration = async id => {
  * Atomically null `return_to` — the placement intent has been consumed.
  * Idempotent: consuming an already-null `return_to` still resolves 200.
  */
-export const consumeReturnTo = async id => {
-  const response = await apiFetch(getUrl('explorationConsumeReturnTo', { id }), {
+export const consumeReturnTo = async (id, projectId = null) => {
+  const response = await apiFetch(
+    withProjectId(getUrl('explorationConsumeReturnTo', { id }), projectId),
+    {
     method: 'POST',
   });
   if (response.status === 200) {
@@ -115,8 +120,10 @@ export const consumeReturnTo = async id => {
  * stamps `promoted_at`. `type`/`name` are the promoted object's kind
  * ('model'|'metric'|'dimension'|'insight'|'chart') and name.
  */
-export const recordPromotion = async (id, type, name) => {
-  const response = await apiFetch(getUrl('explorationRecordPromotion', { id }), {
+export const recordPromotion = async (id, type, name, projectId = null) => {
+  const response = await apiFetch(
+    withProjectId(getUrl('explorationRecordPromotion', { id }), projectId),
+    {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, name }),

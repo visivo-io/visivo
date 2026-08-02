@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../stores/store';
+import {
+  canTestConnection,
+  CONNECTION_TEST_UNAVAILABLE,
+} from '../views/common/sourceCapabilities';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 import { Button, ButtonOutline } from '../styled/Button';
 import SourceTypeSelector from './SourceTypeSelector';
@@ -19,6 +23,9 @@ const SourceEditorModal = () => {
     connectionStatus,
     clearConnectionStatus,
   } = useStore();
+  // See sourceCapabilities: a file-backed source can only be reached where its
+  // file lives, so cloud cannot test one however valid the config is.
+  const capabilities = useStore(state => state.capabilities);
 
   const isEditMode = !!editingSource;
   const sourceName = editingSource?.name || '';
@@ -27,6 +34,11 @@ const SourceEditorModal = () => {
   const [name, setName] = useState('');
   const [sourceType, setSourceType] = useState('');
   const [formValues, setFormValues] = useState({});
+  const connectionTestable = canTestConnection(
+    { type: sourceType, ...formValues },
+    capabilities
+  );
+
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -252,7 +264,12 @@ const SourceEditorModal = () => {
           <ButtonOutline
             type="button"
             onClick={handleTestConnection}
-            disabled={!sourceType || currentConnectionStatus?.status === 'testing'}
+            disabled={
+              !sourceType ||
+              currentConnectionStatus?.status === 'testing' ||
+              !connectionTestable
+            }
+            title={connectionTestable ? undefined : CONNECTION_TEST_UNAVAILABLE}
           >
             Test Connection
           </ButtonOutline>

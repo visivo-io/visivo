@@ -1,6 +1,5 @@
 import * as branchingApi from '../api/branching';
 import * as preferencesApi from '../api/preferences';
-import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
 /**
@@ -199,22 +198,38 @@ const createCommitSlice = (set, get) => ({
     return { success: false, action: body.action, error };
   },
 
-  // Discard all cached changes without writing YAML (Q14 rollback) — local
-  // Flask only (/api/commit/discard/). The named-child refetch is what makes
-  // the canvas revert to last-committed. Cloud drafts are discarded through
-  // branchingApi.discardDraft (drop the draft project) instead.
+  // Discard the draft's uncommitted changes, reverting to last-published.
+  //
+  // Goes through `POST /api/projects/<id>/discard/`, the same mirrored surface
+  // commitChanges uses — NOT the local-only `/api/commit/discard/`, which core
+  // does not implement, so in cloud the button 404'd and the header kept
+  // showing Commit/Discard as though nothing had happened.
+  //
+  // Note the sibling `discardDraft` DELETEs the same path to drop the working
+  // copy entirely. Same URL, different verb, very different meaning.
   discardChanges: async () => {
+    const projectId = get().project?.id;
+    if (!projectId) return { success: false, error: 'No active project' };
     set({ discardLoading: true });
     try {
-      const result = await commitApi.discardChanges();
+      const result = await branchingApi.discardDraftChanges(projectId);
       set({
         discardLoading: false,
         hasUncommittedChanges: false,
         pendingChanges: [],
         pendingCount: 0,
+        // Clearing the STAGED set too is what actually refreshes the header:
+        // it drives the run-pending affordance independently of pendingChanges,
+        // so leaving it set kept the toolbar dirty after a successful discard.
+        stagedChanges: [],
+        stagedCount: 0,
+        stagedDagFilter: '',
         commitError: null,
       });
       await get()._refreshNamedChildren();
+      // Re-read the server's own view rather than trusting the optimistic
+      // clear above — a per-resource discard can leave the draft still dirty.
+      await get().checkCommitStatus();
       return { success: true, result };
     } catch (error) {
       // Surface through commitError so CommitModal shows feedback instead of

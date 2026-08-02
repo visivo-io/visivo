@@ -197,6 +197,11 @@ def register_commit_views(app, flask_app, output_dir):
                 "is_draft": True,
                 # No separate published project locally → no "Go to Draft".
                 "draft_id": None,
+                # `visivo serve` runs on the author's machine, so file-backed
+                # sources (duckdb/sqlite on a local path) resolve normally.
+                # Cloud reports False and the client hides what cannot work
+                # there.
+                "local_filesystem": True,
             }
         )
 
@@ -519,8 +524,15 @@ def register_commit_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/commit/discard/", methods=["POST"])
-    def discard_changes():
-        """Drop every cached draft without writing YAML (the Discard rollback, Q14)."""
+    @app.route("/api/projects/<project_id>/discard/", methods=["POST"])
+    def discard_changes(project_id=None):
+        """Drop every cached draft without writing YAML (the Discard rollback, Q14).
+
+        Dual-mounted like ``commit`` above, so the project-scoped path core
+        serves works here too and the viewer has ONE discard code path. Without
+        the mirror the viewer had to special-case cloud, and the special case
+        was never written — the button 404'd against core.
+        """
         try:
             managers = [
                 flask_app.source_manager,
@@ -550,6 +562,10 @@ def register_commit_views(app, flask_app, output_dir):
                 {
                     "message": "Changes discarded",
                     "discarded_count": discarded_count,
+                    # Core's shape, so the client reads one contract. Local
+                    # discards everything, so it is never still dirty after.
+                    "discarded": True,
+                    "dirty": False,
                 }
             )
         except Exception as e:

@@ -259,6 +259,54 @@ async def create_dashboard_records(
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
+def upload_source_schemas(run_output_dir, project_id, json_headers, host):
+    """Ship the source schema envelopes `visivo run` wrote, like any other artifact.
+
+    A schema is a build output — the run computed it, so the deploy uploads it,
+    exactly as it does insight and model files. Nothing runs in cloud to produce
+    these, and for a file-backed duckdb/sqlite source nothing COULD: the database
+    file lives on this machine and is never uploaded, so introspecting it
+    remotely fails with "database does not exist".
+
+    Best-effort by design. A project with no schemas on disk (never run) deploys
+    fine, and a schema upload failure must not fail a deploy whose data landed —
+    the editor degrades to "Generate schema to browse", which is exactly the
+    state it was already in.
+
+    Returns the number stored.
+    """
+    schemas_dir = os.path.join(run_output_dir, "schemas")
+    if not os.path.isdir(schemas_dir):
+        return 0
+
+    payload = []
+    for entry in sorted(os.listdir(schemas_dir)):
+        if not entry.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(schemas_dir, entry)) as fp:
+                content = json.load(fp)
+        except (OSError, ValueError):
+            continue
+        # Models and sources share this directory; `source_name` is what tells
+        # them apart, the same key core classifies on.
+        if not isinstance(content, dict) or not content.get("source_name"):
+            continue
+        payload.append({"name": content["source_name"], "content": content})
+
+    if not payload:
+        return 0
+
+    response = requests.post(
+        f"{host}/api/source-schema-jobs/?project_id={project_id}",
+        data=json.dumps(payload),
+        headers=json_headers,
+    )
+    response.raise_for_status()
+    return response.json().get("stored", len(payload))
+
+
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
 async def create_insight_records(batch, project_id, json_headers, host, progress):
     """
     Asynchronously creates insight records on the server.
@@ -1058,6 +1106,22 @@ def deploy_phase(
             )
         send_progress(
             f"Model uploads completed in {time() - process_models_start_time:.2f} seconds",
+            "info",
+        )
+
+        # Source schemas — small inline JSON, no files to upload.
+        Logger.instance().info(f"")
+        send_progress("Processing source schemas...", "info")
+        schemas_start_time = time()
+        try:
+            stored = upload_source_schemas(run_output_dir, project_id, json_headers, host)
+            send_progress(f"\t{stored} source schemas uploaded", "success" if stored else "info")
+        except Exception as e:
+            # Never fail a deploy over this: the data landed, and the editor
+            # falls back to "Generate schema to browse".
+            Logger.instance().error(f"\tSource schema upload failed: {repr(e)}")
+        send_progress(
+            f"Source schemas completed in {time() - schemas_start_time:.2f} seconds",
             "info",
         )
 

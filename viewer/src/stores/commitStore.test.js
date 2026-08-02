@@ -16,6 +16,7 @@ import { emitFirstPublishTelemetry } from '../components/views/workspace/telemet
 jest.mock('../api/branching', () => ({
   fetchChanges: jest.fn(),
   commitDraft: jest.fn(),
+  discardDraftChanges: jest.fn(),
 }));
 
 jest.mock('../api/preferences', () => ({
@@ -295,7 +296,7 @@ describe('commitStore (VIS-806)', () => {
   describe('discardChanges', () => {
     test('drops pending state and refreshes every collection (canvas revert)', async () => {
       useStore.setState({ pendingCount: 4, hasUncommittedChanges: true });
-      commitApi.discardChanges.mockResolvedValue({ discarded_count: 4 });
+      branchingApi.discardDraftChanges.mockResolvedValue({ discarded: true, dirty: false });
 
       const result = await useStore.getState().discardChanges();
 
@@ -307,9 +308,42 @@ describe('commitStore (VIS-806)', () => {
       FETCHER_KEYS.forEach(key => expect(fetcherStubs[key]).toHaveBeenCalled());
     });
 
+    test('clears the STAGED set too, which is what refreshes the header', async () => {
+      // The reported bug: discard succeeded but the toolbar kept showing
+      // Commit/Discard. pendingChanges was cleared and stagedChanges was not,
+      // and the header reads the staged set independently.
+      branchingApi.discardDraftChanges.mockResolvedValue({ discarded: true, dirty: false });
+      branchingApi.fetchChanges.mockResolvedValue({ has_changes: false, staged: [] });
+      useStore.setState({
+        stagedChanges: [{ name: 'orders' }],
+        stagedCount: 1,
+        stagedDagFilter: '+orders+',
+      });
+
+      await useStore.getState().discardChanges();
+
+      const state = useStore.getState();
+      expect(state.stagedCount).toBe(0);
+      expect(state.stagedChanges).toEqual([]);
+      expect(state.stagedDagFilter).toBe('');
+    });
+
+    test('discards through the project-scoped route both servers implement', async () => {
+      // Not `/api/commit/discard/`, which core does not implement — that is why
+      // the cloud button 404'd and the header never changed.
+      branchingApi.discardDraftChanges.mockResolvedValue({ discarded: true });
+      branchingApi.fetchChanges.mockResolvedValue({ has_changes: false, staged: [] });
+      useStore.setState({ project: { id: 'proj-9' } });
+
+      await useStore.getState().discardChanges();
+
+      expect(branchingApi.discardDraftChanges).toHaveBeenCalledWith('proj-9');
+      expect(commitApi.discardChanges).not.toHaveBeenCalled();
+    });
+
     test('reports failure without clearing pending state and surfaces commitError', async () => {
       useStore.setState({ pendingCount: 4, hasUncommittedChanges: true });
-      commitApi.discardChanges.mockRejectedValue(new Error('boom'));
+      branchingApi.discardDraftChanges.mockRejectedValue(new Error('boom'));
 
       const result = await useStore.getState().discardChanges();
 

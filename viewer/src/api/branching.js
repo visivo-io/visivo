@@ -67,8 +67,30 @@ export const createBranch = async ({ projectId, newStageName }) => {
 };
 
 /**
- * Discard (delete) a draft entirely — drop the working copy and return to the
- * published project. DELETE /api/projects/<draftId>/discard/.
+ * Discard a draft's uncommitted CHANGES, keeping the draft itself.
+ * POST /api/projects/<draftId>/discard/ -> {discarded, dirty}.
+ *
+ * This is what the Discard button means: revert to last-published, stay in the
+ * draft. Distinct from `discardDraft` below, which deletes the working copy
+ * outright — the two share a path and differ only by verb, which is exactly how
+ * the wrong one got wired up.
+ */
+export const discardDraftChanges = async draftId => {
+  const response = await apiFetch(getUrl('projectDiscard', { projectId: draftId }), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || errorData.errors || 'Failed to discard changes');
+  }
+  return response.json().catch(() => ({ discarded: true }));
+};
+
+/**
+ * Delete a draft entirely — drop the working copy and return to the published
+ * project. DELETE /api/projects/<draftId>/discard/.
  */
 export const discardDraft = async draftId => {
   const response = await apiFetch(getUrl('projectDiscard', { projectId: draftId }), {
