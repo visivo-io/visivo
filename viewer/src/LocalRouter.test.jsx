@@ -199,9 +199,10 @@ describe('Explore 2.0 Phase 3b cutover routes', () => {
       expect(await screen.findByTestId('probe-pathname')).toHaveTextContent(
         '/workspace/exploration/exp_new1'
       );
-      expect(explorationsApi.createExploration).toHaveBeenCalledWith({
-        return_to: { dashboard: 'sales' },
-      });
+      expect(explorationsApi.createExploration).toHaveBeenCalledWith(
+        { return_to: { dashboard: 'sales' } },
+        undefined
+      );
     });
 
     test('fails open to Explorer Home if minting the exploration fails', async () => {

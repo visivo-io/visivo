@@ -19,9 +19,13 @@ jest.mock('../contexts/URLContext', () => ({
   getUrl: (key, params) => `/api/${key}${params && params.name ? `/${params.name}` : ''}`,
 }));
 
-const ok = data => ({ status: 200, json: async () => data });
-const notFound = () => ({ status: 404, json: async () => ({}) });
-const fail = (status, data = {}) => ({ status, json: async () => data });
+// Real Responses carry `ok`; the save paths read it, because creating a NEW
+// resource answers 201 in cloud and 200 locally.
+const res = (status, data = {}) => ({ status, ok: status >= 200 && status < 300, json: async () => data });
+const ok = data => res(200, data);
+const created = data => res(201, data);
+const notFound = () => res(404);
+const fail = (status, data = {}) => res(status, data);
 
 const CASES = [
   {
@@ -144,6 +148,22 @@ describe('per-type resource API modules', () => {
         expect.any(String),
         expect.objectContaining({ method: 'POST', body: JSON.stringify({ a: 1 }) })
       );
+    });
+
+    it('save accepts 201, which is what cloud answers for a NEW resource', async () => {
+      // The reported bug: "+ New" created the object server-side (201) but the
+      // client treated anything but 200 as a failure — so the list never
+      // refetched and no tab opened. It looked like nothing had happened.
+      apiFetch.mockResolvedValueOnce(created({ message: 'created', status: 'new' }));
+      await expect(save('x', { a: 1 })).resolves.toEqual({
+        message: 'created',
+        status: 'new',
+      });
+    });
+
+    it('save still rejects a real failure', async () => {
+      apiFetch.mockResolvedValueOnce(fail(400, { error: 'bad config' }));
+      await expect(save('x', { a: 1 })).rejects.toThrow('bad config');
     });
 
     it('save scopes by project_id when one is given, and omits it otherwise', async () => {

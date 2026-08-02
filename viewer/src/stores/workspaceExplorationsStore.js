@@ -234,7 +234,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       // VIS-1085: enqueued (not fired directly) so this can never interleave
       // with a concurrent rename/discard-revert write for the SAME id.
       const updated = await enqueueWrite(id, () =>
-        explorationsApi.updateExploration(id, { draft: mapDraftToApi(record.draft) })
+        explorationsApi.updateExploration(id, { draft: mapDraftToApi(record.draft) }, get().project?.id)
       );
       set(state =>
         patchExploration(state, id, {
@@ -289,7 +289,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      * from the backend — localStorage is not a source of truth). */
     fetchExplorations: async () => {
       try {
-        const list = await explorationsApi.fetchExplorations();
+        const list = await explorationsApi.fetchExplorations(get().project?.id);
         const byId = {};
         const order = [];
         list.forEach(record => {
@@ -352,7 +352,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         if (defaultName) payload.name = defaultName;
         const seedLegacyState = legacyStateOverride || (seed ? legacyStateForSeed(seed) : null);
         if (seedLegacyState) payload.draft = mapDraftToApi(legacyStateToDraft(seedLegacyState));
-        const created = await explorationsApi.createExploration(payload);
+        const created = await explorationsApi.createExploration(payload, get().project?.id);
         const mapped = mapExplorationFromApi(created);
         set(state => insertExploration(state, mapped));
         // VIS-1072 — flywheel telemetry: the create moment + the
@@ -406,7 +406,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           name: `${existing.name} copy`,
           seeded_from: mapSeedToApi(existing.seededFrom) || undefined,
           draft: mapDraftToApi(existing.draft),
-        });
+        }, get().project?.id);
         const mapped = mapExplorationFromApi(created);
         set(state => insertExploration(state, mapped));
         // VIS-1072 — "branch" gets its own time_to_first_chart clock too,
@@ -428,7 +428,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
     deleteExploration: async id => {
       const existing = get().workspaceExplorations.byId[id];
       try {
-        await explorationsApi.deleteExploration(id);
+        await explorationsApi.deleteExploration(id, get().project?.id);
       } catch (error) {
         return { success: false, error: error.message };
       }
@@ -470,7 +470,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           name: existing.name,
           seeded_from: mapSeedToApi(existing.seededFrom) || undefined,
           draft: mapDraftToApi(existing.draft),
-        });
+        }, get().project?.id);
         const mapped = mapExplorationFromApi(created);
         set(state => insertExploration(state, mapped));
         clearPendingSyncTimer(id);
@@ -537,7 +537,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         // debounced draft-sync can never interleave with it — see the file
         // docstring's "WRITE SERIALIZATION" note.
         const updated = await enqueueWrite(id, () =>
-          explorationsApi.updateExploration(id, { name: trimmed })
+          explorationsApi.updateExploration(id, { name: trimmed }, get().project?.id)
         );
         const mapped = mapExplorationFromApi(updated);
         set(state => patchExploration(state, id, mapped));
@@ -648,7 +648,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         // VIS-1085: enqueued alongside every other write for this id — see
         // the file docstring's "WRITE SERIALIZATION" note.
         const updated = await enqueueWrite(id, () =>
-          explorationsApi.updateExploration(id, { draft: mapDraftToApi(snapshot) })
+          explorationsApi.updateExploration(id, { draft: mapDraftToApi(snapshot) }, get().project?.id)
         );
         const mapped = mapExplorationFromApi(updated);
         set(state => patchExploration(state, id, { promoted: mapped.promoted, updatedAt: mapped.updatedAt }));
@@ -677,7 +677,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      */
     consumeExplorationReturnTo: async id => {
       try {
-        const updated = await enqueueWrite(id, () => explorationsApi.consumeReturnTo(id));
+        const updated = await enqueueWrite(id, () => explorationsApi.consumeReturnTo(id, get().project?.id));
         const mapped = mapExplorationFromApi(updated);
         set(state => patchExploration(state, id, { returnTo: mapped.returnTo }));
         return { success: true };
@@ -704,7 +704,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
      * just-appended `promoted[]` entry this call exists to record. */
     recordExplorationPromotion: async (id, type, name) => {
       try {
-        const updated = await enqueueWrite(id, () => explorationsApi.recordPromotion(id, type, name));
+        const updated = await enqueueWrite(id, () => explorationsApi.recordPromotion(id, type, name, get().project?.id));
         const mapped = mapExplorationFromApi(updated);
         set(state => patchExploration(state, id, mapped));
         return { success: true };

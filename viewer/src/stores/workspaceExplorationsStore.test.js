@@ -192,6 +192,27 @@ describe('fetchExplorations', () => {
 });
 
 describe('createExploration', () => {
+  test('scopes every write to the active project (cloud requires project_id)', async () => {
+    // Core answers `{error: "project_id is required param"}` without it, so
+    // creating an exploration in cloud failed outright. Every other resource
+    // module scoped its calls; this one never did.
+    const previousProject = useStore.getState().project;
+    useStore.setState({ project: { id: 'proj-42' } });
+    explorationsApi.createExploration.mockResolvedValue({ id: 'exp_9', name: 'x' });
+
+    try {
+      await act(async () => {
+        await useStore.getState().createExploration();
+      });
+
+      expect(explorationsApi.createExploration).toHaveBeenCalledWith({}, 'proj-42');
+    } finally {
+      // The store is shared across tests here, so leaving a project set would
+      // change what every later assertion sees.
+      useStore.setState({ project: previousProject });
+    }
+  });
+
   test('creates with no seed, POSTs {}, and inserts at the front of order', async () => {
     explorationsApi.createExploration.mockResolvedValueOnce(wireExploration({ name: 'Scratch' }));
 
@@ -200,7 +221,7 @@ describe('createExploration', () => {
       result = await useStore.getState().createExploration();
     });
 
-    expect(explorationsApi.createExploration).toHaveBeenCalledWith({});
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith({}, undefined);
     expect(result).toMatchObject({ success: true, id: 'exp_1' });
     const state = useStore.getState().workspaceExplorations;
     expect(state.order[0]).toBe('exp_1');
@@ -226,7 +247,7 @@ describe('createExploration', () => {
       // default name derived from what was explored, rather than the
       // backend's generic 'Exploration N' counter.
       name: 'orders exploration',
-    });
+    }, undefined);
     expect(useStore.getState().workspaceExplorations.byId.exp_1.seededFrom).toEqual({
       type: 'model',
       name: 'orders',
@@ -320,7 +341,7 @@ describe('createExploration', () => {
 
     expect(explorationsApi.createExploration).toHaveBeenCalledWith({
       return_to: { dashboard: 'sales' },
-    });
+    }, undefined);
     expect(useStore.getState().workspaceExplorations.byId.exp_1.returnTo).toEqual({
       dashboard: 'sales',
     });
@@ -331,7 +352,7 @@ describe('createExploration', () => {
     await act(async () => {
       await useStore.getState().createExploration();
     });
-    expect(explorationsApi.createExploration).toHaveBeenCalledWith({});
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith({}, undefined);
   });
 
   test('newer creations land ahead of older ones in order', async () => {
@@ -397,7 +418,7 @@ describe('updateExplorationDraft', () => {
         computed_columns: [{ expression: 'a' }],
         legacy_state: null,
       },
-    });
+    }, undefined);
     expect(useStore.getState().workspaceExplorations.byId.exp_1.syncStatus).toBe('synced');
   });
 
@@ -438,7 +459,7 @@ describe('updateExplorationDraft', () => {
         computed_columns: [],
         legacy_state: null,
       },
-    });
+    }, undefined);
   });
 
   test('sets syncStatus to error when the persist fails', async () => {
@@ -662,7 +683,7 @@ describe('recreateExplorationFromDeleted (VIS-1083)', () => {
 
     expect(explorationsApi.createExploration).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Churn dig' })
-    );
+      , undefined    );
     expect(result).toMatchObject({ success: true, id: 'exp_2' });
     const state = useStore.getState().workspaceExplorations;
     expect(state.byId.exp_1).toBeUndefined();
@@ -823,7 +844,7 @@ describe('duplicateExploration', () => {
         computed_columns: [],
         legacy_state: null,
       },
-    });
+    }, undefined);
     expect(result).toMatchObject({ success: true, id: 'exp_2' });
     expect(useStore.getState().workspaceExplorations.order).toEqual(['exp_2', 'exp_1']);
   });
@@ -872,7 +893,7 @@ describe('duplicateExploration', () => {
           legacy_state: null,
         },
       })
-    );
+      , undefined    );
   });
 });
 
@@ -886,7 +907,7 @@ describe('deleteExploration', () => {
       result = await useStore.getState().deleteExploration('exp_1');
     });
 
-    expect(explorationsApi.deleteExploration).toHaveBeenCalledWith('exp_1');
+    expect(explorationsApi.deleteExploration).toHaveBeenCalledWith('exp_1', undefined);
     expect(useStore.getState().closeWorkspaceTab).toHaveBeenCalledWith('exploration:exp_1');
     expect(result).toEqual({ success: true });
     const state = useStore.getState().workspaceExplorations;
@@ -1007,7 +1028,11 @@ describe('renameExploration', () => {
 
     const result = await act(async () => renamePromise);
 
-    expect(explorationsApi.updateExploration).toHaveBeenCalledWith('exp_1', { name: 'Churn dig' });
+    expect(explorationsApi.updateExploration).toHaveBeenCalledWith(
+      'exp_1',
+      { name: 'Churn dig' },
+      undefined
+    );
     expect(result).toMatchObject({ success: true });
     expect(useStore.getState().workspaceExplorations.byId.exp_1.name).toBe('Churn dig');
   });
@@ -1120,7 +1145,7 @@ describe('VIS-1085 — per-id write serialization (rename vs debounced draft-syn
     expect(explorationsApi.updateExploration).toHaveBeenCalledTimes(2);
     expect(explorationsApi.updateExploration).toHaveBeenNthCalledWith(2, 'exp_1', {
       name: 'Renamed',
-    });
+    }, undefined);
   });
 
   test('a debounced draft-sync fired while a rename is in flight for the SAME id waits for it (reverse ordering)', async () => {
@@ -1175,7 +1200,7 @@ describe('VIS-1085 — per-id write serialization (rename vs debounced draft-syn
         computed_columns: [],
         legacy_state: null,
       },
-    });
+    }, undefined);
   });
 
   test('writes for DIFFERENT ids are never serialized against each other', async () => {
@@ -1294,7 +1319,7 @@ describe('VIS-1081 discard mechanics', () => {
         computed_columns: [],
         legacy_state: null,
       },
-    });
+    }, undefined);
   });
 
   test('discardExploration cancels a pending debounce even when the fire-time POST would have raced it', async () => {
@@ -1365,7 +1390,12 @@ describe('recordExplorationPromotion', () => {
       result = await useStore.getState().recordExplorationPromotion('exp_1', 'model', 'orders_q');
     });
     expect(result).toEqual({ success: true });
-    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith('exp_1', 'model', 'orders_q');
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith(
+      'exp_1',
+      'model',
+      'orders_q',
+      undefined
+    );
     expect(useStore.getState().workspaceExplorations.byId.exp_1.promoted).toEqual([
       { type: 'model', name: 'orders_q', promoted_at: '2026-07-18T00:00:00Z' },
     ]);
@@ -1393,7 +1423,7 @@ describe('consumeExplorationReturnTo', () => {
       result = await useStore.getState().consumeExplorationReturnTo('exp_1');
     });
     expect(result).toEqual({ success: true });
-    expect(explorationsApi.consumeReturnTo).toHaveBeenCalledWith('exp_1');
+    expect(explorationsApi.consumeReturnTo).toHaveBeenCalledWith('exp_1', undefined);
     expect(useStore.getState().workspaceExplorations.byId.exp_1.returnTo).toBeNull();
   });
 
@@ -1441,7 +1471,7 @@ describe('consumeExplorationReturnTo', () => {
       resolveDraftSync(wireExploration());
       await consumePromise;
     });
-    expect(explorationsApi.consumeReturnTo).toHaveBeenCalledWith('exp_1');
+    expect(explorationsApi.consumeReturnTo).toHaveBeenCalledWith('exp_1', undefined);
   });
 });
 
@@ -1492,7 +1522,12 @@ describe('recordExplorationPromotion — P4-D1 write serialization', () => {
     });
 
     expect(explorationsApi.recordPromotion).toHaveBeenCalledTimes(1);
-    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith('exp_1', 'model', 'orders_q');
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith(
+      'exp_1',
+      'model',
+      'orders_q',
+      undefined
+    );
   });
 
   test('a draft-sync fired while a promotion is in flight for the same id waits for it (reverse ordering)', async () => {
@@ -1831,7 +1866,12 @@ describe('promoteExploration', () => {
     });
 
     expect(explorationsApi.recordPromotion).toHaveBeenCalledTimes(1);
-    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith('exp_1', 'model', 'good_model');
+    expect(explorationsApi.recordPromotion).toHaveBeenCalledWith(
+      'exp_1',
+      'model',
+      'good_model',
+      undefined
+    );
   });
 
   test('surfaces reclassification offers when a promoted metric/dimension collides with a sibling bare-column ref (delta-review fix)', async () => {

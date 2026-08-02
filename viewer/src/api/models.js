@@ -41,7 +41,11 @@ export const saveModel = async (name, config, projectId = null) => {
     },
     body: JSON.stringify(config),
   });
-  if (response.status === 200) {
+  // 2xx, not 200: creating a NEW resource answers 201 in cloud, and
+  // treating that as a failure meant every "+ New" threw — the object
+  // was created server-side but the list never refetched and no tab
+  // opened, so it looked like nothing happened.
+  if (response.ok) {
     return await response.json();
   }
   const errorData = await response.json().catch(() => ({}));
