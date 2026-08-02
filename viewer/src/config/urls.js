@@ -19,9 +19,11 @@ const URL_PATTERNS = {
     sourcesList: '/api/sources/',
     sourceDetail: '/api/sources/{name}/',
     sourceValidate: '/api/sources/{name}/validate/',
-    // OUTLIER: a verb on the collection. Tests credentials that may not belong
-    // to a saved source yet, so there is no {name} to hang it off.
-    sourceTestConnection: '/api/sources/test-connection/',
+    // Connection tests are their own collection: the credentials being tested
+    // may not belong to a saved source yet, so there is no {name} to nest
+    // under. POST starts a job; its detail hangs off this path with the job id
+    // appended, which is what runOnDemandJob does.
+    sourceConnections: '/api/source-connections/',
 
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',

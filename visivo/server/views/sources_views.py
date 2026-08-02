@@ -3,7 +3,6 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.managers.source_op_job_manager import SourceOpJobManager
 from visivo.server.source_metadata import (
-    check_source_connection,
     gather_source_metadata,
     get_database_schemas,
     get_schema_tables,
@@ -30,21 +29,6 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(metadata)
         except Exception as e:
             Logger.instance().error(f"Error gathering source metadata: {str(e)}")
-            return jsonify({"message": str(e)}), 500
-
-    @app.route("/api/project/sources/<source_name>/test-connection/", methods=["GET"])
-    def test_connection(source_name):
-        """Test connection to a specific source."""
-        try:
-            # Use source_manager to include both cached and published sources
-            result = check_source_connection(
-                flask_app.source_manager.get_sources_list(), source_name
-            )
-            if isinstance(result, tuple):  # Error response
-                return jsonify(result[0]), result[1]
-            return jsonify(result)
-        except Exception as e:
-            Logger.instance().error(f"Error testing connection for {source_name}: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
     @app.route("/api/project/sources/<source_name>/databases/", methods=["GET"])
@@ -158,7 +142,7 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error listing columns: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/sources/test-connection/", methods=["POST"])
+    @app.route("/api/source-connections/", methods=["POST"])
     def test_source_connection():
         """Start a connection test for an (unsaved) config; poll for the result.
 
@@ -182,7 +166,7 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error starting source connection test: {str(e)}")
             return jsonify({"status": "connection_failed", "error": str(e)}), 500
 
-    @app.route("/api/sources/test-connection/<job_id>/", methods=["GET"])
+    @app.route("/api/source-connections/<job_id>/", methods=["GET"])
     def test_source_connection_job(job_id):
         """Poll a test-connection job."""
         job = SourceOpJobManager.instance().get_job(job_id)

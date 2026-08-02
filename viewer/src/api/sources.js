@@ -94,7 +94,7 @@ export const validateSource = async (name, config) => {
  * mean "didn't connect", and the error text says which.
  */
 export const testSourceConnection = async config => {
-  const path = getUrl('sourceTestConnection');
+  const path = getUrl('sourceConnections');
   const response = await apiFetch(path, {
     method: 'POST',
     headers: {
