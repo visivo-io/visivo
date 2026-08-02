@@ -48,9 +48,9 @@ class TestGetErrorMessage:
 
 
 def _write_source_schema(output_dir, source_name, sqlglot_schema, default_schema=None):
-    source_schema_dir = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", source_name)
+    source_schema_dir = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas")
     os.makedirs(source_schema_dir, exist_ok=True)
-    with open(os.path.join(source_schema_dir, "schema.json"), "w") as fp:
+    with open(os.path.join(source_schema_dir, f"{source_name}.json"), "w") as fp:
         json.dump(
             {"sqlglot_schema": sqlglot_schema, "metadata": {"default_schema": default_schema}},
             fp,
@@ -108,7 +108,7 @@ class TestModelQueryAndSchemaAction:
         result = model_query_and_schema_action(model, dag, output_dir)
 
         assert result.success is True
-        schema_file = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", model.name, "schema.json")
+        schema_file = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", f"{model.name}.json")
         assert os.path.exists(schema_file)
 
     def test_failure_when_query_references_missing_table(self):
@@ -135,7 +135,7 @@ class TestSchemaOnlyAction:
         result = schema_only_action(model, dag, output_dir)
 
         assert result.success is True
-        schema_file = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", model.name, "schema.json")
+        schema_file = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", f"{model.name}.json")
         assert os.path.exists(schema_file)
 
     def test_failure_when_schema_build_raises(self, mocker):

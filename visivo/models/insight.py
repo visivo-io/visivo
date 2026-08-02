@@ -270,7 +270,7 @@ class Insight(NamedModel, ParentModel):
                 lets a caller resolving a never-run scratch model's raw-column
                 refs supply columns learned some other way (client-side
                 introspection) instead of hitting the normal
-                ``schemas/<model>/schema.json`` disk read. ``None`` (every
+                ``schemas/<model>.json`` disk read. ``None`` (every
                 real run-pipeline caller) is unaffected.
             force_dynamic: Build the DuckDB/model-hash-qualified `post_query`
                 form regardless of whether this insight actually depends on

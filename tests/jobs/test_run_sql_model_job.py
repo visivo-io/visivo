@@ -130,7 +130,7 @@ class TestSqlModelSchemaArtifact:
         assert model_hash in result
         assert set(result[model_hash].keys()) == {"id", "name"}
 
-        schema_file = os.path.join(output_dir, "main", "schemas", model.name, "schema.json")
+        schema_file = os.path.join(output_dir, "main", "schemas", f"{model.name}.json")
         assert os.path.exists(schema_file)
         with open(schema_file) as fp:
             data = json.load(fp)

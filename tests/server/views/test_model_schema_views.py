@@ -33,9 +33,9 @@ def _write_source_schema(output_dir, source_name, tables, run_id=DEFAULT_RUN_ID)
         "sqlglot_schema": tables,
         "metadata": {"default_schema": None},
     }
-    schema_dir = os.path.join(output_dir, run_id, "schemas", source_name)
+    schema_dir = os.path.join(output_dir, run_id, "schemas")
     os.makedirs(schema_dir, exist_ok=True)
-    with open(os.path.join(schema_dir, "schema.json"), "w") as fp:
+    with open(os.path.join(schema_dir, f"{source_name}.json"), "w") as fp:
         json.dump(payload, fp)
     return payload
 

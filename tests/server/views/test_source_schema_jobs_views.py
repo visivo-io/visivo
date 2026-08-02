@@ -22,7 +22,7 @@ class TestSourceSchemaJobsViews:
     @pytest.fixture
     def sample_schema(self, temp_output_dir):
         """Create a sample cached schema file in the main run_id location."""
-        schema_dir = os.path.join(temp_output_dir, DEFAULT_RUN_ID, "schemas", "test_source")
+        schema_dir = os.path.join(temp_output_dir, DEFAULT_RUN_ID, "schemas")
         os.makedirs(schema_dir, exist_ok=True)
 
         schema_data = {
@@ -54,7 +54,7 @@ class TestSourceSchemaJobsViews:
             "metadata": {"total_tables": 2, "total_columns": 6, "databases": []},
         }
 
-        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        with open(os.path.join(schema_dir, "test_source.json"), "w") as f:
             json.dump(schema_data, f)
 
         return schema_data
@@ -63,7 +63,7 @@ class TestSourceSchemaJobsViews:
     def sample_preview_schema(self, temp_output_dir):
         """Create a sample cached schema file in the preview run_id location."""
         preview_run_id = "preview-test_source"
-        schema_dir = os.path.join(temp_output_dir, preview_run_id, "schemas", "test_source")
+        schema_dir = os.path.join(temp_output_dir, preview_run_id, "schemas")
         os.makedirs(schema_dir, exist_ok=True)
 
         schema_data = {
@@ -85,7 +85,7 @@ class TestSourceSchemaJobsViews:
             "metadata": {"total_tables": 1, "total_columns": 2, "databases": []},
         }
 
-        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        with open(os.path.join(schema_dir, "test_source.json"), "w") as f:
             json.dump(schema_data, f)
 
         return schema_data

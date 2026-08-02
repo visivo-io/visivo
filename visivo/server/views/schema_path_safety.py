@@ -2,7 +2,7 @@
 
 Both the model and source schema endpoints interpolate a user-supplied name and
 optional ``run_id`` query param directly into the on-disk artifact path
-(``{output_dir}/{run_id}/schemas/{name}/schema.json``). Without a strict
+(``{output_dir}/{run_id}/schemas/{name}.json``). Without a strict
 allowlist a caller could smuggle ``..`` / ``/`` segments and traverse outside
 the output directory, so every such value is validated here before it reaches
 the filesystem.

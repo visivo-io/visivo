@@ -33,9 +33,7 @@ class TestInsightFilterInteractions:
             """Create a schema.json file for the given model."""
             schema_base = os.path.join(output_dir, "schemas")
             os.makedirs(schema_base, exist_ok=True)
-            schema_dir = os.path.join(schema_base, model.name)
-            os.makedirs(schema_dir, exist_ok=True)
-            schema_file = os.path.join(schema_dir, "schema.json")
+            schema_file = os.path.join(schema_base, f"{model.name}.json")
 
             # Create a basic schema with x and y columns for filter tests
             model_hash = model.name_hash()
@@ -307,9 +305,9 @@ class TestInsightFilterInteractions:
         dag = project.dag()
 
         # Write a schema.json for the referenced model with the given columns.
-        schema_base = os.path.join(str(tmpdir), "schemas", model.name)
+        schema_base = os.path.join(str(tmpdir), "schemas")
         os.makedirs(schema_base, exist_ok=True)
-        with open(os.path.join(schema_base, "schema.json"), "w") as f:
+        with open(os.path.join(schema_base, f"{model.name}.json"), "w") as f:
             json.dump({model.name_hash(): schema_columns}, f)
 
         # Write the input job's JSON output so parsing can obtain a sample value

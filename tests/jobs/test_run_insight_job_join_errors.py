@@ -21,8 +21,7 @@ from visivo.models.project import Project
 def _write_schema(schema_base, model, columns):
     """Mirror the on-disk schema layout the FieldResolver reads from."""
     model_hash = model.name_hash()
-    schema_dir = schema_base.mkdir(model.name)
-    schema_file = schema_dir.join("schema.json")
+    schema_file = schema_base.join(f"{model.name}.json")
     schema_file.write(json.dumps({model_hash: columns}))
 
 
@@ -58,7 +57,7 @@ def test_two_unjoined_model_insight_run_yields_missing_relation(tmpdir):
 
     run_id = "main"
     output_dir = str(tmpdir)
-    # FieldResolver reads schemas from {output_dir}/{run_id}/schemas/<model>/schema.json
+    # FieldResolver reads schemas from {output_dir}/{run_id}/schemas/<model>.json
     run_dir = tmpdir.mkdir(run_id)
     schema_base = run_dir.mkdir("schemas")
     _write_schema(schema_base, orders, {"amount": "INTEGER"})

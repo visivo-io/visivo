@@ -130,9 +130,9 @@ def _build_and_write_schema(
 
     # Organize by run_id
     run_output_dir = f"{output_dir}/{run_id}"
-    schema_directory = f"{run_output_dir}/schemas/{sql_model.name}/"
+    schema_directory = f"{run_output_dir}/schemas"
     os.makedirs(schema_directory, exist_ok=True)
-    schema_file = f"{schema_directory}schema.json"
+    schema_file = f"{schema_directory}/{sql_model.name}.json"
 
     # Persist the richer envelope (legacy {name_hash: {col: type}} block preserved
     # first, for the field resolver) while serializing the resolved output schema.
@@ -237,7 +237,7 @@ def schema_only_action(
 
         # Organize by run_id
         run_output_dir = f"{output_dir}/{run_id}"
-        schema_file = f"{run_output_dir}/schemas/{sql_model.name}/schema.json"
+        schema_file = f"{run_output_dir}/schemas/{sql_model.name}.json"
         success_message = format_message_success(
             details=f"Wrote schema for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,

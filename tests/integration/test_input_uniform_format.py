@@ -45,12 +45,12 @@ class TestInputUniformFormat:
         )
 
         # Create schema file for the model
-        schema_dir = Path(output_dir) / "schemas" / model.name
+        schema_dir = Path(output_dir) / "schemas"
         schema_dir.mkdir(parents=True, exist_ok=True)
 
         import json
 
-        schema_file = schema_dir / "schema.json"
+        schema_file = schema_dir / f"{model.name}.json"
         schema_data = {
             model.name_hash(): {
                 "id": "INTEGER",
