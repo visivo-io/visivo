@@ -7,7 +7,6 @@ import {
   fetchSourceSchema,
   generateSourceSchema,
   fetchSchemaGenerationStatus,
-  fetchOrGenerateSchema,
   tablesFromEnvelope,
   columnsFromEnvelope,
 } from './sourceSchemaJobs';
@@ -117,26 +116,6 @@ describe('fetchSchemaGenerationStatus', () => {
     });
     apiFetch.mockResolvedValueOnce(fail(500));
     await expect(fetchSchemaGenerationStatus('r1')).rejects.toThrow(/status check failed/);
-  });
-});
-
-describe('fetchOrGenerateSchema', () => {
-  it('returns the cached schema and reports completion without generating', async () => {
-    const onProgress = jest.fn();
-    apiFetch.mockResolvedValueOnce(ok({ columns: ['a'] })); // cached fetchSourceSchema
-    await expect(fetchOrGenerateSchema('src', { onProgress })).resolves.toEqual({
-      columns: ['a'],
-    });
-    expect(onProgress).toHaveBeenCalledWith('completed', 1.0, 'Using cached schema');
-    expect(apiFetch).toHaveBeenCalledTimes(1);
-  });
-
-  it('generates then surfaces a failed generation status', async () => {
-    apiFetch
-      .mockResolvedValueOnce(fail(404)) // no cached schema
-      .mockResolvedValueOnce(ok({ run_id: 'r1' })) // generateSourceSchema
-      .mockResolvedValueOnce(ok({ status: 'failed', error: 'introspection blew up' })); // status poll
-    await expect(fetchOrGenerateSchema('src')).rejects.toThrow('introspection blew up');
   });
 });
 

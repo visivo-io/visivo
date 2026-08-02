@@ -85,6 +85,14 @@ const URL_PATTERNS = {
     explorationConsumeReturnTo: '/api/explorations/{id}/consume-return-to/',
     explorationRecordPromotion: '/api/explorations/{id}/record-promotion/',
 
+    // ---- Derived resources ----------------------------------------------
+    // Computed on request rather than stored, so they read as a collection but
+    // answer with POST — the draft form carries SQL in the body. Model schemas
+    // are inferred with SQLGlot from the source's cached schema (no database),
+    // which is why a model that has never been run still has columns.
+    modelSchemasList: '/api/model-schemas/',
+    modelSchemaDetail: '/api/model-schemas/{name}/',
+
     // ---- Job resources --------------------------------------------------
     // Asynchronous work, all the same two-key shape: POST the list route to
     // start, GET the detail route to read the result or poll the status. The
@@ -96,8 +104,6 @@ const URL_PATTERNS = {
 
     modelQueryJobs: '/api/model-query-jobs/',
     modelQueryJobDetail: '/api/model-query-jobs/{jobId}/',
-
-    modelSchemaJob: '/api/model-schema-jobs/{name}/',
 
     // Read-only artifact manifests: built data, addressed in bulk. No POST —
     // the run produced these, the client only reads them.
@@ -176,9 +182,7 @@ const URL_PATTERNS = {
 
     // Deliberately absent, though the artifacts exist:
     //   modelJobsQuery   — a dist build writes no model-jobs manifest.
-    //   modelSchemaJob   — dist_phase.py copies insights.json / inputs.json /
-    //                      parquet, but not `schemas/`. Point this at
-    //                      '/data/schemas/{name}.json' once it does.
+    //   model-schemas    — inference needs a server; a dist build has none.
   },
 };
 
