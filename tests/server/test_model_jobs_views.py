@@ -21,14 +21,14 @@ from tests.factories.model_factories import ProjectFactory
 def client(tmp_path):
     project = ProjectFactory.build()
     output_dir = str(tmp_path / "target")
-    os.makedirs(os.path.join(output_dir, "main", "files"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "main", "models"), exist_ok=True)
     app = FlaskApp(output_dir=output_dir, project=project).app
     app.config["TESTING"] = True
     return app.test_client(), output_dir
 
 
 def _write_parquet(output_dir, name, run_id="main"):
-    path = os.path.join(output_dir, run_id, "files", f"{name}.parquet")
+    path = os.path.join(output_dir, run_id, "models", f"{name}.parquet")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "wb").write(b"PAR1")  # contents never read — only existence
     return path

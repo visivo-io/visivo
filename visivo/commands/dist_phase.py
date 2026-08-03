@@ -104,10 +104,16 @@ def dist_phase(
         with open(f"{dist_dir}/data/traces.json", "w") as f:
             json.dump(traces_list, f)
 
-        # Copy parquet data files used by insights and inputs
-        files_src = os.path.join(run_dir, "files")
-        if os.path.isdir(files_src):
-            os.makedirs(f"{dist_dir}/data/files", exist_ok=True)
+        # Copy parquet data files used by insights and inputs. The run writes
+        # them into the directory named for what produced them (VIS-1128), but
+        # dist stays FLAT: refs are rewritten to data/files/<basename> and the
+        # viewer's dist mode reads them there. Names are globally unique within
+        # a project, so flattening cannot collide.
+        os.makedirs(f"{dist_dir}/data/files", exist_ok=True)
+        for src_dir in ("models", "insights", "inputs"):
+            files_src = os.path.join(run_dir, src_dir)
+            if not os.path.isdir(files_src):
+                continue
             for parquet_file in glob(f"{files_src}/*.parquet"):
                 filename = os.path.basename(parquet_file)
                 shutil.copyfile(parquet_file, f"{dist_dir}/data/files/{filename}")
