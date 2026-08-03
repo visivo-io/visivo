@@ -113,14 +113,24 @@ def _raise_if_any_failed(results, summary: str):
 # seen a byte — so anything we do not declare here lands under an `unknown`
 # prefix where no query engine will find it.
 #
-# Only two kinds of object are uploaded at all. Every parquet goes up as
-# "model" — a model's own data, a static insight's precomputed result, and a
-# query-based input's options all funnel through process_models_async — so an
-# insight's rows are queryable, they just arrive as model job data. Insight and
-# input envelopes are not uploaded (VIS-1125): they are sent as `content` on
-# the record, which is the only copy core ever read.
+# What core stores each upload as. Purpose decides the object path, and core
+# picks that path when it signs the URL — before it has seen a byte — so an
+# undeclared upload lands somewhere no query engine looks.
+#
+# Every one of these is parquet except the thumbnail. Each kind of job owns its
+# own: a model's data, a STATIC insight's precomputed result, and a query-based
+# input's options. They all used to go up as "model", which made a model and
+# the insight built on it indistinguishable in the store (VIS-1126).
+#
+# A DYNAMIC insight owns nothing — its files[] name the models it queries
+# client-side, and those are uploaded as models.
+#
+# The insight and input JSON envelopes are not uploaded at all (VIS-1125):
+# they ride as `content` on the record, which is the only copy core ever read.
 PURPOSE_BY_DESCRIPTION = {
     "model": "model_job_data",
+    "insight": "insight_job_data",
+    "input": "input_job_data",
     "thumbnail": "thumbnail",
 }
 
@@ -345,7 +355,9 @@ async def create_insight_records(batch, project_id, json_headers, host, progress
                 "name": record["name"],
                 "name_hash": record["name_hash"],
                 "project_id": project_id,
-                # No data_file_id: an envelope has no file (VIS-1125).
+                # Only when there is one. A static insight owns a parquet; a
+                # dynamic one owns nothing, and its envelope is content alone.
+                **({"data_file_id": record["data_file_id"]} if record.get("data_file_id") else {}),
                 "content": record.get("content"),
             },
             batch,
@@ -385,7 +397,9 @@ async def create_input_records(batch, project_id, json_headers, host, progress):
                 "name": record["name"],
                 "name_hash": record["name_hash"],
                 "project_id": project_id,
-                # No data_file_id: an envelope has no file (VIS-1125).
+                # Only when there is one. A static insight owns a parquet; a
+                # dynamic one owns nothing, and its envelope is content alone.
+                **({"data_file_id": record["data_file_id"]} if record.get("data_file_id") else {}),
                 "content": record.get("content"),
             },
             batch,
@@ -535,11 +549,63 @@ async def process_dashboards_async(
     _raise_if_any_failed(response_items, "Failed to create dashboard records")
 
 
+async def _upload_job_parquet(
+    files, description, output_dir, form_headers, host, progress, project_id, batch_size=20
+):
+    """Create file records, PUT each parquet, finish them. Returns ``{name: file_id}``.
+
+    Shared by the insight and input paths, which upload the same way and differ
+    only in which job type owns the result — the thing that used to be a single
+    ``process_models_async`` for all three (VIS-1126).
+    """
+    tasks = []
+    for i in range(0, len(files), batch_size):
+        batch = files[i : i + batch_size]
+        items = [{"filename": f["file_path"].split("/")[-1], "name": f["name"]} for f in batch]
+        tasks.append(
+            start_files(items, description, form_headers, host, progress, project_id=project_id)
+        )
+    started = await asyncio.gather(*tasks, return_exceptions=True)
+    _raise_if_any_failed(started, f"Failed to create {description} parquet files")
+    uploads = [item for sublist in started for item in sublist]
+
+    tasks = [
+        upload_file(
+            files[i]["name"],
+            upload["upload_url"],
+            files[i]["file_path"],
+            output_dir,
+            form_headers,
+            progress,
+        )
+        for i, upload in enumerate(uploads)
+    ]
+    _raise_if_any_failed(
+        await asyncio.gather(*tasks, return_exceptions=True),
+        f"Failed to upload {description} parquet",
+    )
+
+    ids = [u["id"] for u in uploads]
+    tasks = [
+        finish_files(ids[i : i + batch_size], description, form_headers, host, progress)
+        for i in range(0, len(ids), batch_size)
+    ]
+    _raise_if_any_failed(
+        await asyncio.gather(*tasks, return_exceptions=True),
+        f"Failed to finish {description} parquet files",
+    )
+    return {files[i]["name"]: u["id"] for i, u in enumerate(uploads)}
+
+
 async def process_insights_async(
-    insights, output_dir, project_id, form_headers, json_headers, host
+    insights, dag, output_dir, project_id, form_headers, json_headers, host
 ):
     """
-    Coordinates the asynchronous upload of insight JSON files and creation of insight records.
+    Upload each static insight's parquet and create the insight records.
+
+    ``dag`` is needed to tell a static insight from a dynamic one: only a
+    static insight has a precomputed result of its own to upload. A dynamic
+    insight's data is its dependent models', uploaded as models.
     """
     batch_size = 20
 
@@ -561,12 +627,23 @@ async def process_insights_async(
     if not insight_files:
         return
 
-    # One operation per batch: there are no files to create, upload or finish.
-    # The envelope IS ``content``. It used to be uploaded to the bucket as well
-    # and core never read it back — every response is built from ``content``
-    # plus the MODEL job's parquet URL — so the upload was pure object count
-    # (VIS-1125).
-    progress = {"completed": 0, "total": math.ceil(len(insight_files) / batch_size)}
+    # A static insight's precomputed parquet is its OWN file, keyed by the
+    # insight's hash — so it attaches to the record built below rather than
+    # creating a row of its own. It used to go up as a model named after the
+    # insight (VIS-1126). The envelope is not uploaded at all; it rides as
+    # ``content`` (VIS-1125).
+    parquet_files = collect_static_insight_parquet(insights, dag, output_dir)
+    progress = {
+        "completed": 0,
+        "total": math.ceil(len(insight_files) / batch_size)
+        + (3 * math.ceil(len(parquet_files) / batch_size) if parquet_files else 0),
+    }
+
+    data_file_ids = {}
+    if parquet_files:
+        data_file_ids = await _upload_job_parquet(
+            parquet_files, "insight", output_dir, form_headers, host, progress, project_id
+        )
 
     # Read the local JSON so core can store it on the InsightJob row and serve a
     # fully-inlined response from /api/insight-jobs/ (matching visivo Flask's
@@ -580,6 +657,8 @@ async def process_insights_async(
     content_failures = []
     for insight_file in insight_files:
         record = {"name": insight_file["name"], "name_hash": insight_file["name_hash"]}
+        if insight_file["name"] in data_file_ids:
+            record["data_file_id"] = data_file_ids[insight_file["name"]]
         local_path = os.path.join(output_dir, insight_file["file_path"])
         try:
             with open(local_path, "r") as f:
@@ -674,6 +753,45 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
     _raise_if_any_failed(response_items, "Failed to create input records")
 
 
+async def process_input_parquet_async(
+    parquet_files, output_dir, project_id, form_headers, json_headers, host
+):
+    """Upload a query-based input's options parquet as INPUT job data.
+
+    Unlike an insight's, an options file is keyed by its OWN hash (of
+    ``{input}_options``), not the input's — so the record that holds it is a
+    separate row rather than the input's own. That is the shape that already
+    existed; only the job type changed, from model to input (VIS-1126), so a
+    model and an input's options are no longer indistinguishable in the store.
+    """
+    if not parquet_files:
+        return
+    batch_size = 20
+    progress = {"completed": 0, "total": 4 * math.ceil(len(parquet_files) / batch_size)}
+
+    data_file_ids = await _upload_job_parquet(
+        parquet_files, "input", output_dir, form_headers, host, progress, project_id
+    )
+
+    records = [
+        {
+            "name": f["name"],
+            "name_hash": f["name_hash"],
+            "data_file_id": data_file_ids[f["name"]],
+        }
+        for f in parquet_files
+        if f["name"] in data_file_ids
+    ]
+    tasks = [
+        create_input_records(records[i : i + batch_size], project_id, json_headers, host, progress)
+        for i in range(0, len(records), batch_size)
+    ]
+    _raise_if_any_failed(
+        await asyncio.gather(*tasks, return_exceptions=True),
+        "Failed to create input parquet records",
+    )
+
+
 async def process_models_async(models, output_dir, project_id, form_headers, json_headers, host):
     """
     Coordinates the asynchronous upload of model parquet files and creation of records.
@@ -741,40 +859,54 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
 
 def collect_models_for_insights(insights, dag, output_dir):
     """
-    Collect parquet files needed by insights for client-side DuckDB queries.
+    Collect the MODEL parquet a dynamic insight queries client-side.
 
-    There are two types of parquet files:
-    1. Static insight result files: Pre-computed query results stored at
-       files/{insight.name}.parquet - these need to be uploaded so the
-       client can load them via DuckDB.
-    2. Model files for dynamic insights: Model parquet files at
-       files/{model.name}.parquet - only needed for insights with
-       Input dependencies that require client-side queries on model data.
+    A dynamic insight has Input dependencies, so its data can't be precomputed
+    — the client runs the query against each dependent model's parquet in
+    DuckDB. Those files belong to the models, so they go up as models.
+
+    A static insight's precomputed result used to be collected here too, and
+    went up as a model named after the insight — which made a model and the
+    insight built on it indistinguishable in the artifact store (VIS-1126). It
+    is now uploaded by ``process_insights_async`` as the insight's own file.
     """
     models_dict = {}
 
     for insight in insights:
-        if insight.is_dynamic(dag):
-            # Dynamic insights need model parquet files for client-side queries
-            for model in insight.get_all_dependent_models(dag):
-                parquet_path = f"{output_dir}/files/{model.name}.parquet"
-                if os.path.exists(parquet_path):
-                    models_dict[model.name] = {
-                        "name": model.name,
-                        "name_hash": model.name_hash(),
-                        "file_path": f"files/{model.name}.parquet",
-                    }
-        else:
-            # Static insights have pre-computed result files that need to be uploaded
-            parquet_path = f"{output_dir}/files/{insight.name}.parquet"
+        if not insight.is_dynamic(dag):
+            continue
+        for model in insight.get_all_dependent_models(dag):
+            parquet_path = f"{output_dir}/files/{model.name}.parquet"
             if os.path.exists(parquet_path):
-                models_dict[insight.name] = {
+                models_dict[model.name] = {
+                    "name": model.name,
+                    "name_hash": model.name_hash(),
+                    "file_path": f"files/{model.name}.parquet",
+                }
+
+    return list(models_dict.values())
+
+
+def collect_static_insight_parquet(insights, dag, output_dir):
+    """A static insight's precomputed result, keyed by the INSIGHT's own hash.
+
+    Which is why it attaches to the existing InsightJob rather than creating a
+    row of its own: the insight's files[] ref names the insight, so one record
+    carries both the envelope and the file.
+    """
+    files = []
+    for insight in insights:
+        if insight.is_dynamic(dag):
+            continue
+        if os.path.exists(f"{output_dir}/files/{insight.name}.parquet"):
+            files.append(
+                {
                     "name": insight.name,
                     "name_hash": insight.name_hash(),
                     "file_path": f"files/{insight.name}.parquet",
                 }
-
-    return list(models_dict.values())
+            )
+    return files
 
 
 def collect_parquet_files_for_inputs(inputs, output_dir):
@@ -996,6 +1128,7 @@ def deploy_phase(
             asyncio.run(
                 process_insights_async(
                     insights=insights,
+                    dag=dag,
                     output_dir=run_output_dir,
                     project_id=project_id,
                     form_headers=form_headers,
@@ -1036,8 +1169,8 @@ def deploy_phase(
         input_parquet_files = collect_parquet_files_for_inputs(inputs, run_output_dir)
         if input_parquet_files:
             asyncio.run(
-                process_models_async(
-                    models=input_parquet_files,
+                process_input_parquet_async(
+                    parquet_files=input_parquet_files,
                     output_dir=run_output_dir,
                     project_id=project_id,
                     form_headers=form_headers,
