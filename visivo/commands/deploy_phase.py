@@ -355,6 +355,8 @@ async def create_insight_records(batch, project_id, json_headers, host, progress
                 "name": record["name"],
                 "name_hash": record["name_hash"],
                 "project_id": project_id,
+                # Only when there is one. A static insight owns a parquet; a
+                # dynamic one owns nothing, and its envelope is content alone.
                 **({"data_file_id": record["data_file_id"]} if record.get("data_file_id") else {}),
                 "content": record.get("content"),
             },
@@ -395,6 +397,8 @@ async def create_input_records(batch, project_id, json_headers, host, progress):
                 "name": record["name"],
                 "name_hash": record["name_hash"],
                 "project_id": project_id,
+                # Only when there is one. A static insight owns a parquet; a
+                # dynamic one owns nothing, and its envelope is content alone.
                 **({"data_file_id": record["data_file_id"]} if record.get("data_file_id") else {}),
                 "content": record.get("content"),
             },
