@@ -115,12 +115,13 @@ def _raise_if_any_failed(results, summary: str):
 #
 # Note every parquet file goes up as "model": a model's own data, a static
 # insight's precomputed result, and a query-based input's options all funnel
-# through process_models_async. The "insight" and "input" descriptions are
-# their JSON envelopes, which core keeps but never queries.
+# through process_models_async. So an insight's rows ARE queryable — they just
+# arrive as model job data. The "insight" and "input" descriptions carry only
+# the JSON envelope, which is why they are named envelope rather than data.
 PURPOSE_BY_DESCRIPTION = {
     "model": "model_job_data",
-    "insight": "insight_job_data",
-    "input": "input_job_data",
+    "insight": "insight_job_envelope",
+    "input": "input_job_envelope",
     "thumbnail": "thumbnail",
 }
 
