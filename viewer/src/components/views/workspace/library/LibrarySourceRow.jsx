@@ -14,6 +14,7 @@ import {
   PiArrowSquareOut,
 } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
+import { SCHEMA_GENERATE_UNAVAILABLE } from '../../common/sourceCapabilities';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import useSourceOutline from '../useSourceOutline';
 import { StatusDot } from './LibraryRow';
@@ -262,6 +263,7 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
     status,
     error,
     isCold,
+    canGenerate,
     generating,
     generateSchema,
     loadFlatColumns,
@@ -313,6 +315,20 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
         >
           Retry
         </button>
+      </div>
+    );
+  }
+
+  if (isCold && !canGenerate) {
+    // A file-backed source in cloud: its schema arrives via `visivo deploy`,
+    // because the database file is on the author's machine. Offering the button
+    // here would only ever produce "database does not exist".
+    return (
+      <div
+        className="py-1 pl-10 text-[11px] text-gray-400"
+        data-testid={`library-source-${sourceName}-local-only`}
+      >
+        {SCHEMA_GENERATE_UNAVAILABLE}
       </div>
     );
   }

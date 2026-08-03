@@ -296,7 +296,7 @@ class TestDataAffectingGate:
             r = self._save_insight(
                 integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
             )
-            assert r.status_code == 200
+            assert r.status_code == 201
             req.assert_called_once()
             assert req.call_args[0][1] == ["w"]
 
@@ -313,7 +313,7 @@ class TestDataAffectingGate:
                 "w",
                 {"type": "scatter", "x": "?{ ${ref(M).a} }", "marker": {"color": "blue"}},
             )
-            assert r.status_code == 200
+            assert r.status_code == 201
             req.assert_not_called()
 
     def test_query_edit_runs(self, integration_client):
@@ -373,7 +373,7 @@ class TestDataAffectingGate:
             self._save_chart(integration_client, "c", {"title": {"text": "Hello"}})
             req.reset_mock()
             r = self._save_chart(integration_client, "c", {"title": {"text": "Goodbye"}})
-            assert r.status_code == 200
+            assert r.status_code == 201
             req.assert_not_called()
 
     def test_deleting_a_plain_chart_skips_run(self, integration_client):
@@ -404,7 +404,7 @@ class TestTriggerMode:
             r = self._save_insight(
                 integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
             )
-        assert r.status_code == 200
+        assert r.status_code == 201
         req.assert_not_called()
         assert StagedManager.instance().list() == [
             {"name": "w", "type": "insight", "status": "modified"}

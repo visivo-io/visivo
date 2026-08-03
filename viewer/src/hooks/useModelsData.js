@@ -15,7 +15,9 @@ import { DEFAULT_RUN_ID } from '../constants';
  * @param {string} runId - Run ID for file path
  * @returns {Promise<Object>} Processed model data keyed by model name
  */
-const processModel = async (db, modelName, runId, force = false) => {
+// Exported so the model-tab prefill can reuse the exact load path the
+// dashboard uses — same URL contract, same hashing, same DuckDB table.
+export const processModel = async (db, modelName, runId, force = false) => {
   try {
     // ``name_hash`` is the DuckDB table identifier (clean, valid SQL
     // identifier — model names may contain whitespace/punctuation).

@@ -1,6 +1,7 @@
 from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
+from visivo.server.managers.object_manager import ObjectStatus
 
 
 def register_relations_views(app, flask_app, output_dir):
@@ -49,7 +50,7 @@ def register_relations_views(app, flask_app, output_dir):
                         "status": status.value if status else None,
                     }
                 ),
-                200,
+                201 if status == ObjectStatus.NEW else 200,
             )
         except ValidationError as e:
             Logger.instance().debug(f"Relation validation failed: {e}")

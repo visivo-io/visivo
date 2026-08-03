@@ -118,10 +118,26 @@ class TestUniformResourceViews:
         mgr.save_from_config.return_value = Mock()
         mgr.get_status.return_value = ObjectStatus.NEW
         resp = client.post(f"/api/{key}/a/", json={"foo": "bar"})
-        assert resp.status_code == 200
+        # 201 for a NEW object, matching core. The viewer used to treat anything
+        # but 200 as a failure, so cloud's 201 made every "+ New" look like it
+        # had done nothing; both servers now say the same thing.
+        assert resp.status_code == 201
         assert resp.get_json()["status"] == "new"
         # name is forced to match the URL parameter
         assert mgr.save_from_config.call_args[0][0]["name"] == "a"
+
+    def test_save_existing_is_200_not_201(self, key, register, mgr_attr, get_all, get_one):
+        """Updating an object is not creating one — core answers 200 +
+        "modified" here, and the distinction is the whole point of the code."""
+        client, fa = _client(register)
+        mgr = getattr(fa, mgr_attr)
+        mgr.save_from_config.return_value = Mock()
+        mgr.get_status.return_value = ObjectStatus.MODIFIED
+
+        resp = client.post(f"/api/{key}/a/", json={"foo": "bar"})
+
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "modified"
 
     def test_save_no_config(self, key, register, mgr_attr, get_all, get_one):
         client, fa = _client(register)
@@ -200,8 +216,19 @@ class TestModelScopedResourceViews:
         mgr.save_from_config.return_value = Mock()
         mgr.get_status.return_value = ObjectStatus.NEW
         resp = client.post(f"/api/{key}/d/", json={"expression": "sum(x)"})
-        assert resp.status_code == 200
+        assert resp.status_code == 201
         assert resp.get_json()["status"] == "new"
+
+    def test_save_existing_is_200_not_201(self, key, register, mgr_attr, get_all, get_one):
+        client, fa = _client(register)
+        mgr = getattr(fa, mgr_attr)
+        mgr.save_from_config.return_value = Mock()
+        mgr.get_status.return_value = ObjectStatus.MODIFIED
+
+        resp = client.post(f"/api/{key}/d/", json={"expression": "sum(x)"})
+
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "modified"
 
     def test_delete(self, key, register, mgr_attr, get_all, get_one):
         client, fa = _client(register)
