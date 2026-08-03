@@ -12,6 +12,7 @@ import VerticalDivider from '../common/VerticalDivider';
 import Divider from '../common/Divider';
 import Select from '../common/Select';
 import useStore from '../../stores/store';
+import { useModelTabPrefill } from '../../hooks/useModelTabPrefill';
 import {
   selectActiveModelSql,
   selectActiveModelSourceName,
@@ -57,6 +58,11 @@ const CenterPanel = ({
   const sql = useStore(selectActiveModelSql);
   const setSql = useStore((s) => s.setActiveModelSql);
   const queryResult = useStore(selectActiveModelQueryResult);
+
+  // Show the last run's rows when a model tab opens with none, instead of an
+  // empty grid beside a parquet that already exists. Never overwrites a query
+  // the user just ran (see the hook).
+  useModelTabPrefill(activeModelName, Boolean(queryResult));
   const queryError = useStore(selectActiveModelQueryError);
   const setModelQueryResult = useStore((s) => s.setModelQueryResult);
   const setModelQueryError = useStore((s) => s.setModelQueryError);

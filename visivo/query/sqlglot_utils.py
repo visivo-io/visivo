@@ -414,6 +414,38 @@ def identify_column_references(
     return qualified_sql
 
 
+def _describe_available(schema: dict) -> str:
+    """What the qualifier actually had to resolve against.
+
+    This line used to read ``Available schemas: <nested keys>``, which listed
+    only keys whose value was itself a dict — i.e. only the NESTED
+    ``{schema: {table: {col}}}`` shape. A flat ``{table: {col}}`` schema, which
+    is what DuckDB and SQLite produce, therefore always printed
+    ``Available schemas: None`` — whether the schema was empty or fully loaded.
+
+    That is worse than unhelpful: it says "nothing was loaded" at the exact
+    moment you are trying to work out whether anything was loaded, and sends you
+    hunting for a missing schema when the real problem is usually a column name.
+    """
+    if not isinstance(schema, dict) or not schema:
+        return "Available schema: EMPTY (no schema was loaded for this source)"
+
+    nested = [
+        key
+        for key, value in schema.items()
+        if isinstance(value, dict) and isinstance(next(iter(value.values()), None), dict)
+    ]
+    if nested:
+        return f"Available schemas: {', '.join(sorted(nested))}"
+
+    # Flat: the keys ARE the tables. Cap the list — a warehouse source can carry
+    # hundreds, and an error message that scrolls is its own problem.
+    tables = sorted(str(key) for key in schema)
+    shown = ", ".join(tables[:20])
+    suffix = f" (+{len(tables) - 20} more)" if len(tables) > 20 else ""
+    return f"Available tables: {shown}{suffix}"
+
+
 def schema_from_sql(
     sqlglot_dialect: str,
     sql: str,
@@ -473,18 +505,9 @@ def schema_from_sql(
             db=default_schema,
         )
     except OptimizeError as e:
-        # Provide actionable error message with available schemas
-        available_schemas = []
-        if isinstance(schema, dict):
-            for key, value in schema.items():
-                if isinstance(value, dict):
-                    first_val = next(iter(value.values()), None) if value else None
-                    if isinstance(first_val, dict):
-                        # Nested structure - key is a schema name
-                        available_schemas.append(key)
         raise click.ClickException(
             f"Schema validation failed: {e}\n"
-            f"Available schemas: {', '.join(available_schemas) if available_schemas else 'None'}\n"
+            f"{_describe_available(schema)}\n"
             f"Default schema: {default_schema}\n"
             f"Hint: Ensure all referenced tables exist in the source database."
         )

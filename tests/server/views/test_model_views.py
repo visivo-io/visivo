@@ -96,7 +96,7 @@ class TestModelViews:
             content_type="application/json",
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.get_json()
         assert data["model"] == "new_model"
         assert data["status"] == "new"

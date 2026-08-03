@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useStore from '../../../stores/store';
 import { isAvailable } from '../../../contexts/URLContext';
 import { pollJob } from '../../../api/jobs';
+import { canGenerateSchema } from '../common/sourceCapabilities';
 import {
   fetchSourceSchemaJobs,
   generateSourceSchema,
@@ -99,6 +100,15 @@ export default function useSourceOutline(sourceName) {
   // Subscribed at render rather than read via getState() inside an async
   // callback: that samples the id at request time, not render time.
   const projectId = useStore(s => s.project?.id);
+  // A file-backed source can only be introspected where its file lives. In
+  // cloud there is no such file, so "Generate schema" would fail every time
+  // with "database does not exist" — its schema arrives via `visivo deploy`
+  // instead. Same fact that gates the connection test.
+  const capabilities = useStore(s => s.capabilities);
+  const sourceConfig = useStore(s =>
+    (s.sources || []).find(source => source.name === sourceName)?.config
+  );
+  const canGenerate = canGenerateSchema(sourceConfig, capabilities);
 
   // The cached tree is the source of truth; `null` until first load completes.
   const [nodes, setNodes] = useState(null);
@@ -240,6 +250,10 @@ export default function useSourceOutline(sourceName) {
    */
   const generateSchema = useCallback(async () => {
     if (!sourceName || !isAvailable('sourceSchemaJobsList')) return;
+    // Guarded here as well as in the UI: the surfaces render an explanation
+    // rather than the button, but a stale handler must not fire a request that
+    // can only fail.
+    if (!canGenerate) return;
     const epoch = epochRef.current;
     const stale = () => epochRef.current !== epoch;
     setGenerating({ status: 'starting', progress: 0, message: '' });
@@ -295,7 +309,7 @@ export default function useSourceOutline(sourceName) {
       setGenerating(null);
       setError(e.message);
     }
-  }, [sourceName, projectId]);
+  }, [sourceName, projectId, canGenerate]);
 
   /**
    * Populate a table's columns on expand by slicing the already-fetched
@@ -352,6 +366,7 @@ export default function useSourceOutline(sourceName) {
     status,
     error,
     isCold,
+    canGenerate,
     generating,
     generateSchema,
     loadFlatColumns,

@@ -38,20 +38,37 @@ export const isLocalFileSource = (config = {}) => {
 };
 
 /**
- * Whether a connection test can meaningfully run for this source here.
+ * Whether the serving process can open this source at all.
+ *
+ * One fact, two consumers: testing a connection and introspecting a schema both
+ * require opening the database, and both fail the same way in cloud for a
+ * file-backed source — the runner reports "database does not exist" because the
+ * file is on the author's machine.
  *
  * @param {object} config - the source config
- * @param {object|null} capabilities - the project capabilities payload; while it
- *   is still loading we allow the test rather than flickering the button
- *   disabled, since the common case (local serve) supports it.
+ * @param {object|null} capabilities - the project capabilities payload. While it
+ *   is still loading we assume reachable rather than flickering controls
+ *   disabled on first paint, and an older server that omits the flag keeps
+ *   today's behaviour. Only an explicit `false` gates anything.
  */
-export const canTestConnection = (config, capabilities) => {
+export const canReachSource = (config, capabilities) => {
   if (!isLocalFileSource(config)) return true;
   if (!capabilities) return true;
   return capabilities.local_filesystem !== false;
 };
 
+/** Whether a connection test can meaningfully run for this source here. */
+export const canTestConnection = canReachSource;
+
+/** Whether a schema can be introspected for this source here. */
+export const canGenerateSchema = canReachSource;
+
 /** Why the test is unavailable, for the disabled control's tooltip. */
 export const CONNECTION_TEST_UNAVAILABLE =
   'This source reads a file on your machine, which the cloud server cannot open. ' +
   'Test it with `visivo serve` locally.';
+
+/** Why the schema cannot be generated here. */
+export const SCHEMA_GENERATE_UNAVAILABLE =
+  'This source reads a file on your machine, which the cloud server cannot open. ' +
+  'Its schema is uploaded by `visivo deploy` — run and deploy locally to refresh it.';

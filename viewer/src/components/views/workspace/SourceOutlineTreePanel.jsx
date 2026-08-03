@@ -11,6 +11,7 @@ import {
   PiWarningCircle,
 } from 'react-icons/pi';
 import useStore from '../../../stores/store';
+import { SCHEMA_GENERATE_UNAVAILABLE } from '../common/sourceCapabilities';
 import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import useSourceOutline, { sourceRootKey } from './useSourceOutline';
 
@@ -199,6 +200,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
     status,
     error,
     isCold,
+    canGenerate,
     generating,
     generateSchema,
     loadFlatColumns,
@@ -410,6 +412,16 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
             Retry
           </button>
         </EmptyState>
+      ) : isCold && !canGenerate ? (
+        // A file-backed source in cloud. Its schema comes from `visivo deploy`,
+        // since the database file never leaves the author's machine — a
+        // generate here could only report "database does not exist".
+        <EmptyState
+          icon={SourceIcon}
+          testId="source-outline-local-only"
+          title="Schema comes from deploy"
+          body={SCHEMA_GENERATE_UNAVAILABLE}
+        />
       ) : isCold ? (
         <EmptyState
           icon={SourceIcon}

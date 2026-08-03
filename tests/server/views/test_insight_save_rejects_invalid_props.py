@@ -120,7 +120,7 @@ class TestInsightSaveRejectsInvalidProps:
             content_type="application/json",
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.get_json()
         assert data["insight"] == "good_insight"
         # The valid insight is persisted to cache.

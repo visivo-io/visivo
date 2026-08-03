@@ -1,6 +1,8 @@
 import {
   isLocalFileSource,
   canTestConnection,
+  canGenerateSchema,
+  canReachSource,
 } from './sourceCapabilities';
 
 describe('isLocalFileSource', () => {
@@ -60,5 +62,31 @@ describe('canTestConnection', () => {
   it('allows it when an older server omits the flag entirely', () => {
     // Only an explicit `false` disables — an unknown server is assumed capable.
     expect(canTestConnection(LOCAL_FILE, { can_edit: true })).toBe(true);
+  });
+});
+
+describe('canGenerateSchema', () => {
+  const LOCAL_FILE = { type: 'duckdb', database: 'target/seeds/pie.duckdb' };
+
+  it('is the same fact as canTestConnection — one reachability question', () => {
+    // Both require opening the database, and both fail identically in cloud
+    // with "database does not exist". Keeping them one predicate means they
+    // cannot drift into disagreeing about the same source.
+    expect(canGenerateSchema).toBe(canReachSource);
+    expect(canTestConnection).toBe(canReachSource);
+  });
+
+  it('refuses a local-file source in cloud, where its schema comes from deploy', () => {
+    expect(canGenerateSchema(LOCAL_FILE, { local_filesystem: false })).toBe(false);
+  });
+
+  it('allows it under visivo serve', () => {
+    expect(canGenerateSchema(LOCAL_FILE, { local_filesystem: true })).toBe(true);
+  });
+
+  it('allows it for a warehouse source anywhere', () => {
+    expect(
+      canGenerateSchema({ type: 'snowflake', database: 'PROD' }, { local_filesystem: false })
+    ).toBe(true);
   });
 });
