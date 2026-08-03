@@ -108,12 +108,40 @@ def _raise_if_any_failed(results, summary: str):
     raise click.ClickException(f"{summary} — {len(failures)} batch failure(s). See log above.")
 
 
+# What core stores each class of upload as. Purpose is what the object path is
+# built from, and core picks that path when it signs the URL — before it has
+# seen a byte — so anything we do not declare here lands under an `unknown`
+# prefix where no query engine will find it.
+#
+# Only two kinds of object are uploaded at all. Every parquet goes up as
+# "model" — a model's own data, a static insight's precomputed result, and a
+# query-based input's options all funnel through process_models_async — so an
+# insight's rows are queryable, they just arrive as model job data. Insight and
+# input envelopes are not uploaded (VIS-1125): they are sent as `content` on
+# the record, which is the only copy core ever read.
+PURPOSE_BY_DESCRIPTION = {
+    "model": "model_job_data",
+    "thumbnail": "thumbnail",
+}
+
+
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def start_files(file_names, description, form_headers, host, progress):
+async def start_files(items, description, form_headers, host, progress, project_id=None):
     """
-    Asynchronously uploads trace data files.
+    Asynchronously creates file records and returns their signed upload URLs.
+
+    ``items`` are ``[{filename, name?}]``. ``name`` and ``project_id`` are the
+    artifact's identity, which core turns into its object path; omitting them
+    is what makes an object unqueryable, not merely unlabelled.
     """
-    files = list(map(lambda file_name: {"filename": file_name}, file_names))
+    files = []
+    for item in items:
+        file = {"filename": item["filename"], "purpose": PURPOSE_BY_DESCRIPTION.get(description)}
+        if item.get("name"):
+            file["name"] = item["name"]
+        if project_id:
+            file["project_id"] = str(project_id)
+        files.append(file)
     url = f"{host}/api/files/direct/start/"
     attempt.set(attempt.get(0) + 1)
     async with semaphore_3():
@@ -123,7 +151,7 @@ async def start_files(file_names, description, form_headers, host, progress):
                 response.raise_for_status()
                 progress["completed"] += 1
                 Logger.instance().success(
-                    f"\t{len(file_names)} {description} files created. [{progress['completed']}/{progress['total']}]"
+                    f"\t{len(files)} {description} files created. [{progress['completed']}/{progress['total']}]"
                 )
                 return response.json()
         except httpx.HTTPStatusError as e:
@@ -313,12 +341,12 @@ async def create_insight_records(batch, project_id, json_headers, host, progress
     """
     body = list(
         map(
-            lambda data_file_upload: {
-                "name": data_file_upload["name"],
-                "name_hash": data_file_upload["name_hash"],
+            lambda record: {
+                "name": record["name"],
+                "name_hash": record["name_hash"],
                 "project_id": project_id,
-                "data_file_id": data_file_upload["id"],
-                "content": data_file_upload.get("content"),
+                # No data_file_id: an envelope has no file (VIS-1125).
+                "content": record.get("content"),
             },
             batch,
         )
@@ -353,12 +381,12 @@ async def create_input_records(batch, project_id, json_headers, host, progress):
     """
     body = list(
         map(
-            lambda data_file_upload: {
-                "name": data_file_upload["name"],
-                "name_hash": data_file_upload["name_hash"],
+            lambda record: {
+                "name": record["name"],
+                "name_hash": record["name_hash"],
                 "project_id": project_id,
-                "data_file_id": data_file_upload["id"],
-                "content": data_file_upload.get("content"),
+                # No data_file_id: an envelope has no file (VIS-1125).
+                "content": record.get("content"),
             },
             batch,
         )
@@ -447,7 +475,9 @@ async def process_dashboards_async(
         if os.path.exists(f"{dashboards_dir}/{sanitized_name}.png"):
             file_names.append(f"{sanitized_name}.png")
 
-    create_thumbnail_files_task = start_files(file_names, "thumbnail", form_headers, host, progress)
+    create_thumbnail_files_task = start_files(
+        [{"filename": name} for name in file_names], "thumbnail", form_headers, host, progress
+    )
 
     thumbnail_file_uploads_nested = await asyncio.gather(
         create_thumbnail_files_task, return_exceptions=True
@@ -531,71 +561,36 @@ async def process_insights_async(
     if not insight_files:
         return
 
-    total_operations = len(insight_files)
-    total_operations += 3 * math.ceil(len(insight_files) / batch_size)
-    progress = {"completed": 0, "total": total_operations}
+    # One operation per batch: there are no files to create, upload or finish.
+    # The envelope IS ``content``. It used to be uploaded to the bucket as well
+    # and core never read it back — every response is built from ``content``
+    # plus the MODEL job's parquet URL — so the upload was pure object count
+    # (VIS-1125).
+    progress = {"completed": 0, "total": math.ceil(len(insight_files) / batch_size)}
 
-    # Create file records
-    tasks = []
-    for i in range(0, len(insight_files), batch_size):
-        batch = insight_files[i : i + batch_size]
-        file_names = [f["file_path"].split("/")[-1] for f in batch]
-        task = start_files(file_names, "insight", form_headers, host, progress)
-        tasks.append(task)
-    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
-    _raise_if_any_failed(data_file_ids, "Failed to create insight files")
-
-    data_file_uploads = [item for sublist in data_file_ids for item in sublist]
-
-    # Upload files
-    tasks = []
-    for i, data_file_upload in enumerate(data_file_uploads):
-        insight_file = insight_files[i]
-        task = upload_file(
-            insight_file["name"],
-            data_file_upload["upload_url"],
-            insight_file["file_path"],
-            output_dir,
-            form_headers,
-            progress,
-        )
-        tasks.append(task)
-    response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    _raise_if_any_failed(response_items, "Failed to upload insight data")
-
-    # Finish files
-    data_file_ids_list = [item["id"] for item in data_file_uploads]
-    tasks = []
-    for i in range(0, len(data_file_ids_list), batch_size):
-        batch = data_file_ids_list[i : i + batch_size]
-        task = finish_files(batch, "insight", form_headers, host, progress)
-        tasks.append(task)
-    response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    _raise_if_any_failed(response_items, "Failed to finish insight files")
-
-    # Create insight records - merge insight metadata with file upload info.
-    # Also read the local JSON file content so core can store it on the
-    # InsightJob row and serve a fully-inlined response from
-    # /api/insight-jobs/ (matching visivo Flask's contract).
+    # Read the local JSON so core can store it on the InsightJob row and serve a
+    # fully-inlined response from /api/insight-jobs/ (matching visivo Flask's
+    # contract).
     #
-    # Track failures and abort the deploy if any occurred — a silent
-    # warning would leave the cloud-side InsightJob row with NULL
-    # content, which renders an empty insight to the viewer with no
-    # signal to the operator.
+    # Abort on any failure rather than letting NULL ``content`` rows reach the
+    # cloud: a silent warning would render an empty insight to the viewer with no
+    # signal to the operator. That matters more now that ``content`` is the only
+    # copy.
+    records = []
     content_failures = []
-    for i, upload in enumerate(data_file_uploads):
-        upload["name"] = insight_files[i]["name"]
-        upload["name_hash"] = insight_files[i]["name_hash"]
-        local_path = os.path.join(output_dir, insight_files[i]["file_path"])
+    for insight_file in insight_files:
+        record = {"name": insight_file["name"], "name_hash": insight_file["name_hash"]}
+        local_path = os.path.join(output_dir, insight_file["file_path"])
         try:
             with open(local_path, "r") as f:
-                upload["content"] = json.load(f)
+                record["content"] = json.load(f)
         except (OSError, json.JSONDecodeError) as e:
             Logger.instance().warning(
-                f"Could not load insight JSON content for {insight_files[i]['name']}: {e}"
+                f"Could not load insight JSON content for {insight_file['name']}: {e}"
             )
-            upload["content"] = None
-            content_failures.append(insight_files[i]["name"])
+            record["content"] = None
+            content_failures.append(insight_file["name"])
+        records.append(record)
     if content_failures:
         raise click.ClickException(
             f"Failed to read insight JSON content for {len(content_failures)} insight(s): "
@@ -603,8 +598,8 @@ async def process_insights_async(
         )
 
     tasks = []
-    for i in range(0, len(data_file_uploads), batch_size):
-        batch = data_file_uploads[i : i + batch_size]
+    for i in range(0, len(records), batch_size):
+        batch = records[i : i + batch_size]
         task = create_insight_records(batch, project_id, json_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
@@ -634,69 +629,36 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
     if not input_files:
         return
 
-    total_operations = len(input_files)
-    total_operations += 3 * math.ceil(len(input_files) / batch_size)
-    progress = {"completed": 0, "total": total_operations}
+    # One operation per batch: there are no files to create, upload or finish.
+    # The envelope IS ``content``. It used to be uploaded to the bucket as well
+    # and core never read it back — every response is built from ``content``
+    # plus the MODEL job's parquet URL — so the upload was pure object count
+    # (VIS-1125).
+    progress = {"completed": 0, "total": math.ceil(len(input_files) / batch_size)}
 
-    # Create file records
-    tasks = []
-    for i in range(0, len(input_files), batch_size):
-        batch = input_files[i : i + batch_size]
-        file_names = [f["file_path"].split("/")[-1] for f in batch]
-        task = start_files(file_names, "input", form_headers, host, progress)
-        tasks.append(task)
-    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
-    _raise_if_any_failed(data_file_ids, "Failed to create input files")
-
-    data_file_uploads = [item for sublist in data_file_ids for item in sublist]
-
-    # Upload files
-    tasks = []
-    for i, data_file_upload in enumerate(data_file_uploads):
-        input_file = input_files[i]
-        task = upload_file(
-            input_file["name"],
-            data_file_upload["upload_url"],
-            input_file["file_path"],
-            output_dir,
-            form_headers,
-            progress,
-        )
-        tasks.append(task)
-    response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    _raise_if_any_failed(response_items, "Failed to upload input data")
-
-    # Finish files
-    data_file_ids_list = [item["id"] for item in data_file_uploads]
-    tasks = []
-    for i in range(0, len(data_file_ids_list), batch_size):
-        batch = data_file_ids_list[i : i + batch_size]
-        task = finish_files(batch, "input", form_headers, host, progress)
-        tasks.append(task)
-    response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    _raise_if_any_failed(response_items, "Failed to finish input files")
-
-    # Create input records - merge input metadata with file upload info.
-    # Read the local JSON content so core can store it on the InputJob
-    # row and serve a fully-inlined response from /api/input-jobs/
-    # (matching visivo Flask's contract).
+    # Read the local JSON so core can store it on the InputJob row and serve a
+    # fully-inlined response from /api/input-jobs/ (matching visivo Flask's
+    # contract).
     #
-    # See process_insights_async for why we abort on any failure rather
-    # than letting NULL ``content`` rows reach the cloud.
+    # Abort on any failure rather than letting NULL ``content`` rows reach the
+    # cloud: a silent warning would render an empty input to the viewer with no
+    # signal to the operator. That matters more now that ``content`` is the only
+    # copy.
+    records = []
     content_failures = []
-    for i, upload in enumerate(data_file_uploads):
-        upload["name"] = input_files[i]["name"]
-        upload["name_hash"] = input_files[i]["name_hash"]
-        local_path = os.path.join(output_dir, input_files[i]["file_path"])
+    for input_file in input_files:
+        record = {"name": input_file["name"], "name_hash": input_file["name_hash"]}
+        local_path = os.path.join(output_dir, input_file["file_path"])
         try:
             with open(local_path, "r") as f:
-                upload["content"] = json.load(f)
+                record["content"] = json.load(f)
         except (OSError, json.JSONDecodeError) as e:
             Logger.instance().warning(
-                f"Could not load input JSON content for {input_files[i]['name']}: {e}"
+                f"Could not load input JSON content for {input_file['name']}: {e}"
             )
-            upload["content"] = None
-            content_failures.append(input_files[i]["name"])
+            record["content"] = None
+            content_failures.append(input_file["name"])
+        records.append(record)
     if content_failures:
         raise click.ClickException(
             f"Failed to read input JSON content for {len(content_failures)} input(s): "
@@ -704,8 +666,8 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
         )
 
     tasks = []
-    for i in range(0, len(data_file_uploads), batch_size):
-        batch = data_file_uploads[i : i + batch_size]
+    for i in range(0, len(records), batch_size):
+        batch = records[i : i + batch_size]
         task = create_input_records(batch, project_id, json_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
@@ -729,8 +691,8 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
     tasks = []
     for i in range(0, len(models), batch_size):
         batch = models[i : i + batch_size]
-        file_names = [f["file_path"].split("/")[-1] for f in batch]
-        task = start_files(file_names, "model", form_headers, host, progress)
+        items = [{"filename": f["file_path"].split("/")[-1], "name": f["name"]} for f in batch]
+        task = start_files(items, "model", form_headers, host, progress, project_id=project_id)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     _raise_if_any_failed(data_file_ids, "Failed to create models")
