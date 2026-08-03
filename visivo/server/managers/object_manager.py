@@ -220,10 +220,21 @@ class ObjectManager(ABC, Generic[T]):
             True if object exists (in cache or published), False otherwise
         """
         with self._lock:
-            if name in self._cached_objects or name in self._published_objects:
+            if name not in self._cached_objects and name not in self._published_objects:
+                return False
+
+            if name in self._cached_objects and name not in self._published_objects:
+                # Never published: there is nothing in YAML to remove, so this
+                # is not a staged change at all. Drop the entry outright rather
+                # than tombstoning it — a `None` placeholder lingered in the
+                # cache, kept the object in listings, and made deleting a
+                # just-created object look like it had failed.
+                del self._cached_objects[name]
+            else:
+                # Published: tombstone it so the commit knows to remove it from
+                # YAML. `get_status` reads the None as DELETED.
                 self._cached_objects[name] = None
-                return True
-            return False
+            return True
 
     def get_objects_for_publish(self) -> Dict[str, T]:
         """
