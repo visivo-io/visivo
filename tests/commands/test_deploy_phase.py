@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import re
@@ -8,7 +9,11 @@ from tests.factories.model_factories import (
     InsightFactory,
 )
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
-from visivo.commands.deploy_phase import deploy_phase
+from visivo.commands.deploy_phase import (
+    PURPOSE_BY_DESCRIPTION,
+    deploy_phase,
+    start_files,
+)
 from visivo.parsers.file_names import PROFILE_FILE_NAME, PROJECT_FILE_NAME
 
 from visivo.utils import sanitize_filename
@@ -181,3 +186,68 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     # Resources were decomposed into per-type endpoint POSTs.
     posted_paths = {r.path for r in requests_mock.request_history if r.method == "POST"}
     assert "/api/charts/" in posted_paths
+
+
+def test_start_files_declares_purpose_and_identity(httpx_mock):
+    """Core builds an artifact's object path when it signs the upload URL —
+    before it has seen a byte — so anything the deploy fails to declare here is
+    unrecoverable. The file is already written under an `unknown` prefix by the
+    time the record is created, where no query engine will find it.
+    """
+    httpx_mock.add_response(
+        method="POST",
+        url="http://host/api/files/direct/start/",
+        json=[{"id": "f1", "name": "orders.parquet", "upload_url": "http://host/put"}],
+    )
+
+    asyncio.run(
+        start_files(
+            [{"filename": "orders.parquet", "name": "orders"}],
+            "model",
+            {},
+            "http://host",
+            {"completed": 0, "total": 1},
+            project_id="proj-1",
+        )
+    )
+
+    [request] = httpx_mock.get_requests()
+    assert json.loads(request.content) == [
+        {
+            "filename": "orders.parquet",
+            "purpose": "model_job_data",
+            "name": "orders",
+            "project_id": "proj-1",
+        }
+    ]
+
+
+def test_start_files_omits_identity_for_thumbnails(httpx_mock):
+    """A thumbnail is metadata — nothing queries it, so it carries no project
+    identity and core files it by account and date alone."""
+    httpx_mock.add_response(
+        method="POST",
+        url="http://host/api/files/direct/start/",
+        json=[{"id": "f1", "name": "dash.png", "upload_url": "http://host/put"}],
+    )
+
+    asyncio.run(
+        start_files(
+            [{"filename": "dash.png"}],
+            "thumbnail",
+            {},
+            "http://host",
+            {"completed": 0, "total": 1},
+        )
+    )
+
+    [request] = httpx_mock.get_requests()
+    assert json.loads(request.content) == [{"filename": "dash.png", "purpose": "thumbnail"}]
+
+
+def test_every_upload_description_maps_to_a_purpose():
+    """A description with no purpose silently sends `null`, which core stores as
+    UNKNOWN — the object still uploads, it just becomes unqueryable. Pin the map
+    so adding an upload kind without a purpose fails here instead."""
+    assert set(PURPOSE_BY_DESCRIPTION) == {"model", "insight", "input", "thumbnail"}
+    assert all(PURPOSE_BY_DESCRIPTION.values())

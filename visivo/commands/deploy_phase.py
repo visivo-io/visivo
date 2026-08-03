@@ -108,12 +108,40 @@ def _raise_if_any_failed(results, summary: str):
     raise click.ClickException(f"{summary} — {len(failures)} batch failure(s). See log above.")
 
 
+# What core stores each class of upload as. Purpose is what the object path is
+# built from, and core picks that path when it signs the URL — before it has
+# seen a byte — so anything we do not declare here lands under an `unknown`
+# prefix where no query engine will find it.
+#
+# Note every parquet file goes up as "model": a model's own data, a static
+# insight's precomputed result, and a query-based input's options all funnel
+# through process_models_async. The "insight" and "input" descriptions are
+# their JSON envelopes, which core keeps but never queries.
+PURPOSE_BY_DESCRIPTION = {
+    "model": "model_job_data",
+    "insight": "insight_job_data",
+    "input": "input_job_data",
+    "thumbnail": "thumbnail",
+}
+
+
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def start_files(file_names, description, form_headers, host, progress):
+async def start_files(items, description, form_headers, host, progress, project_id=None):
     """
-    Asynchronously uploads trace data files.
+    Asynchronously creates file records and returns their signed upload URLs.
+
+    ``items`` are ``[{filename, name?}]``. ``name`` and ``project_id`` are the
+    artifact's identity, which core turns into its object path; omitting them
+    is what makes an object unqueryable, not merely unlabelled.
     """
-    files = list(map(lambda file_name: {"filename": file_name}, file_names))
+    files = []
+    for item in items:
+        file = {"filename": item["filename"], "purpose": PURPOSE_BY_DESCRIPTION.get(description)}
+        if item.get("name"):
+            file["name"] = item["name"]
+        if project_id:
+            file["project_id"] = str(project_id)
+        files.append(file)
     url = f"{host}/api/files/direct/start/"
     attempt.set(attempt.get(0) + 1)
     async with semaphore_3():
@@ -123,7 +151,7 @@ async def start_files(file_names, description, form_headers, host, progress):
                 response.raise_for_status()
                 progress["completed"] += 1
                 Logger.instance().success(
-                    f"\t{len(file_names)} {description} files created. [{progress['completed']}/{progress['total']}]"
+                    f"\t{len(files)} {description} files created. [{progress['completed']}/{progress['total']}]"
                 )
                 return response.json()
         except httpx.HTTPStatusError as e:
@@ -447,7 +475,9 @@ async def process_dashboards_async(
         if os.path.exists(f"{dashboards_dir}/{sanitized_name}.png"):
             file_names.append(f"{sanitized_name}.png")
 
-    create_thumbnail_files_task = start_files(file_names, "thumbnail", form_headers, host, progress)
+    create_thumbnail_files_task = start_files(
+        [{"filename": name} for name in file_names], "thumbnail", form_headers, host, progress
+    )
 
     thumbnail_file_uploads_nested = await asyncio.gather(
         create_thumbnail_files_task, return_exceptions=True
@@ -539,8 +569,8 @@ async def process_insights_async(
     tasks = []
     for i in range(0, len(insight_files), batch_size):
         batch = insight_files[i : i + batch_size]
-        file_names = [f["file_path"].split("/")[-1] for f in batch]
-        task = start_files(file_names, "insight", form_headers, host, progress)
+        items = [{"filename": f["file_path"].split("/")[-1], "name": f["name"]} for f in batch]
+        task = start_files(items, "insight", form_headers, host, progress, project_id=project_id)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     _raise_if_any_failed(data_file_ids, "Failed to create insight files")
@@ -642,8 +672,8 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
     tasks = []
     for i in range(0, len(input_files), batch_size):
         batch = input_files[i : i + batch_size]
-        file_names = [f["file_path"].split("/")[-1] for f in batch]
-        task = start_files(file_names, "input", form_headers, host, progress)
+        items = [{"filename": f["file_path"].split("/")[-1], "name": f["name"]} for f in batch]
+        task = start_files(items, "input", form_headers, host, progress, project_id=project_id)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     _raise_if_any_failed(data_file_ids, "Failed to create input files")
@@ -729,8 +759,8 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
     tasks = []
     for i in range(0, len(models), batch_size):
         batch = models[i : i + batch_size]
-        file_names = [f["file_path"].split("/")[-1] for f in batch]
-        task = start_files(file_names, "model", form_headers, host, progress)
+        items = [{"filename": f["file_path"].split("/")[-1], "name": f["name"]} for f in batch]
+        task = start_files(items, "model", form_headers, host, progress, project_id=project_id)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     _raise_if_any_failed(data_file_ids, "Failed to create models")
