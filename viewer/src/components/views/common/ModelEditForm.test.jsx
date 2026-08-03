@@ -244,77 +244,65 @@ describe('ModelEditForm — embedded source', () => {
 });
 
 describe('ModelEditForm — inline dimensions', () => {
-  it('Add appends a row and navigates with an applyToParent writing the new index', () => {
-    const onNavigateToEmbedded = jest.fn();
-    render(
-      <ModelEditForm
-        model={editModel()}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
-        onNavigateToEmbedded={onNavigateToEmbedded}
-      />
-    );
-    // Dimensions section renders its Add button before the metrics one.
+  it('Add appends a row and opens it for editing', () => {
+    // The bug: Add appended a row and called `onNavigateToEmbedded` to open it.
+    // NOTHING passes that prop — a repo-wide search finds it declared and read
+    // in three forms and supplied by none — so the row appeared with an empty
+    // name and expression and no way to fill either in. These tests used to
+    // pass a mock, which is exactly why the dead path looked healthy.
+    render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
+
     fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
 
-    // The new (unnamed) dimension renders with the fallback label at index 1.
-    expect(screen.getByRole('button', { name: /Dimension 2/ })).toBeInTheDocument();
-    expect(onNavigateToEmbedded).toHaveBeenCalledWith(
-      'dimension',
-      expect.objectContaining({
-        name: '(new dimension)',
-        config: { name: '', expression: '' },
-        _embedded: { parentType: 'model', parentName: 'orders', path: 'dimensions[1]' },
-      }),
-      { applyToParent: expect.any(Function) }
-    );
-
-    const { applyToParent } = onNavigateToEmbedded.mock.calls[0][2];
-    expect(
-      applyToParent(
-        { dimensions: [{ name: 'region', expression: 'region' }] },
-        { name: 'city', expression: 'city' }
-      )
-    ).toEqual({
-      dimensions: [
-        { name: 'region', expression: 'region' },
-        { name: 'city', expression: 'city' },
-      ],
-    });
+    expect(screen.getByTestId('inline-dimension-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('inline-dimension-name')).toHaveValue('');
   });
 
-  it('clicking a row navigates with a setAtPath-based applyToParent', () => {
-    const onNavigateToEmbedded = jest.fn();
-    render(
-      <ModelEditForm
-        model={editModel()}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
-        onNavigateToEmbedded={onNavigateToEmbedded}
-      />
-    );
-    fireEvent.click(screen.getByRole('button', { name: /region/ }));
+  it('editing the fields updates that row and it survives save', async () => {
+    const onSave = jest.fn().mockResolvedValue({ success: true });
+    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
 
-    expect(onNavigateToEmbedded).toHaveBeenCalledWith(
-      'dimension',
-      expect.objectContaining({
-        name: 'region',
-        config: { name: 'region', expression: 'region' },
-        _embedded: { parentType: 'model', parentName: 'orders', path: 'dimensions[0]' },
-      }),
-      { applyToParent: expect.any(Function) }
-    );
-
-    const { applyToParent } = onNavigateToEmbedded.mock.calls[0][2];
-    expect(
-      applyToParent(
-        { sql: 'select 1', dimensions: [{ name: 'region', expression: 'region' }] },
-        { name: 'region', expression: 'upper(region)' }
-      )
-    ).toEqual({
-      sql: 'select 1',
-      dimensions: [{ name: 'region', expression: 'upper(region)' }],
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+    fireEvent.change(screen.getByTestId('inline-dimension-name'), {
+      target: { value: 'order_month' },
     });
+    fireEvent.change(screen.getByTestId('inline-dimension-expression'), {
+      target: { value: "DATE_TRUNC('month', order_date)" },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][2].dimensions).toContainEqual(
+      expect.objectContaining({
+        name: 'order_month',
+        expression: "DATE_TRUNC('month', order_date)",
+      })
+    );
+  });
+
+  it('a row added but never filled in is not saved', async () => {
+    // Otherwise Add-then-Save persists `{name: '', expression: ''}`, which is
+    // not a valid dimension and fails on the way back.
+    const onSave = jest.fn().mockResolvedValue({ success: true });
+    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const saved = onSave.mock.calls[0][2].dimensions || [];
+    expect(saved.every(d => d.name || d.expression)).toBe(true);
+  });
+
+  it('clicking a row toggles its editor open and closed', () => {
+    render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
+
+    const row = screen.getByRole('button', { name: /region/ });
+    fireEvent.click(row);
+    expect(screen.getByTestId('inline-dimension-editor')).toBeInTheDocument();
+
+    fireEvent.click(row);
+    expect(screen.queryByTestId('inline-dimension-editor')).not.toBeInTheDocument();
   });
 
   it('Remove filters the dimension out and the next save drops the key', async () => {
@@ -334,70 +322,31 @@ describe('ModelEditForm — inline dimensions', () => {
 });
 
 describe('ModelEditForm — inline metrics', () => {
-  it('Add appends a row and navigates with an applyToParent writing the new index', () => {
-    const onNavigateToEmbedded = jest.fn();
-    render(
-      <ModelEditForm
-        model={editModel()}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
-        onNavigateToEmbedded={onNavigateToEmbedded}
-      />
-    );
+  it('Add appends a row and opens it for editing', () => {
+    render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
+
     fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[1]);
 
-    expect(screen.getByRole('button', { name: /Metric 2/ })).toBeInTheDocument();
-    expect(onNavigateToEmbedded).toHaveBeenCalledWith(
-      'metric',
-      expect.objectContaining({
-        name: '(new metric)',
-        _embedded: { parentType: 'model', parentName: 'orders', path: 'metrics[1]' },
-      }),
-      { applyToParent: expect.any(Function) }
-    );
-
-    const { applyToParent } = onNavigateToEmbedded.mock.calls[0][2];
-    expect(
-      applyToParent(
-        { metrics: [{ name: 'revenue', expression: 'sum(amount)' }] },
-        { name: 'orders_count', expression: 'count(*)' }
-      )
-    ).toEqual({
-      metrics: [
-        { name: 'revenue', expression: 'sum(amount)' },
-        { name: 'orders_count', expression: 'count(*)' },
-      ],
-    });
+    expect(screen.getByTestId('inline-metric-editor')).toBeInTheDocument();
   });
 
-  it('clicking a row navigates with a setAtPath-based applyToParent', () => {
-    const onNavigateToEmbedded = jest.fn();
-    render(
-      <ModelEditForm
-        model={editModel()}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
-        onNavigateToEmbedded={onNavigateToEmbedded}
-      />
-    );
-    fireEvent.click(screen.getByRole('button', { name: /revenue/ }));
+  it('editing the fields updates that row and it survives save', async () => {
+    const onSave = jest.fn().mockResolvedValue({ success: true });
+    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
 
-    expect(onNavigateToEmbedded).toHaveBeenCalledWith(
-      'metric',
-      expect.objectContaining({
-        name: 'revenue',
-        _embedded: { parentType: 'model', parentName: 'orders', path: 'metrics[0]' },
-      }),
-      { applyToParent: expect.any(Function) }
-    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[1]);
+    fireEvent.change(screen.getByTestId('inline-metric-name'), {
+      target: { value: 'total_revenue' },
+    });
+    fireEvent.change(screen.getByTestId('inline-metric-expression'), {
+      target: { value: 'SUM(amount)' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
-    const { applyToParent } = onNavigateToEmbedded.mock.calls[0][2];
-    expect(
-      applyToParent(
-        { metrics: [{ name: 'revenue', expression: 'sum(amount)' }] },
-        { name: 'revenue', expression: 'sum(net_amount)' }
-      )
-    ).toEqual({ metrics: [{ name: 'revenue', expression: 'sum(net_amount)' }] });
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][2].metrics).toContainEqual(
+      expect.objectContaining({ name: 'total_revenue', expression: 'SUM(amount)' })
+    );
   });
 
   it('Remove filters the metric out and the next save drops the key', async () => {

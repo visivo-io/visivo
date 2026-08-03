@@ -276,8 +276,11 @@ const SQLEditor = ({
     setProfileColumn(null);
   }, [result]);
 
+  // No border/rounding of its own: the only consumer (CenterPanel) already sits
+  // inside a bordered pane, so carrying one here drew a second, inset rounded
+  // box against the outer square one.
   return (
-    <div className="flex flex-col h-full border border-secondary-200 rounded-lg overflow-hidden bg-white">
+    <div className="flex flex-col h-full overflow-hidden bg-white">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-secondary-100 bg-secondary-50">
         <div className="flex items-center gap-3">

@@ -10,7 +10,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { getTypeByValue } from './objectTypeConfigs';
-import { setAtPath } from './embeddedObjectUtils';
+import InlineFieldEditor from './InlineFieldEditor';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -23,6 +23,11 @@ import { setAtPath } from './embeddedObjectUtils';
  *   options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
  */
 const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
+  // Which inline row is open for editing (null = none). These used to be links
+  // into a separate editor that nothing ever wired up, so the fields had no way
+  // to be filled in.
+  const [expandedDimension, setExpandedDimension] = useState(null);
+  const [expandedMetric, setExpandedMetric] = useState(null);
   const deleteModel = useStore(state => state.deleteModel);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const fetchSources = useStore(state => state.fetchSources);
@@ -90,12 +95,18 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       config.source = source;
     }
 
-    // Include inline dimensions and metrics from state
-    if (dimensions.length > 0) {
-      config.dimensions = dimensions;
+    // Include inline dimensions and metrics from state. An entirely blank row
+    // is an "Add" the user never filled in — persisting it would write
+    // `{name: '', expression: ''}`, which fails validation on the way back.
+    // A partially-filled row IS kept, so the error names the real problem.
+    const isBlank = field => !field?.name?.trim() && !field?.expression?.trim();
+    const filledDimensions = dimensions.filter(d => !isBlank(d));
+    const filledMetrics = metrics.filter(m => !isBlank(m));
+    if (filledDimensions.length > 0) {
+      config.dimensions = filledDimensions;
     }
-    if (metrics.length > 0) {
-      config.metrics = metrics;
+    if (filledMetrics.length > 0) {
+      config.metrics = filledMetrics;
     }
 
     // Call unified save - parent handles routing and panel close
@@ -246,24 +257,11 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
             <button
               type="button"
               onClick={() => {
-                const newDimension = { name: '', expression: '' };
                 const newIndex = dimensions.length;
-                setDimensions([...dimensions, newDimension]);
-                // Navigate to edit the new dimension
-                if (onNavigateToEmbedded) {
-                  const syntheticDimension = {
-                    name: `(new dimension)`,
-                    config: newDimension,
-                    _embedded: { parentType: 'model', parentName: model.name, path: `dimensions[${newIndex}]` },
-                  };
-                  onNavigateToEmbedded('dimension', syntheticDimension, {
-                    applyToParent: (parentConfig, newDimConfig) => {
-                      const newDimensions = [...(parentConfig.dimensions || [])];
-                      newDimensions[newIndex] = newDimConfig;
-                      return { ...parentConfig, dimensions: newDimensions };
-                    },
-                  });
-                }
+                setDimensions([...dimensions, { name: '', expression: '' }]);
+                // Open it straight away — an unopened row has an empty name and
+                // expression, which is neither valid nor editable.
+                setExpandedDimension(newIndex);
               }}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
             >
@@ -279,22 +277,13 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
                 const dimTypeConfig = getTypeByValue('dimension');
                 const DimIcon = dimTypeConfig?.icon;
                 return (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="space-y-1">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        if (onNavigateToEmbedded) {
-                          const syntheticDimension = {
-                            name: dim.name || `(dimension ${index + 1})`,
-                            config: dim,
-                            _embedded: { parentType: 'model', parentName: model.name, path: `dimensions[${index}]` },
-                          };
-                          onNavigateToEmbedded('dimension', syntheticDimension, {
-                            applyToParent: (parentConfig, newDimConfig) =>
-                              setAtPath(parentConfig, `dimensions[${index}]`, newDimConfig),
-                          });
-                        }
-                      }}
+                      onClick={() =>
+                        setExpandedDimension(expandedDimension === index ? null : index)
+                      }
                       className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-md border transition-colors text-left ${dimTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${dimTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
                     >
                       {DimIcon && <DimIcon fontSize="small" className={dimTypeConfig?.colors?.text || 'text-gray-600'} />}
@@ -311,6 +300,16 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
                     >
                       <RemoveIcon fontSize="small" />
                     </button>
+                  </div>
+                  {expandedDimension === index && (
+                    <InlineFieldEditor
+                      kind="dimension"
+                      value={dim}
+                      onChange={next =>
+                        setDimensions(dimensions.map((d, i) => (i === index ? next : d)))
+                      }
+                    />
+                  )}
                   </div>
                 );
               })}
@@ -329,24 +328,9 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
             <button
               type="button"
               onClick={() => {
-                const newMetric = { name: '', expression: '' };
                 const newIndex = metrics.length;
-                setMetrics([...metrics, newMetric]);
-                // Navigate to edit the new metric
-                if (onNavigateToEmbedded) {
-                  const syntheticMetric = {
-                    name: `(new metric)`,
-                    config: newMetric,
-                    _embedded: { parentType: 'model', parentName: model.name, path: `metrics[${newIndex}]` },
-                  };
-                  onNavigateToEmbedded('metric', syntheticMetric, {
-                    applyToParent: (parentConfig, newMetricConfig) => {
-                      const newMetrics = [...(parentConfig.metrics || [])];
-                      newMetrics[newIndex] = newMetricConfig;
-                      return { ...parentConfig, metrics: newMetrics };
-                    },
-                  });
-                }
+                setMetrics([...metrics, { name: '', expression: '' }]);
+                setExpandedMetric(newIndex);
               }}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
             >
@@ -362,22 +346,11 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
                 const metricTypeConfig = getTypeByValue('metric');
                 const MetricIcon = metricTypeConfig?.icon;
                 return (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="space-y-1">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        if (onNavigateToEmbedded) {
-                          const syntheticMetric = {
-                            name: metric.name || `(metric ${index + 1})`,
-                            config: metric,
-                            _embedded: { parentType: 'model', parentName: model.name, path: `metrics[${index}]` },
-                          };
-                          onNavigateToEmbedded('metric', syntheticMetric, {
-                            applyToParent: (parentConfig, newMetricConfig) =>
-                              setAtPath(parentConfig, `metrics[${index}]`, newMetricConfig),
-                          });
-                        }
-                      }}
+                      onClick={() => setExpandedMetric(expandedMetric === index ? null : index)}
                       className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-md border transition-colors text-left ${metricTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${metricTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
                     >
                       {MetricIcon && <MetricIcon fontSize="small" className={metricTypeConfig?.colors?.text || 'text-gray-600'} />}
@@ -394,6 +367,16 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
                     >
                       <RemoveIcon fontSize="small" />
                     </button>
+                  </div>
+                  {expandedMetric === index && (
+                    <InlineFieldEditor
+                      kind="metric"
+                      value={metric}
+                      onChange={next =>
+                        setMetrics(metrics.map((m, i) => (i === index ? next : m)))
+                      }
+                    />
+                  )}
                   </div>
                 );
               })}
