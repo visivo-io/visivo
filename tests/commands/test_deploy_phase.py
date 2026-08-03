@@ -11,6 +11,7 @@ from tests.factories.model_factories import (
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
 from visivo.commands.deploy_phase import (
     PURPOSE_BY_DESCRIPTION,
+    create_insight_records,
     deploy_phase,
     start_files,
 )
@@ -44,20 +45,6 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
             "upload_url": "http://google/upload/id3",
         },
     ]
-    insight_file_starts = [
-        {
-            "name": f"{insight.name}.json",
-            "id": "id4",
-            "upload_url": "http://google/upload/id4",
-        },
-    ]
-    input_file_starts = [
-        {
-            "name": f"{input_obj.name}.json",
-            "id": "id5",
-            "upload_url": "http://google/upload/id5",
-        },
-    ]
 
     run_id = "main"
 
@@ -89,31 +76,11 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
         url="http://host/api/files/direct/start/",
         json=thumbnail_file_starts,
     )
-    # Mock responses for insight files
-    httpx_mock.add_response(
-        method="POST",
-        url="http://host/api/files/direct/start/",
-        json=insight_file_starts,
-    )
-    # Mock responses for input files
-    httpx_mock.add_response(
-        method="POST",
-        url="http://host/api/files/direct/start/",
-        json=input_file_starts,
-    )
 
-    # Mock file uploads
+    # Only the thumbnail is uploaded. Insight and input envelopes are sent as
+    # `content` on the record — core never read the uploaded JSON back, so it
+    # is not uploaded at all (VIS-1125).
     httpx_mock.add_response(method="PUT", url="http://google/upload/id3", status_code=200)
-    httpx_mock.add_response(method="PUT", url="http://google/upload/id4", status_code=200)
-    httpx_mock.add_response(method="PUT", url="http://google/upload/id5", status_code=200)
-
-    # Mock file finish calls
-    httpx_mock.add_response(
-        method="POST", url="http://host/api/files/direct/finish/", status_code=204
-    )
-    httpx_mock.add_response(
-        method="POST", url="http://host/api/files/direct/finish/", status_code=204
-    )
     httpx_mock.add_response(
         method="POST", url="http://host/api/files/direct/finish/", status_code=204
     )
@@ -249,5 +216,34 @@ def test_every_upload_description_maps_to_a_purpose():
     """A description with no purpose silently sends `null`, which core stores as
     UNKNOWN — the object still uploads, it just becomes unqueryable. Pin the map
     so adding an upload kind without a purpose fails here instead."""
-    assert set(PURPOSE_BY_DESCRIPTION) == {"model", "insight", "input", "thumbnail"}
+    assert set(PURPOSE_BY_DESCRIPTION) == {"model", "thumbnail"}
     assert all(PURPOSE_BY_DESCRIPTION.values())
+
+
+def test_insight_records_carry_content_and_no_file(httpx_mock):
+    """The envelope IS the record. core builds its /api/insight-jobs/ response
+    from `content` and never read the uploaded JSON back, so nothing is
+    uploaded and no data_file_id is sent (VIS-1125)."""
+    httpx_mock.add_response(
+        method="POST", url="http://host/api/insight-jobs/", json=[{"id": "i1"}], status_code=201
+    )
+
+    asyncio.run(
+        create_insight_records(
+            [{"name": "orders_trend", "name_hash": "mabc", "content": {"type": "bar"}}],
+            "proj-1",
+            {},
+            "http://host",
+            {"completed": 0, "total": 1},
+        )
+    )
+
+    [request] = httpx_mock.get_requests()
+    [body] = json.loads(request.content)
+    assert body == {
+        "name": "orders_trend",
+        "name_hash": "mabc",
+        "project_id": "proj-1",
+        "content": {"type": "bar"},
+    }
+    assert "data_file_id" not in body
