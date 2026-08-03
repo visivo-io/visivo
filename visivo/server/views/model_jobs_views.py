@@ -38,7 +38,9 @@ def register_model_jobs_views(app, flask_app, output_dir):
             missing = []
 
             for name in model_names:
-                data_file = os.path.join(output_dir, run_id, "files", f"{name}.parquet")
+                # models/, not files/: parquet is written into the directory
+                # named for what produced it (VIS-1128).
+                data_file = os.path.join(output_dir, run_id, "models", f"{name}.parquet")
                 if not os.path.exists(data_file):
                     Logger.instance().info(f"Model data file not found: {data_file}")
                     missing.append(name)

@@ -26,7 +26,8 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
         run_id: Run ID for this execution (default: "main" for standard runs)
     """
     # Organize files by run_id
-    # Structure: {output_dir}/{run_id}/files/ and {output_dir}/{run_id}/insights/
+    # Structure: {output_dir}/{run_id}/{models,insights}/ — parquet lives in
+    # the directory named for what produced it (VIS-1128).
     run_output_dir = f"{output_dir}/{run_id}"
     start_time = time()
     insight_query_info = None
@@ -63,17 +64,20 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
                         f"Input validation failed for insight '{insight.name}': {str(e)}"
                     ) from e
 
-        files_directory = f"{run_output_dir}/files"
+        # A static insight's precomputed result is the insight's own file, so
+        # it lives beside its metadata in insights/. A dynamic insight has none
+        # — it references the models it queries, which live in models/.
+        models_directory = f"{run_output_dir}/models"
         insights_directory = f"{run_output_dir}/insights"
 
         if insight_query_info.pre_query:
             from visivo.jobs.parquet_io import write_dicts_to_parquet
 
             data = source.read_sql(insight_query_info.pre_query)
-            os.makedirs(files_directory, exist_ok=True)
+            os.makedirs(insights_directory, exist_ok=True)
             # name_hash stays in the metadata as the DuckDB table identifier;
             # the file on disk uses the clean name for storage consistency.
-            parquet_path = f"{files_directory}/{insight.name}.parquet"
+            parquet_path = f"{insights_directory}/{insight.name}.parquet"
             write_dicts_to_parquet(data, parquet_path)
             files = [{"name_hash": insight.name_hash(), "signed_data_file_url": parquet_path}]
         else:
@@ -81,10 +85,10 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             files = [
                 {
                     "name_hash": model.name_hash(),
-                    "signed_data_file_url": f"{files_directory}/{model.name}.parquet",
+                    "signed_data_file_url": f"{models_directory}/{model.name}.parquet",
                 }
                 for model in models
-                if os.path.exists(f"{files_directory}/{model.name}.parquet")
+                if os.path.exists(f"{models_directory}/{model.name}.parquet")
             ]
 
         # Store insight metadata with file references and post_query

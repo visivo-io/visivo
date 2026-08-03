@@ -42,8 +42,11 @@ def client(output_dir):
     return app.test_client()
 
 
-def _put_parquet(output_dir, run_id, stem, payload=b"PAR1content"):
-    path = os.path.join(output_dir, run_id, "files", f"{stem}.parquet")
+def _put_parquet(output_dir, run_id, stem, payload=b"PAR1content", kind="models"):
+    # Parquet is written into the directory named for what produced it
+    # (VIS-1128). The route resolves a hash across all of them, because the
+    # caller asks by alpha_hash(name) and does not know which kind built it.
+    path = os.path.join(output_dir, run_id, kind, f"{stem}.parquet")
     _write_stub_parquet(path, payload)
     return path
 
@@ -172,3 +175,24 @@ def test_cache_keyed_per_run_id(client, output_dir):
     assert a.data == b"PAR1from-a"
     assert b.status_code == 200
     assert b.data == b"PAR1from-b"
+
+
+def test_parquet_resolves_from_any_producing_directory(client, output_dir):
+    """A model, a static insight and an input's options all write parquet, each
+    into its own directory. The caller asks by hash and cannot know which — so
+    the route has to look in all three."""
+    for kind, stem in (
+        ("models", "orders"),
+        ("insights", "orders_trend"),
+        ("inputs", "region_opts"),
+    ):
+        _put_parquet(output_dir, "main", stem, payload=f"PAR1{kind}".encode(), kind=kind)
+
+    for kind, stem in (
+        ("models", "orders"),
+        ("insights", "orders_trend"),
+        ("inputs", "region_opts"),
+    ):
+        response = client.get(f"/api/files/{alpha_hash(stem)}/main/")
+        assert response.status_code == 200, kind
+        assert response.data == f"PAR1{kind}".encode()

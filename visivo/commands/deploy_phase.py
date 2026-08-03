@@ -876,12 +876,12 @@ def collect_models_for_insights(insights, dag, output_dir):
         if not insight.is_dynamic(dag):
             continue
         for model in insight.get_all_dependent_models(dag):
-            parquet_path = f"{output_dir}/files/{model.name}.parquet"
+            parquet_path = f"{output_dir}/models/{model.name}.parquet"
             if os.path.exists(parquet_path):
                 models_dict[model.name] = {
                     "name": model.name,
                     "name_hash": model.name_hash(),
-                    "file_path": f"files/{model.name}.parquet",
+                    "file_path": f"models/{model.name}.parquet",
                 }
 
     return list(models_dict.values())
@@ -898,12 +898,12 @@ def collect_static_insight_parquet(insights, dag, output_dir):
     for insight in insights:
         if insight.is_dynamic(dag):
             continue
-        if os.path.exists(f"{output_dir}/files/{insight.name}.parquet"):
+        if os.path.exists(f"{output_dir}/insights/{insight.name}.parquet"):
             files.append(
                 {
                     "name": insight.name,
                     "name_hash": insight.name_hash(),
-                    "file_path": f"files/{insight.name}.parquet",
+                    "file_path": f"insights/{insight.name}.parquet",
                 }
             )
     return files
@@ -934,7 +934,7 @@ def collect_parquet_files_for_inputs(inputs, output_dir):
                     if "name_hash" in file_ref and "signed_data_file_url" in file_ref:
                         file_hash = file_ref["name_hash"]
                         # The signed_data_file_url contains the local path like
-                        # {output_dir}/files/{hash}_options.parquet
+                        # {output_dir}/inputs/{hash}_options.parquet
                         file_path = file_ref["signed_data_file_url"]
                         # Extract the relative path from output_dir
                         if file_path.startswith(output_dir):

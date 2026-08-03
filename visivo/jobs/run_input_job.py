@@ -6,7 +6,7 @@ This module handles both single-select and multi-select input types:
 - MultiSelectInput: Execute options OR range queries, store as parquet/JSON
 
 Output follows the insights pattern:
-- Parquet files in {output_dir}/files/{name}_{key}.parquet for list data
+- Parquet files in {output_dir}/inputs/{name}_{key}.parquet for list data
 - Metadata JSON in {output_dir}/inputs/{name}.json with file references
 - Scalars (range values, single-select defaults) resolved at runtime and stored in metadata
 """
@@ -58,9 +58,10 @@ def _write_parquet_file(
     """
     # Organize files by run_id
     run_output_dir = f"{output_dir}/{run_id}"
-    files_directory = f"{run_output_dir}/files"
-    os.makedirs(files_directory, exist_ok=True)
-    parquet_path = f"{files_directory}/{input_name}_{key}.parquet"
+    # Beside the input's own metadata, in inputs/ — see run_model_data_job.
+    inputs_directory = f"{run_output_dir}/inputs"
+    os.makedirs(inputs_directory, exist_ok=True)
+    parquet_path = f"{inputs_directory}/{input_name}_{key}.parquet"
     df.write_parquet(parquet_path)
     return parquet_path
 
@@ -490,7 +491,7 @@ def action(
     Execute input job - compute options/range and store results as parquet + JSON metadata.
 
     Output structure follows the insights pattern:
-    - Parquet files in {output_dir}/{run_id}/files/{name}_{key}.parquet
+    - Parquet files in {output_dir}/{run_id}/inputs/{name}_{key}.parquet
     - Metadata JSON in {output_dir}/{run_id}/inputs/{name}.json
 
     Args:

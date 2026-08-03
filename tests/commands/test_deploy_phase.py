@@ -270,10 +270,12 @@ def test_static_insight_parquet_is_not_collected_as_a_model(tmp_path):
     (VIS-1126).
     """
     output_dir = str(tmp_path)
-    os.makedirs(os.path.join(output_dir, "files"))
-    for name in ("static_insight", "orders"):
-        with open(os.path.join(output_dir, "files", f"{name}.parquet"), "wb") as f:
-            f.write(b"PAR1")
+    os.makedirs(os.path.join(output_dir, "insights"))
+    os.makedirs(os.path.join(output_dir, "models"))
+    with open(os.path.join(output_dir, "insights", "static_insight.parquet"), "wb") as f:
+        f.write(b"PAR1")
+    with open(os.path.join(output_dir, "models", "orders.parquet"), "wb") as f:
+        f.write(b"PAR1")
 
     # A plain stub rather than InsightFactory: the collectors only touch name,
     # name_hash and is_dynamic, and Insight is a pydantic model that rejects
@@ -287,15 +289,15 @@ def test_static_insight_parquet_is_not_collected_as_a_model(tmp_path):
 
     assert models == []
     assert [f["name"] for f in parquet] == ["static_insight"]
-    assert parquet[0]["file_path"] == "files/static_insight.parquet"
+    assert parquet[0]["file_path"] == "insights/static_insight.parquet"
 
 
 def test_dynamic_insight_still_collects_its_dependent_models(tmp_path):
     """A dynamic insight owns no parquet — its data is the models it queries
     client-side, and those are still uploaded as models."""
     output_dir = str(tmp_path)
-    os.makedirs(os.path.join(output_dir, "files"))
-    with open(os.path.join(output_dir, "files", "orders.parquet"), "wb") as f:
+    os.makedirs(os.path.join(output_dir, "models"))
+    with open(os.path.join(output_dir, "models", "orders.parquet"), "wb") as f:
         f.write(b"PAR1")
 
     model = mock.Mock()

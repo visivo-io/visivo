@@ -12,17 +12,24 @@ def register_file_views(app, output_dir):
     _cache = {}
     _lock = threading.Lock()
 
-    def _files_dir(run_id):
-        return os.path.join(output_dir, run_id, "files")
+    # Parquet is written into the directory named for what produced it, so the
+    # layout says what each file is (VIS-1128). A hash still resolves against
+    # all of them: the caller asks by alpha_hash(name) and does not know, or
+    # need to know, which kind of job built the thing it is asking for.
+    PARQUET_DIRS = ("models", "insights", "inputs")
+
+    def _parquet_dirs(run_id):
+        return [os.path.join(output_dir, run_id, d) for d in PARQUET_DIRS]
 
     def _build_cache(run_id):
         mapping = {}
-        files_dir = _files_dir(run_id)
-        if os.path.isdir(files_dir):
+        for files_dir in _parquet_dirs(run_id):
+            if not os.path.isdir(files_dir):
+                continue
             for entry in os.listdir(files_dir):
                 if entry.endswith(".parquet"):
                     stem = entry[: -len(".parquet")]
-                    mapping[alpha_hash(stem)] = entry
+                    mapping[alpha_hash(stem)] = os.path.join(files_dir, entry)
         return mapping
 
     def _resolve_filename(hash_value, run_id):
@@ -38,23 +45,22 @@ def register_file_views(app, output_dir):
         """Serve a parquet by hash, with a fallback that hashes on-disk stems.
 
         Resolution order:
-          1. Direct match: ``<run_id>/files/<hash>.parquet`` (legacy path used
+          1. Direct match: ``<run_id>/<dir>/<hash>.parquet`` (legacy path used
              pre-1.0.82 when parquets were written with hash filenames).
-          2. Hash-of-stem fallback: scan the run's files dir, return the
-             parquet whose stem hashes to ``<hash>``. This is the post-1.0.82
-             path — parquets are written under their clean model name while
-             the frontend still requests ``alpha_hash(model_name)``.
+          2. Hash-of-stem fallback: scan the run's parquet dirs, return the
+             one whose stem hashes to ``<hash>``. This is the post-1.0.82 path
+             — parquets are written under their clean name while the frontend
+             still requests ``alpha_hash(name)``.
         """
         try:
-            data_file = os.path.join(output_dir, run_id, "files", f"{hash}.parquet")
-            if os.path.exists(data_file):
-                return send_file(data_file)
+            for files_dir in _parquet_dirs(run_id):
+                data_file = os.path.join(files_dir, f"{hash}.parquet")
+                if os.path.exists(data_file):
+                    return send_file(data_file)
 
-            filename = _resolve_filename(hash, run_id)
-            if filename:
-                resolved = os.path.join(output_dir, run_id, "files", filename)
-                if os.path.exists(resolved):
-                    return send_file(resolved)
+            resolved = _resolve_filename(hash, run_id)
+            if resolved and os.path.exists(resolved):
+                return send_file(resolved)
 
             return (
                 jsonify({"message": f"Data file not found for hash: {hash} in run: {run_id}"}),

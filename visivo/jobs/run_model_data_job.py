@@ -32,9 +32,13 @@ def write_parquet_from_data(
     Returns:
         Path to the written parquet file
     """
-    files_directory = f"{output_dir}/{run_id}/files"
-    os.makedirs(files_directory, exist_ok=True)
-    parquet_path = f"{files_directory}/{name}.parquet"
+    # Parquet lives in the directory named for what produced it — models/,
+    # insights/, inputs/ — so the layout on disk says what each file IS. They
+    # all used to share files/, which meant nothing downstream could tell a
+    # model's data from a static insight's result without the dag (VIS-1128).
+    models_directory = f"{output_dir}/{run_id}/models"
+    os.makedirs(models_directory, exist_ok=True)
+    parquet_path = f"{models_directory}/{name}.parquet"
     write_dicts_to_parquet(data, parquet_path)
     return parquet_path
 
