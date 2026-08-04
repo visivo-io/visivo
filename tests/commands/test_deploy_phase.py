@@ -4,6 +4,9 @@ import json
 import re
 from unittest import mock
 
+import click
+import pytest
+
 from tests.factories.model_factories import (
     ProjectFactory,
     InputFactory,
@@ -17,6 +20,7 @@ from visivo.commands.deploy_phase import (
     create_insight_records,
     deploy_phase,
     start_files,
+    verify_run_output,
 )
 from visivo.parsers.file_names import PROFILE_FILE_NAME, PROJECT_FILE_NAME
 
@@ -57,11 +61,21 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     with open(thumbnail_path, "wb") as f:
         f.write(b"dummy data")
 
-    # Create insight JSON file
+    # Create insight JSON file, and the parquet a STATIC insight produces
+    # alongside it — verify_run_output requires both, because a deploy missing
+    # either uploads nothing for that insight and still reports success.
     os.makedirs(os.path.join(output_dir, run_id, "insights"), exist_ok=True)
     insight_path = os.path.join(output_dir, run_id, "insights", f"{insight.name}.json")
     with open(insight_path, "w") as f:
         json.dump({"name": insight.name, "query": "SELECT * FROM test"}, f)
+    # ProjectFactory's dashboard carries its own inline insight, and a real run
+    # would build that one too — so the fixture has to, or verify_run_output
+    # correctly objects. Its name comes from the factory, not from us.
+    for name in (insight.name, "insight"):
+        with open(os.path.join(output_dir, run_id, "insights", f"{name}.json"), "w") as f:
+            json.dump({"name": name, "query": "SELECT * FROM test"}, f)
+        with open(os.path.join(output_dir, run_id, "insights", f"{name}.parquet"), "wb") as f:
+            f.write(b"PAR1")
 
     # Create input JSON file
     os.makedirs(os.path.join(output_dir, run_id, "inputs"), exist_ok=True)
@@ -80,13 +94,24 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
         json=thumbnail_file_starts,
     )
 
-    # Only the thumbnail is uploaded. Insight and input envelopes are sent as
-    # `content` on the record — core never read the uploaded JSON back, so it
-    # is not uploaded at all (VIS-1125).
-    httpx_mock.add_response(method="PUT", url="http://google/upload/id3", status_code=200)
+    # The thumbnail, plus each STATIC insight's precomputed parquet — that is
+    # the insight's own file now (VIS-1126). Envelopes are still not uploaded;
+    # they ride as `content` on the record (VIS-1125).
     httpx_mock.add_response(
-        method="POST", url="http://host/api/files/direct/finish/", status_code=204
+        method="POST",
+        url="http://host/api/files/direct/start/",
+        json=[
+            {"name": f"{n}.parquet", "id": f"ip-{i}", "upload_url": f"http://google/upload/ip-{i}"}
+            for i, n in enumerate((insight.name, "insight"))
+        ],
     )
+    httpx_mock.add_response(method="PUT", url="http://google/upload/id3", status_code=200)
+    for i in range(2):
+        httpx_mock.add_response(method="PUT", url=f"http://google/upload/ip-{i}", status_code=200)
+    for _ in range(2):
+        httpx_mock.add_response(
+            method="POST", url="http://host/api/files/direct/finish/", status_code=204
+        )
 
     # Mock record creation
     httpx_mock.add_response(
@@ -315,3 +340,52 @@ def test_dynamic_insight_still_collects_its_dependent_models(tmp_path):
 
     assert [m["name"] for m in models] == ["orders"]
     assert parquet == []
+
+
+def _project_with_one_static_insight():
+    """A project whose only insight is static, so exactly two files are
+    expected: the envelope and the precomputed parquet."""
+    insight = mock.Mock(name_hash=lambda: "minsight", is_dynamic=lambda _dag: False)
+    insight.name = "line-trace"
+    project = mock.Mock(inputs=[])
+    project.dag = lambda: mock.Mock()
+    return project, insight
+
+
+def test_verify_run_output_passes_when_the_run_produced_everything(tmp_path):
+    project, insight = _project_with_one_static_insight()
+    os.makedirs(os.path.join(str(tmp_path), "insights"))
+    for ext in ("json", "parquet"):
+        open(os.path.join(str(tmp_path), "insights", f"line-trace.{ext}"), "w").close()
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
+        verify_run_output(project, str(tmp_path))  # does not raise
+
+
+def test_verify_run_output_stays_short_by_default(tmp_path, monkeypatch):
+    """The list is diagnostic, not a to-do — the reader acts on the remedy, not
+    on individual paths. Long output here reads as a wall of noise."""
+    monkeypatch.delenv("STACKTRACE", raising=False)
+    project, insight = _project_with_one_static_insight()
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
+        with pytest.raises(click.ClickException) as exc:
+            verify_run_output(project, str(tmp_path))
+
+    message = str(exc.value)
+    assert "visivo run" in message
+    assert "STACKTRACE=true" in message
+    assert "insights/line-trace.json" not in message
+
+
+def test_verify_run_output_lists_them_under_stacktrace(tmp_path, monkeypatch):
+    monkeypatch.setenv("STACKTRACE", "true")
+    project, insight = _project_with_one_static_insight()
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
+        with pytest.raises(click.ClickException) as exc:
+            verify_run_output(project, str(tmp_path))
+
+    message = str(exc.value)
+    assert "insights/line-trace.json" in message
+    assert "insights/line-trace.parquet" in message

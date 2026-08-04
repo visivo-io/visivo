@@ -857,6 +857,66 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
     _raise_if_any_failed(response_items, "Failed to create model records")
 
 
+def verify_run_output(project, output_dir):
+    """Fail the deploy if the run's output doesn't match what the project says.
+
+    Every silently-skipped artifact used to be harmless: the collectors below
+    guard each file with ``os.path.exists`` and drop what isn't there. That was
+    fine while a miss meant one genuinely absent file. It stopped being fine
+    when the run's layout moved (VIS-1128) — deploying against a ``target/``
+    built by an older version made EVERY guard fire, so the deploy uploaded no
+    parquet at all and reported success.
+
+    The damage surfaces three layers away: core has no file for the ref, so it
+    leaves ``signed_data_file_url`` as the author's local path; the browser
+    requests that, gets the SPA's index.html back, and DuckDB reports a missing
+    table under a name_hash nobody can trace. Checking here turns that into one
+    sentence naming the remedy. The list of what is missing is diagnostic, not
+    something the reader has to act on individually, so it stays behind
+    STACKTRACE like the rest of the CLI's detail.
+
+    Checks exactly what the collectors intend to collect, so it can't demand a
+    file the deploy would not have uploaded anyway:
+
+      - every insight has its envelope
+      - a STATIC insight has its precomputed parquet
+      - a DYNAMIC insight's dependent models have theirs (it owns none itself)
+      - every input has its envelope
+    """
+    dag = project.dag()
+    insights = all_descendants_of_type(type=Insight, dag=dag)
+    inputs = project.inputs if getattr(project, "inputs", None) else []
+
+    missing = []
+
+    def _require(relpath, owner):
+        if not os.path.exists(os.path.join(output_dir, relpath)):
+            missing.append(f"{relpath}  (for {owner})")
+
+    for insight in insights:
+        _require(f"insights/{insight.name}.json", f"insight '{insight.name}'")
+        if insight.is_dynamic(dag):
+            for model in insight.get_all_dependent_models(dag):
+                _require(f"models/{model.name}.parquet", f"model '{model.name}'")
+        else:
+            _require(f"insights/{insight.name}.parquet", f"insight '{insight.name}'")
+
+    for input_obj in inputs:
+        _require(f"inputs/{input_obj.name}.json", f"input '{input_obj.name}'")
+
+    if not missing:
+        return
+
+    unique = sorted(set(missing))
+    message = f"Missing {len(unique)} asset(s) that `visivo run` produces. Run it, then deploy."
+    if os.environ.get("STACKTRACE") == "true":
+        listed = "\n  ".join(unique)
+        message = f"{message}\n  {listed}"
+    else:
+        message = f"{message} Set STACKTRACE=true to list them."
+    raise click.ClickException(message)
+
+
 def collect_models_for_insights(insights, dag, output_dir):
     """
     Collect the MODEL parquet a dynamic insight queries client-side.
@@ -1043,6 +1103,10 @@ def deploy_phase(
     form_headers = {
         "Authorization": f"Api-Key {profile_token}",
     }
+
+    # Before anything is uploaded: a half-finished deploy is worse than one
+    # that refuses to start, and a stale target is invisible until it is.
+    verify_run_output(project, run_output_dir)
 
     # Upload the project information (synchronous)
     send_progress("Uploading project information...", "info")
