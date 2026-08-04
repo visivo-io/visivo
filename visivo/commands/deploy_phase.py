@@ -857,6 +857,85 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
     _raise_if_any_failed(response_items, "Failed to create model records")
 
 
+def verify_run_output(project, output_dir):
+    """Fail the deploy if the run's output isn't where the deploy will look.
+
+    Every collector guards its files with ``os.path.exists`` and drops what is
+    missing. That was harmless while a miss meant one genuinely absent file. It
+    stopped being harmless when the run's layout moved (VIS-1128): deploying
+    against a ``target/`` built by an older version made EVERY guard fire, so
+    the deploy uploaded no parquet and reported success.
+
+    The damage surfaces three layers away: core has no file for the ref, so it
+    leaves ``signed_data_file_url`` as the author's local path; the browser
+    requests that, gets the SPA's index.html back, and DuckDB reports a missing
+    table under a name_hash nobody can trace. Checking here turns that into one
+    sentence naming the remedy.
+
+    Scope is deliberately narrow: whether the files the run RECORDED are where
+    the deploy will look for them. Not whether every insight built — that is
+    the run's business, and an insight with no envelope is a pre-existing
+    condition this has no opinion on.
+
+    Checks the run's OWN record of what it built — each envelope's ``files[]``
+    — rather than re-deriving which artifacts should exist. An earlier version
+    predicted them from ``insight.is_dynamic(dag)``, which is "has any Input
+    descendant"; the run actually branches on ``insight_query_info.pre_query``.
+    Those disagree, so it demanded parquet for insights that legitimately have
+    none. A predicate duplicated from the run drifts from it; the envelope
+    cannot.
+
+    A referenced file must exist AND sit in one of the directories a collector
+    searches. Existence alone would pass a stale ``target/``, where the file is
+    real but sits in the ``files/`` directory nothing reads any more.
+    """
+    searched = ("models", "insights", "inputs")
+    missing = []
+
+    def _check_envelope(relpath, owner):
+        envelope = os.path.join(output_dir, relpath)
+        if not os.path.exists(envelope):
+            # Not this check's business. An insight can legitimately produce no
+            # envelope — it may have failed to build, or not be reachable — and
+            # `visivo run` exits 0 either way. Policing project completeness
+            # here would fail deploys over a pre-existing condition that has
+            # nothing to do with whether the output is readable.
+            return
+        try:
+            with open(envelope, "r") as f:
+                content = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            # process_*_async raises its own, clearer error for this.
+            return
+        for ref in content.get("files") or []:
+            if not isinstance(ref, dict):
+                continue
+            referenced = ref.get("signed_data_file_url")
+            if not referenced:
+                continue
+            filename = os.path.basename(referenced)
+            if not any(os.path.exists(os.path.join(output_dir, d, filename)) for d in searched):
+                missing.append(f"{filename}  (referenced by {owner})")
+
+    for insight in all_descendants_of_type(type=Insight, dag=project.dag()):
+        _check_envelope(f"insights/{insight.name}.json", f"insight '{insight.name}'")
+
+    for input_obj in project.inputs if getattr(project, "inputs", None) else []:
+        _check_envelope(f"inputs/{input_obj.name}.json", f"input '{input_obj.name}'")
+
+    if not missing:
+        return
+
+    unique = sorted(set(missing))
+    message = f"Missing {len(unique)} asset(s) that `visivo run` produces. Run it, then deploy."
+    if os.environ.get("STACKTRACE") == "true":
+        listed = "\n  ".join(unique)
+        message = f"{message}\n  {listed}"
+    else:
+        message = f"{message} Set STACKTRACE=true to list them."
+    raise click.ClickException(message)
+
+
 def collect_models_for_insights(insights, dag, output_dir):
     """
     Collect the MODEL parquet a dynamic insight queries client-side.
@@ -1043,6 +1122,10 @@ def deploy_phase(
     form_headers = {
         "Authorization": f"Api-Key {profile_token}",
     }
+
+    # Before anything is uploaded: a half-finished deploy is worse than one
+    # that refuses to start, and a stale target is invisible until it is.
+    verify_run_output(project, run_output_dir)
 
     # Upload the project information (synchronous)
     send_progress("Uploading project information...", "info")
