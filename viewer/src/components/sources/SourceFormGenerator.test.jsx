@@ -6,6 +6,13 @@ import SourceFormGenerator, {
   toSecretRef,
 } from './SourceFormGenerator';
 
+// The raw ${env.NAME} reference text, built from a variable. Writing it as a
+// plain '${env.NAME}' string trips no-template-curly-in-string, and splitting
+// that literal trips no-useless-concat — so compose it from a non-literal, which
+// satisfies both while staying an independent value (not the fn under test).
+const DOLLAR = '$';
+const rawRef = name => DOLLAR + '{env.' + name + '}';
+
 const renderForm = (props = {}) =>
   render(
     <SourceFormGenerator
@@ -18,8 +25,8 @@ const renderForm = (props = {}) =>
 
 describe('secret reference helpers', () => {
   test('round-trips a name through the reference syntax', () => {
-    expect(toSecretRef('PGPW')).toBe('${env.PGPW}');
-    expect(secretRefName('${env.PGPW}')).toBe('PGPW');
+    expect(toSecretRef('PGPW')).toBe(rawRef('PGPW'));
+    expect(secretRefName(rawRef('PGPW'))).toBe('PGPW');
   });
 
   test('a literal is not a reference', () => {
@@ -29,8 +36,9 @@ describe('secret reference helpers', () => {
   });
 
   test('a partial match is not a reference', () => {
-    expect(secretRefName('prefix${env.PW}')).toBe('');
-    expect(secretRefName('${env.PW}suffix')).toBe('');
+    // The whole value must be the reference, not just contain one.
+    expect(secretRefName('prefix' + rawRef('PW'))).toBe('');
+    expect(secretRefName(rawRef('PW') + 'suffix')).toBe('');
   });
 });
 
@@ -55,14 +63,16 @@ describe('secret fields follow what the server said', () => {
 
     await userEvent.selectOptions(screen.getByRole('combobox'), 'PGPW');
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ password: '${env.PGPW}' }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ password: toSecretRef('PGPW') })
+    );
   });
 
   test('an existing reference shows as selected', () => {
     renderForm({
       secretsRequired: true,
       secretKeys: ['PGPW'],
-      values: { password: '${env.PGPW}' },
+      values: { password: toSecretRef('PGPW') },
     });
 
     expect(screen.getByRole('combobox')).toHaveValue('PGPW');
@@ -75,7 +85,9 @@ describe('secret fields follow what the server said', () => {
     await userEvent.selectOptions(screen.getByRole('combobox'), '__new__');
     await userEvent.type(screen.getByPlaceholderText('SECRET_NAME'), 'N');
 
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ password: '${env.N}' }));
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ password: toSecretRef('N') })
+    );
   });
 });
 
