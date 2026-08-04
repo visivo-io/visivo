@@ -12,7 +12,7 @@ import useStore from '../../../../stores/store';
  */
 const ProjectHomePane = () => {
   const project = useStore(s => s.project);
-  const projectName = project?.project_json?.name || project?.name || 'project';
+  const projectName = project?.name || 'project';
   return (
     <section
       data-testid="workspace-middle-project"

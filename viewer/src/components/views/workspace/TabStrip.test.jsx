@@ -31,7 +31,7 @@ const seedStore = (extra = {}) => {
       closeWorkspaceTab: jest.fn(),
       requestCloseWorkspaceTab: jest.fn(),
       openWorkspaceTab: jest.fn(),
-      project: { id: 'p1', project_json: { name: 'analytics-platform' } },
+      project: { id: 'p1', name: 'analytics-platform' },
       ...extra,
     });
   });

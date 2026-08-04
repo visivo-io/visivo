@@ -28,7 +28,7 @@ const makeEvent = (overrides = {}) => ({
 });
 
 const makeStore = (overrides = {}) => ({
-  project: { project_json: { name: 'analytics' } },
+  project: { name: 'analytics' },
   // Views (project/semantic-layer/explorer) left the tab model in Phase 0 —
   // `workspaceTabs` holds only DOCUMENT tabs now.
   workspaceTabs: [

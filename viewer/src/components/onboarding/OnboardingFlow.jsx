@@ -31,8 +31,8 @@ export default function OnboardingFlow() {
   const project = useStore(s => s.project);
   const fetchProject = useStore(s => s.fetchProject);
 
-  const projectDir = project?.project_json?.project_dir ?? '';
-  const projectName = project?.project_json?.name || 'Quickstart Visivo';
+  const projectDir = project?.project_dir ?? '';
+  const projectName = project?.name || 'Quickstart Visivo';
 
   const persisted = useRef(readOnboardingState() || {});
   const startTs = useRef(Date.now());

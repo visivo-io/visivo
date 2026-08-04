@@ -102,7 +102,7 @@ const resetWorkspaceStore = () => {
       // Stub project that the loader normally hydrates.
       project: {
         id: 'p1',
-        project_json: { name: 'analytics-platform' },
+        name: 'analytics-platform',
       },
       // Stub a no-op checkCommitStatus / openCommitModal so the
       // Workspace mount effect doesn't throw.
@@ -409,7 +409,7 @@ describe('VIS-775 Workspace shell', () => {
     // (the pathname/search haven't changed, so the synced-target guard holds).
     act(() => {
       useStore.setState({
-        project: { id: 'p1', project_json: { name: 'analytics-platform' } },
+        project: { id: 'p1', name: 'analytics-platform' },
       });
     });
     expect(useStore.getState().workspaceActiveTabId).toBeNull();
@@ -424,7 +424,7 @@ describe('VIS-775 Workspace shell', () => {
     ).not.toBeInTheDocument();
     act(() => {
       useStore.setState({
-        project: { id: 'p1', project_json: { name: 'analytics-platform' } },
+        project: { id: 'p1', name: 'analytics-platform' },
       });
     });
     expect(

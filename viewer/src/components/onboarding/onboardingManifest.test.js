@@ -53,27 +53,27 @@ describe('onboardingManifest', () => {
     });
   });
 
-  test('connect_source predicate is satisfied by sources slice OR project.json OR onboarding flag', () => {
+  test('connect_source predicate is satisfied by sources slice OR source_count OR onboarding flag', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'connect_source');
     expect(
-      it.predicate({ project: { project_json: { sources: [] } }, sources: [], persisted: {} })
+      it.predicate({ project: { source_count: 0 }, sources: [], persisted: {} })
     ).toBe(false);
     expect(
       it.predicate({
-        project: { project_json: { sources: [] } },
+        project: { source_count: 0 },
         sources: [{ name: 'a' }],
         persisted: {},
       })
     ).toBe(true);
     expect(
       it.predicate({
-        project: { project_json: { sources: [{ name: 'a' }] } },
+        project: { source_count: 1 },
         sources: [],
         persisted: {},
       })
     ).toBe(true);
     expect(
-      it.predicate({ project: { project_json: {} }, sources: [], persisted: { source_connected: true } })
+      it.predicate({ project: {}, sources: [], persisted: { source_connected: true } })
     ).toBe(true);
   });
 

@@ -125,10 +125,11 @@ describe('commonStore slice actions', () => {
       const store = createHarness();
 
       store.getState().setProject({
-        project_json: { name: 'Quickstart Visivo', dashboards: [] },
+        name: 'Quickstart Visivo',
+        dashboard_count: 0,
       });
 
-      expect(store.getState().project.project_json.name).toBe('Quickstart Visivo');
+      expect(store.getState().project.name).toBe('Quickstart Visivo');
       expect(store.getState().isNewProject).toBe(true);
     });
 
@@ -136,7 +137,8 @@ describe('commonStore slice actions', () => {
       const store = createHarness();
 
       store.getState().setProject({
-        project_json: { name: 'Quickstart Visivo', dashboards: [{ name: 'd1' }] },
+        name: 'Quickstart Visivo',
+        dashboard_count: 1,
       });
 
       expect(store.getState().isNewProject).toBe(false);
@@ -145,12 +147,12 @@ describe('commonStore slice actions', () => {
     test('a differently-named project is not new even with no dashboards', () => {
       const store = createHarness();
 
-      store.getState().setProject({ project_json: { name: 'my-project', dashboards: [] } });
+      store.getState().setProject({ name: 'my-project', dashboard_count: 0 });
 
       expect(store.getState().isNewProject).toBe(false);
     });
 
-    test('handles a project without project_json without throwing', () => {
+    test('handles a project envelope with neither field without throwing', () => {
       const store = createHarness();
 
       store.getState().setProject({ id: 'p1' });
@@ -170,22 +172,24 @@ describe('commonStore slice actions', () => {
   });
 
   describe('fetchProject', () => {
-    test('loads the bulk project blob and evaluates isNewProject', async () => {
+    test('loads the project envelope and evaluates isNewProject', async () => {
       fetchProjectBlob.mockResolvedValue({
-        project_json: { name: 'Quickstart Visivo', dashboards: [] },
+        name: 'Quickstart Visivo',
+        dashboard_count: 0,
       });
       const store = createHarness();
 
       await store.getState().fetchProject();
 
       expect(fetchProjectBlob).toHaveBeenCalledTimes(1);
-      expect(store.getState().project.project_json.name).toBe('Quickstart Visivo');
+      expect(store.getState().project.name).toBe('Quickstart Visivo');
       expect(store.getState().isNewProject).toBe(true);
     });
 
     test('an existing project loads as not-new', async () => {
       fetchProjectBlob.mockResolvedValue({
-        project_json: { name: 'prod-analytics', dashboards: [{ name: 'kpis' }] },
+        name: 'prod-analytics',
+        dashboard_count: 1,
       });
       const store = createHarness();
 
@@ -280,7 +284,7 @@ describe('commonStore slice actions', () => {
       store.getState().setProject({ id: 'proj-1' });
       await warm();
 
-      store.getState().setProject({ project_json: { name: 'local', dashboards: [] } });
+      store.getState().setProject({ name: 'local', dashboard_count: 0 });
 
       expect(isObjectSchemaLoaded()).toBe(true);
     });
@@ -291,7 +295,7 @@ describe('commonStore slice actions', () => {
       await warm();
 
       // Same-id refetch (the project_changed soft-refresh shape) — intact.
-      fetchProjectBlob.mockResolvedValue({ id: 'proj-1', project_json: { name: 'p' } });
+      fetchProjectBlob.mockResolvedValue({ id: 'proj-1', name: 'p' });
       await store.getState().fetchProject();
       expect(isObjectSchemaLoaded()).toBe(true);
       expect(validateRecordConfigSync('dimension', { expression: 'x' })).toEqual(
@@ -299,7 +303,7 @@ describe('commonStore slice actions', () => {
       );
 
       // Id flip (e.g. the active project became a different one) — cleared.
-      fetchProjectBlob.mockResolvedValue({ id: 'proj-2', project_json: { name: 'p2' } });
+      fetchProjectBlob.mockResolvedValue({ id: 'proj-2', name: 'p2' });
       await store.getState().fetchProject();
       expect(validateRecordConfigSync('dimension', { expression: 'x' })).toBeNull();
       expect(isObjectSchemaLoaded()).toBe(false);

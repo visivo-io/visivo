@@ -175,9 +175,9 @@ const ProjectEditor = () => {
   }, []);
 
   const projectName =
-    project?.project_json?.name || project?.name || 'project';
+    project?.name || 'project';
   const projectDefaults =
-    defaults || project?.config?.defaults || project?.project_json?.defaults || null;
+    defaults || project?.config?.defaults || null;
 
   const summary = useMemo(
     () =>

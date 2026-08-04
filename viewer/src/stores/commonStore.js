@@ -26,8 +26,8 @@ const computeIsOnboardingRequested = () => {
 const createCommonSlice = (set, get) => {
   const evaluateIsNewProject = () => {
     const { project } = get();
-    const dashboards = project?.project_json?.dashboards ?? [];
-    const isNew = project?.project_json?.name === 'Quickstart Visivo' && dashboards.length === 0;
+    const isNew =
+      project?.name === 'Quickstart Visivo' && (project?.dashboard_count ?? 0) === 0;
     set({ isNewProject: isNew });
   };
 
@@ -69,11 +69,6 @@ const createCommonSlice = (set, get) => {
     },
 
     fetchProject: async () => {
-      // Onboarding/legacy callers expect the bulk project_json blob (used
-      // by `evaluateIsNewProject` and the project loader). The canonical
-      // per-resource endpoint returns a slim envelope and won't satisfy
-      // those consumers. Switch to `fetchProject` from api/project.js
-      // when the loader + Onboarding are migrated.
       const project = await fetchProjectBlob();
       invalidateSchemaCachesOnProjectSwitch(project);
       set({ project });

@@ -13,7 +13,7 @@ import useProjectChangeListener from '../views/workspace/useProjectChangeListene
 /**
  * Project - Container component for the new project view
  * Fetches data from stores and passes to Dashboard
- * Reads dashboards from the store instead of a project_json blob
+ * Reads dashboards from the store
  *
  * e2e-gap-review.md D7 ("VIS-1087's remaining half"): `/project` (this
  * component) and `/runs` (RunsView.jsx) render OUTSIDE the Workspace shell —
@@ -81,12 +81,9 @@ function Project() {
     return entry.config || entry;
   }, [dashboards, dashboardName]);
 
-  // Project defaults can live in either of two envelope shapes:
-  //   - visivo Studio: ``project.project_json.defaults`` (full project_json blob)
-  //   - core's canonical envelope: ``project.config.defaults``
-  // Read both so the dashboard filter init works against either backend
-  // without forcing the wrapper to adapt.
-  const projectDefaults = project?.config?.defaults ?? project?.project_json?.defaults;
+  // Both servers answer the whole-project read with the same envelope, so
+  // there is one shape to read defaults out of.
+  const projectDefaults = project?.config?.defaults;
 
   // Initialize dashboard filtering system when dashboards load
   useEffect(() => {

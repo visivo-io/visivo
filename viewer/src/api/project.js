@@ -2,14 +2,15 @@ import { getUrl } from '../contexts/URLContext';
 import { apiFetch } from './utils';
 
 // ============================================================
-// Legacy bulk-blob endpoint
+// Whole-project read
 // ============================================================
 //
-// `/api/project/` returns the dereferenced project_json blob — the entire
-// project tree as one giant JSON object. Used by the project loader
-// (loaders/project.js) and the onboarding/commonStore flow. New code should
-// NOT call this; use `fetchProject(id)` to get the canonical per-resource
-// envelope. Candidate for removal once the loader moves to fetchProject(id).
+// `/api/project/` returns the project envelope — `{id, name, status,
+// project_dir, config: {defaults}, dashboard_count, source_count}`. Used by
+// the project loader (loaders/project.js) and the onboarding/commonStore
+// flow. It used to return the entire dereferenced project tree as one
+// `project_json` blob; the fields above are what consumers actually read out
+// of it. Resource lists come from their own endpoints, not from here.
 export const fetchProjectBlob = async (projectId = null) => {
   let url = getUrl('project');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;

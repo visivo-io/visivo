@@ -59,7 +59,12 @@ def test_serve(output_dir):
     client = server.app.test_client()
     response = client.get("/api/project/")
     response_json = json.loads(response.data)
-    assert "project_json" in response_json
+    # The canonical envelope, not the whole project tree.
+    assert "project_json" not in response_json
+    assert response_json["name"] == project.name
+    assert "defaults" in response_json["config"]
+    assert "dashboard_count" in response_json
+    assert "source_count" in response_json
 
     response = client.get("/api/error/")
     response_json = json.loads(response.data)

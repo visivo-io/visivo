@@ -53,11 +53,11 @@ describe('branchingStore', () => {
       branchingApi.createDraft.mockResolvedValueOnce(draft);
       branchingApi.fetchCapabilities.mockResolvedValueOnce({ can_edit: true });
       const setProject = jest.fn();
-      const store = build({ project: { id: 'proj-1', project_json: { x: 1 } }, setProject });
+      const store = build({ project: { id: 'proj-1', dashboard_count: 1 }, setProject });
       const result = await store.get().startEdit();
       expect(branchingApi.createDraft).toHaveBeenCalledWith('proj-1');
       // Merged: keeps existing project data, retargets the id.
-      expect(setProject).toHaveBeenCalledWith({ id: 'draft-9', name: 'p', project_json: { x: 1 } });
+      expect(setProject).toHaveBeenCalledWith({ id: 'draft-9', name: 'p', dashboard_count: 1 });
       expect(result).toEqual({ success: true, project: draft });
     });
 

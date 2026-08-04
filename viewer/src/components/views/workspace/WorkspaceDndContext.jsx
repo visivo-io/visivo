@@ -894,7 +894,7 @@ const WorkspaceDndContext = ({ children }) => {
   );
 
   const projectDefaults = useMemo(
-    () => defaults || project?.config?.defaults || project?.project_json?.defaults || null,
+    () => defaults || project?.config?.defaults || null,
     [defaults, project]
   );
 
