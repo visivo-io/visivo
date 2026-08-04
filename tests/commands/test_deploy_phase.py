@@ -342,31 +342,67 @@ def test_dynamic_insight_still_collects_its_dependent_models(tmp_path):
     assert parquet == []
 
 
-def _project_with_one_static_insight():
-    """A project whose only insight is static, so exactly two files are
-    expected: the envelope and the precomputed parquet."""
-    insight = mock.Mock(name_hash=lambda: "minsight", is_dynamic=lambda _dag: False)
-    insight.name = "line-trace"
+def _project_with_insight(name="line-trace"):
+    insight = mock.Mock()
+    insight.name = name
     project = mock.Mock(inputs=[])
     project.dag = lambda: mock.Mock()
     return project, insight
 
 
-def test_verify_run_output_passes_when_the_run_produced_everything(tmp_path):
-    project, insight = _project_with_one_static_insight()
-    os.makedirs(os.path.join(str(tmp_path), "insights"))
-    for ext in ("json", "parquet"):
-        open(os.path.join(str(tmp_path), "insights", f"line-trace.{ext}"), "w").close()
+def _envelope(dirpath, name, referenced=None):
+    os.makedirs(dirpath, exist_ok=True)
+    files = [{"name_hash": "m" + name, "signed_data_file_url": referenced}] if referenced else []
+    with open(os.path.join(dirpath, f"{name}.json"), "w") as f:
+        json.dump({"name": name, "files": files}, f)
+
+
+def test_verify_run_output_passes_when_every_reference_resolves(tmp_path):
+    insights = os.path.join(str(tmp_path), "insights")
+    _envelope(insights, "line-trace", f"{tmp_path}/insights/line-trace.parquet")
+    open(os.path.join(insights, "line-trace.parquet"), "wb").close()
+    project, insight = _project_with_insight()
 
     with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
         verify_run_output(project, str(tmp_path))  # does not raise
+
+
+def test_verify_run_output_accepts_an_insight_that_produced_no_parquet(tmp_path):
+    """The false positive CI caught. An earlier version predicted which
+    insights should have a parquet from `is_dynamic(dag)` — "has any Input
+    descendant" — while the run branches on `insight_query_info.pre_query`.
+    Those disagree, so it demanded files that legitimately do not exist.
+
+    The envelope is the run's own record: no reference, nothing to check."""
+    _envelope(os.path.join(str(tmp_path), "insights"), "line-trace")
+    project, insight = _project_with_insight()
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
+        verify_run_output(project, str(tmp_path))  # does not raise
+
+
+def test_verify_run_output_rejects_a_stale_layout(tmp_path):
+    """A stale target/ has the file — in the files/ directory nothing reads any
+    more. Checking existence alone would pass it and deploy nothing."""
+    _envelope(
+        os.path.join(str(tmp_path), "insights"),
+        "line-trace",
+        f"{tmp_path}/files/line-trace.parquet",
+    )
+    os.makedirs(os.path.join(str(tmp_path), "files"))
+    open(os.path.join(str(tmp_path), "files", "line-trace.parquet"), "wb").close()
+    project, insight = _project_with_insight()
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
+        with pytest.raises(click.ClickException):
+            verify_run_output(project, str(tmp_path))
 
 
 def test_verify_run_output_stays_short_by_default(tmp_path, monkeypatch):
     """The list is diagnostic, not a to-do — the reader acts on the remedy, not
     on individual paths. Long output here reads as a wall of noise."""
     monkeypatch.delenv("STACKTRACE", raising=False)
-    project, insight = _project_with_one_static_insight()
+    project, insight = _project_with_insight()
 
     with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
         with pytest.raises(click.ClickException) as exc:
@@ -380,12 +416,10 @@ def test_verify_run_output_stays_short_by_default(tmp_path, monkeypatch):
 
 def test_verify_run_output_lists_them_under_stacktrace(tmp_path, monkeypatch):
     monkeypatch.setenv("STACKTRACE", "true")
-    project, insight = _project_with_one_static_insight()
+    project, insight = _project_with_insight()
 
     with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
         with pytest.raises(click.ClickException) as exc:
             verify_run_output(project, str(tmp_path))
 
-    message = str(exc.value)
-    assert "insights/line-trace.json" in message
-    assert "insights/line-trace.parquet" in message
+    assert "insights/line-trace.json" in str(exc.value)

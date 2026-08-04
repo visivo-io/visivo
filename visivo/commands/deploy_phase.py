@@ -858,51 +858,61 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
 
 
 def verify_run_output(project, output_dir):
-    """Fail the deploy if the run's output doesn't match what the project says.
+    """Fail the deploy if the run's output isn't where the deploy will look.
 
-    Every silently-skipped artifact used to be harmless: the collectors below
-    guard each file with ``os.path.exists`` and drop what isn't there. That was
-    fine while a miss meant one genuinely absent file. It stopped being fine
-    when the run's layout moved (VIS-1128) — deploying against a ``target/``
-    built by an older version made EVERY guard fire, so the deploy uploaded no
-    parquet at all and reported success.
+    Every collector guards its files with ``os.path.exists`` and drops what is
+    missing. That was harmless while a miss meant one genuinely absent file. It
+    stopped being harmless when the run's layout moved (VIS-1128): deploying
+    against a ``target/`` built by an older version made EVERY guard fire, so
+    the deploy uploaded no parquet and reported success.
 
     The damage surfaces three layers away: core has no file for the ref, so it
     leaves ``signed_data_file_url`` as the author's local path; the browser
     requests that, gets the SPA's index.html back, and DuckDB reports a missing
     table under a name_hash nobody can trace. Checking here turns that into one
-    sentence naming the remedy. The list of what is missing is diagnostic, not
-    something the reader has to act on individually, so it stays behind
-    STACKTRACE like the rest of the CLI's detail.
+    sentence naming the remedy.
 
-    Checks exactly what the collectors intend to collect, so it can't demand a
-    file the deploy would not have uploaded anyway:
+    Checks the run's OWN record of what it built — each envelope's ``files[]``
+    — rather than re-deriving which artifacts should exist. An earlier version
+    predicted them from ``insight.is_dynamic(dag)``, which is "has any Input
+    descendant"; the run actually branches on ``insight_query_info.pre_query``.
+    Those disagree, so it demanded parquet for insights that legitimately have
+    none. A predicate duplicated from the run drifts from it; the envelope
+    cannot.
 
-      - every insight has its envelope
-      - a STATIC insight has its precomputed parquet
-      - a DYNAMIC insight's dependent models have theirs (it owns none itself)
-      - every input has its envelope
+    A referenced file must exist AND sit in one of the directories a collector
+    searches. Existence alone would pass a stale ``target/``, where the file is
+    real but sits in the ``files/`` directory nothing reads any more.
     """
-    dag = project.dag()
-    insights = all_descendants_of_type(type=Insight, dag=dag)
-    inputs = project.inputs if getattr(project, "inputs", None) else []
-
+    searched = ("models", "insights", "inputs")
     missing = []
 
-    def _require(relpath, owner):
-        if not os.path.exists(os.path.join(output_dir, relpath)):
+    def _check_envelope(relpath, owner):
+        envelope = os.path.join(output_dir, relpath)
+        if not os.path.exists(envelope):
             missing.append(f"{relpath}  (for {owner})")
+            return
+        try:
+            with open(envelope, "r") as f:
+                content = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            # process_*_async raises its own, clearer error for this.
+            return
+        for ref in content.get("files") or []:
+            if not isinstance(ref, dict):
+                continue
+            referenced = ref.get("signed_data_file_url")
+            if not referenced:
+                continue
+            filename = os.path.basename(referenced)
+            if not any(os.path.exists(os.path.join(output_dir, d, filename)) for d in searched):
+                missing.append(f"{filename}  (referenced by {owner})")
 
-    for insight in insights:
-        _require(f"insights/{insight.name}.json", f"insight '{insight.name}'")
-        if insight.is_dynamic(dag):
-            for model in insight.get_all_dependent_models(dag):
-                _require(f"models/{model.name}.parquet", f"model '{model.name}'")
-        else:
-            _require(f"insights/{insight.name}.parquet", f"insight '{insight.name}'")
+    for insight in all_descendants_of_type(type=Insight, dag=project.dag()):
+        _check_envelope(f"insights/{insight.name}.json", f"insight '{insight.name}'")
 
-    for input_obj in inputs:
-        _require(f"inputs/{input_obj.name}.json", f"input '{input_obj.name}'")
+    for input_obj in project.inputs if getattr(project, "inputs", None) else []:
+        _check_envelope(f"inputs/{input_obj.name}.json", f"input '{input_obj.name}'")
 
     if not missing:
         return
