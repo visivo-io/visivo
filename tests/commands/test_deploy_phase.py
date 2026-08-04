@@ -398,10 +398,27 @@ def test_verify_run_output_rejects_a_stale_layout(tmp_path):
             verify_run_output(project, str(tmp_path))
 
 
+def test_verify_run_output_ignores_an_insight_that_built_nothing(tmp_path):
+    """An insight can produce no envelope — it may have failed to build, or not
+    be reachable — and `visivo run` exits 0 either way. That is the run's
+    business. Asserting it here failed real deploys over a pre-existing
+    condition unrelated to whether the output is readable."""
+    os.makedirs(os.path.join(str(tmp_path), "insights"))
+    project, insight = _project_with_insight("never-built")
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
+        verify_run_output(project, str(tmp_path))  # does not raise
+
+
 def test_verify_run_output_stays_short_by_default(tmp_path, monkeypatch):
     """The list is diagnostic, not a to-do — the reader acts on the remedy, not
     on individual paths. Long output here reads as a wall of noise."""
     monkeypatch.delenv("STACKTRACE", raising=False)
+    _envelope(
+        os.path.join(str(tmp_path), "insights"),
+        "line-trace",
+        f"{tmp_path}/files/line-trace.parquet",
+    )
     project, insight = _project_with_insight()
 
     with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
@@ -411,15 +428,20 @@ def test_verify_run_output_stays_short_by_default(tmp_path, monkeypatch):
     message = str(exc.value)
     assert "visivo run" in message
     assert "STACKTRACE=true" in message
-    assert "insights/line-trace.json" not in message
+    assert "line-trace.parquet" not in message
 
 
 def test_verify_run_output_lists_them_under_stacktrace(tmp_path, monkeypatch):
     monkeypatch.setenv("STACKTRACE", "true")
+    _envelope(
+        os.path.join(str(tmp_path), "insights"),
+        "line-trace",
+        f"{tmp_path}/files/line-trace.parquet",
+    )
     project, insight = _project_with_insight()
 
     with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
         with pytest.raises(click.ClickException) as exc:
             verify_run_output(project, str(tmp_path))
 
-    assert "insights/line-trace.json" in str(exc.value)
+    assert "line-trace.parquet" in str(exc.value)

@@ -872,6 +872,11 @@ def verify_run_output(project, output_dir):
     table under a name_hash nobody can trace. Checking here turns that into one
     sentence naming the remedy.
 
+    Scope is deliberately narrow: whether the files the run RECORDED are where
+    the deploy will look for them. Not whether every insight built — that is
+    the run's business, and an insight with no envelope is a pre-existing
+    condition this has no opinion on.
+
     Checks the run's OWN record of what it built — each envelope's ``files[]``
     — rather than re-deriving which artifacts should exist. An earlier version
     predicted them from ``insight.is_dynamic(dag)``, which is "has any Input
@@ -890,7 +895,11 @@ def verify_run_output(project, output_dir):
     def _check_envelope(relpath, owner):
         envelope = os.path.join(output_dir, relpath)
         if not os.path.exists(envelope):
-            missing.append(f"{relpath}  (for {owner})")
+            # Not this check's business. An insight can legitimately produce no
+            # envelope — it may have failed to build, or not be reachable — and
+            # `visivo run` exits 0 either way. Policing project completeness
+            # here would fail deploys over a pre-existing condition that has
+            # nothing to do with whether the output is readable.
             return
         try:
             with open(envelope, "r") as f:
