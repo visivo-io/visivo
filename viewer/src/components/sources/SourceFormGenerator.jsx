@@ -43,7 +43,7 @@ const SOURCE_SCHEMAS = {
       { name: 'port', label: 'Port', type: 'number', default: 5432 },
       { name: 'database', label: 'Database', type: 'text', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
-      { name: 'password', label: 'Password', type: 'password', required: true },
+      { name: 'password', label: 'Password', type: 'secret', required: true },
       { name: 'db_schema', label: 'Schema', type: 'text', placeholder: 'public' },
       { name: 'connection_pool_size', label: 'Connection Pool Size', type: 'number', default: 1 },
     ],
@@ -54,7 +54,7 @@ const SOURCE_SCHEMAS = {
       { name: 'port', label: 'Port', type: 'number', default: 3306 },
       { name: 'database', label: 'Database', type: 'text', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
-      { name: 'password', label: 'Password', type: 'password', required: true },
+      { name: 'password', label: 'Password', type: 'secret', required: true },
       { name: 'db_schema', label: 'Schema', type: 'text' },
     ],
   },
@@ -69,7 +69,7 @@ const SOURCE_SCHEMAS = {
       },
       { name: 'database', label: 'Database', type: 'text', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
-      { name: 'password', label: 'Password', type: 'password', required: true },
+      { name: 'password', label: 'Password', type: 'secret', required: true },
       { name: 'warehouse', label: 'Warehouse', type: 'text' },
       { name: 'db_schema', label: 'Schema', type: 'text' },
       { name: 'role', label: 'Role', type: 'text' },
@@ -80,10 +80,9 @@ const SOURCE_SCHEMAS = {
       { name: 'project', label: 'Project ID', type: 'text', required: true },
       { name: 'database', label: 'Dataset', type: 'text', required: true },
       {
-        name: 'credentials_path',
-        label: 'Credentials Path',
-        type: 'text',
-        placeholder: 'path/to/credentials.json',
+        name: 'credentials_base64',
+        label: 'Service Account Key (base64)',
+        type: 'secret',
       },
     ],
   },
@@ -112,36 +111,44 @@ const SOURCE_SCHEMAS = {
   csv: {
     fields: [
       {
-        name: 'path',
-        label: 'CSV Path',
+        name: 'file',
+        label: 'CSV File',
         type: 'text',
         required: true,
         placeholder: 'path/to/data.csv',
       },
     ],
   },
-  trino: {
+  clickhouse: {
     fields: [
-      { name: 'host', label: 'Host', type: 'text', required: true },
-      { name: 'port', label: 'Port', type: 'number', default: 8080 },
-      { name: 'database', label: 'Catalog', type: 'text', required: true },
-      { name: 'username', label: 'Username', type: 'text' },
-      { name: 'db_schema', label: 'Schema', type: 'text' },
+      { name: 'host', label: 'Host', type: 'text', required: true, placeholder: 'localhost' },
+      { name: 'port', label: 'Port', type: 'number', default: 9000 },
+      { name: 'database', label: 'Database', type: 'text', required: true },
+      { name: 'username', label: 'Username', type: 'text', required: true },
+      { name: 'password', label: 'Password', type: 'secret' },
+      { name: 'connection_pool_size', label: 'Connection Pool Size', type: 'number', default: 1 },
     ],
   },
-  databricks: {
+  redshift: {
+    fields: [
+      { name: 'host', label: 'Host', type: 'text', required: true },
+      { name: 'port', label: 'Port', type: 'number', default: 5439 },
+      { name: 'database', label: 'Database', type: 'text', required: true },
+      { name: 'username', label: 'Username', type: 'text', required: true },
+      { name: 'password', label: 'Password', type: 'secret' },
+      { name: 'db_schema', label: 'Schema', type: 'text' },
+      { name: 'connection_pool_size', label: 'Connection Pool Size', type: 'number', default: 1 },
+    ],
+  },
+  excel: {
     fields: [
       {
-        name: 'host',
-        label: 'Host',
+        name: 'file',
+        label: 'Excel File',
         type: 'text',
         required: true,
-        placeholder: 'adb-xxx.azuredatabricks.net',
+        placeholder: 'path/to/data.xlsx',
       },
-      { name: 'http_path', label: 'HTTP Path', type: 'text', required: true },
-      { name: 'database', label: 'Database/Catalog', type: 'text', required: true },
-      { name: 'access_token', label: 'Access Token', type: 'password', required: true },
-      { name: 'db_schema', label: 'Schema', type: 'text' },
     ],
   },
 };
@@ -151,10 +158,100 @@ export const getSourceSchema = type => {
   return SOURCE_SCHEMAS[type] || { fields: [] };
 };
 
-const SourceFormGenerator = ({ sourceType, values, onChange, errors = {} }) => {
+// Wraps a secret's name in the reference syntax visivo resolves at query time
+// (query/patterns.py ENV_VAR_CONTEXT_PATTERN), and reads one back out.
+const SECRET_REF = /^\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}$/;
+export const toSecretRef = key => `\${env.${key}}`;
+export const secretRefName = value => (value || '').match(SECRET_REF)?.[1] ?? '';
+
+// A secret-bearing field in cloud: pick one of the account's secret names, or
+// name a new one. Either way the config stores a ${env.NAME} reference — the
+// value itself lives in the secret store and is injected into the run.
+const SecretField = ({ field, value, onChange, secretKeys, error }) => {
+  const selected = secretRefName(value);
+  const naming = !!value && !selected;
+  const [addingNew, setAddingNew] = useState(naming);
+
+  const choose = key => {
+    if (key === '__new__') {
+      setAddingNew(true);
+      onChange(field.name, '');
+      return;
+    }
+    setAddingNew(false);
+    onChange(field.name, key ? toSecretRef(key) : '');
+  };
+
+  return (
+    <div>
+      <label htmlFor={field.name} className="block text-sm text-gray-700 mb-1">
+        {field.label}
+        {field.required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {addingNew ? (
+        <input
+          type="text"
+          autoFocus
+          id={field.name}
+          name={field.name}
+          value={selected}
+          onChange={e => onChange(field.name, e.target.value ? toSecretRef(e.target.value) : '')}
+          placeholder="SECRET_NAME"
+          className={`block w-full px-3 py-2.5 text-sm rounded-md border focus:outline-none focus:ring-2 ${
+            error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
+          }`}
+        />
+      ) : (
+        <select
+          id={field.name}
+          name={field.name}
+          value={selected}
+          onChange={e => choose(e.target.value)}
+          className={`block w-full px-3 py-2.5 text-sm rounded-md border focus:outline-none focus:ring-2 ${
+            error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
+          }`}
+        >
+          <option value="">Select a secret…</option>
+          {secretKeys.map(key => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
+          <option value="__new__">New secret…</option>
+        </select>
+      )}
+      <p className="mt-1 text-xs text-gray-500">
+        Stored as a reference. Add the value under account settings — it is never
+        saved with the project.
+      </p>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+    </div>
+  );
+};
+
+const SourceFormGenerator = ({
+  sourceType,
+  values,
+  onChange,
+  errors = {},
+  // Both come from the server's project capabilities, so the form never asks
+  // "am I in cloud?". Under `visivo serve` secretsRequired is false and a
+  // secret field stays a masked text box — the password never leaves the
+  // author's machine. In cloud it is true: the value must be a ${env.NAME}
+  // reference (core rejects a literal on write), so the field becomes a picker
+  // over the account's secret names.
+  secretsRequired = false,
+  secretKeys = [],
+}) => {
   const schema = getSourceSchema(sourceType);
-  // Track visibility state for password fields
+  // Track visibility state for masked fields
   const [visibleFields, setVisibleFields] = useState({});
+
+  const isSecretPicker = field => field.type === 'secret' && secretsRequired;
+  // Locally a secret field is still a masked text box — a real password here
+  // never leaves the machine.
+  const isMasked = field =>
+    (field.type === 'secret' && !secretsRequired) || field.type === 'password';
 
   const handleFieldChange = (fieldName, value) => {
     onChange({
@@ -173,7 +270,7 @@ const SourceFormGenerator = ({ sourceType, values, onChange, errors = {} }) => {
   // Determine the input type for a field
   const getInputType = field => {
     if (field.type === 'number') return 'number';
-    if (field.type === 'password') {
+    if (field.type === 'secret' || field.type === 'password') {
       return visibleFields[field.name] ? 'text' : 'password';
     }
     return 'text';
@@ -197,7 +294,17 @@ const SourceFormGenerator = ({ sourceType, values, onChange, errors = {} }) => {
 
   return (
     <div className="space-y-4">
-      {schema.fields.map(field => (
+      {schema.fields.map(field =>
+        isSecretPicker(field) ? (
+          <SecretField
+            key={field.name}
+            field={field}
+            value={values[field.name] ?? ''}
+            onChange={handleFieldChange}
+            secretKeys={secretKeys}
+            error={errors[field.name]}
+          />
+        ) : (
         <div key={field.name} className="relative">
           <input
             type={getInputType(field)}
@@ -219,7 +326,7 @@ const SourceFormGenerator = ({ sourceType, values, onChange, errors = {} }) => {
               bg-white rounded-md border appearance-none
               focus:outline-none focus:ring-2 focus:border-primary-500
               peer placeholder-transparent
-              ${field.type === 'password' ? 'pr-10' : ''}
+              ${isMasked(field) ? 'pr-10' : ''}
               ${
                 errors[field.name]
                   ? 'border-red-500 focus:ring-red-500'
@@ -227,7 +334,7 @@ const SourceFormGenerator = ({ sourceType, values, onChange, errors = {} }) => {
               }
             `}
           />
-          {field.type === 'password' && (
+          {isMasked(field) && (
             <button
               type="button"
               onClick={() => toggleFieldVisibility(field.name)}
@@ -253,7 +360,8 @@ const SourceFormGenerator = ({ sourceType, values, onChange, errors = {} }) => {
           </label>
           {errors[field.name] && <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>}
         </div>
-      ))}
+        )
+      )}
     </div>
   );
 };

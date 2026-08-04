@@ -243,6 +243,8 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
             values={formValues}
             onChange={setFormValues}
             errors={errors}
+            secretsRequired={capabilities?.secrets_required ?? false}
+            secretKeys={capabilities?.secret_keys ?? []}
           />
 
           {/* Seeds — only on source types the backend accepts them on */}

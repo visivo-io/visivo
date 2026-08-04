@@ -1,8 +1,25 @@
+import os
+
+from dotenv import dotenv_values
 from flask import jsonify
 from visivo.logger.logger import Logger
 from visivo.server.managers.object_manager import ObjectStatus
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.user_config import get_run_trigger
+
+
+def _env_file_keys(flask_app):
+    """Names defined in the project's ``.env``, for the source form to offer.
+
+    Deliberately not ``os.environ`` — that is every variable the serve process
+    inherited, which is both noise and more than the browser needs to know.
+    Missing file is normal and answers an empty list.
+    """
+    working_dir = getattr(flask_app, "_working_dir", None) or "."
+    try:
+        return sorted(k for k in dotenv_values(os.path.join(working_dir, ".env")) if k)
+    except OSError:
+        return []
 
 
 def register_commit_views(app, flask_app, output_dir):
@@ -202,6 +219,18 @@ def register_commit_views(app, flask_app, output_dir):
                 # Cloud reports False and the client hides what cannot work
                 # there.
                 "local_filesystem": True,
+                # A password typed here never leaves the author's machine, so a
+                # literal is fine and the form keeps its plain text input. Cloud
+                # answers True and demands a ${env.NAME} reference instead.
+                "secrets_required": False,
+                # The env-var names available to reference, so the form can
+                # offer them in both places. Locally that means the project's
+                # own .env — NOT os.environ, which would hand the browser every
+                # variable the process happens to carry. ``dotenv_values``
+                # parses the file without touching the environment (load_dotenv
+                # already merged it, so there is no way to tell afterwards which
+                # names came from where). Names only, never values.
+                "secret_keys": _env_file_keys(flask_app),
             }
         )
 
