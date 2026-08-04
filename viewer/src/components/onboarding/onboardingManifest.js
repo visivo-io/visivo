@@ -13,14 +13,15 @@
  *                 entries from `includes:` not just top-level YAML).
  *   models      — modelStore.models (same caveat).
  *   insights    — insightStore.insights.
- *   dashboards  — dashboardStore items if present, else fall back to
- *                 project.project_json.dashboards.
+ *   dashboards  — dashboardStore items if present, else the envelope's
+ *                 project.dashboard_count.
  *   persisted   — the parsed onboarding state from localStorage
  *                 (role / path / source_connected / cloud_connected /
  *                 deployed_at / visited_project_route / ...).
  *
- * Why not just project.project_json.{models,insights}? Because top-level
- * `models:` is empty when the user organizes their YAML through includes,
+ * Why the dedicated stores rather than counts off the project envelope?
+ * Because top-level `models:` is empty when the user organizes YAML through
+ * includes,
  * which is the recommended pattern. The dedicated stores fetch the
  * fully-resolved lists from the server.
  *
@@ -49,7 +50,7 @@ export const CHECKLIST_ITEMS = [
     weight: 10,
     predicate: ({ project, sources, persisted }) =>
       (sources?.length ?? 0) > 0 ||
-      (project?.project_json?.sources?.length ?? 0) > 0 ||
+      (project?.source_count ?? 0) > 0 ||
       !!persisted.source_connected,
   },
   {

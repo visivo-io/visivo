@@ -95,7 +95,7 @@ export const handleTabShortcut = (e, store, { mac = isMacPlatform() } = {}) => {
   if (key === 't') {
     e.preventDefault();
     const project = store.project;
-    const projectName = project?.project_json?.name || project?.name || 'project';
+    const projectName = project?.name || 'project';
     if (store.openWorkspaceTab) {
       store.openWorkspaceTab({
         id: `project:${projectName}`,

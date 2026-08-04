@@ -261,7 +261,7 @@ const TabStrip = () => {
   // early return would otherwise hide the `+` affordance on every fresh visit.
   const safeTabs = tabs || [];
 
-  const projectName = project?.project_json?.name || project?.name || 'project';
+  const projectName = project?.name || 'project';
 
   // The + affordance (and Cmd/Ctrl+T) opens the Workspace's "empty tab" — the
   // Project destination's Home. `openWorkspaceTab` routes a `project`-typed

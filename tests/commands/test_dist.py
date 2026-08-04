@@ -82,7 +82,13 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
         data = json.load(project_json)
         assert "id" in data
         assert "created_at" in data
-        assert "project_json" in data
+        # The bundle ships the same envelope the server serves, not the
+        # whole dereferenced project tree.
+        assert "project_json" not in data
+        assert data["name"] == project.name
+        assert "defaults" in data["config"]
+        assert "dashboard_count" in data
+        assert "source_count" in data
 
 
 def test_dist_errors_without_data(setup_project, output_dir, dist_dir):

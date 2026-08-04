@@ -28,12 +28,21 @@ def register_data_views(app, flask_app, output_dir):
 
     @app.route("/api/project/")
     def projects_api():
+        # The canonical whole-project envelope: {id, name, status, config}.
+        # It used to carry the entire dereferenced project as ``project_json``
+        # and every consumer dug through that blob. The fields below are what
+        # they actually wanted — ``config.defaults`` nested the way the viewer
+        # reads it (it was flat here, so the nested read silently missed and
+        # fell through to the blob), plus the two counts and the directory the
+        # onboarding flow needs. Resource lists come from their own endpoints.
         project_data = json.loads(flask_app._project_json)
         return {
             "id": "id",
             "name": flask_app._project.name,
-            "project_json": project_data,
-            "config": project_data.get("defaults", {}),
+            "project_dir": flask_app._project.project_dir or "",
+            "config": {"defaults": project_data.get("defaults", {})},
+            "dashboard_count": len(project_data.get("dashboards") or []),
+            "source_count": len(project_data.get("sources") or []),
             "created_at": datetime.datetime.now().isoformat(),
             # Local serve is always an editable draft. This is the one signal
             # the viewer's run-poller (useRunPolling) gates on, so reporting it

@@ -58,12 +58,20 @@ def dist_phase(
             dist_dashboards_dir = os.path.join(dist_dir, "data", "dashboards")
             shutil.copytree(dashboards_dir, dist_dashboards_dir, dirs_exist_ok=True)
         created_at = (datetime.datetime.now().isoformat(),)
+        # Same canonical envelope the server serves at /api/project/, so the
+        # viewer reads one shape in both modes. ``project_json`` below stays a
+        # local variable — it drives the per-dashboard files written further
+        # down — but the whole blob is no longer shipped in the bundle.
         with open(f"{dist_dir}/data/project.json", "w") as f:
             f.write(
                 json.dumps(
                     {
                         "id": "id",
-                        "project_json": project_json,
+                        "name": project_json["name"],
+                        "project_dir": project_json.get("project_dir") or "",
+                        "config": {"defaults": project_json.get("defaults", {})},
+                        "dashboard_count": len(project_json.get("dashboards") or []),
+                        "source_count": len(project_json.get("sources") or []),
                         "created_at": created_at,
                     }
                 )

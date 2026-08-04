@@ -56,7 +56,7 @@ beforeEach(() => {
 
   useStore.mockImplementation(selector =>
     selector({
-      project: { project_json: { project_dir: '/tmp/demo', name: 'Quickstart Visivo' } },
+      project: { project_dir: '/tmp/demo', name: 'Quickstart Visivo' },
       fetchProject: jest.fn().mockResolvedValue(undefined),
     })
   );

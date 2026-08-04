@@ -65,7 +65,7 @@ const Workspace = () => {
   // (ExplorationPane) — fetched here so it's populated before either mounts.
   const fetchExplorations = useStore(s => s.fetchExplorations);
 
-  const projectName = project?.project_json?.name || project?.name || 'project';
+  const projectName = project?.name || 'project';
 
   // Fire every collection load when the workspace mounts. Per-slice fetches
   // record their own errors; the `.catch` just guards against an unhandled
