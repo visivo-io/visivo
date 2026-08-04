@@ -395,7 +395,7 @@ export function applySliceExpression(value, sliceExpr) {
  * @param {Object} inputs - Optional map of input names to input objects with accessor values
  * @returns {Array<Object>} Array of Plotly trace objects
  */
-export function chartDataFromInsightData(insightsData, inputs = {}) {
+export function chartDataFromInsightData(insightsData, inputs = {}, typeOverrides = {}) {
   if (!insightsData) {
     return [];
   }
@@ -408,6 +408,14 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
     }
 
     const { data, props_mapping, split_key, type, static_props, props_slices } = insightObj;
+
+    // Presentation (the chart type) comes from the LIVE authored config when the
+    // caller supplies it, falling back to the type baked into the built artifact.
+    // A config-only edit (bar→scatter) skips the runner, so the artifact keeps
+    // the old type; overlaying the live value makes that edit render instantly
+    // instead of waiting for the next data run (VIS-1023). Data — props_mapping,
+    // query results, files — still comes from the artifact.
+    const effectiveType = typeOverrides[insightName] ?? type;
 
     if (!data || data.length === 0) {
       continue;
@@ -443,9 +451,9 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
           deepMergeStaticProps(traceProps, processedStaticProps);
         }
 
-        // Set trace type from insight definition
-        if (type) {
-          traceProps.type = type;
+        // Set trace type from the live config (or artifact fallback)
+        if (effectiveType) {
+          traceProps.type = effectiveType;
         }
 
         // Set trace name to split value only (for cleaner legend display)
@@ -467,9 +475,9 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
         deepMergeStaticProps(traceProps, processedStaticProps);
       }
 
-      // Set trace type from insight definition
-      if (type) {
-        traceProps.type = type;
+      // Set trace type from the live config (or artifact fallback)
+      if (effectiveType) {
+        traceProps.type = effectiveType;
       }
 
       traceProps.name = insightName;
