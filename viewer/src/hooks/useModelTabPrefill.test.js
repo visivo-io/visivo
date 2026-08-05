@@ -13,9 +13,11 @@ import { renderHook, waitFor } from '@testing-library/react';
 import useStore from '../stores/store';
 import { useModelTabPrefill } from './useModelTabPrefill';
 import { processModel } from './useModelsData';
+import { fetchModelJobs } from '../api/modelJobs';
 import { useDuckDB } from '../contexts/DuckDBContext';
 
 jest.mock('./useModelsData', () => ({ processModel: jest.fn() }));
+jest.mock('../api/modelJobs', () => ({ fetchModelJobs: jest.fn() }));
 jest.mock('../contexts/DuckDBContext', () => ({ useDuckDB: jest.fn() }));
 
 const DB = { fake: 'duckdb' };
@@ -24,11 +26,16 @@ const ROWS = [
   { id: 2, region: 'west' },
 ];
 
+// A built model-job for whatever name the hook asks about.
+const jobFor = name => ({ name, name_hash: `h_${name}`, signed_data_file_url: `signed/${name}` });
+
 let setModelQueryResult;
 
 beforeEach(() => {
   jest.clearAllMocks();
   useDuckDB.mockReturnValue(DB);
+  // Default: the model has built data. Tests that need "not built" override.
+  fetchModelJobs.mockImplementation(names => Promise.resolve([jobFor(names[0])]));
   setModelQueryResult = jest.fn();
   useStore.setState({ setModelQueryResult });
 });
@@ -59,20 +66,31 @@ it('never overwrites a tab that already has a result', async () => {
 });
 
 it('asks for a given model at most once, even across tab switches', async () => {
-  processModel.mockResolvedValue({ orders: { name: 'orders', data: [] } });
+  processModel.mockResolvedValue({ orders: { name: 'orders', data: ROWS } });
 
   const { rerender } = renderHook(({ name }) => useModelTabPrefill(name, false), {
     initialProps: { name: 'orders' },
   });
-  await waitFor(() => expect(processModel).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(fetchModelJobs).toHaveBeenCalledTimes(1));
 
   rerender({ name: 'users' });
+  await waitFor(() => expect(fetchModelJobs).toHaveBeenCalledTimes(2));
   rerender({ name: 'orders' });
+  await Promise.resolve();
 
-  await waitFor(() => expect(processModel).toHaveBeenCalledTimes(2));
-  // 'orders' was not re-fetched on the way back — a model with no parquet
-  // would otherwise 404 on every tab switch.
-  expect(processModel.mock.calls.map(c => c[1])).toEqual(['orders', 'users']);
+  // 'orders' is not asked for again on the way back — a model with no parquet
+  // would otherwise 404 on every tab switch. Each name is fetched at most once.
+  expect(fetchModelJobs.mock.calls.map(c => c[0][0])).toEqual(['orders', 'users']);
+});
+
+it('leaves the grid empty when the model has no built data', async () => {
+  fetchModelJobs.mockResolvedValueOnce([]); // nothing built for this model
+
+  renderHook(() => useModelTabPrefill('orders', false));
+
+  await waitFor(() => expect(fetchModelJobs).toHaveBeenCalled());
+  expect(processModel).not.toHaveBeenCalled();
+  expect(setModelQueryResult).not.toHaveBeenCalled();
 });
 
 it('does not prefill when the model has no rows', async () => {

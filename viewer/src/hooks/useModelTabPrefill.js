@@ -3,6 +3,7 @@ import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { DEFAULT_RUN_ID } from '../constants';
 import { processModel } from './useModelsData';
+import { fetchModelJobs } from '../api/modelJobs';
 
 /**
  * Fill a freshly-opened model tab with the LAST RUN's rows.
@@ -27,9 +28,10 @@ import { processModel } from './useModelsData';
  * - A failure is silent. This is a convenience; the Run button is the
  *   authoritative path and reports its own errors.
  *
- * LOCAL-ONLY in practice: it reads `/api/files/<name>/<run_id>/`, which core
- * deliberately does not serve (see core's urls.py). In cloud the fetch fails and
- * the tab stays empty, exactly as it does today.
+ * Loads the last build through the model-jobs endpoint (fetchModelJobs →
+ * signed_data_file_url), the same path the dashboard uses, so it works in the
+ * cloud as well as locally. A model that has no built data just leaves the grid
+ * empty.
  *
  * @param {string|null} modelName - the active model tab, or null
  * @param {boolean} hasResult - whether that tab already has rows
@@ -37,6 +39,7 @@ import { processModel } from './useModelsData';
 export const useModelTabPrefill = (modelName, hasResult) => {
   const db = useDuckDB();
   const setModelQueryResult = useStore(state => state.setModelQueryResult);
+  const projectId = useStore(state => state.project?.id);
   // Names already attempted this mount — keyed so switching tabs back and forth
   // doesn't re-fetch, and a model with no parquet is asked for exactly once.
   const attemptedRef = useRef(new Set());
@@ -50,7 +53,12 @@ export const useModelTabPrefill = (modelName, hasResult) => {
 
     (async () => {
       try {
-        const loaded = await processModel(db, modelName, DEFAULT_RUN_ID);
+        const jobs = await fetchModelJobs([modelName], { projectId, runId: DEFAULT_RUN_ID });
+        const job = jobs.find(j => j.name === modelName);
+        // No built data for this model — leave the grid empty.
+        if (cancelled || !job?.signed_data_file_url) return;
+
+        const loaded = await processModel(db, job);
         const entry = loaded?.[modelName];
         const rows = entry?.data;
         // `processModel` reports a per-model failure as an `error` key rather
@@ -73,7 +81,7 @@ export const useModelTabPrefill = (modelName, hasResult) => {
     return () => {
       cancelled = true;
     };
-  }, [db, modelName, hasResult, setModelQueryResult]);
+  }, [db, modelName, hasResult, setModelQueryResult, projectId]);
 };
 
 export default useModelTabPrefill;
