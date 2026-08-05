@@ -105,6 +105,48 @@ describe('chartDataFromInsightData', () => {
     expect(result[0].y).toEqual([10, 20]);
   });
 
+  it('overrides the artifact type with the live config type (VIS-1023)', () => {
+    // A config-only edit (bar→scatter) skips the runner, so the artifact keeps
+    // `bar`; the live type must win so the edit renders without a run.
+    const insight = {
+      'My Insight': {
+        data: [{ x_val: 1, y_val: 10 }],
+        props_mapping: { 'props.x': 'x_val', 'props.y': 'y_val' },
+        type: 'bar',
+      },
+    };
+    const result = chartDataFromInsightData(insight, {}, { 'My Insight': 'scatter' });
+    expect(result[0].type).toBe('scatter');
+  });
+
+  it('falls back to the artifact type when no override is supplied for the insight', () => {
+    const insight = {
+      'My Insight': {
+        data: [{ x_val: 1, y_val: 10 }],
+        props_mapping: { 'props.x': 'x_val', 'props.y': 'y_val' },
+        type: 'bar',
+      },
+    };
+    expect(chartDataFromInsightData(insight, {}, { Other: 'scatter' })[0].type).toBe('bar');
+  });
+
+  it('applies the type override on the split branch too', () => {
+    const insight = {
+      'Split Insight': {
+        data: [
+          { x_val: 1, y_val: 10, cohort: 'A' },
+          { x_val: 2, y_val: 20, cohort: 'B' },
+        ],
+        props_mapping: { 'props.x': 'x_val', 'props.y': 'y_val' },
+        split_key: 'cohort',
+        type: 'bar',
+      },
+    };
+    const result = chartDataFromInsightData(insight, {}, { 'Split Insight': 'scatter' });
+    expect(result.length).toBe(2);
+    expect(result.every(t => t.type === 'scatter')).toBe(true);
+  });
+
   it('skips insights without data or props_mapping', () => {
     const data = {
       invalid: {

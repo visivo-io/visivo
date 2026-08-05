@@ -55,6 +55,24 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     })
   );
 
+  // Chart type from the LIVE authored config, so a config-only edit (bar→scatter)
+  // that skipped the runner renders immediately instead of showing the artifact's
+  // stale type (VIS-1023). Keyed by name, shallow-compared so it only re-renders
+  // when a type actually changes; empty in views that don't load insight configs,
+  // where chartDataFromInsightData falls back to the artifact type.
+  const insightTypeOverrides = useStore(
+    useShallow(state => {
+      if (!chartInsightNames.length) return {};
+      const overrides = {};
+      for (const name of chartInsightNames) {
+        const config = state.insights?.find(i => i.name === name)?.config;
+        const type = config?.props?.type ?? config?.type;
+        if (type) overrides[name] = type;
+      }
+      return overrides;
+    })
+  );
+
   const hasAllInsightData = useMemo(() => {
     if (!chartInsightNames.length) return true;
     return chartInsightNames.every(
@@ -73,14 +91,14 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
 
     if (hasInsights && insightsData) {
       const insightNames = chart.insights.map(i => i.name);
-      const insightData = chartDataFromInsightData(insightsData, inputs);
+      const insightData = chartDataFromInsightData(insightsData, inputs, insightTypeOverrides);
       data.push(
         ...insightData.filter(insight => insightNames.includes(insight.sourceInsight || insight.name))
       );
     }
 
     return data;
-  }, [insightsData, chart.insights, hasInsights, inputs]);
+  }, [insightsData, chart.insights, hasInsights, inputs, insightTypeOverrides]);
 
   const layoutRef = useMemo(() => {
     const l = structuredClone(chart.layout ? chart.layout : {});

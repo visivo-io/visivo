@@ -251,6 +251,12 @@ const Dashboard = ({
   // Input store
   const fetchInputs = useStore(state => state.fetchInputs);
   const getInputByName = useStore(state => state.getInputByName);
+
+  // Insight configs — the /project route doesn't otherwise load them, but Chart
+  // reads the live authored `type` from here so a config-only edit renders
+  // without a run (VIS-1023). Optional so older/other shells that don't provide
+  // the slice don't break.
+  const fetchInsights = useStore(state => state.fetchInsights);
   // Bumped by the run poller when a draft run succeeds; threaded into the data
   // hooks as a cacheKey so they refetch + force-reload the rebuilt output.
   const runDataVersion = useStore(state => state.runDataVersion);
@@ -300,7 +306,8 @@ const Dashboard = ({
     fetchMarkdowns();
     fetchInputs();
     fetchModels();
-  }, [fetchCharts, fetchTables, fetchMarkdowns, fetchInputs, fetchModels]);
+    fetchInsights?.();
+  }, [fetchCharts, fetchTables, fetchMarkdowns, fetchInputs, fetchModels, fetchInsights]);
 
   // Stable membership test against the fetched model registry. A name not present
   // in the registry is treated as a non-model (insight), preserving the prior
