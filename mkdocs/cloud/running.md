@@ -48,11 +48,10 @@ run, and a fat image would slow every run's start, so it stays slim.
 
     A hosted CI runner like GitHub's `ubuntu-latest` ships ~30&nbsp;GB of
     languages and tools. The Visivo runner installs only what a project run
-    needs, so if your seed shells out to something exotic, install it in the seed
-    command itself (e.g. `pip install`, `npm i`, or `apt` are not preinstalled
-    beyond the list above). The
-    [runner image](https://github.com/visivo-io/core/blob/main/runner/Dockerfile)
-    is the source of truth for the exact manifest.
+    needs, so if your seed shells out to something beyond the list above, install
+    it in the seed command itself (`pip install`, `npm i`, `apt-get install`).
+    Treat the versions above as the current baseline — they track the runner
+    image and can move forward as it is updated.
 
 ## Isolation and credentials
 
