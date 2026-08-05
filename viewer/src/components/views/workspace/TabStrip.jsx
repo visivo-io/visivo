@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/core';
 import { PiX, PiPlus, PiWarningCircle, PiCaretLeft, PiCaretRight } from 'react-icons/pi';
 import useStore from '../../../stores/store';
-import { getTypeIcon } from '../common/objectTypeConfigs';
+import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
 import TabCloseConfirmDialog from './TabCloseConfirmDialog';
 
 // Tab icons resolve entirely through `objectTypeConfigs.js` — the TabStrip
@@ -84,7 +84,15 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose, isDragging }) => {
         title={displayName}
         data-testid={`workspace-tab-select-${tab.id}`}
       >
-        <TypeIcon aria-hidden="true" style={{ fontSize: 14 }} className="shrink-0 text-gray-500" />
+        {/* Matches the Library rows: the type's colour marks the active tab,
+            gray the rest. Every live tab type has an objectTypeConfigs entry
+            and getTypeColors falls back to gray anyway, so no guard needed. */}
+        <TypeIcon
+          aria-hidden="true"
+          style={{ fontSize: 14 }}
+          data-testid={`workspace-tab-icon-${tab.id}`}
+          className={`shrink-0 ${active ? getTypeColors(tab.type).text : 'text-gray-500'}`}
+        />
         <span className="truncate">{displayName}</span>
         {explorationDeletedRemotely ? (
           <PiWarningCircle

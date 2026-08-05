@@ -346,6 +346,43 @@ describe('LibraryRow', () => {
     expect(row).toHaveAttribute('data-selected', 'true');
   });
 
+  // VIS-1135. Icon colour is the selection signal. Before this, every
+  // LibraryRow icon was `text-gray-500` regardless of state and only the
+  // source row was permanently type-coloured — so colour told you nothing
+  // about what was selected. These assert the rule at the row level; the
+  // colours themselves come from objectTypeConfigs (chart=pink, model=amber)
+  // and are pinned by objectTypeConfigs.test.js.
+  test('a selected row paints its icon in the type colour', () => {
+    render(withDnd(<LibraryRow obj={CHART} selected />));
+    expect(screen.getByTestId('library-row-chart-waterfall-icon')).toHaveClass(
+      getTypeByValue('chart').colors.text
+    );
+  });
+
+  test('an unselected row paints its icon gray, whatever its type', () => {
+    render(withDnd(<LibraryRow obj={CHART} />));
+    const icon = screen.getByTestId('library-row-chart-waterfall-icon');
+    expect(icon).toHaveClass('text-gray-500');
+    expect(icon).not.toHaveClass(getTypeByValue('chart').colors.text);
+  });
+
+  test('the type colour follows the type, not a single accent', () => {
+    // Guards against "selected" being wired to one hard-coded colour: a
+    // selected model must be amber, not the chart's pink.
+    render(withDnd(<LibraryRow obj={MODEL} selected />));
+    expect(screen.getByTestId('library-row-model-monthly_revenue-icon')).toHaveClass(
+      getTypeByValue('model').colors.text
+    );
+  });
+
+  test('an unknown type still gets a gray icon rather than crashing', () => {
+    // getTypeDef falls back to DEFAULT_COLORS, so `def.colors.text` is always
+    // defined — this is the guard on that fallback being reachable.
+    const odd = { id: 'weird:thing', type: 'weird', name: 'thing' };
+    render(withDnd(<LibraryRow obj={odd} />));
+    expect(screen.getByTestId('library-row-weird-thing-icon')).toHaveClass('text-gray-500');
+  });
+
   test('non-droppable rows do not expose the drag handle dots', () => {
     render(withDnd(<LibraryRow obj={MODEL} draggable={false} />));
     expect(

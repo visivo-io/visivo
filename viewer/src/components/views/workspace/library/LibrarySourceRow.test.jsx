@@ -325,6 +325,39 @@ describe('LibrarySourceRow', () => {
     expect(row).toHaveAttribute('data-selected', 'true');
   });
 
+  // VIS-1135. This row was the reported bug: its icon was painted
+  // `sourceColors.text` when UNSELECTED and mulberry when selected — the exact
+  // inverse of the rule, and the only always-coloured icon in the nav.
+  test('an unselected source icon is gray, not orange', () => {
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+    const icon = screen.getByTestId('library-row-source-warehouse-icon');
+    expect(icon).toHaveClass('text-gray-500');
+    expect(icon).not.toHaveClass('text-orange-800');
+  });
+
+  test('a selected source icon carries the source type colour', () => {
+    render(withDnd(<LibrarySourceRow obj={SOURCE} selected onClick={jest.fn()} />));
+    expect(screen.getByTestId('library-row-source-warehouse-icon')).toHaveClass('text-orange-800');
+  });
+
+  test('a drill-down table glyph is gray — these are database tables, not Table objects', async () => {
+    // It used to wear the `table` widget type's fuchsia, which claimed a
+    // kinship that does not exist: dragging one yields `type:'sourceTable'`.
+    // It was also the only coloured glyph in a tree whose column rows
+    // (ColumnRow) are already gray.
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: 'warehouse', has_cached_schema: true },
+    ]);
+    fetchSourceSchema.mockResolvedValue(ORDERS_4);
+
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
+
+    const glyph = await screen.findByTestId('library-source-table-warehouse-orders-icon');
+    expect(glyph).toHaveClass('text-gray-400');
+    expect(glyph).not.toHaveClass('text-fuchsia-800');
+  });
+
   test('a click never fires onClick while a drag is in progress (isDragging)', () => {
     useDraggable.mockReturnValueOnce({
       transform: null,

@@ -775,6 +775,61 @@ describe('Library', () => {
     }
   });
 
+  // VIS-1135. The reveal effect read `workspaceActiveObject` off `getState()`
+  // with only `setLibrarySubsectionCollapsed` in its dep array, so it fired
+  // ONCE on mount. Selecting a row while the rail was already open — the
+  // common case — never scrolled to it, and never opened a collapsed
+  // subsection. These pin the post-mount behaviour.
+  test('changing the selection AFTER mount scrolls the newly active row into view', async () => {
+    const scrollIntoView = jest.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      seedStore({
+        workspaceActiveObject: { type: 'model', name: 'monthly_revenue' },
+        workspaceActiveTabId: 'model:monthly_revenue',
+        libraryCollapsedSubsections: { ...ALL_EXPANDED },
+      });
+      renderLibrary();
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+      scrollIntoView.mockClear();
+
+      // The gesture the old effect ignored: pick a different object while the
+      // Library stays mounted.
+      act(() => {
+        useStore.setState({
+          workspaceActiveObject: { type: 'chart', name: 'waterfall' },
+          workspaceActiveTabId: 'chart:waterfall',
+        });
+      });
+
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' }));
+    } finally {
+      delete window.HTMLElement.prototype.scrollIntoView;
+    }
+  });
+
+  test('a post-mount selection also expands its collapsed subsection', async () => {
+    seedStore({
+      workspaceActiveObject: { type: 'model', name: 'monthly_revenue' },
+      workspaceActiveTabId: 'model:monthly_revenue',
+      libraryCollapsedSubsections: { ...ALL_EXPANDED, chart: true },
+    });
+    renderLibrary();
+    expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(true);
+
+    act(() => {
+      useStore.setState({
+        workspaceActiveObject: { type: 'chart', name: 'waterfall' },
+        workspaceActiveTabId: 'chart:waterfall',
+      });
+    });
+
+    await waitFor(() =>
+      expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(false)
+    );
+    expect(screen.getByTestId('library-row-chart-waterfall')).toBeInTheDocument();
+  });
+
   // The old per-surface Project/Explorer/Semantic buttons (and their tests)
   // are retired — the destination switcher now lives in `<ViewSwitcher>`,
   // pinned atop the Library (Explore 2.0 Phase 0, `ViewSwitcher.test.jsx`).
