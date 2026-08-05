@@ -34,6 +34,17 @@ jobs:
       - name: Deploy
         id: deploy
         if: github.event.pull_request.merged == false && github.event.pull_request.closed_at == null
+        # Not secrets — these are the passwords of the throwaway local
+        # containers the integration project points at, and they are already
+        # in plain sight in docker-compose.yml and .rwx/test_visivo.yml. They
+        # live here rather than in the project YAML because core rejects a
+        # source config carrying a literal credential: it would be stored in
+        # Postgres, returned by GET /api/sources/, and copied into every
+        # branch. The CLI also masks a literal SecretStr as `**********`, so
+        # the value that reached the server was never the real one anyway.
+        env:
+          CLICKHOUSE_PASSWORD: clickhouse
+          LOCAL_SNOWFLAKE_PASSWORD: test
         run: |
           python -m pip install git+https://github.com/visivo-io/visivo.git@${{ env.visivo_version }}
           cd ${{ env.yml_location }}

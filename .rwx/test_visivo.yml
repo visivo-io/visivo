@@ -313,6 +313,10 @@ tasks:
     env:
       STACKTRACE: true
       DEBUG: true
+      # Matches CLICKHOUSE_PASSWORD on the container above. The project YAML
+      # holds ${env.CLICKHOUSE_PASSWORD} rather than the literal because core
+      # rejects a source config carrying a credential.
+      CLICKHOUSE_PASSWORD: clickhouse
     filter:
       - dist
       - test-projects/integration
@@ -333,6 +337,9 @@ tasks:
     env:
       STACKTRACE: true
       DEBUG: true
+      # fakesnow accepts any credentials; this only has to be non-empty so the
+      # project's ${env.LOCAL_SNOWFLAKE_PASSWORD} resolves.
+      LOCAL_SNOWFLAKE_PASSWORD: test
     filter:
       - dist
       - test-projects/integration
