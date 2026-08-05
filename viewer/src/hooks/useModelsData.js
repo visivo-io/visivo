@@ -3,44 +3,35 @@ import { useQuery } from '@tanstack/react-query';
 import { loadInsightParquetFiles, runDuckDBQuery } from '../duckdb/queries';
 import { processArrowResult } from '../duckdb/resultProcessing';
 import { useDuckDB } from '../contexts/DuckDBContext';
-import { alphaHash } from '../utils/alphaHash';
+import { fetchModelJobs } from '../api/modelJobs';
 import useStore from '../stores/store';
 import { DEFAULT_RUN_ID } from '../constants';
 
 /**
- * Process a single model: load parquet, execute SELECT *, return results.
+ * Load one model's built parquet into DuckDB from its model-job and return the
+ * rows. The job (from ``fetchModelJobs``) carries ``name_hash`` — the DuckDB
+ * table identifier — and ``signed_data_file_url``, the same file contract
+ * insights use, so this loads through the identical path and works in the cloud
+ * (a server-signed URL) as well as locally.
+ *
+ * Exported so the model-tab prefill can reuse the exact load path.
  *
  * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db - DuckDB instance
- * @param {string} modelName - Model name
- * @param {string} runId - Run ID for file path
+ * @param {{name: string, name_hash: string, signed_data_file_url: string}} job
  * @returns {Promise<Object>} Processed model data keyed by model name
  */
-// Exported so the model-tab prefill can reuse the exact load path the
-// dashboard uses — same URL contract, same hashing, same DuckDB table.
-export const processModel = async (db, modelName, runId, force = false) => {
+export const processModel = async (db, job, force = false) => {
   try {
-    // ``name_hash`` is the DuckDB table identifier (clean, valid SQL
-    // identifier — model names may contain whitespace/punctuation).
-    // The URL itself uses the *name*, matching visivo Flask's
-    // /api/files/<name>/<run_id>/ contract and core's FileByHash.
-    const nameHash = alphaHash(modelName);
-    const files = [
-      {
-        name_hash: nameHash,
-        signed_data_file_url: `/api/files/${encodeURIComponent(modelName)}/${runId}/`,
-      },
-    ];
+    const files = [{ name_hash: job.name_hash, signed_data_file_url: job.signed_data_file_url }];
 
     await loadInsightParquetFiles(db, files, force);
 
-    const sql = `SELECT * FROM "${nameHash}"`;
-    const result = await runDuckDBQuery(db, sql, 3, 1000);
-    const processedRows = processArrowResult(result);
+    const result = await runDuckDBQuery(db, `SELECT * FROM "${job.name_hash}"`, 3, 1000);
 
     return {
-      [modelName]: {
-        name: modelName,
-        data: processedRows,
+      [job.name]: {
+        name: job.name,
+        data: processArrowResult(result),
         files,
         props_mapping: {},
         error: null,
@@ -48,8 +39,8 @@ export const processModel = async (db, modelName, runId, force = false) => {
     };
   } catch (error) {
     return {
-      [modelName]: {
-        name: modelName,
+      [job.name]: {
+        name: job.name,
         data: [],
         files: [],
         props_mapping: {},
@@ -60,10 +51,12 @@ export const processModel = async (db, modelName, runId, force = false) => {
 };
 
 /**
- * Hook for loading model data directly into DuckDB.
+ * Hook for loading model data into DuckDB.
  *
- * Unlike useInsightsData which fetches insight metadata from the server,
- * this hook computes the model hash client-side and loads the parquet directly.
+ * Mirrors useInsightsData: it asks the server (via fetchModelJobs → the
+ * /api/model-jobs/ endpoint) which of the named models have built data and for
+ * their signed_data_file_url, then loads those parquets. A model with no built
+ * data is simply absent from the response.
  *
  * @param {string} projectId - Project ID
  * @param {string[]} modelNames - Array of model names to load
@@ -86,8 +79,23 @@ export const useModelsData = (
   const queryFn = useCallback(async () => {
     if (!db || !stableModelNames.length) return {};
 
+    // One request for all of them — the endpoint returns a job (with its
+    // signed_data_file_url) for each model that has built data. project_id
+    // scopes it in the cloud, where many projects share a model name.
+    const jobs = await fetchModelJobs(stableModelNames, { runId, projectId });
+    const jobByName = new Map(jobs.map(job => [job.name, job]));
+
     const results = await Promise.allSettled(
-      stableModelNames.map(name => processModel(db, name, runId, Boolean(cacheKey)))
+      stableModelNames.map(name => {
+        const job = jobByName.get(name);
+        if (!job || !job.signed_data_file_url) {
+          // Not built yet — an empty, non-error entry, as before.
+          return Promise.resolve({
+            [name]: { name, data: [], files: [], props_mapping: {}, error: null },
+          });
+        }
+        return processModel(db, job, Boolean(cacheKey));
+      })
     );
 
     const mergedData = {};
@@ -105,7 +113,7 @@ export const useModelsData = (
     });
 
     return mergedData;
-  }, [db, stableModelNames, runId, cacheKey]);
+  }, [db, stableModelNames, runId, cacheKey, projectId]);
 
   const queryEnabled = !!projectId && stableModelNames.length > 0 && !!db && !!runId;
 
