@@ -11,7 +11,7 @@ import {
   PiPlusCircle,
 } from 'react-icons/pi';
 import { ObjectStatus } from '../../../../stores/store';
-import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
+import { getTypeByValue, getTypeIcon, DEFAULT_COLORS } from '../../common/objectTypeConfigs';
 import LibraryRowFlipPopover from './LibraryRowFlipPopover';
 
 /**
@@ -94,6 +94,10 @@ export const getTypeDef = type => {
     icon: cfg?.icon || getTypeIcon(type),
     label: cfg?.singularLabel || type,
     plural: cfg?.label || `${type}s`,
+    // The shared rainbow palette, surfaced here so rows never reach for
+    // `getTypeColors` themselves — this file is the Library's one source of
+    // per-type metadata (see the note above DROPPABLE_TYPES).
+    colors: cfg?.colors || DEFAULT_COLORS,
     droppable,
     creatable: CREATABLE_TYPES.includes(type),
     accent: droppable ? 'mulberry' : 'teal',
@@ -412,10 +416,15 @@ const LibraryRow = ({
           {draggable && <PiDotsSix className="h-3 w-3" />}
         </span>
         <StatusDot status={obj.status} />
+        {/* Icon colour is the selection signal: the type's own colour when
+            selected, gray otherwise. Previously every row was gray and only
+            the source row was permanently type-coloured, so colour said
+            nothing about what was selected. */}
         <Icon
           aria-hidden="true"
           style={{ fontSize: 14 }}
-          className={`shrink-0 ${selected ? 'text-primary-600' : 'text-gray-500'}`}
+          data-testid={`${tid}-icon`}
+          className={`shrink-0 ${selected ? def.colors.text : 'text-gray-500'}`}
         />
         <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
           {obj.name}

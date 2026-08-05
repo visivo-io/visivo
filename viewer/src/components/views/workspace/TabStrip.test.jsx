@@ -9,6 +9,7 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import TabStrip, { tabDragEndToReorder } from './TabStrip';
 import useStore from '../../../stores/store';
+import { getTypeByValue } from '../common/objectTypeConfigs';
 
 const sampleTabs = [
   { id: 'project:analytics-platform', type: 'project', name: 'analytics-platform' },
@@ -69,6 +70,28 @@ describe('TabStrip', () => {
     expect(
       screen.getByTestId('workspace-tab-chart:revenue_chart')
     ).toHaveAttribute('data-active', 'false');
+  });
+
+  // VIS-1135: the tab icon was `text-gray-500` unconditionally, so the strip
+  // carried no type colour at all. It now matches the Library rows — the
+  // type's colour marks the active tab, gray the rest.
+  test('the active tab paints its icon in the type colour; inactive stay gray', () => {
+    seedStore({ workspaceActiveTabId: 'chart:revenue_chart' });
+    render(<TabStrip />);
+    expect(screen.getByTestId('workspace-tab-icon-chart:revenue_chart')).toHaveClass(
+      getTypeByValue('chart').colors.text
+    );
+    const inactive = screen.getByTestId('workspace-tab-icon-dashboard:simple-dashboard');
+    expect(inactive).toHaveClass('text-gray-500');
+    expect(inactive).not.toHaveClass(getTypeByValue('dashboard').colors.text);
+  });
+
+  test('the active tab colour follows its own type, not one fixed accent', () => {
+    seedStore({ workspaceActiveTabId: 'dashboard:simple-dashboard' });
+    render(<TabStrip />);
+    expect(screen.getByTestId('workspace-tab-icon-dashboard:simple-dashboard')).toHaveClass(
+      getTypeByValue('dashboard').colors.text
+    );
   });
 
   // Explore 2.0 Phase 2: an exploration tab's STABLE identity (`tab.name`)

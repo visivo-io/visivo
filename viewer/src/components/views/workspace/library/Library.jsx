@@ -7,6 +7,7 @@ import useLibraryData from './useLibraryData';
 import useLibraryFilter from './useLibraryFilter';
 import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
+import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsStore';
 import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
 import ViewSwitcher from '../ViewSwitcher';
@@ -95,21 +96,34 @@ const Library = () => {
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
   const setLibrarySubsectionCollapsed = useStore(s => s.setLibrarySubsectionCollapsed);
 
-  // #8: when the rail expands (this Library mounts), reveal the active object's
-  // row — expand its type subsection so a selection made while the nav was
-  // minimized isn't hidden in a collapsed group, and scroll it into view. (The
-  // flat list has no section-collapse to reverse anymore.)
+  // #8: reveal the active object's row — expand its type subsection so a
+  // selection isn't hidden in a collapsed group, and scroll it into view.
+  //
+  // This used to read `workspaceActiveObject` off `getState()` with only
+  // `setLibrarySubsectionCollapsed` in the dep array, so it fired ONCE on
+  // mount and never again: selecting a row while the rail was already open
+  // never scrolled to it. Subscribing to the active object's primitives (not
+  // the object, whose identity churns on every store write) makes it track the
+  // selection. Mount is just the `null → type` transition, so the
+  // rail-expansion case it was written for still works.
+  const activeType = useStore(s => s.workspaceActiveObject?.type || null);
+  const activeName = useStore(s => s.workspaceActiveObject?.name || null);
   useEffect(() => {
-    const active = useStore.getState().workspaceActiveObject;
-    if (!active?.type) return;
-    const subType = active.type;
-    if (!LAYOUT_TYPES.includes(subType) && !DATA_TYPES.includes(subType)) return;
-    setLibrarySubsectionCollapsed(subType, false);
+    if (!activeType || !activeName) return undefined;
+    if (!LAYOUT_TYPES.includes(activeType) && !DATA_TYPES.includes(activeType)) return undefined;
+    // Only write when the subsection is actually collapsed. Now that this
+    // effect runs on every selection change (not once per mount), an
+    // unconditional call would mint a new `libraryCollapsedSubsections` object
+    // every time — re-rendering every subscriber and, because the slice is
+    // persisted, writing localStorage on each click.
+    if (isLibrarySubsectionCollapsed(useStore.getState().libraryCollapsedSubsections, activeType)) {
+      setLibrarySubsectionCollapsed(activeType, false);
+    }
     // Best-effort scroll the selected row into view once it renders.
-    requestAnimationFrame(() => {
+    const raf = requestAnimationFrame(() => {
       try {
         const el = document.querySelector(
-          `[data-testid="library-row-${subType}-${active.name}"]`
+          `[data-testid="library-row-${activeType}-${activeName}"]`
         );
         if (el && typeof el.scrollIntoView === 'function') {
           el.scrollIntoView({ block: 'nearest' });
@@ -118,7 +132,8 @@ const Library = () => {
         /* selector can't match an exotic name — the expand alone still reveals it */
       }
     });
-  }, [setLibrarySubsectionCollapsed]);
+    return () => cancelAnimationFrame(raf);
+  }, [activeType, activeName, setLibrarySubsectionCollapsed]);
 
   // The active workspace tab's id is the selected row's id — both are
   // `${type}:${name}`. Surfacing it here drives LibraryRow's mulberry-bar +

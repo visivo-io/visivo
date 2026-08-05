@@ -184,8 +184,12 @@ const ColumnRow = ({ sourceName, tableName, col }) => {
 };
 
 const TableRow = ({ sourceName, table, expandedSet, onToggle, flatColumns, loadFlatColumns }) => {
+  // The glyph SHAPE is the table icon, but not the `table` type's fuchsia: these
+  // are database tables, not Visivo Table objects, and dragging one yields
+  // `type:'sourceTable'`. Wearing the widget's colour asserted a kinship that
+  // doesn't exist — and left this glyph as the only coloured thing in a tree
+  // whose column rows are already gray.
   const TableIcon = getTypeIcon('table');
-  const tableColors = getTypeColors('table');
   const expanded = expandedSet.has(table.key);
   const cols = flatColumns?.[table.key];
   const colsLoaded = Array.isArray(cols);
@@ -219,7 +223,13 @@ const TableRow = ({ sourceName, table, expandedSet, onToggle, flatColumns, loadF
         hasCaret
         expanded={expanded}
         onToggle={handleToggle}
-        icon={<TableIcon className={`h-3 w-3 shrink-0 ${tableColors.text}`} aria-hidden="true" />}
+        icon={
+          <TableIcon
+            className="h-3 w-3 shrink-0 text-gray-400"
+            aria-hidden="true"
+            data-testid={`library-source-table-${sourceName}-${table.name}-icon`}
+          />
+        }
         name={table.name}
         meta={typeof colCount === 'number' ? `${colCount}` : null}
         draggable
@@ -476,10 +486,14 @@ const LibrarySourceRow = ({ obj, selected = false, onClick }) => {
         >
           {expanded ? <PiCaretDown className="h-3 w-3" /> : <PiCaretRight className="h-3 w-3" />}
         </button>
+        {/* Same rule as every other row (LibraryRow): the type colour means
+            "selected". This row used to be the sole exception — permanently
+            orange — which is what made colour meaningless across the nav. */}
         <SourceIcon
           aria-hidden="true"
           style={{ fontSize: 14 }}
-          className={`shrink-0 ${selected ? 'text-primary-600' : sourceColors.text}`}
+          data-testid={`${tid}-icon`}
+          className={`shrink-0 ${selected ? sourceColors.text : 'text-gray-500'}`}
         />
         <StatusDot status={obj.status} />
         <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
