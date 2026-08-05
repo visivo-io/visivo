@@ -403,13 +403,11 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
  * renders `LibraryRow` and contributes only what is genuinely source-specific:
  * a caret and the lazily-mounted drill-down beneath it.
  *
- * Phase 6c-T5 made the row body EXPAND rather than open, because an auditor
- * hunting for a column to drag found that clicking the name yanked them out of
- * their in-progress exploration. Consistency won here — every other row type
- * opens on click — but that complaint is answered rather than ignored: the
- * body click opens AND expands, and never collapses. The columns arrive from
- * the same click that opens the source, so the gesture no longer costs the
- * user their place. Collapsing stays on the caret.
+ * The row body simply selects the source, like every other row type. It used
+ * to expand instead (Phase 6c-T5), then briefly did both; expanding is now its
+ * own control in the row's action cluster, which keeps selection meaning one
+ * thing and leaves the drill-down reachable without a click that does two
+ * things at once.
  */
 const LibrarySourceRow = ({
   obj,
@@ -430,22 +428,12 @@ const LibrarySourceRow = ({
     [obj.name, toggleExpanded]
   );
 
-  // Opens like every other row, and reveals the schema on the way — but never
-  // collapses, so a second click on the name can't take the columns away.
-  const handleOpen = useCallback(
-    (o, e) => {
-      if (!expanded) toggleExpanded(o.name);
-      onClick && onClick(o, e);
-    },
-    [expanded, onClick, toggleExpanded]
-  );
-
   return (
     <LibraryRow
       obj={obj}
       selected={selected}
       draggable={draggable}
-      onClick={handleOpen}
+      onClick={onClick}
       onContextAction={onContextAction}
       canAddToExploration={canAddToExploration}
       expandable
