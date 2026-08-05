@@ -190,6 +190,13 @@ describe('ChartEditForm — insight fetch guard', () => {
   });
 });
 
+// VIS-1133: Save is disabled on an untouched edit-mode form, so tests that
+// exercise the SAVE PATH must first make a real edit. The name field is
+// orthogonal to `config.insights` / `config.layout` (it travels as its own
+// argument to onSave), so touching it leaves every config assertion intact.
+const makeDirty = () =>
+  fireEvent.change(screen.getByLabelText(/Chart Name/), { target: { value: 'edited_name' } });
+
 describe('ChartEditForm — embedded insights on save', () => {
   const embeddedInsight = { name: 'inline_insight', props: { type: 'scatter' } };
 
@@ -206,6 +213,7 @@ describe('ChartEditForm — embedded insights on save', () => {
     );
     await screen.findByText('Embedded Insights');
 
+    makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -231,12 +239,13 @@ describe('ChartEditForm — embedded insights on save', () => {
     );
     await screen.findByTestId('ref-insight-row-0');
 
+    makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const [, , config] = onSave.mock.calls[0];
-    // Order drives trace layering/legend order — an untouched save must not
-    // rewrite [embedded, ref] as [ref, embedded].
+    // Order drives trace layering/legend order — a save that never touched the
+    // insight list must not rewrite [embedded, ref] as [ref, embedded].
     expect(config.insights).toEqual([embeddedInsight, 'ref(revenue_insight)']);
   });
 });
@@ -292,6 +301,7 @@ describe('ChartEditForm — validation & save paths', () => {
     );
     await screen.findByTestId('ref-insight-row-0');
 
+    makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -302,6 +312,7 @@ describe('ChartEditForm — validation & save paths', () => {
     const onSave = jest.fn(async () => ({ success: false, error: 'chart save exploded' }));
     await renderForm({ onSave });
 
+    makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('chart save exploded')).toBeInTheDocument();

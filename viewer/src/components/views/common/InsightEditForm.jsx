@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import useFormBaseline from '../../../hooks/useFormBaseline';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -36,7 +37,7 @@ import {
  * - setIsPreviewOpen: Function to toggle the preview panel
  * - setPreviewConfig: Function to set the preview configuration in parent
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewConfig }) => {
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewConfig, onDirtyChange }) => {
   const { deleteInsight, checkCommitStatus } = useStore();
 
   // Form state - Basic fields
@@ -91,38 +92,48 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   }, [setPreviewConfig, name, insight?.name, debouncedProps, debouncedInteractions]);
 
   // Initialize form when insight changes
+  // VIS-1133: the saved insight, as form state.
+  const applyValues = useCallback(values => {
+    setName(values.name);
+    setDescription(values.description);
+    setProps(values.props);
+    setInteractions(values.interactions);
+  }, []);
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+
   useEffect(() => {
     if (insight) {
-      // Edit mode - populate from existing insight
-      setName(insight.name || '');
-
       const configToUse = insight.config;
-      setDescription(configToUse?.description || '');
-
-      // Props - the full Plotly props object (carries `.type`).
-      setProps(configToUse?.props || { type: 'scatter' });
-
-      // Interactions - each interaction has only one type (filter, split, or sort)
       const insightInteractions = configToUse?.interactions || [];
-      setInteractions(
-        insightInteractions.map(i => {
-          // Determine which type this interaction is
+      seed({
+        name: insight.name || '',
+        description: configToUse?.description || '',
+        // The full Plotly props object (carries `.type`).
+        props: configToUse?.props || { type: 'scatter' },
+        // Each interaction carries exactly one of filter / split / sort.
+        interactions: insightInteractions.map(i => {
           if (i.filter) return { type: 'filter', value: i.filter };
           if (i.split) return { type: 'split', value: i.split };
           if (i.sort) return { type: 'sort', value: i.sort };
           return { type: 'filter', value: '' }; // Default
-        })
-      );
+        }),
+      });
     } else if (isCreate) {
-      // Create mode - reset form
-      setName('');
-      setDescription('');
-      setProps({ type: 'scatter' });
-      setInteractions([]);
+      seed({ name: '', description: '', props: { type: 'scatter' }, interactions: [] });
     }
     setErrors({});
     setSaveError(null);
+    // Re-seeding on `seed` would wipe the user's in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [insight, isCreate]);
+
+  const dirty = isDirtyAgainst({ name, description, props, interactions });
+
+  // Report upward so the tab strip's unsaved dot and its guarded close reflect
+  // real edits (VIS-1133) — the rail clears it on unmount.
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -440,10 +451,23 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
           </div>
 
           <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
+            {/* VIS-1133: no modal to close in the rail, so this reverts to the
+                last saved values. Create mode (modal hosts) keeps Cancel. */}
+            <ButtonOutline
+              type="button"
+              onClick={isEditMode ? discard : onClose}
+              disabled={isEditMode && (!dirty || saving || deleting)}
+              data-testid="insight-form-discard"
+              className="text-sm"
+            >
+              {isEditMode ? 'Discard' : 'Cancel'}
             </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || (isEditMode && !dirty)}
+              className="text-sm"
+            >
               {saving ? (
                 <>
                   <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />

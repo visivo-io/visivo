@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import useFormBaseline from '../../../hooks/useFormBaseline';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -26,7 +27,7 @@ import Select from '../../common/Select';
  * - onSave: Callback after successful save
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
-const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
+const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded, onDirtyChange }) => {
   const {
     deleteTable,
     checkCommitStatus,
@@ -82,33 +83,46 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
   const isEmbeddedData = rawData && typeof rawData === 'object';
 
   // Initialize form when table changes
+  // VIS-1133: the saved table, as form state — one shape for both seeding and
+  // the dirty check, so they cannot disagree.
+  const applyValues = useCallback(values => {
+    setName(values.name);
+    setDataRef(values.dataRef);
+    setRowsPerPage(values.rowsPerPage);
+    setColumns(values.columns);
+    setRows(values.rows);
+    setValues(values.values);
+  }, []);
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+
   useEffect(() => {
     if (table) {
       const config = table.config || table;
-      setName(table.name || '');
-
       const tableData = config.data;
-      if (typeof tableData === 'string') {
-        setDataRef(parseRefValue(tableData) || '');
-      } else {
-        setDataRef('');
-      }
-
-      setRowsPerPage(config.rows_per_page || 25);
-      setColumns(config.columns || []);
-      setRows(config.rows || []);
-      setValues(config.values || []);
+      seed({
+        name: table.name || '',
+        dataRef: typeof tableData === 'string' ? parseRefValue(tableData) || '' : '',
+        rowsPerPage: config.rows_per_page || 25,
+        columns: config.columns || [],
+        rows: config.rows || [],
+        values: config.values || [],
+      });
     } else if (isCreate) {
-      setName('');
-      setDataRef('');
-      setRowsPerPage(25);
-      setColumns([]);
-      setRows([]);
-      setValues([]);
+      seed({ name: '', dataRef: '', rowsPerPage: 25, columns: [], rows: [], values: [] });
     }
     setErrors({});
     setSaveError(null);
+    // Re-seeding on `seed` would wipe the user's in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table, isCreate]);
+
+  const dirty = isDirtyAgainst({ name, dataRef, rowsPerPage, columns, rows, values });
+
+  // Report upward so the tab strip's unsaved dot and its guarded close reflect
+  // real edits (VIS-1133) — the rail clears it on unmount.
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
 
   // Blank pivot entries (the '' scaffold RefListField's Add button creates, or
   // whitespace-only edits) must never save — `columns: ['']` is not a valid
@@ -435,10 +449,23 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
           </div>
 
           <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
+            {/* VIS-1133: no modal to close in the rail, so this reverts to the
+                last saved values. Create mode (modal hosts) keeps Cancel. */}
+            <ButtonOutline
+              type="button"
+              onClick={isEditMode ? discard : onClose}
+              disabled={isEditMode && (!dirty || saving || deleting)}
+              data-testid="table-form-discard"
+              className="text-sm"
+            >
+              {isEditMode ? 'Discard' : 'Cancel'}
             </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || (isEditMode && !dirty)}
+              className="text-sm"
+            >
               {saving ? (
                 <>
                   <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />

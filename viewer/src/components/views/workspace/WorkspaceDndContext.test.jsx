@@ -1437,11 +1437,17 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
     fireEvent.click(screen.getByTestId('commit-probe'));
 
     // Generous timeout: the fallback compiles the full Dashboard $defs graph.
-    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1), { timeout: 8000 });
+    // Kept inside this test's own budget rather than well under it — at 8s the
+    // waitFor gave up first, so a busy full-suite run (where jest workers
+    // contend for CPU) failed here while the suite passed in isolation. The
+    // work is CPU-bound compilation, not a hang.
+    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1), { timeout: 12000 });
     expect(saveDashboard.mock.calls[0][1]).toBe(VALID_CONFIG);
     // Restore the warm cache for any following test.
     await preloadValidationSchema();
-  }, 15000);
+    // 30s, not 15s: the waitFor above can legitimately use 12s of that budget
+    // and the preload here is a second compile of the same graph.
+  }, 30000);
 
   test('the commit is a safe no-op without a dashboard name', () => {
     const saveDashboard = jest.fn();

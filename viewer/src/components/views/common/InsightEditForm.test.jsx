@@ -334,11 +334,17 @@ describe('InsightEditForm — edit mode', () => {
     expect(screen.getByLabelText('Split')).toHaveValue('b');
     expect(screen.getByLabelText('Sort')).toHaveValue('c DESC');
 
+    // VIS-1133: Save is disabled until something changes. Editing the
+    // description leaves props/interactions — what this test is really about —
+    // untouched, and proves the edit itself round-trips.
+    fireEvent.change(screen.getByLabelText('Description'), {
+      target: { value: 'edited description' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith('insight', 'rev', {
       name: 'rev',
-      description: 'revenue insight',
+      description: 'edited description',
       props: { type: 'bar', x: 'ref(m).x', y: 'ref(m).y' },
       // The empty fallback interaction is dropped; the rest round-trip.
       interactions: [{ filter: 'a > 1' }, { split: 'b' }, { sort: 'c DESC' }],
@@ -448,12 +454,19 @@ describe('InsightEditForm — embedded insights', () => {
 
     // Saving skips name validation and omits `name` from the config (the
     // synthetic embedded name still rides along as the routing arg).
+    fireEvent.change(screen.getByLabelText('Description'), {
+      target: { value: 'edited' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const [type, name, config] = onSave.mock.calls[0];
     expect(type).toBe('insight');
     expect(name).toBe('inline');
-    expect(config).toEqual({ props: { type: 'scatter', x: 'ref(m).x' } });
+    expect(config).toEqual({
+      description: 'edited',
+      props: { type: 'scatter', x: 'ref(m).x' },
+    });
+    // The point of the test: still nameless, even after an edit.
     expect(config).not.toHaveProperty('name');
   });
 });

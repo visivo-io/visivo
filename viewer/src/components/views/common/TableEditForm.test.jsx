@@ -54,6 +54,16 @@ const renderForm = (props = {}) =>
     />
   );
 
+// VIS-1133: Save is disabled on an untouched edit-mode form. The Table NAME
+// field is disabled in edit mode, so rows-per-page is the lever here — the
+// assertions below move with it rather than being weakened.
+// Rows Per Page is a react-select, so it is driven with selectEvent (the same
+// way the create-mode tests below already do it), not fireEvent.change.
+const makeDirty = async (value = '50') =>
+  selectEvent.select(screen.getByLabelText('Rows Per Page'), value, {
+    container: document.body,
+  });
+
 describe('TableEditForm — fetch guard', () => {
   test('fetches insights/models only once when the project has zero of them', () => {
     const fetchInsights = jest.fn();
@@ -100,6 +110,9 @@ describe('TableEditForm — data ref + pivot conflict', () => {
     expect(screen.getByText('Data Source')).toBeInTheDocument();
     expect(screen.getByText('Pivot Configuration')).toBeInTheDocument();
 
+    // Dirty the form so Save is reachable — the conflict it must report is
+    // untouched, so this still tests validation and not the gate.
+    await makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
@@ -316,12 +329,13 @@ describe('TableEditForm — save payloads', () => {
     expect(screen.getByText('Data Source')).toBeInTheDocument();
     expect(screen.queryByText('Pivot Configuration')).not.toBeInTheDocument();
 
+    await makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith('table', 't1', {
       name: 't1',
-      rows_per_page: 100,
+      rows_per_page: 50,
       data: 'ref(rev_insight)',
     });
   });
@@ -391,12 +405,13 @@ describe('TableEditForm — embedded data source', () => {
     const onSave = jest.fn(async () => ({ success: true }));
     renderForm({ table: embeddedTable, isCreate: false, onSave });
 
+    await makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith('table', 't2', {
       name: 't2',
-      rows_per_page: 25,
+      rows_per_page: 50,
       data: rawData,
     });
   });

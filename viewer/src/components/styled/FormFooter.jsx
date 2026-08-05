@@ -22,6 +22,8 @@ import { Button, ButtonOutline } from './Button';
  * - deleteConfirm: Delete confirmation state object { show, message, onConfirm, onCancel, deleting }
  * - saveLabel: Custom save button label (default: "Save")
  * - cancelLabel: Custom cancel button label (default: "Cancel")
+ * - saveDisabled / cancelDisabled: gate the buttons on form state (VIS-1133 —
+ *   in the rail these carry "nothing to save / nothing to discard")
  * - leftActions: Optional additional buttons/elements to render on the left side
  */
 const FormFooter = ({
@@ -33,6 +35,8 @@ const FormFooter = ({
   deleteConfirm,
   saveLabel = 'Save',
   cancelLabel = 'Cancel',
+  saveDisabled = false,
+  cancelDisabled = false,
   leftActions,
   // VIS-993 auto-save mode: persistence is debounced through useRecordSave,
   // so the footer renders NO Cancel/Save buttons — just Delete plus whatever
@@ -88,10 +92,22 @@ const FormFooter = ({
           </div>
         ) : (
           <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onCancel} className="text-sm">
+            <ButtonOutline
+              type="button"
+              onClick={onCancel}
+              disabled={cancelDisabled}
+              data-testid="form-footer-cancel"
+              className="text-sm"
+            >
               {cancelLabel}
             </ButtonOutline>
-            <Button type="button" onClick={onSave} disabled={saving} className="text-sm">
+            <Button
+              type="button"
+              onClick={onSave}
+              disabled={saving || saveDisabled}
+              data-testid="form-footer-save"
+              className="text-sm"
+            >
               {saving ? (
                 <>
                   <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />

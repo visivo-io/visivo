@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiPencil, PiPlus } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
@@ -657,7 +657,11 @@ const INLINE_LEAF_FORMS = {
   source: (record, common) => <SourceEditForm source={record} {...common} />,
   insight: (record, common) => <InsightEditForm insight={record} {...common} />,
   model: (record, common) => (
-    <ModelEditForm model={record} onSave={common.onSave} onCancel={common.onClose} />
+    <ModelEditForm
+      model={record}
+      onSave={common.onSave}
+      onDirtyChange={common.onDirtyChange}
+    />
   ),
   // VIS-996: dimension/metric/relation render through the generic schema-driven
   // leaf form — field sets come from the published $defs, not bespoke JSX.
@@ -687,9 +691,30 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   // the dashboard-structure forms.
   const [leafSaveStatus, setLeafSaveStatus] = useState(undefined);
 
-  // No modal to close in the rail, so the forms' close/cancel/embedded-nav
-  // callbacks are no-ops.
+  // No modal to close in the rail. This used to be handed to the forms as
+  // `onClose`/`onCancel`, which made their Cancel button a literal no-op —
+  // VIS-1133. The forms now branch on their own `isCreate`/`isEditMode` and
+  // render Discard (revert to last saved) in the rail, so nothing here needs a
+  // close handler; `onGoBack`/`onNavigateToEmbedded` still have no rail
+  // meaning and keep the stub.
   const noop = useCallback(() => {}, []);
+
+  // VIS-1133: lift the active form's dirtiness to the tab strip. The dot
+  // (`TabStrip`) and the guarded close (`requestCloseWorkspaceTab`) were both
+  // already built for this, but nothing produced the signal for these types.
+  //
+  // Cleared on unmount / record change on purpose: this panel is a SINGLE
+  // instance bound to the active object, with no per-tab form cache, so
+  // switching tabs destroys the draft. A dot that outlived the form would
+  // advertise unsaved work that has already been dropped, and the close
+  // confirm would fire over nothing.
+  const setWorkspaceTabDirty = useStore(s => s.setWorkspaceTabDirty);
+  const [leafDirty, setLeafDirty] = useState(false);
+  useEffect(() => {
+    const tabId = `${type}:${name}`;
+    setWorkspaceTabDirty(tabId, leafDirty);
+    return () => setWorkspaceTabDirty(tabId, false);
+  }, [type, name, leafDirty, setWorkspaceTabDirty]);
 
   // Standalone (non-embedded) save through the unified optimistic + debounced
   // backbone — one `useRecordSave` instance per open record (VIS-1018 step 3,
@@ -753,11 +778,14 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   if (renderForm) {
     const common = {
       isCreate: false,
-      onClose: noop,
+      // Deliberately no `onClose`: there is no modal here, and handing the
+      // forms a no-op is what left Cancel dead for so long. In edit mode they
+      // render Discard and revert locally instead.
       onSave: handleObjectSave,
       onNavigateToEmbedded: noop,
       onGoBack: noop,
       onSaveStatusChange: setLeafSaveStatus,
+      onDirtyChange: setLeafDirty,
     };
     return (
       <>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import useFormBaseline from '../../../hooks/useFormBaseline';
 import Editor from '@monaco-editor/react';
 import useStore from '../../../stores/store';
 import RefSelector from './RefSelector';
@@ -22,7 +23,7 @@ import InlineFieldEditor from './InlineFieldEditor';
  * - onNavigateToEmbedded: Callback(type, object, options) to navigate to an embedded object
  *   options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
  */
-const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
+const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyChange }) => {
   // Which inline row is open for editing (null = none). These used to be links
   // into a separate editor that nothing ever wired up, so the fields had no way
   // to be filled in.
@@ -49,28 +50,43 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
   const hasEmbeddedSource = model?.config?.source && typeof model.config.source === 'object';
 
   // Initialize form with model data
+  // VIS-1133: the saved model, as form state. `expandedDimension` /
+  // `expandedMetric` are UI-only and deliberately excluded — which row is open
+  // is not an unsaved change.
+  const applyValues = useCallback(values => {
+    setName(values.name);
+    setSql(values.sql);
+    setSource(values.source);
+    setDimensions(values.dimensions);
+    setMetrics(values.metrics);
+  }, []);
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+
   useEffect(() => {
     if (model) {
-      setName(model.name || '');
-      setSql(model.config?.sql || '');
-      // Source comes from API - could be ref() string, embedded object, or null
-      // Only set source state if it's a string reference, not embedded
-      if (typeof model.config?.source === 'string') {
-        setSource(model.config.source);
-      } else {
-        setSource(null);
-      }
-      // Initialize inline dimensions and metrics
-      setDimensions(model.config?.dimensions || []);
-      setMetrics(model.config?.metrics || []);
+      seed({
+        name: model.name || '',
+        sql: model.config?.sql || '',
+        // Source may be a ref() string, an embedded object, or null — only a
+        // string reference belongs in form state.
+        source: typeof model.config?.source === 'string' ? model.config.source : null,
+        dimensions: model.config?.dimensions || [],
+        metrics: model.config?.metrics || [],
+      });
     } else {
-      setName('');
-      setSql('');
-      setSource(null);
-      setDimensions([]);
-      setMetrics([]);
+      seed({ name: '', sql: '', source: null, dimensions: [], metrics: [] });
     }
+    // Re-seeding on `seed` would wipe the user's in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model]);
+
+  const dirty = isDirtyAgainst({ name, sql, source, dimensions, metrics });
+
+  // Report upward so the tab strip's unsaved dot and its guarded close reflect
+  // real edits (VIS-1133) — the rail clears it on unmount.
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
 
   // Fetch sources on mount to populate RefSelector
   useEffect(() => {
@@ -430,15 +446,22 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
         </div>
 
         <div className="flex gap-3">
+          {/* VIS-1133: no modal to close in the rail, so this reverts to the
+              last saved values. Create mode keeps a real Cancel. */}
           <ButtonOutline
             type="button"
-            onClick={onCancel}
-            disabled={saving || deleting}
+            onClick={isCreate ? onCancel : discard}
+            disabled={saving || deleting || (!isCreate && !dirty)}
+            data-testid="model-form-discard"
             className="text-sm"
           >
-            Cancel
+            {isCreate ? 'Cancel' : 'Discard'}
           </ButtonOutline>
-          <Button type="submit" disabled={!isValid || saving || deleting} className="text-sm">
+          <Button
+            type="submit"
+            disabled={!isValid || saving || deleting || (!isCreate && !dirty)}
+            className="text-sm"
+          >
             {saving ? (
               <>
                 <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />

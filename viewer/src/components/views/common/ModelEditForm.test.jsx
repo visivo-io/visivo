@@ -70,6 +70,12 @@ beforeEach(() => {
   mockState.checkCommitStatus.mockResolvedValue({ success: true });
 });
 
+// VIS-1133: Save is disabled on an untouched edit-mode form. The model NAME is
+// disabled in edit mode, so SQL is the lever — assertions move with it rather
+// than being weakened.
+const makeDirty = (value = 'select * from orders where region is not null') =>
+  fireEvent.change(screen.getByLabelText('code'), { target: { value } });
+
 describe('ModelEditForm — create mode', () => {
   it('fetches sources on mount and disables Save until name and sql are provided', () => {
     render(<ModelEditForm model={null} onSave={jest.fn()} onCancel={jest.fn()} />);
@@ -153,12 +159,13 @@ describe('ModelEditForm — edit mode initialization and save', () => {
     const model = editModel();
     const onSave = jest.fn(async () => ({ success: true }));
     render(<ModelEditForm model={model} onSave={onSave} onCancel={jest.fn()} />);
+    makeDirty();
     clickSave();
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith('model', 'orders', {
       name: 'orders',
-      sql: 'select * from orders',
+      sql: 'select * from orders where region is not null',
       source: 'ref(warehouse)',
       dimensions: [{ name: 'region', expression: 'region' }],
       metrics: [{ name: 'revenue', expression: 'sum(amount)' }],
@@ -236,6 +243,7 @@ describe('ModelEditForm — embedded source', () => {
     const model = embeddedModel();
     const onSave = jest.fn(async () => ({ success: true }));
     render(<ModelEditForm model={model} onSave={onSave} onCancel={jest.fn()} />);
+    makeDirty();
     clickSave();
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -433,5 +441,96 @@ describe('ModelEditForm — cancel', () => {
     render(<ModelEditForm model={null} onSave={jest.fn()} onCancel={onCancel} />);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+// VIS-1133. In the persistent rail there is no modal to close, so the footer's
+// left button reverts instead — and both buttons stay inert until something
+// actually changed. Create mode (a modal host) keeps a real Cancel.
+describe('ModelEditForm — Discard (edit mode)', () => {
+  it('labels the button Discard in edit mode and Cancel in create mode', () => {
+    const { unmount } = render(
+      <ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />
+    );
+    expect(screen.getByTestId('model-form-discard')).toHaveTextContent('Discard');
+    unmount();
+
+    render(<ModelEditForm model={null} onSave={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.getByTestId('model-form-discard')).toHaveTextContent('Cancel');
+  });
+
+  it('disables Save and Discard on an untouched form', () => {
+    render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.getByTestId('model-form-discard')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
+  it('enables both once a field changes, and Discard puts it back', () => {
+    render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
+
+    makeDirty('select 1');
+    expect(screen.getByLabelText('code')).toHaveValue('select 1');
+    expect(screen.getByTestId('model-form-discard')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('model-form-discard'));
+
+    expect(screen.getByLabelText('code')).toHaveValue('select * from orders');
+    // Back to clean, so both go inert again.
+    expect(screen.getByTestId('model-form-discard')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
+  it('restores inline dimensions and metrics too, not just scalar fields', () => {
+    // These are arrays rebuilt on every render — reference comparison would
+    // have reported the form permanently dirty and made Discard a no-op.
+    render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.getByRole('button', { name: /region/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+    expect(screen.getByTestId('model-form-discard')).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('model-form-discard'));
+
+    expect(screen.queryByTestId('inline-dimension-editor')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /region/ })).toBeInTheDocument();
+  });
+
+  it('a saved edit clears dirty — the form does not stay stuck', () => {
+    // The baseline advances when the record prop changes identity, which is
+    // exactly what useRecordSave's optimistic write does after a save. Without
+    // it, Save would light up forever and Discard would offer to undo
+    // already-committed work.
+    const { rerender } = render(
+      <ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />
+    );
+    makeDirty('select 1');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+
+    const saved = editModel();
+    saved.config.sql = 'select 1';
+    rerender(<ModelEditForm model={saved} onSave={jest.fn()} onCancel={jest.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByTestId('model-form-discard')).toBeDisabled();
+  });
+
+  it('reports dirtiness upward so the tab strip can show its unsaved dot', () => {
+    const onDirtyChange = jest.fn();
+    render(
+      <ModelEditForm
+        model={editModel()}
+        onSave={jest.fn()}
+        onCancel={jest.fn()}
+        onDirtyChange={onDirtyChange}
+      />
+    );
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+
+    makeDirty('select 1');
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.click(screen.getByTestId('model-form-discard'));
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
   });
 });

@@ -101,8 +101,25 @@ const stubForm = (testid, prop) => ({
 // save routes through the unified `useRecordSave` backbone (VIS-1018 step 3).
 jest.mock('../common/ChartEditForm', () => ({
   __esModule: true,
-  default: ({ chart, onSave }) => (
+  default: ({ chart, onSave, onDirtyChange, onClose }) => (
     <div data-testid="chart-edit-form-stub">
+      <span data-testid="chart-stub-onclose">{onClose ? 'present' : 'absent'}</span>
+      {/* VIS-1133: the real form reports dirtiness up so the tab strip's dot
+          and its guarded close reflect actual edits. */}
+      <button
+        type="button"
+        data-testid="chart-stub-dirty"
+        onClick={() => onDirtyChange?.(true)}
+      >
+        dirty
+      </button>
+      <button
+        type="button"
+        data-testid="chart-stub-clean"
+        onClick={() => onDirtyChange?.(false)}
+      >
+        clean
+      </button>
       {`chart-edit-form-stub:${chart?.name || 'none'}`}
       {/* The config must be SCHEMA-VALID (Chart forbids unknown properties) or
           the VIS-993 validation gate blocks the save this test asserts. */}
@@ -896,6 +913,66 @@ describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {
     // And the store collection was updated OPTIMISTICALLY before the round-trip.
     const entry = useStore.getState().charts.find(c => c.name === 'rev_chart');
     expect((entry.config || entry).layout.title.text).toBe('Edited');
+  });
+});
+
+// ── VIS-1133: the rail no longer hands the forms a no-op close callback, and
+// it lifts their dirtiness to the tab strip ──────────────────────────────────
+describe('RightRailEditPanel leaf dirty wiring (VIS-1133)', () => {
+  const seedChartTab = () =>
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: { title: 'Old' } }],
+      workspaceTabs: [{ id: 'chart:rev_chart', type: 'chart', name: 'rev_chart' }],
+      workspaceActiveTabId: 'chart:rev_chart',
+    });
+
+  const dirtyOf = id =>
+    useStore.getState().workspaceTabs.find(t => t.id === id)?.dirty;
+
+  test('a dirty leaf form marks its tab dirty', () => {
+    seedChartTab();
+    renderPanel();
+    expect(dirtyOf('chart:rev_chart')).toBeFalsy();
+
+    fireEvent.click(screen.getByTestId('chart-stub-dirty'));
+
+    expect(dirtyOf('chart:rev_chart')).toBe(true);
+  });
+
+  test('going clean again clears the dot', () => {
+    seedChartTab();
+    renderPanel();
+    fireEvent.click(screen.getByTestId('chart-stub-dirty'));
+    expect(dirtyOf('chart:rev_chart')).toBe(true);
+
+    fireEvent.click(screen.getByTestId('chart-stub-clean'));
+
+    expect(dirtyOf('chart:rev_chart')).toBe(false);
+  });
+
+  test('unmounting clears the dot, because the draft dies with the form', () => {
+    // This panel is a SINGLE instance bound to the active object — there is no
+    // per-tab form cache, so switching tabs destroys the local draft. A dot
+    // that outlived the form would advertise unsaved work that is already
+    // gone, and the close confirm would fire over nothing.
+    seedChartTab();
+    const { unmount } = renderPanel();
+    fireEvent.click(screen.getByTestId('chart-stub-dirty'));
+    expect(dirtyOf('chart:rev_chart')).toBe(true);
+
+    unmount();
+
+    expect(dirtyOf('chart:rev_chart')).toBe(false);
+  });
+
+  test('the forms are no longer handed a no-op onClose', () => {
+    // The original bug: `onClose` was `() => {}`, so every form's Cancel did
+    // nothing. Passing NOTHING is what lets a form tell "I am in a modal" from
+    // "I am in the rail" and render Discard instead.
+    seedChartTab();
+    renderPanel();
+    expect(screen.getByTestId('chart-stub-onclose')).toHaveTextContent('absent');
   });
 });
 

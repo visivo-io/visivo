@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
+import useFormBaseline from '../../../hooks/useFormBaseline';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -29,7 +30,7 @@ import useRecordSave from '../../../hooks/useRecordSave';
  * - onSave: Callback after successful save
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
-const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
+const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded, onDirtyChange }) => {
   const { deleteChart, checkCommitStatus, insights: storeInsights, fetchInsights } = useStore();
 
   // Form state
@@ -161,32 +162,44 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     }
   };
 
+  // VIS-1133: the values that constitute "the saved chart", as form state.
+  // Kept as a pure function so the seeding effect and the dirty check agree by
+  // construction rather than by inspection.
+  const applyValues = useCallback(values => {
+    setName(values.name);
+    setInsights(values.insights);
+    setLayoutValues(values.layoutValues);
+  }, []);
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+
   // Initialize form when chart changes
   useEffect(() => {
     if (chart) {
       // Edit mode - populate from existing chart
-      setName(chart.name || '');
-
-      // Extract insight refs (strings only, not embedded objects)
       const chartInsights = chart.config?.insights || chart.insights || [];
-      setInsights(
-        chartInsights
-          .filter(i => typeof i === 'string')
-          .map(i => parseRefValue(i))
-      );
-
-      // Layout as object
-      const layout = chart.config?.layout || chart.layout || {};
-      setLayoutValues(layout);
+      seed({
+        name: chart.name || '',
+        // Insight refs only (strings), not embedded objects.
+        insights: chartInsights.filter(i => typeof i === 'string').map(i => parseRefValue(i)),
+        layoutValues: chart.config?.layout || chart.layout || {},
+      });
     } else if (isCreate) {
-      // Create mode - reset form
-      setName('');
-      setInsights([]);
-      setLayoutValues({});
+      seed({ name: '', insights: [], layoutValues: {} });
     }
     setErrors({});
     setSaveError(null);
+    // `seed` is stable per `applyValues`; re-running on it would re-seed the
+    // form mid-edit and silently discard the user's changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chart, isCreate]);
+
+  const dirty = isDirtyAgainst({ name, insights, layoutValues });
+
+  // Report upward so the tab strip's unsaved dot and its guarded close reflect
+  // real edits (VIS-1133) — the rail clears it on unmount.
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
 
   // Build the options for the insight props picker: every ref insight by name,
   // plus an entry per embedded insight. Keeps a stable identity so the picker
@@ -597,10 +610,24 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
           </div>
 
           <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
+            {/* VIS-1133: in the rail there is no modal to close, so this
+                button reverts to the last saved values instead. In create mode
+                (the onboarding modal) it stays a real Cancel. */}
+            <ButtonOutline
+              type="button"
+              onClick={isEditMode ? discard : onClose}
+              disabled={isEditMode && (!dirty || saving || deleting)}
+              data-testid="chart-form-discard"
+              className="text-sm"
+            >
+              {isEditMode ? 'Discard' : 'Cancel'}
             </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || (isEditMode && !dirty)}
+              className="text-sm"
+            >
               {saving ? (
                 <>
                   <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
