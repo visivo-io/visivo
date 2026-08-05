@@ -137,6 +137,7 @@ nav:
   - Cloud:
       - Overview: cloud/index.md
       - Deploy & Stages: cloud/deploy-and-stages.md
+      - Running: cloud/running.md
       - Hosting & Sharing: cloud/hosting-and-sharing.md
       - Teams & Roles: cloud/teams-and-roles.md
       - Authentication: cloud/authentication.md
