@@ -1,27 +1,32 @@
 # Running in the Cloud
 
-When you deploy or commit a project, Visivo Cloud **runs it for you** — it
-executes your models against your sources, builds the insight and input data,
-and publishes the result. This page covers how that run works, what software the
-run environment ships, and the isolation model around it, so you know what your
-project code can rely on.
+When you edit a project in the **cloud editor**, Visivo Cloud **runs it for
+you** — it executes your models against your sources, builds the insight and
+input data, and publishes the result when you commit. This page covers how that
+run works, what software the run environment ships, and the isolation model
+around it, so you know what your project code can rely on.
 
-## From commit to live
+## The cloud run loop
 
 A cloud run is the same `visivo run` you know locally, executed on Visivo's
-infrastructure:
+infrastructure while you edit:
 
-1. **You commit** — from the cloud editor, or by pushing with
-   [`visivo deploy`](deploy-and-stages.md).
-2. **Visivo assembles your project** from its stored resources and starts a run.
-3. **The runner executes it** — models query your sources, seeds run their
-   commands, and the insight/input data is built.
-4. **Artifacts are published** — the new version goes
+1. **You edit** in the cloud editor — each change is saved to a working draft.
+2. **Visivo runs the draft** — it assembles your project and builds the data:
+   models query your sources, seeds run their commands, and the insight and input
+   data is produced. This happens as you work, not just at the end.
+3. **You commit** — the built version goes
    [live at its URL](hosting-and-sharing.md) with fresh data and thumbnails.
 
-Full runs happen on **commit**. While you're editing, cheap schema and
-reference validation runs continuously, so you get feedback without waiting on a
-warehouse.
+While you're editing, cheap schema and reference validation runs continuously
+too, so you get feedback without waiting on a warehouse.
+
+!!! note "Deploying from the CLI does not run in the cloud"
+
+    [`visivo deploy`](deploy-and-stages.md) uploads a project you have already
+    built locally with `visivo run` — the run happened on your machine, and
+    Cloud simply hosts the result. Cloud runs are for projects you edit in the
+    cloud editor; the rest of this page applies to those.
 
 ## The run environment
 
