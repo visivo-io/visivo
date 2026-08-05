@@ -216,6 +216,8 @@ const SourceEditorModal = () => {
             values={formValues}
             onChange={setFormValues}
             errors={errors}
+            secretsRequired={capabilities?.secrets_required ?? false}
+            secretKeys={capabilities?.secret_keys ?? []}
           />
 
           {/* Connection Status */}

@@ -54,6 +54,9 @@ def env():
     flask_app.project.project_file_path = "/tmp/project.yaml"
     flask_app.hot_reload_server = None
     flask_app._cached_defaults = None
+    # A real path, not a Mock: /capabilities/ joins it to find the project's
+    # .env when listing the names the source form can reference.
+    flask_app._working_dir = "/tmp"
     # A real one, not a Mock: /changes/ serializes its output, and a Mock's
     # return value isn't JSON-serializable.
     flask_app.staged_manager = StagedManager()
@@ -136,6 +139,11 @@ class TestProjectScopedContract:
         assert data["can_branch"] is False
         assert data["is_draft"] is True
         assert data["draft_id"] is None
+        # Local lets a source field hold a real password; cloud answers True
+        # and demands a ${env.NAME} reference. The form branches on this rather
+        # than on secret_keys being empty.
+        assert data["secrets_required"] is False
+        assert isinstance(data["secret_keys"], list)
 
     def test_draft_echoes_project_id(self, client):
         data = client.post("/api/projects/proj1/draft/").get_json()
