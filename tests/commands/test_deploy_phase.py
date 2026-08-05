@@ -410,6 +410,34 @@ def test_verify_run_output_ignores_an_insight_that_built_nothing(tmp_path):
         verify_run_output(project, str(tmp_path))  # does not raise
 
 
+def test_verify_run_output_rejects_a_missing_run_directory(tmp_path):
+    """The trap the user hit: `deploy` before `run`. deploy uploads what the run
+    wrote and never runs itself, so a run directory that isn't there means zero
+    data uploaded — but the per-envelope checks skip missing envelopes and the
+    deploy 'succeeds' empty. A project with insights but no run directory is that
+    trap, so it must fail loudly instead."""
+    missing_dir = os.path.join(str(tmp_path), "main")  # never created — no run happened
+    project, insight = _project_with_insight()
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[insight]):
+        with pytest.raises(click.ClickException) as exc:
+            verify_run_output(project, missing_dir)
+
+    assert "visivo run" in str(exc.value)
+
+
+def test_verify_run_output_allows_a_missing_directory_with_nothing_to_build(tmp_path):
+    """A project with no insights or inputs has no run data to upload, so an
+    absent run directory is not the trap — deploy of a markdown-only project that
+    was never run should not be forced through a pointless build."""
+    missing_dir = os.path.join(str(tmp_path), "main")
+    project = mock.Mock(inputs=[])
+    project.dag = lambda: mock.Mock()
+
+    with mock.patch("visivo.commands.deploy_phase.all_descendants_of_type", return_value=[]):
+        verify_run_output(project, missing_dir)  # does not raise
+
+
 def test_verify_run_output_stays_short_by_default(tmp_path, monkeypatch):
     """The list is diagnostic, not a to-do — the reader acts on the remedy, not
     on individual paths. Long output here reads as a wall of noise."""
