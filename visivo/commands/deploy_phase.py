@@ -888,7 +888,25 @@ def verify_run_output(project, output_dir):
     A referenced file must exist AND sit in one of the directories a collector
     searches. Existence alone would pass a stale ``target/``, where the file is
     real but sits in the ``files/`` directory nothing reads any more.
+
+    The per-envelope checks below cannot see the case that bites hardest: a run
+    directory that isn't there at all. ``deploy`` uploads what ``visivo run``
+    wrote under this directory and never runs itself, so if the directory is
+    absent every collector finds nothing, uploads nothing, and the deploy
+    reports success with zero data — exactly the silent failure this function
+    exists to prevent. A missing envelope is the run's business (an insight may
+    fail to build and ``run`` still exits 0), but a project that HAS data to
+    build with NO run directory means the run never happened. Name it.
     """
+    insights = list(all_descendants_of_type(type=Insight, dag=project.dag()))
+    inputs = list(project.inputs) if getattr(project, "inputs", None) else []
+
+    if (insights or inputs) and not os.path.isdir(output_dir):
+        raise click.ClickException(
+            f"No run output at '{output_dir}'. `visivo run` builds the data that "
+            f"`visivo deploy` uploads — run it, then deploy."
+        )
+
     searched = ("models", "insights", "inputs")
     missing = []
 
@@ -917,10 +935,10 @@ def verify_run_output(project, output_dir):
             if not any(os.path.exists(os.path.join(output_dir, d, filename)) for d in searched):
                 missing.append(f"{filename}  (referenced by {owner})")
 
-    for insight in all_descendants_of_type(type=Insight, dag=project.dag()):
+    for insight in insights:
         _check_envelope(f"insights/{insight.name}.json", f"insight '{insight.name}'")
 
-    for input_obj in project.inputs if getattr(project, "inputs", None) else []:
+    for input_obj in inputs:
         _check_envelope(f"inputs/{input_obj.name}.json", f"input '{input_obj.name}'")
 
     if not missing:
