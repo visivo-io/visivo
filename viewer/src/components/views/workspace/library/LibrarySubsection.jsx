@@ -40,6 +40,7 @@ const LibrarySubsection = ({
 }) => {
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
+  const RowComponent = typeKey === 'source' ? LibrarySourceRow : LibraryRow;
 
   // Subsections default to COLLAPSED (VIS-828): absence of a saved preference
   // reads as collapsed; an explicit `false` keeps a user-expanded subsection
@@ -100,32 +101,23 @@ const LibrarySubsection = ({
               className="flex flex-col gap-px"
               data-testid={`library-subsection-${typeKey}-rows`}
             >
-              {rows.map(obj =>
-                // Sources get the D9 source → table → column drill-down
-                // (Explore 2.0 Phase 3a) instead of the plain flat row — see
-                // LibrarySourceRow's docstring.
-                typeKey === 'source' ? (
-                  <li key={obj.id} className="relative">
-                    <LibrarySourceRow
-                      obj={obj}
-                      selected={selectedRowId === obj.id}
-                      onClick={onRowClick}
-                      onContextAction={onContextAction}
-                    />
-                  </li>
-                ) : (
-                  <li key={obj.id} className="relative">
-                    <LibraryRow
-                      obj={obj}
-                      selected={selectedRowId === obj.id}
-                      draggable={def.droppable || def.explorationDragSource}
-                      onClick={onRowClick}
-                      onContextAction={onContextAction}
-                      canAddToExploration={canAddToExploration}
-                    />
-                  </li>
-                )
-              )}
+              {rows.map(obj => (
+                // Sources render through LibrarySourceRow, which wraps this
+                // same LibraryRow and adds the D9 source → table → column
+                // drill-down. Identical prop set either way — the two used to
+                // be separate call sites, which is how the source row silently
+                // lost `onContextAction` and `canAddToExploration`.
+                <li key={obj.id} className="relative">
+                  <RowComponent
+                    obj={obj}
+                    selected={selectedRowId === obj.id}
+                    draggable={def.droppable || def.explorationDragSource}
+                    onClick={onRowClick}
+                    onContextAction={onContextAction}
+                    canAddToExploration={canAddToExploration}
+                  />
+                </li>
+              ))}
             </ul>
           )}
         </div>

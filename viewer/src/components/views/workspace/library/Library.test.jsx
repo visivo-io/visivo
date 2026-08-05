@@ -256,25 +256,37 @@ describe('Library', () => {
     });
   });
 
-  // Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
-  // navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): a source row
-  // is the ONE Data-Layer row type that does NOT delegate its body click to
-  // openWorkspaceTab anymore — clicking it expands the source's table/column
-  // drill-down in place (LibrarySourceRow's own test file covers this in
-  // depth; this pins the integration point through the full Library tree).
-  test('clicking a SOURCE row body expands it in place instead of navigating; the explicit Open button still navigates', () => {
+  // VIS-1134: a source row is no longer the one Data-Layer type whose body
+  // click behaves differently. It opens like everything else, and expands on
+  // the way so the drill-down is still one gesture away (LibrarySourceRow's
+  // own test file covers the behaviour in depth; this pins the integration
+  // point through the full Library tree).
+  test('clicking a SOURCE row body opens its tab, like every other row type', () => {
     const openWorkspaceTab = jest.fn();
     seedStore({ openWorkspaceTab });
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-row-source-local-duck'));
-    expect(openWorkspaceTab).not.toHaveBeenCalled();
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'source:local-duck',
+      type: 'source',
+      name: 'local-duck',
+    });
     expect(screen.getByTestId('library-row-source-local-duck-toggle')).toHaveAttribute(
       'aria-expanded',
       'true'
     );
+  });
 
-    fireEvent.click(screen.getByTestId('library-row-source-local-duck-open'));
-    expect(openWorkspaceTab).toHaveBeenCalledWith({
+  test('a source row reaches the same context actions as any other row', () => {
+    // `onContextAction` was already being passed to the source row by
+    // LibrarySubsection — the old component just never accepted it, so the
+    // whole menu was dead for sources.
+    const openWorkspaceTabBackground = jest.fn();
+    seedStore({ openWorkspaceTabBackground });
+    renderLibrary();
+    fireEvent.contextMenu(screen.getByTestId('library-row-source-local-duck'));
+    fireEvent.click(screen.getByText('Open in new tab'));
+    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
       id: 'source:local-duck',
       type: 'source',
       name: 'local-duck',
