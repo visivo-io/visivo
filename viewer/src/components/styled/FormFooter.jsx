@@ -51,7 +51,12 @@ const FormFooter = ({
         <div className="px-4 py-3 bg-highlight-50 border-b border-highlight-200">
           <p className="text-sm text-highlight-700 mb-2">{deleteConfirm.message}</p>
           <div className="flex gap-2">
+            {/* type="button" on both: a <button> inside a <form> defaults to
+                submit, so confirming a delete also fired the form's save. Only
+                ModelEditForm wraps this footer in a <form>, which is why it
+                took until then to show up. */}
             <button
+              type="button"
               onClick={deleteConfirm.onCancel}
               disabled={deleteConfirm.deleting}
               className="px-3 py-1 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
@@ -59,6 +64,7 @@ const FormFooter = ({
               Cancel
             </button>
             <button
+              type="button"
               onClick={deleteConfirm.onConfirm}
               disabled={deleteConfirm.deleting}
               className="px-3 py-1 text-sm text-white bg-highlight-600 rounded hover:bg-highlight-700 disabled:opacity-50"

@@ -37,7 +37,7 @@ jest.mock('./RefSelector', () => ({
 }));
 
 const setName = value =>
-  fireEvent.change(screen.getByLabelText('Name'), { target: { value } });
+  fireEvent.change(screen.getByLabelText(/Model Name/), { target: { value } });
 const setSql = value =>
   fireEvent.change(screen.getByLabelText('code'), { target: { value } });
 const clickSave = () => fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -147,8 +147,8 @@ describe('ModelEditForm — create mode', () => {
 describe('ModelEditForm — edit mode initialization and save', () => {
   it('initializes fields from the model and locks the name', () => {
     render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
-    expect(screen.getByLabelText('Name')).toHaveValue('orders');
-    expect(screen.getByLabelText('Name')).toBeDisabled();
+    expect(screen.getByLabelText(/Model Name/)).toHaveValue('orders');
+    expect(screen.getByLabelText(/Model Name/)).toBeDisabled();
     expect(screen.getByLabelText('code')).toHaveValue('select * from orders');
     expect(screen.getByTestId('ref-selector')).toHaveValue('ref(warehouse)');
     expect(screen.getByRole('button', { name: /region/ })).toBeInTheDocument();
@@ -176,11 +176,11 @@ describe('ModelEditForm — edit mode initialization and save', () => {
     const { rerender } = render(
       <ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />
     );
-    expect(screen.getByLabelText('Name')).toHaveValue('orders');
+    expect(screen.getByLabelText(/Model Name/)).toHaveValue('orders');
 
     rerender(<ModelEditForm model={null} onSave={jest.fn()} onCancel={jest.fn()} />);
-    expect(screen.getByLabelText('Name')).toHaveValue('');
-    expect(screen.getByLabelText('Name')).toBeEnabled();
+    expect(screen.getByLabelText(/Model Name/)).toHaveValue('');
+    expect(screen.getByLabelText(/Model Name/)).toBeEnabled();
     expect(screen.getByLabelText('code')).toHaveValue('');
   });
 });
@@ -376,7 +376,7 @@ describe('ModelEditForm — inline metrics', () => {
 describe('ModelEditForm — delete flow', () => {
   it('shows the published-model confirmation and can be cancelled', () => {
     render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
-    fireEvent.click(screen.getByTitle('Delete model'));
+    fireEvent.click(screen.getByTitle('Delete'));
     expect(
       screen.getByText(/mark it for deletion and remove it from YAML/)
     ).toBeInTheDocument();
@@ -387,18 +387,44 @@ describe('ModelEditForm — delete flow', () => {
     expect(mockState.deleteModel).not.toHaveBeenCalled();
   });
 
+  it('confirming a delete does not also submit the form', async () => {
+    // This form is the only one that wraps FormFooter in a <form>, and a
+    // <button> with no type inside a form defaults to submit — so Confirm
+    // Delete fired the save path too, and the panel showed "Failed to save
+    // model" on top of the delete.
+    const onSave = jest.fn();
+    mockState.deleteModel.mockResolvedValue({ success: true });
+    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
+
+    fireEvent.click(screen.getByTitle('Delete'));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+
+    await waitFor(() => expect(mockState.deleteModel).toHaveBeenCalled());
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('cancelling a delete does not submit either', () => {
+    const onSave = jest.fn();
+    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
+
+    fireEvent.click(screen.getByTitle('Delete'));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0]);
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('shows the discard-changes confirmation for a new model', () => {
     const model = editModel();
     model.status = 'new';
     render(<ModelEditForm model={model} onSave={jest.fn()} onCancel={jest.fn()} />);
-    fireEvent.click(screen.getByTitle('Delete model'));
+    fireEvent.click(screen.getByTitle('Delete'));
     expect(screen.getByText(/discard your unsaved changes/)).toBeInTheDocument();
   });
 
   it('deletes the model, refreshes commit status, and closes on success', async () => {
     const onCancel = jest.fn();
     render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={onCancel} />);
-    fireEvent.click(screen.getByTitle('Delete model'));
+    fireEvent.click(screen.getByTitle('Delete'));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
 
     await waitFor(() => expect(mockState.deleteModel).toHaveBeenCalledWith('orders'));
@@ -410,7 +436,7 @@ describe('ModelEditForm — delete flow', () => {
     mockState.deleteModel.mockResolvedValueOnce({ success: false, error: 'model in use' });
     const onCancel = jest.fn();
     render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={onCancel} />);
-    fireEvent.click(screen.getByTitle('Delete model'));
+    fireEvent.click(screen.getByTitle('Delete'));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
 
     expect(await screen.findByText('model in use')).toBeInTheDocument();
@@ -422,7 +448,7 @@ describe('ModelEditForm — delete flow', () => {
   it('surfaces a thrown delete error', async () => {
     mockState.deleteModel.mockRejectedValueOnce(new Error('network down'));
     render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
-    fireEvent.click(screen.getByTitle('Delete model'));
+    fireEvent.click(screen.getByTitle('Delete'));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
 
     expect(await screen.findByText('network down')).toBeInTheDocument();
@@ -431,7 +457,7 @@ describe('ModelEditForm — delete flow', () => {
 
   it('does not offer delete in create mode', () => {
     render(<ModelEditForm model={null} onSave={jest.fn()} onCancel={jest.fn()} />);
-    expect(screen.queryByTitle('Delete model')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
   });
 });
 
@@ -452,16 +478,16 @@ describe('ModelEditForm — Discard (edit mode)', () => {
     const { unmount } = render(
       <ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />
     );
-    expect(screen.getByTestId('model-form-discard')).toHaveTextContent('Discard');
+    expect(screen.getByTestId('form-footer-cancel')).toHaveTextContent('Discard');
     unmount();
 
     render(<ModelEditForm model={null} onSave={jest.fn()} onCancel={jest.fn()} />);
-    expect(screen.getByTestId('model-form-discard')).toHaveTextContent('Cancel');
+    expect(screen.getByTestId('form-footer-cancel')).toHaveTextContent('Cancel');
   });
 
   it('disables Save and Discard on an untouched form', () => {
     render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
-    expect(screen.getByTestId('model-form-discard')).toBeDisabled();
+    expect(screen.getByTestId('form-footer-cancel')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
@@ -470,14 +496,14 @@ describe('ModelEditForm — Discard (edit mode)', () => {
 
     makeDirty('select 1');
     expect(screen.getByLabelText('code')).toHaveValue('select 1');
-    expect(screen.getByTestId('model-form-discard')).toBeEnabled();
+    expect(screen.getByTestId('form-footer-cancel')).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
 
-    fireEvent.click(screen.getByTestId('model-form-discard'));
+    fireEvent.click(screen.getByTestId('form-footer-cancel'));
 
     expect(screen.getByLabelText('code')).toHaveValue('select * from orders');
     // Back to clean, so both go inert again.
-    expect(screen.getByTestId('model-form-discard')).toBeDisabled();
+    expect(screen.getByTestId('form-footer-cancel')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
@@ -488,9 +514,9 @@ describe('ModelEditForm — Discard (edit mode)', () => {
     expect(screen.getByRole('button', { name: /region/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
-    expect(screen.getByTestId('model-form-discard')).toBeEnabled();
+    expect(screen.getByTestId('form-footer-cancel')).toBeEnabled();
 
-    fireEvent.click(screen.getByTestId('model-form-discard'));
+    fireEvent.click(screen.getByTestId('form-footer-cancel'));
 
     expect(screen.queryByTestId('inline-dimension-editor')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /region/ })).toBeInTheDocument();
@@ -512,7 +538,7 @@ describe('ModelEditForm — Discard (edit mode)', () => {
     rerender(<ModelEditForm model={saved} onSave={jest.fn()} onCancel={jest.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-    expect(screen.getByTestId('model-form-discard')).toBeDisabled();
+    expect(screen.getByTestId('form-footer-cancel')).toBeDisabled();
   });
 
   it('reports dirtiness upward so the tab strip can show its unsaved dot', () => {
@@ -530,7 +556,7 @@ describe('ModelEditForm — Discard (edit mode)', () => {
     makeDirty('select 1');
     expect(onDirtyChange).toHaveBeenLastCalledWith(true);
 
-    fireEvent.click(screen.getByTestId('model-form-discard'));
+    fireEvent.click(screen.getByTestId('form-footer-cancel'));
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
   });
 });

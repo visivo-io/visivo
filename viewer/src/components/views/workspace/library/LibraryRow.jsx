@@ -415,22 +415,6 @@ const LibraryRow = ({
             className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-primary"
           />
         )}
-        {expandable && (
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            aria-expanded={expanded}
-            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${obj.name}`}
-            data-testid={`${tid}-toggle`}
-            className="-ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-gray-500 hover:text-gray-900"
-          >
-            {expanded ? (
-              <PiCaretDown className="h-3 w-3" />
-            ) : (
-              <PiCaretRight className="h-3 w-3" />
-            )}
-          </button>
-        )}
         {/* Reserve the drag-handle slot for every row so Layout-Items and
             Data-Layer rows share the same icon indent. Only droppable rows
             fill the slot with the grip dots (visible on hover). */}
@@ -462,9 +446,37 @@ const LibraryRow = ({
         <div
           className={[
             'flex shrink-0 items-center gap-0.5 transition-opacity',
-            showActions ? 'opacity-100' : 'opacity-0 pointer-events-none',
+            showActions || (expandable && expanded)
+              ? 'opacity-100'
+              : 'opacity-0 pointer-events-none',
           ].join(' ')}
         >
+          {/* Expand lives with the other row actions rather than as a leading
+              caret: a caret in the first slot aligned the row with its CATEGORY
+              header instead of its siblings, so an expandable row read as being
+              one level further out than it is. Unlike the others this stays
+              visible while expanded — otherwise the only way to collapse a
+              drill-down is to hover the row it is pushing off screen. */}
+          {expandable && (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-expanded={expanded}
+              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${obj.name}`}
+              title={expanded ? 'Collapse' : 'Expand'}
+              data-testid={`${tid}-toggle`}
+              className={[
+                'inline-flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-white hover:text-gray-900',
+                expanded ? 'opacity-100' : '',
+              ].join(' ')}
+            >
+              {expanded ? (
+                <PiCaretDown className="h-3.5 w-3.5" />
+              ) : (
+                <PiCaretRight className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
           {EXPLORE_THIS_TYPES.includes(obj.type) && (
             <button
               type="button"

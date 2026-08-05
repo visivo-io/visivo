@@ -87,6 +87,9 @@ describe('LibrarySourceRow', () => {
     // The hover-only "Open" icon button is gone — the row body opens now. What
     // hover reveals is the same cluster every other row type has.
     expect(screen.queryByTestId('library-row-source-warehouse-open')).not.toBeInTheDocument();
+    // Expand is a row action now, not a leading caret — so an expandable row
+    // has the same leading geometry (and therefore indent) as its siblings.
+    expect(screen.getByTestId('library-row-source-warehouse-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('library-row-source-warehouse-explore')).toBeInTheDocument();
     expect(screen.getByTestId('library-row-source-warehouse-flip')).toBeInTheDocument();
     expect(screen.getByTestId('library-row-source-warehouse-kebab')).toBeInTheDocument();
@@ -117,58 +120,47 @@ describe('LibrarySourceRow', () => {
     expect(onContextAction).toHaveBeenCalledWith('openInNewTab', SOURCE);
   });
 
-  test('Enter on the focused row opens it — sources had no keyboard activation at all', async () => {
-    // Enter routes through the same handler as a body click, so it also
-    // expands — mock the feed and let the drill-down settle.
-    fetchSourceSchemaJobs.mockResolvedValue([
-      { source_name: 'warehouse', has_cached_schema: true },
-    ]);
-    fetchSourceSchema.mockResolvedValue(ORDERS_4);
+  test('Enter on the focused row selects it — sources had no keyboard activation at all', () => {
     const onClick = jest.fn();
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
 
     fireEvent.keyDown(screen.getByTestId('library-row-source-warehouse'), { key: 'Enter' });
 
     expect(onClick).toHaveBeenCalledWith(SOURCE, expect.anything());
-    await screen.findByTestId('library-source-table-warehouse-orders');
+    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 
-  // VIS-1134, inverting Phase 6c-T5. Consistency won — every other row type
-  // opens on click — but the complaint that drove 6c-T5 (clicking the name
-  // yanked you out of your exploration while hunting for a column) is
-  // answered, not ignored: the click opens AND reveals the schema.
-  test('clicking the row body opens the source AND reveals its schema', async () => {
-    fetchSourceSchemaJobs.mockResolvedValue([
-      { source_name: 'warehouse', has_cached_schema: true },
-    ]);
-    fetchSourceSchema.mockResolvedValue(ORDERS_4);
+  // Selecting and expanding are separate gestures. The body used to expand
+  // (Phase 6c-T5), then briefly did both; one click doing two things made
+  // "selected" ambiguous and left no way to select without also fetching.
+  test('clicking the row body selects the source and does NOT expand it', () => {
     const onClick = jest.fn();
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
 
     fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
 
     expect(onClick).toHaveBeenCalledWith(SOURCE, expect.anything());
-    await screen.findByTestId('library-source-table-warehouse-orders');
+    expect(screen.getByTestId('library-row-source-warehouse-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    // Selecting must not reach for the schema — that fetch belongs to expand.
+    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 
-  test('a second body click does not collapse — the columns cannot be taken away', async () => {
-    // The mitigation for the 6c-T5 regression: only the caret collapses, so a
-    // user clicking the name twice never loses the columns they were reaching
-    // for.
-    fetchSourceSchemaJobs.mockResolvedValue([
-      { source_name: 'warehouse', has_cached_schema: true },
-    ]);
-    fetchSourceSchema.mockResolvedValue(ORDERS_4);
+  test('repeated body clicks keep selecting; they never toggle anything', () => {
     const onClick = jest.fn();
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
+    const row = screen.getByTestId('library-row-source-warehouse');
 
-    fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
-    await screen.findByTestId('library-source-table-warehouse-orders');
+    fireEvent.click(row);
+    fireEvent.click(row);
 
-    fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
-
-    expect(screen.getByTestId('library-source-table-warehouse-orders')).toBeInTheDocument();
     expect(onClick).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('library-row-source-warehouse-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
   });
 
   test('the caret still collapses, and toggling it never opens the source', async () => {

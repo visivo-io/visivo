@@ -271,9 +271,10 @@ describe('Library', () => {
       type: 'source',
       name: 'local-duck',
     });
+    // Selecting is all it does — expanding is its own control.
     expect(screen.getByTestId('library-row-source-local-duck-toggle')).toHaveAttribute(
       'aria-expanded',
-      'true'
+      'false'
     );
   });
 

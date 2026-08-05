@@ -84,9 +84,10 @@ describe('useLibraryData', () => {
       });
     });
     const { result } = renderHook(() => useLibraryData());
+    // Ordered, not insertion order: 'sales' is unpublished so it leads.
     expect(result.current.layoutItems.dashboard).toEqual([
-      { id: 'dashboard:overview', type: 'dashboard', name: 'overview', status: 'published' },
       { id: 'dashboard:sales', type: 'dashboard', name: 'sales', status: 'new' },
+      { id: 'dashboard:overview', type: 'dashboard', name: 'overview', status: 'published' },
     ]);
   });
 
@@ -134,7 +135,11 @@ describe('useLibraryData', () => {
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    const [scoped, refScoped, unscoped] = result.current.dataLayer.dimension;
+    // Alphabetical now, so name them rather than relying on seed order.
+    const byName = Object.fromEntries(
+      result.current.dataLayer.dimension.map(d => [d.name, d])
+    );
+    const { scoped_dim: scoped, ref_scoped_dim: refScoped, unscoped_dim: unscoped } = byName;
     expect(scoped.parentModel).toBe('orders');
     expect(scoped.expression).toBe('UPPER(region)');
     // Falls back to config.model (a ref string) when parentModel isn't set
@@ -145,6 +150,103 @@ describe('useLibraryData', () => {
     const [scopedMetric] = result.current.dataLayer.metric;
     expect(scopedMetric.parentModel).toBe('orders');
     expect(scopedMetric.expression).toBe('sum(amount)');
+  });
+
+  // Ordering — unpublished first, then by name. Rows previously came back in
+  // whatever order the API returned, which is insertion order: in a project
+  // with 124 models, the one you had just edited was wherever it happened to
+  // land, and a refetch could reorder the list under you.
+  describe('row ordering', () => {
+    const names = rows => rows.map(r => r.name);
+
+    test('rows with unpublished changes sort above published ones', () => {
+      act(() => {
+        useStore.setState({
+          charts: [
+            { name: 'alpha', status: 'published' },
+            { name: 'zulu', status: 'modified' },
+            { name: 'bravo', status: 'published' },
+            { name: 'yankee', status: 'new' },
+          ],
+        });
+      });
+      const { result } = renderHook(() => useLibraryData());
+      // Both dot states (new AND modified) lead — the rule is "has a dot",
+      // matching StatusDot, so the sort can never disagree with the UI.
+      expect(names(result.current.layoutItems.chart)).toEqual([
+        'yankee',
+        'zulu',
+        'alpha',
+        'bravo',
+      ]);
+    });
+
+    test('a missing status counts as published, not as an edit', () => {
+      act(() => {
+        useStore.setState({
+          charts: [{ name: 'zebra' }, { name: 'apple', status: 'modified' }, { name: 'mango' }],
+        });
+      });
+      const { result } = renderHook(() => useLibraryData());
+      expect(names(result.current.layoutItems.chart)).toEqual(['apple', 'mango', 'zebra']);
+    });
+
+    test('names sort naturally, so model_2 precedes model_10', () => {
+      act(() => {
+        useStore.setState({
+          models: [{ name: 'model_10' }, { name: 'model_2' }, { name: 'model_1' }],
+        });
+      });
+      const { result } = renderHook(() => useLibraryData());
+      expect(names(result.current.dataLayer.model)).toEqual(['model_1', 'model_2', 'model_10']);
+    });
+
+    test('casing does not split otherwise-adjacent names', () => {
+      act(() => {
+        useStore.setState({
+          models: [{ name: 'beta' }, { name: 'Alpha' }, { name: 'gamma' }],
+        });
+      });
+      const { result } = renderHook(() => useLibraryData());
+      expect(names(result.current.dataLayer.model)).toEqual(['Alpha', 'beta', 'gamma']);
+    });
+
+    test('every type is ordered, not just the ones sharing a mapper', () => {
+      // sources / models / inputs are built by their own inline mappers, so
+      // they can drift from mapRows if the sort is applied per-mapper.
+      act(() => {
+        useStore.setState({
+          sources: [{ name: 'z_src' }, { name: 'a_src', status: 'modified' }],
+          models: [{ name: 'z_model' }, { name: 'a_model', status: 'modified' }],
+          inputs: [{ name: 'z_in' }, { name: 'a_in', status: 'modified' }],
+          dimensions: [{ name: 'z_dim' }, { name: 'a_dim', status: 'modified' }],
+          tables: [{ name: 'z_tbl' }, { name: 'a_tbl', status: 'modified' }],
+        });
+      });
+      const { result } = renderHook(() => useLibraryData());
+      expect(names(result.current.dataLayer.source)).toEqual(['a_src', 'z_src']);
+      expect(names(result.current.dataLayer.model)).toEqual(['a_model', 'z_model']);
+      expect(names(result.current.layoutItems.input)).toEqual(['a_in', 'z_in']);
+      expect(names(result.current.dataLayer.dimension)).toEqual(['a_dim', 'z_dim']);
+      expect(names(result.current.layoutItems.table)).toEqual(['a_tbl', 'z_tbl']);
+    });
+
+    test('sources, models and inputs hide soft-deleted rows like every other type', () => {
+      // Their inline mappers never had the filter mapRows/withParentModel got,
+      // so a deleted source or model stayed in the tree after a confirmed
+      // delete — the same bug, in the three places it was not fixed.
+      act(() => {
+        useStore.setState({
+          sources: [{ name: 'gone', status: 'deleted' }, { name: 'kept' }],
+          models: [{ name: 'gone', status: 'deleted' }, { name: 'kept' }],
+          inputs: [{ name: 'gone', status: 'deleted' }, { name: 'kept' }],
+        });
+      });
+      const { result } = renderHook(() => useLibraryData());
+      expect(names(result.current.dataLayer.source)).toEqual(['kept']);
+      expect(names(result.current.dataLayer.model)).toEqual(['kept']);
+      expect(names(result.current.layoutItems.input)).toEqual(['kept']);
+    });
   });
 
   test('inputs carry inputType (single-select | multi-select)', () => {
@@ -158,7 +260,8 @@ describe('useLibraryData', () => {
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    const [single, multi, noConfig] = result.current.layoutItems.input;
+    const byName = Object.fromEntries(result.current.layoutItems.input.map(i => [i.name, i]));
+    const { region: single, products: multi, no_config: noConfig } = byName;
     expect(single.inputType).toBe('single-select');
     expect(multi.inputType).toBe('multi-select');
     expect(noConfig.inputType).toBeNull();

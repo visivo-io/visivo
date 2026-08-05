@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import useStore from '../../../../stores/store';
+import useStore, { ObjectStatus } from '../../../../stores/store';
 
 /**
  * useLibraryData — VIS-769 / Track C C1.
@@ -52,6 +52,34 @@ import useStore from '../../../../stores/store';
  */
 const safeArray = v => (Array.isArray(v) ? v : []);
 
+// A row with unpublished changes — exactly what StatusDot paints a dot for, so
+// "has a dot" and "sorts to the top" can never disagree.
+const isUnpublished = row => Boolean(row.status) && row.status !== ObjectStatus.PUBLISHED;
+
+// Unpublished first, then by name. Your own edits are the rows you came back to
+// find, and in a project with 124 models they were wherever the API happened to
+// return them — which is insertion order, so a rename could move a row and a
+// refetch could reorder the list under you.
+//
+// `localeCompare` with numeric collation so model_2 precedes model_10, and base
+// sensitivity so casing doesn't split otherwise-adjacent names.
+const byUnpublishedThenName = (a, b) => {
+  const dirtyDelta = Number(isUnpublished(b)) - Number(isUnpublished(a));
+  if (dirtyDelta !== 0) return dirtyDelta;
+  return String(a.name).localeCompare(String(b.name), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+};
+
+// Sorting happens once here rather than in each subsection, so every type is
+// ordered the same way and the row components stay presentational.
+const sorted = rows => [...rows].sort(byUnpublishedThenName);
+
+// A soft-deleted object is still returned by the list endpoints; rendering it
+// left the row sitting in the tree as though the delete had failed.
+const notDeleted = o => o.status !== 'deleted';
+
 // Map a plain store collection into Library rows of a single type.
 //
 // Objects marked for deletion are dropped. A delete is a SOFT delete — the
@@ -64,14 +92,16 @@ const safeArray = v => (Array.isArray(v) ? v : []);
 // every staged change with a DELETED badge, which is where "what will this
 // commit do" belongs.
 const mapRows = (list, type) =>
-  safeArray(list)
-    .filter(o => o.status !== 'deleted')
-    .map(o => ({
-      id: `${type}:${o.name}`,
-      type,
-      name: o.name,
-      status: o.status || null,
-    }));
+  sorted(
+    safeArray(list)
+      .filter(notDeleted)
+      .map(o => ({
+        id: `${type}:${o.name}`,
+        type,
+        name: o.name,
+        status: o.status || null,
+      }))
+  );
 
 export function useLibraryData() {
   // Layout-item collections.
@@ -90,33 +120,45 @@ export function useLibraryData() {
   const insights = useStore(s => s.insights);
 
   return useMemo(() => {
-    const modelRows = safeArray(models).map(m => ({
-      id: `model:${m.name}`,
-      type: 'model',
-      canonicalType: 'model',
-      name: m.name,
-      subtype: 'sql_model',
-      status: m.status || null,
-    }));
+    const modelRows = sorted(
+      safeArray(models)
+        .filter(notDeleted)
+        .map(m => ({
+          id: `model:${m.name}`,
+          type: 'model',
+          canonicalType: 'model',
+          name: m.name,
+          subtype: 'sql_model',
+          status: m.status || null,
+        }))
+    );
 
-    const sourceRows = safeArray(sources).map(s => ({
-      id: `source:${s.name}`,
-      type: 'source',
-      name: s.name,
-      subtype: s.type || null,
-      status: s.status || null,
-    }));
+    const sourceRows = sorted(
+      safeArray(sources)
+        .filter(notDeleted)
+        .map(s => ({
+          id: `source:${s.name}`,
+          type: 'source',
+          name: s.name,
+          subtype: s.type || null,
+          status: s.status || null,
+        }))
+    );
 
     // Inputs carry `inputType` (single-select | multi-select) — the Explore
     // 2.0 Phase 3a DnD payload gap (02-architecture.md §4): a dropped input's
     // accessor (`.value` vs `.values`) depends on it.
-    const inputRows = safeArray(inputs).map(i => ({
-      id: `input:${i.name}`,
-      type: 'input',
-      name: i.name,
-      status: i.status || null,
-      inputType: i.config?.type || i.type || null,
-    }));
+    const inputRows = sorted(
+      safeArray(inputs)
+        .filter(notDeleted)
+        .map(i => ({
+          id: `input:${i.name}`,
+          type: 'input',
+          name: i.name,
+          status: i.status || null,
+          inputType: i.config?.type || i.type || null,
+        }))
+    );
 
     // Dimensions/metrics carry `parentModel` (the owning model's name, when
     // model-scoped) — the same Phase 3a payload gap: a dropped field's ref
@@ -125,23 +167,22 @@ export function useLibraryData() {
     // side decide which. Mirrors `useFieldParentModel.js`'s own resolution
     // (`fieldRecord.parentModel || fieldRecord.config?.model`).
     const withParentModel = (list, type) =>
-      safeArray(list)
-        // Same soft-delete filter as mapRows — this is the mapper dimensions
-        // and metrics actually go through, and it is where the reported bug
-        // showed: a deleted dimension stayed in the tree.
-        .filter(f => f.status !== 'deleted')
-        .map(f => ({
-          id: `${type}:${f.name}`,
-          type,
-          name: f.name,
-          status: f.status || null,
-          parentModel: f.parentModel || f.config?.model || null,
-          // The field's own expression — carried so a metric/dimension dropped
-          // onto the results grid's computed-column zone can be replicated as
-          // a computed column bound to a DIFFERENT model (mirrors the legacy
-          // `ExplorerLeftPanel.DraggableItem`'s `item.config?.expression`).
-          expression: f.config?.expression || null,
-        }));
+      sorted(
+        safeArray(list)
+          .filter(notDeleted)
+          .map(f => ({
+            id: `${type}:${f.name}`,
+            type,
+            name: f.name,
+            status: f.status || null,
+            parentModel: f.parentModel || f.config?.model || null,
+            // The field's own expression — carried so a metric/dimension dropped
+            // onto the results grid's computed-column zone can be replicated as
+            // a computed column bound to a DIFFERENT model (mirrors the legacy
+            // `ExplorerLeftPanel.DraggableItem`'s `item.config?.expression`).
+            expression: f.config?.expression || null,
+          }))
+      );
 
     return {
       layoutItems: {
