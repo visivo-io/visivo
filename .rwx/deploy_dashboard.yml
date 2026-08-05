@@ -49,6 +49,12 @@ tasks:
       cd test-projects/integration
       visivo --version
       visivo run
+    # See the note in .github/workflows/deploy_dashoard.yml: local container
+    # passwords, kept out of the project YAML because core refuses a source
+    # config that carries a literal credential.
+    env:
+      CLICKHOUSE_PASSWORD: clickhouse
+      LOCAL_SNOWFLAKE_PASSWORD: test
 
   - key: sanitize-stage-name
     run: |
@@ -76,6 +82,8 @@ tasks:
     env:
       VISIVO_TOKEN: ${{ secrets.VISIVO_DEVELOPMENT_TOKEN }}
       GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
+      CLICKHOUSE_PASSWORD: clickhouse
+      LOCAL_SNOWFLAKE_PASSWORD: test
 
   - key: archive-ci-stage
     if: ${{ init.archive }}

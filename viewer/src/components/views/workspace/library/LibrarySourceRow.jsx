@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import {
   PiCaretDown,
@@ -11,13 +11,12 @@ import {
   PiSpinnerGap,
   PiWarningCircle,
   PiArrowsClockwise,
-  PiArrowSquareOut,
 } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { SCHEMA_GENERATE_UNAVAILABLE } from '../../common/sourceCapabilities';
-import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
+import { getTypeIcon } from '../../common/objectTypeConfigs';
 import useSourceOutline from '../useSourceOutline';
-import { StatusDot } from './LibraryRow';
+import LibraryRow from './LibraryRow';
 import { isNumericColumnType } from '../../../../utils/columnType';
 
 /**
@@ -393,38 +392,35 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
 };
 
 /**
- * LibrarySourceRow — the top-level row `LibrarySubsection` renders for each
- * `source` object instead of the plain `LibraryRow` (see `LibrarySubsection`'s
- * `typeKey === 'source'` branch). The caret lazily mounts
- * `LibrarySourceDrilldown`.
+ * LibrarySourceRow — the source drill-down, wrapped around the standard
+ * `LibraryRow`.
  *
- * Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
- * navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): the row's own
- * click used to delegate straight to `onClick` (navigate to the source's ERD
- * tab) — the single most natural click (the row, its name, its whole body)
- * punished the user for hunting for a column to drag by yanking them out of
- * their in-progress exploration. Row click now EXPANDS in place (same as the
- * caret) — the natural way to find a column; an explicit, small "Open"
- * icon button (visible on hover, mirrors `LibraryRow`'s flip/kebab
- * affordances) is the one remaining path to the ERD tab.
+ * This used to be a parallel re-implementation of `LibraryRow`: its own row
+ * shell, hover state, drag wiring and selected chrome. The copy drifted — it
+ * dropped the `onContextAction` prop `LibrarySubsection` handed it, never grew
+ * the kebab / right-click menu, the lineage popover, the Explore button or
+ * keyboard activation, and it painted its icon by a different rule. It now
+ * renders `LibraryRow` and contributes only what is genuinely source-specific:
+ * a caret and the lazily-mounted drill-down beneath it.
+ *
+ * Phase 6c-T5 made the row body EXPAND rather than open, because an auditor
+ * hunting for a column to drag found that clicking the name yanked them out of
+ * their in-progress exploration. Consistency won here — every other row type
+ * opens on click — but that complaint is answered rather than ignored: the
+ * body click opens AND expands, and never collapses. The columns arrive from
+ * the same click that opens the source, so the gesture no longer costs the
+ * user their place. Collapsing stays on the caret.
  */
-const LibrarySourceRow = ({ obj, selected = false, onClick }) => {
-  const SourceIcon = getTypeIcon('source');
-  const sourceColors = getTypeColors('source');
+const LibrarySourceRow = ({
+  obj,
+  selected = false,
+  draggable = true,
+  onClick,
+  onContextAction,
+  canAddToExploration = false,
+}) => {
   const expanded = useStore(s => !!s.librarySourceRowExpanded[obj.name]);
   const toggleExpanded = useStore(s => s.toggleLibrarySourceRowExpanded);
-  const [hovered, setHovered] = useState(false);
-
-  const drag = useDraggable({
-    id: `library:source:${obj.name}`,
-    data: { source: 'library', type: 'source', name: obj.name, subtype: obj.subtype },
-  });
-  const dragProps = {
-    ref: drag.setNodeRef,
-    ...drag.listeners,
-    ...drag.attributes,
-    style: { touchAction: 'none' },
-  };
 
   const handleToggle = useCallback(
     e => {
@@ -434,100 +430,37 @@ const LibrarySourceRow = ({ obj, selected = false, onClick }) => {
     [obj.name, toggleExpanded]
   );
 
-  // Phase 6c-T5: row click expands in place instead of navigating away —
-  // see the file docstring. Mirrors clicking the caret exactly.
-  const handleClick = useCallback(
-    e => {
-      if (drag.isDragging) return;
-      e.stopPropagation();
-      toggleExpanded(obj.name);
+  // Opens like every other row, and reveals the schema on the way — but never
+  // collapses, so a second click on the name can't take the columns away.
+  const handleOpen = useCallback(
+    (o, e) => {
+      if (!expanded) toggleExpanded(o.name);
+      onClick && onClick(o, e);
     },
-    [drag.isDragging, obj.name, toggleExpanded]
+    [expanded, onClick, toggleExpanded]
   );
-
-  const handleOpenClick = useCallback(
-    e => {
-      e.stopPropagation();
-      onClick && onClick(obj, e);
-    },
-    [obj, onClick]
-  );
-
-  const tid = `library-row-source-${obj.name}`;
 
   return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onContextMenu={e => {
-        e.preventDefault();
-      }}
+    <LibraryRow
+      obj={obj}
+      selected={selected}
+      draggable={draggable}
+      onClick={handleOpen}
+      onContextAction={onContextAction}
+      canAddToExploration={canAddToExploration}
+      expandable
+      expanded={expanded}
+      onToggleExpand={handleToggle}
     >
-      <div
-        {...dragProps}
-        data-testid={tid}
-        data-selected={selected ? 'true' : 'false'}
-        data-dragging={drag.isDragging ? 'true' : 'false'}
-        onClick={handleClick}
-        role="button"
-        tabIndex={0}
-        className={[
-          'group relative flex h-7 cursor-grab items-center gap-1.5 rounded-md pl-1 pr-2 text-[13px] transition-colors active:cursor-grabbing',
-          selected ? 'bg-primary-100/55 text-primary-600' : hovered ? 'bg-gray-100' : 'hover:bg-gray-50',
-          drag.isDragging ? 'opacity-40' : '',
-        ].join(' ')}
-      >
-        <button
-          type="button"
-          onClick={handleToggle}
-          aria-expanded={expanded}
-          data-testid={`${tid}-toggle`}
-          className="flex h-4 w-4 shrink-0 items-center justify-center text-gray-400 hover:text-gray-600"
-        >
-          {expanded ? <PiCaretDown className="h-3 w-3" /> : <PiCaretRight className="h-3 w-3" />}
-        </button>
-        {/* Same rule as every other row (LibraryRow): the type colour means
-            "selected". This row used to be the sole exception — permanently
-            orange — which is what made colour meaningless across the nav. */}
-        <SourceIcon
-          aria-hidden="true"
-          style={{ fontSize: 14 }}
-          data-testid={`${tid}-icon`}
-          className={`shrink-0 ${selected ? sourceColors.text : 'text-gray-500'}`}
-        />
-        <StatusDot status={obj.status} />
-        <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
-          {obj.name}
-        </span>
-        {/* Phase 6c-T5: the explicit navigation affordance the row body used
-            to hijack — hover-revealed, mirrors LibraryRow's flip/kebab
-            actions. */}
-        <button
-          type="button"
-          onClick={handleOpenClick}
-          title={`Open ${obj.name}`}
-          aria-label={`Open ${obj.name}`}
-          data-testid={`${tid}-open`}
-          className={[
-            'flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 transition-opacity hover:bg-white hover:text-gray-700',
-            hovered ? 'opacity-100' : 'opacity-0 pointer-events-none',
-          ].join(' ')}
-        >
-          <PiArrowSquareOut className="h-3.5 w-3.5" />
-        </button>
-        <span
-          aria-hidden="true"
-          data-testid={`${tid}-drag-handle`}
-          className={[
-            'flex h-3 w-3 shrink-0 items-center justify-center text-gray-300 transition-opacity',
-            hovered || drag.isDragging ? 'opacity-100' : 'opacity-0',
-          ].join(' ')}
-        >
-          <PiDotsSix className="h-3 w-3" />
-        </span>
-      </div>
-      {expanded && <LibrarySourceDrilldown sourceName={obj.name} />}
-    </div>
+      {/* LibraryRow indents its icon further than RowShell's `8 + level*14`
+          does, so without this the tables would render LEFT of their own
+          source. Keeps the ladder at roughly 52 / 64 / 74px. */}
+      {expanded && (
+        <div className="pl-6">
+          <LibrarySourceDrilldown sourceName={obj.name} />
+        </div>
+      )}
+    </LibraryRow>
   );
 };
 

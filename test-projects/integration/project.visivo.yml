@@ -223,7 +223,7 @@ sources:
     protocol: http
     database: visivo
     username: default
-    password: clickhouse
+    password: "${env.CLICKHOUSE_PASSWORD}"
 
   - name: remote-snowflake
     type: snowflake
@@ -241,7 +241,7 @@ sources:
     account: test
     db_schema: DEFAULT
     username: test
-    password: test
+    password: "${env.LOCAL_SNOWFLAKE_PASSWORD}"
     host: localhost
     port: 12345
     protocol: http

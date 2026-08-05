@@ -9,6 +9,8 @@ import {
   PiTrash,
   PiCompass,
   PiPlusCircle,
+  PiCaretDown,
+  PiCaretRight,
 } from 'react-icons/pi';
 import { ObjectStatus } from '../../../../stores/store';
 import { getTypeByValue, getTypeIcon, DEFAULT_COLORS } from '../../common/objectTypeConfigs';
@@ -256,6 +258,15 @@ const LibraryRow = ({
   onContextAction,
   canAddToExploration = false,
   testId,
+  // Optional disclosure contract, used by `LibrarySourceRow` for the source →
+  // table → column drill-down. `expandable` is explicit rather than inferred
+  // from `children` because `children` are deliberately falsy while collapsed
+  // (that IS the laziness — mounting the drill-down is what fetches), so
+  // inferring it would hide the caret exactly when it is needed.
+  expandable = false,
+  expanded = false,
+  onToggleExpand,
+  children,
 }) => {
   const [hovered, setHovered] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -364,7 +375,10 @@ const LibraryRow = ({
   const tid = testId || `library-row-${obj.type}-${obj.name}`;
 
   return (
-    <div className="relative" ref={rowAnchorRef}>
+    <>
+    {/* The popover/menu anchor. Its height must stay the ROW's height — the
+        disclosure body is deliberately a sibling below, not a child. */}
+    <div className="relative" ref={rowAnchorRef} data-testid={`${tid}-anchor`}>
       <div
         {...dragProps}
         data-testid={tid}
@@ -400,6 +414,22 @@ const LibraryRow = ({
             aria-hidden="true"
             className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-primary"
           />
+        )}
+        {expandable && (
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${obj.name}`}
+            data-testid={`${tid}-toggle`}
+            className="-ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-gray-500 hover:text-gray-900"
+          >
+            {expanded ? (
+              <PiCaretDown className="h-3 w-3" />
+            ) : (
+              <PiCaretRight className="h-3 w-3" />
+            )}
+          </button>
         )}
         {/* Reserve the drag-handle slot for every row so Layout-Items and
             Data-Layer rows share the same icon indent. Only droppable rows
@@ -498,6 +528,12 @@ const LibraryRow = ({
         />
       )}
     </div>
+    {/* Disclosure body sits OUTSIDE the `relative` anchor above. ContextMenu
+        is `absolute top-full` on that anchor, so nesting an expanded
+        drill-down inside it would push the menu below the entire tree — and
+        the flip popover's anchor rect would grow past the row. */}
+    {children}
+    </>
   );
 };
 

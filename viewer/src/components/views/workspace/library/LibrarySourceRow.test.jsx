@@ -80,34 +80,64 @@ describe('LibrarySourceRow', () => {
     expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 
-  test('hovering reveals the Open button and drag handle; unhovering hides them again', () => {
+  test('hovering reveals the standard action cluster and the drag handle', () => {
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
     const row = screen.getByTestId('library-row-source-warehouse');
-    // React's synthetic mouseenter/mouseleave simulate proper enter/leave
-    // semantics for the whole subtree regardless of native (non-bubbling)
-    // behavior, so firing on this inner row still reaches the outer
-    // wrapper's onMouseEnter/onMouseLeave handlers.
     fireEvent.mouseEnter(row);
-    expect(screen.getByTestId('library-row-source-warehouse-open')).toHaveClass('opacity-100');
-    fireEvent.mouseLeave(row);
-    expect(screen.getByTestId('library-row-source-warehouse-open')).toHaveClass('opacity-0');
+    // The hover-only "Open" icon button is gone — the row body opens now. What
+    // hover reveals is the same cluster every other row type has.
+    expect(screen.queryByTestId('library-row-source-warehouse-open')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-row-source-warehouse-explore')).toBeInTheDocument();
+    expect(screen.getByTestId('library-row-source-warehouse-flip')).toBeInTheDocument();
+    expect(screen.getByTestId('library-row-source-warehouse-kebab')).toBeInTheDocument();
+    expect(screen.getByTestId('library-row-source-warehouse-drag-handle')).toBeInTheDocument();
   });
 
-  test('right-clicking the row suppresses the native context menu (no custom menu of its own)', () => {
+  // Inverted: the source row used to preventDefault right-click and render
+  // nothing, so all seven context-menu actions were unreachable for sources.
+  test('right-clicking the row opens the standard context menu', () => {
     render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
-    const row = screen.getByTestId('library-row-source-warehouse');
-    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
-    const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
-    row.dispatchEvent(event);
-    expect(preventDefaultSpy).toHaveBeenCalled();
+    fireEvent.contextMenu(screen.getByTestId('library-row-source-warehouse'));
+    expect(
+      screen.getByTestId('library-row-source-warehouse-context-menu')
+    ).toBeInTheDocument();
   });
 
-  // Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
-  // navigation to a read-only ERD tab", ⚠ conflicts-with-e2e): row click now
-  // expands in place — the natural gesture for hunting a column to drag —
-  // instead of navigating away from whatever exploration the user is mid-edit
-  // on. Navigation moved to an explicit, hover-revealed "Open" icon button.
-  test('clicking the row body expands in place — it no longer navigates via onClick', async () => {
+  test('a source row forwards context-menu actions, which it used to drop entirely', () => {
+    // `LibrarySubsection` always passed `onContextAction`; the old component's
+    // signature never accepted it, so every action silently went nowhere.
+    const onContextAction = jest.fn();
+    render(
+      withDnd(
+        <LibrarySourceRow obj={SOURCE} onClick={jest.fn()} onContextAction={onContextAction} />
+      )
+    );
+    fireEvent.contextMenu(screen.getByTestId('library-row-source-warehouse'));
+    fireEvent.click(screen.getByText('Open in new tab'));
+    expect(onContextAction).toHaveBeenCalledWith('openInNewTab', SOURCE);
+  });
+
+  test('Enter on the focused row opens it — sources had no keyboard activation at all', async () => {
+    // Enter routes through the same handler as a body click, so it also
+    // expands — mock the feed and let the drill-down settle.
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: 'warehouse', has_cached_schema: true },
+    ]);
+    fetchSourceSchema.mockResolvedValue(ORDERS_4);
+    const onClick = jest.fn();
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
+
+    fireEvent.keyDown(screen.getByTestId('library-row-source-warehouse'), { key: 'Enter' });
+
+    expect(onClick).toHaveBeenCalledWith(SOURCE, expect.anything());
+    await screen.findByTestId('library-source-table-warehouse-orders');
+  });
+
+  // VIS-1134, inverting Phase 6c-T5. Consistency won — every other row type
+  // opens on click — but the complaint that drove 6c-T5 (clicking the name
+  // yanked you out of your exploration while hunting for a column) is
+  // answered, not ignored: the click opens AND reveals the schema.
+  test('clicking the row body opens the source AND reveals its schema', async () => {
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: 'warehouse', has_cached_schema: true },
     ]);
@@ -117,22 +147,45 @@ describe('LibrarySourceRow', () => {
 
     fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
 
-    await waitFor(() => expect(fetchSourceSchemaJobs).toHaveBeenCalledTimes(1));
+    expect(onClick).toHaveBeenCalledWith(SOURCE, expect.anything());
+    await screen.findByTestId('library-source-table-warehouse-orders');
+  });
+
+  test('a second body click does not collapse — the columns cannot be taken away', async () => {
+    // The mitigation for the 6c-T5 regression: only the caret collapses, so a
+    // user clicking the name twice never loses the columns they were reaching
+    // for.
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: 'warehouse', has_cached_schema: true },
+    ]);
+    fetchSourceSchema.mockResolvedValue(ORDERS_4);
+    const onClick = jest.fn();
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
+
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
+    await screen.findByTestId('library-source-table-warehouse-orders');
+
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
+
+    expect(screen.getByTestId('library-source-table-warehouse-orders')).toBeInTheDocument();
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  test('the caret still collapses, and toggling it never opens the source', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: 'warehouse', has_cached_schema: true },
+    ]);
+    fetchSourceSchema.mockResolvedValue(ORDERS_4);
+    const onClick = jest.fn();
+    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
+
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
     await screen.findByTestId('library-source-table-warehouse-orders');
     expect(onClick).not.toHaveBeenCalled();
 
-    // Clicking the row body again collapses it (same toggle as the caret).
-    fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
+    fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
     expect(screen.queryByTestId('library-source-table-warehouse-orders')).not.toBeInTheDocument();
-  });
-
-  test('the explicit "Open" button still navigates via onClick, without expanding', () => {
-    const onClick = jest.fn();
-    render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={onClick} />));
-    fireEvent.click(screen.getByTestId('library-row-source-warehouse-open'));
-    expect(onClick).toHaveBeenCalledWith(SOURCE, expect.anything());
-    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('library-source-table-warehouse-orders')).not.toBeInTheDocument();
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   test('expanding the caret lazily loads the cached schema feed (source -> table)', async () => {

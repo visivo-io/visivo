@@ -18,6 +18,9 @@
  *      SOURCE half of D9's DnD unification (the drop-target half is covered
  *      by exploration-dnd-pull-in.spec.mjs).
  *   4. Collapse/re-expand does not re-fetch (session cache).
+ *   5. (VIS-1134) The row BODY opens the source and reveals its schema, like
+ *      every other Library row type; only the caret collapses; and the row
+ *      carries the standard context menu it previously lacked.
  *
  * Precondition: sandbox running (integration project), e.g.
  *   VISIVO_SANDBOX_NAME=librarySourceDrilldown VISIVO_SANDBOX_BACKEND_PORT=8045 \
@@ -115,14 +118,12 @@ test.describe('Library source drill-down (Explore 2.0 Phase 3a — D9)', () => {
     await expect(firstColumn.locator('[data-testid$="-drag-handle"]')).toBeVisible();
   });
 
-  // Phase 6c-T5 (ux-audit.md "Clicking a source name in the Library hijacks
-  // navigation to a read-only ERD tab", ⚠ conflicts-with-e2e). The prior
-  // e2e coverage above only ever drove the row via its `-toggle` element —
-  // never the row BODY itself, which is exactly the gesture the audit's
-  // auditor actually used ("hunting for columns to drag") and the one that
-  // used to hijack navigation. This drives the row body directly, the way a
-  // real user clicking a source name would.
-  test('clicking the source row BODY expands it in place — it no longer navigates away', async ({
+  // VIS-1134, inverting Phase 6c-T5. A source row now behaves like every
+  // other row type: the body click OPENS it. 6c-T5 had made that click expand
+  // instead, because an auditor hunting for columns to drag found it hijacked
+  // navigation — that complaint is answered rather than reintroduced, since
+  // the click also reveals the schema and never collapses it.
+  test('clicking the source row BODY opens the source AND reveals its schema', async ({
     page,
   }) => {
     const sourceRow = page.getByTestId(`library-row-source-${SOURCE}`);
@@ -134,6 +135,11 @@ test.describe('Library source drill-down (Explore 2.0 Phase 3a — D9)', () => {
     // The real gesture: click the row's name/body, not the caret.
     await sourceRow.click();
 
+    // Opened, like a model or a chart would.
+    await expect(page.getByTestId('workspace-middle-source-preview')).toBeVisible({
+      timeout: 15000,
+    });
+    // ...and the columns are right there, not a second gesture away.
     await expect(page.getByTestId(`library-row-source-${SOURCE}-toggle`)).toHaveAttribute(
       'aria-expanded',
       'true'
@@ -141,27 +147,31 @@ test.describe('Library source drill-down (Explore 2.0 Phase 3a — D9)', () => {
     await expect(page.getByTestId(`library-source-table-${SOURCE}-${TABLE}`)).toBeVisible({
       timeout: 15000,
     });
-    // Never navigated away from the Explorer/Workspace surface.
-    await expect(page.getByTestId('workspace-middle-source-preview')).not.toBeVisible();
 
-    // Clicking the row body again collapses it back (same toggle behavior).
+    // A second body click must NOT collapse — the columns the user is reaching
+    // for cannot be taken away by the same gesture that revealed them.
     await sourceRow.click();
     await expect(page.getByTestId(`library-row-source-${SOURCE}-toggle`)).toHaveAttribute(
       'aria-expanded',
-      'false'
+      'true'
     );
   });
 
-  test('the explicit hover-revealed "Open" button still navigates to the source ERD tab', async ({
+  // Replaces the old "-open button navigates" test: that button is gone (the
+  // row body does its job), so the equivalent explicit affordance to pin is
+  // the context menu, which sources could not reach at all before.
+  test('a source row exposes the standard context menu, including Open in new tab', async ({
     page,
   }) => {
     const sourceRow = page.getByTestId(`library-row-source-${SOURCE}`);
-    await sourceRow.hover();
-    const openButton = page.getByTestId(`library-row-source-${SOURCE}-open`);
-    await expect(openButton).toBeVisible();
-    await openButton.click();
+    await expect(page.getByTestId(`library-row-source-${SOURCE}-open`)).toHaveCount(0);
 
-    await expect(page.getByTestId('workspace-middle-source-preview')).toBeVisible({
+    await sourceRow.click({ button: 'right' });
+    const menu = page.getByTestId(`library-row-source-${SOURCE}-context-menu`);
+    await expect(menu).toBeVisible();
+
+    await menu.getByText('Open in new tab').click();
+    await expect(page.getByTestId(`workspace-tab-source:${SOURCE}`)).toBeVisible({
       timeout: 15000,
     });
   });

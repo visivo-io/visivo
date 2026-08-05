@@ -383,6 +383,55 @@ describe('LibraryRow', () => {
     expect(screen.getByTestId('library-row-weird-thing-icon')).toHaveClass('text-gray-500');
   });
 
+  // VIS-1134: the disclosure contract LibrarySourceRow composes with.
+  describe('expand contract', () => {
+    test('no caret and no wrapper markup unless expandable is set', () => {
+      render(withDnd(<LibraryRow obj={CHART} />));
+      expect(
+        screen.queryByTestId('library-row-chart-waterfall-toggle')
+      ).not.toBeInTheDocument();
+    });
+
+    test('the caret renders when expandable, and reports its state', () => {
+      const onToggleExpand = jest.fn();
+      render(
+        withDnd(<LibraryRow obj={CHART} expandable expanded={false} onToggleExpand={onToggleExpand} />)
+      );
+      const caret = screen.getByTestId('library-row-chart-waterfall-toggle');
+      expect(caret).toHaveAttribute('aria-expanded', 'false');
+      fireEvent.click(caret);
+      expect(onToggleExpand).toHaveBeenCalled();
+    });
+
+    test('the caret shows even with no children — collapsed IS the lazy state', () => {
+      // `expandable` is deliberately explicit rather than inferred from
+      // `children`: the drill-down is falsy until expanded (mounting it is
+      // what fetches), so inferring would hide the caret exactly when it is
+      // needed to expand.
+      render(withDnd(<LibraryRow obj={CHART} expandable expanded={false} />));
+      expect(screen.getByTestId('library-row-chart-waterfall-toggle')).toBeInTheDocument();
+    });
+
+    test('children render OUTSIDE the row anchor, so the context menu is not pushed below them', () => {
+      // ContextMenu is `absolute top-full` on the anchor div. If children were
+      // nested inside it, opening the menu on an expanded row would drop it
+      // below the whole expanded tree.
+      render(
+        withDnd(
+          <LibraryRow obj={CHART} expandable expanded>
+            <div data-testid="drilldown-body">tables</div>
+          </LibraryRow>
+        )
+      );
+      expect(screen.getByTestId('drilldown-body')).toBeInTheDocument();
+      // The body renders, but NOT inside the anchor the menu is positioned
+      // against — that is the whole point.
+      const anchor = screen.getByTestId('library-row-chart-waterfall-anchor');
+      expect(within(anchor).queryByTestId('drilldown-body')).not.toBeInTheDocument();
+      expect(within(anchor).getByTestId('library-row-chart-waterfall')).toBeInTheDocument();
+    });
+  });
+
   test('non-droppable rows do not expose the drag handle dots', () => {
     render(withDnd(<LibraryRow obj={MODEL} draggable={false} />));
     expect(
