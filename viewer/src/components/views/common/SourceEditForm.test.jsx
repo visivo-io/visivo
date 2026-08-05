@@ -270,6 +270,12 @@ describe('SourceEditForm — test connection', () => {
   });
 });
 
+// VIS-1133: Save is disabled on an untouched edit-mode form, so save-path
+// tests must make a real edit first. The source NAME is orthogonal to the
+// seeds/type assertions below, so touching it leaves them intact.
+const makeDirty = () =>
+  fireEvent.change(screen.getByLabelText(/Source Name/), { target: { value: 'edited_name' } });
+
 describe('SourceEditForm — embedded sources', () => {
   const embedded = {
     _embedded: { parentName: 'model_a', path: 'source' },
@@ -281,9 +287,13 @@ describe('SourceEditForm — embedded sources', () => {
     const onSave = jest.fn(async () => ({ success: true }));
     renderForm({ source: embedded, isCreate: false, onSave });
     expect(screen.queryByLabelText(/Source Name/)).not.toBeInTheDocument();
+    // No name field here, so dirty the form through a real config field — and
+    // assert the edit round-trips, which is strictly more than the old
+    // untouched save proved.
+    fireEvent.change(screen.getByLabelText(/Database/), { target: { value: 'edited.db' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith('source', '', { type: 'sqlite', database: 'e.db' })
+      expect(onSave).toHaveBeenCalledWith('source', '', { type: 'sqlite', database: 'edited.db' })
     );
     expect(onSave.mock.calls[0][2]).not.toHaveProperty('name');
   });
@@ -322,6 +332,7 @@ describe('SourceEditForm — seeds', () => {
     renderForm({ source: seededSqlite, isCreate: false, onSave });
 
     expect(screen.getByLabelText('Seed 1 table name')).toHaveValue('raw');
+    makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
@@ -356,6 +367,7 @@ describe('SourceEditForm — seeds', () => {
       onSave,
     });
 
+    makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
@@ -373,6 +385,9 @@ describe('SourceEditForm — seeds', () => {
       onSave,
     });
 
+    // Dirty via the NAME so the seed stays invalid — otherwise Save is
+    // disabled and this would pass vacuously, never reaching validation.
+    makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(onSave).not.toHaveBeenCalled();

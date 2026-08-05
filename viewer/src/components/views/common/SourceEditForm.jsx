@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import useFormBaseline from '../../../hooks/useFormBaseline';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { ButtonOutline } from '../../styled/Button';
 import SourceTypeSelector from '../../sources/SourceTypeSelector';
@@ -29,7 +30,7 @@ import SeedsEditor, { sourceTypeSupportsSeeds } from './SeedsEditor';
  * - onSave: Function(type, name, config) - Unified save callback
  * - onGoBack: Callback to navigate back to parent (for embedded sources)
  */
-const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
+const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyChange }) => {
   const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkCommitStatus } =
     useStore();
   // Tells us whether the serving process shares a filesystem with the project,
@@ -51,36 +52,52 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
   const isEmbedded = isEmbeddedObject(source);
   const parentName = source?._embedded?.parentName;
 
+  // VIS-1133: the saved source, as form state.
+  const applyValues = useCallback(values => {
+    setName(values.name);
+    setSourceType(values.sourceType);
+    setFormValues(values.formValues);
+  }, []);
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+
   // Initialize form when source changes
   useEffect(() => {
     if (source) {
-      // Edit mode - populate from existing source
-      setName(source.name || '');
-
       const configToUse = source.config;
-
-      // Extract form values from the config object
       if (configToUse) {
-        setSourceType(configToUse.type || '');
         const { name: _, type: __, ...formProps } = configToUse;
-        setFormValues(formProps);
+        seed({
+          name: source.name || '',
+          sourceType: configToUse.type || '',
+          formValues: formProps,
+        });
       } else {
         // Fallback for flat source objects — restore the type from the flat
         // object too, otherwise a config-less source renders the "select a
         // source type" placeholder instead of its connection fields.
-        setSourceType(source.type || '');
         const { name: _, type: __, status: ___, config: ____, _embedded: _____, ...formProps } = source;
-        setFormValues(formProps);
+        seed({
+          name: source.name || '',
+          sourceType: source.type || '',
+          formValues: formProps,
+        });
       }
     } else if (isCreate) {
-      // Create mode - reset form
-      setName('');
-      setSourceType('');
-      setFormValues({});
+      seed({ name: '', sourceType: '', formValues: {} });
     }
     setErrors({});
     setSaveError(null);
+    // Re-seeding on `seed` would wipe the user's in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, isCreate]);
+
+  const dirty = isDirtyAgainst({ name, sourceType, formValues });
+
+  // Report upward so the tab strip's unsaved dot and its guarded close reflect
+  // real edits (VIS-1133) — the rail clears it on unmount.
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
 
   // Clear connection status when panel closes
   useEffect(() => {
@@ -295,9 +312,12 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
       </FormLayout>
 
       <FormFooter
-        onCancel={onClose}
+        onCancel={isEditMode ? discard : onClose}
         onSave={handleSave}
         saving={saving}
+        cancelLabel={isEditMode ? 'Discard' : 'Cancel'}
+        cancelDisabled={isEditMode && (!dirty || saving || deleting)}
+        saveDisabled={isEditMode && !dirty}
         showDelete={isEditMode && !showDeleteConfirm && !isEmbedded}
         onDeleteClick={() => setShowDeleteConfirm(true)}
         deleteConfirm={
