@@ -70,10 +70,7 @@ standing cloud credential** — there is nothing ambient for code to reach for.
 
 **What a run cannot do:**
 
-- Reach **another account's data** — runs are isolated from one another, and the
-  runner has no credential that spans accounts.
-- Reach Visivo's **infrastructure** — no cluster metadata, no internal services;
-  outbound is limited to the public internet and your warehouses.
+- Reach **any other run's output** — runs are isolated from one another.
 - Persist anything between runs, or run without **bounded CPU, memory, and
   process limits**.
 
