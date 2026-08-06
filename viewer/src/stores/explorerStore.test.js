@@ -1345,7 +1345,42 @@ describe('explorerStore', () => {
     });
   });
 
+  describe('fetchExplorerDiff availability', () => {
+    // The endpoint compares unsaved explorer state against the project's
+    // published objects, so it needs the local project — only `visivo serve`
+    // has one. Cloud answered 404 on every explorer edit. The result was
+    // discarded either way, so the request bought nothing but a red line in
+    // the network panel.
+    it('does not call the endpoint when the server does not offer it', async () => {
+      const { fetchDiff } = require('../api/explorer');
+      fetchDiff.mockClear?.();
+      useStore.setState({
+        capabilities: { can_edit: true },
+        explorerModelStates: { m: { sql: 'SELECT 1', computedColumns: [] } },
+      });
+
+      const result = await useStore.getState().fetchExplorerDiff();
+
+      expect(result).toBeNull();
+      expect(useStore.getState().explorerDiffResult).toBeNull();
+    });
+
+    it('does not call it before capabilities have loaded', async () => {
+      useStore.setState({
+        capabilities: null,
+        explorerModelStates: { m: { sql: 'SELECT 1', computedColumns: [] } },
+      });
+      await expect(useStore.getState().fetchExplorerDiff()).resolves.toBeNull();
+    });
+  });
+
   describe('fetchExplorerDiff payload', () => {
+    // The call is gated on the server advertising it (cloud has no such
+    // endpoint), so these payload tests have to stand on a server that does.
+    beforeEach(() => {
+      useStore.setState({ capabilities: { explorer_diff: true } });
+    });
+
     it('includes the model source only when the user edited it', async () => {
       useStore.setState({
         explorerModelStates: {

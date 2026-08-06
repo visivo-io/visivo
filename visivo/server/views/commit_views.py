@@ -223,6 +223,13 @@ def register_commit_views(app, flask_app, output_dir):
                 # literal is fine and the form keeps its plain text input. Cloud
                 # answers True and demands a ${env.NAME} reference instead.
                 "secrets_required": False,
+                # `/api/explorer/diff/` compares the explorer's UNSAVED working
+                # state against the project's published objects, so the badges
+                # can say "new" / "modified" before anything is saved. That
+                # needs the local project to compare against, so only serve
+                # offers it; cloud omits the key and the client skips the call
+                # rather than firing a request that 404s.
+                "explorer_diff": True,
                 # The env-var names available to reference, so the form can
                 # offer them in both places. Locally that means the project's
                 # own .env — NOT os.environ, which would hand the browser every

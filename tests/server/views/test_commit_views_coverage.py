@@ -144,6 +144,10 @@ class TestProjectScopedContract:
         # than on secret_keys being empty.
         assert data["secrets_required"] is False
         assert isinstance(data["secret_keys"], list)
+        # serve owns the project files, so it can answer /api/explorer/diff/.
+        # Cloud omits the key and the client skips the call rather than firing
+        # a request that 404s.
+        assert data["explorer_diff"] is True
 
     def test_draft_echoes_project_id(self, client):
         data = client.post("/api/projects/proj1/draft/").get_json()

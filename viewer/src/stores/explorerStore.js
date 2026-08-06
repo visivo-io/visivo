@@ -1845,6 +1845,22 @@ const createExplorerSlice = (set, get) => ({
 
   fetchExplorerDiff: async () => {
     const state = get();
+
+    // `/api/explorer/diff/` compares the explorer's unsaved working state
+    // against the project's published objects — which needs the local project
+    // to compare against, so only `visivo serve` implements it. Cloud answered
+    // 404 on every explorer edit; the result was discarded either way (the
+    // catch below sets null), so the only thing the request produced was a red
+    // line in the network panel.
+    //
+    // Skipped rather than allowed-while-unknown: the point is to stop firing a
+    // request that cannot succeed, and this re-runs on the next edit once
+    // capabilities have loaded.
+    if (!state.capabilities?.explorer_diff) {
+      set({ explorerDiffResult: null });
+      return null;
+    }
+
     const payload = {};
 
     // Build models payload — send sql, plus the source when the user explicitly
