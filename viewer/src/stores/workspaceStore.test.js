@@ -831,6 +831,81 @@ describe('workspace store slice', () => {
   // 6c-T2 responsive shell (BLOCKER at 1100px): applyWorkspaceAutoCollapse is
   // a one-way NUDGE reconciled against current state, not a continuous
   // override — see its docstring for the full contract.
+  describe('expandWorkspaceLeft (narrow-viewport popout)', () => {
+    test('expands in flow when the rail fits', () => {
+      act(() => {
+        useStore.setState({ workspaceLeftCollapsed: true, workspaceLeftMustCollapse: false });
+        useStore.getState().expandWorkspaceLeft();
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftCollapsed).toBe(false);
+      expect(s.workspaceLeftOverlayOpen).toBe(false);
+      // Cleared so a later widen doesn't treat this as the shell's doing.
+      expect(s.workspaceLeftAutoCollapsedByShell).toBe(false);
+    });
+
+    test('pops out instead when it does not fit, leaving the layout alone', () => {
+      // The bug: expanding in flow here set workspaceLeftCollapsed=false, the
+      // shell's width effect re-ran on that very change, measured that the
+      // rail still doesn't fit, and collapsed it again before paint.
+      act(() => {
+        useStore.setState({ workspaceLeftCollapsed: true, workspaceLeftMustCollapse: true });
+        useStore.getState().expandWorkspaceLeft();
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftOverlayOpen).toBe(true);
+      // Still "collapsed" as far as layout is concerned — which is exactly why
+      // the shell has nothing to undo.
+      expect(s.workspaceLeftCollapsed).toBe(true);
+    });
+
+    test('a popped-out rail survives the shell re-asserting that it must collapse', () => {
+      act(() => {
+        useStore.setState({ workspaceLeftCollapsed: true, workspaceLeftMustCollapse: true });
+        useStore.getState().expandWorkspaceLeft();
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      expect(useStore.getState().workspaceLeftOverlayOpen).toBe(true);
+    });
+
+    test('the close control dismisses the popout rather than expanding in flow', () => {
+      // `workspaceLeftCollapsed` is already true while popped out, so the plain
+      // toggle would flip it to false — the opposite of closing.
+      act(() => {
+        useStore.setState({ workspaceLeftCollapsed: true, workspaceLeftOverlayOpen: true });
+        useStore.getState().toggleWorkspaceLeftCollapsed();
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftOverlayOpen).toBe(false);
+      expect(s.workspaceLeftCollapsed).toBe(true);
+    });
+
+    test('room again promotes the popout to an ordinary in-flow rail', () => {
+      act(() => {
+        useStore.setState({
+          workspaceLeftCollapsed: true,
+          workspaceLeftMustCollapse: true,
+          workspaceLeftOverlayOpen: true,
+        });
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      const s = useStore.getState();
+      expect(s.workspaceLeftOverlayOpen).toBe(false);
+      expect(s.workspaceLeftCollapsed).toBe(false);
+    });
+
+    test('applyWorkspaceAutoCollapse records whether the rail fits', () => {
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: true, right: false });
+      });
+      expect(useStore.getState().workspaceLeftMustCollapse).toBe(true);
+      act(() => {
+        useStore.getState().applyWorkspaceAutoCollapse({ left: false, right: false });
+      });
+      expect(useStore.getState().workspaceLeftMustCollapse).toBe(false);
+    });
+  });
+
   describe('applyWorkspaceAutoCollapse (6c-T2 responsive shell)', () => {
     test('collapses a rail that is not already collapsed, tagging it as shell-driven', () => {
       act(() => {

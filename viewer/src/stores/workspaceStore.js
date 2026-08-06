@@ -131,6 +131,17 @@ const createWorkspaceSlice = (set, get) => ({
   workspaceRightCollapsed: false,
   workspaceRightTab: 'edit', // 'outline' | 'edit' | 'build'
 
+  // Whether the viewport is currently too narrow to host the expanded left
+  // rail IN FLOW, as last measured by `WorkspaceShell`. Recorded so an expand
+  // request can pick the right presentation instead of the shell and the user
+  // fighting over one boolean.
+  workspaceLeftMustCollapse: false,
+  // The expanded rail drawn OVER the content rather than beside it. On a phone
+  // the rail cannot take its 288px without starving the canvas, which is why
+  // expanding used to be undone the instant it happened; as an overlay it
+  // costs no layout width, so nothing needs to undo it.
+  workspaceLeftOverlayOpen: false,
+
   // Narrow-viewport AUTO collapse bookkeeping (6c-T2 responsive shell,
   // BLOCKER at 1100px) — NOT read by LeftRail/RightRail (they only ever read
   // the `workspace{Left,Right}Collapsed` flags above, unchanged). This just
@@ -667,15 +678,52 @@ const createWorkspaceSlice = (set, get) => ({
   // Rail / lens actions
   // ------------------------------------------------------------------------
 
+  /**
+   * Open the left rail, in whichever form actually fits.
+   *
+   * Wide enough → expand in flow. Too narrow → open as an overlay.
+   *
+   * The collapsed strip's buttons used to call the plain toggle, which set
+   * `workspaceLeftCollapsed = false`. On a narrow viewport `WorkspaceShell`'s
+   * width effect re-ran on exactly that change, measured that the rail still
+   * doesn't fit, and collapsed it again before paint — so every button in the
+   * strip looked dead. Nothing was broken about the click; the layout was
+   * answering a question the user had already overruled.
+   */
+  expandWorkspaceLeft: () => {
+    set((s) =>
+      s.workspaceLeftMustCollapse
+        ? { workspaceLeftOverlayOpen: true }
+        : {
+            workspaceLeftCollapsed: false,
+            workspaceLeftAutoCollapsedByShell: false,
+            workspaceLeftOverlayOpen: false,
+          }
+    );
+  },
+
+  closeWorkspaceLeftOverlay: () => {
+    set({ workspaceLeftOverlayOpen: false });
+  },
+
   toggleWorkspaceLeftCollapsed: () => {
     // A manual toggle always wins — clear the auto-collapse bookkeeping so
     // `applyWorkspaceAutoCollapse` never later "auto-expands" a rail the
     // user just explicitly collapsed (or re-collapses one they just opened,
     // as long as space allows — see that action's docstring).
-    set((s) => ({
-      workspaceLeftCollapsed: !s.workspaceLeftCollapsed,
-      workspaceLeftAutoCollapsedByShell: false,
-    }));
+    set((s) => {
+      // While popped out the rail is ALREADY flagged collapsed (the strip is
+      // what occupies the layout), so flipping that flag would expand it in
+      // flow — the opposite of what the close button means. Dismiss the
+      // overlay instead.
+      if (s.workspaceLeftOverlayOpen) {
+        return { workspaceLeftOverlayOpen: false };
+      }
+      return {
+        workspaceLeftCollapsed: !s.workspaceLeftCollapsed,
+        workspaceLeftAutoCollapsedByShell: false,
+      };
+    });
   },
 
   toggleWorkspaceRightCollapsed: () => {
@@ -705,6 +753,16 @@ const createWorkspaceSlice = (set, get) => ({
   applyWorkspaceAutoCollapse: ({ left, right }) => {
     set((s) => {
       const update = {};
+      // Remember whether the rail fits, so `expandWorkspaceLeft` can choose a
+      // presentation rather than being immediately reversed by this action.
+      if (s.workspaceLeftMustCollapse !== left) update.workspaceLeftMustCollapse = left;
+      // Room again: an overlay is only a workaround for not having any, so it
+      // graduates to a normal in-flow rail instead of lingering over content.
+      if (!left && s.workspaceLeftOverlayOpen) {
+        update.workspaceLeftOverlayOpen = false;
+        update.workspaceLeftCollapsed = false;
+        update.workspaceLeftAutoCollapsedByShell = false;
+      }
       if (left && !s.workspaceLeftCollapsed) {
         update.workspaceLeftCollapsed = true;
         update.workspaceLeftAutoCollapsedByShell = true;

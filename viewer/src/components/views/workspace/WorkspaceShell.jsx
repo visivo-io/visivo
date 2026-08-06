@@ -130,7 +130,10 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
           ProjectEditor's former context (which is why the middle pane is inside
           it too); see WorkspaceDndContext for the routing decision. */}
       <WorkspaceDndContext>
-        <div className="flex min-h-0 flex-1">
+        {/* `relative` so the left rail's narrow-viewport popout can position
+            against this row — it has to reach past its own 48px container to
+            cover the content it is drawn over. */}
+        <div className="relative flex min-h-0 flex-1">
           {/* Left rail — project-wide, full-height anchor. */}
           <div
             style={{ width: leftCollapsed ? RAIL_COLLAPSED_WIDTH : leftWidth }}

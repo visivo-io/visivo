@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { PiMagnifyingGlass, PiSidebar } from 'react-icons/pi';
 import Library from './library/Library';
 import ViewSwitcher from './ViewSwitcher';
@@ -14,10 +14,16 @@ import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './library/LibraryRow';
  *   - Collapsed (48-px icon strip): the switcher's three icons (fixed
  *     positions, tooltips), then one icon per Library subsection so the user
  *     can identify what's in the rail at a glance. The two-section
- *     vocabulary matches the Library — Layout Items above the divider,
- *     Data Layer below. Icons come from the canonical `objectTypeConfigs.js`
- *     (MUI) via `getTypeDef`, so the collapsed and expanded views read as
- *     the same Library.
+ *     vocabulary matches the Library — Data Layer above the divider, Layout
+ *     Items below, the SAME order the expanded tree renders (Library.jsx
+ *     composes `[...DATA_TYPES, ...LAYOUT_TYPES]`). The strip used to run the
+ *     other way round, so collapsing the rail reordered it. Icons come from
+ *     the canonical `objectTypeConfigs.js` (MUI) via `getTypeDef`, so the two
+ *     views read as the same Library.
+ *   - Popped out: on a viewport too narrow to host the rail in flow, opening
+ *     it draws the Library OVER the content instead of beside it. Expanding
+ *     in flow there would leave the canvas below its minimum, which is why
+ *     the shell used to undo it immediately — see `expandWorkspaceLeft`.
  */
 
 const TypeBtn = ({ typeKey, active, onClick }) => {
@@ -40,6 +46,51 @@ const TypeBtn = ({ typeKey, active, onClick }) => {
     >
       <Icon aria-hidden="true" style={{ fontSize: 18 }} />
     </button>
+  );
+};
+
+/**
+ * The Library drawn over the content, for viewports that cannot seat it.
+ *
+ * Dismisses on backdrop click, on Escape, and on navigation — opening an
+ * object is the whole point of the panel, and on a phone it would otherwise
+ * sit on top of the thing it just opened.
+ */
+const LeftRailOverlay = ({ onClose }) => {
+  const activeTabId = useStore(s => s.workspaceActiveTabId);
+  const openedWith = useRef(activeTabId);
+
+  useEffect(() => {
+    // Not on mount — only once the selection actually moves.
+    if (activeTabId !== openedWith.current) onClose();
+  }, [activeTabId, onClose]);
+
+  useEffect(() => {
+    const onKey = e => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="absolute inset-y-0 left-12 right-0 z-40 flex"
+      data-testid="workspace-left-rail-overlay"
+    >
+      <div className="h-full w-72 max-w-[85vw] border-r border-gray-200 bg-white shadow-xl">
+        <Library />
+      </div>
+      {/* Sits beside the panel rather than under it, so a tap anywhere on the
+          content dismisses without also reaching the content. */}
+      <button
+        type="button"
+        aria-label="Close navigator"
+        data-testid="workspace-left-rail-overlay-backdrop"
+        onClick={onClose}
+        className="h-full flex-1 cursor-default bg-gray-900/20"
+      />
+    </div>
   );
 };
 
@@ -97,14 +148,14 @@ const LeftRailCollapsed = ({ onExpand }) => {
         >
           <PiMagnifyingGlass className="h-[18px] w-[18px]" />
         </button>
-        {/* Layout Items group — droppable types. */}
-        <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
-        {LAYOUT_TYPES.map(t => (
-          <TypeBtn key={t} typeKey={t} active={t === activeType} onClick={() => handleTypeClick(t)} />
-        ))}
-        {/* Data Layer group — click-to-edit types. */}
+        {/* Data Layer first, then Layout Items — the order Library.jsx
+            renders, so collapsing the rail no longer reshuffles it. */}
         <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
         {DATA_TYPES.map(t => (
+          <TypeBtn key={t} typeKey={t} active={t === activeType} onClick={() => handleTypeClick(t)} />
+        ))}
+        <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
+        {LAYOUT_TYPES.map(t => (
           <TypeBtn key={t} typeKey={t} active={t === activeType} onClick={() => handleTypeClick(t)} />
         ))}
       </div>
@@ -114,11 +165,18 @@ const LeftRailCollapsed = ({ onExpand }) => {
 
 const LeftRail = () => {
   const collapsed = useStore(s => s.workspaceLeftCollapsed);
-  const toggleCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
-  return collapsed ? (
-    <LeftRailCollapsed onExpand={toggleCollapsed} />
-  ) : (
-    <Library />
+  const overlayOpen = useStore(s => s.workspaceLeftOverlayOpen);
+  // Not the plain toggle: on a narrow viewport the rail opens over the content
+  // instead of beside it, and only the store knows which case applies.
+  const expandLeft = useStore(s => s.expandWorkspaceLeft);
+  const closeOverlay = useStore(s => s.closeWorkspaceLeftOverlay);
+
+  if (!collapsed) return <Library />;
+  return (
+    <>
+      <LeftRailCollapsed onExpand={expandLeft} />
+      {overlayOpen && <LeftRailOverlay onClose={closeOverlay} />}
+    </>
   );
 };
 
