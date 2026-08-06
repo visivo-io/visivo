@@ -139,6 +139,10 @@ const URL_PATTERNS = {
     // why they are verbs on their own segment rather than nested under the
     // resource they happen to concern.
     queryExecution: '/api/query/{projectId}/',
+    // Compares the explorer's unsaved working state against the project's
+    // saved objects — the badges' source of truth. Project-scoped via
+    // `withProjectId`, not a path param: the body already carries the state.
+    explorerDiff: '/api/explorer/diff/',
     expressionsTranslate: '/api/expressions/translate/',
     // VIS-993 gate; server-only — dist/cloud fail open.
     expressionsValidate: '/api/expressions/validate/',

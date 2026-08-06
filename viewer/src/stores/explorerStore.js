@@ -1900,7 +1900,7 @@ const createExplorerSlice = (set, get) => ({
 
     try {
       const { fetchDiff } = await import('../api/explorer');
-      const result = await fetchDiff(payload);
+      const result = await fetchDiff(payload, state.project?.id || null);
       set({ explorerDiffResult: result });
       return result;
     } catch (err) {

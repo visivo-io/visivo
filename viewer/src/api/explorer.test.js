@@ -40,3 +40,35 @@ describe('fetchDiff', () => {
     expect(result).toBeNull();
   });
 });
+
+describe('fetchDiff project scoping', () => {
+  // Cloud hosts many projects and answers 400 without this; local serve has
+  // one and ignores it. Sending it unconditionally would put `?project_id=`
+  // on every local request for no reason, so it is opt-in.
+  it('scopes the request to the project when one is known', async () => {
+    apiFetch.mockResolvedValue({ status: 200, json: async () => ({}) });
+    await fetchDiff({ models: {} }, 'proj-1');
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/api/explorer/diff/?project_id=proj-1',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('omits the param when there is no project', async () => {
+    apiFetch.mockResolvedValue({ status: 200, json: async () => ({}) });
+    await fetchDiff({ models: {} });
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/api/explorer/diff/',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('encodes a project id that needs it', async () => {
+    apiFetch.mockResolvedValue({ status: 200, json: async () => ({}) });
+    await fetchDiff({ models: {} }, 'a b/c');
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/api/explorer/diff/?project_id=a%20b%2Fc',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+});
