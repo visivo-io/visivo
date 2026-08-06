@@ -310,35 +310,48 @@ describe('RunsView staged panel', () => {
     setup();
     mockQueries({ runs: [] });
     render(<RunsView />);
-    expect(screen.getByRole('button', { name: 'Run 2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run 2 changes' })).toBeInTheDocument();
   });
 
   test('clicking it builds the staged set — no explicit filter', async () => {
     const { triggerRun } = setup();
     mockQueries({ runs: [] });
     render(<RunsView />);
-    fireEvent.click(screen.getByRole('button', { name: 'Run 2' }));
-    // Called with no argument: the server then scopes the run to the same
-    // unbuilt set it listed. An explicit '' would mean "rebuild everything".
-    await waitFor(() => expect(triggerRun).toHaveBeenCalledWith());
+    fireEvent.click(screen.getByRole('button', { name: 'Run 2 changes' }));
+    // No explicit filter: the server scopes the run to the same unbuilt set it
+    // listed. An explicit '' would mean "rebuild everything" — that's Run all.
+    await waitFor(() => expect(triggerRun).toHaveBeenCalled());
+    expect(triggerRun).not.toHaveBeenCalledWith({ dagFilter: '' });
   });
 
-  test('with nothing staged it offers Run all rather than going dead', () => {
-    // The escape hatch: the only way back when outputs are missing but the
-    // fingerprints claim they are built.
+  test('Run all stays available with nothing staged; Run changes goes inert', () => {
+    // Run all is the escape hatch — the only way back when outputs are missing
+    // but the fingerprints claim they are built — so it lives above the box and
+    // stays enabled. The in-box button only runs the listed changes, so with
+    // none it is disabled rather than doubling as Run all.
     setup({ stagedChanges: [] });
     mockQueries({ runs: [] });
     render(<RunsView />);
-    const button = screen.getByRole('button', { name: 'Run all' });
-    expect(button).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Run all' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Run changes' })).toBeDisabled();
     expect(screen.getByText('No changes waiting to run')).toBeInTheDocument();
   });
 
-  test('is disabled while a run is in flight', () => {
+  test('Run all triggers a deliberate full rebuild (empty filter)', async () => {
+    const { triggerRun } = setup();
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run all' }));
+    await waitFor(() => expect(triggerRun).toHaveBeenCalledWith({ dagFilter: '' }));
+  });
+
+  test('both run buttons are disabled while a run is in flight', () => {
     setup({ latestRun: { id: 'r1', state: 'running' } });
     mockQueries({ runs: [] });
     render(<RunsView />);
-    expect(screen.getByRole('button', { name: 'Running…' })).toBeDisabled();
+    const buttons = screen.getAllByRole('button', { name: 'Running…' });
+    expect(buttons).toHaveLength(2);
+    buttons.forEach(button => expect(button).toBeDisabled());
   });
 
   test('surfaces a refusal instead of silently doing nothing', async () => {
@@ -346,7 +359,7 @@ describe('RunsView staged panel', () => {
     triggerRun.mockResolvedValue({ success: false, action: 'run_in_progress' });
     mockQueries({ runs: [] });
     render(<RunsView />);
-    fireEvent.click(screen.getByRole('button', { name: 'Run 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run 2 changes' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('already in progress');
   });
 

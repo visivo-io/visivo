@@ -34,9 +34,13 @@ const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'a
  * The list is exactly what the run will build — the server derives the scope from
  * the same unbuilt set it lists here, so the two can't drift apart.
  *
- * Note the button stays enabled with nothing staged, as "Run all". An explicit
- * full rebuild is the only way back when the outputs are missing or corrupt but
- * the fingerprints say they're built.
+ * "Run all" (a deliberate full rebuild) and the Automatic/Manual toggle live
+ * ABOVE this box, not in it: both are global — they act on everything, not on
+ * this project's staged set — so mixing them into the changes box read as if
+ * "Run all" were one of the changes. The box holds only the button that runs
+ * the changes it lists. Run all stays available even with changes staged: it's
+ * the only way back when outputs are missing or corrupt but the fingerprints
+ * say they're built.
  */
 function StagedPanel() {
   const staged = useStore(s => s.stagedChanges);
@@ -49,13 +53,12 @@ function StagedPanel() {
 
   const running = latestRun ? isActiveRun(latestRun) : false;
   const count = staged.length;
+  const busy = running || starting;
 
-  const onRun = async () => {
+  const startRun = async opts => {
     setError(null);
     setStarting(true);
-    // No dagFilter => build the staged set. With nothing staged the server reads
-    // that as a full rebuild, which is what "Run all" promises.
-    const result = await triggerRun();
+    const result = await triggerRun(opts);
     setStarting(false);
     if (!result.success) {
       setError(
@@ -66,37 +69,60 @@ function StagedPanel() {
     }
   };
 
+  // No dagFilter => build only the staged set the box lists.
+  const onRunChanges = () => startRun();
+  // Empty dagFilter => a deliberate full rebuild of everything.
+  const onRunAll = () => startRun({ dagFilter: '' });
+
   return (
-    <div className="border rounded mb-6" data-testid="runs-staged-panel">
-      <div className="flex items-start justify-between gap-4 px-3 py-3 border-b">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-gray-900">
-            {count === 0
-              ? 'No changes waiting to run'
-              : `${count} change${count === 1 ? '' : 's'} waiting to run`}
-          </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {count === 0
-              ? 'Everything built. Editing a query, model or source will queue work here.'
-              : 'A run rebuilds these and everything downstream of them.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <RunTriggerToggle value={runTrigger} onChange={setRunTrigger} />
+    <>
+      {/* Global controls — above the box, because they act on everything, not on
+          this project's staged changes. */}
+      <div className="flex items-center justify-end gap-3 mb-2">
+        <RunTriggerToggle value={runTrigger} onChange={setRunTrigger} />
+        <button
+          type="button"
+          onClick={onRunAll}
+          disabled={busy}
+          className={`px-3 py-1.5 rounded text-sm font-medium text-white ${
+            busy ? 'bg-gray-300 cursor-not-allowed' : 'bg-primary hover:opacity-90'
+          }`}
+        >
+          {running ? 'Running…' : 'Run all'}
+        </button>
+      </div>
+
+      <div className="border rounded mb-6" data-testid="runs-staged-panel">
+        <div className="flex items-start justify-between gap-4 px-3 py-3 border-b">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-gray-900">
+              {count === 0
+                ? 'No changes waiting to run'
+                : `${count} change${count === 1 ? '' : 's'} waiting to run`}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {count === 0
+                ? 'Everything built. Editing a query, model or source will queue work here.'
+                : 'A run rebuilds these and everything downstream of them.'}
+            </p>
+          </div>
           <button
             type="button"
-            onClick={onRun}
-            disabled={running || starting}
-            className={`px-3 py-1.5 rounded text-sm font-medium text-white ${
-              running || starting
+            onClick={onRunChanges}
+            disabled={busy || count === 0}
+            className={`shrink-0 px-3 py-1.5 rounded text-sm font-medium text-white ${
+              busy || count === 0
                 ? 'bg-gray-300 cursor-not-allowed'
                 : 'bg-primary hover:opacity-90'
             }`}
           >
-            {running ? 'Running…' : count === 0 ? 'Run all' : `Run ${count}`}
+            {running
+              ? 'Running…'
+              : count === 0
+                ? 'Run changes'
+                : `Run ${count} change${count === 1 ? '' : 's'}`}
           </button>
         </div>
-      </div>
       {error && (
         <div className="px-3 py-2 text-xs text-red-600 border-b" role="alert">
           {error}
@@ -118,7 +144,8 @@ function StagedPanel() {
           ))}
         </ul>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
