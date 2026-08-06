@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import {
-  PiArrowsClockwise,
+  PiTreeStructure,
   PiDotsThreeOutlineVertical,
   PiDotsSix,
   PiPencil,
@@ -210,7 +210,7 @@ const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) 
         </li>
         <li>
           <ContextMenuItem
-            icon={PiArrowsClockwise}
+            icon={PiTreeStructure}
             label="Show lineage"
             hint="F"
             onClick={handle('showLineage')}
@@ -489,6 +489,10 @@ const LibraryRow = ({
               <PiCompass className="h-3.5 w-3.5" />
             </button>
           )}
+          {/* PiTreeStructure, not the clockwise arrows: those read as refresh —
+              which is what they still mean elsewhere in the app (regenerate
+              schema, exploration staleness, field swap). It is also already
+              the icon LineageCanvas uses for the surface this opens. */}
           <button
             type="button"
             onClick={handleFlipClick}
@@ -503,7 +507,7 @@ const LibraryRow = ({
                 : 'text-gray-500 hover:bg-white hover:text-gray-900',
             ].join(' ')}
           >
-            <PiArrowsClockwise className="h-3.5 w-3.5" />
+            <PiTreeStructure className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"

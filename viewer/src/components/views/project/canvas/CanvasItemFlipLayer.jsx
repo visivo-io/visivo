@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
+import { PiTreeStructure, PiLink } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { useWorkspaceDrag } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
@@ -254,7 +254,7 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
             {
               id: 'flip',
               label: isFlipped ? 'Hide lineage' : 'Flip to lineage',
-              icon: PiArrowsClockwise,
+              icon: PiTreeStructure,
               active: isFlipped,
               onSelect: () => toggleFlip(key),
             },
