@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
+import { PiTreeStructure, PiLink } from 'react-icons/pi';
 import { parseRefValue } from '../../utils/refString';
 import { parseCanvasPath } from '../views/project/canvas/canvasReorder';
 import ItemFlipCard from './ItemFlipCard';
@@ -237,7 +237,7 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
           {
             id: 'flip',
             label: isFlipped ? 'Hide lineage' : 'Flip to lineage',
-            icon: PiArrowsClockwise,
+            icon: PiTreeStructure,
             active: isFlipped,
             onSelect: () => toggleFlip(key),
           },
