@@ -15,24 +15,51 @@ from visivo.parsers.line_validation_error import LineValidationError
 from visivo.telemetry import TelemetryClient, is_telemetry_enabled, get_telemetry_context
 from visivo.telemetry.events import CLIEvent
 
-from visivo.commands.dbt import dbt
-from visivo.commands.deploy import deploy
-from visivo.commands.serve import serve
-from visivo.commands.run import run
-from visivo.commands.dist import dist
-from visivo.commands.compile import compile
-from visivo.commands.init import init
-from visivo.commands.create import create
-from visivo.commands.test import test
-from visivo.commands.aggregate import aggregate
-from visivo.commands.archive import archive
-from visivo.commands.authorize import authorize
-from visivo.commands.list import list
-from visivo.commands.migrate import migrate
 from visivo.version import VISIVO_VERSION
 
 
-@click.group()
+class LazyGroup(click.Group):
+    """Import each subcommand's module only when that command is invoked (or
+    the group is listed), instead of importing all of them at startup.
+
+    Importing all 14 subcommands eagerly pulls the entire model / query /
+    source-connector graph into every invocation — even ``visivo --version``.
+    The command that actually runs needs only its own slice, so ``visivo run``
+    (and every ``visivo run`` a Celery worker spawns) pays for ``run`` alone.
+    """
+
+    # CLI name -> "module:attribute". Order here is the --help order.
+    lazy_subcommands = {
+        "init": "visivo.commands.init:init",
+        "dbt": "visivo.commands.dbt:dbt",
+        "compile": "visivo.commands.compile:compile",
+        "run": "visivo.commands.run:run",
+        "serve": "visivo.commands.serve:serve",
+        "deploy": "visivo.commands.deploy:deploy",
+        "dist": "visivo.commands.dist:dist",
+        "test": "visivo.commands.test:test",
+        "aggregate": "visivo.commands.aggregate:aggregate",
+        "archive": "visivo.commands.archive:archive",
+        "authorize": "visivo.commands.authorize:authorize",
+        "create": "visivo.commands.create:create",
+        "list": "visivo.commands.list:list",
+        "migrate": "visivo.commands.migrate:migrate",
+    }
+
+    def list_commands(self, ctx):
+        return list(self.lazy_subcommands)
+
+    def get_command(self, ctx, name):
+        target = self.lazy_subcommands.get(name)
+        if target is None:
+            return None
+        import importlib
+
+        module_path, attr = target.split(":")
+        return getattr(importlib.import_module(module_path), attr)
+
+
+@click.group(cls=LazyGroup)
 @click.option("-p", "--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
 @click.version_option(version=VISIVO_VERSION)
@@ -60,22 +87,6 @@ def visivo(env_file, profile, verbose):
             pr.dump_stats("visivo-profile.dmp")
 
         atexit.register(exit)
-
-
-visivo.add_command(init)
-visivo.add_command(dbt)
-visivo.add_command(compile)
-visivo.add_command(run)
-visivo.add_command(serve)
-visivo.add_command(deploy)
-visivo.add_command(dist)
-visivo.add_command(test)
-visivo.add_command(aggregate)
-visivo.add_command(archive)
-visivo.add_command(authorize)
-visivo.add_command(create)
-visivo.add_command(list)
-visivo.add_command(migrate)
 
 
 def load_env(env_file):
