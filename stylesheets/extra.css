@@ -1,0 +1,388 @@
+/* ==========================================================================
+   Visivo docs — VIS-987 styling overhaul
+   --------------------------------------------------------------------------
+   Builds on brand_colors.css (mulberry / deep-teal / navy tokens, VIS-949)
+   and icon-colors.css (object-type rainbow chips). This sheet adds:
+     1. Brand font (kills Roboto / Google Fonts — theme.font:false)
+     2. Nav density (tabbed nav + tighter sidebar)
+     3. www-style `.grid.cards`
+     4. Brand-tinted admonitions + a custom `visivo` admonition
+     5. Object-type color helpers (per-type text + left-border accents),
+        consolidating the legacy icon-colors.css helpers.
+   docs.visivo.io should read as the same product as www / app / the viewer.
+   ========================================================================== */
+
+/* ==========================================================================
+   1. BRAND FONT — system sans + monospace stacks (no Roboto / Google Fonts)
+   ========================================================================== */
+:root {
+  --md-text-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  --md-code-font-family: source-code-pro, Menlo, Monaco, Consolas,
+    'Courier New', monospace;
+  /* Material's base.html also reads the non-`-family` aliases; mirror them so
+     no template path falls back to Roboto. */
+  --md-text-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --md-code-font: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+body,
+input,
+.md-typeset {
+  font-family: var(--md-text-font-family);
+}
+code,
+kbd,
+pre,
+.md-typeset code,
+.md-typeset pre {
+  font-family: var(--md-code-font-family);
+}
+
+/* ==========================================================================
+   2. NAV DENSITY — tabbed top nav + a tighter, calmer sidebar
+   ========================================================================== */
+/* Tabs row (navigation.tabs): brand-flavoured, restrained weight. */
+.md-tabs {
+  font-size: 0.74rem;
+}
+.md-tabs__item {
+  height: 2.25rem;
+}
+
+/* Sidebar: slightly smaller type + tighter rhythm so the long Reference tree
+   reads as an index rather than a wall of links. */
+.md-nav {
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+.md-nav__title {
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+}
+.md-nav__item {
+  padding-top: 0;
+}
+.md-nav__link {
+  margin-top: 0.32em;
+}
+/* Tighten the nested Reference subtree indentation a touch. */
+.md-nav__list .md-nav__list {
+  padding-left: 0.55rem;
+}
+
+/* ==========================================================================
+   3. CARDS — echo the www feature-card treatment
+   --------------------------------------------------------------------------
+   White surface in light / dark surface in dark, rounded, subtle shadow,
+   hover lift. Add `.vz-cards-accent` to a `.grid.cards` to opt into the
+   per-object-type left border (set the type with .vz-* on the same card).
+   ========================================================================== */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > :is(ul, ol) > li,
+.md-typeset .grid > .card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.6rem;
+  padding: 1rem 1.1rem;
+  background: #ffffff;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  transition: transform 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid.cards > :is(ul, ol) > li:hover,
+.md-typeset .grid > .card:hover {
+  transform: translateY(-3px);
+  border-color: var(--vz-mulberry-200);
+  box-shadow: 0 8px 16px -6px rgba(0, 0, 0, 0.16),
+    0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+.md-typeset .grid.cards > ul > li > hr,
+.md-typeset .grid.cards > :is(ul, ol) > li > hr {
+  margin: 0.6rem 0;
+  border-color: rgba(0, 0, 0, 0.07);
+}
+/* Card icons render a touch larger and align with the title. */
+.md-typeset .grid.cards .twemoji,
+.md-typeset .grid.cards svg {
+  vertical-align: -0.125em;
+}
+
+[data-md-color-scheme='visivo_dark'] .md-typeset .grid.cards > ul > li,
+[data-md-color-scheme='visivo_dark']
+  .md-typeset
+  .grid.cards
+  > :is(ul, ol)
+  > li,
+[data-md-color-scheme='visivo_dark'] .md-typeset .grid > .card {
+  background: #232838;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+[data-md-color-scheme='visivo_dark'] .md-typeset .grid.cards > ul > li:hover,
+[data-md-color-scheme='visivo_dark']
+  .md-typeset
+  .grid.cards
+  > :is(ul, ol)
+  > li:hover,
+[data-md-color-scheme='visivo_dark'] .md-typeset .grid > .card:hover {
+  border-color: var(--vz-mulberry-400);
+  box-shadow: 0 8px 18px -6px rgba(0, 0, 0, 0.5);
+}
+
+/* Optional object-type left-border accent — set with .vz-source etc. on the
+   same <li>. The border color reuses the rainbow text color via currentColor
+   trick is unreliable across li scope, so use explicit per-type rules below. */
+.md-typeset .grid.cards.vz-cards-accent > ul > li,
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li {
+  border-left-width: 3px;
+}
+
+/* ==========================================================================
+   4. ADMONITIONS — brand-tint the built-ins + a custom `visivo` type
+   --------------------------------------------------------------------------
+   Material derives an admonition's accent from --md-admonition-icon + an
+   inline border/title-bg color set per type. We retint the common ones to the
+   brand palette: note → deep-teal, tip → mulberry, plus a `visivo` type.
+   ========================================================================== */
+
+/* note / abstract → deep-teal */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: var(--vz-teal-500);
+}
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: rgba(45, 106, 111, 0.1);
+  border-color: var(--vz-teal-500);
+}
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: var(--vz-teal-500);
+}
+
+/* tip / hint → mulberry */
+.md-typeset .admonition.tip,
+.md-typeset details.tip,
+.md-typeset .admonition.hint,
+.md-typeset details.hint {
+  border-color: var(--vz-mulberry-500);
+}
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary,
+.md-typeset .hint > .admonition-title,
+.md-typeset .hint > summary {
+  background-color: rgba(113, 59, 87, 0.1);
+  border-color: var(--vz-mulberry-500);
+}
+.md-typeset .tip > .admonition-title::before,
+.md-typeset .tip > summary::before,
+.md-typeset .hint > .admonition-title::before,
+.md-typeset .hint > summary::before {
+  background-color: var(--vz-mulberry-500);
+}
+
+/* warning / danger → terracotta highlight */
+.md-typeset .admonition.warning,
+.md-typeset details.warning,
+.md-typeset .admonition.danger,
+.md-typeset details.danger {
+  border-color: var(--vz-terracotta);
+}
+.md-typeset .warning > .admonition-title,
+.md-typeset .warning > summary,
+.md-typeset .danger > .admonition-title,
+.md-typeset .danger > summary {
+  background-color: rgba(210, 89, 70, 0.1);
+  border-color: var(--vz-terracotta);
+}
+.md-typeset .warning > .admonition-title::before,
+.md-typeset .warning > summary::before,
+.md-typeset .danger > .admonition-title::before,
+.md-typeset .danger > summary::before {
+  background-color: var(--vz-terracotta);
+}
+
+/* Custom `visivo` admonition — mulberry, sparkle glyph. Use as:
+     !!! visivo "Visivo tip"
+*/
+:root {
+  --md-admonition-icon--visivo: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2zm6.5 11l.9 2.6L22 16.5l-2.6.9L18.5 20l-.9-2.6L15 16.5l2.6-.9.9-2.6z"/></svg>');
+}
+.md-typeset .admonition.visivo,
+.md-typeset details.visivo {
+  border-color: var(--vz-mulberry-500);
+}
+.md-typeset .visivo > .admonition-title,
+.md-typeset .visivo > summary {
+  background-color: rgba(113, 59, 87, 0.12);
+  border-color: var(--vz-mulberry-500);
+}
+.md-typeset .visivo > .admonition-title::before,
+.md-typeset .visivo > summary::before {
+  background-color: var(--vz-mulberry-500);
+  -webkit-mask-image: var(--md-admonition-icon--visivo);
+  mask-image: var(--md-admonition-icon--visivo);
+}
+
+/* ==========================================================================
+   5. OBJECT-TYPE COLOR HELPERS
+   --------------------------------------------------------------------------
+   Consolidates the two legacy icon-colors.css brand helpers and adds a
+   per-object-type LEFT-BORDER accent set (paired with the .vz-* text helpers
+   already in icon-colors.css) so a card or callout can carry its object's
+   rainbow color. Order: source → dashboard (Tailwind-500).
+   ========================================================================== */
+
+/* Legacy brand-icon helpers (kept; were in icon-colors.css). */
+.visivo-purple {
+  color: #713b57;
+}
+.visivo-orange {
+  color: #d25946;
+}
+
+/* Per-object-type left-border accent (apply on a .grid.cards li or callout). */
+.vz-accent-source {
+  border-left: 3px solid #f97316 !important;
+}
+.vz-accent-model {
+  border-left: 3px solid #f59e0b !important;
+}
+.vz-accent-csvmodel {
+  border-left: 3px solid #84cc16 !important;
+}
+.vz-accent-mergemodel {
+  border-left: 3px solid #22c55e !important;
+}
+.vz-accent-dimension {
+  border-left: 3px solid #14b8a6 !important;
+}
+.vz-accent-metric {
+  border-left: 3px solid #06b6d4 !important;
+}
+.vz-accent-relation {
+  border-left: 3px solid #3b82f6 !important;
+}
+.vz-accent-input {
+  border-left: 3px solid #6366f1 !important;
+}
+.vz-accent-insight {
+  border-left: 3px solid #a855f7 !important;
+}
+.vz-accent-markdown {
+  border-left: 3px solid #8b5cf6 !important;
+}
+.vz-accent-table {
+  border-left: 3px solid #d946ef !important;
+}
+.vz-accent-chart {
+  border-left: 3px solid #ec4899 !important;
+}
+.vz-accent-dashboard {
+  border-left: 3px solid #f43f5e !important;
+}
+
+/* --------------------------------------------------------------------------
+   Card-level accent (VIS-987 QA fix). In Markdown `grid cards`, an attr_list
+   like `{ .vz-accent-source }` attaches to the card's first PARAGRAPH, not the
+   <li> — so the colored border landed on a zero-padding inline <p> and was
+   invisible, while the card edge kept the neutral `.vz-cards-accent` border.
+   Lift each accent onto its containing card via :has() (well-supported in all
+   evergreen browsers) and suppress the stray inner-<p> border so the rainbow
+   reads on the card's left edge as intended. Order: source → dashboard.
+   -------------------------------------------------------------------------- */
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-source),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-source) {
+  border-left-color: #f97316 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-model),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-model) {
+  border-left-color: #f59e0b !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-csvmodel),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-csvmodel) {
+  border-left-color: #84cc16 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-mergemodel),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-mergemodel) {
+  border-left-color: #22c55e !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-dimension),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-dimension) {
+  border-left-color: #14b8a6 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-metric),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-metric),
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-semantic),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-semantic) {
+  border-left-color: #06b6d4 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-relation),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-relation) {
+  border-left-color: #3b82f6 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-input),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-input) {
+  border-left-color: #6366f1 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-insight),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-insight) {
+  border-left-color: #a855f7 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-markdown),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-markdown) {
+  border-left-color: #8b5cf6 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-table),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-table) {
+  border-left-color: #d946ef !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-chart),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-chart) {
+  border-left-color: #ec4899 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-dashboard),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-dashboard) {
+  border-left-color: #f43f5e !important;
+}
+/* The accent now lives on the card; drop the stray border from the inner
+   heading <p> so it isn't doubled up next to the icon. */
+.md-typeset .grid.cards.vz-cards-accent > ul > li > p[class*='vz-accent-'],
+.md-typeset
+  .grid.cards.vz-cards-accent
+  > :is(ul, ol)
+  > li
+  > p[class*='vz-accent-'] {
+  border-left: 0 !important;
+}
+
+/* The semantic-layer grouping (Metrics/Dimensions/Relations) uses cyan, its
+   center-of-mass color, on the Concepts overview. */
+.vz-semantic {
+  color: #06b6d4;
+}
+.vz-accent-semantic {
+  border-left: 3px solid #06b6d4 !important;
+}
+
+/* ==========================================================================
+   6. MERMAID — keep diagrams on the brand surface in both schemes
+   ========================================================================== */
+.md-typeset .mermaid,
+.md-typeset .mermaid-vz {
+  margin: 1.2rem 0;
+  text-align: center;
+}
+/* Before our JS renders the SVG, the raw fence source would flash as a code
+   block. Hide the un-rendered source; reveal once .vz-mermaid-done is set. */
+.md-typeset .mermaid-vz:not(.vz-mermaid-done) > code {
+  display: none;
+}
+.md-typeset .mermaid-vz svg {
+  max-width: 100%;
+  height: auto;
+}
