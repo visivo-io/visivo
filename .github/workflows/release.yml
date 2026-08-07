@@ -44,7 +44,9 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: .python-version
+          # Nuitka 4.1 only experimentally supports 3.14 (the repo's
+          # .python-version); build the release binary on 3.13.
+          python-version: "3.13"
 
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
@@ -57,11 +59,21 @@ jobs:
           yarn install --network-timeout 600000 && yarn deploy
           cd ..
           poetry install
+          # Nuitka is the build tool (visivo/build.py); kept out of the poetry
+          # lock (bumping it there re-resolves unrelated deps). Nuitka downloads
+          # its C toolchain on first run via --assume-yes-for-downloads.
+          poetry run pip install 'nuitka>=4.1'
           poetry run write-schema-json
           poetry run copy-install-script
           poetry version ${{ inputs.version }}
           ls
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
+          # `poetry install` puts visivo on an EDITABLE install whose dist-info
+          # RECORD doesn't enumerate the source; Nuitka 4.1 mis-reads that and
+          # crashes in its distribution/DLL scan. Reinstall from the built wheel
+          # (complete RECORD) before building. --no-deps keeps the resolved env.
+          poetry build -f wheel
+          poetry run pip install --force-reinstall --no-deps dist/visivo-*.whl
 
       - name: Build Artifact
         run: poetry run build

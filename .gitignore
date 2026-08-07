@@ -65,3 +65,5 @@ test-resulsts/
 
 # Nuitka standalone build output (VIS-1190 spike)
 dist-nuitka/
+build-nuitka/
+nuitka-crash-report.xml

@@ -75,6 +75,14 @@ tasks:
   - key: visivo-install
     use: visivo-pip-install
     run: |
+      # visivo/build.py now builds with Nuitka. On Linux standalone that needs a
+      # C toolchain + patchelf; Nuitka >=4.1 is kept out of the poetry lock (see
+      # build.py) and installed here. Builds on the .python-version interpreter
+      # (3.14, experimental for Nuitka but proven to work); the release ships the
+      # 3.13 build. Output is still dist/visivo/visivo (a launcher), so the
+      # binary tests below are unchanged.
+      sudo apt-get update && sudo apt-get install -y build-essential patchelf
+      poetry run pip install 'nuitka>=4.1'
       poetry run build
 
   - key: test-cli
