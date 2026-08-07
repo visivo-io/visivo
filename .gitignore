@@ -62,3 +62,6 @@ test-resulsts/
 
 # Playwright story QA screenshots (regenerated locally; not snapshot baselines)
 **/__screens__/
+
+# Nuitka standalone build output (VIS-1190 spike)
+dist-nuitka/
