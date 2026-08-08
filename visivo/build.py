@@ -19,6 +19,12 @@ def build():
         "--clean",
         "--onedir",
         "--noconfirm",
+        # VIS-1191: subcommands are imported lazily (command_line.LazyGroup uses
+        # importlib.import_module on a string path), so PyInstaller's static
+        # import analysis never sees them and would ship a binary whose commands
+        # ("run", "init", ...) don't exist. Collect the package explicitly.
+        "--collect-submodules",
+        "visivo.commands",
         "--collect-submodules",
         "engineio",
         "--collect-submodules",

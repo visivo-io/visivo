@@ -86,3 +86,46 @@ def test_generic_exception_still_reports_the_issue_url():
 
     assert "An unexpected error has occurred" in output
     assert "Click here to report this issue" in output
+
+
+def test_importing_command_line_does_not_eagerly_import_subcommands():
+    """The lazy-load contract (VIS-1191): importing the CLI entry must NOT pull
+    in every subcommand's module graph. A fresh interpreter is used so other
+    tests' imports can't mask a regression.
+
+    `visivo run` should pay the import cost of `run` alone — not deploy, serve,
+    dbt, dist, and the rest — which matters for every `visivo run` a Celery
+    worker spawns."""
+    import subprocess
+
+    code = (
+        "import sys, visivo.command_line\n"
+        "heavy = ('visivo.commands.run', 'visivo.commands.deploy',\n"
+        "         'visivo.commands.serve', 'visivo.commands.dbt',\n"
+        "         'visivo.commands.dist')\n"
+        "eager = [m for m in heavy if m in sys.modules]\n"
+        "assert not eager, 'eagerly imported: %s' % eager\n"
+        "print('ok')\n"
+    )
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert "ok" in result.stdout
+
+
+def test_lazy_group_lists_and_resolves_every_command():
+    """Every command is still listed in --help and resolves lazily, and its CLI
+    name matches the mapping key (guards against a command whose own name drifts
+    from the key we registered it under)."""
+    from click.testing import CliRunner
+    from visivo.command_line import visivo, LazyGroup
+
+    listed = CliRunner().invoke(visivo, ["--help"])
+    assert listed.exit_code == 0
+    for name in LazyGroup.lazy_subcommands:
+        assert name in listed.output
+        cmd = visivo.get_command(None, name)
+        assert cmd is not None, f"{name} did not resolve"
+        assert cmd.name == name, f"mapping key {name!r} != command name {cmd.name!r}"
+
+    # An unknown command is a clean miss, not an import error.
+    assert visivo.get_command(None, "definitely-not-a-command") is None
