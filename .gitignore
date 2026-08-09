@@ -65,3 +65,6 @@ test-resulsts/
 
 # Nuitka standalone build output (VIS-1190 spike)
 dist-nuitka/
+
+# Nuitka run-only runner binary output (VIS-1192)
+dist-runner/
