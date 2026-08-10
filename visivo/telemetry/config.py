@@ -64,6 +64,37 @@ def is_telemetry_enabled(project_defaults: Optional[object] = None) -> bool:
     return True
 
 
+# Environment variables that indicate a CI/CD run. Kept as a module-level
+# constant (not inlined in is_ci_environment) so tests clear EXACTLY what the
+# detector checks — the copy hardcoded in test_ci_detection drifted from this
+# list, which is how RWX CI ended up spamming new_installation.
+CI_ENV_VARS = [
+    "CI",  # Generic CI indicator (GitHub Actions, GitLab CI, CircleCI, etc.)
+    "CONTINUOUS_INTEGRATION",  # Generic
+    "GITHUB_ACTIONS",  # GitHub Actions
+    "GITLAB_CI",  # GitLab CI
+    "CIRCLECI",  # CircleCI
+    "JENKINS_HOME",  # Jenkins
+    "JENKINS_URL",  # Jenkins
+    "TEAMCITY_VERSION",  # TeamCity
+    "TRAVIS",  # Travis CI
+    "BUILDKITE",  # Buildkite
+    "DRONE",  # Drone
+    "BITBUCKET_BUILD_NUMBER",  # Bitbucket Pipelines
+    "SEMAPHORE",  # Semaphore CI
+    "APPVEYOR",  # AppVeyor
+    "WERCKER",  # Wercker
+    "MAGNUM",  # Magnum CI
+    "MINT",  # Mint — rwx's legacy name (kept for older runners)
+    "RWX_RUN_ID",  # RWX (rwx.com, the current Mint) — always set in a task run
+    "RWX_TASK_ID",  # RWX — also always set; belt-and-braces alongside RWX_RUN_ID
+    "CODEBUILD_BUILD_ID",  # AWS CodeBuild
+    "TF_BUILD",  # Azure DevOps
+    "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",  # Azure DevOps
+    "KUBERNETES_SERVICE_HOST",  # Kubernetes-hosted runner
+]
+
+
 def is_ci_environment() -> bool:
     """
     Detect if we're running in a CI/CD environment.
@@ -75,44 +106,13 @@ def is_ci_environment() -> bool:
     Returns:
         bool: True if running in CI/CD, False otherwise
     """
-    # Common CI environment variables
-    ci_env_vars = [
-        "CI",  # Generic CI indicator (GitHub Actions, GitLab CI, CircleCI, etc.)
-        "CONTINUOUS_INTEGRATION",  # Generic
-        "GITHUB_ACTIONS",  # GitHub Actions
-        "GITLAB_CI",  # GitLab CI
-        "CIRCLECI",  # CircleCI
-        "JENKINS_HOME",  # Jenkins
-        "JENKINS_URL",  # Jenkins
-        "TEAMCITY_VERSION",  # TeamCity
-        "TRAVIS",  # Travis CI
-        "BUILDKITE",  # Buildkite
-        "DRONE",  # Drone
-        "BITBUCKET_BUILD_NUMBER",  # Bitbucket Pipelines
-        "SEMAPHORE",  # Semaphore CI
-        "APPVEYOR",  # AppVeyor
-        "WERCKER",  # Wercker
-        "MAGNUM",  # Magnum CI
-        "MINT",  # Mint — rwx's legacy name (kept for older runners)
-        "RWX_RUN_ID",  # RWX (rwx.com, the current Mint) — always set in a task run
-        "RWX_TASK_ID",  # RWX — also always set; belt-and-braces alongside RWX_RUN_ID
-        "CODEBUILD_BUILD_ID",  # AWS CodeBuild
-        "TF_BUILD",  # Azure DevOps
-        "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",  # Azure DevOps
-    ]
-
-    # Check if any CI environment variable is set
-    for var in ci_env_vars:
+    for var in CI_ENV_VARS:
         if os.getenv(var):
             return True
 
-    # Additional heuristics for container environments
-    # Check if running in Docker
+    # Running inside a container (a Docker/RWX image build doesn't pass the CI
+    # env vars through to the build).
     if os.path.exists("/.dockerenv"):
-        return True
-
-    # Check for Kubernetes
-    if os.getenv("KUBERNETES_SERVICE_HOST"):
         return True
 
     return False
