@@ -6,7 +6,7 @@ import os
 import uuid
 from pathlib import Path
 import pytest
-from visivo.telemetry.config import is_ci_environment
+from visivo.telemetry.config import is_ci_environment, CI_ENV_VARS
 from visivo.telemetry.machine_id import get_machine_id
 
 
@@ -39,8 +39,15 @@ class TestCIDetection:
         assert is_ci_environment() is True
 
     def test_ci_detection_with_mint(self, monkeypatch):
-        """Test detection with Mint (rwx)."""
+        """Test detection with Mint (rwx's legacy name)."""
         monkeypatch.setenv("MINT", "true")
+        assert is_ci_environment() is True
+
+    def test_ci_detection_with_rwx(self, monkeypatch):
+        """Detection on rwx.com (current Mint): it doesn't set MINT, but always
+        sets RWX_RUN_ID/RWX_TASK_ID. Without this, visivo commands in RWX CI are
+        treated as new user installs and spam new_installation events."""
+        monkeypatch.setenv("RWX_RUN_ID", "abc123")
         assert is_ci_environment() is True
 
     def test_ci_detection_with_docker(self, monkeypatch, tmp_path):
@@ -68,29 +75,9 @@ class TestCIDetection:
     def test_not_ci_environment(self, monkeypatch):
         """Test detection when not in CI."""
         # We need to clear ALL possible CI environment variables
-        all_ci_vars = [
-            "CI",
-            "CONTINUOUS_INTEGRATION",
-            "GITHUB_ACTIONS",
-            "GITLAB_CI",
-            "CIRCLECI",
-            "JENKINS_HOME",
-            "JENKINS_URL",
-            "TEAMCITY_VERSION",
-            "TRAVIS",
-            "BUILDKITE",
-            "DRONE",
-            "BITBUCKET_BUILD_NUMBER",
-            "SEMAPHORE",
-            "APPVEYOR",
-            "WERCKER",
-            "MAGNUM",
-            "MINT",
-            "CODEBUILD_BUILD_ID",
-            "TF_BUILD",
-            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
-            "KUBERNETES_SERVICE_HOST",
-        ]
+        # Clear exactly what the detector checks — single source of truth so this
+        # can't drift again (a stale copy is how RWX slipped through).
+        all_ci_vars = CI_ENV_VARS
         for var in all_ci_vars:
             monkeypatch.delenv(var, raising=False)
 
@@ -139,29 +126,9 @@ class TestCIMachineId:
     def test_regular_machine_id_format(self, monkeypatch, tmp_path):
         """Test that regular machine IDs don't have prefix."""
         # Clear ALL CI environment variables
-        all_ci_vars = [
-            "CI",
-            "CONTINUOUS_INTEGRATION",
-            "GITHUB_ACTIONS",
-            "GITLAB_CI",
-            "CIRCLECI",
-            "JENKINS_HOME",
-            "JENKINS_URL",
-            "TEAMCITY_VERSION",
-            "TRAVIS",
-            "BUILDKITE",
-            "DRONE",
-            "BITBUCKET_BUILD_NUMBER",
-            "SEMAPHORE",
-            "APPVEYOR",
-            "WERCKER",
-            "MAGNUM",
-            "MINT",
-            "CODEBUILD_BUILD_ID",
-            "TF_BUILD",
-            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
-            "KUBERNETES_SERVICE_HOST",
-        ]
+        # Clear exactly what the detector checks — single source of truth so this
+        # can't drift again (a stale copy is how RWX slipped through).
+        all_ci_vars = CI_ENV_VARS
         for var in all_ci_vars:
             monkeypatch.delenv(var, raising=False)
 
@@ -185,29 +152,9 @@ class TestCIMachineId:
     def test_regular_machine_id_persistent(self, monkeypatch, tmp_path):
         """Test that regular machine IDs are persistent."""
         # Clear ALL CI environment variables
-        all_ci_vars = [
-            "CI",
-            "CONTINUOUS_INTEGRATION",
-            "GITHUB_ACTIONS",
-            "GITLAB_CI",
-            "CIRCLECI",
-            "JENKINS_HOME",
-            "JENKINS_URL",
-            "TEAMCITY_VERSION",
-            "TRAVIS",
-            "BUILDKITE",
-            "DRONE",
-            "BITBUCKET_BUILD_NUMBER",
-            "SEMAPHORE",
-            "APPVEYOR",
-            "WERCKER",
-            "MAGNUM",
-            "MINT",
-            "CODEBUILD_BUILD_ID",
-            "TF_BUILD",
-            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
-            "KUBERNETES_SERVICE_HOST",
-        ]
+        # Clear exactly what the detector checks — single source of truth so this
+        # can't drift again (a stale copy is how RWX slipped through).
+        all_ci_vars = CI_ENV_VARS
         for var in all_ci_vars:
             monkeypatch.delenv(var, raising=False)
 
@@ -247,29 +194,9 @@ class TestCIMachineId:
         assert api_event.to_dict()["properties"]["is_ci"] is True
 
         # Test without CI environment - clear ALL CI vars
-        all_ci_vars = [
-            "CI",
-            "CONTINUOUS_INTEGRATION",
-            "GITHUB_ACTIONS",
-            "GITLAB_CI",
-            "CIRCLECI",
-            "JENKINS_HOME",
-            "JENKINS_URL",
-            "TEAMCITY_VERSION",
-            "TRAVIS",
-            "BUILDKITE",
-            "DRONE",
-            "BITBUCKET_BUILD_NUMBER",
-            "SEMAPHORE",
-            "APPVEYOR",
-            "WERCKER",
-            "MAGNUM",
-            "MINT",
-            "CODEBUILD_BUILD_ID",
-            "TF_BUILD",
-            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
-            "KUBERNETES_SERVICE_HOST",
-        ]
+        # Clear exactly what the detector checks — single source of truth so this
+        # can't drift again (a stale copy is how RWX slipped through).
+        all_ci_vars = CI_ENV_VARS
         for var in all_ci_vars:
             monkeypatch.delenv(var, raising=False)
 
