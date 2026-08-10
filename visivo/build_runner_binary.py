@@ -47,7 +47,18 @@ def build():
         "--include-package=snowflake.connector",
         "--include-package=jsonschema_rs",
         "--include-package-data=jsonschema_rs",
-        "--include-package-data=plotly",
+        # `visivo run` computes data; it never renders figures. Nothing on the
+        # run path imports plotly, matplotlib, or PIL — trace props validate
+        # against the static visivo/schema JSON below via jsonschema_rs, not
+        # plotly's runtime validators. matplotlib was an unused direct dep (now
+        # removed from pyproject) whose C-compilation overran the CI build
+        # timeout; plotly was never installed (the old --include-package-data
+        # was a dead no-op). These stay as guards so a transitive extra
+        # (e.g. bigquery[matplotlib]) or a lazy pandas.plot can't drag the
+        # render stack — and its slow C-compile — back into the binary.
+        "--nofollow-import-to=plotly",
+        "--nofollow-import-to=matplotlib",
+        "--nofollow-import-to=PIL",
         # Schema only — no viewers (run doesn't serve the SPA).
         f"--include-data-dir={HERE / 'schema'}=visivo/schema",
         str(HERE / "runner_binary.py"),
