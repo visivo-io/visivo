@@ -1111,6 +1111,14 @@ def deploy_phase(
     parser = ParserFactory().build(project_file=discover.project_file, files=discover.files)
     project = parser.parse()
 
+    # Version match is enforced on deploy ONLY — not on run/compile (where it used
+    # to live, on every Project construction). A run uses whatever visivo is
+    # installed regardless of the version that authored the project; deploy is
+    # where a mismatch matters, since it publishes to the shared cloud project.
+    from visivo.models.validators import CliVersionValidator
+
+    CliVersionValidator().validate(project)
+
     # deploy parses directly (no compile_phase), so validate table SQL here too —
     # otherwise a table whose columns/pivot compile to invalid SQL (bug #7) would
     # be pushed to the cloud and fail only in the browser.

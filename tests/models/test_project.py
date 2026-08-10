@@ -506,3 +506,25 @@ def test_named_child_nodes_keeps_duplicate_model_scoped_names_distinct():
     assert "model_a" in named_nodes
     assert "model_a.avg_total" in named_nodes["model_a"]["direct_children"]
     assert "model_b.avg_total" not in named_nodes["model_a"]["direct_children"]
+
+
+def test_cli_version_mismatch_does_not_block_construction_or_run():
+    """A run uses whatever visivo is installed, so a project recorded at another
+    CLI version must still construct (and run). Version match is deploy-only —
+    the cloud runner runs projects deployed by older CLIs."""
+    from visivo.version import VISIVO_VERSION
+
+    assert VISIVO_VERSION != "0.0.1"
+    project = Project(name="p", cli_version="0.0.1")  # must not raise
+    assert project.cli_version == "0.0.1"
+
+
+def test_cli_version_validator_still_rejects_on_demand_for_deploy():
+    """Deploy calls CliVersionValidator explicitly, so a mismatch is still
+    rejected there — just not on every construction."""
+    from click import ClickException
+    from visivo.models.validators import CliVersionValidator
+
+    project = Project(name="p", cli_version="0.0.1")
+    with pytest.raises(ClickException):
+        CliVersionValidator().validate(project)

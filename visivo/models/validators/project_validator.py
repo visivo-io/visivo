@@ -1,7 +1,6 @@
 """Main project validator that orchestrates all validation."""
 
 from visivo.models.validators.base_validator import BaseProjectValidator
-from visivo.models.validators.cli_version_validator import CliVersionValidator
 from visivo.models.validators.default_names_validator import DefaultNamesValidator
 from visivo.models.validators.models_have_sources_validator import ModelsHaveSourcesValidator
 from visivo.models.validators.dag_validator import DagValidator
@@ -28,8 +27,13 @@ class ProjectValidator:
 
     def __init__(self):
         """Initialize the project validator with all validators in order."""
+        # NOTE: CliVersionValidator is deliberately NOT here. This runs on every
+        # Project construction (a @model_validator), so it fires on run/compile/
+        # serve too — but a run should use whatever visivo is installed,
+        # regardless of the version that authored the project (the cloud runner
+        # runs projects deployed by older CLIs). Version match is enforced only
+        # on deploy, in deploy_phase.
         self.validators: List[BaseProjectValidator] = [
-            CliVersionValidator(),
             DefaultNamesValidator(),
             ModelsHaveSourcesValidator(),
             DagValidator(),
