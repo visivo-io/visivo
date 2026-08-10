@@ -506,3 +506,29 @@ def test_named_child_nodes_keeps_duplicate_model_scoped_names_distinct():
     assert "model_a" in named_nodes
     assert "model_a.avg_total" in named_nodes["model_a"]["direct_children"]
     assert "model_b.avg_total" not in named_nodes["model_a"]["direct_children"]
+
+
+def test_cli_version_same_major_runs_even_when_minor_differs():
+    """Compatibility is by major version: a project authored on an older 2.x
+    still runs on a newer 2.x, so a run isn't pinned to the exact version that
+    wrote the project (the cloud runner runs projects deployed by older CLIs)."""
+    from visivo.version import VISIVO_VERSION
+
+    major = int(VISIVO_VERSION.split(".")[0])
+    # Same major, deliberately different minor/patch — must construct (run) fine.
+    project = Project(name="p", cli_version=f"{major}.99.99")
+    assert project.cli_version == f"{major}.99.99"
+
+
+def test_cli_version_different_major_is_incompatible():
+    """A cross-major project can't run and must be upgraded (1.x can't run on
+    2.x). Checked on the validator directly, since construction runs it."""
+    from click import ClickException
+    from visivo.models.validators import CliVersionValidator
+    from visivo.version import VISIVO_VERSION
+
+    major = int(VISIVO_VERSION.split(".")[0])
+    project = Project(name="p", cli_version=f"{major}.0.0")  # valid to construct
+    project.cli_version = f"{major + 1}.0.0"  # now a different major
+    with pytest.raises(ClickException):
+        CliVersionValidator().validate(project)
