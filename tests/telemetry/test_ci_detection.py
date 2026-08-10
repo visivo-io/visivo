@@ -39,8 +39,15 @@ class TestCIDetection:
         assert is_ci_environment() is True
 
     def test_ci_detection_with_mint(self, monkeypatch):
-        """Test detection with Mint (rwx)."""
+        """Test detection with Mint (rwx's legacy name)."""
         monkeypatch.setenv("MINT", "true")
+        assert is_ci_environment() is True
+
+    def test_ci_detection_with_rwx(self, monkeypatch):
+        """Detection on rwx.com (current Mint): it doesn't set MINT, but always
+        sets RWX_RUN_ID/RWX_TASK_ID. Without this, visivo commands in RWX CI are
+        treated as new user installs and spam new_installation events."""
+        monkeypatch.setenv("RWX_RUN_ID", "abc123")
         assert is_ci_environment() is True
 
     def test_ci_detection_with_docker(self, monkeypatch, tmp_path):

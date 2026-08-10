@@ -93,7 +93,9 @@ def is_ci_environment() -> bool:
         "APPVEYOR",  # AppVeyor
         "WERCKER",  # Wercker
         "MAGNUM",  # Magnum CI
-        "MINT",  # Mint (rwx)
+        "MINT",  # Mint — rwx's legacy name (kept for older runners)
+        "RWX_RUN_ID",  # RWX (rwx.com, the current Mint) — always set in a task run
+        "RWX_TASK_ID",  # RWX — also always set; belt-and-braces alongside RWX_RUN_ID
         "CODEBUILD_BUILD_ID",  # AWS CodeBuild
         "TF_BUILD",  # Azure DevOps
         "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",  # Azure DevOps
