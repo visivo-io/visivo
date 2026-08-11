@@ -108,6 +108,9 @@ const resetWorkspaceStore = () => {
       // Workspace mount effect doesn't throw.
       checkCommitStatus: jest.fn(),
       openCommitModal: jest.fn(),
+      // Capabilities probe fired on mount (VIS-1210) — stubbed so the real
+      // fetch isn't attempted and the call is assertable.
+      fetchCapabilities: jest.fn(),
       // Stub the 12 collection fetches that the route container fires on
       // mount — keeps the test focused on shell behaviour, not data load.
       fetchCharts: jest.fn(),
@@ -160,6 +163,11 @@ const renderAt = (entry) => {
 describe('VIS-775 Workspace shell', () => {
   beforeEach(() => {
     resetWorkspaceStore();
+  });
+
+  test('probes capabilities on mount so capability-gated UI (e.g. the source secret picker) works when core mounts the Workspace directly without the Home shell (VIS-1210)', () => {
+    renderAt('/workspace');
+    expect(useStore.getState().fetchCapabilities).toHaveBeenCalled();
   });
 
   test('mounts the shell at /workspace (unscoped) on the Project destination by default', () => {
