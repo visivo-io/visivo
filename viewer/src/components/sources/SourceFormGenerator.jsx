@@ -182,44 +182,66 @@ const SecretField = ({ field, value, onChange, secretKeys, error }) => {
     onChange(field.name, key ? toSecretRef(key) : '');
   };
 
+  // Match the floating notched-border label used by the other source fields.
+  const controlClass = `block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border focus:outline-none focus:ring-2 focus:border-primary-500 ${
+    error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
+  }`;
+  const labelBase = 'absolute left-2 z-10 origin-[0] bg-white px-1 text-sm duration-200 transform';
+  const labelColor = error ? 'text-red-500' : 'text-gray-500';
+  const labelText = (
+    <>
+      {field.label}
+      {field.required && <span className="text-red-500 ml-0.5">*</span>}
+    </>
+  );
+
   return (
     <div>
-      <label htmlFor={field.name} className="block text-sm text-gray-700 mb-1">
-        {field.label}
-        {field.required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {addingNew ? (
-        <input
-          type="text"
-          autoFocus
-          id={field.name}
-          name={field.name}
-          value={selected}
-          onChange={e => onChange(field.name, e.target.value ? toSecretRef(e.target.value) : '')}
-          placeholder="SECRET_NAME"
-          className={`block w-full px-3 py-2.5 text-sm rounded-md border focus:outline-none focus:ring-2 ${
-            error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
-          }`}
-        />
-      ) : (
-        <select
-          id={field.name}
-          name={field.name}
-          value={selected}
-          onChange={e => choose(e.target.value)}
-          className={`block w-full px-3 py-2.5 text-sm rounded-md border focus:outline-none focus:ring-2 ${
-            error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
-          }`}
-        >
-          <option value="">Select a secret…</option>
-          {secretKeys.map(key => (
-            <option key={key} value={key}>
-              {key}
-            </option>
-          ))}
-          <option value="__new__">New secret…</option>
-        </select>
-      )}
+      <div className="relative">
+        {addingNew ? (
+          <>
+            <input
+              type="text"
+              autoFocus
+              id={field.name}
+              name={field.name}
+              value={selected}
+              onChange={e => onChange(field.name, e.target.value ? toSecretRef(e.target.value) : '')}
+              placeholder="SECRET_NAME"
+              className={`${controlClass} appearance-none peer placeholder-transparent`}
+            />
+            {/* Floats down as the placeholder when empty, up into the border otherwise. */}
+            <label
+              htmlFor={field.name}
+              className={`${labelBase} ${labelColor} top-2 -translate-y-4 scale-75 peer-focus:text-primary-500 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100 peer-focus:top-2 peer-focus:-translate-y-4 peer-focus:scale-75`}
+            >
+              {labelText}
+            </label>
+          </>
+        ) : (
+          <>
+            <select
+              id={field.name}
+              name={field.name}
+              value={selected}
+              onChange={e => choose(e.target.value)}
+              className={controlClass}
+            >
+              <option value="">Select a secret…</option>
+              {secretKeys.map(key => (
+                <option key={key} value={key}>
+                  {key}
+                </option>
+              ))}
+              <option value="__new__">New secret…</option>
+            </select>
+            {/* A select always holds a value, so the label stays notched up. */}
+            <label htmlFor={field.name} className={`${labelBase} ${labelColor} top-2 -translate-y-4 scale-75`}>
+              {labelText}
+            </label>
+          </>
+        )}
+      </div>
       <p className="mt-1 text-xs text-gray-500">
         Stored as a reference. Add the value under account settings — it is never
         saved with the project.

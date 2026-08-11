@@ -40,6 +40,7 @@ const Workspace = () => {
   const restoreWorkspaceTabs = useStore(s => s.restoreWorkspaceTabs);
   const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
   const checkCommitStatus = useStore(s => s.checkCommitStatus);
+  const fetchCapabilities = useStore(s => s.fetchCapabilities);
   const scope = useWorkspaceScope();
 
   // H-2: soft-refresh on backend `project_changed` events (and show the
@@ -66,6 +67,7 @@ const Workspace = () => {
   const fetchExplorations = useStore(s => s.fetchExplorations);
 
   const projectName = project?.name || 'project';
+  const projectId = project?.id;
 
   // Fire every collection load when the workspace mounts. Per-slice fetches
   // record their own errors; the `.catch` just guards against an unhandled
@@ -99,6 +101,16 @@ const Workspace = () => {
     fetchDashboards,
     fetchExplorations,
   ]);
+
+  // Probe capabilities on mount / when the project changes. Under `visivo serve`
+  // the Home shell already does this, but core mounts the Workspace directly
+  // (no Home wrapper), so without this the viewer's `capabilities` stays null
+  // and capability-gated UI silently falls back to its no-capabilities default —
+  // e.g. the source secret field renders as a plain masked box instead of the
+  // secret picker (secrets_required/secret_keys never reach SourceFormGenerator).
+  useEffect(() => {
+    if (projectId) fetchCapabilities?.();
+  }, [projectId, fetchCapabilities]);
 
   // The mount prefix for this Workspace's tab URLs. Prefer what the host told
   // us (contexts/viewerBase) — it is correct before the first navigation and
