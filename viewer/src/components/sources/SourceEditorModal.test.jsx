@@ -87,7 +87,7 @@ describe('SourceEditorModal', () => {
       expect(await screen.findByText('Host is required')).toBeInTheDocument();
       expect(screen.getByText('Database is required')).toBeInTheDocument();
       expect(screen.getByText('Username is required')).toBeInTheDocument();
-      expect(screen.getByText('Password is required')).toBeInTheDocument();
+      // Password is optional (VIS-1215: some databases have no password).
       expect(saveSource).not.toHaveBeenCalled();
     });
 

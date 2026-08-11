@@ -89,7 +89,7 @@ describe('SourceEditForm — create mode validation', () => {
     expect(screen.getByText('Host is required')).toBeInTheDocument();
     expect(screen.getByText('Database is required')).toBeInTheDocument();
     expect(screen.getByText('Username is required')).toBeInTheDocument();
-    expect(screen.getByText('Password is required')).toBeInTheDocument();
+    // Password is optional (VIS-1215: some databases have no password).
   });
 
   test('switching source type resets the previously entered connection fields', () => {
