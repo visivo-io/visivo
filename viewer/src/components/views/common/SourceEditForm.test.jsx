@@ -163,6 +163,24 @@ describe('SourceEditForm — edit mode', () => {
     );
   });
 
+  test('lets you switch the source type when editing, keeping the name locked (VIS-1208)', () => {
+    renderForm({ source: publishedSqlite, isCreate: false });
+    // Name stays locked (it's the record key)...
+    expect(screen.getByLabelText(/Source Name/)).toBeDisabled();
+    expect(screen.getByLabelText(/Database Path/)).toHaveValue('prod.db');
+
+    // ...but the type is switchable now (previously disabled in edit mode).
+    const pickPostgres = screen.getByRole('button', { name: 'pick-postgresql' });
+    expect(pickPostgres).toBeEnabled();
+    fireEvent.click(pickPostgres);
+
+    // The form swaps to the new type's fields: sqlite's Database Path is gone,
+    // postgres fields appear.
+    expect(screen.getByTestId('source-type-value')).toHaveTextContent('postgresql');
+    expect(screen.queryByLabelText(/Database Path/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Host/)).toBeInTheDocument();
+  });
+
   test('falls back to flat source fields when config is missing (type recovered from the flat object)', () => {
     renderForm({
       source: { name: 'flat1', type: 'duckdb', database: ':memory:', status: 'PUBLISHED' },
