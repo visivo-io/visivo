@@ -1,17 +1,21 @@
 import React from 'react';
 import Select from '../common/Select';
 
-// Available source types matching backend Pydantic models
+// Available source types — must stay in sync with visivo's SourceField union
+// (visivo/models/sources/fields.py) AND the field schemas in
+// SourceFormGenerator's SOURCE_SCHEMAS. Every entry here needs a schema there,
+// or the form shows "Configuration schema not available". (trino/databricks are
+// NOT visivo source types; redshift/clickhouse are, and have schemas.)
 export const SOURCE_TYPES = [
   { value: 'postgresql', label: 'PostgreSQL' },
   { value: 'mysql', label: 'MySQL' },
+  { value: 'redshift', label: 'Redshift' },
   { value: 'snowflake', label: 'Snowflake' },
   { value: 'bigquery', label: 'BigQuery' },
+  { value: 'clickhouse', label: 'ClickHouse' },
   { value: 'duckdb', label: 'DuckDB' },
   { value: 'sqlite', label: 'SQLite' },
   { value: 'csv', label: 'CSV' },
-  { value: 'trino', label: 'Trino' },
-  { value: 'databricks', label: 'Databricks' },
 ];
 
 const SourceTypeSelector = ({ value, onChange, disabled = false }) => {

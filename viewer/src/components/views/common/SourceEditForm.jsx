@@ -241,15 +241,18 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
           />
         )}
 
-          {/* Source Type Selector */}
+          {/* Source Type Selector — switchable even when editing an existing
+              source (VIS-1208). The name stays locked (it's the record key), but
+              the type isn't: changing it swaps to the new type's connection
+              fields below. Only the type-specific values are reset; the name is
+              kept. */}
           <div>
             <SourceTypeSelector
               value={sourceType}
               onChange={type => {
                 setSourceType(type);
-                setFormValues({}); // Reset form values when type changes
+                setFormValues({}); // the old type's fields don't apply to the new one
               }}
-              disabled={isEditMode}
             />
             {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
           </div>

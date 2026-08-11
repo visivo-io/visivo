@@ -203,9 +203,8 @@ const SourceEditorModal = () => {
               value={sourceType}
               onChange={type => {
                 setSourceType(type);
-                setFormValues({}); // Reset form values when type changes
+                setFormValues({}); // the old type's fields don't apply to the new one
               }}
-              disabled={isEditMode}
             />
             {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
           </div>
