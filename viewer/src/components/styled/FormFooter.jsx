@@ -103,7 +103,7 @@ const FormFooter = ({
               onClick={onCancel}
               disabled={cancelDisabled}
               data-testid="form-footer-cancel"
-              className="text-sm"
+              className="text-sm whitespace-nowrap"
             >
               {cancelLabel}
             </ButtonOutline>
@@ -112,7 +112,9 @@ const FormFooter = ({
               onClick={onSave}
               disabled={saving || saveDisabled}
               data-testid="form-footer-save"
-              className="text-sm"
+              // Fixed width + centered so the "Saving..." spinner state doesn't
+              // grow the button and reflow the footer row (VIS-1218).
+              className="text-sm min-w-[6.5rem] inline-flex items-center justify-center whitespace-nowrap"
             >
               {saving ? (
                 <>

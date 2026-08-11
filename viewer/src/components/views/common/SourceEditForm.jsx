@@ -348,7 +348,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
               !connectionTestable
             }
             title={connectionTestable ? undefined : CONNECTION_TEST_UNAVAILABLE}
-            className="text-sm"
+            className="text-sm whitespace-nowrap"
           >
             Test Connection
           </ButtonOutline>
