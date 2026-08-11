@@ -93,6 +93,7 @@ class Project(NamedModel, ParentModel):
     )
     project_file_path: Optional[str] = Field(
         None,
+        exclude=True,
         description="Set automatically to the path of the root project file. You do not need to set this.",
     )
     project_dir: Optional[str] = Field(
