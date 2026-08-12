@@ -350,4 +350,49 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     expect(screen.getByTestId('source-outline-generate')).toBeDisabled();
     expect(screen.getByTestId('source-outline-generate')).toHaveTextContent('Generating…');
   });
+
+  describe('partial schema builds', () => {
+    // A schema job succeeds as long as it could CONNECT — failing outright
+    // would stop every downstream job over a permissions error on one table.
+    // The cost is that a partial result looks exactly like a complete one, so
+    // the reasons have to appear next to the tables that did come through.
+    const withWarnings = (...errors) => ({
+      ...schemaEnvelope(),
+      metadata: { errors },
+    });
+
+    test('shows the reasons alongside the tables that did load', async () => {
+      fetchSourceSchema.mockResolvedValue(
+        withWarnings('could not reflect columns for rnacen.xref: permission denied')
+      );
+
+      render(<SourceOutlineTreePanel sourceName={SRC} />);
+
+      // The tree still renders — a partial build is not an error state.
+      expect(await screen.findByTestId('source-outline-node-root')).toBeInTheDocument();
+      expect(screen.queryByTestId('source-outline-error')).not.toBeInTheDocument();
+
+      const warnings = await screen.findByTestId('source-outline-warnings');
+      expect(warnings).toHaveTextContent('Error while reading the schema');
+      expect(warnings).toHaveTextContent('permission denied');
+    });
+
+    test('counts the reasons when there are several', async () => {
+      fetchSourceSchema.mockResolvedValue(withWarnings('first failure', 'second failure'));
+
+      render(<SourceOutlineTreePanel sourceName={SRC} />);
+
+      const warnings = await screen.findByTestId('source-outline-warnings');
+      expect(warnings).toHaveTextContent('2 errors while reading the schema');
+      expect(warnings).toHaveTextContent('first failure');
+      expect(warnings).toHaveTextContent('second failure');
+    });
+
+    test('shows nothing when the build was clean', async () => {
+      render(<SourceOutlineTreePanel sourceName={SRC} />);
+
+      expect(await screen.findByTestId('source-outline-node-root')).toBeInTheDocument();
+      expect(screen.queryByTestId('source-outline-warnings')).not.toBeInTheDocument();
+    });
+  });
 });

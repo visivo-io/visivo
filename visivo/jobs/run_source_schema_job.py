@@ -16,6 +16,11 @@ from visivo.query.schema_aggregator import SchemaAggregator
 from time import time
 from typing import List, Optional
 
+# A source whose account cannot reflect ANY table produces one warning per
+# table, so the full list can be as long as the schema. Enough to identify the
+# pattern, not enough to bury the run output; the source outline shows them all.
+_MAX_REPORTED_SCHEMA_WARNINGS = 5
+
 
 def run_seeds(source: Source, working_dir: str = None) -> int:
     """Load each of the source's seeds into a table on that source.
@@ -140,6 +145,23 @@ def action(
             f"Built schema for source \033[4m{source_to_build.name}\033[0m "
             f"({seed_details}{total_tables} tables, {total_columns} columns)"
         )
+
+        # A partial build is still a success — failing here would stop every
+        # downstream job over a permissions error on one table, when the rest of
+        # the schema is perfectly usable. Only a source we could not connect to
+        # at all fails, via metadata["error"] above.
+        #
+        # But a partial result is indistinguishable from a complete one unless
+        # we say so, so the reasons are named here as well as carried in the
+        # envelope for the source outline to show.
+        warnings = metadata.get("errors") or []
+        if warnings:
+            details += f"\n  {len(warnings)} problem(s) while reading the schema:"
+            for warning in warnings[:_MAX_REPORTED_SCHEMA_WARNINGS]:
+                details += f"\n    - {warning}"
+            remaining = len(warnings) - _MAX_REPORTED_SCHEMA_WARNINGS
+            if remaining > 0:
+                details += f"\n    ... and {remaining} more"
 
         success_message = format_message_success(
             details=details,
