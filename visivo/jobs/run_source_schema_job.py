@@ -10,6 +10,7 @@ from visivo.jobs.job import (
     JobResult,
     format_message_failure,
     format_message_success,
+    format_message_warning,
     start_message,
 )
 from visivo.query.schema_aggregator import SchemaAggregator
@@ -151,17 +152,36 @@ def action(
         # the schema is perfectly usable. Only a source we could not connect to
         # at all fails, via metadata["error"] above.
         #
-        # But a partial result is indistinguishable from a complete one unless
-        # we say so, so the reasons are named here as well as carried in the
-        # envelope for the source outline to show.
+        # But it reports as a WARNING rather than a plain success: "0 tables"
+        # with a green SUCCESS is exactly the reassuring-but-wrong output that
+        # sent someone hunting for a missing schema when the real answer was a
+        # permissions error on every table.
+        #
+        # The reasons go in warning_msg, NOT in details: _format_message
+        # truncates details to 93 visual chars unless DEBUG=true, which turned
+        # the first attempt at this into "231 problem(s) while reading(trunc)"
+        # — the count survived and every actual reason was cut. warning_msg is
+        # rendered on its own line and never truncated.
         warnings = metadata.get("errors") or []
         if warnings:
-            details += f"\n  {len(warnings)} problem(s) while reading the schema:"
-            for warning in warnings[:_MAX_REPORTED_SCHEMA_WARNINGS]:
-                details += f"\n    - {warning}"
-            remaining = len(warnings) - _MAX_REPORTED_SCHEMA_WARNINGS
+            shown = warnings[:_MAX_REPORTED_SCHEMA_WARNINGS]
+            warning_msg = f"{len(warnings)} problem(s) while reading the schema:"
+            for warning in shown:
+                warning_msg += f"\n\t  - {warning}"
+            remaining = len(warnings) - len(shown)
             if remaining > 0:
-                details += f"\n    ... and {remaining} more"
+                warning_msg += f"\n\t  ... and {remaining} more (see the source in the sidebar)"
+
+            return JobResult(
+                item=source_to_build,
+                success=True,
+                message=format_message_warning(
+                    details=details,
+                    start_time=start_time,
+                    full_path=None,
+                    warning_msg=warning_msg,
+                ),
+            )
 
         success_message = format_message_success(
             details=details,

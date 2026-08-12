@@ -111,6 +111,49 @@ def test_column_failure_is_reported_not_swallowed(sqlite_source, monkeypatch):
     assert any("pg_collation" in e for e in errors)
 
 
+def test_unmappable_column_type_keeps_its_table(sqlite_source, monkeypatch):
+    """Regression: a column type the dialect cannot map must not fail the source.
+
+    Clickhouse reflection hands back SQLAlchemy's ``NullType`` for types its
+    driver has no mapping for, and ``str()`` on that raises "Can't generate DDL
+    for NullType()". Batching originally let this propagate out of the
+    per-table build, so ONE unmappable column failed the whole schema — the job
+    errored and every downstream job was skipped for a failed dependency, which
+    is precisely what a partial build is supposed to avoid.
+
+    The column is kept rather than dropped: its name is still worth having for
+    browsing and autocomplete, and only its sqlglot datatype is lost.
+    """
+
+    class ExplodingType:
+        def __str__(self):
+            raise Exception("Can't generate DDL for NullType()")
+
+    from sqlalchemy.engine.reflection import Inspector
+
+    real = Inspector.get_multi_columns
+
+    def with_unmappable_column(self, **kwargs):
+        reflected = real(self, **kwargs)
+        return {
+            key: [{**c, "type": ExplodingType()} if c["name"] == "total" else c for c in cols]
+            for key, cols in reflected.items()
+        }
+
+    monkeypatch.setattr(Inspector, "get_multi_columns", with_unmappable_column)
+
+    result = sqlite_source.get_schema()
+
+    # The source did not fail: no fatal `error`, and the tables are still here.
+    assert "error" not in result["metadata"]
+    assert sorted(result["tables"]) == ["orders", "users"]
+    # The offending column survives alongside its neighbours.
+    assert sorted(result["tables"]["orders"]["columns"]) == ["id", "total"]
+    assert result["tables"]["orders"]["columns"]["total"]["type"] == "ExplodingType"
+    # And the degradation is reported rather than silent.
+    assert any("unmapped column type" in e for e in result["metadata"]["errors"])
+
+
 class _FakeInspector:
     """Just enough inspector to exercise schema selection."""
 

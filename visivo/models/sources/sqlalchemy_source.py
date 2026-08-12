@@ -462,7 +462,18 @@ class SqlalchemySource(Source, ABC):
                     ):
                         continue
 
-                    table_info = self._build_table_schema(qualified, schema, columns_info)
+                    # A table that cannot be built must not take the source down
+                    # with it. Before batching, per-table reflection swallowed
+                    # this and skipped the table; letting it propagate here made
+                    # one unmappable column fail the whole schema, which then
+                    # blocked every downstream job — the opposite of the point.
+                    try:
+                        table_info = self._build_table_schema(
+                            qualified, schema, columns_info, errors
+                        )
+                    except Exception as e:
+                        errors.append(f"could not build schema for {qualified}: {e}")
+                        continue
                     if not table_info:
                         continue
                     result["tables"][qualified] = table_info
@@ -650,7 +661,7 @@ class SqlalchemySource(Source, ABC):
             Logger.instance().debug(f"Error extracting schema for table {table_name}: {e}")
             return None
 
-    def _build_table_schema(self, table_name, schema_name, columns_info):
+    def _build_table_schema(self, table_name, schema_name, columns_info, errors=None):
         """Turn reflected columns into this source's table-schema dict.
 
         Shared by the batched path in ``get_schema`` and the per-table
@@ -673,18 +684,36 @@ class SqlalchemySource(Source, ABC):
             col_name = col_info["name"]
             col_type = col_info["type"]
 
-            # Convert SQLAlchemy type to SQLGlot DataType
-            sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(
-                col_type, dialect=self.get_dialect()
-            )
-
-            table_schema["columns"][col_name] = {
-                "type": str(col_type),
-                "nullable": col_info.get("nullable", True),
-                "default": col_info.get("default"),
-                "sqlglot_datatype": sqlglot_datatype,
-                "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
-            }
+            try:
+                # Convert SQLAlchemy type to SQLGlot DataType
+                sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(
+                    col_type, dialect=self.get_dialect()
+                )
+                table_schema["columns"][col_name] = {
+                    "type": str(col_type),
+                    "nullable": col_info.get("nullable", True),
+                    "default": col_info.get("default"),
+                    "sqlglot_datatype": sqlglot_datatype,
+                    "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
+                }
+            except Exception as e:
+                # A type the dialect could not map — SQLAlchemy hands back
+                # NullType, whose str() raises "Can't generate DDL for
+                # NullType()". Clickhouse does this for types the driver has no
+                # mapping for.
+                #
+                # Keep the COLUMN rather than dropping it (or its table): the
+                # name is still worth having for browsing and autocomplete, and
+                # a table listed without one column beats a source listed
+                # without the table. Only the sqlglot datatype is lost, so
+                # query optimisation degrades for that column alone.
+                if errors is not None:
+                    errors.append(f"{table_name}.{col_name}: unmapped column type ({e})")
+                table_schema["columns"][col_name] = {
+                    "type": type(col_type).__name__,
+                    "nullable": col_info.get("nullable", True),
+                    "default": None,
+                }
 
         return table_schema
 
