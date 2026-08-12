@@ -133,6 +133,36 @@ def test_create_postgres_source_externalizes_credentials(client):
         os.environ.update(saved_env)
 
 
+def test_finalize_makes_source_immediately_listable(client):
+    """After /api/project/finalize/, the new source must be listable via
+    /api/sources/ right away — without waiting for the file-watcher recompile
+    (which is what ran the schema job and made the sidebar row appear late)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        source = {
+            "name": "warehouse",
+            "type": "postgresql",
+            "host": "db.internal",
+            "database": "analytics",
+            "username": "${env.WAREHOUSE_USERNAME}",
+            "password": "${env.WAREHOUSE_PASSWORD}",
+        }
+        res = client.post(
+            "/api/project/finalize/",
+            json={
+                "project_name": "PG Project",
+                "project_dir": tmpdir,
+                "sources": [source],
+                "dashboards": [],
+            },
+        )
+        assert res.status_code == 200
+
+        listed = client.get("/api/sources/")
+        assert listed.status_code == 200
+        names = [s["name"] for s in json.loads(listed.data)["sources"]]
+        assert "warehouse" in names
+
+
 def test_load_example_project_success(client, monkeypatch):
     """Test POST /api/project/load_example with a github release clone."""
     # Mock request payload

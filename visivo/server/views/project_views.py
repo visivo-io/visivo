@@ -230,4 +230,11 @@ def register_project_views(app, flask_app, output_dir):
 
         write_project_file(project, project_dir)
 
+        # Refresh the in-memory project so the new source is immediately listable
+        # via /api/sources/ (which reads the SourceManager cache). Without this,
+        # the source only appears once the file-watcher recompile lands — the same
+        # recompile that runs the schema job — so the sidebar row looked like it
+        # was waiting on the job to finish.
+        flask_app.project = project
+
         return jsonify({"message": "Project finalized"})
