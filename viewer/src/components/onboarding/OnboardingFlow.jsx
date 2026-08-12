@@ -116,12 +116,19 @@ export default function OnboardingFlow() {
   // keyboard nav: ← goes back, except on welcome/handoff
   useEffect(() => {
     const onKey = e => {
+      // Don't hijack arrow keys while a modal is open (the source/skip dialogs
+      // sit on top of the flow) or while the user is typing in a field —
+      // otherwise ← quietly navigates the flow behind the open form.
+      if (showSourceModal || showSkipConfirm) return;
+      const el = e.target;
+      const tag = el?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
       if (e.key === 'ArrowLeft' && stepIdx > 0 && current?.kind !== 'handoff') handleBack();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIdx, current]);
+  }, [stepIdx, current, showSourceModal, showSkipConfirm]);
 
   const completeAndNavigate = useCallback(
     destination => {
@@ -462,7 +469,8 @@ export default function OnboardingFlow() {
                 <div>
                   <h3 className="onb-modal__title">Add a Source</h3>
                   <div style={{ fontSize: 12, color: 'var(--onb-fg-muted)', marginTop: 2 }}>
-                    Credentials never leave your machine.
+                    Credentials are saved to a local <code>.env</code> file and referenced securely
+                    — never written into your project.
                   </div>
                 </div>
                 <button
