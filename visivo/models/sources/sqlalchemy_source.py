@@ -421,7 +421,9 @@ class SqlalchemySource(Source, ABC):
             # Get SQLGlot dialect for this source
             sqlglot_dialect = self.get_sqlglot_dialect()
 
-            # Initialize result structure
+            # Initialize result structure. `scanned_schemas`/`errors` exist so a
+            # zero-table answer can be told apart from a failed one — see the
+            # note on _columns_by_table below.
             result = {
                 "tables": {},
                 "sqlglot_schema": MappingSchema(),
@@ -429,19 +431,41 @@ class SqlalchemySource(Source, ABC):
                     "source_dialect": sqlglot_dialect,
                     "database": self.database,
                     "schema": getattr(self, "db_schema", None),
+                    "scanned_schemas": [],
+                    "errors": [],
                     "total_tables": 0,
                     "total_columns": 0,
                 },
             }
+            errors = result["metadata"]["errors"]
 
-            # Get available tables to process
-            available_tables = self._get_available_tables_for_schema(inspector, table_names)
+            default_schema = None
+            try:
+                default_schema = inspector.default_schema_name
+            except Exception as e:
+                errors.append(f"could not resolve default schema: {e}")
 
-            # Process each table
-            for table_name in available_tables:
-                table_info = self._extract_table_schema(inspector, table_name)
-                if table_info:
-                    result["tables"][table_name] = table_info
+            for schema in self._schemas_to_scan(inspector, errors):
+                result["metadata"]["scanned_schemas"].append(schema)
+                for base_name, columns_info in self._columns_by_table(
+                    inspector, schema, errors
+                ).items():
+                    # Preserve the historical key shape: bare name in the
+                    # default schema, `schema.table` anywhere else.
+                    qualified = (
+                        base_name
+                        if schema is None or schema == default_schema
+                        else f"{schema}.{base_name}"
+                    )
+                    if table_names is not None and not (
+                        qualified in table_names or base_name in table_names
+                    ):
+                        continue
+
+                    table_info = self._build_table_schema(qualified, schema, columns_info)
+                    if not table_info:
+                        continue
+                    result["tables"][qualified] = table_info
 
                     # Add to SQLGlot schema
                     columns_dict = {}
@@ -450,11 +474,8 @@ class SqlalchemySource(Source, ABC):
                             columns_dict[col_name] = col_info["sqlglot_datatype"]
 
                     if columns_dict:
-                        # Extract base table name for SQLGlot schema to avoid nesting level issues
-                        base_table_name = (
-                            table_name.split(".", 1)[-1] if "." in table_name else table_name
-                        )
-                        result["sqlglot_schema"].add_table(base_table_name, columns_dict)
+                        # Base table name for SQLGlot to avoid nesting level issues
+                        result["sqlglot_schema"].add_table(base_name, columns_dict)
 
             # Update metadata
             result["metadata"]["total_tables"] = len(result["tables"])
@@ -470,12 +491,86 @@ class SqlalchemySource(Source, ABC):
 
         except Exception as e:
             Logger.instance().error(f"Error building schema for source {self.name}: {e}")
-            # Return minimal schema to avoid breaking downstream code
+            # Return minimal schema to avoid breaking downstream code. `errors`
+            # is a list here as well as on the success path, so a caller has one
+            # shape to check rather than two.
             return {
                 "tables": {},
                 "sqlglot_schema": MappingSchema(),
-                "metadata": {"error": str(e), "total_tables": 0, "total_columns": 0},
+                "metadata": {
+                    "error": str(e),
+                    "errors": [str(e)],
+                    "scanned_schemas": [],
+                    "total_tables": 0,
+                    "total_columns": 0,
+                },
             }
+
+    def _schemas_to_scan(self, inspector, errors: List[str]) -> List[Optional[str]]:
+        """Which schemas ``get_schema`` should walk.
+
+        An explicit ``db_schema`` wins and is scanned alone. Otherwise every
+        non-system schema is scanned, NOT just the connection's default.
+
+        Scanning only the default is what made a Postgres source report "no
+        tables" while sitting on a database that had them: the tables were in a
+        named schema and ``public`` was genuinely empty, so a correct-looking
+        zero came back. Enumerating schemas costs one round trip.
+        """
+        db_schema = getattr(self, "db_schema", None)
+        if db_schema:
+            return [db_schema]
+        try:
+            return [s for s in inspector.get_schema_names() if s.lower() not in self.SYSTEM_SCHEMAS]
+        except Exception as e:
+            # Fall back to the default schema rather than returning nothing —
+            # but say so, so the caller can distinguish a narrow scan from a
+            # complete one.
+            errors.append(f"could not list schemas ({e}); scanned the default schema only")
+            return [None]
+
+    def _columns_by_table(self, inspector, schema, errors: List[str]) -> Dict[str, Any]:
+        """``{table_name: [column_info, ...]}`` for one schema.
+
+        Prefers ``get_multi_columns`` — one round trip for the whole schema
+        instead of one per table. Against a remote warehouse that is the
+        difference between seconds and minutes: per-table reflection measured
+        ~1.9s/table, so a 186-table schema took ~6 minutes and callers timed out
+        long before it finished, leaving an empty schema that looked like an
+        empty database.
+
+        Falls back to per-table reflection when the batched call fails, because
+        it is NOT universally available: SQLAlchemy's multi-column query joins
+        ``pg_collation``/``pg_constraint``, and a locked-down server can deny
+        those while still permitting ordinary per-table reflection. Batching
+        without this fallback turns "slow" into "broken" on exactly those
+        servers.
+        """
+        try:
+            multi = inspector.get_multi_columns(schema=schema)
+            return {table: cols for (_schema, table), cols in multi.items() if cols}
+        except Exception as e:
+            errors.append(
+                f"batched column reflection unavailable for schema "
+                f"{schema or 'default'} ({e}); fell back to per-table reflection"
+            )
+
+        columns: Dict[str, Any] = {}
+        try:
+            table_names = inspector.get_table_names(schema=schema)
+        except Exception as e:
+            errors.append(f"could not list tables in schema {schema or 'default'}: {e}")
+            return columns
+
+        for table in table_names:
+            try:
+                cols = inspector.get_columns(table, schema=schema)
+            except Exception as e:
+                errors.append(f"could not reflect columns for {schema or ''}.{table}: {e}")
+                continue
+            if cols:
+                columns[table] = cols
+        return columns
 
     def _get_available_tables_for_schema(
         self, inspector, table_names: List[str] = None
@@ -549,41 +644,49 @@ class SqlalchemySource(Source, ABC):
                 # Try without schema if schema-qualified lookup fails
                 columns_info = inspector.get_columns(base_table_name)
 
-            if not columns_info:
-                return None
-
-            # Process columns
-            table_schema = {
-                "columns": {},
-                "metadata": {
-                    "table_name": table_name,
-                    "schema": schema_name,
-                    "column_count": len(columns_info),
-                },
-            }
-
-            for col_info in columns_info:
-                col_name = col_info["name"]
-                col_type = col_info["type"]
-
-                # Convert SQLAlchemy type to SQLGlot DataType
-                sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(
-                    col_type, dialect=self.get_dialect()
-                )
-
-                table_schema["columns"][col_name] = {
-                    "type": str(col_type),
-                    "nullable": col_info.get("nullable", True),
-                    "default": col_info.get("default"),
-                    "sqlglot_datatype": sqlglot_datatype,
-                    "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
-                }
-
-            return table_schema
+            return self._build_table_schema(table_name, schema_name, columns_info)
 
         except Exception as e:
             Logger.instance().debug(f"Error extracting schema for table {table_name}: {e}")
             return None
+
+    def _build_table_schema(self, table_name, schema_name, columns_info):
+        """Turn reflected columns into this source's table-schema dict.
+
+        Shared by the batched path in ``get_schema`` and the per-table
+        ``_extract_table_schema`` so the two cannot drift — they differ only in
+        how the columns were fetched, not in what is built from them.
+        """
+        if not columns_info:
+            return None
+
+        table_schema = {
+            "columns": {},
+            "metadata": {
+                "table_name": table_name,
+                "schema": schema_name,
+                "column_count": len(columns_info),
+            },
+        }
+
+        for col_info in columns_info:
+            col_name = col_info["name"]
+            col_type = col_info["type"]
+
+            # Convert SQLAlchemy type to SQLGlot DataType
+            sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(
+                col_type, dialect=self.get_dialect()
+            )
+
+            table_schema["columns"][col_name] = {
+                "type": str(col_type),
+                "nullable": col_info.get("nullable", True),
+                "default": col_info.get("default"),
+                "sqlglot_datatype": sqlglot_datatype,
+                "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
+            }
+
+        return table_schema
 
     # --- Granular introspection methods ---
 
