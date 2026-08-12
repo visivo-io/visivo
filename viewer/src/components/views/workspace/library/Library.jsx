@@ -391,11 +391,13 @@ const Library = () => {
                 data-testid="library-new-object-menu"
                 className="absolute right-0 top-7 z-50 w-48 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
               >
-                {/* Grouped like the sidebar (Layout Items · Data Layer). The menu
-                    is already "New", so items drop the redundant "New " prefix. */}
+                {/* Grouped in the SAME order the sidebar body renders (Data
+                    Layer first — sources → models → …, then Layout Items). The
+                    menu is already "New", so items drop the redundant "New "
+                    prefix. */}
                 {[
-                  { label: 'Layout Items', types: LAYOUT_TYPES },
                   { label: 'Data Layer', types: DATA_TYPES },
+                  { label: 'Layout Items', types: LAYOUT_TYPES },
                 ].map((group, groupIndex) => (
                   <div key={group.label} data-testid={`library-new-group-${group.label}`}>
                     {groupIndex > 0 && <div className="my-1 border-t border-gray-100" />}
