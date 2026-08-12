@@ -462,7 +462,8 @@ export default function OnboardingFlow() {
                 <div>
                   <h3 className="onb-modal__title">Add a Source</h3>
                   <div style={{ fontSize: 12, color: 'var(--onb-fg-muted)', marginTop: 2 }}>
-                    Credentials never leave your machine.
+                    Credentials are saved to a local <code>.env</code> file and referenced securely
+                    — never written into your project.
                   </div>
                 </div>
                 <button

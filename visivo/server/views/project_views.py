@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 import re
 from flask import jsonify, request
-import json
 from visivo.commands.utils import create_source
 from visivo.discovery.discover import Discover
 from visivo.logger.logger import Logger
@@ -17,7 +16,12 @@ from visivo.models.source import CreateSourceRequest, SourceTypeEnum
 from visivo.models.table import Table
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.server.project_writer import ProjectWriter
-from visivo.server.views.utils import create_source_dashboard, load_csv, write_project_file
+from visivo.server.views.utils import (
+    create_source_dashboard,
+    externalize_source_credentials,
+    load_csv,
+    write_project_file,
+)
 from visivo.models.example_type import ExampleTypeEnum
 
 
@@ -151,8 +155,11 @@ def register_project_views(app, flask_app, output_dir):
         if isinstance(source, str):
             return jsonify({"message": source}), 400
 
-        json_dump = source.model_dump_json(exclude_none=True)
-        return jsonify({"message": "Source created", "source": json.loads(json_dump)})
+        # Move any credentials the user entered out of the project YAML and into
+        # .env, referencing them via ${env.*}. This also loads them into the
+        # running server's os.environ so the refs resolve immediately (VIS-1216).
+        source_dict = externalize_source_credentials(source, form.get("project_dir", ""))
+        return jsonify({"message": "Source created", "source": source_dict})
 
     @app.route("/api/source/upload/", methods=["POST"])
     def upload_file():

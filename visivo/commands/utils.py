@@ -161,10 +161,11 @@ def create_source(
     default_db_name = f"{database or 'local'}.db"
 
     local_db_path = Path(project_dir) / default_db_name if project_dir else default_db_name
-    env_path = Path(project_dir) / ".env" if project_dir else Path(".env")
 
-    def write_env(var: str, value: str):
-        env_path.write_text(f"{var}={value}")
+    # Credentials are NOT written to .env here — the server does that once the
+    # source is built, via externalize_source_credentials (VIS-1216). That keeps
+    # the .env write in one place, merges instead of clobbering, and loads the
+    # values into os.environ so the ${env.*} refs resolve in the running server.
 
     if source_type in {
         SourceTypeEnum.duckdb,
@@ -178,30 +179,25 @@ def create_source(
         if source_type == SourceTypeEnum.duckdb:
             create_file_database(source.url(), project_dir)
 
-        write_env("DB_PASSWORD", "EXAMPLE_password_l0cation")
         return source
 
     if source_type == SourceTypeEnum.sqlite:
         source = SqliteSource(name=source_name, database=str(local_db_path), type=source_type)
         create_file_database(source.url(), project_dir)
-        write_env("DB_PASSWORD", "EXAMPLE_password_l0cation")
         return source
 
     if source_type == SourceTypeEnum.postgresql:
-        write_env("DB_PASSWORD", "postgres")
-        source = PostgresqlSource(
+        return PostgresqlSource(
             name=source_name,
             host=host,
             port=port or 5432,
             database=database,
             type=source_type,
-            password="postgres",
+            password=password,
             username=username,
         )
-        return source
 
     if source_type == SourceTypeEnum.mysql:
-        write_env("DB_PASSWORD", password)
         return MysqlSource(
             name=source_name,
             host=host,
@@ -212,7 +208,6 @@ def create_source(
         )
 
     if source_type == SourceTypeEnum.snowflake:
-        write_env("DB_PASSWORD", password)
         return SnowflakeSource(
             name=source_name,
             database=database,
@@ -224,7 +219,6 @@ def create_source(
         )
 
     if source_type == SourceTypeEnum.bigquery:
-        write_env("DB_PASSWORD", credentials_base64)
         return BigQuerySource(
             name=source_name,
             project=project,
@@ -234,7 +228,6 @@ def create_source(
         )
 
     if source_type == SourceTypeEnum.redshift:
-        write_env("DB_PASSWORD", password)
         return RedshiftSource(
             name=source_name,
             host=host,

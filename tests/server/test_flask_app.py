@@ -91,6 +91,48 @@ def test_create_sqlite_project_source_only(client):
         assert b"Source created" in res.data
 
 
+def test_create_postgres_source_externalizes_credentials(client):
+    """POST /api/source/create with a postgres source must move the entered
+    credentials into .env, reference them via ${env.*} in the returned source,
+    and load them into the running process so the refs resolve (VIS-1216)."""
+    saved_env = dict(os.environ)
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            res = client.post(
+                "/api/source/create/",
+                data={
+                    "project_name": "PG Project",
+                    "source_type": "postgresql",
+                    "source_name": "warehouse",
+                    "host": "db.internal",
+                    "database": "analytics",
+                    "username": "admin",
+                    "password": "hunter2",
+                    "project_dir": tmpdir,
+                },
+            )
+            assert res.status_code == 200
+            source = json.loads(res.data)["source"]
+
+            # returned source references env, never the real secret (or the old
+            # hardcoded "postgres")
+            assert source["password"] == "${env.WAREHOUSE_PASSWORD}"
+            assert source["username"] == "${env.WAREHOUSE_USERNAME}"
+            assert "hunter2" not in res.data.decode()
+            assert "postgres" != source["password"]
+
+            # .env holds the real values
+            env_text = (Path(tmpdir) / ".env").read_text()
+            assert "WAREHOUSE_PASSWORD=hunter2" in env_text
+            assert "WAREHOUSE_USERNAME=admin" in env_text
+
+            # loaded into os.environ so ${env.*} resolves in this same process
+            assert os.environ["WAREHOUSE_PASSWORD"] == "hunter2"
+    finally:
+        os.environ.clear()
+        os.environ.update(saved_env)
+
+
 def test_load_example_project_success(client, monkeypatch):
     """Test POST /api/project/load_example with a github release clone."""
     # Mock request payload
