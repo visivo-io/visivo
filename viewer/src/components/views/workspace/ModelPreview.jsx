@@ -109,6 +109,9 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
   const fetchSources = useStore(s => s.fetchSources);
   const defaults = useStore(s => s.defaults);
   const fetchDefaults = useStore(s => s.fetchDefaults);
+  // The live SQL from the rail editor, if this model is the one being edited
+  // (VIS-1221) — so Run executes what's on screen, not the last-saved config.
+  const modelSqlDraft = useStore(s => s.workspaceModelSqlDraft);
 
   const { status, progress, progressMessage, result, error, isRunning, executeQuery } =
     useModelQueryJob();
@@ -144,7 +147,12 @@ const ModelPreview = ({ activeObject, record: providedRecord }) => {
     () => providedRecord || (record ? record.config || record : null),
     [providedRecord, record]
   );
-  const sql = config?.sql || '';
+  // Prefer the rail editor's live SQL when it's editing THIS model, so a single
+  // Run executes the on-screen query with no save-then-run round trip (VIS-1221).
+  const modelName = config?.name || name;
+  const draftSql =
+    modelSqlDraft && modelSqlDraft.name === modelName ? modelSqlDraft.sql : null;
+  const sql = draftSql != null ? draftSql : config?.sql || '';
 
   const sourceName = useMemo(() => {
     if (config?.source && typeof config.source === 'string') {

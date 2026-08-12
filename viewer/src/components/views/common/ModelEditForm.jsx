@@ -29,6 +29,8 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
   const deleteModel = useStore(state => state.deleteModel);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const fetchSources = useStore(state => state.fetchSources);
+  const setWorkspaceModelSqlDraft = useStore(state => state.setWorkspaceModelSqlDraft);
+  const clearWorkspaceModelSqlDraft = useStore(state => state.clearWorkspaceModelSqlDraft);
 
   const isCreate = !model;
 
@@ -78,6 +80,16 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
   }, [model]);
 
   const dirty = isDirtyAgainst({ name, sql, source, dimensions, metrics });
+
+  // VIS-1221: mirror the live SQL into the store so the center-canvas
+  // ModelPreview's Run executes what's in the editor, not the saved config.sql.
+  // Cleared on unmount so a non-editing preview falls back to the saved SQL.
+  useEffect(() => {
+    if (name) setWorkspaceModelSqlDraft(name, sql);
+  }, [name, sql, setWorkspaceModelSqlDraft]);
+  useEffect(() => {
+    return () => clearWorkspaceModelSqlDraft();
+  }, [clearWorkspaceModelSqlDraft]);
 
   // Report upward so the tab strip's unsaved dot and its guarded close reflect
   // real edits (VIS-1133) — the rail clears it on unmount.

@@ -8,6 +8,8 @@ const mockState = {
   deleteModel: jest.fn(),
   checkCommitStatus: jest.fn(),
   fetchSources: jest.fn(),
+  setWorkspaceModelSqlDraft: jest.fn(),
+  clearWorkspaceModelSqlDraft: jest.fn(),
 };
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
@@ -182,6 +184,22 @@ describe('ModelEditForm — edit mode initialization and save', () => {
     expect(screen.getByLabelText(/Model Name/)).toHaveValue('');
     expect(screen.getByLabelText(/Model Name/)).toBeEnabled();
     expect(screen.getByLabelText('code')).toHaveValue('');
+  });
+});
+
+describe('ModelEditForm — live SQL mirror (VIS-1221)', () => {
+  it('mirrors the edited SQL into the workspace store so the preview Run uses it', () => {
+    render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
+    fireEvent.change(screen.getByLabelText('code'), { target: { value: 'SELECT 42 AS len' } });
+    expect(mockState.setWorkspaceModelSqlDraft).toHaveBeenCalledWith('orders', 'SELECT 42 AS len');
+  });
+
+  it('clears the mirrored SQL draft when the editor unmounts', () => {
+    const { unmount } = render(
+      <ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />
+    );
+    unmount();
+    expect(mockState.clearWorkspaceModelSqlDraft).toHaveBeenCalled();
   });
 });
 
