@@ -31,6 +31,14 @@ from decimal import Decimal
 from sqlglot.schema import MappingSchema
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 
+# A driver error is one sentence followed by the whole failing statement; only
+# the sentence is actionable. Long enough for a real message, short enough that
+# a sidebar rail stays readable.
+_MAX_ERROR_CHARS = 200
+# Failures are grouped by reason, so the message names a few example tables
+# rather than all of them — 186 names is not more informative than 3.
+_MAX_SAMPLE_TABLES = 3
+
 
 def _sqlalchemy_type_for(polars_dtype):
     """Map a Polars dtype to the SQLAlchemy column type used when writing a seed table.
@@ -443,7 +451,7 @@ class SqlalchemySource(Source, ABC):
             try:
                 default_schema = inspector.default_schema_name
             except Exception as e:
-                errors.append(f"could not resolve default schema: {e}")
+                errors.append(f"could not resolve default schema: {self._concise_error(e)}")
 
             for schema in self._schemas_to_scan(inspector, errors):
                 result["metadata"]["scanned_schemas"].append(schema)
@@ -472,7 +480,9 @@ class SqlalchemySource(Source, ABC):
                             qualified, schema, columns_info, errors
                         )
                     except Exception as e:
-                        errors.append(f"could not build schema for {qualified}: {e}")
+                        errors.append(
+                            f"could not build schema for {qualified}: {self._concise_error(e)}"
+                        )
                         continue
                     if not table_info:
                         continue
@@ -517,6 +527,27 @@ class SqlalchemySource(Source, ABC):
                 },
             }
 
+    @staticmethod
+    def _concise_error(e) -> str:
+        """The human-readable first line of a driver error.
+
+        SQLAlchemy's exception text is the message followed by the entire
+        failing statement and its parameters:
+
+            (psycopg2.errors.InsufficientPrivilege) permission denied for table pg_collation
+            [SQL: SELECT pg_catalog.pg_type.typname ... 40 more lines ...]
+            [parameters: {...}]
+            (Background on this error at: https://sqlalche.me/e/20/f405)
+
+        Only the first line says what went wrong; the rest is reflection SQL
+        the user did not write and cannot act on. Rendered in a sidebar rail,
+        it buries the one useful sentence.
+        """
+        first_line = str(e).strip().splitlines()[0].strip() if str(e).strip() else repr(e)
+        if len(first_line) > _MAX_ERROR_CHARS:
+            first_line = first_line[: _MAX_ERROR_CHARS - 1].rstrip() + "…"
+        return first_line
+
     def _schemas_to_scan(self, inspector, errors: List[str]) -> List[Optional[str]]:
         """Which schemas ``get_schema`` should walk.
 
@@ -537,7 +568,10 @@ class SqlalchemySource(Source, ABC):
             # Fall back to the default schema rather than returning nothing —
             # but say so, so the caller can distinguish a narrow scan from a
             # complete one.
-            errors.append(f"could not list schemas ({e}); scanned the default schema only")
+            errors.append(
+                f"could not list schemas ({self._concise_error(e)}); "
+                "scanned the default schema only"
+            )
             return [None]
 
     def _columns_by_table(self, inspector, schema, errors: List[str]) -> Dict[str, Any]:
@@ -563,24 +597,43 @@ class SqlalchemySource(Source, ABC):
         except Exception as e:
             errors.append(
                 f"batched column reflection unavailable for schema "
-                f"{schema or 'default'} ({e}); fell back to per-table reflection"
+                f"{schema or 'default'} ({self._concise_error(e)}); "
+                "fell back to per-table reflection"
             )
 
         columns: Dict[str, Any] = {}
         try:
             table_names = inspector.get_table_names(schema=schema)
         except Exception as e:
-            errors.append(f"could not list tables in schema {schema or 'default'}: {e}")
+            errors.append(
+                f"could not list tables in schema {schema or 'default'}: {self._concise_error(e)}"
+            )
             return columns
 
+        # Grouped by reason rather than reported per table. When an account
+        # cannot reflect ANY table — the usual cause, one missing catalog
+        # grant — a per-table message repeats the same sentence once per
+        # table: 186 identical lines for one schema, which is unreadable
+        # wherever it lands.
+        failures: Dict[str, List[str]] = {}
         for table in table_names:
             try:
                 cols = inspector.get_columns(table, schema=schema)
             except Exception as e:
-                errors.append(f"could not reflect columns for {schema or ''}.{table}: {e}")
+                failures.setdefault(self._concise_error(e), []).append(table)
                 continue
             if cols:
                 columns[table] = cols
+
+        for reason, failed_tables in failures.items():
+            sample = ", ".join(failed_tables[:_MAX_SAMPLE_TABLES])
+            extra = len(failed_tables) - _MAX_SAMPLE_TABLES
+            if extra > 0:
+                sample += f" and {extra} more"
+            errors.append(
+                f"could not reflect columns for {len(failed_tables)} table(s) in "
+                f"{schema or 'default'} ({sample}): {reason}"
+            )
         return columns
 
     def _get_available_tables_for_schema(
@@ -708,7 +761,10 @@ class SqlalchemySource(Source, ABC):
                 # without the table. Only the sqlglot datatype is lost, so
                 # query optimisation degrades for that column alone.
                 if errors is not None:
-                    errors.append(f"{table_name}.{col_name}: unmapped column type ({e})")
+                    errors.append(
+                        f"{table_name}.{col_name}: unmapped column type "
+                        f"({self._concise_error(e)})"
+                    )
                 table_schema["columns"][col_name] = {
                     "type": type(col_type).__name__,
                     "nullable": col_info.get("nullable", True),

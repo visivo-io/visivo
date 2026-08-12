@@ -111,6 +111,62 @@ def test_column_failure_is_reported_not_swallowed(sqlite_source, monkeypatch):
     assert any("pg_collation" in e for e in errors)
 
 
+# A real SQLAlchemy error is one useful sentence followed by the entire failing
+# statement and its parameters. Verbatim, that is ~40 lines per table.
+_SQLALCHEMY_STYLE_ERROR = """(psycopg2.errors.InsufficientPrivilege) permission denied for table pg_collation
+
+[SELECT pg_catalog.pg_type.typname, pg_catalog.pg_namespace.nspname
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON ...]
+[parameters: {'typtype_1': 'd'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)"""
+
+
+def test_reports_only_the_first_line_of_a_driver_error(sqlite_source, monkeypatch):
+    """The reflection SQL is not actionable and buries the message."""
+    from sqlalchemy.engine.reflection import Inspector
+
+    def deny(self, *args, **kwargs):
+        raise PermissionError(_SQLALCHEMY_STYLE_ERROR)
+
+    monkeypatch.setattr(Inspector, "get_multi_columns", deny)
+    monkeypatch.setattr(Inspector, "get_columns", deny)
+
+    errors = sqlite_source.get_schema()["metadata"]["errors"]
+
+    assert any("permission denied for table pg_collation" in e for e in errors)
+    # The statement, its parameters and the docs footer are all dropped.
+    for error in errors:
+        assert "SELECT" not in error
+        assert "parameters:" not in error
+        assert "sqlalche.me" not in error
+        assert "\n" not in error
+
+
+def test_groups_per_table_failures_by_reason(sqlite_source, monkeypatch):
+    """One line per REASON, not per table.
+
+    When an account cannot reflect any table — one missing catalog grant, the
+    usual cause — a per-table message repeats the same sentence once per table.
+    Against a real source that was 186 identical lines for one schema.
+    """
+    from sqlalchemy.engine.reflection import Inspector
+
+    def deny(self, *args, **kwargs):
+        raise PermissionError("permission denied for table pg_collation")
+
+    monkeypatch.setattr(Inspector, "get_multi_columns", deny)
+    monkeypatch.setattr(Inspector, "get_columns", deny)
+
+    errors = sqlite_source.get_schema()["metadata"]["errors"]
+
+    # Two tables failed for one reason -> one grouped line (plus the
+    # batched-reflection fallback notice), never one line per table.
+    grouped = [e for e in errors if "could not reflect columns" in e]
+    assert len(grouped) == 1
+    assert "2 table(s)" in grouped[0]
+    assert "orders" in grouped[0] and "users" in grouped[0]
+
+
 def test_unmappable_column_type_keeps_its_table(sqlite_source, monkeypatch):
     """Regression: a column type the dialect cannot map must not fail the source.
 
