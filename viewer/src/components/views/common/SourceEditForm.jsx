@@ -267,16 +267,28 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
             secretKeys={capabilities?.secret_keys ?? []}
           />
 
-          {/* Seeds — only on source types the backend accepts them on */}
-          {sourceTypeSupportsSeeds(sourceType) && (
-            <div>
-              <SeedsEditor
-                seeds={formValues.seeds}
-                onChange={seeds => setFormValues({ ...formValues, seeds })}
-              />
-              {errors.seeds && <p className="mt-1 text-xs text-red-500">{errors.seeds}</p>}
-            </div>
-          )}
+          {/* Test Connection sits directly under the connection properties it
+              tests and above the status it produces — properties, test, result
+              — with seeds after, since a seed is not a connection property.
+              Not in the footer: that is shared by every object type and no
+              other one can test a connection, so a source-only action there
+              both widened the footer past a narrow rail and put the button a
+              long way from the fields it acts on. */}
+          <div>
+            <ButtonOutline
+              type="button"
+              onClick={handleTestConnection}
+              disabled={
+                !sourceType ||
+                currentConnectionStatus?.status === 'testing' ||
+                !connectionTestable
+              }
+              title={connectionTestable ? undefined : CONNECTION_TEST_UNAVAILABLE}
+              className="text-sm whitespace-nowrap"
+            >
+              Test Connection
+            </ButtonOutline>
+          </div>
 
           {/* Connection Status */}
           {currentConnectionStatus && (
@@ -313,6 +325,17 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
             </div>
           )}
 
+          {/* Seeds — only on source types the backend accepts them on */}
+          {sourceTypeSupportsSeeds(sourceType) && (
+            <div>
+              <SeedsEditor
+                seeds={formValues.seeds}
+                onChange={seeds => setFormValues({ ...formValues, seeds })}
+              />
+              {errors.seeds && <p className="mt-1 text-xs text-red-500">{errors.seeds}</p>}
+            </div>
+          )}
+
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
       </FormLayout>
 
@@ -337,21 +360,6 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
                 deleting,
               }
             : null
-        }
-        leftActions={
-          <ButtonOutline
-            type="button"
-            onClick={handleTestConnection}
-            disabled={
-              !sourceType ||
-              currentConnectionStatus?.status === 'testing' ||
-              !connectionTestable
-            }
-            title={connectionTestable ? undefined : CONNECTION_TEST_UNAVAILABLE}
-            className="text-sm whitespace-nowrap"
-          >
-            Test Connection
-          </ButtonOutline>
         }
       />
     </>
