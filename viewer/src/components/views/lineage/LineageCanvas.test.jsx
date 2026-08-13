@@ -28,7 +28,7 @@ jest.mock('../workspace/useWorkspaceScope', () => ({
 // Mock Lineage with a stub that echoes the props we care about and lets us
 // drive the node-select round-trip + the manual selector input.
 jest.mock('./Lineage', () => {
-  const MockLineage = ({ scopeSelector, onNodeSelect, onNodeContextMenu, headerSlot }) => {
+  const MockLineage = ({ scopeSelector, onNodeSelect, onNodeContextMenu, onResetScope }) => {
     const React = require('react');
     const [manual, setManual] = React.useState(scopeSelector || '');
     React.useEffect(() => {
@@ -36,7 +36,11 @@ jest.mock('./Lineage', () => {
     }, [scopeSelector]);
     return (
       <div data-testid="lineage">
-        {headerSlot}
+        {/* The reset lives INSIDE Lineage's selector row now (VIS-1213);
+            the canvas hands it down instead of rendering its own strip. */}
+        <button data-testid="simulate-reset-scope" onClick={() => onResetScope && onResetScope()}>
+          show full project
+        </button>
         <div data-testid="scope-selector-prop">{scopeSelector}</div>
         <input
           data-testid="manual-selector"
@@ -105,27 +109,30 @@ afterEach(() => {
 });
 
 describe('LineageCanvas', () => {
-  test('passes `*` selector for unscoped (root) scope and hides reset', () => {
+  test('passes `*` selector for unscoped (root) scope', () => {
     setScope(ROOT);
     render(<LineageCanvas />);
     expect(screen.getByTestId('scope-selector-prop')).toHaveTextContent('*');
+  });
+
+  test('renders no scope strip of its own — the selector row is the only chrome', () => {
+    setScope(DASHBOARD);
+    render(<LineageCanvas />);
+    expect(screen.queryByTestId('lineage-canvas-scope-bar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('lineage-canvas-scope-pill')).not.toBeInTheDocument();
     expect(screen.queryByTestId('lineage-canvas-reset-scope')).not.toBeInTheDocument();
-    expect(screen.getByTestId('lineage-canvas-scope-pill')).toHaveTextContent('Full project');
   });
 
   test('passes `+<dashboardName>` for dashboard scope', () => {
     setScope(DASHBOARD);
     render(<LineageCanvas />);
     expect(screen.getByTestId('scope-selector-prop')).toHaveTextContent('+sales');
-    expect(screen.getByTestId('lineage-canvas-scope-pill')).toHaveTextContent('sales');
-    expect(screen.getByTestId('lineage-canvas-reset-scope')).toBeInTheDocument();
   });
 
   test('passes `+<itemName>` for item scope', () => {
     setScope(ITEM);
     render(<LineageCanvas />);
     expect(screen.getByTestId('scope-selector-prop')).toHaveTextContent('+revenue_chart');
-    expect(screen.getByTestId('lineage-canvas-scope-pill')).toHaveTextContent('revenue_chart');
   });
 
   test('"Show full project" widens the scope back to `*` without changing route', () => {
@@ -133,11 +140,10 @@ describe('LineageCanvas', () => {
     render(<LineageCanvas />);
     expect(screen.getByTestId('scope-selector-prop')).toHaveTextContent('+sales');
 
-    fireEvent.click(screen.getByTestId('lineage-canvas-reset-scope'));
+    // Driven through the prop Lineage now owns, not a button the canvas draws.
+    fireEvent.click(screen.getByTestId('simulate-reset-scope'));
 
     expect(screen.getByTestId('scope-selector-prop')).toHaveTextContent('*');
-    // The reset button disappears once we're showing the full project.
-    expect(screen.queryByTestId('lineage-canvas-reset-scope')).not.toBeInTheDocument();
   });
 
   test('clicking a node round-trips selection into the workspace store', () => {

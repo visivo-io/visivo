@@ -301,3 +301,56 @@ describe('MiniLineageCard lazy collection fetch on mount (View-mode fix)', () =>
     expect(spies.fetchDefaults).not.toHaveBeenCalled();
   });
 });
+
+
+describe('node click navigates (VIS-1213)', () => {
+  test('clicking an ancestor opens that object', () => {
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+
+    fireEvent.click(screen.getByTestId('mlc-open-insight-revenue_breakdown'));
+
+    expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'insight:revenue_breakdown',
+      type: 'insight',
+      name: 'revenue_breakdown',
+    });
+  });
+
+  test('clicking a descendant opens that object', () => {
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+
+    fireEvent.click(screen.getByTestId('mlc-open-dashboard-exec_kpi_dashboard'));
+
+    expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'dashboard:exec_kpi_dashboard',
+      type: 'dashboard',
+      name: 'exec_kpi_dashboard',
+    });
+  });
+
+  test('opening a neighbour asks its pane for the lineage lens, so the walk continues', () => {
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+
+    fireEvent.click(screen.getByTestId('mlc-open-insight-revenue_breakdown'));
+
+    expect(useStore.getState().setWorkspaceLensIntent).toHaveBeenCalledWith({
+      objectKey: 'insight:revenue_breakdown',
+      lens: 'lineage',
+    });
+  });
+
+  test('the collapse toggle no longer swallows a node click', () => {
+    // The rows used to sit INSIDE the toggle button, so a click folded the
+    // group instead of navigating. Both must now work independently.
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+
+    fireEvent.click(screen.getByTestId('mlc-open-insight-revenue_breakdown'));
+    expect(useStore.getState().openWorkspaceTab).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('mlc-ancestors-toggle'));
+    expect(screen.getByTestId('mlc-ancestors')).toHaveAttribute('data-collapsed', 'true');
+    expect(
+      screen.queryByTestId('mlc-open-insight-revenue_breakdown')
+    ).not.toBeInTheDocument();
+  });
+});

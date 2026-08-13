@@ -230,7 +230,7 @@ describe('Lineage', () => {
     });
   });
 
-  it('clears selector when Clear button is clicked', async () => {
+  it('clears the selector when "Show full project" is clicked', async () => {
     useLineageDag.mockReturnValue({
       nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
@@ -245,10 +245,44 @@ describe('Lineage', () => {
     await user.type(input, 'source-db');
     expect(input.value).toBe('source-db');
 
-    // Click clear
-    fireEvent.click(screen.getByText('Clear'));
+    // One reset for both narrowing mechanisms — this replaced `Clear`, which
+    // only emptied the input and left a host-supplied scope in place.
+    fireEvent.click(screen.getByTestId('lineage-show-full-project'));
 
     expect(input.value).toBe('');
+  });
+
+  it('disables "Show full project" when the DAG is already the whole project', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
+      edges: [],
+    });
+
+    const user = userEvent.setup();
+    render(<Lineage />);
+
+    expect(screen.getByTestId('lineage-show-full-project')).toBeDisabled();
+
+    await user.type(
+      screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'"),
+      'source-db'
+    );
+
+    expect(screen.getByTestId('lineage-show-full-project')).toBeEnabled();
+  });
+
+  it('calls onResetScope so a host-derived scope widens too', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
+      edges: [],
+    });
+    const onResetScope = jest.fn();
+
+    render(<Lineage scopeSelector="+db+" onResetScope={onResetScope} />);
+
+    fireEvent.click(screen.getByTestId('lineage-show-full-project'));
+
+    expect(onResetScope).toHaveBeenCalled();
   });
 
   it('shows no matching objects message when selector matches nothing', async () => {
