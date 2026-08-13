@@ -3,7 +3,11 @@ import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import LineageSelectorField from '../../lineage/LineageSelectorField';
-import { neighborhoodSelector } from '../../lineage/lineageSelector';
+import {
+  neighborhoodSelector,
+  parseSelector,
+  UNBOUNDED,
+} from '../../lineage/lineageSelector';
 
 /**
  * MiniLineageCard — VIS-780 / Track C C-4 (shared lineage-card body).
@@ -49,61 +53,11 @@ const BASE_INDENT = 34;
 // Selector parsing — Visivo selector syntax `[+N]name[+M]`
 // ---------------------------------------------------------------------------
 
-const UNBOUNDED = Number.POSITIVE_INFINITY;
 
 // Shared with the main lineage canvas so the two cannot answer
 // "show me this object's lineage" differently again (VIS-1213).
 
 const defaultSelector = neighborhoodSelector;
-
-/**
- * Parse a Visivo selector string into `{ name, ancestors, descendants }`.
- *
- * Syntax: depth digits sit OUTSIDE the `+`, the `+` always touches the
- * object name. `+` alone means "unbounded in that direction", a missing
- * `+` means "no traversal in that direction", and `N+` / `+N` clamps to
- * N levels.
- *
- *   "+revenue_chart+"    → unbounded ancestors + unbounded descendants
- *   "2+revenue_chart+1"  → 2 ancestor levels, 1 descendant level
- *   "+revenue_chart"     → unbounded ancestors, no descendants
- *   "2+revenue_chart"    → 2 ancestor levels, no descendants
- *   "revenue_chart"      → just the subject row
- *   "+monthly_revenue+"  → SWAPS the subject to `monthly_revenue` and
- *                          shows its full upstream + downstream
- */
-function parseSelector(text, fallbackName) {
-  const trimmed = String(text || '').trim();
-  if (!trimmed) {
-    return { name: fallbackName, ancestors: 0, descendants: 0 };
-  }
-  // ((\d+)?\+)?   optional leading-depth + `+`
-  // ([^+]+?)      the object name (non-greedy, no `+`)
-  // (\+(\d+)?)?   optional trailing `+` + descendant-depth
-  const re = /^((\d+)?\+)?([^+]+?)(\+(\d+)?)?$/;
-  const m = trimmed.match(re);
-  if (!m) {
-    return { name: fallbackName, ancestors: 0, descendants: 0 };
-  }
-  const ancHasPlus = Boolean(m[1]);
-  const ancDigits = m[2] || '';
-  const subjName = (m[3] || '').trim() || fallbackName;
-  const desHasPlus = Boolean(m[4]);
-  const desDigits = m[5] || '';
-
-  const depth = (hasPlus, digits) => {
-    if (!hasPlus) return 0;
-    if (!digits) return UNBOUNDED;
-    const n = parseInt(digits, 10);
-    return Number.isFinite(n) && n >= 0 ? n : UNBOUNDED;
-  };
-
-  return {
-    name: subjName,
-    ancestors: depth(ancHasPlus, ancDigits),
-    descendants: depth(desHasPlus, desDigits),
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Lineage walker — uses `child_item_names` (the canonical upstream-edge
@@ -393,7 +347,7 @@ const AncestorRow = ({ node, marginLeft, testIdPrefix, onOpen }) => (
       onClick={() => onOpen && onOpen(node)}
       title={`Open ${node.name}`}
       data-testid={`${testIdPrefix}-open-${node.type}-${node.name}`}
-      className="flex h-full w-full items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
+      className="flex h-full w-full cursor-pointer items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
     >
       <TypePill type={node.type} />
       <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
@@ -421,7 +375,7 @@ const DescendantRow = ({ node, marginLeft, testIdPrefix, onOpen }) => (
       onClick={() => onOpen && onOpen(node)}
       title={`Open ${node.name}`}
       data-testid={`${testIdPrefix}-open-${node.type}-${node.name}`}
-      className="flex h-full w-full items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
+      className="flex h-full w-full cursor-pointer items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
     >
       <IconTile type={node.type} />
       <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
