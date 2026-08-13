@@ -147,22 +147,57 @@ def action(
             f"({seed_details}{total_tables} tables, {total_columns} columns)"
         )
 
-        # A partial build is still a success — failing here would stop every
-        # downstream job over a permissions error on one table, when the rest of
-        # the schema is perfectly usable. Only a source we could not connect to
-        # at all fails, via metadata["error"] above.
+        # Three outcomes, not two.
         #
-        # But it reports as a WARNING rather than a plain success: "0 tables"
-        # with a green SUCCESS is exactly the reassuring-but-wrong output that
-        # sent someone hunting for a missing schema when the real answer was a
-        # permissions error on every table.
+        # A PARTIAL build is a success: failing over a permissions error on some
+        # tables would stop every downstream job when the rest of the schema is
+        # perfectly usable. It reports as a WARNING rather than a plain success,
+        # because "0 tables" under a green SUCCESS is the reassuring-but-wrong
+        # output that sends someone hunting for a missing schema.
         #
-        # The reasons go in warning_msg, NOT in details: _format_message
-        # truncates details to 93 visual chars unless DEBUG=true, which turned
-        # the first attempt at this into "231 problem(s) while reading(trunc)"
-        # — the count survived and every actual reason was cut. warning_msg is
-        # rendered on its own line and never truncated.
+        # A build that resolved NOTHING is a failure, even though the connection
+        # worked. Downstream cannot proceed without a schema: SQLGlot needs it to
+        # expand `SELECT *`, and without it a model's only column is a literal
+        # `*` of unknown type (see model_schema_inference: "a surviving `*` means
+        # qualify could not expand it"). Letting the job pass only moves the
+        # failure to a later job that reports "Column 'id' not found" — true, and
+        # useless, when the real cause was a denied catalog grant here. Failing
+        # at the source keeps the diagnosis next to the evidence.
+        #
+        # Zero tables with NO errors is different again: that is an empty
+        # database, honestly reported, and not this job's problem to fail.
+        #
+        # The reasons go in warning_msg / error_msg, NOT in details:
+        # _format_message truncates details to 93 visual chars unless
+        # DEBUG=true, which turned the first attempt at this into "231
+        # problem(s) while reading(trunc)" — the count survived and every actual
+        # reason was cut. Those slots render on their own line, untruncated.
         warnings = metadata.get("errors") or []
+        if warnings and total_tables == 0:
+            reasons = f"{len(warnings)} problem(s) while reading the schema:"
+            for warning in warnings[:_MAX_REPORTED_SCHEMA_WARNINGS]:
+                reasons += f"\n\t  - {warning}"
+            remaining = len(warnings) - _MAX_REPORTED_SCHEMA_WARNINGS
+            if remaining > 0:
+                reasons += f"\n\t  ... and {remaining} more"
+
+            return JobResult(
+                item=source_to_build,
+                success=False,
+                message=format_message_failure(
+                    details=(
+                        f"No schema could be read for source "
+                        f"\033[4m{source_to_build.name}\033[0m"
+                    ),
+                    start_time=start_time,
+                    error_msg=(
+                        f"Connected, but resolved no tables — downstream queries "
+                        f"cannot run without a schema.\n\t{reasons}"
+                    ),
+                    full_path=None,
+                ),
+            )
+
         if warnings:
             shown = warnings[:_MAX_REPORTED_SCHEMA_WARNINGS]
             warning_msg = f"{len(warnings)} problem(s) while reading the schema:"
