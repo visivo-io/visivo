@@ -179,6 +179,20 @@ export const tablesFromEnvelope = (envelope, { search = '' } = {}) => {
 };
 
 /**
+ * Non-fatal problems hit while the schema was built, as `[string]`.
+ *
+ * A schema job succeeds when it could connect, even if some tables could not
+ * be reflected — failing outright would block every downstream job over a
+ * permissions error on one table. The cost of that choice is that a partial
+ * result looks exactly like a complete one, so these have to be shown next to
+ * the tables rather than left in the envelope.
+ */
+export const warningsFromEnvelope = envelope => {
+  const errors = ((envelope || {}).metadata || {}).errors;
+  return Array.isArray(errors) ? errors.filter(Boolean) : [];
+};
+
+/**
  * `[{name, type, nullable}]` for one table, matching
  * `GET .../<name>/tables/<table>/columns/`. Unknown table -> `[]`, the same
  * answer the endpoint gives.

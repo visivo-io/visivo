@@ -159,3 +159,93 @@ class TestSourceSchemaAction:
         source = seeded_source([Seed(table_name="raw", args=["false"])])
         result = action(source_to_build=source, output_dir=temp_folder())
         assert not result.success
+
+
+class TestSchemaBuildOutcomes:
+    """Three outcomes, because two were not enough.
+
+    Downstream jobs cannot run without a schema — SQLGlot needs it to expand
+    ``SELECT *``, and without it a model's only column is a literal ``*`` of
+    unknown type. So "connected but resolved nothing" has to fail HERE, next to
+    the evidence, rather than surfacing later as "Column 'id' not found" on a
+    job that is not the cause.
+
+    But a partial schema is genuinely useful, and an empty database is not an
+    error at all.
+    """
+
+    @staticmethod
+    def _sqlite_with(tables):
+        import sqlite3
+
+        import os
+
+        output_dir = temp_folder()
+        # temp_folder() only names a path; sqlite will not create the parent.
+        os.makedirs(output_dir, exist_ok=True)
+        path = f"{output_dir}/s.db"
+        connection = sqlite3.connect(path)
+        for i in range(tables):
+            connection.execute(f"CREATE TABLE t{i} (a INT, b INT)")
+        connection.commit()
+        connection.close()
+        from visivo.models.sources.sqlite_source import SqliteSource
+
+        return output_dir, SqliteSource(name="s", type="sqlite", database=path)
+
+    @staticmethod
+    def _deny_all_reflection(monkeypatch):
+        from sqlalchemy.engine.reflection import Inspector
+
+        def deny(self, *args, **kwargs):
+            raise PermissionError("permission denied for table pg_collation")
+
+        monkeypatch.setattr(Inspector, "get_multi_columns", deny)
+        monkeypatch.setattr(Inspector, "get_columns", deny)
+
+    def test_resolving_no_tables_fails_even_though_the_connection_worked(self, monkeypatch):
+        output_dir, source = self._sqlite_with(3)
+        self._deny_all_reflection(monkeypatch)
+
+        result = action(source_to_build=source, output_dir=output_dir)
+
+        assert not result.success
+        assert "No schema could be read" in result.message
+        # The reason travels with the failure rather than being left for a
+        # downstream job to misreport.
+        assert "pg_collation" in result.message
+
+    def test_an_empty_database_is_not_a_failure(self):
+        # Nothing to read and nothing went wrong: an honest empty answer. A
+        # model that needs a table it does not have will say so itself.
+        output_dir, source = self._sqlite_with(0)
+
+        result = action(source_to_build=source, output_dir=output_dir)
+
+        assert result.success
+
+    def test_a_partial_build_still_succeeds(self, monkeypatch):
+        """The whole point of not failing on the first problem."""
+        from sqlalchemy.engine.reflection import Inspector
+
+        output_dir, source = self._sqlite_with(2)
+        real = Inspector.get_multi_columns
+
+        def one_bad_column(self, **kwargs):
+            reflected = real(self, **kwargs)
+
+            class Unmappable:
+                def __str__(self):
+                    raise Exception("Can't generate DDL for NullType()")
+
+            return {
+                key: [{**c, "type": Unmappable()} if c["name"] == "b" else c for c in cols]
+                for key, cols in reflected.items()
+            }
+
+        monkeypatch.setattr(Inspector, "get_multi_columns", one_bad_column)
+
+        result = action(source_to_build=source, output_dir=output_dir)
+
+        assert result.success
+        assert "WARNING" in result.message

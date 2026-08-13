@@ -197,6 +197,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
     available,
     loading,
     nodes,
+    warnings,
     status,
     error,
     isCold,
@@ -476,6 +477,37 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
           >
             {databaseNodes.map(db => renderGroupNode(db, 1))}
           </Node>
+
+          {/* Partial-build problems, BELOW the tables rather than instead of
+              them. The schema job succeeds as long as it could connect, so a
+              source whose tables were only partly reflected (a permissions
+              error on some of them) arrives here looking exactly like a
+              complete one. Without this the tree quietly under-reports and
+              there is nothing to tell you why. */}
+          {warnings.length > 0 && (
+            <div
+              data-testid="source-outline-warnings"
+              className="mt-3 border-t border-gray-100 px-2 pt-2"
+            >
+              <p className="mb-1 inline-flex items-center gap-1 text-[11px] font-semibold text-highlight-600">
+                <PiWarningCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                {warnings.length === 1
+                  ? 'Error while reading the schema'
+                  : `${warnings.length} errors while reading the schema`}
+              </p>
+              <ul className="space-y-1">
+                {warnings.map((warning, i) => (
+                  <li
+                    key={i}
+                    // Long driver errors wrap rather than stretching the rail.
+                    className="break-words text-[10.5px] leading-snug text-gray-500"
+                  >
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

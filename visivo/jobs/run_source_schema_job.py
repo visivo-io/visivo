@@ -10,11 +10,17 @@ from visivo.jobs.job import (
     JobResult,
     format_message_failure,
     format_message_success,
+    format_message_warning,
     start_message,
 )
 from visivo.query.schema_aggregator import SchemaAggregator
 from time import time
 from typing import List, Optional
+
+# A source whose account cannot reflect ANY table produces one warning per
+# table, so the full list can be as long as the schema. Enough to identify the
+# pattern, not enough to bury the run output; the source outline shows them all.
+_MAX_REPORTED_SCHEMA_WARNINGS = 5
 
 
 def run_seeds(source: Source, working_dir: str = None) -> int:
@@ -140,6 +146,77 @@ def action(
             f"Built schema for source \033[4m{source_to_build.name}\033[0m "
             f"({seed_details}{total_tables} tables, {total_columns} columns)"
         )
+
+        # Three outcomes, not two.
+        #
+        # A PARTIAL build is a success: failing over a permissions error on some
+        # tables would stop every downstream job when the rest of the schema is
+        # perfectly usable. It reports as a WARNING rather than a plain success,
+        # because "0 tables" under a green SUCCESS is the reassuring-but-wrong
+        # output that sends someone hunting for a missing schema.
+        #
+        # A build that resolved NOTHING is a failure, even though the connection
+        # worked. Downstream cannot proceed without a schema: SQLGlot needs it to
+        # expand `SELECT *`, and without it a model's only column is a literal
+        # `*` of unknown type (see model_schema_inference: "a surviving `*` means
+        # qualify could not expand it"). Letting the job pass only moves the
+        # failure to a later job that reports "Column 'id' not found" — true, and
+        # useless, when the real cause was a denied catalog grant here. Failing
+        # at the source keeps the diagnosis next to the evidence.
+        #
+        # Zero tables with NO errors is different again: that is an empty
+        # database, honestly reported, and not this job's problem to fail.
+        #
+        # The reasons go in warning_msg / error_msg, NOT in details:
+        # _format_message truncates details to 93 visual chars unless
+        # DEBUG=true, which turned the first attempt at this into "231
+        # problem(s) while reading(trunc)" — the count survived and every actual
+        # reason was cut. Those slots render on their own line, untruncated.
+        warnings = metadata.get("errors") or []
+        if warnings and total_tables == 0:
+            reasons = f"{len(warnings)} problem(s) while reading the schema:"
+            for warning in warnings[:_MAX_REPORTED_SCHEMA_WARNINGS]:
+                reasons += f"\n\t  - {warning}"
+            remaining = len(warnings) - _MAX_REPORTED_SCHEMA_WARNINGS
+            if remaining > 0:
+                reasons += f"\n\t  ... and {remaining} more"
+
+            return JobResult(
+                item=source_to_build,
+                success=False,
+                message=format_message_failure(
+                    details=(
+                        f"No schema could be read for source "
+                        f"\033[4m{source_to_build.name}\033[0m"
+                    ),
+                    start_time=start_time,
+                    error_msg=(
+                        f"Connected, but resolved no tables — downstream queries "
+                        f"cannot run without a schema.\n\t{reasons}"
+                    ),
+                    full_path=None,
+                ),
+            )
+
+        if warnings:
+            shown = warnings[:_MAX_REPORTED_SCHEMA_WARNINGS]
+            warning_msg = f"{len(warnings)} problem(s) while reading the schema:"
+            for warning in shown:
+                warning_msg += f"\n\t  - {warning}"
+            remaining = len(warnings) - len(shown)
+            if remaining > 0:
+                warning_msg += f"\n\t  ... and {remaining} more (see the source in the sidebar)"
+
+            return JobResult(
+                item=source_to_build,
+                success=True,
+                message=format_message_warning(
+                    details=details,
+                    start_time=start_time,
+                    full_path=None,
+                    warning_msg=warning_msg,
+                ),
+            )
 
         success_message = format_message_success(
             details=details,

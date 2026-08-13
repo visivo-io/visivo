@@ -271,6 +271,7 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
     nodes,
     status,
     error,
+    warnings,
     isCold,
     canGenerate,
     generating,
@@ -363,14 +364,41 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
   }
 
   const tables = (nodes && nodes[0] && nodes[0].children) || [];
+
+  // Why the list is short (or empty). The schema job succeeds as long as it
+  // could CONNECT, so a source whose tables were only partly reflected returns
+  // a normal success — "No tables found." is then indistinguishable from a
+  // database that genuinely has none, which is exactly the dead end this
+  // removes. Rendered under the tables so partial results still read first.
+  const warningList = warnings && warnings.length > 0 && (
+    <div
+      className="py-1 pl-10 pr-2"
+      data-testid={`library-source-${sourceName}-warnings`}
+    >
+      <p className="text-[11px] font-semibold text-highlight-600">
+        {warnings.length === 1 ? 'Error:' : `Errors (${warnings.length}):`}
+      </p>
+      <ul className="mt-0.5 space-y-0.5">
+        {warnings.map((warning, i) => (
+          <li key={i} className="break-words text-[10.5px] leading-snug text-gray-500">
+            {warning}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   if (tables.length === 0) {
     return (
-      <div
-        className="py-1 pl-10 text-[11px] italic text-gray-400"
-        data-testid={`library-source-${sourceName}-empty`}
-      >
-        No tables found.
-      </div>
+      <>
+        <div
+          className="py-1 pl-10 text-[11px] italic text-gray-400"
+          data-testid={`library-source-${sourceName}-empty`}
+        >
+          No tables found.
+        </div>
+        {warningList}
+      </>
     );
   }
 
@@ -387,6 +415,7 @@ const LibrarySourceDrilldown = ({ sourceName }) => {
           loadFlatColumns={loadFlatColumns}
         />
       ))}
+      {warningList}
     </div>
   );
 };

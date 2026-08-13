@@ -416,4 +416,64 @@ describe('LibrarySourceRow', () => {
     fireEvent.click(screen.getByTestId('library-row-source-warehouse'));
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  describe('partial schema builds', () => {
+    // A schema job succeeds as long as it could CONNECT — failing outright
+    // would stop every downstream job over a permissions error on one table.
+    // So a source whose tables were only partly reflected arrives here looking
+    // like a normal success, and "No tables found." is indistinguishable from
+    // a database that genuinely has none.
+    const expand = () =>
+      fireEvent.click(screen.getByTestId('library-row-source-warehouse-toggle'));
+
+    beforeEach(() => {
+      fetchSourceSchemaJobs.mockResolvedValue([
+        { source_name: 'warehouse', has_cached_schema: true },
+      ]);
+    });
+
+    test('shows the reason when the build returned no tables at all', async () => {
+      fetchSourceSchema.mockResolvedValue({
+        ...envelope({}),
+        metadata: { errors: ['permission denied for table pg_collation'] },
+      });
+
+      render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+      expand();
+
+      // The dead end this replaces: "No tables found." and nothing else.
+      await screen.findByTestId('library-source-warehouse-empty');
+      const warnings = screen.getByTestId('library-source-warehouse-warnings');
+      expect(warnings).toHaveTextContent('Error:');
+      expect(warnings).toHaveTextContent('permission denied for table pg_collation');
+    });
+
+    test('shows reasons alongside the tables that did load', async () => {
+      fetchSourceSchema.mockResolvedValue({
+        ...ORDERS_4,
+        metadata: { errors: ['orders.total: unmapped column type', 'shipments: denied'] },
+      });
+
+      render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+      expand();
+
+      // Partial results read first; the reasons sit underneath them.
+      await screen.findByTestId('library-source-table-warehouse-orders');
+      const warnings = screen.getByTestId('library-source-warehouse-warnings');
+      expect(warnings).toHaveTextContent('Errors (2):');
+      expect(warnings).toHaveTextContent('unmapped column type');
+    });
+
+    test('shows nothing extra when the build was clean', async () => {
+      fetchSourceSchema.mockResolvedValue(ORDERS_4);
+
+      render(withDnd(<LibrarySourceRow obj={SOURCE} onClick={jest.fn()} />));
+      expand();
+
+      await screen.findByTestId('library-source-table-warehouse-orders');
+      expect(
+        screen.queryByTestId('library-source-warehouse-warnings')
+      ).not.toBeInTheDocument();
+    });
+  });
 });

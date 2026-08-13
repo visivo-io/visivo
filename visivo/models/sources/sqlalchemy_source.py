@@ -31,6 +31,14 @@ from decimal import Decimal
 from sqlglot.schema import MappingSchema
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 
+# A driver error is one sentence followed by the whole failing statement; only
+# the sentence is actionable. Long enough for a real message, short enough that
+# a sidebar rail stays readable.
+_MAX_ERROR_CHARS = 200
+# Failures are grouped by reason, so the message names a few example tables
+# rather than all of them — 186 names is not more informative than 3.
+_MAX_SAMPLE_TABLES = 3
+
 
 def _sqlalchemy_type_for(polars_dtype):
     """Map a Polars dtype to the SQLAlchemy column type used when writing a seed table.
@@ -421,7 +429,9 @@ class SqlalchemySource(Source, ABC):
             # Get SQLGlot dialect for this source
             sqlglot_dialect = self.get_sqlglot_dialect()
 
-            # Initialize result structure
+            # Initialize result structure. `scanned_schemas`/`errors` exist so a
+            # zero-table answer can be told apart from a failed one — see the
+            # note on _columns_by_table below.
             result = {
                 "tables": {},
                 "sqlglot_schema": MappingSchema(),
@@ -429,19 +439,54 @@ class SqlalchemySource(Source, ABC):
                     "source_dialect": sqlglot_dialect,
                     "database": self.database,
                     "schema": getattr(self, "db_schema", None),
+                    "scanned_schemas": [],
+                    "errors": [],
                     "total_tables": 0,
                     "total_columns": 0,
                 },
             }
+            errors = result["metadata"]["errors"]
 
-            # Get available tables to process
-            available_tables = self._get_available_tables_for_schema(inspector, table_names)
+            default_schema = None
+            try:
+                default_schema = inspector.default_schema_name
+            except Exception as e:
+                errors.append(f"could not resolve default schema: {self._concise_error(e)}")
 
-            # Process each table
-            for table_name in available_tables:
-                table_info = self._extract_table_schema(inspector, table_name)
-                if table_info:
-                    result["tables"][table_name] = table_info
+            for schema in self._schemas_to_scan(inspector, errors):
+                result["metadata"]["scanned_schemas"].append(schema)
+                for base_name, columns_info in self._columns_by_table(
+                    inspector, schema, errors
+                ).items():
+                    # Preserve the historical key shape: bare name in the
+                    # default schema, `schema.table` anywhere else.
+                    qualified = (
+                        base_name
+                        if schema is None or schema == default_schema
+                        else f"{schema}.{base_name}"
+                    )
+                    if table_names is not None and not (
+                        qualified in table_names or base_name in table_names
+                    ):
+                        continue
+
+                    # A table that cannot be built must not take the source down
+                    # with it. Before batching, per-table reflection swallowed
+                    # this and skipped the table; letting it propagate here made
+                    # one unmappable column fail the whole schema, which then
+                    # blocked every downstream job — the opposite of the point.
+                    try:
+                        table_info = self._build_table_schema(
+                            qualified, schema, columns_info, errors
+                        )
+                    except Exception as e:
+                        errors.append(
+                            f"could not build schema for {qualified}: {self._concise_error(e)}"
+                        )
+                        continue
+                    if not table_info:
+                        continue
+                    result["tables"][qualified] = table_info
 
                     # Add to SQLGlot schema
                     columns_dict = {}
@@ -450,11 +495,8 @@ class SqlalchemySource(Source, ABC):
                             columns_dict[col_name] = col_info["sqlglot_datatype"]
 
                     if columns_dict:
-                        # Extract base table name for SQLGlot schema to avoid nesting level issues
-                        base_table_name = (
-                            table_name.split(".", 1)[-1] if "." in table_name else table_name
-                        )
-                        result["sqlglot_schema"].add_table(base_table_name, columns_dict)
+                        # Base table name for SQLGlot to avoid nesting level issues
+                        result["sqlglot_schema"].add_table(base_name, columns_dict)
 
             # Update metadata
             result["metadata"]["total_tables"] = len(result["tables"])
@@ -470,12 +512,129 @@ class SqlalchemySource(Source, ABC):
 
         except Exception as e:
             Logger.instance().error(f"Error building schema for source {self.name}: {e}")
-            # Return minimal schema to avoid breaking downstream code
+            # Return minimal schema to avoid breaking downstream code. `errors`
+            # is a list here as well as on the success path, so a caller has one
+            # shape to check rather than two.
             return {
                 "tables": {},
                 "sqlglot_schema": MappingSchema(),
-                "metadata": {"error": str(e), "total_tables": 0, "total_columns": 0},
+                "metadata": {
+                    "error": str(e),
+                    "errors": [str(e)],
+                    "scanned_schemas": [],
+                    "total_tables": 0,
+                    "total_columns": 0,
+                },
             }
+
+    @staticmethod
+    def _concise_error(e) -> str:
+        """The human-readable first line of a driver error.
+
+        SQLAlchemy's exception text is the message followed by the entire
+        failing statement and its parameters:
+
+            (psycopg2.errors.InsufficientPrivilege) permission denied for table pg_collation
+            [SQL: SELECT pg_catalog.pg_type.typname ... 40 more lines ...]
+            [parameters: {...}]
+            (Background on this error at: https://sqlalche.me/e/20/f405)
+
+        Only the first line says what went wrong; the rest is reflection SQL
+        the user did not write and cannot act on. Rendered in a sidebar rail,
+        it buries the one useful sentence.
+        """
+        first_line = str(e).strip().splitlines()[0].strip() if str(e).strip() else repr(e)
+        if len(first_line) > _MAX_ERROR_CHARS:
+            first_line = first_line[: _MAX_ERROR_CHARS - 1].rstrip() + "…"
+        return first_line
+
+    def _schemas_to_scan(self, inspector, errors: List[str]) -> List[Optional[str]]:
+        """Which schemas ``get_schema`` should walk.
+
+        An explicit ``db_schema`` wins and is scanned alone. Otherwise every
+        non-system schema is scanned, NOT just the connection's default.
+
+        Scanning only the default is what made a Postgres source report "no
+        tables" while sitting on a database that had them: the tables were in a
+        named schema and ``public`` was genuinely empty, so a correct-looking
+        zero came back. Enumerating schemas costs one round trip.
+        """
+        db_schema = getattr(self, "db_schema", None)
+        if db_schema:
+            return [db_schema]
+        try:
+            return [s for s in inspector.get_schema_names() if s.lower() not in self.SYSTEM_SCHEMAS]
+        except Exception as e:
+            # Fall back to the default schema rather than returning nothing —
+            # but say so, so the caller can distinguish a narrow scan from a
+            # complete one.
+            errors.append(
+                f"could not list schemas ({self._concise_error(e)}); "
+                "scanned the default schema only"
+            )
+            return [None]
+
+    def _columns_by_table(self, inspector, schema, errors: List[str]) -> Dict[str, Any]:
+        """``{table_name: [column_info, ...]}`` for one schema.
+
+        Prefers ``get_multi_columns`` — one round trip for the whole schema
+        instead of one per table. Against a remote warehouse that is the
+        difference between seconds and minutes: per-table reflection measured
+        ~1.9s/table, so a 186-table schema took ~6 minutes and callers timed out
+        long before it finished, leaving an empty schema that looked like an
+        empty database.
+
+        Falls back to per-table reflection when the batched call fails, because
+        it is NOT universally available: SQLAlchemy's multi-column query joins
+        ``pg_collation``/``pg_constraint``, and a locked-down server can deny
+        those while still permitting ordinary per-table reflection. Batching
+        without this fallback turns "slow" into "broken" on exactly those
+        servers.
+        """
+        try:
+            multi = inspector.get_multi_columns(schema=schema)
+            return {table: cols for (_schema, table), cols in multi.items() if cols}
+        except Exception as e:
+            errors.append(
+                f"batched column reflection unavailable for schema "
+                f"{schema or 'default'} ({self._concise_error(e)}); "
+                "fell back to per-table reflection"
+            )
+
+        columns: Dict[str, Any] = {}
+        try:
+            table_names = inspector.get_table_names(schema=schema)
+        except Exception as e:
+            errors.append(
+                f"could not list tables in schema {schema or 'default'}: {self._concise_error(e)}"
+            )
+            return columns
+
+        # Grouped by reason rather than reported per table. When an account
+        # cannot reflect ANY table — the usual cause, one missing catalog
+        # grant — a per-table message repeats the same sentence once per
+        # table: 186 identical lines for one schema, which is unreadable
+        # wherever it lands.
+        failures: Dict[str, List[str]] = {}
+        for table in table_names:
+            try:
+                cols = inspector.get_columns(table, schema=schema)
+            except Exception as e:
+                failures.setdefault(self._concise_error(e), []).append(table)
+                continue
+            if cols:
+                columns[table] = cols
+
+        for reason, failed_tables in failures.items():
+            sample = ", ".join(failed_tables[:_MAX_SAMPLE_TABLES])
+            extra = len(failed_tables) - _MAX_SAMPLE_TABLES
+            if extra > 0:
+                sample += f" and {extra} more"
+            errors.append(
+                f"could not reflect columns for {len(failed_tables)} table(s) in "
+                f"{schema or 'default'} ({sample}): {reason}"
+            )
+        return columns
 
     def _get_available_tables_for_schema(
         self, inspector, table_names: List[str] = None
@@ -549,28 +708,40 @@ class SqlalchemySource(Source, ABC):
                 # Try without schema if schema-qualified lookup fails
                 columns_info = inspector.get_columns(base_table_name)
 
-            if not columns_info:
-                return None
+            return self._build_table_schema(table_name, schema_name, columns_info)
 
-            # Process columns
-            table_schema = {
-                "columns": {},
-                "metadata": {
-                    "table_name": table_name,
-                    "schema": schema_name,
-                    "column_count": len(columns_info),
-                },
-            }
+        except Exception as e:
+            Logger.instance().debug(f"Error extracting schema for table {table_name}: {e}")
+            return None
 
-            for col_info in columns_info:
-                col_name = col_info["name"]
-                col_type = col_info["type"]
+    def _build_table_schema(self, table_name, schema_name, columns_info, errors=None):
+        """Turn reflected columns into this source's table-schema dict.
 
+        Shared by the batched path in ``get_schema`` and the per-table
+        ``_extract_table_schema`` so the two cannot drift — they differ only in
+        how the columns were fetched, not in what is built from them.
+        """
+        if not columns_info:
+            return None
+
+        table_schema = {
+            "columns": {},
+            "metadata": {
+                "table_name": table_name,
+                "schema": schema_name,
+                "column_count": len(columns_info),
+            },
+        }
+
+        for col_info in columns_info:
+            col_name = col_info["name"]
+            col_type = col_info["type"]
+
+            try:
                 # Convert SQLAlchemy type to SQLGlot DataType
                 sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(
                     col_type, dialect=self.get_dialect()
                 )
-
                 table_schema["columns"][col_name] = {
                     "type": str(col_type),
                     "nullable": col_info.get("nullable", True),
@@ -578,12 +749,29 @@ class SqlalchemySource(Source, ABC):
                     "sqlglot_datatype": sqlglot_datatype,
                     "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
                 }
+            except Exception as e:
+                # A type the dialect could not map — SQLAlchemy hands back
+                # NullType, whose str() raises "Can't generate DDL for
+                # NullType()". Clickhouse does this for types the driver has no
+                # mapping for.
+                #
+                # Keep the COLUMN rather than dropping it (or its table): the
+                # name is still worth having for browsing and autocomplete, and
+                # a table listed without one column beats a source listed
+                # without the table. Only the sqlglot datatype is lost, so
+                # query optimisation degrades for that column alone.
+                if errors is not None:
+                    errors.append(
+                        f"{table_name}.{col_name}: unmapped column type "
+                        f"({self._concise_error(e)})"
+                    )
+                table_schema["columns"][col_name] = {
+                    "type": type(col_type).__name__,
+                    "nullable": col_info.get("nullable", True),
+                    "default": None,
+                }
 
-            return table_schema
-
-        except Exception as e:
-            Logger.instance().debug(f"Error extracting schema for table {table_name}: {e}")
-            return None
+        return table_schema
 
     # --- Granular introspection methods ---
 

@@ -9,6 +9,7 @@ import {
   fetchSchemaGenerationStatus,
   fetchSourceSchema,
   tablesFromEnvelope,
+  warningsFromEnvelope,
   columnsFromEnvelope,
 } from '../../../api/sourceSchemaJobs';
 
@@ -121,6 +122,7 @@ export default function useSourceOutline(sourceName) {
   // The fetched schema envelope for this source; every column slice comes out
   // of it. Held so expansion needs no request of its own.
   const [envelope, setEnvelope] = useState(null);
+  const warnings = useMemo(() => warningsFromEnvelope(envelope), [envelope]);
   const [generating, setGenerating] = useState(null); // { status, progress, message } | null
   // Authoritative "does the API have a cached schema for this source" signal
   // (from the schema-jobs list, the same one SourceBrowser uses). null = unknown.
@@ -365,6 +367,17 @@ export default function useSourceOutline(sourceName) {
     nodes,
     status,
     error,
+    // Non-fatal problems from the schema build, shown ALONGSIDE the tables.
+    // Distinct from `error`, which means the outline could not be loaded at
+    // all: a schema job succeeds when it could connect, so a partial result
+    // (some tables reflected, others denied) arrives as a normal success and
+    // would otherwise be indistinguishable from a complete one.
+    //
+    // Derived from `envelope` rather than held in its own state so it cannot
+    // drift from the tree it describes — including on the cache-hydration
+    // path, which restores the envelope and would have missed a separate
+    // setter.
+    warnings,
     isCold,
     canGenerate,
     generating,
