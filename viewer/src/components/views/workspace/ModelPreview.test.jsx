@@ -34,6 +34,7 @@ const seed = (models = [], sources = [], defaults = null, fields = {}) => {
       fetchDefaults: jest.fn(),
       fetchDimensions: jest.fn(),
       fetchMetrics: jest.fn(),
+      workspaceModelSqlDraft: null,
     });
   });
 };
@@ -86,6 +87,26 @@ describe('ModelPreview (VIS-801)', () => {
 
   test('Run executes the model SQL against its resolved source', () => {
     seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    fireEvent.click(screen.getByTestId('model-preview-run'));
+    expect(mockExecuteQuery).toHaveBeenCalledWith('db', 'SELECT 1');
+  });
+
+  test('Run executes the live rail-editor SQL over the saved config SQL (VIS-1221)', () => {
+    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    act(() => {
+      useStore.setState({ workspaceModelSqlDraft: { name: 'orders', sql: 'SELECT 2 AS len' } });
+    });
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    fireEvent.click(screen.getByTestId('model-preview-run'));
+    expect(mockExecuteQuery).toHaveBeenCalledWith('db', 'SELECT 2 AS len');
+  });
+
+  test('ignores a draft scoped to a DIFFERENT model — runs the saved SQL', () => {
+    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    act(() => {
+      useStore.setState({ workspaceModelSqlDraft: { name: 'other', sql: 'SELECT 999' } });
+    });
     render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
     fireEvent.click(screen.getByTestId('model-preview-run'));
     expect(mockExecuteQuery).toHaveBeenCalledWith('db', 'SELECT 1');

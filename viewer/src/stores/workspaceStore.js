@@ -184,6 +184,17 @@ const createWorkspaceSlice = (set, get) => ({
   // open. Scoped by `tableName` so it can't leak across object selections.
   workspacePivotDraft: null,
 
+  // Live model SQL draft (VIS-1221) -----------------------------------------
+  // The unsaved SQL currently in the rail's ModelEditForm, mirrored here so the
+  // center-canvas ModelPreview's Run executes what's ON SCREEN rather than the
+  // last-saved `config.sql`. Scoped by model name so it can't leak onto a
+  // different model's preview; `{ name, sql } | null`. Deliberately NOT the
+  // shared `models` collection (updateRecordConfigOptimistic) — this is a
+  // manual-save form, so writing edits there would let a close-without-save
+  // reseed its own baseline from the discarded text. The editor clears this on
+  // unmount, so a non-editing preview falls back to the saved SQL.
+  workspaceModelSqlDraft: null,
+
   // Outline tree (right-rail Outline tab, VIS-793 / Track F F-3) ------------
   // Selected node key — `'dashboard'` | `'row.N'` | `'row.N.item.M'`. Defaults
   // to the dashboard root so the scoped dashboard reads as selected on entry.
@@ -843,6 +854,22 @@ const createWorkspaceSlice = (set, get) => ({
   setWorkspaceOutlineSelectedKey: (key) => {
     if (typeof key !== 'string' || !key) return;
     set({ workspaceOutlineSelectedKey: key });
+  },
+
+  // VIS-1221 — mirror the rail editor's live SQL so the preview Run uses it.
+  setWorkspaceModelSqlDraft: (name, sql) => {
+    if (!name) return;
+    set({ workspaceModelSqlDraft: { name, sql: sql ?? '' } });
+  },
+
+  // Drop the live SQL draft (editor unmount). Name-guarded so a stale unmount
+  // can't wipe a draft that already belongs to a newly-opened model.
+  clearWorkspaceModelSqlDraft: (name) => {
+    set(state =>
+      !name || state.workspaceModelSqlDraft?.name === name
+        ? { workspaceModelSqlDraft: null }
+        : state
+    );
   },
 
   /**
