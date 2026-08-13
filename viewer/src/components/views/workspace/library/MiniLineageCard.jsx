@@ -379,16 +379,21 @@ const AncestorRow = ({ node, marginLeft, testIdPrefix, onOpen }) => (
     data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
     data-direction="ancestor"
     data-direct={node.isDirect ? 'true' : 'false'}
-    className="relative"
-    style={{ marginLeft }}
+    className="relative flex items-center"
+    style={{
+      height: ROW_HEIGHT,
+      width: ROW_WIDTH,
+      marginLeft,
+    }}
   >
+    {/* The row's box is unchanged — the SVG connectors are drawn against this
+        geometry, so the button fills it rather than resizing it. */}
     <button
       type="button"
       onClick={() => onOpen && onOpen(node)}
       title={`Open ${node.name}`}
       data-testid={`${testIdPrefix}-open-${node.type}-${node.name}`}
-      className="flex items-center gap-2 rounded-md px-0.5 text-left transition-colors hover:bg-gray-50"
-      style={{ height: ROW_HEIGHT, width: ROW_WIDTH }}
+      className="flex h-full w-full items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
     >
       <TypePill type={node.type} />
       <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
@@ -404,16 +409,19 @@ const DescendantRow = ({ node, marginLeft, testIdPrefix, onOpen }) => (
     data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
     data-direction="descendant"
     data-direct={node.isDirect ? 'true' : 'false'}
-    className="relative"
-    style={{ marginLeft }}
+    className="relative flex items-center"
+    style={{
+      height: ROW_HEIGHT,
+      width: ROW_WIDTH,
+      marginLeft,
+    }}
   >
     <button
       type="button"
       onClick={() => onOpen && onOpen(node)}
       title={`Open ${node.name}`}
       data-testid={`${testIdPrefix}-open-${node.type}-${node.name}`}
-      className="flex items-center gap-2 rounded-md px-0.5 text-left transition-colors hover:bg-gray-50"
-      style={{ height: ROW_HEIGHT, width: ROW_WIDTH }}
+      className="flex h-full w-full items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
     >
       <IconTile type={node.type} />
       <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
@@ -878,6 +886,31 @@ const MiniLineageCard = ({
             No lineage available for this object.
           </p>
         ) : (
+          <>
+          {/* The collapse controls sit OUTSIDE the ladder, above and below it.
+              Inside, they occupied a rung: every row shifted down and the SVG
+              connectors — which are drawn against the ladder's fixed row
+              geometry — no longer met the nodes they belonged to. Out here they
+              can appear and disappear without the ladder noticing. */}
+          {N > 0 && (
+            <div
+              className="pb-1.5"
+              style={{ marginLeft: BASE_INDENT }}
+              data-testid={`${testIdPrefix}-ancestors`}
+              data-collapsed={ancestorsOpen ? 'false' : 'true'}
+            >
+              <button
+                type="button"
+                onClick={() => setAncestorsOpen(v => !v)}
+                aria-expanded={ancestorsOpen}
+                aria-label={ancestorsOpen ? 'Collapse ancestors' : 'Expand ancestors'}
+                data-testid={`${testIdPrefix}-ancestors-toggle`}
+                className="inline-flex h-4 cursor-pointer items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500 transition-colors hover:bg-gray-200"
+              >
+                {ancestorsOpen ? `hide ${N} upstream` : `+${N} upstream`}
+              </button>
+            </div>
+          )}
           <div className="relative" data-testid={`${testIdPrefix}-chain-wrap`}>
             {(ancestorConnectors.length > 0 ||
               descendantConnectors.length > 0 ||
@@ -932,82 +965,63 @@ const MiniLineageCard = ({
               style={{ rowGap: ROW_GAP }}
               data-testid={`${testIdPrefix}-chain`}
             >
-            {N > 0 && (
-              <li
-                data-testid={`${testIdPrefix}-ancestors`}
-                data-collapsed={ancestorsOpen ? 'false' : 'true'}
-              >
-                {/* The collapse control is its own button beside the rows.
-                    It used to WRAP them, so every click on a node hit the
-                    wrapper and folded the group instead of opening the object
-                    (VIS-1213). Shown in both states so the group can still be
-                    folded once it is open. */}
-                <button
-                  type="button"
-                  onClick={() => setAncestorsOpen(v => !v)}
-                  aria-expanded={ancestorsOpen}
-                  aria-label={ancestorsOpen ? 'Collapse ancestors' : 'Expand ancestors'}
-                  data-testid={`${testIdPrefix}-ancestors-toggle`}
-                  className="inline-flex h-4 cursor-pointer items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500 transition-colors hover:bg-gray-200"
-                  style={{ marginLeft: BASE_INDENT }}
-                >
-                  {ancestorsOpen ? `hide ${N} upstream` : `+${N} upstream`}
-                </button>
-                {ancestorsOpen && (
-                  <ul className="flex flex-col" style={{ rowGap: ROW_GAP }}>
-                    {ancestors.map((node, i) => (
-                      <AncestorRow
-                        key={`anc-${node.type}-${node.name}-${i}`}
-                        node={node}
-                        marginLeft={ancestorMarginLeft(node)}
-                        testIdPrefix={testIdPrefix}
-                        onOpen={handleOpenNode}
-                      />
-                    ))}
-                  </ul>
-                )}
+            {N > 0 && ancestorsOpen && (
+              <li>
+                <ul className="flex flex-col" style={{ rowGap: ROW_GAP }}>
+                  {ancestors.map((node, i) => (
+                    <AncestorRow
+                      key={`anc-${node.type}-${node.name}-${i}`}
+                      node={node}
+                      marginLeft={ancestorMarginLeft(node)}
+                      testIdPrefix={testIdPrefix}
+                      onOpen={handleOpenNode}
+                    />
+                  ))}
+                </ul>
               </li>
             )}
 
             <SubjectRow subject={subjectForRender} testIdPrefix={testIdPrefix} />
 
-            {M > 0 && (
-              <li
-                data-testid={`${testIdPrefix}-descendants`}
-                data-collapsed={descendantsOpen ? 'false' : 'true'}
-              >
-                <button
-                  type="button"
-                  onClick={() => setDescendantsOpen(v => !v)}
-                  aria-expanded={descendantsOpen}
-                  aria-label={
-                    descendantsOpen
-                      ? 'Collapse descendants'
-                      : 'Expand descendants'
-                  }
-                  data-testid={`${testIdPrefix}-descendants-toggle`}
-                  className="inline-flex h-4 cursor-pointer items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500 transition-colors hover:bg-gray-200"
-                  style={{ marginLeft: BASE_INDENT }}
-                >
-                  {descendantsOpen ? `hide ${M} downstream` : `+${M} downstream`}
-                </button>
-                {descendantsOpen && (
-                  <ul className="flex flex-col" style={{ rowGap: ROW_GAP }}>
-                    {descendants.map((node, j) => (
-                      <DescendantRow
-                        key={`desc-${node.type}-${node.name}-${j}`}
-                        node={node}
-                        marginLeft={descendantMarginLeft(node)}
-                        testIdPrefix={testIdPrefix}
-                        onOpen={handleOpenNode}
-                      />
-                    ))}
-                  </ul>
-                )}
+            {M > 0 && descendantsOpen && (
+              <li>
+                <ul className="flex flex-col" style={{ rowGap: ROW_GAP }}>
+                  {descendants.map((node, j) => (
+                    <DescendantRow
+                      key={`desc-${node.type}-${node.name}-${j}`}
+                      node={node}
+                      marginLeft={descendantMarginLeft(node)}
+                      testIdPrefix={testIdPrefix}
+                      onOpen={handleOpenNode}
+                    />
+                  ))}
+                </ul>
               </li>
             )}
             </ul>
           </div>
+          {M > 0 && (
+            <div
+              className="pt-1.5"
+              style={{ marginLeft: BASE_INDENT }}
+              data-testid={`${testIdPrefix}-descendants`}
+              data-collapsed={descendantsOpen ? 'false' : 'true'}
+            >
+              <button
+                type="button"
+                onClick={() => setDescendantsOpen(v => !v)}
+                aria-expanded={descendantsOpen}
+                aria-label={
+                  descendantsOpen ? 'Collapse descendants' : 'Expand descendants'
+                }
+                data-testid={`${testIdPrefix}-descendants-toggle`}
+                className="inline-flex h-4 cursor-pointer items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500 transition-colors hover:bg-gray-200"
+              >
+                {descendantsOpen ? `hide ${M} downstream` : `+${M} downstream`}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
 

@@ -354,3 +354,37 @@ describe('node click navigates (VIS-1213)', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+
+describe('collapse toggles sit outside the ladder (VIS-1213)', () => {
+  test('neither toggle renders inside the chain', () => {
+    // Placing them inside cost a rung: every row shifted down and the SVG
+    // connectors, which are drawn against the ladder's fixed row geometry,
+    // stopped meeting the nodes they belonged to.
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+
+    const chain = screen.getByTestId('mlc-chain');
+    expect(within(chain).queryByTestId('mlc-ancestors-toggle')).toBeNull();
+    expect(within(chain).queryByTestId('mlc-descendants-toggle')).toBeNull();
+    // Still on screen — just not in the ladder.
+    expect(screen.getByTestId('mlc-ancestors-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('mlc-descendants-toggle')).toBeInTheDocument();
+  });
+
+  test('the ladder holds only lineage rows, in either collapsed state', () => {
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+    const chain = screen.getByTestId('mlc-chain');
+
+    expect(
+      within(chain).getByTestId('mlc-lineage-insight-revenue_breakdown')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('mlc-ancestors-toggle'));
+
+    // Collapsing removes the rows and leaves nothing behind in their place.
+    expect(
+      within(chain).queryByTestId('mlc-lineage-insight-revenue_breakdown')
+    ).toBeNull();
+    expect(within(chain).queryByTestId('mlc-ancestors-toggle')).toBeNull();
+  });
+});

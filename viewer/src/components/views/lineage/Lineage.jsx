@@ -323,18 +323,22 @@ const Lineage = ({
     [nodes]
   );
 
-  // Fit the view whenever the node SET changes.
+  // Fit the view when the node SET changes, or when the filter changes.
   //
-  // This used to key on `nodes?.length` and `selector`, which meant selecting a
+  // The set, because keying on `nodes?.length` alone meant selecting a
   // different object that happened to resolve to the same number of nodes never
   // re-fit — the graph stayed anchored wherever the previous fit left it. That
   // is the "it often doesn't center when you select new items" report, and
   // "often" was tracking whether the node count happened to change.
   //
-  // Membership is the honest trigger, and it also settles the original
-  // complaint that selecting a node made the graph jump: a change that only
-  // moves nodes (dragging, or pinning a clicked node via `fixedNode`) leaves
-  // the signature alone, so the viewport stays exactly where the user put it.
+  // The filter, because editing it is an explicit "show me this": the result
+  // has to come into view even when the resulting set is one the viewport is
+  // already displaying, since the user may have panned away since.
+  //
+  // What is deliberately NOT here is anything that only MOVES nodes — dragging,
+  // or pinning a clicked node via `fixedNode`. Those leave both triggers alone,
+  // so the viewport stays where the user put it. That was the original
+  // complaint on this ticket: selecting a node made the graph jump.
   useEffect(() => {
     if (initialLoadDone && nodes?.length > 0 && reactFlowInstance.current) {
       setTimeout(() => {
@@ -345,7 +349,7 @@ const Lineage = ({
       }, 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialLoadDone, nodeSignature]);
+  }, [initialLoadDone, nodeSignature, selector]);
 
   // Global keyboard handler for Escape key
   useEffect(() => {
