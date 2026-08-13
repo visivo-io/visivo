@@ -115,9 +115,7 @@ describe('useWorkspaceScope', () => {
   test('returns dashboard scope when URL is /workspace/dashboard/<name>', () => {
     renderAt('/workspace/dashboard/simple-dashboard');
     expect(screen.getByTestId('probe-scope')).toHaveTextContent('dashboard');
-    expect(screen.getByTestId('probe-selector')).toHaveTextContent(
-      '+simple-dashboard'
-    );
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent(/^\+simple-dashboard\+$/);
     expect(screen.getByTestId('probe-dashboard')).toHaveTextContent(
       'simple-dashboard'
     );
@@ -132,9 +130,7 @@ describe('useWorkspaceScope', () => {
   test('returns item scope when ?edit=<type>:<name> is present', () => {
     renderAt('/workspace?edit=chart:revenue_chart');
     expect(screen.getByTestId('probe-scope')).toHaveTextContent('item');
-    expect(screen.getByTestId('probe-selector')).toHaveTextContent(
-      '+revenue_chart'
-    );
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent(/^\+revenue_chart\+$/);
     expect(screen.getByTestId('probe-dashboard')).toHaveTextContent('null');
     expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('chart');
     expect(screen.getByTestId('probe-selected-name')).toHaveTextContent(
@@ -164,9 +160,7 @@ describe('useWorkspaceScope', () => {
     });
     renderAt('/workspace');
     expect(screen.getByTestId('probe-scope')).toHaveTextContent('item');
-    expect(screen.getByTestId('probe-selector')).toHaveTextContent(
-      '+monthly_revenue'
-    );
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent(/^\+monthly_revenue\+$/);
     expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('model');
     expect(screen.getByTestId('probe-selected-name')).toHaveTextContent(
       'monthly_revenue'
@@ -208,7 +202,7 @@ describe('useWorkspaceScope', () => {
     renderAt('/workspace/dashboard/A');
     expect(screen.getByTestId('probe-scope')).toHaveTextContent('dashboard');
     expect(screen.getByTestId('probe-dashboard')).toHaveTextContent('B');
-    expect(screen.getByTestId('probe-selector')).toHaveTextContent('+B');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent(/^\+B\+$/);
     expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('B');
   });
 
@@ -269,7 +263,7 @@ describe('useWorkspaceScope', () => {
     });
     renderAt('/workspace/dashboard/simple-dashboard');
     expect(screen.getByTestId('probe-scope')).toHaveTextContent('item');
-    expect(screen.getByTestId('probe-selector')).toHaveTextContent('+fibonacci');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent(/^\+fibonacci\+$/);
     expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('chart');
     expect(screen.getByTestId('probe-selected-name')).toHaveTextContent(
       'fibonacci'

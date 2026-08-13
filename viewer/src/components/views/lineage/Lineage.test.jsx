@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Lineage from './Lineage';
 import useStore from '../../../stores/store';
-import { useLineageDag } from './useLineageDag';
+import { useLineageDag, computeLayout } from './useLineageDag';
 
 // Mock the store
 jest.mock('../../../stores/store');
@@ -25,7 +25,21 @@ jest.mock('./useLineageDag', () => ({
 
 // Mock reactflow
 jest.mock('reactflow', () => {
-  const MockReactFlow = ({ nodes, edges, onNodeClick, children }) => (
+  const ReactMock = require('react');
+  // A stand-in for the React Flow instance the real component hands back via
+  // `onInit`. Lineage drives the camera through it, so exposing it is what
+  // makes the framing behaviour assertable at all.
+  const instance = {
+    setCenter: jest.fn(),
+    fitView: jest.fn(),
+    getZoom: jest.fn(() => 1),
+  };
+  global.__mockFlowInstance = instance;
+  const MockReactFlow = ({ nodes, edges, onNodeClick, onInit, children }) => {
+    ReactMock.useEffect(() => {
+      if (onInit) onInit(instance);
+    }, [onInit]);
+    return (
     <div data-testid="react-flow">
       {nodes.map(node => (
         <div
@@ -43,7 +57,8 @@ jest.mock('reactflow', () => {
       ))}
       {children}
     </div>
-  );
+    );
+  };
   MockReactFlow.displayName = 'MockReactFlow';
   return {
     __esModule: true,
@@ -230,7 +245,7 @@ describe('Lineage', () => {
     });
   });
 
-  it('clears selector when Clear button is clicked', async () => {
+  it('clears the selector when "Show full project" is clicked', async () => {
     useLineageDag.mockReturnValue({
       nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
@@ -245,10 +260,44 @@ describe('Lineage', () => {
     await user.type(input, 'source-db');
     expect(input.value).toBe('source-db');
 
-    // Click clear
-    fireEvent.click(screen.getByText('Clear'));
+    // One reset for both narrowing mechanisms — this replaced `Clear`, which
+    // only emptied the input and left a host-supplied scope in place.
+    fireEvent.click(screen.getByTestId('lineage-show-full-project'));
 
     expect(input.value).toBe('');
+  });
+
+  it('disables "Show full project" when the DAG is already the whole project', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
+      edges: [],
+    });
+
+    const user = userEvent.setup();
+    render(<Lineage />);
+
+    expect(screen.getByTestId('lineage-show-full-project')).toBeDisabled();
+
+    await user.type(
+      screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'"),
+      'source-db'
+    );
+
+    expect(screen.getByTestId('lineage-show-full-project')).toBeEnabled();
+  });
+
+  it('calls onResetScope so a host-derived scope widens too', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
+      edges: [],
+    });
+    const onResetScope = jest.fn();
+
+    render(<Lineage scopeSelector="+db+" onResetScope={onResetScope} />);
+
+    fireEvent.click(screen.getByTestId('lineage-show-full-project'));
+
+    expect(onResetScope).toHaveBeenCalled();
   });
 
   it('shows no matching objects message when selector matches nothing', async () => {
@@ -411,5 +460,79 @@ describe('Lineage', () => {
       expect(mockFetchDashboards).not.toHaveBeenCalled();
       expect(mockFetchDefaults).not.toHaveBeenCalled();
     });
+  });
+});
+
+
+describe('framing and node pinning (VIS-1213 follow-ups)', () => {
+  const NODES = [
+    { id: 'model-a', data: { label: 'a', name: 'a', objectType: 'model' } },
+    { id: 'model-b', data: { label: 'b', name: 'b', objectType: 'model' } },
+  ];
+
+  beforeEach(() => {
+    useLineageDag.mockReturnValue({ nodes: NODES, edges: [] });
+    global.__mockFlowInstance.setCenter.mockClear();
+    global.__mockFlowInstance.fitView.mockClear();
+    computeLayout.mockClear();
+  });
+
+  test('a selector naming an object pans to it instead of fitting the graph', async () => {
+    render(<Lineage scopeSelector="+b+" />);
+
+    await waitFor(() => {
+      expect(global.__mockFlowInstance.setCenter).toHaveBeenCalled();
+    });
+    expect(global.__mockFlowInstance.fitView).not.toHaveBeenCalled();
+  });
+
+  test('an unscoped selector fits the whole graph — there is no subject to centre on', async () => {
+    render(<Lineage scopeSelector="*" />);
+
+    await waitFor(() => {
+      expect(global.__mockFlowInstance.fitView).toHaveBeenCalled();
+    });
+    expect(global.__mockFlowInstance.setCenter).not.toHaveBeenCalled();
+  });
+
+  test('panning keeps the zoom the user chose', async () => {
+    global.__mockFlowInstance.getZoom.mockReturnValue(2.5);
+    render(<Lineage scopeSelector="+b+" />);
+
+    await waitFor(() => {
+      expect(global.__mockFlowInstance.setCenter).toHaveBeenCalled();
+    });
+    const [, , opts] = global.__mockFlowInstance.setCenter.mock.calls[0];
+    expect(opts.zoom).toBe(2.5);
+    global.__mockFlowInstance.getZoom.mockReturnValue(1);
+  });
+
+  test("the clicked node stays pinned when the host echoes the click back as a new scope", () => {
+    // The click tells the host, the host opens a tab, the scope re-derives and
+    // arrives back as a new `scopeSelector`. That echo used to clear the pin
+    // the click had just set, so dagre re-laid the graph and the node moved out
+    // from under the user.
+    // Start unscoped so every node is on screen and clickable.
+    const { rerender } = render(<Lineage scopeSelector="*" />);
+
+    fireEvent.click(screen.getByTestId('node-model-b'));
+    rerender(<Lineage scopeSelector="+b+" />);
+
+    const fixedNodes = computeLayout.mock.calls.map(call => call[2]);
+    expect(fixedNodes[fixedNodes.length - 1]).toEqual(
+      expect.objectContaining({ id: 'model-b' })
+    );
+  });
+
+  test('a scope change the user did NOT cause still releases the pin', () => {
+    // Navigating elsewhere should lay the new graph out freely; only the click's
+    // own echo is exempt.
+    const { rerender } = render(<Lineage scopeSelector="*" />);
+
+    fireEvent.click(screen.getByTestId('node-model-b'));
+    rerender(<Lineage scopeSelector="+somewhere-else+" />);
+
+    const fixedNodes = computeLayout.mock.calls.map(call => call[2]);
+    expect(fixedNodes[fixedNodes.length - 1]).toBeNull();
   });
 });

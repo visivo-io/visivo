@@ -2,6 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
+import LineageSelectorField from '../../lineage/LineageSelectorField';
+import {
+  neighborhoodSelector,
+  parseSelector,
+  UNBOUNDED,
+} from '../../lineage/lineageSelector';
 
 /**
  * MiniLineageCard — VIS-780 / Track C C-4 (shared lineage-card body).
@@ -47,60 +53,11 @@ const BASE_INDENT = 34;
 // Selector parsing — Visivo selector syntax `[+N]name[+M]`
 // ---------------------------------------------------------------------------
 
-const UNBOUNDED = Number.POSITIVE_INFINITY;
 
-function defaultSelector(name) {
-  return `+${name}+`;
-}
+// Shared with the main lineage canvas so the two cannot answer
+// "show me this object's lineage" differently again (VIS-1213).
 
-/**
- * Parse a Visivo selector string into `{ name, ancestors, descendants }`.
- *
- * Syntax: depth digits sit OUTSIDE the `+`, the `+` always touches the
- * object name. `+` alone means "unbounded in that direction", a missing
- * `+` means "no traversal in that direction", and `N+` / `+N` clamps to
- * N levels.
- *
- *   "+revenue_chart+"    → unbounded ancestors + unbounded descendants
- *   "2+revenue_chart+1"  → 2 ancestor levels, 1 descendant level
- *   "+revenue_chart"     → unbounded ancestors, no descendants
- *   "2+revenue_chart"    → 2 ancestor levels, no descendants
- *   "revenue_chart"      → just the subject row
- *   "+monthly_revenue+"  → SWAPS the subject to `monthly_revenue` and
- *                          shows its full upstream + downstream
- */
-function parseSelector(text, fallbackName) {
-  const trimmed = String(text || '').trim();
-  if (!trimmed) {
-    return { name: fallbackName, ancestors: 0, descendants: 0 };
-  }
-  // ((\d+)?\+)?   optional leading-depth + `+`
-  // ([^+]+?)      the object name (non-greedy, no `+`)
-  // (\+(\d+)?)?   optional trailing `+` + descendant-depth
-  const re = /^((\d+)?\+)?([^+]+?)(\+(\d+)?)?$/;
-  const m = trimmed.match(re);
-  if (!m) {
-    return { name: fallbackName, ancestors: 0, descendants: 0 };
-  }
-  const ancHasPlus = Boolean(m[1]);
-  const ancDigits = m[2] || '';
-  const subjName = (m[3] || '').trim() || fallbackName;
-  const desHasPlus = Boolean(m[4]);
-  const desDigits = m[5] || '';
-
-  const depth = (hasPlus, digits) => {
-    if (!hasPlus) return 0;
-    if (!digits) return UNBOUNDED;
-    const n = parseInt(digits, 10);
-    return Number.isFinite(n) && n >= 0 ? n : UNBOUNDED;
-  };
-
-  return {
-    name: subjName,
-    ancestors: depth(ancHasPlus, ancDigits),
-    descendants: depth(desHasPlus, desDigits),
-  };
-}
+const defaultSelector = neighborhoodSelector;
 
 // ---------------------------------------------------------------------------
 // Lineage walker — uses `child_item_names` (the canonical upstream-edge
@@ -367,43 +324,65 @@ const IconTile = ({ type }) => {
   );
 };
 
-const AncestorRow = ({ node, marginLeft, testIdPrefix }) => (
+// A node in the chain is a button: clicking it opens that object, the way
+// clicking a node in the main lineage does. It used to be inert text sealed
+// inside the group's collapse <button>, so a click hit the wrapper and folded
+// the group instead of navigating (VIS-1213).
+const AncestorRow = ({ node, marginLeft, testIdPrefix, onOpen }) => (
   <li
     data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
     data-direction="ancestor"
     data-direct={node.isDirect ? 'true' : 'false'}
-    className="relative flex items-center gap-2"
+    className="relative flex items-center"
     style={{
       height: ROW_HEIGHT,
       width: ROW_WIDTH,
       marginLeft,
     }}
   >
-    <TypePill type={node.type} />
-    <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
-      {node.name}
-    </span>
-    <IconTile type={node.type} />
+    {/* The row's box is unchanged — the SVG connectors are drawn against this
+        geometry, so the button fills it rather than resizing it. */}
+    <button
+      type="button"
+      onClick={() => onOpen && onOpen(node)}
+      title={`Open ${node.name}`}
+      data-testid={`${testIdPrefix}-open-${node.type}-${node.name}`}
+      className="flex h-full w-full cursor-pointer items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
+    >
+      <TypePill type={node.type} />
+      <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
+        {node.name}
+      </span>
+      <IconTile type={node.type} />
+    </button>
   </li>
 );
 
-const DescendantRow = ({ node, marginLeft, testIdPrefix }) => (
+const DescendantRow = ({ node, marginLeft, testIdPrefix, onOpen }) => (
   <li
     data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
     data-direction="descendant"
     data-direct={node.isDirect ? 'true' : 'false'}
-    className="relative flex items-center gap-2"
+    className="relative flex items-center"
     style={{
       height: ROW_HEIGHT,
       width: ROW_WIDTH,
       marginLeft,
     }}
   >
-    <IconTile type={node.type} />
-    <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
-      {node.name}
-    </span>
-    <TypePill type={node.type} />
+    <button
+      type="button"
+      onClick={() => onOpen && onOpen(node)}
+      title={`Open ${node.name}`}
+      data-testid={`${testIdPrefix}-open-${node.type}-${node.name}`}
+      className="flex h-full w-full cursor-pointer items-center gap-2 rounded-md text-left transition-colors hover:bg-gray-100/70"
+    >
+      <IconTile type={node.type} />
+      <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
+        {node.name}
+      </span>
+      <TypePill type={node.type} />
+    </button>
   </li>
 );
 
@@ -594,6 +573,25 @@ const MiniLineageCard = ({
   // "Expand" hands the current subject off to the Workspace middle pane's
   // universal lineage lens (E-1): open the subject as a workspace tab, flip
   // the lens to lineage, then dismiss. Callers may override with `onExpand`.
+  // Open any node in the chain — the same round-trip the main lineage does on
+  // a node click. `handleExpand` below is this for the SUBJECT specifically,
+  // and keeps its `onExpand` override; a neighbour has no such override, it
+  // just navigates.
+  const handleOpenNode = node => {
+    if (!node || !node.type || !node.name) return;
+    const { type, name } = node;
+    if (typeof setWorkspaceLensIntent === 'function' && type !== 'dashboard') {
+      setWorkspaceLensIntent({ objectKey: `${type}:${name}`, lens: 'lineage' });
+    }
+    if (typeof openWorkspaceTab === 'function') {
+      openWorkspaceTab({ id: `${type}:${name}`, type, name });
+    }
+    if (typeof setWorkspaceLens === 'function') {
+      setWorkspaceLens('lineage');
+    }
+    onClose && onClose();
+  };
+
   const handleExpand = () => {
     const { type, name } = subjectForRender;
     if (typeof onExpand === 'function') {
@@ -820,25 +818,13 @@ const MiniLineageCard = ({
         </header>
       )}
 
-      <div className="shrink-0 px-3 pt-2">
-        <div
-          className="flex h-7 items-center gap-1.5 rounded-md bg-gray-50 px-2 ring-1 ring-gray-200 focus-within:ring-primary/40"
-          data-testid={`${testIdPrefix}-selector`}
-        >
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            sel
-          </span>
-          <input
-            type="text"
-            value={selectorText}
-            onChange={e => setSelectorText(e.target.value)}
-            spellCheck={false}
-            aria-label="Lineage selector — edit to change depth in either direction"
-            data-testid={`${testIdPrefix}-selector-input`}
-            className="min-w-0 flex-1 truncate bg-transparent font-mono text-[11px] text-gray-800 placeholder-gray-400 outline-none"
-            placeholder={defaultSelector(obj.name)}
-          />
-        </div>
+      <div className="flex shrink-0 px-3 pt-2">
+        <LineageSelectorField
+          value={selectorText}
+          onChange={e => setSelectorText(e.target.value)}
+          placeholder={defaultSelector(obj.name)}
+          testId={`${testIdPrefix}-selector`}
+        />
       </div>
 
       <div
@@ -854,6 +840,31 @@ const MiniLineageCard = ({
             No lineage available for this object.
           </p>
         ) : (
+          <>
+          {/* The collapse controls sit OUTSIDE the ladder, above and below it.
+              Inside, they occupied a rung: every row shifted down and the SVG
+              connectors — which are drawn against the ladder's fixed row
+              geometry — no longer met the nodes they belonged to. Out here they
+              can appear and disappear without the ladder noticing. */}
+          {N > 0 && (
+            <div
+              className="pb-1.5"
+              style={{ marginLeft: BASE_INDENT }}
+              data-testid={`${testIdPrefix}-ancestors`}
+              data-collapsed={ancestorsOpen ? 'false' : 'true'}
+            >
+              <button
+                type="button"
+                onClick={() => setAncestorsOpen(v => !v)}
+                aria-expanded={ancestorsOpen}
+                aria-label={ancestorsOpen ? 'Collapse ancestors' : 'Expand ancestors'}
+                data-testid={`${testIdPrefix}-ancestors-toggle`}
+                className="inline-flex h-4 cursor-pointer items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500 transition-colors hover:bg-gray-200"
+              >
+                {ancestorsOpen ? `hide ${N} upstream` : `+${N} upstream`}
+              </button>
+            </div>
+          )}
           <div className="relative" data-testid={`${testIdPrefix}-chain-wrap`}>
             {(ancestorConnectors.length > 0 ||
               descendantConnectors.length > 0 ||
@@ -908,93 +919,63 @@ const MiniLineageCard = ({
               style={{ rowGap: ROW_GAP }}
               data-testid={`${testIdPrefix}-chain`}
             >
-            {N > 0 && (
-              <li
-                data-testid={`${testIdPrefix}-ancestors`}
-                data-collapsed={ancestorsOpen ? 'false' : 'true'}
-              >
-                <button
-                  type="button"
-                  onClick={() => setAncestorsOpen(v => !v)}
-                  aria-expanded={ancestorsOpen}
-                  aria-label={
-                    ancestorsOpen ? 'Collapse ancestors' : 'Expand ancestors'
-                  }
-                  data-testid={`${testIdPrefix}-ancestors-toggle`}
-                  className="block w-full cursor-pointer text-left"
-                >
-                  {ancestorsOpen ? (
-                    <ul
-                      className="flex flex-col"
-                      style={{ rowGap: ROW_GAP }}
-                    >
-                      {ancestors.map((node, i) => (
-                        <AncestorRow
-                          key={`anc-${node.type}-${node.name}-${i}`}
-                          node={node}
-                          marginLeft={ancestorMarginLeft(node)}
-                          testIdPrefix={testIdPrefix}
-                        />
-                      ))}
-                    </ul>
-                  ) : (
-                    <span
-                      className="inline-flex h-4 items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500"
-                      style={{ marginLeft: BASE_INDENT }}
-                    >
-                      +{N} upstream
-                    </span>
-                  )}
-                </button>
+            {N > 0 && ancestorsOpen && (
+              <li>
+                <ul className="flex flex-col" style={{ rowGap: ROW_GAP }}>
+                  {ancestors.map((node, i) => (
+                    <AncestorRow
+                      key={`anc-${node.type}-${node.name}-${i}`}
+                      node={node}
+                      marginLeft={ancestorMarginLeft(node)}
+                      testIdPrefix={testIdPrefix}
+                      onOpen={handleOpenNode}
+                    />
+                  ))}
+                </ul>
               </li>
             )}
 
             <SubjectRow subject={subjectForRender} testIdPrefix={testIdPrefix} />
 
-            {M > 0 && (
-              <li
-                data-testid={`${testIdPrefix}-descendants`}
-                data-collapsed={descendantsOpen ? 'false' : 'true'}
-              >
-                <button
-                  type="button"
-                  onClick={() => setDescendantsOpen(v => !v)}
-                  aria-expanded={descendantsOpen}
-                  aria-label={
-                    descendantsOpen
-                      ? 'Collapse descendants'
-                      : 'Expand descendants'
-                  }
-                  data-testid={`${testIdPrefix}-descendants-toggle`}
-                  className="block w-full cursor-pointer text-left"
-                >
-                  {descendantsOpen ? (
-                    <ul
-                      className="flex flex-col"
-                      style={{ rowGap: ROW_GAP }}
-                    >
-                      {descendants.map((node, j) => (
-                        <DescendantRow
-                          key={`desc-${node.type}-${node.name}-${j}`}
-                          node={node}
-                          marginLeft={descendantMarginLeft(node)}
-                          testIdPrefix={testIdPrefix}
-                        />
-                      ))}
-                    </ul>
-                  ) : (
-                    <span
-                      className="inline-flex h-4 items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500"
-                      style={{ marginLeft: BASE_INDENT }}
-                    >
-                      +{M} downstream
-                    </span>
-                  )}
-                </button>
+            {M > 0 && descendantsOpen && (
+              <li>
+                <ul className="flex flex-col" style={{ rowGap: ROW_GAP }}>
+                  {descendants.map((node, j) => (
+                    <DescendantRow
+                      key={`desc-${node.type}-${node.name}-${j}`}
+                      node={node}
+                      marginLeft={descendantMarginLeft(node)}
+                      testIdPrefix={testIdPrefix}
+                      onOpen={handleOpenNode}
+                    />
+                  ))}
+                </ul>
               </li>
             )}
             </ul>
           </div>
+          {M > 0 && (
+            <div
+              className="pt-1.5"
+              style={{ marginLeft: BASE_INDENT }}
+              data-testid={`${testIdPrefix}-descendants`}
+              data-collapsed={descendantsOpen ? 'false' : 'true'}
+            >
+              <button
+                type="button"
+                onClick={() => setDescendantsOpen(v => !v)}
+                aria-expanded={descendantsOpen}
+                aria-label={
+                  descendantsOpen ? 'Collapse descendants' : 'Expand descendants'
+                }
+                data-testid={`${testIdPrefix}-descendants-toggle`}
+                className="inline-flex h-4 cursor-pointer items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500 transition-colors hover:bg-gray-200"
+              >
+                {descendantsOpen ? `hide ${M} downstream` : `+${M} downstream`}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
 

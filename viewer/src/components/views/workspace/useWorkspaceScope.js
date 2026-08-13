@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import useStore from '../../../stores/store';
 import { getViewDescriptor, DEFAULT_WORKSPACE_VIEW } from './higherLevelViews';
+import { neighborhoodSelector } from '../lineage/lineageSelector';
 
 /**
  * useWorkspaceScope — VIS-775 (Track B B2); reworked in Explore 2.0 Phase 0
@@ -74,7 +75,7 @@ export function useWorkspaceScope() {
     if (activeTab && activeTab.type !== 'dashboard') {
       return {
         scope: 'item',
-        selector: `+${activeTab.name}`,
+        selector: neighborhoodSelector(activeTab.name),
         dashboardName: dashboardName || null,
         selectedItem: { type: activeTab.type, name: activeTab.name },
       };
@@ -94,7 +95,7 @@ export function useWorkspaceScope() {
     if (activeTab && activeTab.type === 'dashboard' && activeTab.name !== dashboardName) {
       return {
         scope: 'dashboard',
-        selector: `+${activeTab.name}`,
+        selector: neighborhoodSelector(activeTab.name),
         dashboardName: activeTab.name,
         selectedItem: { type: 'dashboard', name: activeTab.name },
       };
@@ -104,7 +105,7 @@ export function useWorkspaceScope() {
     if (dashboardName) {
       return {
         scope: 'dashboard',
-        selector: `+${dashboardName}`,
+        selector: neighborhoodSelector(dashboardName),
         dashboardName,
         selectedItem: { type: 'dashboard', name: dashboardName },
       };
@@ -118,7 +119,7 @@ export function useWorkspaceScope() {
       if (type && name) {
         return {
           scope: 'item',
-          selector: `+${name}`,
+          selector: neighborhoodSelector(name),
           dashboardName: null,
           selectedItem: { type, name },
         };

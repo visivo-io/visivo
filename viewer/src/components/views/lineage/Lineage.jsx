@@ -14,7 +14,9 @@ import ChartNode from './ChartNode';
 import TableNode from './TableNode';
 import DashboardNode from './DashboardNode';
 import InputNode from './InputNode';
-import { Button } from '../../styled/Button';
+import { PiArrowCounterClockwise } from 'react-icons/pi';
+import LineageSelectorField from './LineageSelectorField';
+import { neighborhoodSelector, subjectOf } from './lineageSelector';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { formatRefExpression } from '../../../utils/refString';
 
@@ -42,10 +44,15 @@ import { formatRefExpression } from '../../../utils/refString';
  *                        When provided, the browser's default menu is
  *                        suppressed for node right-clicks only.
  */
+// Fallbacks for centring before React Flow has measured a node. These mirror
+// computeLayout's estimate so the camera lands where the layout put it.
+const DEFAULT_NODE_WIDTH = 180;
+const DEFAULT_NODE_HEIGHT = 50;
+
 const Lineage = ({
   scopeSelector = null,
   onNodeSelect = null,
-  headerSlot = null,
+  onResetScope = null,
   onNodeContextMenu = null,
 } = {}) => {
   // Sources
@@ -294,17 +301,83 @@ const Lineage = ({
     return { nodes: layoutNodes || [], edges: filteredEdges || [] };
   }, [dagNodes, dagEdges, selectedIds, fixedNode]);
 
-  // Fit view when initial data loads OR when selector changes (and we have nodes to show)
+  // One reset, whatever is narrowing the view.
+  //
+  // There were two: `Clear`, which emptied this component's own selector, and
+  // a `Show full project` button on the scope strip above, which widened the
+  // host's scope. Pressing Clear while hosted did almost nothing visible — the
+  // scope re-seeded the selector straight back — so the two had to be pressed
+  // in the right order to get the whole project. They are now the same action.
+  //
+  // `onResetScope` is absent standalone (`/editor`), where there is no scope
+  // and clearing the selector IS showing the full project.
+  const handleShowFullProject = useCallback(() => {
+    setSelector('');
+    setFixedNode(null);
+    if (onResetScope) onResetScope();
+  }, [onResetScope]);
+
+  // Nothing to reset when the DAG is already the whole project. A host-derived
+  // scope seeds `selector`, so this covers scoped and manual narrowing alike.
+  const canShowFullProject = Boolean(selector) || Boolean(fixedNode);
+
+  // Which nodes are on screen, as a stable string. Identity, not count —
+  // `nodes` is rebuilt on every layout pass, so it can't be a dependency
+  // directly, but its membership can.
+  const nodeSignature = useMemo(
+    () => (nodes || []).map((node) => node.id).sort().join(' '),
+    [nodes]
+  );
+
+  // Reframe when the node SET changes or the selector does.
+  //
+  // Which reframing depends on whether the selector names an object:
+  //
+  //   - it names one  → PAN to it, keeping the user's zoom. Clicking a node,
+  //     expanding one from the mini lineage, and typing a name in the filter
+  //     all change WHICH object the view is about without necessarily changing
+  //     the node set — so a set-keyed fit did nothing at all, and even when it
+  //     did fire, fitting the whole graph left the chosen object as one small
+  //     box somewhere rather than the thing you are looking at.
+  //   - it names none (`*`) → FIT the graph. That is "show full project" and
+  //     the unscoped first load, where there is no subject to centre on.
+  //
+  // Keying on `nodes?.length` was the original bug: selecting a different
+  // object that happened to resolve to the same number of nodes never re-fit.
+  // Membership replaces it, and the selector is here too because editing the
+  // filter is an explicit "show me this" even when the result is already on
+  // screen — the user may have panned away since.
+  //
+  // Deliberately absent is anything that only MOVES nodes: dragging, or
+  // pinning a clicked node via `fixedNode`. Those leave both triggers alone, so
+  // the viewport stays where the user put it — the original "jumps on select".
   useEffect(() => {
-    if (initialLoadDone && nodes?.length > 0 && reactFlowInstance.current) {
-      setTimeout(() => {
-        reactFlowInstance.current.fitView({
-          padding: 0.2,
-          duration: 800, // Smooth 800ms animation
-        });
-      }, 100);
-    }
-  }, [initialLoadDone, nodes?.length, selector]);
+    const instance = reactFlowInstance.current;
+    if (!initialLoadDone || !instance || !(nodes?.length > 0)) return undefined;
+
+    const timer = setTimeout(() => {
+      const subject = subjectOf(selector);
+      const target = subject ? nodes.find((n) => n.data?.name === subject) : null;
+
+      if (target && typeof instance.setCenter === 'function') {
+        const zoom = typeof instance.getZoom === 'function' ? instance.getZoom() : 1;
+        instance.setCenter(
+          target.position.x + (target.width ?? DEFAULT_NODE_WIDTH) / 2,
+          target.position.y + (target.height ?? DEFAULT_NODE_HEIGHT) / 2,
+          { zoom, duration: 500 }
+        );
+        return;
+      }
+
+      instance.fitView({
+        padding: 0.2,
+        duration: 800, // Smooth 800ms animation
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoadDone, nodeSignature, selector]);
 
   // Global keyboard handler for Escape key
   useEffect(() => {
@@ -360,7 +433,18 @@ const Lineage = ({
     });
 
     // Set selector to +name+ to show the node and all its dependencies
-    setSelector(`+${nodeName}+`);
+    const nextSelector = neighborhoodSelector(nodeName);
+    // Claim the scope this click is about to produce.
+    //
+    // `onNodeSelect` below tells the host, which opens the object as a tab,
+    // which re-derives the scope, which arrives back here as a NEW
+    // `scopeSelector` — and the re-seed effect responds to a new scope by
+    // clearing `fixedNode`. So the click's own echo destroyed the pin it had
+    // just set, dagre re-laid the graph from scratch, and the node the user
+    // clicked moved out from under them. Recording the value now means the
+    // effect sees the scope it already has and leaves the pin alone.
+    lastScopeRef.current = nextSelector;
+    setSelector(nextSelector);
 
     if (onNodeSelect) {
       onNodeSelect({ type: objectType, name: nodeName });
@@ -431,25 +515,13 @@ const Lineage = ({
   );
 
   return (
-    <div className={`flex flex-col ${headerSlot ? 'h-full' : 'h-[calc(100vh-48px)]'}`}>
-      {/* Host-supplied chrome (e.g. LineageCanvas scope-indicator strip) */}
-      {headerSlot}
+    <div className={`flex flex-col ${embedded ? 'h-full' : 'h-[calc(100vh-48px)]'}`}>
 
-      {/* Selector input bar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            setSelector('');
-            setFixedNode(null);
-          }}
-          disabled={!selector}
-        >
-          Clear
-        </Button>
-        <input
-          type="text"
+      {/* Selector bar — the only chrome above the DAG.
+          There used to be a scope strip above this one carrying the same
+          object's name plus this button; it said nothing this row doesn't. */}
+      <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-2">
+        <LineageSelectorField
           value={selector}
           onChange={e => {
             setSelector(e.target.value);
@@ -460,13 +532,24 @@ const Lineage = ({
             if (e.key === 'Escape') {
               e.preventDefault();
               e.stopPropagation();
-              setSelector('');
-              setFixedNode(null);
+              handleShowFullProject();
               e.target.blur(); // Remove focus after clearing
             }
           }}
           placeholder="e.g., 'source_name', 'model_name', or '+name+'"
-          className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          testId="lineage-selector"
+          trailing={
+            <button
+              type="button"
+              onClick={handleShowFullProject}
+              disabled={!canShowFullProject}
+              data-testid="lineage-show-full-project"
+              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50 hover:text-gray-900 hover:ring-gray-300 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-700 disabled:hover:ring-gray-200"
+            >
+              <PiArrowCounterClockwise className="h-3.5 w-3.5" />
+              Show full project
+            </button>
+          }
         />
       </div>
 

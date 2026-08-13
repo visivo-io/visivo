@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { PiTreeStructure, PiArrowCounterClockwise } from 'react-icons/pi';
+import React, { useCallback, useEffect, useState } from 'react';
 import Lineage from './Lineage';
 import OpenObjectContextMenu from '../workspace/OpenObjectContextMenu';
 import useStore from '../../../stores/store';
@@ -17,11 +16,13 @@ import { EXPLORE_THIS_TYPES, EXPLORATION_DRAG_TYPES } from '../workspace/library
  * Responsibilities:
  *   - Derive the lineage `selector` from `useWorkspaceScope()`:
  *       · `*`              — unscoped (root / project).
- *       · `+<dashboardName>` — dashboard scope.
- *       · `+<itemName>`      — item scope.
- *   - Render the E-1 scope-indicator chrome above the DAG (flat white strip)
- *     describing WHY the user is seeing a subset, plus a "Show full project"
- *     affordance that widens the scope back to `*` WITHOUT changing the route.
+ *       · `+<dashboardName>+` — dashboard scope.
+ *       · `+<itemName>+`      — item scope (both directions, VIS-1213).
+ *   - Own the "show full project" reset. The scope-indicator strip this used
+ *     to render was removed (VIS-1213): it repeated the object name already
+ *     shown in the selector row directly beneath it. The reset survives as
+ *     `onResetScope`, which <Lineage> renders inside that row — still
+ *     widening the scope back to `*` WITHOUT changing the route.
  *   - Round-trip selection: clicking a node updates the workspace selection
  *     via `openWorkspaceTab` (and the scope, in turn, re-derives the selector).
  *   - Fire the `middle_pane_toggled` telemetry event on lineage entry.
@@ -31,7 +32,7 @@ import { EXPLORE_THIS_TYPES, EXPLORATION_DRAG_TYPES } from '../workspace/library
  * scope-derived selector until the scope changes again).
  */
 const LineageCanvas = () => {
-  const { scope, selector, dashboardName, selectedItem } = useWorkspaceScope();
+  const { scope, selector, dashboardName } = useWorkspaceScope();
   const openWorkspaceTab = useStore((s) => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore((s) => s.openWorkspaceTabBackground);
   const setWorkspaceLensIntent = useStore((s) => s.setWorkspaceLensIntent);
@@ -65,21 +66,6 @@ const LineageCanvas = () => {
   }, []);
 
   const effectiveSelector = showFullProject ? '*' : selector;
-  const isScoped = effectiveSelector !== '*';
-
-  // Human-readable description of the current scope for the indicator strip.
-  const scopeLabel = useMemo(() => {
-    if (!isScoped) return 'Full project';
-    if (scope === 'dashboard' && dashboardName) return dashboardName;
-    if (selectedItem?.name) return selectedItem.name;
-    return effectiveSelector;
-  }, [isScoped, scope, dashboardName, selectedItem, effectiveSelector]);
-
-  const scopeKind = useMemo(() => {
-    if (!isScoped) return null;
-    if (scope === 'dashboard') return 'dashboard';
-    return selectedItem?.type || 'item';
-  }, [isScoped, scope, selectedItem]);
 
   const handleResetScope = useCallback(() => {
     setShowFullProject(true);
@@ -171,49 +157,13 @@ const LineageCanvas = () => {
     [addObjectToActiveExploration]
   );
 
-  const chrome = (
-    <div
-      data-testid="lineage-canvas-scope-bar"
-      className="flex min-h-9 shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 py-1.5"
-    >
-      <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-        Scope
-      </span>
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span
-          data-testid="lineage-canvas-scope-pill"
-          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary-100 px-2 text-[12px] font-medium text-primary-600"
-        >
-          <PiTreeStructure className="h-3.5 w-3.5" />
-          <span className="font-semibold">{scopeLabel}</span>
-          {scopeKind && (
-            <span className="text-[10px] uppercase tracking-wider text-primary-600/70">
-              {scopeKind}
-            </span>
-          )}
-        </span>
-      </div>
-      {isScoped && (
-        <button
-          type="button"
-          data-testid="lineage-canvas-reset-scope"
-          onClick={handleResetScope}
-          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50 hover:text-gray-900 hover:ring-gray-300"
-        >
-          <PiArrowCounterClockwise className="h-3.5 w-3.5" />
-          Show full project
-        </button>
-      )}
-    </div>
-  );
-
   return (
     <div data-testid="lineage-canvas" className="flex h-full w-full flex-col">
       <Lineage
         scopeSelector={effectiveSelector}
         onNodeSelect={handleNodeSelect}
         onNodeContextMenu={handleNodeContextMenu}
-        headerSlot={chrome}
+        onResetScope={handleResetScope}
       />
       {ctxMenu && (
         <OpenObjectContextMenu
