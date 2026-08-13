@@ -738,9 +738,16 @@ class SqlalchemySource(Source, ABC):
             col_type = col_info["type"]
 
             try:
-                # Convert SQLAlchemy type to SQLGlot DataType
+                # The SQLGLOT dialect, not get_dialect(): the mapper passes this
+                # straight to exp.DataType.build, and "postgresql" is not a
+                # SQLGlot dialect ("postgres" is). Building with an unknown
+                # dialect raises, which the except below turns into VARCHAR — so
+                # every Postgres type that reached the mapper's string fallback
+                # (jsonb, numeric(p,s), int[], enums) silently became VARCHAR.
+                # postgresql is the only name VISIVO_TO_SQLGLOT_DIALECT remaps,
+                # which is why no other source noticed.
                 sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(
-                    col_type, dialect=self.get_dialect()
+                    col_type, dialect=self.get_sqlglot_dialect()
                 )
                 table_schema["columns"][col_name] = {
                     "type": str(col_type),
