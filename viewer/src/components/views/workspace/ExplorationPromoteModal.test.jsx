@@ -42,7 +42,7 @@ describe('ExplorationPromoteModal', () => {
     expect(screen.queryByTestId('exploration-promote-return-to-offer')).not.toBeInTheDocument();
   });
 
-  test('fails safe when the dashboards collection itself is undefined (not just empty)', async () => {
+  test('fails safe (no crash) when the dashboards collection is undefined, and closes the clean success', async () => {
     buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
     useStore.setState({
       dashboards: undefined,
@@ -52,10 +52,13 @@ describe('ExplorationPromoteModal', () => {
         reclassificationOffers: [],
       }),
     });
-    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    const onClose = jest.fn();
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
     await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
     fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-    await screen.findByTestId('exploration-promote-success');
+    // dashboards undefined must not throw; with no dashboards and no field this
+    // is a clean success, so the modal closes rather than linger (VIS-1226).
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(
       screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
     ).not.toBeInTheDocument();
@@ -236,7 +239,7 @@ describe('ExplorationPromoteModal', () => {
     expect(screen.getByTestId('exploration-promote-submit')).toBeDisabled();
   });
 
-  test('clicking Promote calls promoteExploration with the selection, shows the success message, and stays open until the user clicks Close', async () => {
+  test('promoting a model keeps the modal open via the Semantic-Layer offer, shows the success message, and closes on Close', async () => {
     buildPromoteChecklist.mockResolvedValue([row()]);
     const promoteExploration = jest
       .fn()
@@ -251,10 +254,9 @@ describe('ExplorationPromoteModal', () => {
     await waitFor(() =>
       expect(promoteExploration).toHaveBeenCalledWith('exp_1', [{ type: 'model', name: 'orders_q' }])
     );
-    // Deliberately does NOT auto-close on the common all-valid, no-collision
-    // path: `setPromotedThisRun` and a same-tick `onClose()` would land in
-    // the same React commit, so the "Saved N objects to project" confirmation would
-    // never actually paint. The user reviews it and dismisses via "Close".
+    // VIS-1226: a clean success closes, but a promoted MODEL is an OFFER (its
+    // "View in the Semantic Layer" prompt), so THIS run legitimately stays open
+    // showing the success message + that offer until the user dismisses it.
     expect(await screen.findByTestId('exploration-promote-success')).toHaveTextContent(
       'Saved 1 object to project.'
     );
@@ -262,6 +264,28 @@ describe('ExplorationPromoteModal', () => {
     expect(screen.getByTestId('exploration-promote-cancel')).toHaveTextContent('Close');
     fireEvent.click(screen.getByTestId('exploration-promote-cancel'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  test('VIS-1226: a clean success with nothing to act on auto-closes without a receipt or toast', async () => {
+    // A promote that yields no failed row, no reclassification, no chart to
+    // place, and no model/metric/dimension to jump to = nothing to decide, so
+    // it closes immediately. (Only an insight here.)
+    buildPromoteChecklist.mockResolvedValue([row({ tier: 'insight', type: 'insight', name: 'my_insight' })]);
+    const promoteExploration = jest.fn().mockResolvedValue({
+      success: true,
+      results: [{ type: 'insight', name: 'my_insight', success: true, error: null }],
+      reclassificationOffers: [],
+    });
+    useStore.setState({ promoteExploration });
+    const onClose = jest.fn();
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    // No lingering receipt: the success banner never renders on the close path.
+    expect(screen.queryByTestId('exploration-promote-success')).not.toBeInTheDocument();
   });
 
   test('a partial failure stays open and shows the error, does not auto-close', async () => {
@@ -471,14 +495,17 @@ describe('ExplorationPromoteModal', () => {
       expect(fallback).toHaveTextContent('churn_chart');
     });
 
-    test('no fallback offer when no dashboards exist at all', async () => {
+    test('closes on a clean success when a chart is promoted but no dashboards exist to place it in (VIS-1226)', async () => {
       seedReturnTo(null, { dashboards: [] });
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
       useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
-      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
       await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
       fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-      await screen.findByTestId('exploration-promote-success');
+      // No dashboards to offer and no field to jump to -> nothing to act on, so
+      // the modal closes instead of lingering on a bare "Saved" receipt.
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
       expect(
         screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
       ).not.toBeInTheDocument();
@@ -907,7 +934,7 @@ describe('ExplorationPromoteModal', () => {
       expect(offer).toHaveTextContent('orders_q');
     });
 
-    test('no offer when only an insight (no model/metric/dimension) was promoted this run', async () => {
+    test('closes on a clean success when only an insight (no model/metric/dimension/chart) was promoted (VIS-1226)', async () => {
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'insight', type: 'insight', name: 'my_insight' })]);
       useStore.setState({
         promoteExploration: jest.fn().mockResolvedValue({
@@ -916,10 +943,12 @@ describe('ExplorationPromoteModal', () => {
           reclassificationOffers: [],
         }),
       });
-      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
       await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
       fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-      await screen.findByTestId('exploration-promote-success');
+      // Nothing to act on -> closes like every other modal (VIS-1226).
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
       expect(
         screen.queryByTestId('exploration-promote-semantic-layer-offer')
       ).not.toBeInTheDocument();
@@ -1334,14 +1363,17 @@ describe('ExplorationPromoteModal', () => {
       expect(fallback).toHaveTextContent('churn_chart');
     });
 
-    test('no fallback offer when no dashboards exist at all', async () => {
+    test('closes on a clean success when a chart is promoted but no dashboards exist to place it in (VIS-1226)', async () => {
       seedReturnTo(null, { dashboards: [] });
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
       useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
-      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
       await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
       fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-      await screen.findByTestId('exploration-promote-success');
+      // No dashboards to offer and no field to jump to -> nothing to act on, so
+      // the modal closes instead of lingering on a bare "Saved" receipt.
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
       expect(
         screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
       ).not.toBeInTheDocument();
@@ -1908,7 +1940,7 @@ describe('ExplorationPromoteModal', () => {
       expect(offer).toHaveTextContent('orders_q');
     });
 
-    test('no offer when only an insight (no model/metric/dimension) was promoted this run', async () => {
+    test('closes on a clean success when only an insight (no model/metric/dimension/chart) was promoted (VIS-1226)', async () => {
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'insight', type: 'insight', name: 'my_insight' })]);
       useStore.setState({
         promoteExploration: jest.fn().mockResolvedValue({
@@ -1917,10 +1949,12 @@ describe('ExplorationPromoteModal', () => {
           reclassificationOffers: [],
         }),
       });
-      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
       await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
       fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-      await screen.findByTestId('exploration-promote-success');
+      // Nothing to act on -> closes like every other modal (VIS-1226).
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
       expect(
         screen.queryByTestId('exploration-promote-semantic-layer-offer')
       ).not.toBeInTheDocument();
