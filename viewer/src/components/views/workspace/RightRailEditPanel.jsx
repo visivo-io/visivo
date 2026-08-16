@@ -709,6 +709,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   // advertise unsaved work that has already been dropped, and the close
   // confirm would fire over nothing.
   const setWorkspaceTabDirty = useStore(s => s.setWorkspaceTabDirty);
+  const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
   const [leafDirty, setLeafDirty] = useState(false);
   useEffect(() => {
     const tabId = `${type}:${name}`;
@@ -778,9 +779,19 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   if (renderForm) {
     const common = {
       isCreate: false,
-      // Deliberately no `onClose`: there is no modal here, and handing the
-      // forms a no-op is what left Cancel dead for so long. In edit mode they
-      // render Discard and revert locally instead.
+      // `onClose` is the post-DELETE exit, not a Cancel handler. In edit mode —
+      // which the rail always is — the forms wire Cancel to their own local
+      // `discard`, so this is only ever reached after a successful delete.
+      //
+      // It used to be omitted on the grounds that handing the forms a no-op is
+      // what left Cancel dead. But six of the eight leaf forms call `onClose()`
+      // unconditionally once a delete succeeds, so omitting it did not mean
+      // "no close" — it meant `TypeError: onClose is not a function` every time
+      // someone deleted from the right rail (VIS-1234). Closing the tab is also
+      // the behaviour that was wanted: otherwise the panel stays open on a
+      // record that no longer exists and renders the not-found card, which
+      // reads as the delete having failed.
+      onClose: () => closeWorkspaceTab && closeWorkspaceTab(`${type}:${name}`),
       onSave: handleObjectSave,
       onNavigateToEmbedded: noop,
       onGoBack: noop,

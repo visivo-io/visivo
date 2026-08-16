@@ -32,6 +32,7 @@ from visivo.server.views.insight_execute_views import register_insight_execute_v
 from visivo.server.views.run_views import register_run_views
 from visivo.server.views.preferences_views import register_preferences_views
 from visivo.server.views.model_schema_views import register_model_schema_views
+from visivo.server.views.restore_views import register_restore_views
 
 
 def register_views(app, flask_app, output_dir):
@@ -70,3 +71,6 @@ def register_views(app, flask_app, output_dir):
     register_run_views(app, flask_app, output_dir)
     register_preferences_views(app, flask_app, output_dir)
     register_model_schema_views(app, flask_app, output_dir)
+    # Registered LAST: its route is a catch-all over `/api/<segment>/<name>/`,
+    # so the concrete per-resource routes must claim their paths first.
+    register_restore_views(app, flask_app)

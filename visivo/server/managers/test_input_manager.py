@@ -230,17 +230,36 @@ class TestInputManager:
         assert result["config"]["type"] == "single-select"
         assert "path" not in result["config"]  # Should be excluded
 
-    def test_delete_marks_for_deletion(self, manager, valid_select_input_config):
-        """Test that mark_for_deletion marks input for deletion"""
+    def test_deleting_a_never_published_object_drops_it_outright(
+        self, manager, valid_select_input_config
+    ):
+        """A cached-only object has nothing in YAML to remove, so deleting it is
+        not a staged change — the entry goes, rather than becoming a `None`
+        tombstone that keeps it in listings and makes the delete look failed.
+
+        This test previously asserted the tombstone and had been failing with a
+        KeyError since the behaviour was corrected, unnoticed because this file
+        sits outside pytest's `testpaths = tests` and is never collected.
+        """
         manager.save_from_config(valid_select_input_config)
 
         manager.mark_for_deletion("test_input")
 
-        # Should be marked with None in cache
-        assert manager._cached_objects["test_input"] is None
-
-        # get() should return None
+        assert "test_input" not in manager._cached_objects
         assert manager.get("test_input") is None
+        assert manager.get_status("test_input") is None
+
+    def test_deleting_a_published_object_tombstones_it(self, manager, valid_select_input_config):
+        """The other half: something that IS in YAML has to be remembered as a
+        pending removal, which `get_status` reads back as DELETED."""
+        published = manager.save_from_config(valid_select_input_config)
+        manager._published_objects["test_input"] = published
+
+        manager.mark_for_deletion("test_input")
+
+        assert manager._cached_objects["test_input"] is None
+        assert manager.get("test_input") is None
+        assert manager.get_status("test_input") == ObjectStatus.DELETED
 
     def test_save_overwrites_deletion_mark(self, manager, valid_select_input_config):
         """Test that saving after deletion removes deletion mark"""

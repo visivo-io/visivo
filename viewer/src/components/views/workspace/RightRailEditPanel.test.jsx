@@ -104,6 +104,9 @@ jest.mock('../common/ChartEditForm', () => ({
   default: ({ chart, onSave, onDirtyChange, onClose }) => (
     <div data-testid="chart-edit-form-stub">
       <span data-testid="chart-stub-onclose">{onClose ? 'present' : 'absent'}</span>
+      <button type="button" data-testid="chart-stub-close" onClick={() => onClose?.()}>
+        close
+      </button>
       {/* VIS-1133: the real form reports dirtiness up so the tab strip's dot
           and its guarded close reflect actual edits. */}
       <button
@@ -966,13 +969,28 @@ describe('RightRailEditPanel leaf dirty wiring (VIS-1133)', () => {
     expect(dirtyOf('chart:rev_chart')).toBe(false);
   });
 
-  test('the forms are no longer handed a no-op onClose', () => {
-    // The original bug: `onClose` was `() => {}`, so every form's Cancel did
-    // nothing. Passing NOTHING is what lets a form tell "I am in a modal" from
-    // "I am in the rail" and render Discard instead.
+  test('onClose is supplied, and closes the tab', () => {
+    // This used to assert `absent`, on the reasoning that withholding onClose is
+    // what lets a form tell "I am in a modal" from "I am in the rail" and render
+    // Discard. That reasoning does not hold: every form branches on `isEditMode`
+    // (`onClick={isEditMode ? discard : onClose}`), which the rail pins by
+    // passing `isCreate: false` — onClose is never its Cancel handler here.
+    //
+    // Withholding it was not free, either. Six of the eight leaf forms call
+    // `onClose()` unconditionally once a delete succeeds, so "absent" meant
+    // `TypeError: onClose is not a function` on every right-rail delete
+    // (VIS-1234). It is the post-delete exit, and closing the tab is what stops
+    // the panel resolving a record that no longer exists.
     seedChartTab();
     renderPanel();
-    expect(screen.getByTestId('chart-stub-onclose')).toHaveTextContent('absent');
+
+    expect(screen.getByTestId('chart-stub-onclose')).toHaveTextContent('present');
+
+    fireEvent.click(screen.getByTestId('chart-stub-close'));
+
+    expect(
+      useStore.getState().workspaceTabs.some(t => t.id === 'chart:rev_chart')
+    ).toBe(false);
   });
 });
 

@@ -301,7 +301,9 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
 
     if (result?.success) {
       await checkCommitStatus();
-      onClose();
+      // Optional: the right rail supplies it to close the tab, a modal host
+      // to dismiss itself. Calling it unguarded threw when neither did.
+      onClose?.();
     } else {
       setSaveError(result?.error || 'Failed to delete chart');
       setShowDeleteConfirm(false);

@@ -200,7 +200,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
     if (result?.success) {
       await checkCommitStatus();
-      onClose();
+      // Optional: the right rail supplies it to close the tab, a modal host
+      // to dismiss itself. Calling it unguarded threw when neither did.
+      onClose?.();
     } else {
       setSaveError(result?.error || 'Failed to delete insight');
       setShowDeleteConfirm(false);

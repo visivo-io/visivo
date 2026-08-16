@@ -48,6 +48,16 @@ const CommitModal = () => {
   const commitError = useStore(state => state.commitError);
   const commitAction = useStore(state => state.commitAction);
   const commitChanges = useStore(state => state.commitChanges);
+  const restoreDeleted = useStore(state => state.restoreDeleted);
+  // Keyed by `type:name` rather than a boolean so only the row being restored
+  // shows its pending state — the list can hold several deletions at once.
+  const [restoringKey, setRestoringKey] = useState(null);
+  const handleRestore = async (type, name) => {
+    if (!restoreDeleted) return;
+    setRestoringKey(`${type}:${name}`);
+    await restoreDeleted(type, name);
+    setRestoringKey(null);
+  };
   // Discard (Q14 rollback) — drops the draft cache without writing YAML. It's
   // destructive, so it confirms inline before firing. Local serve only:
   // /api/commit/discard/ has no cloud equivalent yet (Django implements no
@@ -126,7 +136,27 @@ const CommitModal = () => {
                       <span className="text-gray-500 text-sm">({change.source_type})</span>
                     )}
                   </div>
-                  <StatusBadge status={change.status} />
+                  <div className="flex items-center gap-2">
+                    {/* Undo is offered only on deletions. A new or modified
+                        object is recovered by editing it back; a deleted one
+                        cannot be reached at all once it leaves the Library, so
+                        without this the only way back was discarding every
+                        other pending change too (VIS-1234). */}
+                    {change.status === ObjectStatus.DELETED && (
+                      <button
+                        type="button"
+                        onClick={() => handleRestore(change.type, change.name)}
+                        disabled={restoringKey === `${change.type}:${change.name}`}
+                        data-testid={`commit-modal-restore-${change.type}-${change.name}`}
+                        className="rounded-md px-2 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-300 transition-colors hover:bg-gray-100 disabled:opacity-50"
+                      >
+                        {restoringKey === `${change.type}:${change.name}`
+                          ? 'Restoring…'
+                          : 'Undo'}
+                      </button>
+                    )}
+                    <StatusBadge status={change.status} />
+                  </div>
                 </li>
               ))}
             </ul>

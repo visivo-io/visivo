@@ -1,5 +1,6 @@
 import * as branchingApi from '../api/branching';
 import * as preferencesApi from '../api/preferences';
+import { restoreObject } from '../api/restore';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
 /**
@@ -207,6 +208,29 @@ const createCommitSlice = (set, get) => ({
   //
   // Note the sibling `discardDraft` DELETEs the same path to drop the working
   // copy entirely. Same URL, different verb, very different meaning.
+  // Undo ONE pending deletion, leaving every other pending change alone.
+  //
+  // `discardChanges` below could already bring a deleted object back — by
+  // throwing away every other edit with it. That made recovering a mis-click
+  // cost the user all of their unrelated work, so in practice nobody used it
+  // for that (VIS-1234).
+  //
+  // Refreshes through the same `checkCommitStatus` the deletes use, so the
+  // header, the commit list and the Library all settle on the server's view
+  // rather than an optimistic guess.
+  restoreDeleted: async (type, name) => {
+    const projectId = get().project?.id;
+    try {
+      await restoreObject(type, name, projectId);
+    } catch (error) {
+      set({ commitError: error.message });
+      return { success: false, error: error.message };
+    }
+    await get()._refreshNamedChildren();
+    await get().checkCommitStatus();
+    return { success: true };
+  },
+
   discardChanges: async () => {
     const projectId = get().project?.id;
     if (!projectId) return { success: false, error: 'No active project' };
