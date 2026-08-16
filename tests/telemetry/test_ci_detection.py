@@ -6,7 +6,7 @@ import os
 import uuid
 from pathlib import Path
 import pytest
-from visivo.telemetry.config import is_ci_environment, CI_ENV_VARS
+from visivo.telemetry.config import is_ci_environment, CI_ENV_VARS, CONTAINER_MARKER_PATHS
 from visivo.telemetry.machine_id import get_machine_id
 
 
@@ -72,6 +72,31 @@ class TestCIDetection:
         monkeypatch.setenv("KUBERNETES_SERVICE_HOST", "10.0.0.1")
         assert is_ci_environment() is True
 
+    def test_ci_detection_with_cloud_run(self, monkeypatch):
+        """Cloud Run (services + jobs) sets K_SERVICE and runs on gVisor, which
+        sets no other CI var and has no /.dockerenv — the gap that let visivo
+        running server-side spam new_installation on every cold start (VIS-1223)."""
+        monkeypatch.setenv("K_SERVICE", "my-service")
+        assert is_ci_environment() is True
+
+    def test_ci_detection_with_podman(self, monkeypatch):
+        """Podman marks the container with /run/.containerenv, not /.dockerenv."""
+        monkeypatch.setattr(
+            os.path,
+            "exists",
+            lambda path, _e=os.path.exists: True if path == "/run/.containerenv" else _e(path),
+        )
+        assert is_ci_environment() is True
+
+    def test_ci_detection_with_kubernetes_serviceaccount_mount(self, monkeypatch):
+        """Belt-and-braces: a pod that somehow lacks KUBERNETES_SERVICE_HOST is
+        still detected via the mounted service-account token."""
+        sa = "/var/run/secrets/kubernetes.io/serviceaccount"
+        monkeypatch.setattr(
+            os.path, "exists", lambda path, _e=os.path.exists: True if path == sa else _e(path)
+        )
+        assert is_ci_environment() is True
+
     def test_not_ci_environment(self, monkeypatch):
         """Test detection when not in CI."""
         # We need to clear ALL possible CI environment variables
@@ -85,7 +110,9 @@ class TestCIDetection:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         assert is_ci_environment() is False
@@ -136,7 +163,9 @@ class TestCIMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -162,7 +191,9 @@ class TestCIMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -204,7 +235,9 @@ class TestCIMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         cli_event2 = CLIEvent.create(command="test", command_args=[], duration_ms=100, success=True)

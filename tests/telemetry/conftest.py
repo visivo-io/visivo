@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from visivo.telemetry.config import CI_ENV_VARS
+from visivo.telemetry.config import CI_ENV_VARS, CONTAINER_MARKER_PATHS
 
 
 @pytest.fixture(autouse=True)
@@ -19,11 +19,14 @@ def neutral_ci_env(monkeypatch):
     for var in CI_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
 
-    # /.dockerenv is the other signal is_ci_environment checks. Force it absent
-    # unless a test mocks it, but pass every other path through to the real check.
+    # The container filesystem markers are the other signals is_ci_environment
+    # checks. Force ALL of them absent (RWX itself runs in a container, so a real
+    # /var/run/secrets/kubernetes.io/serviceaccount or /run/.containerenv on the
+    # runner would otherwise make the 'regular user' tests see a CI env), but pass
+    # every other path through to the real check.
     real_exists = os.path.exists
     monkeypatch.setattr(
         os.path,
         "exists",
-        lambda path, _e=real_exists: False if path == "/.dockerenv" else _e(path),
+        lambda path, _e=real_exists: False if path in CONTAINER_MARKER_PATHS else _e(path),
     )

@@ -40,11 +40,14 @@ class TestNewInstallationEvent(TestCase):
         # Re-disable telemetry for other tests
         os.environ["VISIVO_TELEMETRY_DISABLED"] = "true"
 
+    @patch("visivo.telemetry.machine_id._is_interactive", return_value=True)
     @patch("visivo.telemetry.machine_id.is_ci_environment")
     @patch("visivo.telemetry.client.get_telemetry_client")
-    def test_new_installation_event_fires_on_first_machine_id(self, mock_get_client, mock_is_ci):
+    def test_new_installation_event_fires_on_first_machine_id(
+        self, mock_get_client, mock_is_ci, mock_interactive
+    ):
         """Test that NewInstallationEvent fires when creating a new machine ID."""
-        # Setup mocks
+        # Setup mocks — a real interactive install (a human at a terminal).
         mock_is_ci.return_value = False
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
@@ -109,6 +112,31 @@ class TestNewInstallationEvent(TestCase):
         self.assertTrue(machine_id.startswith("ci-"))
 
         # Verify no event was sent
+        mock_client.track.assert_not_called()
+
+    @patch("visivo.telemetry.machine_id._is_interactive", return_value=False)
+    @patch("visivo.telemetry.machine_id.is_ci_environment")
+    @patch("visivo.telemetry.client.get_telemetry_client")
+    def test_no_event_when_non_interactive(self, mock_get_client, mock_is_ci, mock_interactive):
+        """No installation event fires with no interactive TTY, even when the
+        environment isn't recognized as CI. This is the universal backstop for
+        automation we can't detect by env var / container marker — RWX CI (which
+        exposes no env var visivo can read) and arbitrary Docker in repos we
+        don't control, each of which runs with a fresh $HOME and would otherwise
+        report a spurious install on every run (VIS-1223)."""
+        mock_is_ci.return_value = False
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        # A brand-new machine id is still created (and persisted)…
+        visivo_dir = Path(self.temp_home) / ".visivo"
+        machine_id_path = visivo_dir / "machine_id"
+        self.assertFalse(machine_id_path.exists())
+        machine_id = get_machine_id()
+        self.assertTrue(machine_id_path.exists())
+        self.assertFalse(machine_id.startswith("ci-"))
+
+        # …but the new_installation event is NOT sent.
         mock_client.track.assert_not_called()
 
     def test_new_installation_event_properties(self):
