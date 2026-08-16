@@ -388,3 +388,46 @@ describe('collapse toggles sit outside the ladder (VIS-1213)', () => {
     expect(within(chain).queryByTestId('mlc-ancestors-toggle')).toBeNull();
   });
 });
+
+
+describe('soft-deleted objects are not lineage (VIS-1234)', () => {
+  test('a deleted ancestor is not drawn', () => {
+    act(() => {
+      useStore.setState({
+        charts: [{ name: 'revenue_chart', child_item_names: ['revenue_breakdown'] }],
+        insights: [
+          { name: 'revenue_breakdown', child_item_names: ['monthly_revenue'], status: 'deleted' },
+        ],
+        models: [{ name: 'monthly_revenue', child_item_names: [] }],
+        sources: [],
+        allDashboards: [],
+      });
+    });
+
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+
+    expect(screen.queryByTestId('mlc-lineage-insight-revenue_breakdown')).toBeNull();
+  });
+
+  test('a deleted dashboard is not drawn as a descendant', () => {
+    act(() => {
+      useStore.setState({
+        charts: [{ name: 'revenue_chart', child_item_names: [] }],
+        insights: [],
+        models: [],
+        sources: [],
+        allDashboards: [
+          {
+            name: 'exec_kpi_dashboard',
+            status: 'deleted',
+            rows: [{ items: [{ chart: 'revenue_chart' }] }],
+          },
+        ],
+      });
+    });
+
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+
+    expect(screen.queryByTestId('mlc-lineage-dashboard-exec_kpi_dashboard')).toBeNull();
+  });
+});

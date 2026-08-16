@@ -1038,3 +1038,70 @@ describe('Library', () => {
     });
   });
 });
+
+
+describe('row Delete actually deletes (VIS-1234)', () => {
+  const openRowMenu = async rowTestId => {
+    const row = screen.getByTestId(rowTestId);
+    fireEvent.contextMenu(row);
+    return screen.getByText('Delete…');
+  };
+
+  test('confirming deletes through the per-type store action', async () => {
+    const deleteModel = jest.fn().mockResolvedValue({ success: true });
+    seedStore({ deleteModel, closeWorkspaceTab: jest.fn() });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(deleteModel).toHaveBeenCalledWith('monthly_revenue'));
+  });
+
+  test('cancelling deletes nothing', async () => {
+    const deleteModel = jest.fn().mockResolvedValue({ success: true });
+    seedStore({ deleteModel, closeWorkspaceTab: jest.fn() });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-cancel'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('confirm-dialog-confirm')).not.toBeInTheDocument()
+    );
+    expect(deleteModel).not.toHaveBeenCalled();
+  });
+
+  test('a deleted object leaves no tab resolving it', async () => {
+    const closeWorkspaceTab = jest.fn();
+    seedStore({
+      deleteModel: jest.fn().mockResolvedValue({ success: true }),
+      closeWorkspaceTab,
+    });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() =>
+      expect(closeWorkspaceTab).toHaveBeenCalledWith('model:monthly_revenue')
+    );
+  });
+
+  test('a failed delete leaves the tab open', async () => {
+    const closeWorkspaceTab = jest.fn();
+    seedStore({
+      deleteModel: jest.fn().mockResolvedValue({ success: false, error: 'nope' }),
+      closeWorkspaceTab,
+    });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('confirm-dialog-confirm')).not.toBeInTheDocument()
+    );
+    expect(closeWorkspaceTab).not.toHaveBeenCalled();
+  });
+});

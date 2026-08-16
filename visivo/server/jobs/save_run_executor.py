@@ -48,7 +48,36 @@ def _fire(flask_app):
         _pending_timer = None
     if not names:
         return
-    run_now(flask_app, ",".join(f"+{name}+" for name in names))
+    run_now(flask_app, _dag_filter_for(flask_app, names))
+
+
+def _dag_filter_for(flask_app, names):
+    """The selector this run should build.
+
+    Asks the staged manager rather than deriving one from the saved names,
+    because the names alone cannot express a DELETE. Building
+    ``+<name>+`` for a resource that was just deleted asks the DAG for a node
+    that no longer exists, and the run fails complaining about the very object
+    the user removed — which is exactly what it looked like from the outside.
+
+    ``StagedManager.dag_filter`` already encodes the right answer, including
+    the empty string (a full rebuild) when anything staged is deleted, since a
+    deleted node's consumers have to recompute. Deferring to it also makes the
+    debounced run-on-save and the Run button agree, which is what that method
+    exists for.
+
+    Falls back to the name-derived selector when the staged manager is absent
+    (minimal test harnesses) or has nothing staged. An empty staged set means it
+    has no opinion — ``dag_filter`` returns ``""`` for both "nothing staged" and
+    "something was deleted", and those must not be conflated: the first should
+    build what was asked for, only the second is a full rebuild. In the normal
+    path this never comes up, because ``run_on_save`` records the change before
+    it requests the run.
+    """
+    staged_manager = getattr(flask_app, "staged_manager", None)
+    if staged_manager is None or not staged_manager.list():
+        return ",".join(f"+{name}+" for name in names)
+    return staged_manager.dag_filter()
 
 
 def run_now(flask_app, dag_filter):

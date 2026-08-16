@@ -3,6 +3,7 @@ import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import LineageSelectorField from '../../lineage/LineageSelectorField';
+import { withoutDeleted } from '../../common/softDelete';
 import {
   neighborhoodSelector,
   parseSelector,
@@ -86,9 +87,11 @@ function effectiveChildNames(entryType, obj, defaultSourceName, sourceNames) {
 
 function buildTypeIndex(storeApi) {
   const lookup = new Map();
+  // `withoutDeleted` on every registration: a tombstoned object must not be
+  // resolvable as a lineage node, or the mini card draws the very thing the
+  // user just deleted (VIS-1234).
   const register = (type, list) => {
-    if (!Array.isArray(list)) return;
-    list.forEach(obj => {
+    withoutDeleted(list).forEach(obj => {
       if (obj && obj.name && !lookup.has(obj.name)) {
         lookup.set(obj.name, { type, obj });
       }
@@ -115,8 +118,9 @@ function buildReverseIndex(storeApi) {
     reverse.get(childName).push({ name: parentName, type: parentType });
   };
   const scan = (type, list) => {
-    if (!Array.isArray(list)) return;
-    list.forEach(obj => {
+    // Edges FROM a deleted object go with it — otherwise the card still shows
+    // a downstream arrow into something that is no longer there.
+    withoutDeleted(list).forEach(obj => {
       if (!obj || !obj.name) return;
       getChildItemNames(obj).forEach(childName => add(obj.name, childName, type));
     });
@@ -150,7 +154,7 @@ function unwrapRefName(ref) {
 
 function dashboardMembership(allDashboards) {
   const out = [];
-  if (!Array.isArray(allDashboards)) return out;
+  allDashboards = withoutDeleted(allDashboards);
   const walk = (rows, dashboardName) => {
     if (!Array.isArray(rows)) return;
     rows.forEach(row => {

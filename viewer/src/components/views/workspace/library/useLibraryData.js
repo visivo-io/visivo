@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import useStore, { ObjectStatus } from '../../../../stores/store';
+import { notDeleted } from '../../common/softDelete';
 
 /**
  * useLibraryData — VIS-769 / Track C C1.
@@ -76,9 +77,6 @@ const byUnpublishedThenName = (a, b) => {
 // ordered the same way and the row components stay presentational.
 const sorted = rows => [...rows].sort(byUnpublishedThenName);
 
-// A soft-deleted object is still returned by the list endpoints; rendering it
-// left the row sitting in the tree as though the delete had failed.
-const notDeleted = o => o.status !== 'deleted';
 
 // Map a plain store collection into Library rows of a single type.
 //
