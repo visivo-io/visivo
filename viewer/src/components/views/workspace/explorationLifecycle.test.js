@@ -233,6 +233,39 @@ describe('isExplorationRenamedFromSeedDefault', () => {
     expect(isExplorationRenamedFromSeedDefault(record)).toBe(true);
   });
 
+  it('is false for an auto-numbered duplicate of the default (VIS-1230)', () => {
+    // "<default> 2"/"<default> 3" are what the store's unique-naming produces
+    // for repeat source clicks — still the seed default, not a user rename, so
+    // an untouched one must still garbage-collect on close.
+    const base = { type: 'source', name: 'local-duckdb' };
+    expect(
+      isExplorationRenamedFromSeedDefault({ name: 'local-duckdb exploration 2', seededFrom: base })
+    ).toBe(false);
+    expect(
+      isExplorationRenamedFromSeedDefault({ name: 'local-duckdb exploration 3', seededFrom: base })
+    ).toBe(false);
+  });
+
+  it('is true for a rename that merely starts with the default (not the " N" pattern)', () => {
+    const base = { type: 'source', name: 'local-duckdb' };
+    expect(
+      isExplorationRenamedFromSeedDefault({
+        name: 'local-duckdb exploration notes',
+        seededFrom: base,
+      })
+    ).toBe(true);
+  });
+
+  it('does not let a regex-metachar source name widen the numbered match', () => {
+    // A source literally named "a.b" must not make "aXb exploration 2" read as
+    // its own numbered default (the "." would match any char if unescaped).
+    const record = {
+      name: 'aXb exploration 2',
+      seededFrom: { type: 'source', name: 'a.b' },
+    };
+    expect(isExplorationRenamedFromSeedDefault(record)).toBe(true);
+  });
+
   it('is false when the seed itself cannot produce a default name (no name on the seed)', () => {
     const record = { name: 'Exploration 2', seededFrom: { type: 'source' } };
     expect(isExplorationRenamedFromSeedDefault(record)).toBe(false);

@@ -348,8 +348,28 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         // 'Exploration N' counter — this is also the SAME name
         // `isExplorationRenamedFromSeedDefault` (explorationLifecycle.js)
         // compares against to detect an explicit rename.
+        // VIS-1230: a seeded create sends a human-readable name derived from
+        // what was explored ("test-source exploration") instead of the backend's
+        // generic "Exploration N" counter. But that name was FIXED, so clicking
+        // the same source twice produced two identically-named explorations.
+        // Number duplicates "<name>", "<name> 2", "<name> 3" so they're
+        // distinguishable — with a SPACE, since explorations aren't YAML objects
+        // and allow spaces (mirrors the backend's own "Exploration N").
         const defaultName = seed ? seedDefaultName(seed) : null;
-        if (defaultName) payload.name = defaultName;
+        if (defaultName) {
+          const takenNames = new Set(
+            Object.values(get().workspaceExplorations.byId || {})
+              .map(e => e?.name)
+              .filter(Boolean)
+          );
+          let uniqueName = defaultName;
+          let suffix = 2;
+          while (takenNames.has(uniqueName)) {
+            uniqueName = `${defaultName} ${suffix}`;
+            suffix += 1;
+          }
+          payload.name = uniqueName;
+        }
         const seedLegacyState = legacyStateOverride || (seed ? legacyStateForSeed(seed) : null);
         if (seedLegacyState) payload.draft = mapDraftToApi(legacyStateToDraft(seedLegacyState));
         const created = await explorationsApi.createExploration(payload, get().project?.id);

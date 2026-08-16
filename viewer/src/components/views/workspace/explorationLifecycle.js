@@ -106,7 +106,15 @@ export const hasMeaningfulExplorationContent = record => {
 export const isExplorationRenamedFromSeedDefault = record => {
   if (!record?.seededFrom) return false;
   const expected = seedDefaultName(record.seededFrom);
-  return !!expected && record.name !== expected;
+  if (!expected) return false;
+  if (record.name === expected) return false;
+  // VIS-1230: the auto-numbered duplicate names ("<default> 2", "<default> 3")
+  // this same seed default produces are NOT user renames — a browse-seed that
+  // happens to be the 2nd click for its source must still garbage-collect when
+  // closed untouched, exactly like the 1st. Escape the source-derived name so
+  // its own regex metacharacters can't widen the match.
+  const escaped = expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return !new RegExp(`^${escaped} \\d+$`).test(record.name);
 };
 
 /**
