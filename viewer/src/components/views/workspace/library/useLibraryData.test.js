@@ -231,10 +231,10 @@ describe('useLibraryData', () => {
       expect(names(result.current.layoutItems.table)).toEqual(['a_tbl', 'z_tbl']);
     });
 
-    test('sources, models and inputs hide soft-deleted rows like every other type', () => {
-      // Their inline mappers never had the filter mapRows/withParentModel got,
-      // so a deleted source or model stayed in the tree after a confirmed
-      // delete — the same bug, in the three places it was not fixed.
+    test('sources, models and inputs keep soft-deleted rows like every other type', () => {
+      // The Library is the one surface that shows tombstones — it is where a
+      // pending deletion is seen and undone. Every type has to agree, or a
+      // deleted source would be unrecoverable while a deleted chart was not.
       act(() => {
         useStore.setState({
           sources: [{ name: 'gone', status: 'deleted' }, { name: 'kept' }],
@@ -243,9 +243,9 @@ describe('useLibraryData', () => {
         });
       });
       const { result } = renderHook(() => useLibraryData());
-      expect(names(result.current.dataLayer.source)).toEqual(['kept']);
-      expect(names(result.current.dataLayer.model)).toEqual(['kept']);
-      expect(names(result.current.layoutItems.input)).toEqual(['kept']);
+      expect(names(result.current.dataLayer.source)).toContain('gone');
+      expect(names(result.current.dataLayer.model)).toContain('gone');
+      expect(names(result.current.layoutItems.input)).toContain('gone');
     });
   });
 
@@ -335,39 +335,34 @@ describe('useLibraryData', () => {
 });
 
 describe('useLibraryData — objects marked for deletion', () => {
-  // A delete is a SOFT delete: the server sets status "deleted" and the row
-  // stays until commit removes it from YAML. The list endpoints return it
-  // unfiltered, so without this the object sat in the tree after you confirmed
-  // the dialog — reading exactly like a delete that had failed.
+  // A delete is a SOFT delete: the server marks the row "deleted" and it stays
+  // until a commit removes it from YAML.
+  //
+  // The Library KEEPS those rows, and is the only surface that does. This rail
+  // is where pending changes are seen and managed — the row carries a red dot
+  // and offers Restore — so hiding it here left a pending deletion the user
+  // could neither see nor undo without discarding every other pending change.
+  // Every other surface drops them (`common/softDelete`); the lineage in
+  // particular draws the graph as it WILL be, so a tombstone there is wrong.
   const withStore = state => {
     useStore.setState(state);
     return renderHook(() => useLibraryData()).result;
   };
 
-  it('drops a deleted dimension from the tree', () => {
+  it('keeps a deleted dimension in the tree', () => {
     const result = withStore({
       dimensions: [
         { name: 'keep_me', status: 'new' },
-        { name: 'new_dimension', status: 'deleted' },
+        { name: 'tombstoned', status: 'deleted' },
       ],
     });
 
     const names = result.current.dataLayer.dimension.map(d => d.name);
-    expect(names).toEqual(['keep_me']);
+    expect(names).toContain('tombstoned');
+    expect(names).toContain('keep_me');
   });
 
-  it('drops a deleted metric too — same mapper', () => {
-    const result = withStore({
-      metrics: [
-        { name: 'revenue', status: 'published' },
-        { name: 'gone', status: 'deleted' },
-      ],
-    });
-
-    expect(result.current.dataLayer.metric.map(m => m.name)).toEqual(['revenue']);
-  });
-
-  it('drops a deleted layout item, which goes through the other mapper', () => {
+  it('keeps a deleted layout item too — the other mapper', () => {
     const result = withStore({
       charts: [
         { name: 'bar', status: 'modified' },
@@ -375,7 +370,15 @@ describe('useLibraryData — objects marked for deletion', () => {
       ],
     });
 
-    expect(result.current.layoutItems.chart.map(c => c.name)).toEqual(['bar']);
+    expect(result.current.layoutItems.chart.map(c => c.name)).toContain('removed');
+  });
+
+  it('carries the deleted status through, so the row can render its red dot', () => {
+    const result = withStore({
+      metrics: [{ name: 'gone', status: 'deleted' }],
+    });
+
+    expect(result.current.dataLayer.metric[0].status).toBe('deleted');
   });
 
   it('keeps every other status, so the unpublished dot still renders', () => {

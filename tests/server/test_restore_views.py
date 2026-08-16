@@ -53,16 +53,33 @@ class TestRestore:
         assert sources.get(source_name) is not None
         assert chart_name in charts._cached_objects
 
-    def test_restoring_something_that_is_not_deleted_is_a_conflict(
+    def test_restores_a_modified_object_by_discarding_its_edits(
         self, integration_app, integration_client
     ):
-        """A silent 200 would be indistinguishable from a real restore."""
+        """One action, two states. Restore is "revert to the published version",
+        so it covers a pending EDIT as well as a pending deletion — both are
+        "throw away what is cached and fall back to what went live"."""
+        charts = integration_app.chart_manager
+        name = next(iter(charts._published_objects))
+        edited = charts.get(name)
+        charts.save_from_config({**edited.model_dump(exclude_none=True), "name": name})
+        assert name in charts._cached_objects
+
+        response = integration_client.post(f"/api/charts/{name}/restore/")
+
+        assert response.status_code == 200
+        assert name not in charts._cached_objects
+        assert charts.get(name) is not None
+
+    def test_restoring_a_clean_object_is_a_404(self, integration_app, integration_client):
+        """Nothing cached means no edits and no tombstone — nothing to revert.
+        A silent 200 would be indistinguishable from a real restore."""
         name = next(iter(integration_app.source_manager._published_objects))
 
         response = integration_client.post(f"/api/sources/{name}/restore/")
 
-        assert response.status_code == 409
-        assert "not deleted" in response.get_json()["error"]
+        assert response.status_code == 404
+        assert "no pending changes" in response.get_json()["error"]
 
     def test_unknown_name_is_404(self, integration_client):
         response = integration_client.post("/api/sources/no-such-source/restore/")

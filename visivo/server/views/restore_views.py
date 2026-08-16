@@ -38,20 +38,33 @@ def register_restore_views(app, flask_app):
 
         singular = resource_segment[:-1]
         try:
-            # Only a tombstone is restorable. A live object has nothing to undo,
-            # and saying so is better than a silent 200 that changes nothing —
-            # the caller would have no way to tell the two apart.
-            if manager.get(name) is not None:
-                return (
-                    jsonify({"error": f"{singular.capitalize()} '{name}' is not deleted"}),
-                    409,
-                )
-
-            # Dropping the cache entry IS the restore: `get` falls back to the
-            # published object, and `get_status` stops reporting DELETED.
+            # Restore is "revert to the published version", which is one action
+            # covering two states — exactly what `delete_from_cache`'s own
+            # docstring says it does:
+            #
+            #   deleted  -> un-delete
+            #   modified -> discard my edits
+            #
+            # Both are "throw away what is in the cache and fall back to what
+            # went live", so gating this on DELETED would have meant a second
+            # endpoint doing the identical thing under another name.
+            #
+            # A row with nothing cached has nothing to revert — no edits, no
+            # tombstone — and 404s below rather than returning a silent 200 the
+            # caller cannot distinguish from a real restore.
             restored = manager.delete_from_cache(name)
             if not restored:
-                return jsonify({"error": f"{singular.capitalize()} '{name}' not found"}), 404
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                f"{singular.capitalize()} '{name}' has no pending "
+                                "changes to restore"
+                            )
+                        }
+                    ),
+                    404,
+                )
 
             status = manager.get_status(name)
             return (

@@ -12,6 +12,7 @@ import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
 import ViewSwitcher from '../ViewSwitcher';
 import { useConfirm } from '../../../common/ConfirmDialog';
+import { ObjectStatus } from '../../../../stores/store';
 
 // Row Delete -> the per-type store action. Every one has the same shape (API
 // call, refetch, checkCommitStatus) and returns `{ success, error }`, so the
@@ -279,13 +280,30 @@ const Library = () => {
     [openWorkspaceTab]
   );
 
-  const handleDelete = useCallback(
+  const handleRestore = useCallback(
     async (type, name) => {
+      const restoreFn = storeApi.getState().restoreDeleted;
+      if (typeof restoreFn !== 'function') return;
+      await restoreFn(type, name);
+    },
+    [storeApi]
+  );
+
+  const handleDelete = useCallback(
+    async (type, name, status) => {
+      // The two deletes are genuinely different and the confirm has to say so.
+      //
+      // A published object is TOMBSTONED: the YAML is untouched until commit,
+      // and Restore in this menu brings it back. A never-published one has no
+      // published version to fall back to, so it is removed outright and there
+      // is nothing to restore — telling the user that afterwards would be too
+      // late.
+      const isDraftOnly = status === ObjectStatus.NEW;
       const ok = await confirm({
         title: `Delete ${name}?`,
-        // Soft delete: says what actually happens, so "delete" doesn't read as
-        // "gone from disk" when the YAML is untouched until commit.
-        body: `This marks the ${type} for deletion. It stays out of the project until you commit, and can be restored before then.`,
+        body: isDraftOnly
+          ? `This ${type} has never been committed, so deleting it removes it immediately. This can't be undone.`
+          : `This marks the ${type} for deletion. The project keeps it until you commit, and you can restore it from this menu before then.`,
         confirmLabel: 'Delete',
         danger: true,
       });
@@ -338,7 +356,9 @@ const Library = () => {
       } else if (action === 'addToExploration' && addObjectToActiveExploration) {
         addObjectToActiveExploration({ type, name: obj.name, parentModel: obj.parentModel });
       } else if (action === 'delete') {
-        handleDelete(type, obj.name);
+        handleDelete(type, obj.name, obj.status);
+      } else if (action === 'restore') {
+        handleRestore(type, obj.name);
       }
     },
     [
@@ -348,6 +368,7 @@ const Library = () => {
       buildExplorationSeedState,
       addObjectToActiveExploration,
       handleDelete,
+      handleRestore,
     ]
   );
 
