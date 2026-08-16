@@ -255,6 +255,52 @@ describe('createExploration', () => {
     });
   });
 
+  // VIS-1230: a second seed with the SAME default name is numbered " 2" so
+  // clicking a source twice yields distinguishable explorations, not two
+  // identically-named ones. The space separator is intentional — explorations
+  // aren't YAML objects and allow spaces.
+  test('numbers a seed whose default name is already taken (" 2", " 3", …)', async () => {
+    seedRecord({ id: 'exp_existing', name: 'orders exploration' });
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({ id: 'exp_2', name: 'orders exploration 2' })
+    );
+
+    await act(async () => {
+      await useStore.getState().createExploration({ type: 'model', name: 'orders' });
+    });
+
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'orders exploration 2' }),
+      undefined
+    );
+  });
+
+  test('numbers past a run of taken names to the first free slot', async () => {
+    act(() => {
+      useStore.setState({
+        workspaceExplorations: {
+          byId: {
+            a: mappedRecord({ id: 'a', name: 'orders exploration' }),
+            b: mappedRecord({ id: 'b', name: 'orders exploration 2' }),
+          },
+          order: ['a', 'b'],
+        },
+      });
+    });
+    explorationsApi.createExploration.mockResolvedValueOnce(
+      wireExploration({ id: 'exp_3', name: 'orders exploration 3' })
+    );
+
+    await act(async () => {
+      await useStore.getState().createExploration({ type: 'model', name: 'orders' });
+    });
+
+    expect(explorationsApi.createExploration).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'orders exploration 3' }),
+      undefined
+    );
+  });
+
   // Phase 6c-T1 (ux-audit.md existing-objects #8, drift detection): a
   // hashable seed type (model/insight/chart) whose object IS loaded in the
   // store at seed time gets its content hashed into `content_signature` —
