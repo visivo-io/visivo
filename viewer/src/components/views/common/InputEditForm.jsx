@@ -304,6 +304,10 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, a
       if (result.success) {
         await checkCommitStatus();
         setShowDeleteConfirm(false);
+        // Every sibling form exits after a successful delete; this one only
+        // dismissed its confirm, leaving the panel sitting on a record that no
+        // longer exists and rendering the not-found card.
+        onClose?.();
       } else {
         setSaveError(result.error || 'Failed to delete input');
         setShowDeleteConfirm(false);

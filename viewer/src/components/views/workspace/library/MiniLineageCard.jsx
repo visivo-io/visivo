@@ -3,7 +3,7 @@ import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import LineageSelectorField from '../../lineage/LineageSelectorField';
-import { withoutDeleted } from '../../common/softDelete';
+import { isDeleted, withoutDeleted } from '../../common/softDelete';
 import {
   neighborhoodSelector,
   parseSelector,
@@ -87,11 +87,16 @@ function effectiveChildNames(entryType, obj, defaultSourceName, sourceNames) {
 
 function buildTypeIndex(storeApi) {
   const lookup = new Map();
-  // `withoutDeleted` on every registration: a tombstoned object must not be
-  // resolvable as a lineage node, or the mini card draws the very thing the
-  // user just deleted (VIS-1234).
+  // COMPLETE, including tombstones. This is the name -> object resolution map,
+  // and the SUBJECT is looked up through it: filtering here meant opening the
+  // lineage of a deleted object found nothing and rendered an empty card, even
+  // though its row is sitting in the Library with a Restore action on it.
+  //
+  // Deleted NEIGHBOURS are excluded during traversal instead (see `visit`
+  // below and `buildReverseIndex`), which is the actual rule — a tombstone is
+  // not part of the graph, but the object you explicitly asked about is.
   const register = (type, list) => {
-    withoutDeleted(list).forEach(obj => {
+    (Array.isArray(list) ? list : []).forEach(obj => {
       if (obj && obj.name && !lookup.has(obj.name)) {
         lookup.set(obj.name, { type, obj });
       }
@@ -197,6 +202,10 @@ function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
     if (depth > maxDepth) return;
     const entry = index.get(name);
     if (!entry) return;
+    // A tombstoned neighbour is not part of the graph — the lineage shows what
+    // the project will look like — and we do not traverse THROUGH it either,
+    // since its own edges are going away with it.
+    if (isDeleted(entry.obj)) return;
     const key = `${entry.type}:${name}`;
     if (seen.has(key)) {
       const existing = out.find(n => n.type === entry.type && n.name === name);

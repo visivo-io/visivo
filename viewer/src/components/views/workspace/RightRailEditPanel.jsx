@@ -777,6 +777,9 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   }
 
   if (renderForm) {
+    const closeRecordTab = () =>
+      closeWorkspaceTab && closeWorkspaceTab(`${type}:${name}`);
+
     const common = {
       isCreate: false,
       // `onClose` is the post-DELETE exit, not a Cancel handler. In edit mode —
@@ -791,7 +794,13 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
       // the behaviour that was wanted: otherwise the panel stays open on a
       // record that no longer exists and renders the not-found card, which
       // reads as the delete having failed.
-      onClose: () => closeWorkspaceTab && closeWorkspaceTab(`${type}:${name}`),
+      onClose: closeRecordTab,
+      // Same handler under the other name the forms use. `ModelEditForm` calls
+      // its exit `onCancel` where the rest call it `onClose`; supplying only one
+      // means the odd form out throws instead of closing. In edit mode — which
+      // the rail always is — neither is a Cancel handler: the forms wire Cancel
+      // to their own local `discard`.
+      onCancel: closeRecordTab,
       onSave: handleObjectSave,
       onNavigateToEmbedded: noop,
       onGoBack: noop,

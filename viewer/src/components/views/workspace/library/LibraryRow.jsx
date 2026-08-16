@@ -188,8 +188,8 @@ const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) 
   // Only a row with something pending has anything to revert. A published row
   // is already what went live, and a NEW one has no published version to fall
   // back to — deleting it is the way to get rid of it.
-  const canRestore =
-    obj.status === ObjectStatus.DELETED || obj.status === ObjectStatus.MODIFIED;
+  const isTombstoned = obj.status === ObjectStatus.DELETED;
+  const canRestore = isTombstoned || obj.status === ObjectStatus.MODIFIED;
   const handle = action => () => {
     onAction && onAction(action, obj);
     onDismiss && onDismiss();
@@ -270,16 +270,20 @@ const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) 
             </li>
           </>
         )}
-        <MenuDivider />
-        <li>
-          <ContextMenuItem
-            icon={PiTrash}
-            label="Delete…"
-            hint="⌫"
-            destructive
-            onClick={handle('delete')}
-          />
-        </li>
+        {!isTombstoned && (
+          <>
+            <MenuDivider />
+            <li>
+              <ContextMenuItem
+                icon={PiTrash}
+                label="Delete…"
+                hint="⌫"
+                destructive
+                onClick={handle('delete')}
+              />
+            </li>
+          </>
+        )}
       </ul>
     </div>
   );

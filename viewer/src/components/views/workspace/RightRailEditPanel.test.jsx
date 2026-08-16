@@ -1453,3 +1453,56 @@ describe('RightRailEditPanel cloud read-only (VIS-1025)', () => {
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
   });
 });
+
+
+describe('every leaf form can exit after a delete (VIS-1234)', () => {
+  // This has now bitten twice under two different prop names: `onClose` was
+  // withheld entirely (six forms threw), and then `ModelEditForm` turned out to
+  // call its exit `onCancel` (that one threw). Rather than fix a third variant
+  // later, assert the contract across the whole directory: whatever a form
+  // calls to leave after a successful delete, the rail must supply it.
+  const fs = require('fs');
+  const path = require('path');
+  const FORMS_DIR = path.join(__dirname, '..', 'common');
+
+  const exitPropOf = source => {
+    const i = source.indexOf('const handleDelete');
+    if (i === -1) return null;
+    const body = source.slice(i, i + 1200);
+    const match = body.match(/\bon(Close|Cancel)\??\.?\(\)/);
+    return match ? `on${match[1]}` : null;
+  };
+
+  test('the rail supplies every exit prop the forms actually call', () => {
+    const supplied = new Set(['onClose', 'onCancel']);
+    const missing = [];
+
+    for (const file of fs.readdirSync(FORMS_DIR)) {
+      if (!file.endsWith('EditForm.jsx')) continue;
+      const source = fs.readFileSync(path.join(FORMS_DIR, file), 'utf8');
+      const prop = exitPropOf(source);
+      if (prop && !supplied.has(prop)) missing.push(`${file} calls ${prop}`);
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  test('every form that exits after a delete does so optionally', () => {
+    // A form may be hosted somewhere that supplies neither — a modal, a future
+    // surface. Calling the prop unguarded is what turned a working delete into
+    // a red error card.
+    const unguarded = [];
+
+    for (const file of fs.readdirSync(FORMS_DIR)) {
+      if (!file.endsWith('EditForm.jsx')) continue;
+      const source = fs.readFileSync(path.join(FORMS_DIR, file), 'utf8');
+      const i = source.indexOf('const handleDelete');
+      if (i === -1) continue;
+      const body = source.slice(i, i + 1200);
+      const call = body.match(/\bon(Close|Cancel)(\??\.)?\(\)/);
+      if (call && call[2] !== '?.') unguarded.push(`${file}: ${call[0]}`);
+    }
+
+    expect(unguarded).toEqual([]);
+  });
+});
