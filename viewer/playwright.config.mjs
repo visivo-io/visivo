@@ -41,6 +41,8 @@ export default defineConfig({
         // VIS-993 regression: canvas edits must persist to the DRAFT CACHE
         // (backend), so this story writes state and runs serially.
         '**/canvas-editing.spec.mjs',
+        // VIS-1234 delete lifecycle — writes draft state (see state-mutating).
+        '**/delete-lifecycle.spec.mjs',
         // Phase 2 e2e gate (VIS-1050): explorations live in ONE file-backed
         // repository shared by every worker (`.visivo/explorations/`, no
         // per-worker isolation like localStorage-scoped Phase 0 state) — see
@@ -139,6 +141,10 @@ export default defineConfig({
         // VIS-993 regression: canvas resize/DnD edits draft dashboard changes
         // into the cache and assert them via /api/dashboards/ + reload.
         '**/canvas-editing.spec.mjs',
+        // VIS-1234: drafts throwaway models into the cache, deletes them from
+        // several surfaces, restores one, and lets the auto-run fire. Every
+        // case writes draft state.
+        '**/delete-lifecycle.spec.mjs',
       ],
       dependencies: ['parallel'],
     },
