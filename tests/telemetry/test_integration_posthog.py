@@ -324,8 +324,13 @@ class TestPostHogIntegration:
         mock_home.mkdir()
 
         with mock.patch("pathlib.Path.home", return_value=mock_home):
-            # Ensure we're not in CI
-            with mock.patch("visivo.telemetry.machine_id.is_ci_environment", return_value=False):
+            # Ensure we're not in CI, and simulate an interactive install (pytest
+            # captures stdout, so the real _is_interactive() would be False here
+            # and correctly suppress the event — VIS-1223).
+            with (
+                mock.patch("visivo.telemetry.machine_id.is_ci_environment", return_value=False),
+                mock.patch("visivo.telemetry.machine_id._is_interactive", return_value=True),
+            ):
                 # Import get_machine_id which should trigger new installation event
                 from visivo.telemetry.machine_id import get_machine_id
 
