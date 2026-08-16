@@ -163,6 +163,89 @@ describe('ExplorerHomePane — VIS-1084 stale create-completion navigation', () 
   });
 });
 
+// VIS-1230: clicking a source is a browse gesture, so a SEQUENTIAL second
+// click (after the first exploration was created and its tab left open) must
+// reopen that untouched browse-seed rather than pile up indistinguishable
+// same-named explorations. The in-flight guard below only covers rapid/
+// concurrent clicks — this covers deliberate repeat clicks.
+describe('ExplorerHomePane — VIS-1230 source-tile dedup', () => {
+  test('reopens an existing untouched browse-seed for the source instead of creating a duplicate', () => {
+    const createExploration = jest.fn();
+    const openWorkspaceTab = jest.fn();
+    // name === seedDefaultName('warehouse') and empty draft → untouched.
+    const untouched = explorationRecord({
+      id: 'exp_seed',
+      name: 'warehouse exploration',
+      seededFrom: { type: 'source', name: 'warehouse' },
+      draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+    });
+    seed({
+      workspaceExplorations: { byId: { exp_seed: untouched }, order: ['exp_seed'] },
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('explorer-home-source-tile-warehouse'));
+
+    expect(createExploration).not.toHaveBeenCalled();
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'exploration:exp_seed',
+      type: 'exploration',
+      name: 'exp_seed',
+    });
+  });
+
+  test('a source whose only exploration has been worked in still creates a fresh one', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new' });
+    const openWorkspaceTab = jest.fn();
+    // Renamed away from the seed default → gallery-visible (a "real" one).
+    const touched = explorationRecord({
+      id: 'exp_touched',
+      name: 'My warehouse analysis',
+      seededFrom: { type: 'source', name: 'warehouse' },
+    });
+    seed({
+      workspaceExplorations: { byId: { exp_touched: touched }, order: ['exp_touched'] },
+      sources: [{ name: 'warehouse' }],
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('explorer-home-source-tile-warehouse'));
+
+    await waitFor(() =>
+      expect(createExploration).toHaveBeenCalledWith({ type: 'source', name: 'warehouse' })
+    );
+  });
+
+  test('an untouched seed for a DIFFERENT source is not reused', async () => {
+    const createExploration = jest.fn().mockResolvedValue({ success: true, id: 'exp_new' });
+    const openWorkspaceTab = jest.fn();
+    const otherSeed = explorationRecord({
+      id: 'exp_other',
+      name: 'other-db exploration',
+      seededFrom: { type: 'source', name: 'other-db' },
+      draft: { queries: [], insights: [], chart: null, computedColumns: [] },
+    });
+    seed({
+      workspaceExplorations: { byId: { exp_other: otherSeed }, order: ['exp_other'] },
+      sources: [{ name: 'warehouse' }, { name: 'other-db' }],
+      createExploration,
+      openWorkspaceTab,
+    });
+    render(<ExplorerHomePane />);
+
+    fireEvent.click(screen.getByTestId('explorer-home-source-tile-warehouse'));
+
+    await waitFor(() =>
+      expect(createExploration).toHaveBeenCalledWith({ type: 'source', name: 'warehouse' })
+    );
+  });
+});
+
 // VIS-1086: every create door needs an in-flight guard — a rapid double
 // click (or two different doors clicked in quick succession) must never
 // mint two records.

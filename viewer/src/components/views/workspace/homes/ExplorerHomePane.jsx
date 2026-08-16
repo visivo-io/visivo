@@ -144,6 +144,22 @@ const ExplorerHomePane = () => {
 
   const handleSourceTile = async sourceName => {
     if (creatingRef.current) return;
+    // VIS-1230: reuse an existing UNTOUCHED browse-seed for this source instead
+    // of minting another exploration with the identical seed-derived name
+    // (`<source> exploration`). Clicking a source is a browse gesture, so a
+    // second click should reopen the browse you already have, not pile up
+    // indistinguishable same-named copies. A seed the user has actually worked
+    // in is gallery-visible — leave it be and start a genuinely new one.
+    const existingSeed = orderedExplorations.find(
+      e =>
+        e.seededFrom?.type === 'source' &&
+        e.seededFrom?.name === sourceName &&
+        !isExplorationVisibleInGallery(e)
+    );
+    if (existingSeed) {
+      openExploration(existingSeed.id);
+      return;
+    }
     creatingRef.current = true;
     setCreating(true);
     try {
