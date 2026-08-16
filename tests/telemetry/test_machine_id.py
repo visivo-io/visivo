@@ -5,6 +5,7 @@ Tests for machine ID functionality.
 import uuid
 from pathlib import Path
 import pytest
+from visivo.telemetry.config import CONTAINER_MARKER_PATHS
 from visivo.telemetry.machine_id import get_machine_id
 
 
@@ -48,7 +49,9 @@ class TestMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         # Get machine ID
@@ -103,7 +106,9 @@ class TestMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         # Get machine ID twice
@@ -150,7 +155,9 @@ class TestMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         # Create corrupted file
@@ -213,7 +220,9 @@ class TestMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         # Make directory read-only
@@ -274,7 +283,9 @@ class TestMachineId:
         monkeypatch.setattr(
             os.path,
             "exists",
-            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
+            lambda path, _exists=os.path.exists: (
+                False if path in CONTAINER_MARKER_PATHS else _exists(path)
+            ),
         )
 
         # Clear cached machine ID

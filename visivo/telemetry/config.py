@@ -92,27 +92,55 @@ CI_ENV_VARS = [
     "TF_BUILD",  # Azure DevOps
     "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",  # Azure DevOps
     "KUBERNETES_SERVICE_HOST",  # Kubernetes-hosted runner
+    # Serverless / PaaS hosts run visivo non-interactively — often with a fresh,
+    # EMPTY $HOME on every cold start — so without these each invocation looks
+    # like a brand-new install and spams new_installation. Cloud Run is the one
+    # that bit us: it runs on gVisor, which sets NONE of the vars above and has
+    # no /.dockerenv, so it slipped through entirely.
+    "K_SERVICE",  # Google Cloud Run (services AND jobs)
+    "FUNCTION_TARGET",  # Google Cloud Functions (2nd gen) / Functions Framework
+    "GAE_ENV",  # Google App Engine
+    "AWS_LAMBDA_FUNCTION_NAME",  # AWS Lambda
+    "AWS_EXECUTION_ENV",  # AWS managed compute (Lambda and others)
+    "DYNO",  # Heroku
+    "FLY_APP_NAME",  # Fly.io
+    "RENDER",  # Render
+    "VERCEL",  # Vercel
+    "NETLIFY",  # Netlify
 ]
+
+# Filesystem markers that reveal we're inside a container/pod even when no env
+# var is set. `/.dockerenv` exists ONLY under the Docker *daemon* runtime — it is
+# ABSENT under BuildKit builds, containerd/CRI-O, gVisor (Cloud Run), and Podman,
+# which is how server contexts kept looking like fresh installs. A module-level
+# constant (mirroring CI_ENV_VARS) so tests neutralize EXACTLY what the detector
+# checks and can't drift.
+CONTAINER_MARKER_PATHS = (
+    "/.dockerenv",  # Docker daemon runtime
+    "/run/.containerenv",  # Podman
+    # Every Kubernetes pod mounts a service-account token here — belt-and-braces
+    # alongside KUBERNETES_SERVICE_HOST for any pod that somehow lacks the env.
+    "/var/run/secrets/kubernetes.io/serviceaccount",
+)
 
 
 def is_ci_environment() -> bool:
     """
-    Detect if we're running in a CI/CD environment.
+    Detect if we're running in an automated (non-interactive) environment.
 
-    Checks for common CI environment variables that indicate
-    we're running in an automated environment rather than
-    on a developer's machine.
+    Checks for common CI/CD and serverless/PaaS environment variables — plus
+    container/pod filesystem markers — that indicate we're running in an
+    automated environment rather than on a developer's machine.
 
     Returns:
-        bool: True if running in CI/CD, False otherwise
+        bool: True if running in CI/CD or a server/container context, else False
     """
     for var in CI_ENV_VARS:
         if os.getenv(var):
             return True
 
-    # Running inside a container (a Docker/RWX image build doesn't pass the CI
-    # env vars through to the build).
-    if os.path.exists("/.dockerenv"):
-        return True
+    for marker in CONTAINER_MARKER_PATHS:
+        if os.path.exists(marker):
+            return True
 
     return False
