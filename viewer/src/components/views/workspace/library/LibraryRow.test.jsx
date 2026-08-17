@@ -163,7 +163,7 @@ describe('LibraryRow', () => {
     // onMouseDown must preventDefault (never lose focus) and the doc-level
     // outside-click guard must see the target is INSIDE the menu and leave
     // it open.
-    const menuItem = within(menu).getByText('Open in right rail');
+    const menuItem = within(menu).getByText('Show lineage');
     fireEvent.mouseDown(menuItem);
     expect(screen.getByTestId('library-row-insight-revenue_growth-context-menu')).toBeInTheDocument();
   });
@@ -210,21 +210,20 @@ describe('LibraryRow', () => {
     ).not.toHaveTextContent('Wrap in Chart');
   });
 
-  test('context menu carries the Open-in-new-tab + Delete items and kbd hints', () => {
-    // Regression: menu was missing Open-in-new-tab + Delete… (with divider)
-    // and the keyboard hints per the C-1 design.
+  test('context menu carries Show-lineage + Delete (no redundant open items), with kbd hints', () => {
     render(withDnd(<LibraryRow obj={MODEL} />));
     fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
     fireEvent.click(screen.getByTestId('library-row-model-monthly_revenue-kebab'));
     const menu = screen.getByTestId('library-row-model-monthly_revenue-context-menu');
-    expect(menu).toHaveTextContent('Open in right rail');
-    expect(menu).toHaveTextContent('Open in new tab');
+    // "Open in right rail" / "Open in new tab" removed — clicking the row
+    // already opens it, so those items only duplicated the click.
+    expect(menu).not.toHaveTextContent('Open in right rail');
+    expect(menu).not.toHaveTextContent('Open in new tab');
     expect(menu).toHaveTextContent('Show lineage');
     expect(menu).toHaveTextContent('Delete…');
-    // Keyboard hints — the design's discoverability cue.
-    expect(menu).toHaveTextContent('↵');
-    expect(menu).toHaveTextContent('⌘↵');
-    expect(menu).toHaveTextContent('⌫');
+    // Remaining keyboard hints — the design's discoverability cue.
+    expect(menu).toHaveTextContent('F'); // Show lineage
+    expect(menu).toHaveTextContent('⌫'); // Delete
   });
 
   // VIS-1067 — "Explore this" / "Add to exploration" context-menu entries.
