@@ -104,6 +104,12 @@ const Lineage = ({
   const [fixedNode, setFixedNode] = useState(null); // { id, position } for keeping clicked node in place
 
   const reactFlowInstance = useRef(null);
+  // React Flow calls `onInit` AFTER the first render, and on a fresh mount
+  // (opening straight onto the Lineage lens — e.g. the Library row's "Show
+  // lineage") that can land after the reframe effect below has already run its
+  // single pass, leaving the subject un-centred. Flip this in `onInit` and key
+  // the reframe on it so the camera lands on the subject once the flow is ready.
+  const [flowReady, setFlowReady] = useState(false);
 
 
   // Standalone (`/editor`): fetch every collection on mount and flip
@@ -377,7 +383,7 @@ const Lineage = ({
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialLoadDone, nodeSignature, selector]);
+  }, [initialLoadDone, nodeSignature, selector, flowReady]);
 
   // Global keyboard handler for Escape key
   useEffect(() => {
@@ -600,6 +606,7 @@ const Lineage = ({
             onEdgesDelete={handleEdgesDelete}
             onInit={instance => {
               reactFlowInstance.current = instance;
+              setFlowReady(true);
             }}
             minZoom={0.1}
             maxZoom={2}
