@@ -431,3 +431,86 @@ describe('soft-deleted objects are not lineage (VIS-1234)', () => {
     expect(screen.queryByTestId('mlc-lineage-dashboard-exec_kpi_dashboard')).toBeNull();
   });
 });
+
+
+describe('the inherited default source (VIS-1234 review)', () => {
+  // A model with no explicit source inherits the project default. The upward
+  // walk resolved that through `effectiveChildNames`; the downward index was
+  // built from RAW child_item_names, so the edge existed in one direction only
+  // — and the default source, which is exactly the source models reference
+  // implicitly, showed no descendants at all.
+  const seedDefaultSource = () => {
+    act(() => {
+      useStore.setState({
+        sources: [{ name: 'test-source', child_item_names: [] }],
+        // No explicit source: it inherits the project default.
+        models: [{ name: 'new-model', child_item_names: [] }],
+        charts: [],
+        insights: [],
+        tables: [],
+        markdowns: [],
+        inputs: [],
+        dimensions: [],
+        metrics: [],
+        relations: [],
+        allDashboards: [],
+        dashboards: [],
+        defaults: { source_name: 'test-source' },
+        fetchDashboards: jest.fn(),
+        fetchDefaults: jest.fn(),
+        openWorkspaceTab: jest.fn(),
+        setWorkspaceLens: jest.fn(),
+        setWorkspaceLensIntent: jest.fn(),
+      });
+    });
+  };
+
+  test('the default source lists the models that inherit it', () => {
+    seedDefaultSource();
+
+    render(<MiniLineageCard obj={{ type: 'source', name: 'test-source' }} testIdPrefix="mlc" />);
+
+    expect(screen.getByTestId('mlc-lineage-model-new-model')).toBeInTheDocument();
+    expect(screen.queryByTestId('mlc-empty')).toBeNull();
+  });
+
+  test('and the model still lists the source upstream — both directions agree', () => {
+    seedDefaultSource();
+
+    render(<MiniLineageCard obj={{ type: 'model', name: 'new-model' }} testIdPrefix="mlc" />);
+
+    expect(screen.getByTestId('mlc-lineage-source-test-source')).toBeInTheDocument();
+  });
+
+  test('a model with an explicit source does not also inherit the default', () => {
+    act(() => {
+      useStore.setState({
+        sources: [
+          { name: 'test-source', child_item_names: [] },
+          { name: 'other-source', child_item_names: [] },
+        ],
+        models: [{ name: 'explicit', child_item_names: ['other-source'] }],
+        charts: [],
+        insights: [],
+        tables: [],
+        markdowns: [],
+        inputs: [],
+        dimensions: [],
+        metrics: [],
+        relations: [],
+        allDashboards: [],
+        dashboards: [],
+        defaults: { source_name: 'test-source' },
+        fetchDashboards: jest.fn(),
+        fetchDefaults: jest.fn(),
+        openWorkspaceTab: jest.fn(),
+        setWorkspaceLens: jest.fn(),
+        setWorkspaceLensIntent: jest.fn(),
+      });
+    });
+
+    render(<MiniLineageCard obj={{ type: 'source', name: 'test-source' }} testIdPrefix="mlc" />);
+
+    expect(screen.queryByTestId('mlc-lineage-model-explicit')).toBeNull();
+  });
+});

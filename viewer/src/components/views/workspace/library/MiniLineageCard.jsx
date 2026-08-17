@@ -122,12 +122,27 @@ function buildReverseIndex(storeApi) {
     if (!reverse.has(childName)) reverse.set(childName, []);
     reverse.get(childName).push({ name: parentName, type: parentType });
   };
+  // The SAME inherited-default-source rule the upward walk uses.
+  //
+  // A model with no explicit source inherits the project default, and
+  // `buildAncestors` resolves that through `effectiveChildNames` — but this
+  // index was built from the RAW `child_item_names`, so the inherited edge was
+  // never registered in the downward direction. The result: the default source
+  // showed no descendants at all, however many models fed off it, because the
+  // only models pointing at it did so implicitly. Ancestors knew about the
+  // default and descendants did not.
+  const defaultSourceName = storeApi.defaults?.source_name || null;
+  const sourceNames = new Set(
+    (storeApi.sources || []).map(s => s && s.name).filter(Boolean)
+  );
   const scan = (type, list) => {
     // Edges FROM a deleted object go with it — otherwise the card still shows
     // a downstream arrow into something that is no longer there.
     withoutDeleted(list).forEach(obj => {
       if (!obj || !obj.name) return;
-      getChildItemNames(obj).forEach(childName => add(obj.name, childName, type));
+      effectiveChildNames(type, obj, defaultSourceName, sourceNames).forEach(childName =>
+        add(obj.name, childName, type)
+      );
     });
   };
   scan('model', storeApi.models);
