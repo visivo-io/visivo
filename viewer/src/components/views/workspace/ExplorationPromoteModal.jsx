@@ -362,13 +362,15 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // `return_to` intent already offering placement, and at least one
   // dashboard exists to place it in.
   const showFallbackDashboardOffer = !!promotedChart && !returnTo?.dashboard && dashboards.length > 0;
-  const [fallbackDashboardName, setFallbackDashboardName] = useState('');
-  useEffect(() => {
-    if (showFallbackDashboardOffer && !fallbackDashboardName) {
-      setFallbackDashboardName(dashboards[0]?.name || '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showFallbackDashboardOffer, dashboards]);
+  // The user's explicit pick, or `null` until they choose one. The effective
+  // name is derived SYNCHRONOUSLY (default = first dashboard) rather than seeded
+  // via an effect: an effect costs an extra render, and the guarded placement
+  // below (whose fn is swapped in post-commit by useGuardedAsync) could capture
+  // the pre-effect empty value if the click lands in that window — which is
+  // exactly the flake a render-timing change surfaced (VIS-1226 review).
+  const [fallbackDashboardChoice, setFallbackDashboardChoice] = useState(null);
+  const fallbackDashboardName =
+    fallbackDashboardChoice != null ? fallbackDashboardChoice : dashboards[0]?.name || '';
   const [fallbackPlaceError, setFallbackPlaceError] = useState(null);
 
   // The double-click guard + `pending` flag for these placement actions lives
@@ -753,7 +755,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
               <Select
                 data-testid="exploration-promote-fallback-dashboard-select"
                 value={fallbackDashboardName}
-                onChange={setFallbackDashboardName}
+                onChange={setFallbackDashboardChoice}
                 disabled={fallbackPlacing}
                 size="sm"
                 isSearchable={false}
