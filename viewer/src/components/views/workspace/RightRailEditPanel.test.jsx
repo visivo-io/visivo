@@ -1506,3 +1506,54 @@ describe('every leaf form can exit after a delete (VIS-1234)', () => {
     expect(unguarded).toEqual([]);
   });
 });
+
+
+describe('a deleted record shows Restore, not an edit form (VIS-1234)', () => {
+  const seedDeletedChart = (extra = {}) => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', status: 'deleted', config: {} }],
+      ...extra,
+    });
+  };
+
+  test('the edit form is replaced by the deleted panel', () => {
+    // Editing something scheduled for removal is meaningless: the fields would
+    // save into a row the next commit deletes.
+    seedDeletedChart();
+    renderPanel();
+
+    expect(screen.getByTestId('right-rail-edit-leaf-deleted')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-edit-form-stub')).not.toBeInTheDocument();
+  });
+
+  test('Restore is the only action offered', () => {
+    seedDeletedChart();
+    renderPanel();
+
+    expect(screen.getByTestId('right-rail-edit-leaf-restore')).toBeInTheDocument();
+  });
+
+  test('clicking Restore reverts that object', async () => {
+    const restoreDeleted = jest.fn().mockResolvedValue({ success: true });
+    seedDeletedChart({ restoreDeleted });
+    renderPanel();
+
+    fireEvent.click(screen.getByTestId('right-rail-edit-leaf-restore'));
+
+    await waitFor(() =>
+      expect(restoreDeleted).toHaveBeenCalledWith('chart', 'rev_chart')
+    );
+  });
+
+  test('a live record still gets its form', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', status: 'published', config: {} }],
+    });
+    renderPanel();
+
+    expect(screen.queryByTestId('right-rail-edit-leaf-deleted')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart-edit-form-stub')).toBeInTheDocument();
+  });
+});
