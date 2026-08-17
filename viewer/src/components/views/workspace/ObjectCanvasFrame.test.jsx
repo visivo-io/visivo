@@ -82,6 +82,29 @@ describe('ObjectCanvasFrame', () => {
     expect(screen.queryByTestId('canvas-readonly-pill')).not.toBeInTheDocument();
   });
 
+  test('a lens intent for the ALREADY-open object switches to Lineage (no objectKey change)', async () => {
+    const clearWorkspaceLensIntent = jest.fn();
+    act(() => {
+      useStore.setState({ workspaceLensIntent: null, clearWorkspaceLensIntent });
+    });
+    render(frameFor('chart', 'revenue'));
+    // Starts on the canvas/preview lens, not lineage.
+    await screen.findByTestId('chart-preview-mock');
+    expect(screen.queryByTestId('lineage-canvas-mock')).not.toBeInTheDocument();
+
+    // "Show lineage" on the object you're ALREADY viewing sets a one-shot intent
+    // for the SAME objectKey — no selection change, so the re-default effect
+    // never fires. It must still switch to Lineage (VIS: same-object no-op fix).
+    act(() => {
+      useStore.setState({
+        workspaceLensIntent: { objectKey: 'chart:revenue', lens: 'lineage' },
+      });
+    });
+
+    expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
+    expect(clearWorkspaceLensIntent).toHaveBeenCalled();
+  });
+
   test('a serve-only canvas degrades to the unavailable state on the dist build', async () => {
     isAvailable.mockReturnValue(false);
     render(frameFor('model', 'orders'));

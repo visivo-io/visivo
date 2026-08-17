@@ -118,8 +118,16 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
     }
   }, [objectKey, requestedLens, defaultLens]);
 
+  // Apply + consume a one-shot lens intent. The object-change effect above
+  // already handles the case where the intent arrives together with a NEW
+  // selection; this covers an intent that arrives for the object ALREADY open
+  // (e.g. "Show lineage" on the object you're currently viewing) — objectKey
+  // doesn't change, so the re-default effect never fires and, without applying
+  // it here, the intent would be cleared un-honoured (a silent no-op).
   React.useEffect(() => {
-    if (intentLens && clearWorkspaceLensIntent) clearWorkspaceLensIntent();
+    if (!intentLens) return;
+    setLensEffective(intentLens);
+    if (clearWorkspaceLensIntent) clearWorkspaceLensIntent();
   }, [intentLens, clearWorkspaceLensIntent]);
 
   // Clamp any stale / invalid lens to the type's default (a fallback type can
