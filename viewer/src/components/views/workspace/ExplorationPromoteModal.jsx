@@ -291,10 +291,42 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       return { type: key.slice(0, idx), name: key.slice(idx + 1) };
     });
     const result = await promoteExploration(explorationId, selection);
-    setPromoting(false);
-    setPromotedThisRun(result);
 
-    const failed = (result.results || []).filter(r => !r.success);
+    // Decide the outcome BEFORE any setState, so the offer/failure path's state
+    // updates stay in the exact order (setPromoting -> setPromotedThisRun -> …)
+    // the downstream offer effects were tuned against — inserting work between
+    // those two setStates perturbed the fallback-dashboard default's render
+    // timing (VIS-1226 review).
+    const results = result.results || [];
+    const failed = results.filter(r => !r.success);
+    const succeeded = results.filter(r => r.success);
+    // The exact conditions under which the JSX below renders a post-save offer
+    // the user must act on: a chart it can place in a dashboard, or a
+    // model/metric/dimension it can jump to in the Semantic Layer.
+    const promotedChart = succeeded.find(r => r.type === 'chart') || null;
+    const promotedField =
+      succeeded.find(r => r.type === 'metric' || r.type === 'dimension') ||
+      succeeded.find(r => r.type === 'model') ||
+      null;
+    const hasOffer =
+      (result.reclassificationOffers?.length || 0) > 0 ||
+      (!!promotedChart && (!!returnTo?.dashboard || dashboards.length > 0)) ||
+      !!promotedField;
+
+    setPromoting(false);
+
+    // VIS-1226: a clean success closes like every other modal — no toast,
+    // because the Library and canvas already show the newly-saved objects. The
+    // modal only lingers when there's something to act on: a failed row, a
+    // reclassification decision, or one of the offers above. (Reversing the
+    // prior "never auto-close" behavior, which left the user staring at a bare
+    // "Saved N objects" receipt with a Close button on every ordinary save.)
+    if (failed.length === 0 && succeeded.length > 0 && !hasOffer) {
+      onClose?.();
+      return;
+    }
+
+    setPromotedThisRun(result);
     if (failed.length > 0) {
       setError(
         `${failed.length} object${failed.length === 1 ? '' : 's'} failed to promote: ${failed
@@ -305,17 +337,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     if (result.reclassificationOffers?.length > 0) {
       setReclassificationOffers(result.reclassificationOffers);
     }
-    // Deliberately NEVER auto-close here, even on the common all-valid,
-    // no-collision path: `setPromotedThisRun` and a same-tick `onClose()`
-    // land in the SAME React commit, so the "Saved N objects to project"
-    // success message (and its `exploration-promote-success` testid) would
-    // never actually paint — the modal would just vanish, giving the user no
-    // confirmation of what was saved. Root-caused via live reproduction
-    // against the sandbox (integration-gate fix cycle). The "Close" button's
-    // own label already switches to "Close" once `promotedThisRun` is set
-    // (see the JSX below) — that affordance is how the user dismisses after
-    // reviewing the result, for both the success and failure/offer cases.
-  }, [selected, promoteExploration, explorationId]);
+  }, [selected, promoteExploration, explorationId, returnTo, dashboards, onClose]);
 
   const dismissOffer = useCallback(index => {
     setReclassificationOffers(prev => prev.filter((_, i) => i !== index));
@@ -362,13 +384,15 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // `return_to` intent already offering placement, and at least one
   // dashboard exists to place it in.
   const showFallbackDashboardOffer = !!promotedChart && !returnTo?.dashboard && dashboards.length > 0;
-  const [fallbackDashboardName, setFallbackDashboardName] = useState('');
-  useEffect(() => {
-    if (showFallbackDashboardOffer && !fallbackDashboardName) {
-      setFallbackDashboardName(dashboards[0]?.name || '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showFallbackDashboardOffer, dashboards]);
+  // The user's explicit pick, or `null` until they choose one. The effective
+  // name is derived SYNCHRONOUSLY (default = first dashboard) rather than seeded
+  // via an effect: an effect costs an extra render, and the guarded placement
+  // below (whose fn is swapped in post-commit by useGuardedAsync) could capture
+  // the pre-effect empty value if the click lands in that window — which is
+  // exactly the flake a render-timing change surfaced (VIS-1226 review).
+  const [fallbackDashboardChoice, setFallbackDashboardChoice] = useState(null);
+  const fallbackDashboardName =
+    fallbackDashboardChoice != null ? fallbackDashboardChoice : dashboards[0]?.name || '';
   const [fallbackPlaceError, setFallbackPlaceError] = useState(null);
 
   // The double-click guard + `pending` flag for these placement actions lives
@@ -753,7 +777,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
               <Select
                 data-testid="exploration-promote-fallback-dashboard-select"
                 value={fallbackDashboardName}
-                onChange={setFallbackDashboardName}
+                onChange={setFallbackDashboardChoice}
                 disabled={fallbackPlacing}
                 size="sm"
                 isSearchable={false}
