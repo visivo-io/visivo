@@ -116,8 +116,8 @@ describe('LibrarySourceRow', () => {
       )
     );
     fireEvent.contextMenu(screen.getByTestId('library-row-source-warehouse'));
-    fireEvent.click(screen.getByText('Open in new tab'));
-    expect(onContextAction).toHaveBeenCalledWith('openInNewTab', SOURCE);
+    fireEvent.click(screen.getByText('Show lineage'));
+    expect(onContextAction).toHaveBeenCalledWith('showLineage', SOURCE);
   });
 
   test('Enter on the focused row selects it — sources had no keyboard activation at all', () => {

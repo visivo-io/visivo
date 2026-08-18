@@ -282,12 +282,12 @@ describe('Library', () => {
     // `onContextAction` was already being passed to the source row by
     // LibrarySubsection — the old component just never accepted it, so the
     // whole menu was dead for sources.
-    const openWorkspaceTabBackground = jest.fn();
-    seedStore({ openWorkspaceTabBackground });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ openWorkspaceTab });
     renderLibrary();
     fireEvent.contextMenu(screen.getByTestId('library-row-source-local-duck'));
-    fireEvent.click(screen.getByText('Open in new tab'));
-    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
+    fireEvent.click(screen.getByText('Show lineage'));
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
       id: 'source:local-duck',
       type: 'source',
       name: 'local-duck',
@@ -311,50 +311,19 @@ describe('Library', () => {
 
   // Right-click context actions (VIS-811 / Track O O-2) ----------------------
 
-  test('row context "Open in new tab" background-opens (openWorkspaceTabBackground), not openWorkspaceTab', () => {
-    const openWorkspaceTab = jest.fn();
-    const openWorkspaceTabBackground = jest.fn();
-    seedStore({ openWorkspaceTab, openWorkspaceTabBackground });
-    renderLibrary();
-
-    fireEvent.contextMenu(screen.getByTestId('library-row-chart-waterfall'));
-    const menu = screen.getByTestId('library-row-chart-waterfall-context-menu');
-    fireEvent.click(within(menu).getByText('Open in new tab'));
-
-    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
-      id: 'chart:waterfall',
-      type: 'chart',
-      name: 'waterfall',
-    });
-    expect(openWorkspaceTab).not.toHaveBeenCalled();
-  });
-
-  test('row context "Open in right rail" focuses the tab via openWorkspaceTab', () => {
-    const openWorkspaceTab = jest.fn();
-    const openWorkspaceTabBackground = jest.fn();
-    seedStore({ openWorkspaceTab, openWorkspaceTabBackground });
-    renderLibrary();
-
-    fireEvent.contextMenu(screen.getByTestId('library-row-model-monthly_revenue'));
-    const menu = screen.getByTestId('library-row-model-monthly_revenue-context-menu');
-    fireEvent.click(within(menu).getByText('Open in right rail'));
-
-    expect(openWorkspaceTab).toHaveBeenCalledWith({
-      id: 'model:monthly_revenue',
-      type: 'model',
-      name: 'monthly_revenue',
-    });
-    expect(openWorkspaceTabBackground).not.toHaveBeenCalled();
-  });
+  // "Open in right rail" / "Open in new tab" removed (VIS-1234 follow-up):
+  // clicking a row already opens it (covered above), so those items only
+  // duplicated the click. The remaining live menu action tested here is
+  // "Show lineage".
 
   test('a mousedown INSIDE the row menu does not dismiss it (real-cursor click sequence)', () => {
-    const openWorkspaceTabBackground = jest.fn();
-    seedStore({ openWorkspaceTab: jest.fn(), openWorkspaceTabBackground });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ openWorkspaceTab });
     renderLibrary();
 
     fireEvent.contextMenu(screen.getByTestId('library-row-chart-waterfall'));
     const menu = screen.getByTestId('library-row-chart-waterfall-context-menu');
-    const item = within(menu).getByText('Open in new tab');
+    const item = within(menu).getByText('Show lineage');
 
     // A REAL cursor fires mousedown → mouseup → click. If the mousedown
     // dismisses (unmounts) the menu, the click never lands and the action is
@@ -365,7 +334,7 @@ describe('Library', () => {
     ).toBeInTheDocument();
     fireEvent.mouseUp(item);
     fireEvent.click(item);
-    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
       id: 'chart:waterfall',
       type: 'chart',
       name: 'waterfall',
@@ -397,11 +366,11 @@ describe('Library', () => {
 
     fireEvent.contextMenu(screen.getByTestId('library-row-chart-waterfall'));
     const menu = screen.getByTestId('library-row-chart-waterfall-context-menu');
-    fireEvent.click(within(menu).getByText('Open in new tab'));
+    fireEvent.click(within(menu).getByText('Show lineage'));
 
     const ctx = events.find(e => e.eventName === 'library_row_context_action');
     expect(ctx).toBeTruthy();
-    expect(ctx.payload).toEqual({ type: 'chart', name: 'waterfall', action: 'openInNewTab' });
+    expect(ctx.payload).toEqual({ type: 'chart', name: 'waterfall', action: 'showLineage' });
     unsubscribe();
   });
 
@@ -468,24 +437,29 @@ describe('Library', () => {
       expect(openWorkspaceTab).not.toHaveBeenCalled();
     });
 
-    test('a context action with no wired handler (e.g. "Show lineage") only emits telemetry — no crash, no store call', () => {
-      const events = [];
-      const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    test('"Show lineage" opens the object AND lands on its Lineage lens', () => {
       const openWorkspaceTab = jest.fn();
-      const createExploration = jest.fn();
-      const addObjectToActiveExploration = jest.fn();
-      seedStore({ openWorkspaceTab, createExploration, addObjectToActiveExploration });
+      const setWorkspaceLensIntent = jest.fn();
+      const setWorkspaceLens = jest.fn();
+      seedStore({ openWorkspaceTab, setWorkspaceLensIntent, setWorkspaceLens });
       renderLibrary();
 
       fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
       const menu = screen.getByTestId('library-row-insight-revenue_growth-context-menu');
-      expect(() => fireEvent.click(within(menu).getByText('Show lineage'))).not.toThrow();
+      fireEvent.click(within(menu).getByText('Show lineage'));
 
-      expect(createExploration).not.toHaveBeenCalled();
-      expect(addObjectToActiveExploration).not.toHaveBeenCalled();
-      const ctx = events.find(e => e.eventName === 'library_row_context_action');
-      expect(ctx.payload).toEqual({ type: 'insight', name: 'revenue_growth', action: 'showLineage' });
-      unsubscribe();
+      // One-shot object-scoped intent so the per-object pane opens on Lineage,
+      // the tab is opened, and the store lens is set for the dashboard pane.
+      expect(setWorkspaceLensIntent).toHaveBeenCalledWith({
+        objectKey: 'insight:revenue_growth',
+        lens: 'lineage',
+      });
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'insight:revenue_growth',
+        type: 'insight',
+        name: 'revenue_growth',
+      });
+      expect(setWorkspaceLens).toHaveBeenCalledWith('lineage');
     });
 
     test('"Add to exploration" is offered only when the active tab is an exploration, and calls addObjectToActiveExploration', () => {

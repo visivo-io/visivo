@@ -86,6 +86,10 @@ const Library = () => {
   // required props (the parent LeftRail mounts it as `<Library />`).
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
+  // "Show lineage" opens the object on its Lineage lens (same mechanism the
+  // lineage-node click / MiniLineageCard use).
+  const setWorkspaceLensIntent = useStore(s => s.setWorkspaceLensIntent);
+  const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
   const createExploration = useStore(s => s.createExploration);
   const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
   const addObjectToActiveExploration = useStore(s => s.addObjectToActiveExploration);
@@ -259,9 +263,9 @@ const Library = () => {
         name: obj.name,
         action,
       });
-      // VIS-811 / O-2: the open actions are live; `wrapInChart`/`showLineage`/
-      // `delete` stay telemetry-only until their tracks wire them. VIS-1067
-      // wires `exploreThis`/`addToExploration`.
+      // VIS-811 / O-2: the open actions are live; `wrapInChart`/`delete` stay
+      // telemetry-only until their tracks wire them. VIS-1067 wires
+      // `exploreThis`/`addToExploration`; `showLineage` is wired below.
       const type = routeType(obj);
       if (action === 'edit' && openWorkspaceTab) {
         openWorkspaceTab({ id: `${type}:${obj.name}`, type, name: obj.name });
@@ -271,6 +275,17 @@ const Library = () => {
           type,
           name: obj.name,
         });
+      } else if (action === 'showLineage' && openWorkspaceTab) {
+        // Open the object AND land on its Lineage lens. Per-object panes track
+        // their lens locally and ignore the store lens, so a non-dashboard
+        // subject needs the one-shot object-scoped intent to actually open on
+        // Lineage; setWorkspaceLens covers the dashboard pane. Mirrors
+        // MiniLineageCard's `handleOpenNode` / LineageCanvas node-open.
+        if (setWorkspaceLensIntent && type !== 'dashboard') {
+          setWorkspaceLensIntent({ objectKey: `${type}:${obj.name}`, lens: 'lineage' });
+        }
+        openWorkspaceTab({ id: `${type}:${obj.name}`, type, name: obj.name });
+        if (setWorkspaceLens) setWorkspaceLens('lineage');
       } else if (action === 'exploreThis' && createExploration && openWorkspaceTab) {
         const seed = { type, name: obj.name };
         const legacyStateOverride = buildExplorationSeedState
@@ -289,6 +304,8 @@ const Library = () => {
     [
       openWorkspaceTab,
       openWorkspaceTabBackground,
+      setWorkspaceLensIntent,
+      setWorkspaceLens,
       createExploration,
       buildExplorationSeedState,
       addObjectToActiveExploration,

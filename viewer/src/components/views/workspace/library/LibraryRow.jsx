@@ -4,8 +4,6 @@ import {
   PiTreeStructure,
   PiDotsThreeOutlineVertical,
   PiDotsSix,
-  PiPencil,
-  PiArrowSquareOut,
   PiTrash,
   PiCompass,
   PiPlusCircle,
@@ -192,22 +190,8 @@ const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) 
             />
           </li>
         )}
-        <li>
-          <ContextMenuItem
-            icon={PiPencil}
-            label="Open in right rail"
-            hint="↵"
-            onClick={handle('edit')}
-          />
-        </li>
-        <li>
-          <ContextMenuItem
-            icon={PiArrowSquareOut}
-            label="Open in new tab"
-            hint="⌘↵"
-            onClick={handle('openInNewTab')}
-          />
-        </li>
+        {/* "Open in right rail" / "Open in new tab" removed — clicking the row
+            already opens the object, so those items just duplicated the click. */}
         <li>
           <ContextMenuItem
             icon={PiTreeStructure}
