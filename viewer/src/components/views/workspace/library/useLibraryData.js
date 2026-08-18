@@ -76,25 +76,21 @@ const byUnpublishedThenName = (a, b) => {
 // ordered the same way and the row components stay presentational.
 const sorted = rows => [...rows].sort(byUnpublishedThenName);
 
-// A soft-deleted object is still returned by the list endpoints; rendering it
-// left the row sitting in the tree as though the delete had failed.
-const notDeleted = o => o.status !== 'deleted';
 
 // Map a plain store collection into Library rows of a single type.
 //
-// Objects marked for deletion are dropped. A delete is a SOFT delete — the
-// server sets status to "deleted" and the row stays until commit removes it
-// from YAML — and the list endpoints return it unfiltered. Rendering it left a
-// deleted object sitting in the tree as though the delete had failed, which is
-// how it read: confirm the dialog, watch nothing happen.
+// Tombstones are KEPT here, and only here. A delete is a SOFT delete — the
+// server marks the row "deleted" and it stays until a commit removes it from
+// YAML — so until then it is a pending change, and this rail is where pending
+// changes are seen and managed. It carries a red status dot and offers Restore.
 //
-// The pending deletion is not lost by hiding it here: the commit modal lists
-// every staged change with a DELETED badge, which is where "what will this
-// commit do" belongs.
+// Every other surface drops them (see `common/softDelete`): the lineage draws
+// the graph as it WILL be, so a tombstone there is just wrong. Hiding them here
+// too was worse — a pending deletion you cannot see is one you cannot undo, and
+// the only way back was discarding every other pending change with it.
 const mapRows = (list, type) =>
   sorted(
     safeArray(list)
-      .filter(notDeleted)
       .map(o => ({
         id: `${type}:${o.name}`,
         type,
@@ -122,8 +118,7 @@ export function useLibraryData() {
   return useMemo(() => {
     const modelRows = sorted(
       safeArray(models)
-        .filter(notDeleted)
-        .map(m => ({
+          .map(m => ({
           id: `model:${m.name}`,
           type: 'model',
           canonicalType: 'model',
@@ -135,8 +130,7 @@ export function useLibraryData() {
 
     const sourceRows = sorted(
       safeArray(sources)
-        .filter(notDeleted)
-        .map(s => ({
+          .map(s => ({
           id: `source:${s.name}`,
           type: 'source',
           name: s.name,
@@ -150,8 +144,7 @@ export function useLibraryData() {
     // accessor (`.value` vs `.values`) depends on it.
     const inputRows = sorted(
       safeArray(inputs)
-        .filter(notDeleted)
-        .map(i => ({
+          .map(i => ({
           id: `input:${i.name}`,
           type: 'input',
           name: i.name,
@@ -169,8 +162,7 @@ export function useLibraryData() {
     const withParentModel = (list, type) =>
       sorted(
         safeArray(list)
-          .filter(notDeleted)
-          .map(f => ({
+              .map(f => ({
             id: `${type}:${f.name}`,
             type,
             name: f.name,

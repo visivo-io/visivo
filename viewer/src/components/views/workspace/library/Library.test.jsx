@@ -1012,3 +1012,159 @@ describe('Library', () => {
     });
   });
 });
+
+
+describe('row Delete actually deletes (VIS-1234)', () => {
+  const openRowMenu = async rowTestId => {
+    const row = screen.getByTestId(rowTestId);
+    fireEvent.contextMenu(row);
+    return screen.getByText('Delete…');
+  };
+
+  test('confirming deletes through the per-type store action', async () => {
+    const deleteModel = jest.fn().mockResolvedValue({ success: true });
+    seedStore({ deleteModel, closeWorkspaceTab: jest.fn() });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(deleteModel).toHaveBeenCalledWith('monthly_revenue'));
+  });
+
+  test('cancelling deletes nothing', async () => {
+    const deleteModel = jest.fn().mockResolvedValue({ success: true });
+    seedStore({ deleteModel, closeWorkspaceTab: jest.fn() });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-cancel'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('confirm-dialog-confirm')).not.toBeInTheDocument()
+    );
+    expect(deleteModel).not.toHaveBeenCalled();
+  });
+
+  test('a deleted object leaves no tab resolving it', async () => {
+    const closeWorkspaceTab = jest.fn();
+    seedStore({
+      deleteModel: jest.fn().mockResolvedValue({ success: true }),
+      closeWorkspaceTab,
+    });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() =>
+      expect(closeWorkspaceTab).toHaveBeenCalledWith('model:monthly_revenue')
+    );
+  });
+
+  test('a failed delete leaves the tab open', async () => {
+    const closeWorkspaceTab = jest.fn();
+    seedStore({
+      deleteModel: jest.fn().mockResolvedValue({ success: false, error: 'nope' }),
+      closeWorkspaceTab,
+    });
+    renderLibrary();
+
+    fireEvent.click(await openRowMenu('library-row-model-monthly_revenue'));
+    fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('confirm-dialog-confirm')).not.toBeInTheDocument()
+    );
+    expect(closeWorkspaceTab).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('restore and the two kinds of delete (VIS-1234)', () => {
+  const openRowMenu = async rowTestId => {
+    fireEvent.contextMenu(screen.getByTestId(rowTestId));
+  };
+
+  test('a deleted row offers Restore, and it reverts that object', async () => {
+    const restoreDeleted = jest.fn().mockResolvedValue({ success: true });
+    seedStore({
+      models: [{ name: 'tombstoned', status: 'deleted' }],
+      restoreDeleted,
+    });
+    renderLibrary();
+
+    await openRowMenu('library-row-model-tombstoned');
+    fireEvent.click(screen.getByText('Restore'));
+
+    await waitFor(() => expect(restoreDeleted).toHaveBeenCalledWith('model', 'tombstoned'));
+  });
+
+  test('a modified row offers the same action, worded as discarding edits', async () => {
+    // Restore is "revert to the published version" — one action for a pending
+    // deletion and a pending edit alike.
+    const restoreDeleted = jest.fn().mockResolvedValue({ success: true });
+    seedStore({ models: [{ name: 'edited', status: 'modified' }], restoreDeleted });
+    renderLibrary();
+
+    await openRowMenu('library-row-model-edited');
+    fireEvent.click(screen.getByText('Discard changes…'));
+
+    await waitFor(() => expect(restoreDeleted).toHaveBeenCalledWith('model', 'edited'));
+  });
+
+  test('a new row offers no restore — there is no published version to fall back to', async () => {
+    seedStore({ models: [{ name: 'fresh', status: 'new' }] });
+    renderLibrary();
+
+    await openRowMenu('library-row-model-fresh');
+
+    expect(screen.queryByText('Restore')).toBeNull();
+    expect(screen.queryByText('Discard changes…')).toBeNull();
+  });
+
+  test('a published row offers no restore either', async () => {
+    seedStore({ models: [{ name: 'clean', status: 'published' }] });
+    renderLibrary();
+
+    await openRowMenu('library-row-model-clean');
+
+    expect(screen.queryByText('Restore')).toBeNull();
+    expect(screen.queryByText('Discard changes…')).toBeNull();
+  });
+
+  test('deleting a never-committed object warns that it is immediate', async () => {
+    // It has no published version to tombstone, so it goes outright and there
+    // is nothing to restore. Saying so afterwards would be too late.
+    seedStore({
+      models: [{ name: 'fresh', status: 'new' }],
+      deleteModel: jest.fn().mockResolvedValue({ success: true }),
+      closeWorkspaceTab: jest.fn(),
+    });
+    renderLibrary();
+
+    await openRowMenu('library-row-model-fresh');
+    fireEvent.click(screen.getByText('Delete…'));
+
+    expect(await screen.findByTestId('confirm-dialog')).toHaveTextContent(
+      /never been committed/i
+    );
+    expect(screen.getByTestId('confirm-dialog')).toHaveTextContent(/can't be undone/i);
+  });
+
+  test('deleting a published object says it survives until commit and can be restored', async () => {
+    seedStore({
+      models: [{ name: 'live', status: 'published' }],
+      deleteModel: jest.fn().mockResolvedValue({ success: true }),
+      closeWorkspaceTab: jest.fn(),
+    });
+    renderLibrary();
+
+    await openRowMenu('library-row-model-live');
+    fireEvent.click(screen.getByText('Delete…'));
+
+    const dialog = await screen.findByTestId('confirm-dialog');
+    expect(dialog).toHaveTextContent(/until you commit/i);
+    expect(dialog).toHaveTextContent(/restore/i);
+  });
+});

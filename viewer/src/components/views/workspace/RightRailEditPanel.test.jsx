@@ -104,6 +104,9 @@ jest.mock('../common/ChartEditForm', () => ({
   default: ({ chart, onSave, onDirtyChange, onClose }) => (
     <div data-testid="chart-edit-form-stub">
       <span data-testid="chart-stub-onclose">{onClose ? 'present' : 'absent'}</span>
+      <button type="button" data-testid="chart-stub-close" onClick={() => onClose?.()}>
+        close
+      </button>
       {/* VIS-1133: the real form reports dirtiness up so the tab strip's dot
           and its guarded close reflect actual edits. */}
       <button
@@ -966,13 +969,28 @@ describe('RightRailEditPanel leaf dirty wiring (VIS-1133)', () => {
     expect(dirtyOf('chart:rev_chart')).toBe(false);
   });
 
-  test('the forms are no longer handed a no-op onClose', () => {
-    // The original bug: `onClose` was `() => {}`, so every form's Cancel did
-    // nothing. Passing NOTHING is what lets a form tell "I am in a modal" from
-    // "I am in the rail" and render Discard instead.
+  test('onClose is supplied, and closes the tab', () => {
+    // This used to assert `absent`, on the reasoning that withholding onClose is
+    // what lets a form tell "I am in a modal" from "I am in the rail" and render
+    // Discard. That reasoning does not hold: every form branches on `isEditMode`
+    // (`onClick={isEditMode ? discard : onClose}`), which the rail pins by
+    // passing `isCreate: false` — onClose is never its Cancel handler here.
+    //
+    // Withholding it was not free, either. Six of the eight leaf forms call
+    // `onClose()` unconditionally once a delete succeeds, so "absent" meant
+    // `TypeError: onClose is not a function` on every right-rail delete
+    // (VIS-1234). It is the post-delete exit, and closing the tab is what stops
+    // the panel resolving a record that no longer exists.
     seedChartTab();
     renderPanel();
-    expect(screen.getByTestId('chart-stub-onclose')).toHaveTextContent('absent');
+
+    expect(screen.getByTestId('chart-stub-onclose')).toHaveTextContent('present');
+
+    fireEvent.click(screen.getByTestId('chart-stub-close'));
+
+    expect(
+      useStore.getState().workspaceTabs.some(t => t.id === 'chart:rev_chart')
+    ).toBe(false);
   });
 });
 
@@ -1433,5 +1451,109 @@ describe('RightRailEditPanel cloud read-only (VIS-1025)', () => {
     expect(screen.queryByTestId('right-rail-readonly')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('chart-stub-save'));
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+  });
+});
+
+
+describe('every leaf form can exit after a delete (VIS-1234)', () => {
+  // This has now bitten twice under two different prop names: `onClose` was
+  // withheld entirely (six forms threw), and then `ModelEditForm` turned out to
+  // call its exit `onCancel` (that one threw). Rather than fix a third variant
+  // later, assert the contract across the whole directory: whatever a form
+  // calls to leave after a successful delete, the rail must supply it.
+  const fs = require('fs');
+  const path = require('path');
+  const FORMS_DIR = path.join(__dirname, '..', 'common');
+
+  const exitPropOf = source => {
+    const i = source.indexOf('const handleDelete');
+    if (i === -1) return null;
+    const body = source.slice(i, i + 1200);
+    const match = body.match(/\bon(Close|Cancel)\??\.?\(\)/);
+    return match ? `on${match[1]}` : null;
+  };
+
+  test('the rail supplies every exit prop the forms actually call', () => {
+    const supplied = new Set(['onClose', 'onCancel']);
+    const missing = [];
+
+    for (const file of fs.readdirSync(FORMS_DIR)) {
+      if (!file.endsWith('EditForm.jsx')) continue;
+      const source = fs.readFileSync(path.join(FORMS_DIR, file), 'utf8');
+      const prop = exitPropOf(source);
+      if (prop && !supplied.has(prop)) missing.push(`${file} calls ${prop}`);
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  test('every form that exits after a delete does so optionally', () => {
+    // A form may be hosted somewhere that supplies neither — a modal, a future
+    // surface. Calling the prop unguarded is what turned a working delete into
+    // a red error card.
+    const unguarded = [];
+
+    for (const file of fs.readdirSync(FORMS_DIR)) {
+      if (!file.endsWith('EditForm.jsx')) continue;
+      const source = fs.readFileSync(path.join(FORMS_DIR, file), 'utf8');
+      const i = source.indexOf('const handleDelete');
+      if (i === -1) continue;
+      const body = source.slice(i, i + 1200);
+      const call = body.match(/\bon(Close|Cancel)(\??\.)?\(\)/);
+      if (call && call[2] !== '?.') unguarded.push(`${file}: ${call[0]}`);
+    }
+
+    expect(unguarded).toEqual([]);
+  });
+});
+
+
+describe('a deleted record shows Restore, not an edit form (VIS-1234)', () => {
+  const seedDeletedChart = (extra = {}) => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', status: 'deleted', config: {} }],
+      ...extra,
+    });
+  };
+
+  test('the edit form is replaced by the deleted panel', () => {
+    // Editing something scheduled for removal is meaningless: the fields would
+    // save into a row the next commit deletes.
+    seedDeletedChart();
+    renderPanel();
+
+    expect(screen.getByTestId('right-rail-edit-leaf-deleted')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-edit-form-stub')).not.toBeInTheDocument();
+  });
+
+  test('Restore is the only action offered', () => {
+    seedDeletedChart();
+    renderPanel();
+
+    expect(screen.getByTestId('right-rail-edit-leaf-restore')).toBeInTheDocument();
+  });
+
+  test('clicking Restore reverts that object', async () => {
+    const restoreDeleted = jest.fn().mockResolvedValue({ success: true });
+    seedDeletedChart({ restoreDeleted });
+    renderPanel();
+
+    fireEvent.click(screen.getByTestId('right-rail-edit-leaf-restore'));
+
+    await waitFor(() =>
+      expect(restoreDeleted).toHaveBeenCalledWith('chart', 'rev_chart')
+    );
+  });
+
+  test('a live record still gets its form', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', status: 'published', config: {} }],
+    });
+    renderPanel();
+
+    expect(screen.queryByTestId('right-rail-edit-leaf-deleted')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart-edit-form-stub')).toBeInTheDocument();
   });
 });

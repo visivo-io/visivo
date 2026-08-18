@@ -156,7 +156,11 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
       const result = await deleteModel(model.name);
       if (result.success) {
         await checkCommitStatus();
-        onCancel();
+        // Optional, and named `onCancel` here where every sibling form calls it
+        // `onClose` — the rail supplies both for exactly that reason. Calling it
+        // unguarded threw `onCancel is not a function` on every right-rail
+        // delete of a model (VIS-1234).
+        onCancel?.();
       } else {
         setError(result.error || 'Failed to delete model');
         setShowDeleteConfirm(false);

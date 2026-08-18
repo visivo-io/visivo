@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import CommitModal from './CommitModal';
 
 // useStore is selector-based: each call is useStore(state => state.x). The mock
@@ -27,6 +27,7 @@ const baseState = () => ({
   commitChanges: jest.fn().mockResolvedValue({ success: true }),
   discardChanges: jest.fn().mockResolvedValue({ success: true }),
   discardLoading: false,
+  restoreDeleted: jest.fn().mockResolvedValue({ success: true }),
   // null = local serve (capabilities probe 404s); an object = cloud.
   capabilities: null,
 });
@@ -121,5 +122,61 @@ describe('CommitModal', () => {
     fireEvent.click(screen.getByTestId('commit-modal-discard-confirm-button'));
     await waitFor(() => expect(mockState.discardChanges).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockState.closeCommitModal).toHaveBeenCalled());
+  });
+});
+
+
+describe('Undo on a pending deletion (VIS-1234)', () => {
+  const deletion = { type: 'model', name: 'orders', status: 'DELETED' };
+  const edit = { type: 'chart', name: 'revenue', status: 'MODIFIED' };
+
+  test('a deletion offers Undo', () => {
+    mockState.pendingChanges = [deletion];
+    render(<CommitModal />);
+
+    expect(screen.getByTestId('commit-modal-restore-model-orders')).toBeInTheDocument();
+  });
+
+  test('a new or modified change does not', () => {
+    // Those are recovered by editing them back; only a deletion is unreachable
+    // once it leaves the Library.
+    mockState.pendingChanges = [edit];
+    render(<CommitModal />);
+
+    expect(screen.queryByTestId('commit-modal-restore-chart-revenue')).toBeNull();
+  });
+
+  test('Undo restores that object alone', async () => {
+    mockState.pendingChanges = [deletion, edit];
+    render(<CommitModal />);
+
+    fireEvent.click(screen.getByTestId('commit-modal-restore-model-orders'));
+
+    await waitFor(() =>
+      expect(mockState.restoreDeleted).toHaveBeenCalledWith('model', 'orders')
+    );
+    expect(mockState.restoreDeleted).toHaveBeenCalledTimes(1);
+  });
+
+  test('only the row being restored shows its pending state', async () => {
+    const second = { type: 'source', name: 'db', status: 'DELETED' };
+    let resolve;
+    mockState.restoreDeleted = jest.fn(() => new Promise(r => { resolve = r; }));
+    mockState.pendingChanges = [deletion, second];
+    render(<CommitModal />);
+
+    fireEvent.click(screen.getByTestId('commit-modal-restore-model-orders'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('commit-modal-restore-model-orders')).toHaveTextContent(
+        'Restoring…'
+      )
+    );
+    expect(screen.getByTestId('commit-modal-restore-source-db')).toHaveTextContent('Undo');
+
+    // Settle inside act so the unmount doesn't race the state update.
+    await act(async () => {
+      resolve({ success: true });
+    });
   });
 });

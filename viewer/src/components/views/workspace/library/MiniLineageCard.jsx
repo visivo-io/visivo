@@ -3,6 +3,7 @@ import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import LineageSelectorField from '../../lineage/LineageSelectorField';
+import { isDeleted, withoutDeleted } from '../../common/softDelete';
 import {
   neighborhoodSelector,
   parseSelector,
@@ -86,9 +87,16 @@ function effectiveChildNames(entryType, obj, defaultSourceName, sourceNames) {
 
 function buildTypeIndex(storeApi) {
   const lookup = new Map();
+  // COMPLETE, including tombstones. This is the name -> object resolution map,
+  // and the SUBJECT is looked up through it: filtering here meant opening the
+  // lineage of a deleted object found nothing and rendered an empty card, even
+  // though its row is sitting in the Library with a Restore action on it.
+  //
+  // Deleted NEIGHBOURS are excluded during traversal instead (see `visit`
+  // below and `buildReverseIndex`), which is the actual rule — a tombstone is
+  // not part of the graph, but the object you explicitly asked about is.
   const register = (type, list) => {
-    if (!Array.isArray(list)) return;
-    list.forEach(obj => {
+    (Array.isArray(list) ? list : []).forEach(obj => {
       if (obj && obj.name && !lookup.has(obj.name)) {
         lookup.set(obj.name, { type, obj });
       }
@@ -114,11 +122,27 @@ function buildReverseIndex(storeApi) {
     if (!reverse.has(childName)) reverse.set(childName, []);
     reverse.get(childName).push({ name: parentName, type: parentType });
   };
+  // The SAME inherited-default-source rule the upward walk uses.
+  //
+  // A model with no explicit source inherits the project default, and
+  // `buildAncestors` resolves that through `effectiveChildNames` — but this
+  // index was built from the RAW `child_item_names`, so the inherited edge was
+  // never registered in the downward direction. The result: the default source
+  // showed no descendants at all, however many models fed off it, because the
+  // only models pointing at it did so implicitly. Ancestors knew about the
+  // default and descendants did not.
+  const defaultSourceName = storeApi.defaults?.source_name || null;
+  const sourceNames = new Set(
+    (storeApi.sources || []).map(s => s && s.name).filter(Boolean)
+  );
   const scan = (type, list) => {
-    if (!Array.isArray(list)) return;
-    list.forEach(obj => {
+    // Edges FROM a deleted object go with it — otherwise the card still shows
+    // a downstream arrow into something that is no longer there.
+    withoutDeleted(list).forEach(obj => {
       if (!obj || !obj.name) return;
-      getChildItemNames(obj).forEach(childName => add(obj.name, childName, type));
+      effectiveChildNames(type, obj, defaultSourceName, sourceNames).forEach(childName =>
+        add(obj.name, childName, type)
+      );
     });
   };
   scan('model', storeApi.models);
@@ -150,7 +174,7 @@ function unwrapRefName(ref) {
 
 function dashboardMembership(allDashboards) {
   const out = [];
-  if (!Array.isArray(allDashboards)) return out;
+  allDashboards = withoutDeleted(allDashboards);
   const walk = (rows, dashboardName) => {
     if (!Array.isArray(rows)) return;
     rows.forEach(row => {
@@ -193,6 +217,10 @@ function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
     if (depth > maxDepth) return;
     const entry = index.get(name);
     if (!entry) return;
+    // A tombstoned neighbour is not part of the graph — the lineage shows what
+    // the project will look like — and we do not traverse THROUGH it either,
+    // since its own edges are going away with it.
+    if (isDeleted(entry.obj)) return;
     const key = `${entry.type}:${name}`;
     if (seen.has(key)) {
       const existing = out.find(n => n.type === entry.type && n.name === name);

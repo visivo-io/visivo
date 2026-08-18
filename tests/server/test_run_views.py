@@ -505,6 +505,79 @@ class TestStagedSet:
         assert staged.list() == []
 
 
+class TestDebouncedRunScope:
+    """What the debounced run-on-save actually asks the DAG to build.
+
+    ``StagedManager.dag_filter`` was already right; the run-on-save path built
+    its own selector from the saved names and never consulted it. A delete has
+    no expressible name-derived selector — ``+<deleted>+`` asks for a node that
+    is gone — so the run failed naming the object the user had just removed.
+    """
+
+    class _App:
+        """Just enough of the Flask app for the trigger: a run manager sentinel
+        and the real staged manager."""
+
+        def __init__(self, staged_manager):
+            self.run_manager = object()
+            self.staged_manager = staged_manager
+
+    def test_a_deleted_resource_makes_it_a_full_rebuild(self):
+        staged = StagedManager.instance()
+        staged.record("model", "orders", "h1", status="deleted")
+
+        assert save_run_executor._dag_filter_for(self._App(staged), ["orders"]) == ""
+
+    def test_a_delete_alongside_edits_still_forces_a_full_rebuild(self):
+        """Coalesced saves: the delete has to win, because the deleted node's
+        consumers have to recompute."""
+        staged = StagedManager.instance()
+        staged.record("source", "db", "h1")
+        staged.record("model", "orders", "h2", status="deleted")
+
+        assert save_run_executor._dag_filter_for(self._App(staged), ["db", "orders"]) == ""
+
+    def test_an_ordinary_save_still_scopes_to_the_staged_set(self):
+        staged = StagedManager.instance()
+        staged.record("source", "db", "h1")
+
+        assert save_run_executor._dag_filter_for(self._App(staged), ["db"]) == "+db+"
+
+    def test_falls_back_to_the_saved_names_without_a_staged_manager(self):
+        """Minimal harnesses have no staged manager; there is nothing better to
+        use than the names, and it must not raise."""
+
+        class _Bare:
+            run_manager = object()
+
+        assert save_run_executor._dag_filter_for(_Bare(), ["db"]) == "+db+"
+
+    def test_an_empty_staged_set_is_not_read_as_a_deletion(self):
+        """``dag_filter`` returns "" for BOTH "nothing staged" and "something was
+        deleted". Conflating them would turn a plain name-scoped request into a
+        full rebuild of the project."""
+        staged = StagedManager.instance()
+        assert staged.list() == []
+
+        assert save_run_executor._dag_filter_for(self._App(staged), ["db"]) == "+db+"
+
+    def test_the_debounced_fire_uses_the_staged_filter(self):
+        """End of the wire: _fire must hand run_now the staged answer, not one
+        derived from the pending names."""
+        staged = StagedManager.instance()
+        staged.record("model", "orders", "h1", status="deleted")
+        app = self._App(staged)
+
+        with save_run_executor._pending_lock:
+            save_run_executor._pending_names.add("orders")
+
+        with patch.object(save_run_executor, "run_now") as run_now:
+            save_run_executor._fire(app)
+
+        run_now.assert_called_once()
+        assert run_now.call_args[0][1] == ""
+
+
 class TestTriggerRunEndpoint:
     def _unregistered_run(self, dag_filter):
         """A Run the manager doesn't know about — creating one through the

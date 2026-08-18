@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { PiPencil, PiPlus } from 'react-icons/pi';
-import useStore from '../../../stores/store';
+import { PiArrowCounterClockwise, PiPencil, PiPlus, PiTrash } from 'react-icons/pi';
+import useStore, { ObjectStatus } from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
 import useDebouncedSave from './useDebouncedSave';
 import SelectionChip from './SelectionChip';
@@ -126,15 +126,16 @@ const ReadOnlyNotice = ({ editAction }) => (
   </div>
 );
 
-const Placeholder = ({ title, body, testId }) => (
+const Placeholder = ({ title, body, testId, icon: Icon = PiPencil, action = null }) => (
   <div
     data-testid={testId}
     className="flex flex-1 items-start justify-center px-6 py-8 text-center"
   >
     <div className="text-gray-500">
-      <PiPencil aria-hidden="true" className="mx-auto mb-2 h-5 w-5 text-gray-400" />
+      <Icon aria-hidden="true" className="mx-auto mb-2 h-5 w-5 text-gray-400" />
       <p className="text-[13px] font-medium text-gray-900">{title}</p>
       {body && <p className="mt-1 text-[11px] leading-relaxed text-gray-500">{body}</p>}
+      {action && <div className="mt-3 flex justify-center">{action}</div>}
     </div>
   </div>
 );
@@ -709,6 +710,15 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   // advertise unsaved work that has already been dropped, and the close
   // confirm would fire over nothing.
   const setWorkspaceTabDirty = useStore(s => s.setWorkspaceTabDirty);
+  const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
+  const restoreDeleted = useStore(s => s.restoreDeleted);
+  const [restoring, setRestoring] = useState(false);
+  const handleRestore = useCallback(async () => {
+    if (typeof restoreDeleted !== 'function') return;
+    setRestoring(true);
+    await restoreDeleted(type, name);
+    setRestoring(false);
+  }, [restoreDeleted, type, name]);
   const [leafDirty, setLeafDirty] = useState(false);
   useEffect(() => {
     const tabId = `${type}:${name}`;
@@ -753,6 +763,38 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   //   - an EMPTY or not-yet-array collection → ambiguous (fetch may still be in
   //     flight, e.g. a fresh deep link) → LOADING, biased this way so a
   //     transient initial load never flashes a "not found" error.
+  // A tombstoned record gets a Restore panel, not an edit form.
+  //
+  // Editing something scheduled for removal is meaningless: the fields would
+  // save into a row the next commit deletes, and the form's own Delete would
+  // offer to delete it again. The one action that makes sense here is undoing
+  // the deletion, so that is the only one offered (VIS-1234).
+  if (renderForm && record && record.status === ObjectStatus.DELETED) {
+    return (
+      <>
+        <SelectionChip type={type} name={name} subtitle={singular} />
+        <Placeholder
+          testId="right-rail-edit-leaf-deleted"
+          icon={PiTrash}
+          title={`${singular.charAt(0).toUpperCase() + singular.slice(1)} deleted`}
+          body={`"${name}" will be removed from the project when you commit. Restore it to keep it.`}
+          action={
+            <button
+              type="button"
+              onClick={handleRestore}
+              disabled={restoring}
+              data-testid="right-rail-edit-leaf-restore"
+              className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium text-gray-700 ring-1 ring-gray-300 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              <PiArrowCounterClockwise aria-hidden="true" className="h-3.5 w-3.5" />
+              {restoring ? 'Restoring…' : 'Restore'}
+            </button>
+          }
+        />
+      </>
+    );
+  }
+
   if (renderForm && !record) {
     const loading = !Array.isArray(collection) || collection.length === 0;
     return (
@@ -776,11 +818,30 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   }
 
   if (renderForm) {
+    const closeRecordTab = () =>
+      closeWorkspaceTab && closeWorkspaceTab(`${type}:${name}`);
+
     const common = {
       isCreate: false,
-      // Deliberately no `onClose`: there is no modal here, and handing the
-      // forms a no-op is what left Cancel dead for so long. In edit mode they
-      // render Discard and revert locally instead.
+      // `onClose` is the post-DELETE exit, not a Cancel handler. In edit mode —
+      // which the rail always is — the forms wire Cancel to their own local
+      // `discard`, so this is only ever reached after a successful delete.
+      //
+      // It used to be omitted on the grounds that handing the forms a no-op is
+      // what left Cancel dead. But six of the eight leaf forms call `onClose()`
+      // unconditionally once a delete succeeds, so omitting it did not mean
+      // "no close" — it meant `TypeError: onClose is not a function` every time
+      // someone deleted from the right rail (VIS-1234). Closing the tab is also
+      // the behaviour that was wanted: otherwise the panel stays open on a
+      // record that no longer exists and renders the not-found card, which
+      // reads as the delete having failed.
+      onClose: closeRecordTab,
+      // Same handler under the other name the forms use. `ModelEditForm` calls
+      // its exit `onCancel` where the rest call it `onClose`; supplying only one
+      // means the odd form out throws instead of closing. In edit mode — which
+      // the rail always is — neither is a Cancel handler: the forms wire Cancel
+      // to their own local `discard`.
+      onCancel: closeRecordTab,
       onSave: handleObjectSave,
       onNavigateToEmbedded: noop,
       onGoBack: noop,

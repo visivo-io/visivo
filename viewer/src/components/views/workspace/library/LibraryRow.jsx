@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import {
   PiTreeStructure,
+  PiArrowCounterClockwise,
   PiDotsThreeOutlineVertical,
   PiDotsSix,
   PiTrash,
@@ -112,9 +113,23 @@ export const getTypeDef = type => {
 // identical unpublished-changes dot rather than forking it.
 export const StatusDot = ({ status }) => {
   if (!status || status === ObjectStatus.PUBLISHED) return null;
-  const isNew = status === ObjectStatus.NEW;
-  const colorClass = isNew ? 'bg-green-500' : 'bg-amber-500';
-  const title = isNew ? 'New — not yet published' : 'Modified — has unpublished changes';
+  // Built inside the component, NOT at module scope. `stores/store` reaches
+  // this file through a require cycle (store -> workspaceStore -> workspaceUrl
+  // -> higherLevelViews -> ProjectHomePane -> ProjectEditor ->
+  // WorkspaceDndContext -> LibraryDragPreview -> LibraryRow), so `ObjectStatus`
+  // is still undefined while this module is evaluating — a module-level map
+  // keyed on it throws `Cannot read properties of undefined` and takes down
+  // every suite that transitively imports the store.
+  const dot = {
+    [ObjectStatus.NEW]: ['bg-green-500', 'New — not yet published'],
+    [ObjectStatus.MODIFIED]: ['bg-amber-500', 'Modified — has unpublished changes'],
+    // Deleted rows are the reason the Library still renders tombstones at all.
+    // Everywhere else drops them — the lineage draws the graph as it WILL be —
+    // but this rail is where pending state is managed, and a pending deletion
+    // you cannot see is one you cannot undo.
+    [ObjectStatus.DELETED]: ['bg-red-500', 'Deleted — will be removed on commit'],
+  };
+  const [colorClass, title] = dot[status] || dot[ObjectStatus.MODIFIED];
   return (
     <span
       className={`mr-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${colorClass}`}
@@ -168,6 +183,11 @@ const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) 
   const isInsight = obj.type === 'insight';
   const canExploreThis = EXPLORE_THIS_TYPES.includes(obj.type);
   const canAddThisToExploration = canAddToExploration && EXPLORATION_DRAG_TYPES.includes(obj.type);
+  // Only a row with something pending has anything to revert. A published row
+  // is already what went live, and a NEW one has no published version to fall
+  // back to — deleting it is the way to get rid of it.
+  const isTombstoned = obj.status === ObjectStatus.DELETED;
+  const canRestore = isTombstoned || obj.status === ObjectStatus.MODIFIED;
   const handle = action => () => {
     onAction && onAction(action, obj);
     onDismiss && onDismiss();
@@ -219,16 +239,35 @@ const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) 
             />
           </li>
         )}
-        <MenuDivider />
-        <li>
-          <ContextMenuItem
-            icon={PiTrash}
-            label="Delete…"
-            hint="⌫"
-            destructive
-            onClick={handle('delete')}
-          />
-        </li>
+        {canRestore && (
+          <>
+            <MenuDivider />
+            <li>
+              <ContextMenuItem
+                icon={PiArrowCounterClockwise}
+                // One action, two states: it drops whatever is pending and
+                // falls back to the published version — undoing a deletion or
+                // discarding edits, depending on which the row has.
+                label={obj.status === ObjectStatus.DELETED ? 'Restore' : 'Discard changes…'}
+                onClick={handle('restore')}
+              />
+            </li>
+          </>
+        )}
+        {!isTombstoned && (
+          <>
+            <MenuDivider />
+            <li>
+              <ContextMenuItem
+                icon={PiTrash}
+                label="Delete…"
+                hint="⌫"
+                destructive
+                onClick={handle('delete')}
+              />
+            </li>
+          </>
+        )}
       </ul>
     </div>
   );

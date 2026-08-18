@@ -145,3 +145,60 @@ describe('useLineageDag — dashboard recurses into nested Item.rows (VIS-826)',
     expect(sources).toContain('chart-inline-nested-chart');
   });
 });
+
+
+describe('useLineageDag — soft-deleted objects (VIS-1234)', () => {
+  test('a deleted object is not a node', () => {
+    mockStoreState({
+      sources: [{ name: 'db' }],
+      models: [
+        { name: 'orders', source: '${ref(db)}' },
+        { name: 'gone', source: '${ref(db)}', status: 'deleted' },
+      ],
+    });
+
+    const { result } = renderHook(() => useLineageDag());
+    const names = result.current.nodes.map(n => n.data.name);
+
+    expect(names).toContain('orders');
+    expect(names).not.toContain('gone');
+  });
+
+  test('edges into and out of a deleted object go with it', () => {
+    // A tombstoned node left its edges behind, so the graph drew arrows into
+    // something that was no longer drawn.
+    mockStoreState({
+      sources: [{ name: 'db' }],
+      models: [{ name: 'gone', source: '${ref(db)}', status: 'deleted' }],
+      insights: [{ name: 'chart_feed', model: '${ref(gone)}' }],
+    });
+
+    const { result } = renderHook(() => useLineageDag());
+    const touchesGone = result.current.edges.filter(
+      e => `${e.source} ${e.target}`.includes('gone')
+    );
+
+    expect(touchesGone).toEqual([]);
+  });
+
+  test('every collection is filtered, not just models', () => {
+    mockStoreState({
+      sources: [{ name: 'live_source' }, { name: 'dead_source', status: 'deleted' }],
+      models: [{ name: 'dead_model', status: 'deleted' }],
+      insights: [{ name: 'dead_insight', status: 'deleted' }],
+      charts: [{ name: 'dead_chart', status: 'deleted' }],
+      tables: [{ name: 'dead_table', status: 'deleted' }],
+      markdowns: [{ name: 'dead_markdown', status: 'deleted' }],
+      inputs: [{ name: 'dead_input', status: 'deleted' }],
+      dashboards: [{ name: 'dead_dashboard', status: 'deleted' }],
+      dimensions: [{ name: 'dead_dimension', status: 'deleted' }],
+      metrics: [{ name: 'dead_metric', status: 'deleted' }],
+      relations: [{ name: 'dead_relation', status: 'deleted' }],
+    });
+
+    const { result } = renderHook(() => useLineageDag());
+    const names = result.current.nodes.map(n => n.data.name);
+
+    expect(names).toEqual(['live_source']);
+  });
+});

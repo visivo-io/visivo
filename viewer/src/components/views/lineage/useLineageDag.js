@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import dagre from 'dagre';
 import useStore from '../../../stores/store';
 import { parseRefValue } from '../../../utils/refString';
+import { withoutDeleted } from '../common/softDelete';
 
 /**
  * Compute layout using dagre (left-to-right)
@@ -129,18 +130,42 @@ function extractDashboardItemRefs(config) {
  * Uses child_item_names from backend for relationships
  */
 export function useLineageDag() {
-  const sources = useStore(state => state.sources);
-  const models = useStore(state => state.models);
-  const dimensions = useStore(state => state.dimensions);
-  const metrics = useStore(state => state.metrics);
-  const relations = useStore(state => state.relations);
-  const insights = useStore(state => state.insights);
-  const markdowns = useStore(state => state.markdowns);
-  const charts = useStore(state => state.charts);
-  const tables = useStore(state => state.tables);
-  const dashboards = useStore(state => state.dashboards);
+  const rawSources = useStore(state => state.sources);
+  const rawModels = useStore(state => state.models);
+  const rawDimensions = useStore(state => state.dimensions);
+  const rawMetrics = useStore(state => state.metrics);
+  const rawRelations = useStore(state => state.relations);
+  const rawInsights = useStore(state => state.insights);
+  const rawMarkdowns = useStore(state => state.markdowns);
+  const rawCharts = useStore(state => state.charts);
+  const rawTables = useStore(state => state.tables);
+  const rawDashboards = useStore(state => state.dashboards);
   const defaults = useStore(state => state.defaults);
-  const inputs = useStore(state => state.inputs);
+  const rawInputs = useStore(state => state.inputs);
+
+  // Tombstones are dropped before anything else looks at a collection.
+  //
+  // A delete is a SOFT delete — the row keeps coming back from the list
+  // endpoints until a commit removes it from YAML — so reading the store raw
+  // drew deleted objects as live nodes, edges and all. The Library hid them and
+  // the graph did not, which is what made a delete look half-applied
+  // (VIS-1234).
+  //
+  // Filtered INSIDE the memo, not at the `useStore` calls: `withoutDeleted`
+  // returns a fresh array every call, so filtering at the selector would give
+  // the dependency array a new identity on every render and rebuild the whole
+  // DAG each time.
+  const sources = useMemo(() => withoutDeleted(rawSources), [rawSources]);
+  const models = useMemo(() => withoutDeleted(rawModels), [rawModels]);
+  const dimensions = useMemo(() => withoutDeleted(rawDimensions), [rawDimensions]);
+  const metrics = useMemo(() => withoutDeleted(rawMetrics), [rawMetrics]);
+  const relations = useMemo(() => withoutDeleted(rawRelations), [rawRelations]);
+  const insights = useMemo(() => withoutDeleted(rawInsights), [rawInsights]);
+  const markdowns = useMemo(() => withoutDeleted(rawMarkdowns), [rawMarkdowns]);
+  const charts = useMemo(() => withoutDeleted(rawCharts), [rawCharts]);
+  const tables = useMemo(() => withoutDeleted(rawTables), [rawTables]);
+  const dashboards = useMemo(() => withoutDeleted(rawDashboards), [rawDashboards]);
+  const inputs = useMemo(() => withoutDeleted(rawInputs), [rawInputs]);
 
   const dag = useMemo(() => {
     const nodes = [];

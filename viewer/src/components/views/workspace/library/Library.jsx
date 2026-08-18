@@ -11,6 +11,29 @@ import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsSto
 import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
 import ViewSwitcher from '../ViewSwitcher';
+import { useConfirm } from '../../../common/ConfirmDialog';
+import { ObjectStatus } from '../../../../stores/store';
+
+// Row Delete -> the per-type store action. Every one has the same shape (API
+// call, refetch, checkCommitStatus) and returns `{ success, error }`, so the
+// row needs no per-type branching beyond picking the name.
+//
+// The row's Delete used to be telemetry-only: `handleContextAction` emitted the
+// event and had no `delete` branch at all, so confirming the dialog did
+// nothing (VIS-1234).
+const DELETE_ACTION = {
+  source: 'deleteSource',
+  model: 'deleteModel',
+  dimension: 'deleteDimension',
+  metric: 'deleteMetric',
+  relation: 'deleteRelation',
+  insight: 'deleteInsight',
+  chart: 'deleteChart',
+  table: 'deleteTable',
+  markdown: 'deleteMarkdown',
+  input: 'deleteInput',
+  dashboard: 'deleteDashboard',
+};
 
 /**
  * Library — VIS-769 / Track C C1 (+ C2 / C3).
@@ -237,6 +260,11 @@ const Library = () => {
   // `openCreate*Modal` flags had no mounted modal in the Workspace — every
   // "+ New X" was a silent no-op.)
   const createWorkspaceObject = useStore(s => s.createWorkspaceObject);
+  // Resolved at call time rather than subscribed per-type: there are eleven
+  // delete actions and a row only ever needs the one matching its type.
+  const storeApi = useStore;
+  const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const handleRowClick = useCallback(
     obj => {
@@ -254,6 +282,49 @@ const Library = () => {
       });
     },
     [openWorkspaceTab]
+  );
+
+  const handleRestore = useCallback(
+    async (type, name) => {
+      const restoreFn = storeApi.getState().restoreDeleted;
+      if (typeof restoreFn !== 'function') return;
+      await restoreFn(type, name);
+    },
+    [storeApi]
+  );
+
+  const handleDelete = useCallback(
+    async (type, name, status) => {
+      // The two deletes are genuinely different and the confirm has to say so.
+      //
+      // A published object is TOMBSTONED: the YAML is untouched until commit,
+      // and Restore in this menu brings it back. A never-published one has no
+      // published version to fall back to, so it is removed outright and there
+      // is nothing to restore — telling the user that afterwards would be too
+      // late.
+      const isDraftOnly = status === ObjectStatus.NEW;
+      const ok = await confirm({
+        title: `Delete ${name}?`,
+        body: isDraftOnly
+          ? `This ${type} has never been committed, so deleting it removes it immediately. This can't be undone.`
+          : `This marks the ${type} for deletion. The project keeps it until you commit, and you can restore it from this menu before then.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      });
+      if (!ok) return;
+
+      const actionName = DELETE_ACTION[type];
+      const deleteFn = actionName ? storeApi.getState()[actionName] : null;
+      if (typeof deleteFn !== 'function') return;
+
+      const result = await deleteFn(name);
+      if (result?.success === false) return;
+
+      // The object is gone from the tree, so a tab still open on it would sit
+      // there resolving a record that no longer exists.
+      if (closeWorkspaceTab) closeWorkspaceTab(`${type}:${name}`);
+    },
+    [confirm, storeApi, closeWorkspaceTab]
   );
 
   const handleContextAction = useCallback(
@@ -299,6 +370,10 @@ const Library = () => {
         });
       } else if (action === 'addToExploration' && addObjectToActiveExploration) {
         addObjectToActiveExploration({ type, name: obj.name, parentModel: obj.parentModel });
+      } else if (action === 'delete') {
+        handleDelete(type, obj.name, obj.status);
+      } else if (action === 'restore') {
+        handleRestore(type, obj.name);
       }
     },
     [
@@ -309,6 +384,8 @@ const Library = () => {
       createExploration,
       buildExplorationSeedState,
       addObjectToActiveExploration,
+      handleDelete,
+      handleRestore,
     ]
   );
 
@@ -511,6 +588,7 @@ const Library = () => {
       >
         {libraryFooterHint(scope)}
       </div>
+      {ConfirmDialog}
     </aside>
   );
 };
