@@ -1707,7 +1707,7 @@ describe('promoteExploration', () => {
     ...overrides,
   });
 
-  test('flushes promoted drafts to disk by committing after a successful save loop', async () => {
+  test('saves promoted rows to the draft/cache layer but never force-commits (VIS-1235)', async () => {
     buildPromoteChecklist.mockResolvedValue([checklistRow()]);
     const saveModel = jest.fn().mockResolvedValue({ success: true });
     const commitChanges = jest.fn().mockResolvedValue({ success: true });
@@ -1719,12 +1719,14 @@ describe('promoteExploration', () => {
       await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
     });
     expect(saveModel).toHaveBeenCalledWith('orders_q', { sql: 'select 1' });
-    // commit is the ONLY path that writes project YAML under `visivo serve`;
-    // without it "Save to project" reported success while nothing hit disk.
-    expect(commitChanges).toHaveBeenCalledTimes(1);
+    // VIS-1235: promote stops at the draft/cache tier. Saved objects land as
+    // PENDING CHANGES in the commit panel; the Commit button — not promote —
+    // writes YAML, once and deliberately. Promote must never force a commit
+    // (the old force-commit also swallowed commit failures in a bare `catch {}`).
+    expect(commitChanges).not.toHaveBeenCalled();
   });
 
-  test('does NOT commit when nothing was actually saved (all rows invalid)', async () => {
+  test('does not save (or commit) when nothing is valid to promote (all rows invalid)', async () => {
     buildPromoteChecklist.mockResolvedValue([checklistRow({ valid: false })]);
     const saveModel = jest.fn().mockResolvedValue({ success: true });
     const commitChanges = jest.fn().mockResolvedValue({ success: true });
