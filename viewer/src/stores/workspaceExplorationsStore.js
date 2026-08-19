@@ -879,28 +879,17 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         });
       }
 
-      // Persist the just-promoted drafts to the project's YAML files. The
-      // per-type `saveX` actions above only write each manager's *cached*
-      // (draft) tier (POST /api/<type>/<name>/ -> save_from_config -> in-memory
-      // cache); they never touch YAML. The commit endpoint
-      // (/api/projects/<id>/commit/ -> ProjectWriter) is the ONLY path that
-      // writes project files under `visivo serve`, so without this "Save to
-      // project" reported success while project.visivo.yml was never written —
-      // a new-user blocker on a fresh, empty project. Gated on an actual save
-      // so an all-invalid promote never fires a no-op commit. commitChanges
-      // itself no-ops when there is no active project (e.g. trimmed test
-      // stores), so this is safe.
-      if (results.some(r => r.success)) {
-        // A commit (write-to-disk) failure must NOT abort the promote flow: the
-        // objects are already saved to the draft cache, commitChanges records
-        // its own error in `commitError`, and downstream steps (dashboard
-        // placement, return_to consumption) must still run.
-        try {
-          await get().commitChanges?.();
-        } catch {
-          /* best-effort persist; see commitError */
-        }
-      }
+      // VIS-1235: promote deliberately STOPS at the draft/cache layer. The
+      // per-type `saveX` actions above write each manager's *cached* (draft)
+      // tier (POST /api/<type>/<name>/ -> save_from_config -> in-memory cache);
+      // they never touch YAML. Promoted objects therefore land as PENDING
+      // CHANGES in the commit panel, alongside every other workspace edit, and
+      // the Commit button writes them to project.visivo.yml — once,
+      // deliberately, like the rest of the workspace. Promote no longer
+      // force-calls commitChanges() here (which wrote YAML on every "Save to
+      // project" and swallowed any commit failure in a bare `catch {}`). The
+      // returned `success` reflects the per-row SAVE results below, so a save
+      // that doesn't land is surfaced to the caller.
 
       return {
         success: results.length > 0 && results.every(r => r.success),

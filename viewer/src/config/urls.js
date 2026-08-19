@@ -128,7 +128,6 @@ const URL_PATTERNS = {
 
     // ---- Local working copy ---------------------------------------------
     // The local server's git-ish surface: staged edits and how they land.
-    writeChanges: '/api/project/write_changes/',
     commitStatus: '/api/commit/status/',
     commitPending: '/api/commit/pending/',
     commit: '/api/commit/',
