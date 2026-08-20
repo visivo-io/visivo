@@ -115,6 +115,25 @@ describe('ExplorationQueryChips', () => {
     expect(badge.className).not.toMatch(/\bteal-|\bcyan-/);
   });
 
+  // VIS-1228: the chip strip is `overflow-x-auto`, which the CSS spec forces to
+  // compute `overflow-y: auto` as well — an in-flow absolute menu dropping
+  // below the strip is clipped out of sight (the "dots do nothing" bug). The
+  // menu is portaled to <body> to escape the clip; guard that its items render
+  // OUTSIDE the chip-strip container rather than nested inside it.
+  test('the ⋮ menu is portaled outside the overflow-clipping chip strip', () => {
+    act(() => {
+      useStore.getState().createModelTab('orders_q');
+    });
+    render(<ExplorationQueryChips />);
+    fireEvent.click(screen.getByTestId('query-chip-orders_q-menu-trigger'));
+
+    const strip = screen.getByTestId('exploration-query-chips');
+    const renameAction = screen.getByTestId('query-chip-orders_q-rename-action');
+    expect(renameAction).toBeInTheDocument();
+    // A descendant of the scroll container would be clipped; portaling lifts it out.
+    expect(strip.contains(renameAction)).toBe(false);
+  });
+
   describe('rename (active chip only)', () => {
     test('the ⋮ menu Rename action swaps the chip for an inline input; committing renames the tab', () => {
       act(() => {

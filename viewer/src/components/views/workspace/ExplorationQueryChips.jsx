@@ -175,6 +175,12 @@ const QueryChip = ({
           <Dropdown
             align="left"
             width={140}
+            // The chip strip is `overflow-x-auto`, which the CSS spec forces to
+            // compute `overflow-y: auto` as well — an in-flow absolute panel
+            // dropping below the strip is clipped out of sight (the menu
+            // "does nothing"). Portal it to the body so it's actually visible
+            // (VIS-1228).
+            portal
             trigger={
               <button
                 type="button"
