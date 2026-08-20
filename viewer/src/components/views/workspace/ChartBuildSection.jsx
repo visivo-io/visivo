@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
+import { PiCaretDown, PiCaretRight, PiPlus, PiX, PiPencilSimple } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import EmbeddedPill from '../lineage/EmbeddedPill';
 import useStore from '../../../stores/store';
+import PanelMenu from '../../common/PanelMenu';
 import { selectInsightStatus } from '../../../stores/explorerStore';
 import { getSchema } from '../../../schemas/schemas';
 import { SchemaEditor } from '../common/SchemaEditor/SchemaEditor';
@@ -52,6 +53,18 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
   const [renameError, setRenameError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const skipNextCommitRef = useRef(false);
+  const nameInputRef = useRef(null);
+
+  // VIS-1224: the ⋮ menu's "Rename" focuses the existing inline name field
+  // (selecting its text). A loaded/saved chart's name is not editable here
+  // (the field is `disabled`), so the menu item is disabled in that case —
+  // renaming a promoted chart is VIS-1209's project-wide ${ref()} rewrite.
+  const startRename = useCallback(() => {
+    const el = nameInputRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, []);
 
   useEffect(() => {
     if (!isEditing) {
@@ -167,6 +180,7 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
 
         <span className="flex-1 flex flex-col">
           <input
+            ref={nameInputRef}
             data-testid="chart-name-input"
             value={renameValue}
             disabled={isLoadedChart}
@@ -203,6 +217,20 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
             </span>
           )}
         </span>
+
+        <PanelMenu
+          testId="chart"
+          ariaLabel="Chart options"
+          items={[
+            {
+              id: 'rename',
+              label: 'Rename',
+              icon: PiPencilSimple,
+              disabled: isLoadedChart,
+              onSelect: startRename,
+            },
+          ]}
+        />
 
         <button
           data-testid="chart-close"

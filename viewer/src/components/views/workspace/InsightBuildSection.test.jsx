@@ -932,6 +932,27 @@ describe('InsightBuildSection', () => {
       expect(input).toHaveValue('test_insight');
     });
 
+    // VIS-1224: the ⋮ panel menu is the discoverable rename entry point.
+    it('the ⋮ menu Rename item enters rename mode for a new insight', async () => {
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-insight-test_insight'));
+      fireEvent.click(screen.getByTestId('panel-menu-item-rename-insight-test_insight'));
+      expect(screen.getByTestId('insight-rename-input-test_insight')).toHaveValue('test_insight');
+    });
+
+    it('the ⋮ menu Rename item is disabled for a non-new (loaded) insight', async () => {
+      useStore.setState({
+        explorerInsightStates: { test_insight: { ...defaultInsightState, isNew: false } },
+      });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-insight-test_insight'));
+      expect(screen.getByTestId('panel-menu-item-rename-insight-test_insight')).toBeDisabled();
+    });
+
     it('committing a trimmed, changed name on blur calls renameInsight and exits rename mode', async () => {
       const renameInsight = jest.fn();
       useStore.setState({ renameInsight });

@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
+import { PiCaretDown, PiCaretRight, PiX, PiPlus, PiPencilSimple } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../../stores/store';
+import PanelMenu from '../../common/PanelMenu';
 import {
   getSourceDialect,
   selectInsightStatus,
@@ -347,6 +348,11 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
     [insightName, removeInsightInteraction]
   );
 
+  const startRename = useCallback(() => {
+    setIsRenaming(true);
+    setRenameValue(insightName);
+  }, [insightName]);
+
   const commitRename = useCallback(() => {
     const trimmed = renameValue.trim();
     if (trimmed && trimmed !== insightName) {
@@ -425,10 +431,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
             data-testid={`insight-name-${insightName}`}
             onClick={e => {
               e.stopPropagation();
-              if (insightState?.isNew) {
-                setIsRenaming(true);
-                setRenameValue(insightName);
-              }
+              if (insightState?.isNew) startRename();
             }}
           >
             {insightName}
@@ -441,6 +444,24 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
             className={`w-2 h-2 rounded-full flex-shrink-0 ${status === 'new' ? 'bg-green-500' : 'bg-amber-500'}`}
           />
         )}
+
+        {/* VIS-1224: reusable ⋮ menu. Rename only applies to a still-draft
+            insight — a promoted/loaded insight's inline rename is VIS-1209's
+            project-wide ${ref()} rewrite, out of scope here (matches
+            `renameInsight`'s own `isNew` guard). */}
+        <PanelMenu
+          testId={`insight-${insightName}`}
+          ariaLabel={`Options for ${insightName}`}
+          items={[
+            {
+              id: 'rename',
+              label: 'Rename',
+              icon: PiPencilSimple,
+              disabled: !insightState?.isNew,
+              onSelect: startRename,
+            },
+          ]}
+        />
 
         <button
           data-testid={`insight-remove-${insightName}`}

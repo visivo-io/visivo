@@ -396,10 +396,9 @@ const ExplorationBuildRail = ({ explorationId }) => {
           `autoScroll.canScroll`) — auto-scrolling THIS container mid-drag is
           what moved x/y drop targets out from under the cursor. */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3" data-dnd-freeze-scroll>
-        <ChartBuildSection isExpanded={chartExpanded} onToggleExpand={handleToggleChart} />
-
-        <div className="border-t-2 border-gray-200" />
-
+        {/* VIS-1224: the insight pane(s) stack ABOVE the chart pane — the
+            chart aggregates the insights listed above it, so building an
+            insight then seeing it fold into the chart below reads top-down. */}
         {chartInsightNames.map(name => (
           <InsightBuildSection
             key={name}
@@ -431,6 +430,10 @@ const ExplorationBuildRail = ({ explorationId }) => {
             />
           )}
         </Dropdown>
+
+        <div className="border-t-2 border-gray-200" />
+
+        <ChartBuildSection isExpanded={chartExpanded} onToggleExpand={handleToggleChart} />
 
         {/* Saved-to-project trail (01-ux-spec.md §3b) — each entry links to
             its real, now-published object. D11: "promote" is internal-only

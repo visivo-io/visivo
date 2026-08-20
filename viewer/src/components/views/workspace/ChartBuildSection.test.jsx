@@ -260,6 +260,22 @@ describe('ChartBuildSection', () => {
   });
 
   describe('rename flow', () => {
+    // VIS-1224: the ⋮ panel menu is the discoverable rename entry point; it
+    // focuses the existing inline name field.
+    it('the ⋮ menu Rename item focuses the chart name field', async () => {
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-chart'));
+      fireEvent.click(screen.getByTestId('panel-menu-item-rename-chart'));
+      expect(screen.getByTestId('chart-name-input')).toHaveFocus();
+    });
+
+    it('the ⋮ menu Rename item is disabled for a loaded chart', async () => {
+      useStore.setState({ charts: [{ name: 'test_chart' }] });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-chart'));
+      expect(screen.getByTestId('panel-menu-item-rename-chart')).toBeDisabled();
+    });
+
     it('commits a trimmed rename on blur', async () => {
       const setChartName = jest.fn();
       useStore.setState({ setChartName });

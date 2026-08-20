@@ -121,13 +121,15 @@ describe('ExplorationBuildRail', () => {
     expect(screen.getByTestId('insight-build-insight_b')).toHaveAttribute('data-expanded', 'false');
   });
 
-  it('renders ChartBuildSection ABOVE the insight sections', () => {
+  // VIS-1224: the insight pane(s) now stack ABOVE the chart pane (the chart
+  // aggregates the insights listed above it).
+  it('renders the insight sections ABOVE the ChartBuildSection', () => {
     const { container } = render(<ExplorationBuildRail />);
     const fullText = container.textContent;
     const chartPos = fullText.indexOf('ChartBuildSection');
     const insightPos = fullText.indexOf('InsightBuildSection:');
-    expect(chartPos).toBeGreaterThanOrEqual(0);
-    expect(insightPos).toBeGreaterThan(chartPos);
+    expect(insightPos).toBeGreaterThanOrEqual(0);
+    expect(chartPos).toBeGreaterThan(insightPos);
   });
 
   it('renders save button disabled when no modifications', () => {
