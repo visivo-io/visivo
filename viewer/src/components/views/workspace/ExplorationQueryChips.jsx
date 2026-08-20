@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { PiPlus, PiDotsThree, PiLink } from 'react-icons/pi';
+import { PiPlus, PiDotsThree, PiLink, PiPencilSimple, PiTrash } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import Dropdown from '../../common/Dropdown';
 import { useConfirm } from '../../common/ConfirmDialog';
@@ -173,7 +173,7 @@ const QueryChip = ({
         // the chip.
         <span onClick={e => e.stopPropagation()}>
           <Dropdown
-            align="left"
+            align="right"
             width={140}
             // The chip strip is `overflow-x-auto`, which the CSS spec forces to
             // compute `overflow-y: auto` as well — an in-flow absolute panel
@@ -202,8 +202,9 @@ const QueryChip = ({
                     close();
                     rename.start();
                   }}
-                  className="flex w-full items-center px-3 py-1.5 text-left text-[12px] text-gray-800 hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-gray-800 hover:bg-gray-50"
                 >
+                  <PiPencilSimple className="h-3.5 w-3.5 shrink-0 text-gray-500" />
                   Rename
                 </button>
                 {canDelete && (
@@ -211,8 +212,9 @@ const QueryChip = ({
                     type="button"
                     data-testid={`query-chip-${name}-delete-action`}
                     onClick={() => handleDeleteClick(close)}
-                    className="flex w-full items-center px-3 py-1.5 text-left text-[12px] text-highlight-600 hover:bg-highlight-50"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-highlight-600 hover:bg-highlight-50"
                   >
+                    <PiTrash className="h-3.5 w-3.5 shrink-0" />
                     Delete
                   </button>
                 )}
