@@ -133,34 +133,6 @@ describe('ChartBuildSection', () => {
     expect(nameEl).toBeDisabled();
   });
 
-  it('renders insight list with pills', async () => {
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(await screen.findByTestId('chart-insight-pill-insight_1')).toBeInTheDocument();
-    expect(screen.getByTestId('chart-insight-pill-insight_2')).toBeInTheDocument();
-  });
-
-  it('active insight is highlighted', async () => {
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    const activePill = await screen.findByTestId('embedded-pill-insight-insight_1');
-    expect(activePill.dataset.active).toBe('true');
-  });
-
-  it('remove button on pill calls removeInsightFromChart', async () => {
-    const removeInsightFromChart = jest.fn();
-    useStore.setState({ removeInsightFromChart });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(await screen.findByTestId('embedded-pill-remove-insight_2'));
-    expect(removeInsightFromChart).toHaveBeenCalledWith('insight_2');
-  });
-
-  it('add insight button calls createInsight', async () => {
-    const createInsight = jest.fn();
-    useStore.setState({ createInsight });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(await screen.findByTestId('chart-add-insight'));
-    expect(createInsight).toHaveBeenCalled();
-  });
-
   it('renders layout SchemaEditor when expanded', async () => {
     renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
     expect(await screen.findByTestId('chart-schema-editor')).toBeInTheDocument();
@@ -168,15 +140,17 @@ describe('ChartBuildSection', () => {
 
   it('does not render SchemaEditor when collapsed', async () => {
     renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-    // Wait for the always-rendered chart name input so the schema-fetch
-    // effect settles before we assert the absence of the schema editor.
-    await screen.findByDisplayValue('test_chart');
+    // Wait for the always-rendered header so the schema-fetch effect settles
+    // before we assert the absence of the schema editor.
+    await screen.findByTestId('chart-header-label');
     expect(screen.queryByTestId('chart-schema-editor')).not.toBeInTheDocument();
   });
 
-  it('chart name is always visible in header even when collapsed', async () => {
+  // VIS-1224: the editable name lives in the Basic Information body now; the
+  // collapsed header shows the name as a read-only identity label.
+  it('chart name appears in the collapsed header label', async () => {
     renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-    expect(await screen.findByDisplayValue('test_chart')).toBeInTheDocument();
+    expect(await screen.findByTestId('chart-header-label')).toHaveTextContent('test_chart');
   });
 
   it('collapse/expand toggle works', async () => {
@@ -192,46 +166,6 @@ describe('ChartBuildSection', () => {
     renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
     fireEvent.click(await screen.findByTestId('chart-close'));
     expect(closeChart).toHaveBeenCalled();
-  });
-
-  it('clicking an insight pill calls setActiveInsight', async () => {
-    const setActiveInsight = jest.fn();
-    useStore.setState({ setActiveInsight });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(await screen.findByTestId('embedded-pill-insight-insight_2'));
-    expect(setActiveInsight).toHaveBeenCalledWith('insight_2');
-  });
-
-  it('renders empty insights message when no insights', async () => {
-    useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(await screen.findByText(/no insights/i)).toBeInTheDocument();
-  });
-
-  describe('insight drop zone', () => {
-    it('renders the drop zone with correct test id when expanded', async () => {
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      expect(await screen.findByTestId('chart-insight-drop-zone')).toBeInTheDocument();
-    });
-
-    it('does not render the drop zone when collapsed', async () => {
-      renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-      await screen.findByDisplayValue('test_chart');
-      expect(screen.queryByTestId('chart-insight-drop-zone')).not.toBeInTheDocument();
-    });
-
-    it('drop zone wraps the insights list and add button', async () => {
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      const dropZone = await screen.findByTestId('chart-insight-drop-zone');
-      expect(dropZone).toContainElement(screen.getByTestId('chart-add-insight'));
-      expect(dropZone).toContainElement(screen.getByTestId('chart-insight-pill-insight_1'));
-    });
-
-    it('drop zone shows updated empty hint with drag instruction', async () => {
-      useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      expect(await screen.findByText(/drag from the library/i)).toBeInTheDocument();
-    });
   });
 
   describe('layout changes', () => {
@@ -260,6 +194,22 @@ describe('ChartBuildSection', () => {
   });
 
   describe('rename flow', () => {
+    // VIS-1224: the ⋮ panel menu is the discoverable rename entry point; it
+    // focuses the existing inline name field.
+    it('the ⋮ menu Rename item focuses the chart name field', async () => {
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-chart'));
+      fireEvent.click(screen.getByTestId('panel-menu-item-rename-chart'));
+      expect(screen.getByTestId('chart-name-input')).toHaveFocus();
+    });
+
+    it('the ⋮ menu Rename item is disabled for a loaded chart', async () => {
+      useStore.setState({ charts: [{ name: 'test_chart' }] });
+      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-chart'));
+      expect(screen.getByTestId('panel-menu-item-rename-chart')).toBeDisabled();
+    });
+
     it('commits a trimmed rename on blur', async () => {
       const setChartName = jest.fn();
       useStore.setState({ setChartName });
@@ -293,20 +243,6 @@ describe('ChartBuildSection', () => {
       const input = await screen.findByTestId('chart-name-input');
       fireEvent.focus(input);
       fireEvent.change(input, { target: { value: '   ' } });
-      fireEvent.blur(input);
-
-      expect(setChartName).not.toHaveBeenCalled();
-      expect(input).toHaveValue('test_chart');
-    });
-
-    it('does not commit the placeholder name "Untitled"', async () => {
-      const setChartName = jest.fn();
-      useStore.setState({ setChartName });
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
-      const input = await screen.findByTestId('chart-name-input');
-      fireEvent.focus(input);
-      fireEvent.change(input, { target: { value: 'Untitled' } });
       fireEvent.blur(input);
 
       expect(setChartName).not.toHaveBeenCalled();
@@ -402,17 +338,17 @@ describe('ChartBuildSection', () => {
     expect(nameEl).not.toBeDisabled();
   });
 
-  describe('chartName unset (Untitled fallback branches)', () => {
-    it('renders "Untitled" in italic placeholder styling when there is no chart name yet', async () => {
+  // VIS-1224: an unnamed chart shows an EMPTY Basic Information name field (the
+  // floating "Chart Name" label carries the affordance) — the old "Untitled"
+  // sentinel is gone.
+  describe('chartName unset (empty name field)', () => {
+    it('renders an empty name field when there is no chart name yet', async () => {
       useStore.setState({ explorerChartName: '' });
       renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      const input = await screen.findByTestId('chart-name-input');
-      expect(input).toHaveValue('Untitled');
-      expect(input.className).toContain('italic');
-      expect(input.className).toContain('text-gray-400');
+      expect(await screen.findByTestId('chart-name-input')).toHaveValue('');
     });
 
-    it('committing an empty/whitespace name while unset resets to "Untitled" (chartName||"Untitled" fallback)', async () => {
+    it('committing an empty/whitespace name while unset does not call setChartName', async () => {
       const setChartName = jest.fn();
       useStore.setState({ explorerChartName: '', setChartName });
       renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
@@ -421,29 +357,17 @@ describe('ChartBuildSection', () => {
       fireEvent.change(input, { target: { value: '   ' } });
       fireEvent.blur(input);
       expect(setChartName).not.toHaveBeenCalled();
-      expect(input).toHaveValue('Untitled');
+      expect(input).toHaveValue('');
     });
 
-    it('Escape while unset restores "Untitled" (chartName||"Untitled" fallback in the Escape handler)', async () => {
+    it('Escape while unset restores the empty field', async () => {
       useStore.setState({ explorerChartName: '' });
       renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
       const input = await screen.findByTestId('chart-name-input');
       fireEvent.focus(input);
       fireEvent.change(input, { target: { value: 'abandoned' } });
       fireEvent.keyDown(input, { key: 'Escape' });
-      expect(input).toHaveValue('Untitled');
-    });
-
-    it('re-typing "Untitled" verbatim while unset is a no-op (matches the chartName||"Untitled" fallback, not just the literal check)', async () => {
-      const setChartName = jest.fn();
-      useStore.setState({ explorerChartName: '', setChartName });
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      const input = await screen.findByTestId('chart-name-input');
-      fireEvent.focus(input);
-      fireEvent.change(input, { target: { value: 'Untitled' } });
-      fireEvent.blur(input);
-      expect(setChartName).not.toHaveBeenCalled();
-      expect(input).toHaveValue('Untitled');
+      expect(input).toHaveValue('');
     });
   });
 

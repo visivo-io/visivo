@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
-import selectEvent from 'react-select-event';
 import ChartEditForm from './ChartEditForm';
 import useStore from '../../../stores/store';
 
@@ -25,38 +24,6 @@ jest.mock('./SchemaEditor', () => ({
       clear layout
     </button>
   ),
-}));
-
-// TracePropsEditor stub: echo ownerName + props.type, and expose a button that
-// drives onChange so we can assert the parent persists the edited props.
-jest.mock('./TracePropsEditor', () => ({
-  __esModule: true,
-  default: ({ ownerName, props, onChange }) => (
-    <div data-testid="trace-props-editor" data-owner={ownerName}>
-      <span data-testid="tpe-type">{props?.type}</span>
-      <button
-        type="button"
-        data-testid="tpe-add-prop"
-        onClick={() => onChange({ ...props, marker: { color: 'red' } })}
-      >
-        add prop
-      </button>
-    </div>
-  ),
-}));
-
-// useRecordSave stub: capture (type, name) per instance + expose scheduleSave so
-// we can assert the selected insight record is persisted through the backbone.
-const mockScheduleSave = jest.fn();
-const mockUseRecordSave = jest.fn(() => ({
-  status: 'idle',
-  scheduleSave: mockScheduleSave,
-  saveNow: jest.fn(),
-  reset: jest.fn(),
-}));
-jest.mock('../../../hooks/useRecordSave', () => ({
-  __esModule: true,
-  default: (...args) => mockUseRecordSave(...args),
 }));
 
 const mockFetchInsights = jest.fn();
@@ -135,26 +102,26 @@ describe('ChartEditForm — ref insight pills', () => {
     fireEvent.click(removeBtn);
 
     expect(screen.queryByTestId('ref-insight-row-0')).not.toBeInTheDocument();
-    expect(screen.getByText(/No insights added/i)).toBeInTheDocument();
+    expect(screen.getByText(/No insights yet/i)).toBeInTheDocument();
   });
 
-  test('Add Insight appends another ref insight pill', async () => {
+  // VIS-1224: "+ Add Insight" opens the shared AddInsightMenu — pick an existing
+  // project insight (added as a ref pill) or "New blank insight" (staged).
+  test('the Add Insight menu adds an existing project insight as a ref pill', async () => {
     await renderForm();
     expect(screen.queryByTestId('ref-insight-row-1')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Add Insight'));
+    fireEvent.click(screen.getByTestId('chart-add-insight'));
+    // revenue_insight is already on the chart (excluded); cost_insight is offered.
+    fireEvent.click(screen.getByTestId('add-insight-menu-existing-cost_insight'));
     expect(screen.getByTestId('ref-insight-row-1')).toBeInTheDocument();
   });
 
-  test('the change-select still lets you swap which insight is referenced', async () => {
+  test('the Add Insight menu "New blank insight" stages a blank embedded insight', async () => {
     await renderForm();
-    const select = screen.getByTestId('change-insight-select-0');
-    // The brand <Select> shows the current ref as its selected value.
-    expect(select).toHaveTextContent('revenue_insight');
-    await selectEvent.select(within(select).getByRole('combobox'), 'cost_insight', {
-      container: document.body,
-    });
-    const row = screen.getByTestId('ref-insight-row-0');
-    expect(getPillLabel(row, 'cost_insight')).toBeInTheDocument();
+    expect(screen.queryByTestId('staged-insight-row-0')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('chart-add-insight'));
+    fireEvent.click(screen.getByTestId('add-insight-menu-create-new'));
+    expect(screen.getByTestId('staged-insight-row-0')).toBeInTheDocument();
   });
 });
 
@@ -179,7 +146,7 @@ describe('ChartEditForm — insight fetch guard', () => {
       onNavigateToEmbedded: jest.fn(),
     };
     const { rerender } = render(<ChartEditForm {...props} />);
-    await screen.findByText(/No insights available/i);
+    await screen.findByText(/No insights yet/i);
     expect(mockFetchInsights).toHaveBeenCalledTimes(1);
 
     // Each re-render delivers a new empty-array identity (an empty fetch
@@ -256,7 +223,7 @@ describe('ChartEditForm — validation & save paths', () => {
     render(
       <ChartEditForm chart={null} isCreate onClose={jest.fn()} onSave={onSave} onNavigateToEmbedded={jest.fn()} />
     );
-    await screen.findByText(/No insights added/i);
+    await screen.findByText(/No insights yet/i);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -270,10 +237,11 @@ describe('ChartEditForm — validation & save paths', () => {
     render(
       <ChartEditForm chart={null} isCreate onClose={jest.fn()} onSave={onSave} onNavigateToEmbedded={jest.fn()} />
     );
-    await screen.findByText(/No insights added/i);
+    await screen.findByText(/No insights yet/i);
 
     fireEvent.change(screen.getByLabelText(/Chart Name/), { target: { value: 'new_chart' } });
-    fireEvent.click(screen.getByText('Add Insight'));
+    fireEvent.click(screen.getByTestId('chart-add-insight'));
+    fireEvent.click(screen.getByTestId('add-insight-menu-existing-revenue_insight'));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -423,83 +391,9 @@ describe('ChartEditForm — embedded insight navigation', () => {
   });
 });
 
-describe('ChartEditForm — insight props editor (TracePropsEditor)', () => {
-  test("default-selects the chart's only insight and renders TracePropsEditor for it", async () => {
-    await renderForm();
-
-    // The lone ref insight (revenue_insight) is auto-selected → editor mounts.
-    const editor = screen.getByTestId('trace-props-editor');
-    expect(editor).toBeInTheDocument();
-    expect(editor).toHaveAttribute('data-owner', 'revenue_insight');
-    // Props are seeded from that insight record's config.props.
-    expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
-  });
-
-  test('selecting a different insight renders TracePropsEditor for that insight', async () => {
-    await renderForm();
-    // Add a second insight ref so the picker has a choice.
-    fireEvent.click(screen.getByText('Add Insight'));
-    expect(screen.getByTestId('ref-insight-row-1')).toBeInTheDocument();
-
-    const select = screen.getByTestId('insight-props-select');
-    await selectEvent.select(within(select).getByRole('combobox'), 'cost_insight', {
-      container: document.body,
-    });
-
-    const editor = screen.getByTestId('trace-props-editor');
-    expect(editor).toHaveAttribute('data-owner', 'cost_insight');
-    expect(screen.getByTestId('tpe-type')).toHaveTextContent('scatter');
-  });
-
-  test("editing props persists via useRecordSave('insight', selectedName)", async () => {
-    await renderForm();
-
-    // The hook is instantiated for the selected ref insight.
-    expect(mockUseRecordSave).toHaveBeenCalledWith('insight', 'revenue_insight');
-
-    fireEvent.click(screen.getByTestId('tpe-add-prop'));
-
-    // The whole insight record config is written back with the edited props,
-    // through the unified backbone — not the chart save path.
-    expect(mockScheduleSave).toHaveBeenCalledWith({
-      props: { type: 'bar', x: ['q1'], marker: { color: 'red' } },
-    });
-  });
-
-  test('an embedded insight edits inline and persists the CHART via onSave', async () => {
-    const onSave = jest.fn(() => Promise.resolve({ success: true }));
-    const chartWithEmbedded = {
-      name: 'rev_chart',
-      status: 'published',
-      config: {
-        insights: [{ name: 'inline_one', props: { type: 'bar' } }],
-        layout: {},
-      },
-    };
-    render(
-      <ChartEditForm
-        chart={chartWithEmbedded}
-        isCreate={false}
-        onClose={jest.fn()}
-        onSave={onSave}
-        onNavigateToEmbedded={jest.fn()}
-      />
-    );
-    await screen.findByTestId('trace-props-editor');
-
-    // The lone embedded insight is auto-selected; the editor seeds from its props.
-    expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
-
-    fireEvent.click(screen.getByTestId('tpe-add-prop'));
-
-    // Embedded insight is edited inline; the CHART (not an insight record) saves.
-    expect(mockScheduleSave).not.toHaveBeenCalled();
-    expect(onSave).toHaveBeenCalledWith('chart', 'rev_chart', {
-      name: 'rev_chart',
-      insights: [{ name: 'inline_one', props: { type: 'bar', marker: { color: 'red' } } }],
-    });
-  });
-});
+// VIS-1224: the chart no longer edits insight props inline (the "Insight Props"
+// picker + its embedded-inline edit path were removed). Each insight's props are
+// edited in the insight's OWN edit panel — covered by InsightEditForm.test.jsx.
 
 describe('ChartEditForm — layout schema load failure', () => {
   test('shows the schema error when the layout schema cannot load', async () => {
