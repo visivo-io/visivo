@@ -15,7 +15,6 @@ from visivo.models.row import Row
 from visivo.models.source import CreateSourceRequest, SourceTypeEnum
 from visivo.models.table import Table
 from visivo.parsers.parser_factory import ParserFactory
-from visivo.server.project_writer import ProjectWriter
 from visivo.server.views.utils import (
     create_source_dashboard,
     externalize_source_credentials,
@@ -41,21 +40,6 @@ def register_project_views(app, flask_app, output_dir):
             return jsonify(project_file_path)
         else:
             return jsonify({})
-
-    @app.route("/api/project/write_changes/", methods=["POST"])
-    def write_changes():
-        data = request.get_json()
-        if not data:
-            return jsonify({"message": "No data provided"}), 400
-
-        try:
-            project_writer = ProjectWriter(data)
-            project_writer.update_file_contents()
-            project_writer.write()
-            return jsonify({"message": "Changes written successfully"}), 200
-        except Exception as e:
-            Logger.instance().error(f"Error writing changes: {str(e)}")
-            return jsonify({"message": str(e)}), 500
 
     @app.route("/api/project/load_example/", methods=["POST"])
     def load_example_project():

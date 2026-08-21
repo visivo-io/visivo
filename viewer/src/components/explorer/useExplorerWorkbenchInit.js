@@ -144,13 +144,27 @@ export default function useExplorerWorkbenchInit() {
   // rebind. `null` once resolved (or if defaults were already in by creation
   // time, in which case createModelTab already picked the right source).
   const pendingDefaultSourceTabRef = useRef(null);
+  // VIS-1228: this must create AT MOST ONE tab per mount. Two guards, because
+  // the original single `modelTabs.length === 0` check was neither:
+  //   1. `modelAutoCreatedRef` — StrictMode runs a layout effect's setup TWICE
+  //      on mount (no re-render between the two runs), and the closure
+  //      `modelTabs.length` is still 0 on the second run even though the first
+  //      already added a tab, so `createModelTab()` fired twice → a brand-new
+  //      exploration opened with the strip's sources already cached got two
+  //      queries (`model` + `model_2`). The sibling insight effect below has
+  //      always had this exact ref guard; this one was missing it.
+  //   2. a LIVE `explorerModelTabs.length` read — belt-and-suspenders against
+  //      the same stale-closure fragility on any non-StrictMode re-run.
+  const modelAutoCreatedRef = useRef(false);
   useLayoutEffect(() => {
-    if (modelTabs.length === 0 && explorerSources.length > 0) {
-      const defaultsAlreadyArrived = !!useStore.getState().defaults;
-      const createdName = createModelTab();
-      if (!defaultsAlreadyArrived) {
-        pendingDefaultSourceTabRef.current = createdName;
-      }
+    if (modelAutoCreatedRef.current) return;
+    if (explorerSources.length === 0) return;
+    if (useStore.getState().explorerModelTabs.length > 0) return;
+    modelAutoCreatedRef.current = true;
+    const defaultsAlreadyArrived = !!useStore.getState().defaults;
+    const createdName = createModelTab();
+    if (!defaultsAlreadyArrived) {
+      pendingDefaultSourceTabRef.current = createdName;
     }
   }, [modelTabs.length, explorerSources.length, createModelTab]);
 

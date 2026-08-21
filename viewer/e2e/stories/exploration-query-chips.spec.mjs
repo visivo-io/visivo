@@ -110,6 +110,41 @@ test.describe('Exploration query chips (Explore 2.0 Phase 3a)', () => {
     });
   });
 
+  // VIS-1228: the chip strip is `overflow-x-auto`, which the CSS spec forces to
+  // compute `overflow-y: auto` too — an in-flow absolute menu dropping below
+  // the strip was clipped entirely out of sight (the reported "the dots do
+  // nothing": the click worked, the menu just rendered where nothing shows).
+  // The menu is now portaled to <body>; assert it escapes the strip's clip and
+  // is actually on-screen.
+  test('the ⋮ menu escapes the chip strip overflow clip and is visible', async ({ page }) => {
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    const name = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+
+    await page.getByTestId(`query-chip-${name}-menu-trigger`).click();
+    const renameAction = page.getByTestId(`query-chip-${name}-rename-action`);
+    await expect(renameAction).toBeVisible();
+
+    const geom = await page.evaluate(nm => {
+      const strip = document.querySelector('[data-testid="exploration-query-chips"]');
+      const rename = document.querySelector(`[data-testid="query-chip-${nm}-rename-action"]`);
+      const s = strip.getBoundingClientRect();
+      const r = rename.getBoundingClientRect();
+      return {
+        insideStrip: strip.contains(rename),
+        // Fully within the viewport (not clipped off-screen).
+        onScreen: r.top >= 0 && r.bottom <= window.innerHeight && r.height > 0,
+        // Would have been clipped by the strip in the old in-flow layout.
+        wouldClip: r.bottom > s.bottom,
+      };
+    }, name);
+
+    // Portaled OUT of the scroll container (the old bug rendered it inside,
+    // where overflow-y:auto clipped it), yet still fully on screen.
+    expect(geom.insideStrip).toBe(false);
+    expect(geom.onScreen).toBe(true);
+  });
+
   test('renaming the active chip via its ⋮ menu persists the new name', async ({ page }) => {
     await gotoExplorerHome(page);
     await newExploration(page);
