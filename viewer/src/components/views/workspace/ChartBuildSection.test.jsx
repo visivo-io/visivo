@@ -133,34 +133,6 @@ describe('ChartBuildSection', () => {
     expect(nameEl).toBeDisabled();
   });
 
-  it('renders insight list with pills', async () => {
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(await screen.findByTestId('chart-insight-pill-insight_1')).toBeInTheDocument();
-    expect(screen.getByTestId('chart-insight-pill-insight_2')).toBeInTheDocument();
-  });
-
-  it('active insight is highlighted', async () => {
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    const activePill = await screen.findByTestId('embedded-pill-insight-insight_1');
-    expect(activePill.dataset.active).toBe('true');
-  });
-
-  it('remove button on pill calls removeInsightFromChart', async () => {
-    const removeInsightFromChart = jest.fn();
-    useStore.setState({ removeInsightFromChart });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(await screen.findByTestId('embedded-pill-remove-insight_2'));
-    expect(removeInsightFromChart).toHaveBeenCalledWith('insight_2');
-  });
-
-  it('add insight button calls createInsight', async () => {
-    const createInsight = jest.fn();
-    useStore.setState({ createInsight });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(await screen.findByTestId('chart-add-insight'));
-    expect(createInsight).toHaveBeenCalled();
-  });
-
   it('renders layout SchemaEditor when expanded', async () => {
     renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
     expect(await screen.findByTestId('chart-schema-editor')).toBeInTheDocument();
@@ -194,46 +166,6 @@ describe('ChartBuildSection', () => {
     renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
     fireEvent.click(await screen.findByTestId('chart-close'));
     expect(closeChart).toHaveBeenCalled();
-  });
-
-  it('clicking an insight pill calls setActiveInsight', async () => {
-    const setActiveInsight = jest.fn();
-    useStore.setState({ setActiveInsight });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(await screen.findByTestId('embedded-pill-insight-insight_2'));
-    expect(setActiveInsight).toHaveBeenCalledWith('insight_2');
-  });
-
-  it('renders empty insights message when no insights', async () => {
-    useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
-    renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(await screen.findByText(/no insights/i)).toBeInTheDocument();
-  });
-
-  describe('insight drop zone', () => {
-    it('renders the drop zone with correct test id when expanded', async () => {
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      expect(await screen.findByTestId('chart-insight-drop-zone')).toBeInTheDocument();
-    });
-
-    it('does not render the drop zone when collapsed', async () => {
-      renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-      await screen.findByTestId('chart-header-label');
-      expect(screen.queryByTestId('chart-insight-drop-zone')).not.toBeInTheDocument();
-    });
-
-    it('drop zone wraps the insights list and add button', async () => {
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      const dropZone = await screen.findByTestId('chart-insight-drop-zone');
-      expect(dropZone).toContainElement(screen.getByTestId('chart-add-insight'));
-      expect(dropZone).toContainElement(screen.getByTestId('chart-insight-pill-insight_1'));
-    });
-
-    it('drop zone shows updated empty hint with drag instruction', async () => {
-      useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      expect(await screen.findByText(/drag from the library/i)).toBeInTheDocument();
-    });
   });
 
   describe('layout changes', () => {

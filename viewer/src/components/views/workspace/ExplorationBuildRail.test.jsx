@@ -164,84 +164,18 @@ describe('ExplorationBuildRail', () => {
   // opens a picker offering "New blank insight" alongside existing insights
   // in the project not already on this chart, instead of instantly
   // manufacturing a blank one.
-  describe('"+ Add Insight" picker (Phase 6c-T5)', () => {
-    it('clicking the button opens a menu instead of immediately creating a blank insight', () => {
+  // VIS-1224: in the Explorer you CREATE insights (the pick-existing menu moved
+  // to the standard chart edit panel), so "+ Add Insight" is a plain button
+  // that appends a new blank insight below the stack — no dropdown.
+  describe('"+ Add Insight" (create-only in the Explorer)', () => {
+    it('clicking the button immediately creates a blank insight (no menu)', () => {
       const createInsight = jest.fn();
       useStore.setState({ createInsight, insights: [] });
       render(<ExplorationBuildRail />);
       fireEvent.click(screen.getByTestId('right-panel-add-insight'));
-      expect(screen.getByTestId('add-insight-menu')).toBeInTheDocument();
-      expect(createInsight).not.toHaveBeenCalled();
-    });
-
-    it('"New blank insight" still creates a blank insight (secondary action, not gone)', () => {
-      const createInsight = jest.fn();
-      useStore.setState({ createInsight, insights: [] });
-      render(<ExplorationBuildRail />);
-      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
-      fireEvent.click(screen.getByTestId('add-insight-menu-create-new'));
       expect(createInsight).toHaveBeenCalled();
       expect(screen.queryByTestId('add-insight-menu')).not.toBeInTheDocument();
     });
-
-    it('offers existing project insights NOT already on this chart, and picking one adds it via addExistingInsightToChart', () => {
-      const addExistingInsightToChart = jest.fn();
-      useStore.setState({
-        addExistingInsightToChart,
-        insights: [
-          { name: 'insight_a', config: {} }, // already on the chart — excluded
-          { name: 'churn_by_cohort', config: {} },
-          { name: 'revenue_over_time', config: {} },
-        ],
-      });
-      render(<ExplorationBuildRail />);
-      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
-
-      expect(screen.queryByTestId('add-insight-menu-existing-insight_a')).not.toBeInTheDocument();
-      expect(screen.getByTestId('add-insight-menu-existing-churn_by_cohort')).toBeInTheDocument();
-      expect(screen.getByTestId('add-insight-menu-existing-revenue_over_time')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('add-insight-menu-existing-churn_by_cohort'));
-      expect(addExistingInsightToChart).toHaveBeenCalledWith('churn_by_cohort');
-      expect(screen.queryByTestId('add-insight-menu')).not.toBeInTheDocument();
-    });
-
-    it('the search box filters the pickable list by name', () => {
-      useStore.setState({
-        insights: [
-          { name: 'churn_by_cohort', config: {} },
-          { name: 'revenue_over_time', config: {} },
-        ],
-      });
-      render(<ExplorationBuildRail />);
-      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
-      fireEvent.change(screen.getByTestId('add-insight-menu-search'), {
-        target: { value: 'churn' },
-      });
-      expect(screen.getByTestId('add-insight-menu-existing-churn_by_cohort')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('add-insight-menu-existing-revenue_over_time')
-      ).not.toBeInTheDocument();
-    });
-
-    it('shows an honest empty state when there are no other insights to pick', () => {
-      useStore.setState({ insights: [] });
-      render(<ExplorationBuildRail />);
-      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
-      expect(screen.getByTestId('add-insight-menu')).toHaveTextContent(
-        'No other insights in this project yet.'
-      );
-    });
-
-    it('shows a distinct "no matches" message when every OTHER insight is already on this chart', () => {
-      useStore.setState({ insights: [{ name: 'insight_a', config: {} }] });
-      render(<ExplorationBuildRail />);
-      fireEvent.click(screen.getByTestId('right-panel-add-insight'));
-      expect(screen.getByTestId('add-insight-menu')).toHaveTextContent(
-        'No matches — every other insight is already on this chart.'
-      );
-    });
-
   });
 
   it('toggling the active insight deactivates it; toggling an inactive one activates it', () => {
