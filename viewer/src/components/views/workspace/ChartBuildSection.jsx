@@ -6,7 +6,7 @@ import useStore from '../../../stores/store';
 import PanelMenu from '../../common/PanelMenu';
 import { selectInsightStatus } from '../../../stores/explorerStore';
 import { getSchema } from '../../../schemas/schemas';
-import { SchemaEditor } from '../common/SchemaEditor/SchemaEditor';
+import ChartEditFormFields from '../common/ChartEditFormFields';
 import { recordOnboardingAction } from '../../onboarding/onboardingState';
 
 const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
@@ -26,14 +26,14 @@ const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
 };
 
 /**
- * ChartBuildSection — Explore 2.0 Phase 3b (VIS-1059). Replaces
- * `ChartCRUDSection` on the exploration Build rail. Behaviorally identical
- * to the retired component (chart name/rename, insight list + drop zone,
- * Layout Properties) — this section's own body has no ref-valued/pillable
- * slots (chart Layout properties are static Plotly layout knobs, not query
- * expressions), so it stays on `SchemaEditor` with `droppable={false}`
- * exactly as before; the D8/D10 pill + `property-zone` DnD rebuild's target
- * is `InsightBuildSection`'s per-insight props, not this section.
+ * ChartBuildSection — the Explorer Build-rail chart pane. VIS-1224: the colored
+ * side-bar body is gone; it now renders the SAME standard chart edit panel as
+ * the RightRail (`ChartEditFormFields` — Basic Information + Layout) with the
+ * Explorer's own insight-selection section (drop zone + activate-on-click pills
+ * + Add Insight) passed in as the shared panel's `insightsSection` slot. Name
+ * edits write through `setChartName` live (no Save button); the ⋮ menu's
+ * "Rename" focuses the Basic Information name field (disabled for a loaded/saved
+ * chart — that rename is VIS-1209's project-wide ${ref()} rewrite).
  */
 const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
   const isLoadedChart = useStore(s => (s.charts || []).some(c => c.name === s.explorerChartName));
@@ -49,26 +49,17 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
   const closeChart = useStore(s => s.closeChart);
 
   const [layoutSchema, setLayoutSchema] = useState(null);
-  const [renameValue, setRenameValue] = useState('');
+  const [renameValue, setRenameValue] = useState(chartName || '');
   const [renameError, setRenameError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const skipNextCommitRef = useRef(false);
   const nameInputRef = useRef(null);
 
-  // VIS-1224: the ⋮ menu's "Rename" focuses the existing inline name field
-  // (selecting its text). A loaded/saved chart's name is not editable here
-  // (the field is `disabled`), so the menu item is disabled in that case —
-  // renaming a promoted chart is VIS-1209's project-wide ${ref()} rewrite.
-  const startRename = useCallback(() => {
-    const el = nameInputRef.current;
-    if (!el) return;
-    el.focus();
-    el.select();
-  }, []);
-
+  // Keep the name buffer synced to the store while the user isn't actively
+  // editing — the chart can be auto-named by ExplorationBuildRail's naming
+  // effect (`setChartName`), and the field must reflect that.
   useEffect(() => {
     if (!isEditing) {
-      setRenameValue(chartName || 'Untitled');
+      setRenameValue(chartName || '');
       setRenameError(null);
     }
   }, [chartName, isEditing]);
@@ -87,6 +78,33 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
       cancelled = true;
     };
   }, []);
+
+  // The ⋮ "Rename" action focuses the Basic Information name field.
+  const startRename = useCallback(() => {
+    nameInputRef.current?.focus();
+    nameInputRef.current?.select();
+  }, []);
+
+  const commitRename = useCallback(() => {
+    setIsEditing(false);
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === (chartName || '')) {
+      setRenameError(null);
+      setRenameValue(chartName || '');
+      return;
+    }
+    try {
+      setChartName(trimmed);
+      setRenameError(null);
+    } catch (err) {
+      if (err?.code === 'NAME_COLLISION') {
+        setRenameError(err.message);
+        setIsEditing(true);
+        return;
+      }
+      throw err;
+    }
+  }, [renameValue, chartName, setChartName]);
 
   const handleLayoutChange = useCallback(
     newValue => {
@@ -132,30 +150,45 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
     [closeChart]
   );
 
-  const commitRename = useCallback(() => {
-    if (skipNextCommitRef.current) {
-      skipNextCommitRef.current = false;
-      return;
-    }
-    setIsEditing(false);
-    const trimmed = renameValue.trim();
-    if (!trimmed || trimmed === (chartName || 'Untitled') || trimmed === 'Untitled') {
-      setRenameError(null);
-      setRenameValue(chartName || 'Untitled');
-      return;
-    }
-    try {
-      setChartName(trimmed);
-      setRenameError(null);
-    } catch (err) {
-      if (err?.code === 'NAME_COLLISION') {
-        setRenameError(err.message);
-        setIsEditing(true);
-        return;
-      }
-      throw err;
-    }
-  }, [renameValue, chartName, setChartName]);
+  // The Explorer-specific insight selection — a drop zone (chart-insight-zone),
+  // activate-on-click pills, and Add Insight — handed to the shared panel as
+  // its insight-selection slot.
+  const insightsSection = (
+    <div
+      ref={setInsightDropRef}
+      data-testid="chart-insight-drop-zone"
+      className={`space-y-1 rounded p-2 transition-all ${
+        isInsightOver ? 'ring-2 ring-primary-400 ring-offset-1 bg-primary-50/50' : ''
+      }`}
+    >
+      <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">Insights</h3>
+      {chartInsightNames.length === 0 ? (
+        <p className="text-xs text-gray-400 py-2">
+          No insights added yet. Drag from the Library or click below.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {chartInsightNames.map(name => (
+            <InsightPillItem
+              key={name}
+              name={name}
+              isActive={name === activeInsightName}
+              onClick={() => handleInsightClick(name)}
+              onRemove={e => handleRemoveInsight(e, name)}
+            />
+          ))}
+        </div>
+      )}
+      <button
+        data-testid="chart-add-insight"
+        onClick={handleAddInsight}
+        className="flex items-center gap-1 mt-2 text-xs text-primary-600 hover:text-primary-800 transition-colors"
+      >
+        <PiPlus size={12} />
+        Add Insight
+      </button>
+    </div>
+  );
 
   return (
     <div
@@ -163,10 +196,13 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
       data-onb-target="chart-crud-section"
       className="border border-gray-200 rounded-lg overflow-hidden"
     >
+      {/* VIS-1224: neutral collapsible header (the colored side-bar is gone —
+          the body now renders the same standard chart edit panel as the
+          RightRail). The editable name lives in the Basic Information field. */}
       <div
         data-testid="chart-header"
         onClick={onToggleExpand}
-        className="flex items-center gap-2 px-3 py-2 bg-pink-50/50 border-l-4 border-pink-400 cursor-pointer hover:bg-pink-50 transition-colors duration-150"
+        className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors duration-150"
       >
         <button
           data-testid="chart-toggle"
@@ -176,46 +212,8 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
           {isExpanded ? <PiCaretDown size={14} /> : <PiCaretRight size={14} />}
         </button>
 
-        <span className="text-sm text-pink-600 flex-shrink-0">{'Chart: '}</span>
-
-        <span className="flex-1 flex flex-col">
-          <input
-            ref={nameInputRef}
-            data-testid="chart-name-input"
-            value={renameValue}
-            disabled={isLoadedChart}
-            onFocus={() => setIsEditing(true)}
-            onChange={e => {
-              setRenameValue(e.target.value);
-              if (renameError) setRenameError(null);
-            }}
-            onBlur={() => commitRename()}
-            onKeyDown={e => {
-              if (e.key === 'Enter') e.target.blur();
-              if (e.key === 'Escape') {
-                skipNextCommitRef.current = true;
-                setRenameError(null);
-                setRenameValue(chartName || 'Untitled');
-                setIsEditing(false);
-                e.target.blur();
-              }
-            }}
-            onClick={e => e.stopPropagation()}
-            // D12: an unnamed chart's fallback text ('Untitled') is styled as
-            // a lighter, italic placeholder rather than a solid committed
-            // name — "Chart: Untitled" previously read like a real, boring
-            // title rather than "you haven't named this yet". Purely visual;
-            // the underlying rename/sentinel logic (commitRename treating a
-            // re-typed 'Untitled' as a no-op) is unchanged.
-            className={`text-sm bg-transparent border-0 border-b border-transparent px-0 py-0 outline-none focus:border-pink-400 disabled:cursor-default ${
-              !chartName && !isEditing ? 'italic text-gray-400 font-normal' : 'font-medium text-pink-800'
-            } ${renameError ? 'border-highlight-400 focus:border-highlight-400' : ''}`}
-          />
-          {renameError && (
-            <span data-testid="chart-rename-error" className="text-xs text-highlight-600 mt-0.5">
-              {renameError}
-            </span>
-          )}
+        <span className="flex-1 truncate text-sm font-medium text-secondary-900" data-testid="chart-header-label">
+          {chartName ? `Chart: ${chartName}` : 'Chart'}
         </span>
 
         <PanelMenu
@@ -243,60 +241,45 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
       </div>
 
       {isExpanded && (
-        <div className="px-3 py-3 space-y-4 border-l-4 border-pink-400">
-          <div
-            ref={setInsightDropRef}
-            data-testid="chart-insight-drop-zone"
-            className={`rounded p-2 transition-all ${
-              isInsightOver ? 'ring-2 ring-pink-400 ring-offset-1 bg-pink-50/50' : ''
-            }`}
-          >
-            <label className="block text-xs font-medium text-gray-600 mb-1">Insights</label>
-            {chartInsightNames.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">
-                No insights added yet. Drag from the Library or click below.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {chartInsightNames.map(name => (
-                  <InsightPillItem
-                    key={name}
-                    name={name}
-                    isActive={name === activeInsightName}
-                    onClick={() => handleInsightClick(name)}
-                    onRemove={e => handleRemoveInsight(e, name)}
-                  />
-                ))}
-              </div>
-            )}
-            <button
-              data-testid="chart-add-insight"
-              onClick={handleAddInsight}
-              className="flex items-center gap-1 mt-2 text-xs text-pink-600 hover:text-pink-800 transition-colors"
-            >
-              <PiPlus size={12} />
-              Add Insight
-            </button>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Layout Properties</label>
-            {/* D12 (pills-buildrail #8/#9): the Plotly layout schema has
-                1300+ leaves — "0 of 1366 properties" is the single most-
-                quoted "raw schema dump" moment in the audit. Curated
-                cleanup, not a picker redesign: hide the count, keep the
-                existing search-driven "Add Properties" picker as the one
-                path into the long tail. */}
-            <SchemaEditor
-              schema={layoutSchema}
-              value={chartLayout}
-              onChange={handleLayoutChange}
-              excludeProperties={[]}
-              initiallyExpanded={Object.keys(chartLayout || {})}
-              droppable={false}
-              hidePropertyCount
-            />
-          </div>
+        <div className="p-3 space-y-4">
+          <ChartEditFormFields
+            showName
+            nameId="chart-name-field"
+            nameLabel="Chart Name"
+            nameValue={renameValue}
+            onNameChange={e => {
+              setRenameValue(e.target.value);
+              if (renameError) setRenameError(null);
+            }}
+            onNameFocus={() => setIsEditing(true)}
+            onNameBlur={commitRename}
+            onNameKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitRename();
+              } else if (e.key === 'Escape') {
+                setRenameError(null);
+                setRenameValue(chartName || '');
+                setIsEditing(false);
+              }
+            }}
+            nameDisabled={isLoadedChart}
+            nameError={renameError}
+            nameErrorTestId="chart-rename-error"
+            nameInputRef={nameInputRef}
+            nameTestId="chart-name-input"
+            insightsSection={insightsSection}
+            layoutTitle="Layout Properties"
+            layoutSchema={layoutSchema}
+            layoutValues={chartLayout}
+            onLayoutChange={handleLayoutChange}
+            layoutEditorProps={{
+              excludeProperties: [],
+              initiallyExpanded: Object.keys(chartLayout || {}),
+              droppable: false,
+              hidePropertyCount: true,
+            }}
+          />
         </div>
       )}
     </div>

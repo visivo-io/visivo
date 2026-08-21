@@ -168,15 +168,17 @@ describe('ChartBuildSection', () => {
 
   it('does not render SchemaEditor when collapsed', async () => {
     renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-    // Wait for the always-rendered chart name input so the schema-fetch
-    // effect settles before we assert the absence of the schema editor.
-    await screen.findByDisplayValue('test_chart');
+    // Wait for the always-rendered header so the schema-fetch effect settles
+    // before we assert the absence of the schema editor.
+    await screen.findByTestId('chart-header-label');
     expect(screen.queryByTestId('chart-schema-editor')).not.toBeInTheDocument();
   });
 
-  it('chart name is always visible in header even when collapsed', async () => {
+  // VIS-1224: the editable name lives in the Basic Information body now; the
+  // collapsed header shows the name as a read-only identity label.
+  it('chart name appears in the collapsed header label', async () => {
     renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-    expect(await screen.findByDisplayValue('test_chart')).toBeInTheDocument();
+    expect(await screen.findByTestId('chart-header-label')).toHaveTextContent('Chart: test_chart');
   });
 
   it('collapse/expand toggle works', async () => {
@@ -216,7 +218,7 @@ describe('ChartBuildSection', () => {
 
     it('does not render the drop zone when collapsed', async () => {
       renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-      await screen.findByDisplayValue('test_chart');
+      await screen.findByTestId('chart-header-label');
       expect(screen.queryByTestId('chart-insight-drop-zone')).not.toBeInTheDocument();
     });
 
@@ -315,20 +317,6 @@ describe('ChartBuildSection', () => {
       expect(input).toHaveValue('test_chart');
     });
 
-    it('does not commit the placeholder name "Untitled"', async () => {
-      const setChartName = jest.fn();
-      useStore.setState({ setChartName });
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
-      const input = await screen.findByTestId('chart-name-input');
-      fireEvent.focus(input);
-      fireEvent.change(input, { target: { value: 'Untitled' } });
-      fireEvent.blur(input);
-
-      expect(setChartName).not.toHaveBeenCalled();
-      expect(input).toHaveValue('test_chart');
-    });
-
     it('commits rename on Enter via blur', async () => {
       const setChartName = jest.fn();
       useStore.setState({ setChartName });
@@ -418,17 +406,17 @@ describe('ChartBuildSection', () => {
     expect(nameEl).not.toBeDisabled();
   });
 
-  describe('chartName unset (Untitled fallback branches)', () => {
-    it('renders "Untitled" in italic placeholder styling when there is no chart name yet', async () => {
+  // VIS-1224: an unnamed chart shows an EMPTY Basic Information name field (the
+  // floating "Chart Name" label carries the affordance) — the old "Untitled"
+  // sentinel is gone.
+  describe('chartName unset (empty name field)', () => {
+    it('renders an empty name field when there is no chart name yet', async () => {
       useStore.setState({ explorerChartName: '' });
       renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      const input = await screen.findByTestId('chart-name-input');
-      expect(input).toHaveValue('Untitled');
-      expect(input.className).toContain('italic');
-      expect(input.className).toContain('text-gray-400');
+      expect(await screen.findByTestId('chart-name-input')).toHaveValue('');
     });
 
-    it('committing an empty/whitespace name while unset resets to "Untitled" (chartName||"Untitled" fallback)', async () => {
+    it('committing an empty/whitespace name while unset does not call setChartName', async () => {
       const setChartName = jest.fn();
       useStore.setState({ explorerChartName: '', setChartName });
       renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
@@ -437,29 +425,17 @@ describe('ChartBuildSection', () => {
       fireEvent.change(input, { target: { value: '   ' } });
       fireEvent.blur(input);
       expect(setChartName).not.toHaveBeenCalled();
-      expect(input).toHaveValue('Untitled');
+      expect(input).toHaveValue('');
     });
 
-    it('Escape while unset restores "Untitled" (chartName||"Untitled" fallback in the Escape handler)', async () => {
+    it('Escape while unset restores the empty field', async () => {
       useStore.setState({ explorerChartName: '' });
       renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
       const input = await screen.findByTestId('chart-name-input');
       fireEvent.focus(input);
       fireEvent.change(input, { target: { value: 'abandoned' } });
       fireEvent.keyDown(input, { key: 'Escape' });
-      expect(input).toHaveValue('Untitled');
-    });
-
-    it('re-typing "Untitled" verbatim while unset is a no-op (matches the chartName||"Untitled" fallback, not just the literal check)', async () => {
-      const setChartName = jest.fn();
-      useStore.setState({ explorerChartName: '', setChartName });
-      renderInDnd(<ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      const input = await screen.findByTestId('chart-name-input');
-      fireEvent.focus(input);
-      fireEvent.change(input, { target: { value: 'Untitled' } });
-      fireEvent.blur(input);
-      expect(setChartName).not.toHaveBeenCalled();
-      expect(input).toHaveValue('Untitled');
+      expect(input).toHaveValue('');
     });
   });
 
