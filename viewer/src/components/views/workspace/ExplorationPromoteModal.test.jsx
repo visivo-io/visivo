@@ -262,6 +262,9 @@ describe('ExplorationPromoteModal', () => {
     );
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByTestId('exploration-promote-cancel')).toHaveTextContent('Close');
+    // Every selected row saved, so the submit button has nothing left to do —
+    // "Close" is the only footer action while the offer lingers.
+    expect(screen.queryByTestId('exploration-promote-submit')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('exploration-promote-cancel'));
     expect(onClose).toHaveBeenCalled();
   });
@@ -309,6 +312,8 @@ describe('ExplorationPromoteModal', () => {
       expect(screen.getByTestId('exploration-promote-error')).toHaveTextContent('server rejected it')
     );
     expect(onClose).not.toHaveBeenCalled();
+    // A row failed, so the submit button stays available to retry after a fix.
+    expect(screen.getByTestId('exploration-promote-submit')).toBeInTheDocument();
   });
 
   // P5-D2 (e2e-gap-review.md "Final delta pass") — a partial-failure promote
