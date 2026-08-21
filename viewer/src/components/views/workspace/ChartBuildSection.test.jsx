@@ -150,7 +150,7 @@ describe('ChartBuildSection', () => {
   // collapsed header shows the name as a read-only identity label.
   it('chart name appears in the collapsed header label', async () => {
     renderInDnd(<ChartBuildSection isExpanded={false} onToggleExpand={jest.fn()} />);
-    expect(await screen.findByTestId('chart-header-label')).toHaveTextContent('Chart: test_chart');
+    expect(await screen.findByTestId('chart-header-label')).toHaveTextContent('test_chart');
   });
 
   it('collapse/expand toggle works', async () => {

@@ -9,6 +9,7 @@ import {
   expandDotNotationProps,
 } from '../../../stores/explorerStore';
 import InsightEditFormFields from '../common/InsightEditFormFields';
+import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import RefTextArea from '../common/RefTextArea';
 import Select from '../../common/Select';
 import { checkRefTargets } from './refPreflight';
@@ -17,6 +18,9 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
+
+const INSIGHT_COLORS = getTypeColors('insight');
+const InsightTypeIcon = getTypeIcon('insight');
 
 const INTERACTION_TYPES = [
   { value: 'filter', label: 'Filter' },
@@ -403,12 +407,26 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
           {isExpanded ? <PiCaretDown size={14} /> : <PiCaretRight size={14} />}
         </button>
 
+        {/* VIS-1224: SelectionChip-style identity (type icon + name + TYPE),
+            matching the standard RightRail edit-panel header. */}
         <span
-          className="text-sm font-medium text-secondary-900 truncate flex-1"
-          data-testid={`insight-name-${insightName}`}
+          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${INSIGHT_COLORS.bg} ${INSIGHT_COLORS.text} ${INSIGHT_COLORS.border}`}
         >
-          {insightName}
+          {InsightTypeIcon && <InsightTypeIcon style={{ fontSize: 14 }} />}
         </span>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span
+            className="truncate text-[13px] font-semibold text-secondary-900"
+            data-testid={`insight-name-${insightName}`}
+            title={insightName}
+          >
+            {insightName}
+          </span>
+          <span className="truncate text-[10.5px] uppercase tracking-wide text-gray-400">
+            Insight
+          </span>
+        </div>
 
         {status && (
           <span

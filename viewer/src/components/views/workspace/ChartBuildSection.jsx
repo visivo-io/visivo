@@ -4,6 +4,10 @@ import useStore from '../../../stores/store';
 import PanelMenu from '../../common/PanelMenu';
 import { getSchema } from '../../../schemas/schemas';
 import ChartEditFormFields from '../common/ChartEditFormFields';
+import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
+
+const CHART_COLORS = getTypeColors('chart');
+const ChartTypeIcon = getTypeIcon('chart');
 
 /**
  * ChartBuildSection — the Explorer Build-rail chart pane. VIS-1224: renders the
@@ -121,9 +125,24 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
           {isExpanded ? <PiCaretDown size={14} /> : <PiCaretRight size={14} />}
         </button>
 
-        <span className="flex-1 truncate text-sm font-medium text-secondary-900" data-testid="chart-header-label">
-          {chartName ? `Chart: ${chartName}` : 'Chart'}
+        {/* VIS-1224: SelectionChip-style identity (type icon + name + TYPE),
+            matching the standard RightRail edit-panel header. */}
+        <span
+          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${CHART_COLORS.bg} ${CHART_COLORS.text} ${CHART_COLORS.border}`}
+        >
+          {ChartTypeIcon && <ChartTypeIcon style={{ fontSize: 14 }} />}
         </span>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span
+            className="truncate text-[13px] font-semibold text-secondary-900"
+            data-testid="chart-header-label"
+            title={chartName || 'Chart'}
+          >
+            {chartName || 'Chart'}
+          </span>
+          <span className="truncate text-[10.5px] uppercase tracking-wide text-gray-400">Chart</span>
+        </div>
 
         <PanelMenu
           testId="chart"
