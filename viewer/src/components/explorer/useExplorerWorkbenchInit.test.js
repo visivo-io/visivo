@@ -11,6 +11,7 @@
  * hook now fetches sources itself so both hosts get them regardless of
  * whether a browse-panel component is mounted.
  */
+import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import useStore from '../../stores/store';
 import useExplorerWorkbenchInit from './useExplorerWorkbenchInit';
@@ -89,6 +90,21 @@ describe('useExplorerWorkbenchInit', () => {
 
     await waitFor(() => expect(useStore.getState().explorerSources).toHaveLength(1));
     expect(createModelTab).not.toHaveBeenCalled();
+  });
+
+  // VIS-1228: opening a fresh exploration while sources are ALREADY cached (a
+  // second+ exploration in a session) used to seed TWO queries (`model` +
+  // `model_2`). The auto-create-model-tab layout effect had no idempotency
+  // guard, so StrictMode's double-invoked setup — both runs seeing the same
+  // stale closure `modelTabs.length === 0` — called `createModelTab()` twice.
+  test('does not double-create a model tab under StrictMode when sources are present at mount', async () => {
+    const createModelTab = jest.fn(() => 'model');
+    useStore.setState({ createModelTab, explorerSources: [{ source_name: 'local-duckdb' }] });
+
+    renderHook(() => useExplorerWorkbenchInit(), { wrapper: React.StrictMode });
+
+    await waitFor(() => expect(createModelTab).toHaveBeenCalled());
+    expect(createModelTab).toHaveBeenCalledTimes(1);
   });
 });
 
