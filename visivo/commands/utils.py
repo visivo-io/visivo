@@ -158,7 +158,16 @@ def create_source(
     None,
 ]:
     project_dir = project_dir.strip()
-    default_db_name = f"{database or 'local'}.db"
+    # Use the user-supplied database path VERBATIM — only fall back to a
+    # default file name when none was given. Previously this unconditionally
+    # appended `.db` (`f"{database or 'local'}.db"`), so a typed `data/shop.db`
+    # became `data/shop.db.db`: SQLite/DuckDB create a file on connect, so a
+    # decoy empty database appeared next to the real one and everything looked
+    # healthy until a later `no such table` error. The field's own placeholder
+    # (`path/to/database.db`) tells the user to include the extension, so
+    # duplicating it was always wrong; the Workspace source editor already
+    # writes the path verbatim, and this now matches it.
+    default_db_name = database if database else "local.db"
 
     local_db_path = Path(project_dir) / default_db_name if project_dir else default_db_name
 
