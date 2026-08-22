@@ -125,16 +125,24 @@ const RightRailExpanded = ({
       className="flex h-full flex-col border-l border-gray-200 bg-white"
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-gray-200 pl-2 pr-3">
-        <div role="tablist" aria-label="Right rail" className="flex h-full items-center gap-1">
-          {tabs.map((tab) => (
-            <TabBtn
-              key={tab.key}
-              tab={tab}
-              active={activeTab === tab.key}
-              onClick={() => onSelectTab && onSelectTab(tab.key)}
-            />
-          ))}
-        </div>
+        {/* A lone "Edit" tab is redundant chrome — the Edit panel is the whole
+            body — so we hide the tab strip when Edit is the only tab. Multi-tab
+            objects (dashboard: Outline+Edit; source: Data+Edit) and the
+            exploration Build tab keep their strip. */}
+        {tabs.length === 1 && tabs[0].key === 'edit' ? (
+          <div />
+        ) : (
+          <div role="tablist" aria-label="Right rail" className="flex h-full items-center gap-1">
+            {tabs.map((tab) => (
+              <TabBtn
+                key={tab.key}
+                tab={tab}
+                active={activeTab === tab.key}
+                onClick={() => onSelectTab && onSelectTab(tab.key)}
+              />
+            ))}
+          </div>
+        )}
         <button
           type="button"
           onClick={onCollapse}

@@ -266,26 +266,29 @@ describe('RightRail tab set per object type (Outline only for dashboards, Data f
   // The edit forms for `insight` / `chart` fire async fetches on mount (act
   // noise unrelated to the tab set), so this matrix uses the synchronous edit
   // types — the tab-set rule is type-agnostic for every non-dashboard/source.
+  // A lone "Edit" tab is redundant chrome, so the tab strip is HIDDEN for these
+  // single-tab types; the Edit panel body renders directly.
   test.each(['model', 'table', 'metric', 'dimension', 'relation', 'input'])(
-    'a %s offers ONLY an Edit tab (no Outline/Data tab)',
+    'a %s renders the Edit panel with NO tab strip (the lone Edit tab is hidden)',
     type => {
       resetForType({ tabType: type, tabName: `my_${type}` });
       renderAt('/workspace/dashboard/simple-dashboard');
-      expect(screen.getByTestId('workspace-right-rail-tab-edit')).toBeInTheDocument();
+      expect(screen.queryByTestId('workspace-right-rail-tab-edit')).not.toBeInTheDocument();
       expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
+      // The editor surface still renders (the Edit panel is the whole body).
+      expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
     }
   );
 
-  test('a stale `outline` active tab on an Edit-only object falls back to the Edit panel', () => {
+  test('a stale `outline` active tab on an Edit-only object falls back to the Edit panel body', () => {
     // Active object is a metric (Edit-only) but the store still holds a stale
     // `outline` tab from a previous dashboard selection. The rail must not render
-    // a blank/Outline body — it falls back to the Edit panel.
+    // a blank/Outline body — it falls back to the Edit panel (which is the whole
+    // body; the lone Edit tab itself is hidden).
     resetForType({ tabType: 'metric', tabName: 'revenue', rightTab: 'outline' });
     renderAt('/workspace/dashboard/simple-dashboard');
-    expect(screen.getByTestId('workspace-right-rail-tab-edit')).toHaveAttribute(
-      'data-active',
-      'true'
-    );
+    expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-right-rail-tab-edit')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-right-rail-outline')).not.toBeInTheDocument();
   });

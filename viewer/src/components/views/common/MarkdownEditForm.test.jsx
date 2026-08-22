@@ -252,4 +252,26 @@ describe('edit mode uses an explicit Save (no auto-save)', () => {
     render(<MarkdownEditForm isCreate onClose={jest.fn()} onSave={jest.fn()} />);
     expect(screen.getByRole('button', { name: /Create|Save/ })).toBeInTheDocument();
   });
+
+  // The footer matches the chart/insight panels: Delete · Discard · Save.
+  test('edit mode: Save + Discard are disabled until an edit makes it dirty', () => {
+    render(<MarkdownEditForm markdown={record} onClose={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByTestId('markdown-form-discard')).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/Content/), { target: { value: 'changed' } });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    expect(screen.getByTestId('markdown-form-discard')).toBeEnabled();
+  });
+
+  test('edit mode: Discard reverts the buffered edits to the last saved values', () => {
+    render(<MarkdownEditForm markdown={record} onClose={jest.fn()} onSave={jest.fn()} />);
+    const content = screen.getByLabelText(/Content/);
+    fireEvent.change(content, { target: { value: 'changed' } });
+    expect(content).toHaveValue('changed');
+
+    fireEvent.click(screen.getByTestId('markdown-form-discard'));
+    expect(content).toHaveValue('hello');
+    expect(mockSaveNow).not.toHaveBeenCalled();
+  });
 });

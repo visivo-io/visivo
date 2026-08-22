@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
+import useFormBaseline from '../../../hooks/useFormBaseline';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -56,24 +57,36 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
       ? gateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
       : null;
 
+  // The values that constitute "the saved markdown", as form state — a shared
+  // baseline so Discard reverts to the last save and Save is gated on real
+  // edits (matching the chart/insight panels).
+  const applyValues = useCallback(values => {
+    setName(values.name);
+    setContent(values.content);
+    setAlign(values.align);
+    setJustify(values.justify);
+  }, []);
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+
   // Initialize form when markdown changes
   useEffect(() => {
     if (markdown) {
-      // Edit mode - populate from existing markdown
-      setName(markdown.name || '');
-      setContent(markdown.config?.content || markdown.content || '');
-      setAlign(markdown.config?.align || markdown.align || 'left');
-      setJustify(markdown.config?.justify || markdown.justify || 'start');
+      seed({
+        name: markdown.name || '',
+        content: markdown.config?.content || markdown.content || '',
+        align: markdown.config?.align || markdown.align || 'left',
+        justify: markdown.config?.justify || markdown.justify || 'start',
+      });
     } else if (isCreate) {
-      // Create mode - reset form
-      setName('');
-      setContent('');
-      setAlign('left');
-      setJustify('start');
+      seed({ name: '', content: '', align: 'left', justify: 'start' });
     }
     setErrors({});
     setSaveError(null);
+    // Re-seeding on `seed` would wipe the user's in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markdown, isCreate]);
+
+  const dirty = isDirtyAgainst({ name, content, align, justify });
 
   const validateForm = () => {
     const newErrors = {};
@@ -320,15 +333,25 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
             )}
           </div>
 
+          {/* Delete · Discard · Save — same footer as the chart/insight panels.
+              Edit mode reverts to the last save via Discard (disabled when
+              there's nothing to revert); create mode's Cancel closes the tab. */}
           <div className="flex gap-2">
-            {/* Create mode gets a Cancel (closes the tab); edit mode stays open
-                after Save, like the chart/insight panels, so no Cancel there. */}
-            {!isEditMode && (
-              <ButtonOutline type="button" onClick={onClose} className="text-sm">
-                Cancel
-              </ButtonOutline>
-            )}
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+            <ButtonOutline
+              type="button"
+              onClick={isEditMode ? discard : onClose}
+              disabled={isEditMode && (!dirty || saving || deleting)}
+              data-testid="markdown-form-discard"
+              className="text-sm"
+            >
+              {isEditMode ? 'Discard' : 'Cancel'}
+            </ButtonOutline>
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || (isEditMode && !dirty)}
+              className="text-sm"
+            >
               {saving ? (
                 <>
                   <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
