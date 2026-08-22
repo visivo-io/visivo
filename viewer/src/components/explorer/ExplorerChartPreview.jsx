@@ -8,6 +8,7 @@ import PreviewInputControls from '../views/workspace/PreviewInputControls';
 import useStore from '../../stores/store';
 import { emitTimeToFirstChart } from '../views/workspace/telemetry';
 import { buildInsightFreshnessSignature } from '../../utils/insightFreshnessSignature';
+import { isMeaningfulInsightState } from '../../stores/explorerStore';
 
 // Stable empty-array reference (avoids a fresh `[]` literal defeating memoized
 // selectors/`useMemo` deps every render — see ExplorationBuildRail.jsx's
@@ -214,9 +215,29 @@ const ExplorerChartPreview = () => {
   // triggered recapture here at all — `promotedSignatures` is only ever
   // written by `promoteExploration` (see `explorerStore.js`'s
   // `recordPromotedInsightSignature` and this file's docstring).
+  // VIS-1224 — Bug 1: an empty draft insight (isNew with no props/interactions)
+  // can never produce data, so including it would block `Chart.jsx`'s
+  // all-or-nothing `hasAllInsightData` FOREVER (infinite spinner) the moment
+  // it's added to a chart that's already rendering. Render only the insights
+  // that can actually contribute a figure; the empty one is still being built
+  // in its own pane and simply isn't on the chart yet. This also removes the
+  // Loading↔Plot flip that left the plot stale-sized on removal (Bug 2), since
+  // adding/removing an empty insight no longer changes the rendered set.
+  const renderableInsightNames = useMemo(
+    () =>
+      chartInsightNames.filter(name => {
+        const is = insightStates[name];
+        // Only exclude a name we KNOW is an empty draft scaffold. Keep promoted
+        // insights and any without a draft state at all — their data comes from
+        // the promoted lane, not `explorerInsightStates`.
+        return !(is && !isMeaningfulInsightState(is) && !promotedNames.includes(name));
+      }),
+    [chartInsightNames, insightStates, promotedNames]
+  );
+
   const previewInsightKeys = useMemo(
     () =>
-      chartInsightNames.map(name => {
+      renderableInsightNames.map(name => {
         if (!promotedNames.includes(name)) return draftInsightKey(name);
         const data = storeInsightJobs?.[name]?.data;
         if (!data) return draftInsightKey(name);
@@ -226,7 +247,7 @@ const ExplorerChartPreview = () => {
         return recordedSig === insightSignature(name) ? name : draftInsightKey(name);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [chartInsightNames, promotedNames, storeInsightJobs, promotedSignatures, insightStates, modelStates]
+    [renderableInsightNames, promotedNames, storeInsightJobs, promotedSignatures, insightStates, modelStates]
   );
 
   // VIS-1092 — `<ChartPreview>` (unlike `Chart.jsx`) gates its ENTIRE render
@@ -246,8 +267,8 @@ const ExplorerChartPreview = () => {
   //      "Loading" state, never an alarming error, until every insight has
   //      data again.)
   const draftLaneNames = useMemo(
-    () => chartInsightNames.filter((name, idx) => previewInsightKeys[idx] === draftInsightKey(name)),
-    [chartInsightNames, previewInsightKeys]
+    () => renderableInsightNames.filter((name, idx) => previewInsightKeys[idx] === draftInsightKey(name)),
+    [renderableInsightNames, previewInsightKeys]
   );
   const anyInsightAlreadyHasData = previewInsightKeys.some(key => storeInsightJobs?.[key]?.data != null);
   const draftLaneIsLoading =
@@ -317,6 +338,24 @@ const ExplorerChartPreview = () => {
         data-testid="chart-empty-no-insights"
       >
         <span className="text-sm text-secondary-400">Add an insight to see chart preview</span>
+      </div>
+    );
+  }
+
+  // VIS-1224 — Bug 1: the chart has insights, but they're all empty scaffolds
+  // (nothing to draw yet). Show a guided empty state rather than a spinner that
+  // would block forever on data that can never arrive.
+  if (renderableInsightNames.length === 0) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center h-full bg-gray-50 gap-2 p-6 text-center"
+        data-testid="chart-preview-empty-no-props"
+      >
+        <PiCursorClick className="h-5 w-5 text-secondary-300" aria-hidden="true" />
+        <span className="text-sm font-medium text-secondary-600">Nothing to preview yet</span>
+        <span className="text-xs text-secondary-400 max-w-sm">
+          Drag a column from the results grid onto a field (like x or y) to see a chart preview.
+        </span>
       </div>
     );
   }

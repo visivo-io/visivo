@@ -145,6 +145,37 @@ describe('ExplorerChartPreview', () => {
     );
   });
 
+  // VIS-1224 Bug 1: an empty draft insight (isNew, no props) can never produce
+  // data — it must be excluded from the chart's keys so it can't block
+  // Chart.jsx's all-or-nothing data gate (the infinite-spinner bug).
+  it('excludes an empty draft insight from the chart keys (does not block a rendering chart)', () => {
+    useStore.setState({
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: '?{${ref(sales).date}}' }, interactions: [], isNew: true },
+        empty_ins: { type: 'scatter', props: {}, interactions: [], isNew: true },
+      },
+      explorerChartInsightNames: ['ins_1', 'empty_ins'],
+    });
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('chart-preview-component')).toBeInTheDocument();
+    // Only the meaningful insight's key is forwarded — the empty one is dropped.
+    expect(screen.getByTestId('cp-insight-keys')).toHaveTextContent(
+      JSON.stringify(['__draft__:ins_1'])
+    );
+  });
+
+  it('shows the guided empty state (not a spinner) when every chart insight is an empty scaffold', () => {
+    useStore.setState({
+      explorerInsightStates: {
+        empty_ins: { type: 'scatter', props: {}, interactions: [], isNew: true },
+      },
+      explorerChartInsightNames: ['empty_ins'],
+    });
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('chart-preview-empty-no-props')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-preview-component')).not.toBeInTheDocument();
+  });
+
   it('falls back to a default chart name when explorerChartName is unset', () => {
     useStore.setState({ explorerChartName: undefined });
     render(<ExplorerChartPreview />);
