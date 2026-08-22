@@ -6,7 +6,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { validateName } from './namedModel';
 import Select from '../../common/Select';
 import useRecordSave from '../../../hooks/useRecordSave';
-import SaveStateIndicator from '../workspace/SaveStateIndicator';
 
 /**
  * MarkdownEditForm - Form component for editing/creating markdowns
@@ -19,14 +18,14 @@ import SaveStateIndicator from '../workspace/SaveStateIndicator';
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  *
- * VIS-1018 step 2: in EDIT mode the footer save routes through the unified
- * `useRecordSave('markdown', …)` backbone instead of calling `saveMarkdown`
- * directly. That writes the form's config into the record's store collection
- * OPTIMISTICALLY and persists the CURRENT store value at fire time, so this
- * form, the markdown editor canvas, and the standalone rail-save all share one
- * optimistic store + fire-time-read persist and can no longer clobber each
- * other. CREATE mode keeps the direct `saveMarkdown` call — the record isn't in
- * the collection yet, so there is nothing to optimistically update.
+ * The markdown panel uses an EXPLICIT Save (no auto-save): edits buffer locally
+ * and persist only on the Save button. In EDIT mode the save flushes through
+ * the unified `useRecordSave('markdown', …)` backbone (`saveNow`) rather than
+ * calling `saveMarkdown` directly — that writes the config into the record's
+ * store collection OPTIMISTICALLY and persists the CURRENT store value at fire
+ * time, so this form and the markdown editor canvas share one optimistic store
+ * and can't clobber each other. CREATE mode keeps the direct `saveMarkdown`
+ * call — the record isn't in the collection yet, so there's nothing to update.
  */
 const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
   const { saveMarkdown, deleteMarkdown, checkCommitStatus } = useStore();
@@ -47,28 +46,15 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
   const isEditMode = !!markdown && !isCreate;
   const isNewObject = markdown?.status === ObjectStatus.NEW;
 
-  // Unified optimistic + debounced save backbone (VIS-1018 step 2). In edit mode
-  // the footer save flushes through this (writes the config optimistically into
-  // the markdown store, then persists the CURRENT store value), sharing the same
-  // backbone as the editor canvas so the two can't clobber each other.
-  const {
-    scheduleSave,
-    status: autoSaveStatus,
-    errors: gateErrors,
-  } = useRecordSave('markdown', markdown?.name || null);
-
-  const buildConfig = (over = {}) => ({ name, content, align, justify, ...over });
+  // Unified optimistic save backbone (VIS-1018 step 2) — `saveNow` shares the
+  // same optimistic store as the editor canvas so the two can't clobber each
+  // other. `gateErrors` surfaces the validation-gate's own errors.
+  const { saveNow, errors: gateErrors } = useRecordSave('markdown', markdown?.name || null);
 
   const gateErrorText =
     gateErrors && gateErrors.length > 0
       ? gateErrors.map(e => (e.path ? `${e.path}: ${e.message}` : e.message)).join('; ')
       : null;
-
-  const isAutoSave = isEditMode;
-  const autoSave = over => {
-    if (!isAutoSave) return;
-    scheduleSave(buildConfig(over));
-  };
 
   // Initialize form when markdown changes
   useEffect(() => {
@@ -112,22 +98,16 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
     setSaveError(null);
 
     try {
-      // Build config object
-      const config = {
-        name,
-        content,
-        align,
-        justify,
-      };
+      const config = { name, content, align, justify };
 
-      // Create mode only — edit mode auto-saves via scheduleSave (VIS-993:
-      // no Save button; each field change debounces through the gated
-      // optimistic backbone).
-      const result = await saveMarkdown(name, config);
+      // Edit mode persists through the optimistic backbone (shared with the
+      // canvas) and STAYS OPEN — like the chart/insight panels. Create mode
+      // writes the new record directly and closes the tab.
+      const result = isEditMode ? await saveNow(config) : await saveMarkdown(name, config);
 
       if (result?.success) {
         onSave && onSave(config);
-        onClose();
+        if (!isEditMode) onClose();
       } else {
         setSaveError(result?.error || 'Failed to save markdown');
       }
@@ -227,10 +207,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
               <textarea
                 id="markdownContent"
                 value={content}
-                onChange={e => {
-                  setContent(e.target.value);
-                  autoSave({ content: e.target.value });
-                }}
+                onChange={e => setContent(e.target.value)}
                 placeholder=" "
                 rows={10}
                 className={`block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:border-primary-500 peer placeholder-transparent resize-y font-mono ${errors.content ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}`}
@@ -261,10 +238,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
                 aria-label="Horizontal Alignment"
                 value={align}
                 options={ALIGN_OPTIONS}
-                onChange={v => {
-                  setAlign(v);
-                  autoSave({ align: v });
-                }}
+                onChange={v => setAlign(v)}
               />
               <label
                 htmlFor="markdownAlign"
@@ -281,10 +255,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
                 aria-label="Vertical Distribution"
                 value={justify}
                 options={JUSTIFY_OPTIONS}
-                onChange={v => {
-                  setJustify(v);
-                  autoSave({ justify: v });
-                }}
+                onChange={v => setJustify(v)}
               />
               <label
                 htmlFor="markdownJustify"
@@ -349,27 +320,25 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
             )}
           </div>
 
-          {isAutoSave ? (
-            <div className="flex items-center gap-2" data-testid="form-footer-autosave">
-              <SaveStateIndicator status={autoSaveStatus} />
-            </div>
-          ) : (
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            {/* Create mode gets a Cancel (closes the tab); edit mode stays open
+                after Save, like the chart/insight panels, so no Cancel there. */}
+            {!isEditMode && (
               <ButtonOutline type="button" onClick={onClose} className="text-sm">
                 Cancel
               </ButtonOutline>
-              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-                {saving ? (
-                  <>
-                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                    Saving...
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </Button>
-            </div>
-          )}
+            )}
+            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+              {saving ? (
+                <>
+                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </>
