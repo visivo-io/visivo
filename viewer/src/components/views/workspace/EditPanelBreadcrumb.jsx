@@ -47,15 +47,16 @@ const segmentIcon = segment => {
   return Icon ? <Icon aria-hidden="true" style={{ fontSize: 12 }} className="shrink-0" /> : null;
 };
 
-const Segment = ({ segment, isCurrent, isFocused, onSelect }) => {
+const Segment = ({ segment, isCurrent, onSelect }) => {
   const cls = [
     'group/crumb inline-flex h-6 max-w-[140px] items-center gap-1 rounded px-1 text-[11.5px] outline-none transition-colors',
-    // Uniform chrome: the current (last) crumb is emphasized text, every other
-    // crumb is a muted, hoverable link — no filled pill on any of them.
+    // Uniform chrome: the current (last) crumb is emphasized bolded text, every
+    // other crumb is a muted, hoverable link — no filled pill and no outline
+    // box on any of them, so a chart looks the same as the dashboard root
+    // (the always-on `ring` used to bracket only the non-root current crumb).
     isCurrent
       ? 'font-semibold text-gray-900 cursor-default'
-      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 cursor-pointer',
-    isFocused ? 'ring-2 ring-primary' : '',
+      : 'text-gray-500 hover:text-gray-900 cursor-pointer',
   ]
     .filter(Boolean)
     .join(' ');
@@ -93,10 +94,6 @@ const EditPanelBreadcrumb = ({
     () => buildBreadcrumbSegments(outlineKey, dashboardName, rows),
     [outlineKey, dashboardName, rows]
   );
-
-  // The focused segment is always the current (last) one — keyboard nav moves
-  // the selection itself, so focus tracks the selection's depth.
-  const focusedIndex = segments.length - 1;
 
   const handleSelect = useCallback(
     key => {
@@ -197,12 +194,7 @@ const EditPanelBreadcrumb = ({
           const isLast = i === segments.length - 1;
           return (
             <React.Fragment key={segment.key}>
-              <Segment
-                segment={segment}
-                isCurrent={isLast}
-                isFocused={i === focusedIndex && i !== 0 && isLast}
-                onSelect={handleSelect}
-              />
+              <Segment segment={segment} isCurrent={isLast} onSelect={handleSelect} />
               {!isLast && (
                 <PiCaretRight aria-hidden="true" className="h-2.5 w-2.5 shrink-0 text-gray-300" />
               )}
