@@ -25,9 +25,13 @@ import {
  *   - Enter  focus the form's first field (`onFocusForm`).
  *   - Esc    deselect (jump to the dashboard root).
  *
- * Type colour + icon come exclusively from `objectTypeConfigs` (rainbow);
- * `row` has no config entry so it uses a Phosphor squares glyph, and the
- * CURRENT (last) segment carries the mulberry selection chip (`primary`).
+ * Standard breadcrumb chrome: every segment is styled the SAME — a text +
+ * type-icon button separated by `▸` chevrons — so the trail reads uniformly at
+ * any depth (`dashboard ▸ row 2 ▸ great_fib`). The CURRENT (last) segment is
+ * emphasized (darker + semibold), not a filled pill, so a single-segment root
+ * (`dashboard`) no longer reads as a lone pill. `row` has no `objectTypeConfigs`
+ * entry so it uses a Phosphor squares glyph; every icon inherits its segment's
+ * text colour.
  *
  * The whole logic is pure-function-backed (`editPanelBreadcrumb.js`) so the
  * key derivation + nav handlers are unit-tested in isolation.
@@ -37,19 +41,22 @@ const ROW_ICON_CLASS = 'h-3 w-3 shrink-0';
 
 const segmentIcon = segment => {
   if (segment.type === 'row') {
-    return <PiSquaresFour aria-hidden="true" className={`${ROW_ICON_CLASS} text-gray-500`} />;
+    return <PiSquaresFour aria-hidden="true" className={ROW_ICON_CLASS} />;
   }
   const Icon = getTypeIcon(segment.type);
   return Icon ? <Icon aria-hidden="true" style={{ fontSize: 12 }} className="shrink-0" /> : null;
 };
 
-const Segment = ({ segment, isCurrent, isFocused, onSelect }) => {
+const Segment = ({ segment, isCurrent, onSelect }) => {
   const cls = [
-    'group/crumb inline-flex h-6 max-w-[140px] items-center gap-1 rounded-md px-1.5 text-[11.5px] outline-none transition-colors',
+    'group/crumb inline-flex h-6 max-w-[140px] items-center gap-1 rounded px-1 text-[11.5px] outline-none transition-colors',
+    // Uniform chrome: the current (last) crumb is emphasized bolded text, every
+    // other crumb is a muted, hoverable link — no filled pill and no outline
+    // box on any of them, so a chart looks the same as the dashboard root
+    // (the always-on `ring` used to bracket only the non-root current crumb).
     isCurrent
-      ? 'bg-primary-100 font-semibold text-primary-600'
-      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer',
-    isFocused ? 'ring-2 ring-primary bg-white text-gray-900' : '',
+      ? 'font-semibold text-gray-900 cursor-default'
+      : 'text-gray-500 hover:text-gray-900 cursor-pointer',
   ]
     .filter(Boolean)
     .join(' ');
@@ -87,10 +94,6 @@ const EditPanelBreadcrumb = ({
     () => buildBreadcrumbSegments(outlineKey, dashboardName, rows),
     [outlineKey, dashboardName, rows]
   );
-
-  // The focused segment is always the current (last) one — keyboard nav moves
-  // the selection itself, so focus tracks the selection's depth.
-  const focusedIndex = segments.length - 1;
 
   const handleSelect = useCallback(
     key => {
@@ -191,12 +194,7 @@ const EditPanelBreadcrumb = ({
           const isLast = i === segments.length - 1;
           return (
             <React.Fragment key={segment.key}>
-              <Segment
-                segment={segment}
-                isCurrent={isLast}
-                isFocused={i === focusedIndex && i !== 0 && isLast}
-                onSelect={handleSelect}
-              />
+              <Segment segment={segment} isCurrent={isLast} onSelect={handleSelect} />
               {!isLast && (
                 <PiCaretRight aria-hidden="true" className="h-2.5 w-2.5 shrink-0 text-gray-300" />
               )}

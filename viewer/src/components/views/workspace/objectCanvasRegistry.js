@@ -25,7 +25,6 @@ import React from 'react';
 const ChartPreview = React.lazy(() => import('./ChartPreview'));
 const TablePreview = React.lazy(() => import('./TablePreview'));
 const MarkdownPreview = React.lazy(() => import('./MarkdownPreview'));
-const MarkdownEditorCanvas = React.lazy(() => import('./MarkdownEditorCanvas'));
 // PivotPlayground is the table object canvas's editable `build` lens (VIS-1008):
 // a drag-to-shelf pivot builder (Field List → Columns/Rows/Values shelves → a
 // live Result table). It owns a local draft, re-runs the result on every change,
@@ -90,13 +89,10 @@ export const OBJECT_CANVAS_REGISTRY = {
     Component: MarkdownPreview,
     availability: 'always',
     defaultLens: 'preview',
-    // VIS-1010: `preview` stays the read-only Canvas (MarkdownPreview); `edit`
-    // is the bidirectional split editor (MarkdownEditorCanvas) that owns its own
-    // draft + debounced save and reports dirtiness to the frame.
-    lenses: [
-      READONLY_PREVIEW(),
-      { key: 'edit', label: 'Edit', kind: 'editable', Component: MarkdownEditorCanvas },
-    ],
+    // The Canvas lens is the read-only rendered markdown; there is no on-canvas
+    // "Edit" lens — markdown is edited in the right-rail edit panel
+    // (MarkdownEditForm), so the canvas Edit toggle was redundant.
+    lenses: [READONLY_PREVIEW()],
     emptyHint: 'No markdown selected.',
   },
   input: {

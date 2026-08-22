@@ -29,7 +29,6 @@ const mockCanvasBody = label => ({
 jest.mock('./ChartPreview', () => mockCanvasBody('chart'));
 jest.mock('./TablePreview', () => mockCanvasBody('table'));
 jest.mock('./MarkdownPreview', () => mockCanvasBody('markdown'));
-jest.mock('./MarkdownEditorCanvas', () => mockCanvasBody('markdown-editor'));
 jest.mock('./pivot/PivotPlayground', () => mockCanvasBody('pivot-playground'));
 jest.mock('./InputPreview', () => mockCanvasBody('input'));
 jest.mock('./InsightPreview', () => mockCanvasBody('insight'));
@@ -91,18 +90,15 @@ describe('objectCanvasRegistry', () => {
     expect(build.Component).not.toBe(tbl.Component);
   });
 
-  test('markdown exposes a second editable "edit" lens with its own body (VIS-1010)', () => {
+  // Markdown has NO on-canvas "Edit" lens — it's edited in the right-rail panel
+  // (MarkdownEditForm), so the canvas offers only the read-only Canvas preview
+  // (plus the universal Lineage lens the frame adds).
+  test('markdown exposes only the read-only Canvas lens (no on-canvas Edit)', () => {
     const md = OBJECT_CANVAS_REGISTRY.markdown;
     expect(md.defaultLens).toBe('preview');
-    expect(md.lenses).toHaveLength(2);
-    const edit = md.lenses.find(l => l.key === 'edit');
-    expect(edit).toBeTruthy();
-    expect(edit.label).toBe('Edit');
-    expect(edit.kind).toBe('editable');
-    // The editable lens carries its OWN lazy body (the split editor), distinct
-    // from the read-only preview body.
-    expect(edit.Component).toBeTruthy();
-    expect(edit.Component).not.toBe(md.Component);
+    expect(md.lenses).toHaveLength(1);
+    expect(md.lenses[0].key).toBe('preview');
+    expect(md.lenses.find(l => l.key === 'edit')).toBeUndefined();
   });
 
   test("most canvas previews are read-only; relation's Canvas is the editable ERD builder", () => {
@@ -184,9 +180,9 @@ describe('objectCanvasRegistry', () => {
       ['relation-erd', OBJECT_CANVAS_REGISTRY.relation.Component],
       ['dimension-inspector', OBJECT_CANVAS_REGISTRY.dimension.Component],
       ['metric-playground', OBJECT_CANVAS_REGISTRY.metric.Component],
-      // The second, editable lens bodies (VIS-1008 / VIS-1010).
+      // The second, editable lens body (VIS-1008). Markdown no longer has an
+      // on-canvas editable lens — it's edited in the right-rail panel.
       ['pivot-playground', OBJECT_CANVAS_REGISTRY.table.lenses.find(l => l.key === 'build').Component],
-      ['markdown-editor', OBJECT_CANVAS_REGISTRY.markdown.lenses.find(l => l.key === 'edit').Component],
     ];
 
     for (const [label, Component] of bodies) {
