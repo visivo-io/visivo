@@ -115,6 +115,7 @@ const ChartEditFormFields = ({
           schema={layoutSchema}
           value={layoutValues}
           onChange={onLayoutChange}
+          hideEmptyState
           {...layoutEditorProps}
         />
       ) : null}

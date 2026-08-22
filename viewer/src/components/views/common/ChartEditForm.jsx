@@ -436,6 +436,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
                 schema={layoutSchema}
                 value={layoutValues}
                 onChange={setLayoutValues}
+                hideEmptyState
               />
             ) : null}
             <p className="text-xs text-gray-500">

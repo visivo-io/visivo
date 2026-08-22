@@ -96,6 +96,12 @@ describe('SchemaEditor', () => {
     expect(screen.getByText(/No properties added yet/)).toBeInTheDocument();
   });
 
+  // VIS-1224: the chart Layout section suppresses the empty-state placeholder.
+  it('hides the empty state when `hideEmptyState` is set', () => {
+    render(<SchemaEditor {...defaultProps} hideEmptyState />);
+    expect(screen.queryByText(/No properties added yet/)).not.toBeInTheDocument();
+  });
+
   it('shows initially expanded properties', () => {
     render(<SchemaEditor {...defaultProps} initiallyExpanded={['x', 'y']} />);
 
