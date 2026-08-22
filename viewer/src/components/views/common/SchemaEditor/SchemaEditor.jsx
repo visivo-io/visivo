@@ -35,7 +35,6 @@ export function SchemaEditor({
   disabled = false,
   droppable = false,
   hidePropertyCount = false,
-  hideEmptyState = false,
 }) {
   const [addedProperties, setAddedProperties] = useState(() => new Set(initiallyExpanded));
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
@@ -170,21 +169,11 @@ export function SchemaEditor({
         />
       )}
 
-      {/* Displayed properties */}
-      {sortedDisplayedProperties.length === 0 ? (
-        // `hideEmptyState` (VIS-1224): the chart Layout section suppresses the
-        // "No properties added yet" placeholder — the "+ Add Properties" button
-        // above already conveys the affordance, and the empty dashed box just
-        // added vertical noise to an already-optional section.
-        hideEmptyState ? null : (
-          <div className="p-4 text-center bg-gray-50 rounded-md border border-dashed border-gray-300">
-            <p className="text-sm text-gray-500 mb-1">No properties added yet</p>
-            <p className="text-xs text-gray-400">
-              Click &quot;Add Properties&quot; to select which fields to configure
-            </p>
-          </div>
-        )
-      ) : (
+      {/* Displayed properties. VIS-1224: when nothing is added yet we render
+          nothing — the "+ Add Properties" button above already conveys the
+          affordance, so the old "No properties added yet" dashed box was just
+          vertical noise. */}
+      {sortedDisplayedProperties.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {sortedDisplayedProperties.map(prop => (
             <PropertyRow
