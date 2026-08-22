@@ -395,10 +395,7 @@ const RightRailEditPanel = () => {
 
       return (
         <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-          {/* No breadcrumb at the dashboard ROOT — it would be a lone pill
-              duplicating the SelectionChip right below it. Row/item views keep
-              their breadcrumb (it shows real ancestry + is the keyboard-nav
-              surface). */}
+          {breadcrumb}
           <SelectionChip
             type="dashboard"
             name={dashboardName}
