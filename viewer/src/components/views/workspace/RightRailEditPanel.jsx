@@ -873,7 +873,16 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
           </div>
         )}
         <RecordRunStatus name={name} />
-        <div data-testid="right-rail-edit-leaf-form" className="flex-1 overflow-y-auto">
+        <div
+          data-testid="right-rail-edit-leaf-form"
+          // `flex flex-col min-h-0` (not a plain block): the leaf forms render a
+          // `flex-1` scroll body followed by a fixed footer (Save/Discard/Delete);
+          // without a flex column here that `flex-1` can't expand, so the footer
+          // trailed short content mid-panel instead of sitting at the bottom.
+          // `overflow-y-auto` stays for the forms that scroll at this level
+          // rather than in their own body.
+          className="flex flex-1 flex-col min-h-0 overflow-y-auto"
+        >
           {/* None of the leaf forms take a disabled prop, so read-only uses the
               one mechanism that covers them all: a disabled <fieldset> (native
               controls + keyboard) with pointer-events held (react-select /

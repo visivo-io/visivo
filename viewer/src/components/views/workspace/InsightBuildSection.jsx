@@ -1,13 +1,15 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
+import { PiCaretDown, PiCaretRight, PiX, PiPlus, PiPencilSimple } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../../stores/store';
+import PanelMenu from '../../common/PanelMenu';
 import {
   getSourceDialect,
   selectInsightStatus,
   expandDotNotationProps,
 } from '../../../stores/explorerStore';
-import TracePropsEditor from '../common/TracePropsEditor';
+import InsightEditFormFields from '../common/InsightEditFormFields';
+import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import RefTextArea from '../common/RefTextArea';
 import Select from '../../common/Select';
 import { checkRefTargets } from './refPreflight';
@@ -16,6 +18,9 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
+
+const INSIGHT_COLORS = getTypeColors('insight');
+const InsightTypeIcon = getTypeIcon('insight');
 
 const INTERACTION_TYPES = [
   { value: 'filter', label: 'Filter' },
@@ -124,9 +129,12 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const models = useStore(s => s.models);
   const showWorkspaceToast = useStore(s => s.showWorkspaceToast);
 
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
+  // The name lives in the shared Basic Information field now (editable only for
+  // a still-draft insight). `renameValue` buffers keystrokes; the commit fires
+  // on blur/Enter. Re-mounts on rename (parent keys by name) reset the buffer.
+  const [renameValue, setRenameValue] = useState(insightName);
   const [renameError, setRenameError] = useState(null);
+  const nameInputRef = useRef(null);
 
   // Explore 2.0 Phase 4 (06 §4): "Save as metric…" prompt state — at most
   // one slot's flow is in progress at a time per insight section.
@@ -347,23 +355,31 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
     [insightName, removeInsightInteraction]
   );
 
+  // The ⋮ "Rename" action: make sure the pane is expanded (so the field is
+  // mounted) and focus/select the Basic Information name input.
+  const startRename = useCallback(() => {
+    setActiveInsight(insightName);
+    setRenameValue(insightName);
+    nameInputRef.current?.focus();
+    nameInputRef.current?.select();
+  }, [insightName, setActiveInsight]);
+
   const commitRename = useCallback(() => {
     const trimmed = renameValue.trim();
-    if (trimmed && trimmed !== insightName) {
-      try {
-        renameInsight(insightName, trimmed);
-        setRenameError(null);
-        setIsRenaming(false);
-      } catch (err) {
-        if (err?.code === 'NAME_COLLISION') {
-          setRenameError(err.message);
-          return;
-        }
-        throw err;
-      }
-    } else {
+    if (!trimmed || trimmed === insightName) {
       setRenameError(null);
-      setIsRenaming(false);
+      setRenameValue(insightName);
+      return;
+    }
+    try {
+      renameInsight(insightName, trimmed);
+      setRenameError(null);
+    } catch (err) {
+      if (err?.code === 'NAME_COLLISION') {
+        setRenameError(err.message);
+        return;
+      }
+      throw err;
     }
   }, [renameValue, insightName, renameInsight]);
 
@@ -374,10 +390,14 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
       data-testid={`insight-build-section-${insightName}`}
       className="border border-gray-200 rounded-lg overflow-hidden"
     >
+      {/* VIS-1224: neutral collapsible header (the colored side-bar is gone —
+          the body now renders the same standard edit panel as the RightRail).
+          The header carries only the pane's identity + controls; the editable
+          name lives in the Basic Information field below. */}
       <div
         data-testid={`insight-header-${insightName}`}
         onClick={handleHeaderClick}
-        className="flex items-center gap-2 px-3 py-2 bg-purple-50/50 border-l-4 border-purple-400 cursor-pointer hover:bg-purple-50 transition-colors duration-150"
+        className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors duration-150"
       >
         <button
           data-testid={`insight-toggle-${insightName}`}
@@ -387,53 +407,26 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
           {isExpanded ? <PiCaretDown size={14} /> : <PiCaretRight size={14} />}
         </button>
 
-        {isRenaming ? (
-          <span className="flex-1 flex flex-col">
-            <input
-              autoFocus
-              data-testid={`insight-rename-input-${insightName}`}
-              value={renameValue}
-              onChange={e => {
-                setRenameValue(e.target.value);
-                if (renameError) setRenameError(null);
-              }}
-              onBlur={() => commitRename()}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitRename();
-                if (e.key === 'Escape') {
-                  setRenameError(null);
-                  setIsRenaming(false);
-                }
-              }}
-              onClick={e => e.stopPropagation()}
-              className={`text-sm font-medium text-purple-800 bg-white border rounded px-1 py-0 outline-none focus:ring-1 ${
-                renameError ? 'border-highlight-400 focus:ring-highlight-400' : 'border-purple-300 focus:ring-purple-400'
-              }`}
-            />
-            {renameError && (
-              <span
-                data-testid={`insight-rename-error-${insightName}`}
-                className="text-xs text-highlight-600 mt-0.5"
-              >
-                {renameError}
-              </span>
-            )}
-          </span>
-        ) : (
+        {/* VIS-1224: SelectionChip-style identity (type icon + name + TYPE),
+            matching the standard RightRail edit-panel header. */}
+        <span
+          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${INSIGHT_COLORS.bg} ${INSIGHT_COLORS.text} ${INSIGHT_COLORS.border}`}
+        >
+          {InsightTypeIcon && <InsightTypeIcon style={{ fontSize: 14 }} />}
+        </span>
+
+        <div className="flex min-w-0 flex-1 flex-col">
           <span
-            className="text-sm font-medium text-purple-800 truncate flex-1 cursor-pointer"
+            className="truncate text-[13px] font-semibold text-secondary-900"
             data-testid={`insight-name-${insightName}`}
-            onClick={e => {
-              e.stopPropagation();
-              if (insightState?.isNew) {
-                setIsRenaming(true);
-                setRenameValue(insightName);
-              }
-            }}
+            title={insightName}
           >
             {insightName}
           </span>
-        )}
+          <span className="truncate text-[10.5px] uppercase tracking-wide text-gray-400">
+            Insight
+          </span>
+        </div>
 
         {status && (
           <span
@@ -441,6 +434,23 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
             className={`w-2 h-2 rounded-full flex-shrink-0 ${status === 'new' ? 'bg-green-500' : 'bg-amber-500'}`}
           />
         )}
+
+        {/* Rename only applies to a still-draft insight — a promoted/loaded
+            insight's inline rename is VIS-1209's project-wide ${ref()} rewrite,
+            out of scope here (matches `renameInsight`'s own `isNew` guard). */}
+        <PanelMenu
+          testId={`insight-${insightName}`}
+          ariaLabel={`Options for ${insightName}`}
+          items={[
+            {
+              id: 'rename',
+              label: 'Rename',
+              icon: PiPencilSimple,
+              disabled: !insightState?.isNew,
+              onSelect: startRename,
+            },
+          ]}
+        />
 
         <button
           data-testid={`insight-remove-${insightName}`}
@@ -452,31 +462,50 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
       </div>
 
       {isExpanded && (
-        <div className="px-3 py-3 space-y-4 border-l-4 border-purple-400">
-          {/* D12 (grounding diagnosis #4): the legacy top-level Type <Select>
-              that used to live here was a byte-for-byte duplicate of
-              TracePropsEditor's OWN <TypeSelector> just below — both wrote
-              through the same handler and always agreed, so the second
-              control was pure confusion ("Type: Scatter/Line" stacked on
-              "Properties: Scatter/Line"). Deleted; TracePropsEditor's
-              TypeSelector (data-testid `type-selector-${ownerName}`) is now
-              the ONLY place type switching happens. */}
-          <div>
-            <TracePropsEditor
-              ownerName={insightName}
-              props={tracePropsValue}
-              onChange={handleTracePropsChange}
-              droppable
-              onDropField={handleDropField}
-              onSaveAsMetric={handleOpenSaveAsMetric}
-              externalErrors={advisoryErrors}
-            />
-            {dedupOffers.length > 0 && (
-              <div className="mt-2">
-                <FieldSwapOfferBanner offers={dedupOffers} onDismiss={handleDismissDedupOffer} />
-              </div>
-            )}
-          </div>
+        <div className="p-3 space-y-4">
+          {/* Shared edit panel (VIS-1224) — the same Basic Information +
+              Visualization Props the standard InsightEditForm renders. Name is
+              editable only for a still-draft insight; committing renames the
+              draft (renameInsight rewrites sibling refs). The Explorer threads
+              its property-zone DnD + Save-as-metric into the shared props
+              editor; type switching stays owned by TracePropsEditor's own
+              TypeSelector (`type-selector-${insightName}`). */}
+          <InsightEditFormFields
+            showName
+            nameId={`insight-name-field-${insightName}`}
+            nameValue={renameValue}
+            onNameChange={e => {
+              setRenameValue(e.target.value);
+              if (renameError) setRenameError(null);
+            }}
+            onNameBlur={commitRename}
+            onNameKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitRename();
+              } else if (e.key === 'Escape') {
+                setRenameError(null);
+                setRenameValue(insightName);
+              }
+            }}
+            nameDisabled={!insightState?.isNew}
+            nameError={renameError}
+            nameErrorTestId={`insight-rename-error-${insightName}`}
+            nameInputRef={nameInputRef}
+            nameTestId={`insight-rename-input-${insightName}`}
+            showDescription={false}
+            ownerName={insightName}
+            props={tracePropsValue}
+            onPropsChange={handleTracePropsChange}
+            droppable
+            onDropField={handleDropField}
+            onSaveAsMetric={handleOpenSaveAsMetric}
+            externalErrors={advisoryErrors}
+          />
+
+          {dedupOffers.length > 0 && (
+            <FieldSwapOfferBanner offers={dedupOffers} onDismiss={handleDismissDedupOffer} />
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Interactions</label>

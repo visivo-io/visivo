@@ -8,7 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RefTextArea from './RefTextArea';
 import Select from '../../common/Select';
-import TracePropsEditor from './TracePropsEditor';
+import InsightEditFormFields from './InsightEditFormFields';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
@@ -16,7 +16,6 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
 import {
   SectionContainer,
-  SectionTitle,
   EmptyState,
   AlertContainer,
   AlertText
@@ -252,89 +251,27 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
             />
           )}
 
-          {/* Basic Fields Section */}
-          <SectionContainer>
-            <SectionTitle>
-              Basic Information
-            </SectionTitle>
-
-            {/* Name field - hidden for embedded insights */}
-            {!isEmbedded && (
-              <div className="relative">
-                <input
-                  type="text"
-                  id="insightName"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  disabled={isEditMode}
-                  placeholder=" "
-                  className={`
-                    block w-full px-3 py-2.5 text-sm text-gray-900
-                    bg-white rounded-md border appearance-none
-                    focus:outline-none focus:ring-2 focus:border-primary-500
-                    peer placeholder-transparent
-                    ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
-                    ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
-                  `}
-                />
-                <label
-                  htmlFor="insightName"
-                  className={`
-                    absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-                    bg-white px-1 left-2
-                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-                    peer-placeholder-shown:top-1/2
-                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-                    ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
-                  `}
-                >
-                  Insight Name<span className="text-red-500 ml-0.5">*</span>
-                </label>
-                {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-              </div>
-            )}
-
-            {/* Description (optional) */}
-            <div className="relative">
-              <textarea
-                id="insightDescription"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder=" "
-                rows={2}
-                className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 peer placeholder-transparent resize-y"
-              />
-              <label
-                htmlFor="insightDescription"
-                className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-3 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 text-gray-500 peer-focus:text-primary-500"
-              >
-                Description
-              </label>
-            </div>
-
-          </SectionContainer>
-
-          {/* Props Section */}
-          <SectionContainer>
-            <SectionTitle>
-              Visualization Props
-            </SectionTitle>
-
-            {/* Grouped, schema-driven, AJV-validated props editor. Fully controlled:
-                it owns no persistence — this form persists `props` on save. */}
-            <TracePropsEditor
-              ownerName={name || 'insight'}
-              props={props}
-              onChange={setProps}
-              onValidityChange={(ok) => setPropsValid(ok)}
-            />
-            {errors.props && (
-              <p className="mt-1 text-xs text-red-500" data-testid="insight-props-invalid">
-                {errors.props}
-              </p>
-            )}
-            {errors.propsType && <p className="mt-1 text-xs text-red-500">{errors.propsType}</p>}
-          </SectionContainer>
+          {/* Basic Information + Visualization Props — the shared inner panel
+              (VIS-1224), also rendered by the Explorer's InsightBuildSection so
+              both surfaces show the same edit form. Name is a plain live-edit
+              field here (persisted on Save); disabled in edit mode. */}
+          <InsightEditFormFields
+            showName={!isEmbedded}
+            nameId="insightName"
+            nameValue={name}
+            onNameChange={e => setName(e.target.value)}
+            nameDisabled={isEditMode}
+            nameError={errors.name}
+            showDescription
+            description={description}
+            onDescriptionChange={e => setDescription(e.target.value)}
+            ownerName={name || 'insight'}
+            props={props}
+            onPropsChange={setProps}
+            onValidityChange={ok => setPropsValid(ok)}
+            propsError={errors.props}
+            propsTypeError={errors.propsType}
+          />
 
           {/* Interactions Section */}
           <SectionContainer>

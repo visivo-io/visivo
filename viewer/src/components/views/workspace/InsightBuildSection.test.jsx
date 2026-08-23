@@ -110,13 +110,15 @@ describe('InsightBuildSection', () => {
     setupStore();
   });
 
-  it('renders insight name with purple styling', async () => {
+  // VIS-1224: the colored side-bar header is gone — the body now renders the
+  // same standard edit panel as the RightRail; the header is neutral.
+  it('renders the insight name in a neutral header (no colored side-bar)', async () => {
     render(
       <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
-    expect(await screen.findByText('test_insight')).toBeInTheDocument();
+    expect(await screen.findByTestId('insight-name-test_insight')).toHaveTextContent('test_insight');
     const header = screen.getByTestId('insight-header-test_insight');
-    expect(header.className).toContain('border-purple');
+    expect(header.className).not.toContain('border-purple');
   });
 
   // D12 (grounding diagnosis #4): the legacy top-level Type <Select> — a
@@ -912,82 +914,100 @@ describe('InsightBuildSection', () => {
   });
 
   describe('rename flow', () => {
-    it('clicking the name enters rename mode ONLY when the insight isNew', async () => {
+    // VIS-1224: the name now lives in the Basic Information field of the shared
+    // panel — always present when the pane is expanded, editable only for a
+    // still-draft (isNew) insight; committing on blur/Enter renames the draft.
+    it('the name field is disabled for a non-new (loaded) insight', async () => {
       useStore.setState({
         explorerInsightStates: { test_insight: { ...defaultInsightState, isNew: false } },
       });
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
+      expect(await screen.findByTestId('insight-rename-input-test_insight')).toBeDisabled();
     });
 
-    it('clicking the name on a NEW insight enters rename mode, pre-filled with the current name', async () => {
+    it('the name field is editable for a NEW insight, pre-filled with the current name', async () => {
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      const input = screen.getByTestId('insight-rename-input-test_insight');
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
+      expect(input).toBeEnabled();
       expect(input).toHaveValue('test_insight');
     });
 
-    it('committing a trimmed, changed name on blur calls renameInsight and exits rename mode', async () => {
+    // VIS-1224: the ⋮ panel menu is the discoverable rename entry point; it
+    // focuses the Basic Information name field.
+    it('the ⋮ menu Rename item focuses the name field for a new insight', async () => {
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-insight-test_insight'));
+      fireEvent.click(screen.getByTestId('panel-menu-item-rename-insight-test_insight'));
+      expect(screen.getByTestId('insight-rename-input-test_insight')).toHaveFocus();
+    });
+
+    it('the ⋮ menu Rename item is disabled for a non-new (loaded) insight', async () => {
+      useStore.setState({
+        explorerInsightStates: { test_insight: { ...defaultInsightState, isNew: false } },
+      });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      fireEvent.click(await screen.findByTestId('panel-menu-trigger-insight-test_insight'));
+      expect(screen.getByTestId('panel-menu-item-rename-insight-test_insight')).toBeDisabled();
+    });
+
+    it('committing a trimmed, changed name on blur calls renameInsight', async () => {
       const renameInsight = jest.fn();
       useStore.setState({ renameInsight });
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      const input = screen.getByTestId('insight-rename-input-test_insight');
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
       fireEvent.change(input, { target: { value: '  renamed_insight  ' } });
       fireEvent.blur(input);
       expect(renameInsight).toHaveBeenCalledWith('test_insight', 'renamed_insight');
-      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
     });
 
-    it('committing the SAME (or empty/whitespace) name is a no-op that just exits rename mode', async () => {
+    it('committing the SAME (or empty/whitespace) name is a no-op', async () => {
       const renameInsight = jest.fn();
       useStore.setState({ renameInsight });
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      const input = screen.getByTestId('insight-rename-input-test_insight');
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
       fireEvent.change(input, { target: { value: '   ' } });
       fireEvent.blur(input);
       expect(renameInsight).not.toHaveBeenCalled();
-      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
     });
 
-    it('Enter commits the rename (same path as blur)', async () => {
+    it('Enter commits the rename', async () => {
       const renameInsight = jest.fn();
       useStore.setState({ renameInsight });
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      const input = screen.getByTestId('insight-rename-input-test_insight');
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
       fireEvent.change(input, { target: { value: 'enter_name' } });
       fireEvent.keyDown(input, { key: 'Enter' });
       expect(renameInsight).toHaveBeenCalledWith('test_insight', 'enter_name');
     });
 
-    it('Escape cancels the rename without committing', async () => {
+    it('Escape reverts the buffered name without committing', async () => {
       const renameInsight = jest.fn();
       useStore.setState({ renameInsight });
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      const input = screen.getByTestId('insight-rename-input-test_insight');
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
       fireEvent.change(input, { target: { value: 'abandoned' } });
       fireEvent.keyDown(input, { key: 'Escape' });
       expect(renameInsight).not.toHaveBeenCalled();
-      expect(screen.queryByTestId('insight-rename-input-test_insight')).not.toBeInTheDocument();
+      expect(input).toHaveValue('test_insight');
     });
 
-    it('a NAME_COLLISION error shows inline and keeps the rename input open', async () => {
+    it('a NAME_COLLISION error shows inline and keeps the buffered name', async () => {
       const renameInsight = jest.fn(() => {
         const err = new Error('Name "dupe" is already in use. Choose a different name.');
         err.code = 'NAME_COLLISION';
@@ -997,8 +1017,7 @@ describe('InsightBuildSection', () => {
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      const input = screen.getByTestId('insight-rename-input-test_insight');
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
       fireEvent.change(input, { target: { value: 'dupe' } });
       fireEvent.blur(input);
       const error = screen.getByTestId('insight-rename-error-test_insight');
@@ -1016,8 +1035,7 @@ describe('InsightBuildSection', () => {
       render(
         <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
       );
-      fireEvent.click(await screen.findByTestId('insight-name-test_insight'));
-      const input = screen.getByTestId('insight-rename-input-test_insight');
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
       fireEvent.change(input, { target: { value: 'dupe' } });
       fireEvent.blur(input);
       expect(screen.getByTestId('insight-rename-error-test_insight')).toBeInTheDocument();

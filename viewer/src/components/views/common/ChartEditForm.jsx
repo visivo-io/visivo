@@ -12,11 +12,9 @@ import { getSchema, isSchemaLoaded } from '../../../schemas/schemas';
 import { getTypeByValue } from './objectTypeConfigs';
 import { setAtPath } from './embeddedObjectUtils';
 import { parseRefValue, formatRef } from '../../../utils/refString';
-import { unwrapConfig } from '../workspace/unwrapRecordConfig';
 import EmbeddedPill from '../lineage/EmbeddedPill';
-import Select from '../../common/Select';
-import TracePropsEditor from './TracePropsEditor';
-import useRecordSave from '../../../hooks/useRecordSave';
+import Dropdown from '../../common/Dropdown';
+import AddInsightMenu from '../workspace/AddInsightMenu';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -38,10 +36,11 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   const [insights, setInsights] = useState([]);
   const [layoutValues, setLayoutValues] = useState({});
 
-  // The insight whose props are currently being edited via TracePropsEditor.
-  // For a ref insight this is its name; for an embedded insight it is the
-  // synthetic key `__embedded__:<index>` (so the picker can address either).
-  const [selectedInsightName, setSelectedInsightName] = useState('');
+  // VIS-1224: "New blank insight" (the Add Insight menu) stages a blank
+  // EMBEDDED insight on the chart; staged entries merge into the save and count
+  // toward dirty. (The chart no longer edits insight props inline — that's the
+  // insight's own edit panel.)
+  const [stagedEmbedded, setStagedEmbedded] = useState([]);
 
   // UI state
   const [errors, setErrors] = useState({});
@@ -57,9 +56,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   const isEditMode = !!chart && !isCreate;
   const isNewObject = chart?.status === ObjectStatus.NEW;
-
-  // Get available insights from the insight store
-  const availableInsights = storeInsights?.map(i => i.name) || [];
 
   // Load layout schema on mount
   useEffect(() => {
@@ -108,60 +104,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     .map((insight, index) => ({ insight, index }))
     .filter(({ insight }) => typeof insight === 'object');
 
-  // Prefix that marks the picker value of an EMBEDDED insight (vs a ref name).
-  const EMBEDDED_PREFIX = '__embedded__:';
-  const isEmbeddedSelection =
-    typeof selectedInsightName === 'string' && selectedInsightName.startsWith(EMBEDDED_PREFIX);
-  const selectedEmbeddedIndex = isEmbeddedSelection
-    ? Number(selectedInsightName.slice(EMBEDDED_PREFIX.length))
-    : null;
-
-  // The store record for the currently-selected REF insight (envelope-or-bare
-  // unwrapped to its config). Used to seed TracePropsEditor and as the base for
-  // the persisted insight write.
-  const selectedInsightRecord =
-    !isEmbeddedSelection && selectedInsightName
-      ? storeInsights?.find(i => i.name === selectedInsightName)
-      : null;
-  const selectedInsightConfig = selectedInsightRecord ? unwrapConfig(selectedInsightRecord) : null;
-
-  // Optimistic + debounced persist for the SELECTED ref insight. The chart record
-  // is untouched — we write the insight record through the unified backbone.
-  const { scheduleSave: scheduleInsightSave } = useRecordSave('insight', selectedInsightName);
-
-  // Build the props object handed to TracePropsEditor for whichever insight is
-  // selected (ref record's config.props, or the embedded insight's props).
-  let selectedInsightProps = null;
-  if (isEmbeddedSelection && selectedEmbeddedIndex != null) {
-    const embedded = rawInsights[selectedEmbeddedIndex];
-    selectedInsightProps =
-      (embedded && typeof embedded === 'object' ? embedded.props : null) || { type: 'scatter' };
-  } else if (selectedInsightConfig) {
-    selectedInsightProps = selectedInsightConfig.props || { type: 'scatter' };
-  }
-
-  // Persist a props edit for the selected insight. Ref insights write the insight
-  // record (backbone); embedded insights edit inline + persist the CHART.
-  const handleInsightPropsChange = nextProps => {
-    if (isEmbeddedSelection && selectedEmbeddedIndex != null) {
-      const updatedInsights = rawInsights.map((insight, index) =>
-        index === selectedEmbeddedIndex && typeof insight === 'object'
-          ? { ...insight, props: nextProps }
-          : insight
-      );
-      // Inline-edit the embedded insight and persist the chart via its save path.
-      const config = { name, insights: updatedInsights };
-      if (Object.keys(layoutValues).length > 0) {
-        config.layout = layoutValues;
-      }
-      if (onSave) onSave('chart', name, config);
-      return;
-    }
-    if (selectedInsightRecord) {
-      scheduleInsightSave({ ...selectedInsightConfig, props: nextProps });
-    }
-  };
-
   // VIS-1133: the values that constitute "the saved chart", as form state.
   // Kept as a pure function so the seeding effect and the dirty check agree by
   // construction rather than by inspection.
@@ -193,40 +135,13 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chart, isCreate]);
 
-  const dirty = isDirtyAgainst({ name, insights, layoutValues });
+  const dirty = isDirtyAgainst({ name, insights, layoutValues }) || stagedEmbedded.length > 0;
 
   // Report upward so the tab strip's unsaved dot and its guarded close reflect
   // real edits (VIS-1133) — the rail clears it on unmount.
   useEffect(() => {
     if (onDirtyChange) onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);
-
-  // Build the options for the insight props picker: every ref insight by name,
-  // plus an entry per embedded insight. Keeps a stable identity so the picker
-  // can default-select the lone insight and stay in sync as refs change.
-  const insightPickerOptions = [
-    ...insights.map(i => ({ value: i, label: i })),
-    ...embeddedInsights.map(({ insight, index }) => ({
-      value: `${EMBEDDED_PREFIX}${index}`,
-      label: insight.name || `(embedded insight ${index + 1})`,
-    })),
-  ];
-
-  // Default-select the chart's only insight; otherwise keep the selection valid
-  // as the refs/embedded lists change (drop a stale selection).
-  useEffect(() => {
-    const validValues = insightPickerOptions.map(o => o.value);
-    if (selectedInsightName && validValues.includes(selectedInsightName)) {
-      return; // current selection still valid
-    }
-    if (insightPickerOptions.length === 1) {
-      setSelectedInsightName(insightPickerOptions[0].value);
-    } else if (selectedInsightName) {
-      // Selection no longer exists (e.g. its ref was removed/swapped).
-      setSelectedInsightName('');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [insights, embeddedInsights.length, selectedInsightName]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -236,7 +151,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
       newErrors.name = nameError;
     }
 
-    if (insights.length === 0 && embeddedInsights.length === 0) {
+    if (insights.length === 0 && embeddedInsights.length === 0 && stagedEmbedded.length === 0) {
       newErrors.data = 'At least one insight is required';
     }
 
@@ -274,6 +189,9 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
       rebuiltInsights.push(refInsights[refIdx]);
     }
 
+    // VIS-1224: append any "New blank insight" the Add-Insight menu staged.
+    stagedEmbedded.forEach(embedded => rebuiltInsights.push(embedded));
+
     if (rebuiltInsights.length > 0) {
       config.insights = rebuiltInsights;
     }
@@ -310,22 +228,23 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     }
   };
 
-  // Insight management
-  const addInsight = () => {
-    const availableToAdd = availableInsights.filter(i => !insights.includes(i));
-    if (availableToAdd.length > 0) {
-      setInsights([...insights, availableToAdd[0]]);
-    }
+  // Insight management (VIS-1224: add via the AddInsightMenu dropdown — pick an
+  // existing project insight, or stage a New blank embedded insight).
+  const addExistingInsight = insightName => {
+    if (!insightName || insights.includes(insightName)) return;
+    setInsights([...insights, insightName]);
+  };
+
+  const addBlankInsight = () => {
+    setStagedEmbedded([...stagedEmbedded, { props: { type: 'scatter' } }]);
   };
 
   const removeInsight = index => {
     setInsights(insights.filter((_, i) => i !== index));
   };
 
-  const updateInsight = (index, value) => {
-    const updated = [...insights];
-    updated[index] = value;
-    setInsights(updated);
+  const removeStagedEmbedded = index => {
+    setStagedEmbedded(stagedEmbedded.filter((_, i) => i !== index));
   };
 
   return (
@@ -374,60 +293,80 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
             </div>
           </div>
 
-          {/* Insights Section */}
+          {/* Insights Section — VIS-1224: compose the chart's insights. The
+              chart no longer edits insight props inline (that's each insight's
+              own edit panel); "+ Add Insight" opens the same picker the
+              Explorer uses — pick an existing project insight, or add a New
+              blank one. */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-gray-200 pb-2">
               <h3 className="text-sm font-medium text-gray-700">Insights</h3>
-              <button
-                type="button"
-                onClick={addInsight}
-                disabled={availableInsights.filter(i => !insights.includes(i)).length === 0}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              <Dropdown
+                align="right"
+                width={260}
+                trigger={
+                  <button
+                    type="button"
+                    data-testid="chart-add-insight"
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+                  >
+                    <AddIcon fontSize="small" />
+                    Add Insight
+                  </button>
+                }
               >
-                <AddIcon fontSize="small" />
-                Add Insight
-              </button>
+                {close => (
+                  <AddInsightMenu
+                    excludeNames={insights}
+                    onPickExisting={addExistingInsight}
+                    onCreateNew={addBlankInsight}
+                    close={close}
+                  />
+                )}
+              </Dropdown>
             </div>
 
-            {availableInsights.length === 0 ? (
+            {insights.length === 0 && embeddedInsights.length === 0 && stagedEmbedded.length === 0 ? (
               <p className="text-sm text-gray-500 italic">
-                No insights available. Create insights first to add them to charts.
-              </p>
-            ) : insights.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                No insights added. Add insights to visualize data in this chart.
+                No insights yet. Use “Add Insight” to add one.
               </p>
             ) : (
-              insights.map((insight, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2"
-                  data-testid={`ref-insight-row-${index}`}
-                >
-                  <EmbeddedPill
-                    objectType="insight"
-                    label={insight}
-                    size="md"
-                    as="div"
-                    tooltip={`Insight: ${insight}`}
-                    onRemove={() => removeInsight(index)}
-                    className="flex-1 min-w-0"
-                  />
-                  <Select
-                    aria-label={`Change insight ${index + 1}`}
-                    data-testid={`change-insight-select-${index}`}
-                    size="sm"
-                    className="min-w-[160px]"
-                    value={insight}
-                    options={availableInsights.map(i => ({
-                      value: i,
-                      label: i,
-                      isDisabled: insights.includes(i) && i !== insight,
-                    }))}
-                    onChange={value => updateInsight(index, value)}
-                  />
-                </div>
-              ))
+              <div className="space-y-2">
+                {insights.map((insight, index) => (
+                  <div
+                    key={`ref-${index}`}
+                    className="flex items-center gap-2"
+                    data-testid={`ref-insight-row-${index}`}
+                  >
+                    <EmbeddedPill
+                      objectType="insight"
+                      label={insight}
+                      size="md"
+                      as="div"
+                      tooltip={`Insight: ${insight}`}
+                      onRemove={() => removeInsight(index)}
+                      className="flex-1 min-w-0"
+                    />
+                  </div>
+                ))}
+                {stagedEmbedded.map((_, index) => (
+                  <div
+                    key={`staged-${index}`}
+                    className="flex items-center gap-2"
+                    data-testid={`staged-insight-row-${index}`}
+                  >
+                    <EmbeddedPill
+                      objectType="insight"
+                      label="New insight (blank)"
+                      size="md"
+                      as="div"
+                      tooltip="A new blank embedded insight — saved with the chart"
+                      onRemove={() => removeStagedEmbedded(index)}
+                      className="flex-1 min-w-0"
+                    />
+                  </div>
+                ))}
+              </div>
             )}
 
             {errors.data && <p className="text-xs text-red-500">{errors.data}</p>}
@@ -476,55 +415,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
               );
             })()}
           </div>
-
-          {/* Insight Props Section — edit the selected insight's Plotly props.
-              This is an ADDITION to the chart's own fields (refs + layout); the
-              chart record is unchanged for ref insights — the insight record is
-              persisted through the unified backbone. */}
-          {insightPickerOptions.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
-                Insight Props
-              </h3>
-
-              {/* Insight picker */}
-              <div className="relative">
-                <Select
-                  aria-label="Insight"
-                  data-testid="insight-props-select"
-                  value={selectedInsightName}
-                  options={insightPickerOptions}
-                  onChange={value => setSelectedInsightName(value || '')}
-                  placeholder="Select an insight to edit…"
-                />
-                <label className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500">
-                  Insight
-                </label>
-              </div>
-
-              {/* Selected insight's grouped props editor (controlled). */}
-              {selectedInsightName && selectedInsightProps ? (
-                <TracePropsEditor
-                  ownerName={
-                    isEmbeddedSelection
-                      ? insightPickerOptions.find(o => o.value === selectedInsightName)?.label ||
-                        'insight'
-                      : selectedInsightName
-                  }
-                  props={selectedInsightProps}
-                  onChange={handleInsightPropsChange}
-                />
-              ) : selectedInsightName ? (
-                <p className="text-sm text-gray-500 italic" data-testid="insight-props-unloaded">
-                  Loading insight…
-                </p>
-              ) : (
-                <p className="text-sm text-gray-500 italic">
-                  Select an insight above to edit its visualization props.
-                </p>
-              )}
-            </div>
-          )}
 
           {/* Layout Section */}
           <div className="space-y-4">

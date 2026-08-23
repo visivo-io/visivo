@@ -7,7 +7,7 @@
  * `ExplorerRightPanel`). Covers 03-delivery-plan.md's Phase 3b gate:
  *
  *   1. Rail CRUD — Add Insight stacks a new section; Chart always renders
- *      above the Insight sections.
+ *      below the Insight sections (VIS-1224: insight panes stack on top).
  *   2. Type-switch cache — TracePropsEditor's own preserveTraceProps carries
  *      x/y across a scatter -> bar -> scatter round trip.
  *   3. Drop targets on TracePropsEditor fields render D8 typed ref pills —
@@ -139,7 +139,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     }
   });
 
-  test('Add Insight stacks a new section; Chart section always renders above the Insight sections', async ({
+  test('Add Insight stacks a new section; the Insight sections render above the Chart section', async ({
     page,
   }) => {
     await gotoExplorerHome(page);
@@ -150,12 +150,6 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     const before = await rail.locator('[data-testid^="insight-build-section-"]').count();
 
     await page.getByTestId('right-panel-add-insight').click();
-    // Phase 6c-T5 (ux-audit.md "'+ Add Insight' creates a blank insight instead
-    // of letting you pick an existing one"): the button now opens a picker
-    // (existing insights + "New blank insight"); these specs want the OLD
-    // "always create a fresh blank insight" behavior, so drive the new
-    // secondary action explicitly.
-    await page.getByTestId('add-insight-menu-create-new').click();
     await expect(rail.locator('[data-testid^="insight-build-section-"]')).toHaveCount(
       before + 1,
       { timeout: 10000 }
@@ -166,7 +160,37 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
       .locator('[data-testid^="insight-build-section-"]')
       .first()
       .boundingBox();
-    expect(chartBox.y).toBeLessThan(firstInsightBox.y);
+    // VIS-1224: insight sections now stack ABOVE the chart section.
+    expect(firstInsightBox.y).toBeLessThan(chartBox.y);
+  });
+
+  // VIS-1224: the ⋮ panel menu must open VISIBLY — the panes are
+  // `overflow-hidden`, so an in-flow menu would be clipped; PanelMenu portals
+  // to the body. This exercises that in real layout (no DnD involved).
+  test('the insight pane ⋮ menu opens un-clipped and Rename enters inline edit', async ({ page }) => {
+    await gotoExplorerHome(page);
+    await newExploration(page);
+    const rail = page.getByTestId('exploration-build-rail');
+    await expect(rail).toBeVisible({ timeout: 15000 });
+
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames?.[0]
+    );
+    expect(insightName).toBeTruthy();
+
+    await page.getByTestId(`panel-menu-trigger-insight-${insightName}`).click();
+    const rename = page.getByTestId(`panel-menu-item-rename-insight-${insightName}`);
+    await expect(rename).toBeVisible();
+    // The portaled menu is NOT nested inside the overflow-hidden section.
+    const escaped = await page.evaluate(name => {
+      const section = document.querySelector(`[data-testid="insight-build-section-${name}"]`);
+      const item = document.querySelector(`[data-testid="panel-menu-item-rename-insight-${name}"]`);
+      return section && item ? !section.contains(item) : false;
+    }, insightName);
+    expect(escaped).toBe(true);
+
+    await rename.click();
+    await expect(page.getByTestId(`insight-rename-input-${insightName}`)).toBeVisible();
   });
 
   test('drop targets on TracePropsEditor fields render D8 typed pills — never raw ?{ syntax', async ({

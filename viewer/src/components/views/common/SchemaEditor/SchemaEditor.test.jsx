@@ -91,9 +91,11 @@ describe('SchemaEditor', () => {
     expect(screen.queryByText(/of.*properties/)).not.toBeInTheDocument();
   });
 
-  it('shows empty state when no properties added', () => {
+  // VIS-1224: no "No properties added yet" placeholder — the "+ Add Properties"
+  // button conveys the affordance; the empty dashed box was just noise.
+  it('renders no empty-state placeholder when no properties are added', () => {
     render(<SchemaEditor {...defaultProps} />);
-    expect(screen.getByText(/No properties added yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/No properties added yet/)).not.toBeInTheDocument();
   });
 
   it('shows initially expanded properties', () => {
@@ -272,9 +274,9 @@ describe('SchemaEditor', () => {
     // Click it again in the picker to toggle it back OFF.
     fireEvent.click(within(picker).getByText('mode'));
 
-    // The displayed property ROW ('No properties added yet' comes back since
-    // mode was the only one) is gone; only the picker's own listing remains.
-    expect(screen.getByText(/No properties added yet/)).toBeInTheDocument();
+    // The displayed property ROW is gone (mode was the only one) — only the
+    // picker's own listing remains, so 'mode' appears exactly once now.
+    expect(screen.getAllByText('mode').length).toBe(1);
   });
 
   it('a previously-added property that is no longer valid under a NEW schema is dropped on re-sync', () => {
