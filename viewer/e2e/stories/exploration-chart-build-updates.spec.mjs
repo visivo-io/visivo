@@ -244,7 +244,7 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
   // story starts with, "Save to project" used to silently drop the chart —
   // no row, no notice — because the live auto-naming effect
   // (ExplorationBuildRail.jsx) carried the naming cascade through
-  // `<source>_query` -> `<...>_insight` but never took the last step to the
+  // `<source>-query` -> `<...>-insight` but never took the last step to the
   // chart, so `explorerChartName` stayed `null` forever (the Build rail
   // showed "Chart: Untitled") and `buildPromoteChecklist` gates the chart's
   // entire checklist row on that name being truthy. This never renames the

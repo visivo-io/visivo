@@ -42,6 +42,7 @@ const ChartEditFormFields = ({
   layoutLoading = false,
   layoutError,
   layoutEditorProps = {},
+  layoutHint,
 }) => (
   <>
     <div className="space-y-4">
@@ -118,6 +119,7 @@ const ChartEditFormFields = ({
           {...layoutEditorProps}
         />
       ) : null}
+      {layoutHint}
     </div>
   </>
 );

@@ -384,16 +384,16 @@ describe('ExplorationBuildRail', () => {
       });
       render(<ExplorationBuildRail />);
       await waitFor(() => {
-        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db-query']);
       });
-      expect(useStore.getState().explorerModelStates['orders_db_query']).toBeTruthy();
+      expect(useStore.getState().explorerModelStates['orders_db-query']).toBeTruthy();
       expect(useStore.getState().explorerModelStates.model).toBeUndefined();
     });
 
     it('renames a generic-named insight to <model>_insight once its model already has a real name', async () => {
       useStore.setState({
-        explorerModelTabs: ['orders_db_query'],
-        explorerModelStates: { orders_db_query: { isNew: true, sourceName: 'orders_db' } },
+        explorerModelTabs: ['orders_db-query'],
+        explorerModelStates: { 'orders_db-query': { isNew: true, sourceName: 'orders_db' } },
         explorerChartInsightNames: ['insight'],
         explorerActiveInsightName: 'insight',
         explorerInsightStates: {
@@ -402,7 +402,7 @@ describe('ExplorationBuildRail', () => {
       });
       render(<ExplorationBuildRail />);
       await waitFor(() => {
-        expect(useStore.getState().explorerChartInsightNames).toEqual(['orders_db_query_insight']);
+        expect(useStore.getState().explorerChartInsightNames).toEqual(['orders_db-query-insight']);
       });
     });
 
@@ -481,7 +481,7 @@ describe('ExplorationBuildRail', () => {
         useStore.setState({ defaults: { source_name: 'orders_db' } });
       });
       await waitFor(() => {
-        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db-query']);
       });
     });
 
@@ -493,11 +493,11 @@ describe('ExplorationBuildRail', () => {
       });
       const { rerender } = render(<ExplorationBuildRail />);
       await waitFor(() => {
-        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db-query']);
       });
       rerender(<ExplorationBuildRail />);
       await screen.findByTestId('exploration-build-rail');
-      expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query']);
+      expect(useStore.getState().explorerModelTabs).toEqual(['orders_db-query']);
     });
 
     it('leaves a generic-named insight untouched when there is no model tab at all to anchor on', async () => {
@@ -519,12 +519,12 @@ describe('ExplorationBuildRail', () => {
       useStore.setState({
         explorerModelTabs: ['model'],
         explorerModelStates: { model: { isNew: true, sourceName: 'orders_db' } },
-        models: [{ name: 'orders_db_query' }],
+        models: [{ name: 'orders_db-query' }],
         defaults: { source_name: 'orders_db' },
       });
       render(<ExplorationBuildRail />);
       await waitFor(() => {
-        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db_query_2']);
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db-query_2']);
       });
     });
 
@@ -542,16 +542,16 @@ describe('ExplorationBuildRail', () => {
     describe('chart naming (VIS-1109 — the chart used to be the one link in the cascade that never fired)', () => {
       it('auto-names the chart <insightAnchor>_chart the moment it has real bound content', async () => {
         useStore.setState({
-          explorerModelTabs: ['orders_db_query'],
+          explorerModelTabs: ['orders_db-query'],
           explorerModelStates: {
-            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+            'orders_db-query': { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
           },
-          explorerChartInsightNames: ['orders_db_query_insight'],
-          explorerActiveInsightName: 'orders_db_query_insight',
+          explorerChartInsightNames: ['orders_db-query-insight'],
+          explorerActiveInsightName: 'orders_db-query-insight',
           explorerInsightStates: {
-            orders_db_query_insight: {
+            'orders_db-query-insight': {
               type: 'scatter',
-              props: { x: '?{${ref(orders_db_query).x}}' },
+              props: { x: '?{${ref(orders_db-query).x}}' },
               interactions: [],
               typePropsCache: {},
               isNew: true,
@@ -563,15 +563,15 @@ describe('ExplorationBuildRail', () => {
         });
         render(<ExplorationBuildRail />);
         await waitFor(() => {
-          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+          expect(useStore.getState().explorerChartName).toBe('orders_db-query-insight-chart');
         });
       });
 
       it('falls back to <modelAnchor>_chart when there is no meaningful insight to anchor on but the chart has real layout content', async () => {
         useStore.setState({
-          explorerModelTabs: ['orders_db_query'],
+          explorerModelTabs: ['orders_db-query'],
           explorerModelStates: {
-            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+            'orders_db-query': { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
           },
           explorerChartInsightNames: ['insight'],
           explorerInsightStates: {
@@ -583,15 +583,15 @@ describe('ExplorationBuildRail', () => {
         });
         render(<ExplorationBuildRail />);
         await waitFor(() => {
-          expect(useStore.getState().explorerChartName).toBe('orders_db_query_chart');
+          expect(useStore.getState().explorerChartName).toBe('orders_db-query-chart');
         });
       });
 
-      it('leaves the chart unnamed while it is still pure scaffolding (VIS-1102 gating must still hold — never offers a scaffold chart)', async () => {
+      it('gives a pure-scaffold chart the generic default name "chart" (but never a cascade name — VIS-1102 gating still holds)', async () => {
         useStore.setState({
-          explorerModelTabs: ['orders_db_query'],
+          explorerModelTabs: ['orders_db-query'],
           explorerModelStates: {
-            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: '' },
+            'orders_db-query': { isNew: true, sourceName: 'orders_db', sql: '' },
           },
           explorerChartInsightNames: ['insight'],
           explorerInsightStates: {
@@ -603,18 +603,20 @@ describe('ExplorationBuildRail', () => {
         });
         render(<ExplorationBuildRail />);
         await screen.findByTestId('exploration-build-rail');
-        expect(useStore.getState().explorerChartName).toBeNull();
+        // A generic default (so the pane isn't blank) — NOT the cascade name,
+        // and it stays out of "Save to project" (see the VIS-1102 checklist pin).
+        expect(useStore.getState().explorerChartName).toBe('chart');
       });
 
       it('never renames a chart that already has a real name, even once content is bound', async () => {
         useStore.setState({
-          explorerModelTabs: ['orders_db_query'],
+          explorerModelTabs: ['orders_db-query'],
           explorerModelStates: {
-            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+            'orders_db-query': { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
           },
-          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerChartInsightNames: ['orders_db-query-insight'],
           explorerInsightStates: {
-            orders_db_query_insight: {
+            'orders_db-query-insight': {
               type: 'scatter',
               props: { x: '?{1}' },
               interactions: [],
@@ -633,13 +635,13 @@ describe('ExplorationBuildRail', () => {
 
       it('a suggested chart name that collides with an existing object falls back to a disambiguated one', async () => {
         useStore.setState({
-          explorerModelTabs: ['orders_db_query'],
+          explorerModelTabs: ['orders_db-query'],
           explorerModelStates: {
-            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+            'orders_db-query': { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
           },
-          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerChartInsightNames: ['orders_db-query-insight'],
           explorerInsightStates: {
-            orders_db_query_insight: {
+            'orders_db-query-insight': {
               type: 'scatter',
               props: { x: '?{1}' },
               interactions: [],
@@ -649,24 +651,24 @@ describe('ExplorationBuildRail', () => {
           },
           explorerChartName: null,
           explorerChartLayout: {},
-          charts: [{ name: 'orders_db_query_insight_chart' }],
+          charts: [{ name: 'orders_db-query-insight-chart' }],
           defaults: { source_name: 'orders_db' },
         });
         render(<ExplorationBuildRail />);
         await waitFor(() => {
-          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart_2');
+          expect(useStore.getState().explorerChartName).toBe('orders_db-query-insight-chart_2');
         });
       });
 
       it('is idempotent — the chart auto-name fires once and does not oscillate on re-render', async () => {
         useStore.setState({
-          explorerModelTabs: ['orders_db_query'],
+          explorerModelTabs: ['orders_db-query'],
           explorerModelStates: {
-            orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
+            'orders_db-query': { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x' },
           },
-          explorerChartInsightNames: ['orders_db_query_insight'],
+          explorerChartInsightNames: ['orders_db-query-insight'],
           explorerInsightStates: {
-            orders_db_query_insight: {
+            'orders_db-query-insight': {
               type: 'scatter',
               props: { x: '?{1}' },
               interactions: [],
@@ -680,11 +682,11 @@ describe('ExplorationBuildRail', () => {
         });
         const { rerender } = render(<ExplorationBuildRail />);
         await waitFor(() => {
-          expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+          expect(useStore.getState().explorerChartName).toBe('orders_db-query-insight-chart');
         });
         rerender(<ExplorationBuildRail />);
         await screen.findByTestId('exploration-build-rail');
-        expect(useStore.getState().explorerChartName).toBe('orders_db_query_insight_chart');
+        expect(useStore.getState().explorerChartName).toBe('orders_db-query-insight-chart');
       });
     });
   });
@@ -719,18 +721,18 @@ describe('VIS-1109 — a bound-but-unnamed chart is no longer silently dropped f
 
   it('produces a chart-tier checklist row once the mounted build rail has auto-named the content-bearing chart', async () => {
     useStore.setState({
-      explorerModelTabs: ['orders_db_query'],
+      explorerModelTabs: ['orders_db-query'],
       explorerModelStates: {
-        orders_db_query: { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x, 10 as y' },
+        'orders_db-query': { isNew: true, sourceName: 'orders_db', sql: 'select 1 as x, 10 as y' },
       },
-      explorerChartInsightNames: ['orders_db_query_insight'],
-      explorerActiveInsightName: 'orders_db_query_insight',
+      explorerChartInsightNames: ['orders_db-query-insight'],
+      explorerActiveInsightName: 'orders_db-query-insight',
       explorerInsightStates: {
-        orders_db_query_insight: {
+        'orders_db-query-insight': {
           type: 'scatter',
           props: {
-            x: '?{${ref(orders_db_query).x}}',
-            y: '?{${ref(orders_db_query).y}}',
+            x: '?{${ref(orders_db-query).x}}',
+            y: '?{${ref(orders_db-query).y}}',
           },
           interactions: [],
           typePropsCache: {},
@@ -758,7 +760,7 @@ describe('VIS-1109 — a bound-but-unnamed chart is no longer silently dropped f
     const rows = await buildPromoteChecklist(() => useStore.getState());
     const chartRow = rows.find(r => r.tier === 'chart');
     expect(chartRow).toBeTruthy();
-    expect(chartRow.name).toBe('orders_db_query_insight_chart');
+    expect(chartRow.name).toBe('orders_db-query-insight-chart');
     expect(chartRow.status).toBe('new');
   });
 
@@ -786,7 +788,10 @@ describe('VIS-1109 — a bound-but-unnamed chart is no longer silently dropped f
     // fired.
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    expect(useStore.getState().explorerChartName).toBeNull();
+    // The chart gets the generic default name "chart" (never a cascade name
+    // for scaffolding) — and the promote checklist is STILL empty: the chart
+    // row is gated on real content, not merely on having a name.
+    expect(useStore.getState().explorerChartName).toBe('chart');
     const rows = await buildPromoteChecklist(() => useStore.getState());
     expect(rows).toEqual([]);
   });
