@@ -65,6 +65,11 @@ def app(output_dir, model, source):
     flask_app = Mock()
     flask_app.project.models = [model]
     flask_app.project.sources = [source]
+    # The managers hold published objects too, so a committed model resolves
+    # through them in production. Mock() would otherwise hand back a truthy
+    # Mock for every name, including ones that should 404.
+    flask_app.model_manager.get.side_effect = lambda n: model if n == model.name else None
+    flask_app.source_manager.get.side_effect = lambda n: source if n == source.name else None
     register_model_schema_views(app, flask_app, output_dir)
     return app
 
@@ -190,3 +195,117 @@ class TestAgreementWithTheRun:
 
         assert [c["name"] for c in endpoint] == sorted(persisted.keys())
         assert [c["type"] for c in endpoint] == [str(persisted[c["name"]]) for c in endpoint]
+
+
+class TestUncommittedModels:
+    """A model created in the editor lives in the DRAFT CACHE until Commit.
+
+    ``/api/models/`` serves cached + published (that is what the Library and the
+    semantic layer render from), so the viewer shows models that
+    ``flask_app.project`` — compiled from YAML — has never heard of. Schema
+    inference used to scan only the committed project, so every one of those
+    models 404'd: "Model 'test-source_query' not found" the moment the ERD asked
+    for its columns.
+    """
+
+    @pytest.fixture
+    def draft_model(self):
+        # A ref STRING, not an embedded object: this is how the editor saves a
+        # model that points at a source, and it is what makes DAG-based source
+        # resolution impossible for a model the DAG has never seen.
+        return SqlModelFactory(
+            name="test-source_query",
+            sql="SELECT id, amount FROM orders",
+            source="ref(wh)",
+        )
+
+    @pytest.fixture
+    def draft_app(self, output_dir, source, draft_model):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        flask_app = Mock()
+        # Nothing committed to YAML yet — the draft exists only in the cache,
+        # and the compiled DAG has never seen it, so DAG-based source
+        # resolution cannot answer for it.
+        flask_app.project.models = []
+        flask_app.project.sources = [source]
+        flask_app.project.dag.return_value = None
+        flask_app.model_manager.get.side_effect = lambda n: (
+            draft_model if n == draft_model.name else None
+        )
+        flask_app.source_manager.get.side_effect = lambda n: source if n == source.name else None
+        register_model_schema_views(app, flask_app, output_dir)
+        return app
+
+    @pytest.fixture
+    def draft_client(self, draft_app):
+        return draft_app.test_client()
+
+    def test_an_uncommitted_model_reports_its_columns(self, draft_client, output_dir):
+        """The reported bug: a 404 in the semantic layer for a draft model."""
+        _write_source_schema(output_dir, "wh", ORDERS)
+
+        resp = draft_client.post("/api/model-schemas/test-source_query/")
+
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert [c["name"] for c in body["columns"]] == ["amount", "id"]
+        assert body["source_name"] == "wh"
+
+    def test_a_context_string_source_resolves_too(self, output_dir, source):
+        """``${ref(wh)}`` is the serialized form the same field round-trips as."""
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        model = SqlModelFactory(name="ctx_query", sql="SELECT id FROM orders", source="${ref(wh)}")
+        flask_app = Mock()
+        flask_app.project.models = []
+        flask_app.project.sources = [source]
+        flask_app.project.dag.return_value = None
+        flask_app.model_manager.get.side_effect = lambda n: model if n == "ctx_query" else None
+        flask_app.source_manager.get.side_effect = lambda n: source if n == "wh" else None
+        register_model_schema_views(app, flask_app, output_dir)
+        _write_source_schema(output_dir, "wh", ORDERS)
+
+        resp = app.test_client().post("/api/model-schemas/ctx_query/")
+
+        assert resp.status_code == 200
+        assert resp.get_json()["source_name"] == "wh"
+
+    def test_a_genuinely_missing_model_still_404s(self, draft_client):
+        """The draft lookup must not turn "not found" into something else."""
+        resp = draft_client.post("/api/model-schemas/no_such_model/")
+        assert resp.status_code == 404
+
+    def test_an_uncommitted_source_resolves_for_a_body_override(
+        self, draft_client, output_dir, source
+    ):
+        """A draft SOURCE is equally invisible to the committed project."""
+        _write_source_schema(output_dir, "wh", ORDERS)
+        resp = draft_client.post(
+            "/api/model-schemas/test-source_query/",
+            json={"source_name": "wh"},
+        )
+        assert resp.status_code == 200
+
+    def test_falls_back_to_the_committed_project_when_no_manager_answers(
+        self, output_dir, model, source
+    ):
+        """The managers are the primary lookup, not the only one.
+
+        A host that wires the views without object managers (or whose manager
+        raises) must still resolve committed models from the project.
+        """
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        flask_app = Mock()
+        flask_app.project.models = [model]
+        flask_app.project.sources = [source]
+        flask_app.model_manager.get.side_effect = RuntimeError("no cache here")
+        flask_app.source_manager.get.side_effect = RuntimeError("no cache here")
+        register_model_schema_views(app, flask_app, output_dir)
+        _write_source_schema(output_dir, "wh", ORDERS)
+
+        resp = app.test_client().post("/api/model-schemas/rev/")
+
+        assert resp.status_code == 200
+        assert [c["name"] for c in resp.get_json()["columns"]] == ["amount", "id"]

@@ -665,19 +665,49 @@ describe('Library', () => {
     }
   });
 
-  test('"+ New" → Relation opens the Semantic Layer (a relation can\'t be templated)', () => {
-    const createWorkspaceObject = jest.fn();
+  // VIS-1237: Relation used to be special-cased into opening the Semantic
+  // Layer, which read as "+ New does nothing". It now drafts like every other
+  // type and opens in the edit panel.
+  test('"+ New" → Relation drafts a relation and opens it', async () => {
+    const createWorkspaceObject = jest.fn(async () => ({
+      success: true,
+      name: 'new_relation',
+      type: 'relation',
+    }));
     const openWorkspaceTab = jest.fn();
     seedStore({ createWorkspaceObject, openWorkspaceTab });
     renderLibrary();
     openNewMenu();
     fireEvent.click(screen.getByTestId('library-new-object-relation'));
-    expect(createWorkspaceObject).not.toHaveBeenCalled();
-    expect(openWorkspaceTab).toHaveBeenCalledWith({
-      id: 'semantic-layer:semantic-layer',
-      type: 'semantic-layer',
-      name: 'semantic-layer',
-    });
+
+    expect(createWorkspaceObject).toHaveBeenCalledWith('relation');
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'relation:new_relation',
+        type: 'relation',
+        name: 'new_relation',
+      })
+    );
+  });
+
+  test('a create blocked by its precondition surfaces the reason instead of doing nothing', async () => {
+    const createWorkspaceObject = jest.fn(async () => ({
+      success: false,
+      error: 'A relation joins two models. Create at least two models first.',
+    }));
+    const openWorkspaceTab = jest.fn();
+    const showWorkspaceToast = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab, showWorkspaceToast });
+    renderLibrary();
+    openNewMenu();
+    fireEvent.click(screen.getByTestId('library-new-object-relation'));
+
+    await waitFor(() =>
+      expect(showWorkspaceToast).toHaveBeenCalledWith(
+        expect.stringMatching(/two models/i)
+      )
+    );
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
   });
 
   test('the header "+ New" menu dismisses on Escape', () => {

@@ -29,12 +29,16 @@ The run still writes the artifact: the field resolver and
 POST rather than GET because the draft form carries SQL in the body.
 """
 
+import re
+
 from flask import jsonify, request
 
 from visivo.jobs.utils import get_source_for_model
 from visivo.logger.logger import Logger
+from visivo.models.base.context_string import ContextString
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.model_schema_inference import infer_model_columns
+from visivo.query.patterns import REF_PROPERTY_PATTERN, extract_ref_names
 from visivo.query.schema_aggregator import SchemaAggregator
 
 
@@ -57,18 +61,76 @@ def _columns_payload(column_map: dict) -> list:
     )
 
 
-def _find_model(project, model_name: str):
-    """Find a model by name on the project. Returns None when absent."""
+def _from_manager(flask_app, manager_name: str, name: str):
+    """Look a name up in an object manager (draft cache first, then published).
+
+    The managers are the same source of truth ``/api/models/`` and
+    ``/api/sources/`` serve, so anything the viewer can SEE resolves here —
+    including objects that exist only as uncommitted drafts.
+    """
+    manager = getattr(flask_app, manager_name, None)
+    getter = getattr(manager, "get", None)
+    if not callable(getter):
+        return None
+    try:
+        return getter(name)
+    except Exception:
+        # A manager that cannot answer is not a reason to fail the request —
+        # the committed-project scan below is still a valid answer.
+        return None
+
+
+def _find_model(flask_app, project, model_name: str):
+    """Find a model by name — DRAFT CACHE FIRST, then the committed project.
+
+    A model created in the editor lives in the draft cache until Commit writes
+    it to YAML, and ``flask_app.project`` is compiled from YAML. Scanning only
+    the project meant every uncommitted model 404'd here while being perfectly
+    visible in the Library and the semantic layer, which is exactly what the
+    ERD's column hydration asks about.
+    """
+    model = _from_manager(flask_app, "model_manager", model_name)
+    if model is not None:
+        return model
     for model in project.models or []:
         if getattr(model, "name", None) == model_name:
             return model
     return None
 
 
-def _find_source(project, source_name: str):
+def _find_source(flask_app, project, source_name: str):
+    """Find a source by name — draft cache first, then the committed project."""
+    source = _from_manager(flask_app, "source_manager", source_name)
+    if source is not None:
+        return source
     for source in project.sources or []:
-        if source.name == source_name:
+        if getattr(source, "name", None) == source_name:
             return source
+    return None
+
+
+def _referenced_source_name(model) -> str:
+    """The source NAME a model points at, read off the model itself.
+
+    Source resolution normally walks the DAG, but a draft model is not IN the
+    DAG — it has never been compiled — so that walk returns nothing and the
+    request 400s with "No source resolved". The model's own ``source`` field
+    still names its source, in either of the two forms the field round-trips
+    as (``ref(wh)`` and ``${ref(wh)}``). Returns None for an embedded Source
+    object (which needs no lookup) or an unparseable value.
+    """
+    source = getattr(model, "source", None)
+    if source is None:
+        return None
+    if isinstance(source, ContextString):
+        return source.get_reference()
+    if isinstance(source, str):
+        names = extract_ref_names(source)  # ${ref(wh)}
+        if names:
+            return next(iter(names))
+        match = re.match(REF_PROPERTY_PATTERN, source.strip())  # ref(wh)
+        if match:
+            return match.group("model_name")
     return None
 
 
@@ -114,7 +176,7 @@ def register_model_schema_views(app, flask_app, output_dir):
             body = request.get_json(silent=True) or {}
             project = flask_app.project
 
-            model = _find_model(project, model_name)
+            model = _find_model(flask_app, project, model_name)
             if model is None:
                 return jsonify({"error": f"Model '{model_name}' not found"}), 404
 
@@ -129,9 +191,21 @@ def register_model_schema_views(app, flask_app, output_dir):
 
             source_name = body.get("source_name")
             if source_name:
-                source = _find_source(project, source_name)
+                source = _find_source(flask_app, project, source_name)
             else:
-                source = get_source_for_model(model, project.dag(), output_dir)
+                try:
+                    source = get_source_for_model(model, project.dag(), output_dir)
+                except Exception:
+                    # The DAG walk assumes the model is IN the DAG; an
+                    # uncommitted one never is.
+                    source = None
+                if source is None:
+                    # Fall back to the name the model itself carries, resolved
+                    # through the managers — the only path that works for a
+                    # draft model whose source is a ref string.
+                    referenced = _referenced_source_name(model)
+                    if referenced:
+                        source = _find_source(flask_app, project, referenced)
 
             if source is None:
                 return (
@@ -163,7 +237,7 @@ def register_model_schema_views(app, flask_app, output_dir):
             if not sql or not source_name:
                 return jsonify({"error": "sql and source_name are required"}), 400
 
-            source = _find_source(flask_app.project, source_name)
+            source = _find_source(flask_app, flask_app.project, source_name)
             if source is None:
                 return jsonify({"error": f"Source '{source_name}' not found"}), 404
 
