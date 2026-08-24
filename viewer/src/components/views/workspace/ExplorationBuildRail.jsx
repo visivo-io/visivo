@@ -163,7 +163,7 @@ const ExplorationBuildRail = ({ explorationId }) => {
       // `name` (already established above to be exactly `model` or
       // `query_<digits>`) — and `renameModelTab` already no-ops on an
       // identical name anyway, so there's nothing to guard twice.
-      const suggested = generateUniqueName(`${sourceName}_query`, used);
+      const suggested = generateUniqueName(`${sourceName}-query`, used);
       used.add(suggested);
       try {
         renameModelTab(name, suggested);
@@ -182,7 +182,7 @@ const ExplorationBuildRail = ({ explorationId }) => {
       // is always `<modelAnchor>_insight`(`_N`), which can't equal `name`
       // (already `insight`/`insight_<digits>`) — `renameInsight` no-ops on
       // an identical name regardless.
-      const suggested = generateUniqueName(`${modelAnchor}_insight`, used);
+      const suggested = generateUniqueName(`${modelAnchor}-insight`, used);
       used.add(suggested);
       try {
         renameInsight(name, suggested);
@@ -198,7 +198,14 @@ const ExplorationBuildRail = ({ explorationId }) => {
     // while it's still unnamed; once named, `explorerChartNameForNaming`
     // flips truthy and this branch naturally stops re-firing, exactly like
     // the model/insight loops above.
-    if (!explorerChartNameForNaming) {
+    // Runs while the chart is unnamed OR still carries a generic placeholder
+    // (`chart`/`chart_N`) — so the default name below can later be REFINED to
+    // the real cascade name once content arrives, exactly like the model/
+    // insight loops refine `model`/`insight`.
+    if (
+      !explorerChartNameForNaming ||
+      isGenericPromoteName('chart', explorerChartNameForNaming)
+    ) {
       // Read fresh, post-rename state — the loops above may have just
       // renamed the very insight(s) this reads by name via `renameInsight`
       // (a synchronous `set()`), so `chartInsightNames`/
@@ -215,12 +222,10 @@ const ExplorationBuildRail = ({ explorationId }) => {
         // covers a chart made valid by real layout config alone (D12-style
         // "chart with a title but no insight bound yet").
         const base = insightAnchor
-          ? `${insightAnchor}_chart`
+          ? `${insightAnchor}-chart`
           : modelAnchor
-            ? `${modelAnchor}_chart`
+            ? `${modelAnchor}-chart`
             : null;
-        // No usable anchor at all (no model loaded either) — leave it
-        // unnamed/editable rather than guessing, same as the loops above.
         if (base) {
           const suggested = generateUniqueName(base, used);
           used.add(suggested);
@@ -228,9 +233,22 @@ const ExplorationBuildRail = ({ explorationId }) => {
             setChartName(suggested);
           } catch {
             // A collision the suggestion logic couldn't see — fail open,
-            // leave the chart unnamed; still editable by hand via
+            // leave the current name; still editable by hand via
             // `ChartBuildSection`'s own rename input.
           }
+        }
+      } else if (!explorerChartNameForNaming) {
+        // Not content-bearing yet and still nameless — give it a generic
+        // default so the pane never shows a blank name (like a fresh model
+        // tab shows `model`). It stays out of "Save to project" (that gate
+        // also requires real content), and gets refined to `<anchor>-chart`
+        // by the branch above once content arrives.
+        const suggested = generateUniqueName('chart', used);
+        used.add(suggested);
+        try {
+          setChartName(suggested);
+        } catch {
+          /* fail open — leave unnamed, still editable by hand */
         }
       }
     }
