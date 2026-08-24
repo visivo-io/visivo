@@ -54,11 +54,12 @@ test.describe('Library inline create', () => {
     await page.getByTestId('library-new-object-button').hover();
     await page.getByTestId('library-new-object-button').click();
     await expect(page.getByTestId('library-new-object-menu')).toBeVisible();
-    // Every creatable type is listed; relation (untemplatable) is not.
-    for (const t of ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight']) {
+    // Every creatable type is listed — relation included (VIS-1237): it used
+    // to be listed but wired to open the Semantic Layer instead of creating
+    // anything, which read as a dead menu item.
+    for (const t of ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight', 'relation']) {
       await expect(page.getByTestId(`library-new-object-${t}`)).toBeVisible();
     }
-    await expect(page.getByTestId('library-new-object-relation')).toHaveCount(0);
     await page.screenshot({ path: `${SCREENS}/inline-create-01-menu.png` });
 
     await page.getByTestId('library-new-object-model').click();
@@ -96,6 +97,34 @@ test.describe('Library inline create', () => {
       .toBe('insight');
     const name = await readStore(page, 's.workspaceActiveObject.name');
     expect(name).toMatch(/^new-insight/);
+  });
+
+  // VIS-1237: the reported bug — picking Relation created nothing.
+  test('the header "+ New" menu drafts a relation joining two real models', async () => {
+    await page.getByTestId('library-new-object-button').click();
+    await expect(page.getByTestId('library-new-object-menu')).toBeVisible();
+    await page.getByTestId('library-new-object-relation').click();
+
+    await expect
+      .poll(() => readStore(page, "s.workspaceActiveObject && s.workspaceActiveObject.type"), {
+        timeout: WAIT,
+      })
+      .toBe('relation');
+    const name = await readStore(page, 's.workspaceActiveObject.name');
+    expect(name).toMatch(/^new_relation/);
+
+    // It really landed in the draft cache, with a condition referencing two
+    // real models (what the backend validator requires).
+    await expect
+      .poll(() => readStore(page, `(s.relations || []).some(r => r.name === '${name}')`), {
+        timeout: WAIT,
+      })
+      .toBe(true);
+    const condition = await readStore(
+      page,
+      `(() => { const r = (s.relations || []).find(x => x.name === '${name}'); const c = r && (r.config || r); return c && c.condition; })()`
+    );
+    expect(condition).toMatch(/ref\([^)]+\).*=.*ref\([^)]+\)/);
   });
 
   test('no console errors across the create gestures', async () => {

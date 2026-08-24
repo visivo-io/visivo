@@ -12,13 +12,17 @@ describe('createWorkspaceObject', () => {
     const template = CREATE_TEMPLATES[type];
     const save = jest.fn(async () => ({ success: true }));
     useStore.setState({
+      // Two models exist so every template's precondition is satisfiable —
+      // a relation's draft is built FROM the project's models.
+      models: [{ name: 'orders' }, { name: 'users' }],
       [template.collectionKey]: [],
       [template.saveKey]: save,
     });
+    const expectedConfig = template.config(useStore.getState());
 
     const result = await useStore.getState().createWorkspaceObject(type);
 
-    expect(save).toHaveBeenCalledWith(template.namePrefix, template.config());
+    expect(save).toHaveBeenCalledWith(template.namePrefix, expectedConfig);
     expect(result).toMatchObject({ success: true, name: template.namePrefix, type });
   });
 
@@ -41,10 +45,44 @@ describe('createWorkspaceObject', () => {
     expect(CREATE_TEMPLATES.metric.namePrefix).not.toMatch(/-/);
   });
 
-  test('relation has no template (cannot draft a valid empty relation)', async () => {
-    expect(CREATE_TEMPLATES.relation).toBeUndefined();
-    const result = await useStore.getState().createWorkspaceObject('relation');
-    expect(result.success).toBe(false);
+  // VIS-1237: "+ New" → Relation was a dead affordance. A relation IS
+  // templatable — its condition just has to be built from real models, because
+  // the backend requires two distinct model references.
+  describe('relation', () => {
+    test('drafts a condition joining the project\'s first two models', async () => {
+      const save = jest.fn(async () => ({ success: true }));
+      useStore.setState({
+        models: [{ name: 'orders' }, { name: 'users' }, { name: 'events' }],
+        relations: [],
+        saveRelation: save,
+      });
+
+      const result = await useStore.getState().createWorkspaceObject('relation');
+
+      expect(result).toMatchObject({ success: true, type: 'relation' });
+      const [, config] = save.mock.calls[0];
+      expect(config.join_type).toBe('inner');
+      // Real model refs — what the backend's validator requires. The join keys
+      // are a starting point the user re-points in the edit panel.
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(config.condition).toBe('${ref(orders).id} = ${ref(users).id}');
+    });
+
+    test('says WHY it cannot draft one when the project has fewer than two models', async () => {
+      const save = jest.fn(async () => ({ success: true }));
+      useStore.setState({ models: [{ name: 'orders' }], relations: [], saveRelation: save });
+
+      const result = await useStore.getState().createWorkspaceObject('relation');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/two models/i);
+      // Nothing is posted that the backend would only reject.
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    test('names stay SQL-identifier safe', () => {
+      expect(CREATE_TEMPLATES.relation.namePrefix).not.toMatch(/-/);
+    });
   });
 
   test('propagates a failed save', async () => {
