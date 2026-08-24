@@ -1,20 +1,21 @@
 /**
- * Story: Canvas editing persists to the BACKEND (VIS-993 regression).
+ * Story: Canvas editing → explicit Save → persists to the BACKEND (#46).
  *
- * USER-REPORTED REGRESSION: after the validation gate replaced
- * sanitizeDashboardConfig (PR #509), canvas drag-edits appeared to work
- * (optimistic store swap) but were silently never persisted — a blocked gate
- * emits only telemetry, so the in-session UI looks fine and the edit vanishes
- * on reload. The older canvas stories only asserted the STORE config, which is
- * exactly the blind spot; every assertion here goes through the BACKEND:
- * `/api/dashboards/` GET (the draft cache) and a full page reload.
+ * #46: a dashboard is edited as ONE working copy — canvas gestures update it
+ * optimistically but nothing persists until an explicit Save. This story drives
+ * each real gesture, then flushes the working copy via the dashboard Save
+ * (`commitDashboardEdits` — the same store action the Delete · Discard · Save
+ * footer's Save button calls), and asserts the change reached the BACKEND draft
+ * cache (`/api/dashboards/` GET) and survives a full reload. (Pre-#46 this was a
+ * VIS-993 regression guard: gestures auto-saved but a blocked gate silently
+ * dropped the persist; now the persist is explicit, so the guard is the Save.)
  *
  * Real gestures covered:
- *   (a) row-height handle drag  → height changes visually AND survives reload;
- *   (b) item-width handle drag  → width persists to /api/dashboards/;
- *   (c) item reorder within row → order persists;
- *   (d) item move across rows   → persists;
- *   (e) Library chart → canvas  → new item persists.
+ *   (a) row-height handle drag  → height changes visually, Save, survives reload;
+ *   (b) item-width handle drag  → width persists after Save;
+ *   (c) item reorder within row → order persists after Save;
+ *   (d) item move across rows   → persists after Save;
+ *   (e) Library chart → canvas  → new item persists after Save.
  *
  * Runs in the `state-mutating` playwright project (standard sandbox :3001/:8001,
  * serial; the draft cache is discarded in afterAll).
@@ -62,6 +63,12 @@ const itemKey = it => {
 
 const selectKey = (page, key) =>
   page.evaluate(k => window.useStore.getState().setWorkspaceOutlineSelectedKey(k), key);
+
+// #46: the dashboard is edited as one working copy — flush it to the draft cache
+// through the explicit Save (the same store action the footer's Save calls).
+// Canvas gestures no longer auto-persist, so each backend assertion follows a Save.
+const saveEdits = page =>
+  page.evaluate(name => window.useStore.getState().commitDashboardEdits(name), DASHBOARD);
 
 const openCanvas = async page => {
   await page.goto(`${BASE}/workspace/dashboard/${DASHBOARD}`);
@@ -204,8 +211,11 @@ test.describe('Canvas editing persists to the backend (VIS-993 regression)', () 
       .poll(async () => (await rowEl.boundingBox())?.height, { timeout: WAIT })
       .toBeGreaterThan(boxBefore.height + 40);
 
-    // Backend: the draft cache holds the new height (THE regression assertion —
-    // a blocked gate leaves the API at the old value while the store lies).
+    // #46: explicit Save flushes the working copy to the draft cache.
+    await saveEdits(page);
+
+    // Backend: the draft cache holds the new height (after Save — a working copy
+    // that was never saved would leave the API at the old value).
     await expect
       .poll(async () => (await apiRows(page))[0]?.height, { timeout: WAIT })
       .not.toBe(beforeHeight);
@@ -236,8 +246,9 @@ test.describe('Canvas editing persists to the backend (VIS-993 regression)', () 
     const colPx = rowBox.width / (rows[ri].items.reduce((s, it) => s + (it.width || 1), 0) || 1);
     const dir = beforeWidth > 1 ? -1 : 1;
     await dragHandle(page, handle, dir * Math.round(colPx * 2), 0);
+    await saveEdits(page);
 
-    // Backend truth: the width change reached the draft cache.
+    // Backend truth: the width change reached the draft cache after Save.
     await expect
       .poll(async () => (await apiRows(page))[ri]?.items?.[0]?.width, { timeout: WAIT })
       .not.toBe(beforeWidth);
@@ -258,8 +269,9 @@ test.describe('Canvas editing persists to the backend (VIS-993 regression)', () 
     await dndDrag(page, handle, endZone);
     await expect(page.getByTestId('library-drag-preview')).toBeVisible({ timeout: 4000 });
     await page.mouse.up();
+    await saveEdits(page);
 
-    // Backend truth: the first item moved to the end IN THE DRAFT CACHE.
+    // Backend truth: the first item moved to the end IN THE DRAFT CACHE (after Save).
     await expect
       .poll(
         async () => {
@@ -289,8 +301,9 @@ test.describe('Canvas editing persists to the backend (VIS-993 regression)', () 
     await dndDrag(page, handle, endZone);
     await expect(page.getByTestId('library-drag-preview')).toBeVisible({ timeout: 4000 });
     await page.mouse.up();
+    await saveEdits(page);
 
-    // Backend truth: the item left its row and landed at the target row's end.
+    // Backend truth: the item left its row and landed at the target row's end (after Save).
     await expect
       .poll(
         async () => {
@@ -329,8 +342,9 @@ test.describe('Canvas editing persists to the backend (VIS-993 regression)', () 
     await dndDrag(page, anyChartRow, endZone);
     await expect(page.getByTestId('library-drag-preview')).toBeVisible({ timeout: 4000 });
     await page.mouse.up();
+    await saveEdits(page);
 
-    // Backend truth: a new item referencing the chart is IN THE DRAFT CACHE.
+    // Backend truth: a new item referencing the chart is IN THE DRAFT CACHE (after Save).
     await expect
       .poll(
         async () => {

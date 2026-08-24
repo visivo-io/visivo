@@ -117,7 +117,7 @@ describe('OutlineTreePanel', () => {
     );
   });
 
-  test('"Add row" appends a row to the dashboard draft and persists it', () => {
+  test('"Add row" appends a row to the dashboard working copy (no auto-persist, #46)', () => {
     resetStore([{ height: 'medium', items: [{ chart: 'c1', width: 1 }] }]);
     renderPanel();
 
@@ -128,11 +128,10 @@ describe('OutlineTreePanel', () => {
     expect(dash.config.rows[1]).toEqual({ height: 'medium', items: [] });
     // New row gets selected.
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
-    // Draft persisted via the dashboard cache.
-    expect(useStore.getState().saveDashboard).toHaveBeenCalledWith(
-      DASH,
-      expect.objectContaining({ rows: expect.any(Array) })
-    );
+    // #46: the row lands in the working copy; nothing auto-persists (the
+    // dashboard Save footer flushes it), and the pre-edit baseline is captured.
+    expect(useStore.getState().saveDashboard).not.toHaveBeenCalled();
+    expect(useStore.getState().dashboardBaselines[DASH]).toBeDefined();
   });
 
   test('empty state renders when the dashboard has no rows', () => {

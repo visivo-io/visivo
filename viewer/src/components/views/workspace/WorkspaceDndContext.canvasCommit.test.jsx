@@ -1,22 +1,26 @@
 /**
- * Canvas commit-path regression tests (VIS-993 follow-up).
+ * Canvas commit-path regression tests (VIS-993 follow-up; #46).
  *
  * USER-REPORTED REGRESSION: after the validation gate replaced
  * sanitizeDashboardConfig, canvas drag-edits (row-height resize, item-width
  * resize, reorder, cross-row move, Library drop) appeared to work but never
- * persisted. These tests drive the REAL pipeline end to end in jsdom:
+ * reached the store. These tests drive the REAL pipeline end to end in jsdom:
  *
  *   REAL gesture transform (canvasReorder) → REAL mounted WorkspaceDndContext
- *   commit (checkLeafExclusivity + validateRecordConfigSync against the REAL
- *   bundled $defs snapshot) → store saveDashboard.
+ *   commit → the dashboard WORKING COPY (updateDashboardConfigOptimistic).
+ *
+ * #46: a canvas commit no longer auto-persists. `commitCanvasConfig` captures
+ * the pre-edit baseline once and writes the gesture-produced config into the
+ * working copy optimistically; the dashboard's Save footer persists it. So
+ * these tests assert the config reaches the OPTIMISTIC committer byte-identical
+ * (the transform is still what's under test), not a `saveDashboard` call.
  *
  * The dashboard fixture mirrors what `/api/dashboards/` actually serves for the
  * integration project's `simple-dashboard` — `model_dump(mode='json',
  * exclude_none=True, exclude={'file_path','path'})` — including EMBEDDED chart
  * objects (name + `${ref()}` insights + a Plotly layout), `${ref()}` string
  * leaves, empty slots, level/tags/type sidecar fields, and nested container
- * rows. If the gate rejects any gesture-produced config here, the canvas
- * "works then silently never saves" — exactly the regression this pins.
+ * rows.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
@@ -123,18 +127,22 @@ const CommitProbe = ({ name, config }) => {
   );
 };
 
-/** Mount the REAL provider, click-commit `config`, return the saveDashboard spy. */
+/**
+ * Mount the REAL provider and click-commit `config`. #46: the spy that receives
+ * the committed config is the optimistic committer (`updateDashboardConfigOptimistic`),
+ * returned as `committed` — a canvas commit writes the working copy, it does not
+ * persist.
+ */
 const commitThroughProvider = config => {
-  const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-  const updateDashboardConfigOptimistic = jest.fn();
-  useStore.setState({ saveDashboard, updateDashboardConfigOptimistic });
+  const committed = jest.fn();
+  useStore.setState({ updateDashboardConfigOptimistic: committed });
   render(
     <WorkspaceDndContext>
       <CommitProbe name="simple-dashboard" config={config} />
     </WorkspaceDndContext>
   );
   fireEvent.click(screen.getByTestId('commit-probe'));
-  return { saveDashboard, updateDashboardConfigOptimistic };
+  return { committed };
 };
 
 beforeAll(async () => {
@@ -160,80 +168,80 @@ describe('gate accepts the API-shaped dashboard config itself (baseline)', () =>
   });
 });
 
-describe('canvas gestures persist through the REAL commit gate (VIS-993 regression)', () => {
-  test('row-height FLUID resize (pixel int) persists byte-identical', () => {
+describe('canvas gestures commit byte-identically to the dashboard working copy (#46)', () => {
+  test('row-height FLUID resize (pixel int) commits byte-identical', () => {
     const next = setRowHeight(clone(API_SHAPED_CONFIG), 'row.0', 487);
     expect(next.rows[0].height).toBe(487);
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    expect(saveDashboard.mock.calls[0][0]).toBe('simple-dashboard');
-    expect(saveDashboard.mock.calls[0][1]).toBe(next); // byte-identical, never repaired
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
+    expect(committed.mock.calls[0][0]).toBe('simple-dashboard');
+    expect(committed.mock.calls[0][1]).toBe(next); // byte-identical, never repaired
   });
 
-  test('row-height TICK resize (enum token) persists', () => {
+  test('row-height TICK resize (enum token) commits', () => {
     const next = setRowHeight(clone(API_SHAPED_CONFIG), 'row.1', 'xlarge');
     expect(next.rows[1].height).toBe('xlarge');
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    expect(saveDashboard.mock.calls[0][1]).toBe(next);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
+    expect(committed.mock.calls[0][1]).toBe(next);
   });
 
-  test('NESTED row-height resize (enum inside a container) persists', () => {
+  test('NESTED row-height resize (enum inside a container) commits', () => {
     const next = setRowHeight(clone(API_SHAPED_CONFIG), 'row.2.item.0.row.0', 'medium');
     expect(next.rows[2].items[0].rows[0].height).toBe('medium');
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 
-  test('item-width resize persists byte-identical', () => {
+  test('item-width resize commits byte-identical', () => {
     const next = setItemWidth(clone(API_SHAPED_CONFIG), 'row.0.item.0', 7);
     expect(next.rows[0].items[0].width).toBe(7);
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    expect(saveDashboard.mock.calls[0][1]).toBe(next);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
+    expect(committed.mock.calls[0][1]).toBe(next);
   });
 
-  test('LEFT-edge width resize (column transfer with neighbour) persists', () => {
+  test('LEFT-edge width resize (column transfer with neighbour) commits', () => {
     const next = resizeItemFromLeft(clone(API_SHAPED_CONFIG), 'row.0', 1, 3);
     expect(next.rows[0].items[1].width).toBe(5);
     expect(next.rows[0].items[0].width).toBe(6);
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 
-  test('top-level row reorder persists', () => {
+  test('top-level row reorder commits', () => {
     const next = reorderTopLevelRows(clone(API_SHAPED_CONFIG), 0, 1);
     expect(next.rows[0].height).toBe(512);
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 
-  test('item reorder within a row persists', () => {
+  test('item reorder within a row commits', () => {
     const next = reorderItemsInRow(clone(API_SHAPED_CONFIG), 'row.0', 0, 2);
     expect(next.rows[0].items[2].chart?.name).toBe('a-very-fibonacci-waterfall');
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 
-  test('cross-row item move persists (source row may go empty)', () => {
+  test('cross-row item move commits (source row may go empty)', () => {
     const next = moveItemBetweenRows(clone(API_SHAPED_CONFIG), 'row.1', 0, {
       kind: 'end-of-row',
       rowPath: 'row.0',
     });
     expect(next.rows[0].items).toHaveLength(4);
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 
-  test('Library chart drop (between-rows insert) persists', () => {
+  test('Library chart drop (between-rows insert) commits', () => {
     const item = buildLibraryItem('chart', 'indicator-chart');
     const next = insertItemAtTarget(clone(API_SHAPED_CONFIG), { kind: 'between-rows', index: 3 }, item);
     expect(next.rows[3].items[0].chart).toBe('ref(indicator-chart)');
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 
-  test('Library markdown drop into an existing row (between-items) persists', () => {
+  test('Library markdown drop into an existing row (between-items) commits', () => {
     const item = buildLibraryItem('markdown', 'welcome-md');
     const next = insertItemAtTarget(
       clone(API_SHAPED_CONFIG),
@@ -241,12 +249,12 @@ describe('canvas gestures persist through the REAL commit gate (VIS-993 regressi
       item
     );
     expect(next.rows[1].items[1].markdown).toBe('ref(welcome-md)');
-    const { saveDashboard } = commitThroughProvider(next);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const { committed } = commitThroughProvider(next);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('router → REAL commit integration (drag-end payloads persist)', () => {
+describe('router → REAL commit integration (drag-end payloads commit to the working copy)', () => {
   const routerDeps = commitCanvasConfig => ({
     dashboards: [],
     projectDefaults: null,
@@ -270,20 +278,20 @@ describe('router → REAL commit integration (drag-end payloads persist)', () =>
   };
 
   const driveRouter = event => {
-    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic: jest.fn() });
+    const committed = jest.fn();
+    useStore.setState({ updateDashboardConfigOptimistic: committed });
     render(
       <WorkspaceDndContext>
         <RouterProbe event={event} />
       </WorkspaceDndContext>
     );
     fireEvent.click(screen.getByTestId('router-probe'));
-    return saveDashboard;
+    return committed;
   };
 
-  test('a real drag-end row reorder routes through the gate and saves', () => {
+  test('a real drag-end row reorder routes through and commits', () => {
     const config = clone(API_SHAPED_CONFIG);
-    const saveDashboard = driveRouter({
+    const committed = driveRouter({
       active: {
         data: { current: { source: 'canvas', kind: 'row', rowIndex: 0, rowPath: 'row.0' } },
       },
@@ -298,14 +306,14 @@ describe('router → REAL commit integration (drag-end payloads persist)', () =>
         },
       },
     });
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const persisted = saveDashboard.mock.calls[0][1];
+    expect(committed).toHaveBeenCalledTimes(1);
+    const persisted = committed.mock.calls[0][1];
     expect(persisted.rows[0].height).toBe(512);
   });
 
-  test('a real drag-end Library insert routes through the gate and saves', () => {
+  test('a real drag-end Library insert routes through and commits', () => {
     const config = clone(API_SHAPED_CONFIG);
-    const saveDashboard = driveRouter({
+    const committed = driveRouter({
       active: { data: { current: { source: 'library', type: 'chart', name: 'indicator-chart' } } },
       over: {
         data: {
@@ -318,14 +326,14 @@ describe('router → REAL commit integration (drag-end payloads persist)', () =>
         },
       },
     });
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const persisted = saveDashboard.mock.calls[0][1];
+    expect(committed).toHaveBeenCalledTimes(1);
+    const persisted = committed.mock.calls[0][1];
     expect(persisted.rows[1].items[2].chart).toBe('ref(indicator-chart)');
   });
 
-  test('a real drag-end cross-row item move routes through the gate and saves', () => {
+  test('a real drag-end cross-row item move routes through and commits', () => {
     const config = clone(API_SHAPED_CONFIG);
-    const saveDashboard = driveRouter({
+    const committed = driveRouter({
       active: {
         data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.1', itemIndex: 0 } },
       },
@@ -340,14 +348,15 @@ describe('router → REAL commit integration (drag-end payloads persist)', () =>
         },
       },
     });
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('full-stack resize gesture → REAL provider commit (jsdom pointer drive)', () => {
   // Borrowed from CanvasResizeLayer.test.jsx, but WITHOUT mocking the commit
-  // hook: the layer runs against the REAL WorkspaceDndContext provider, so a
-  // resize exercises the exact production pipeline down to saveDashboard.
+  // hook: the layer runs against the REAL WorkspaceDndContext provider with the
+  // REAL optimistic write, so a resize exercises the exact production pipeline
+  // down to the dashboard working copy (#46: no auto-persist — assert the store).
   /* eslint-disable global-require */
   const CanvasResizeLayer = require('../project/canvas/CanvasResizeLayer').default;
   /* eslint-enable global-require */
@@ -389,14 +398,14 @@ describe('full-stack resize gesture → REAL provider commit (jsdom pointer driv
     root: { top: 0, left: 0, width: 800, height: 360, bottom: 360, right: 800 },
   };
 
-  let saveDashboard;
+  const currentConfig = () =>
+    useStore.getState().dashboards.find(d => d.name === 'simple-dashboard').config;
 
   beforeEach(() => {
-    saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     useStore.setState({
       dashboards: [{ name: 'simple-dashboard', config: clone(API_SHAPED_CONFIG) }],
+      dashboardBaselines: {},
       workspaceOutlineSelectedKey: 'row.0.item.0',
-      saveDashboard,
       updateDashboardConfigOptimistic: REAL_UPDATE_DASHBOARD_OPTIMISTIC,
     });
     Element.prototype.getBoundingClientRect = function () {
@@ -409,7 +418,7 @@ describe('full-stack resize gesture → REAL provider commit (jsdom pointer driv
     }
   });
 
-  test('a real width drag on the handle persists the resized config', async () => {
+  test('a real width drag on the handle commits the resized config to the working copy', async () => {
     render(<Host />);
     const handle = screen.getByTestId('canvas-resize-width-row.0.item.0');
 
@@ -418,15 +427,12 @@ describe('full-stack resize gesture → REAL provider commit (jsdom pointer driv
     firePointer('pointermove', { clientX: 466, clientY: 100 });
     firePointer('pointerup', { clientX: 466, clientY: 100 });
 
-    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1));
-    const persisted = saveDashboard.mock.calls[0][1];
-    expect(persisted.rows[0].items[0].width).toBe(7);
-    // The store's optimistic copy converged on the same config object.
-    const entry = useStore.getState().dashboards.find(d => d.name === 'simple-dashboard');
-    expect(entry.config).toBe(persisted);
+    await waitFor(() => expect(currentConfig().rows[0].items[0].width).toBe(7));
+    // #46: the pre-edit baseline was captured so the Save footer knows it's dirty.
+    expect(useStore.getState().dashboardBaselines['simple-dashboard']).toBeDefined();
   });
 
-  test('a real Shift-fluid height drag persists an integer pixel height', async () => {
+  test('a real Shift-fluid height drag commits an integer pixel height', async () => {
     render(<Host />);
     const handle = screen.getByTestId('canvas-resize-height-row.0.item.0');
 
@@ -434,13 +440,11 @@ describe('full-stack resize gesture → REAL provider commit (jsdom pointer driv
     firePointer('pointermove', { clientX: 400, clientY: 288, shiftKey: true });
     firePointer('pointerup', { clientX: 400, clientY: 288, shiftKey: true });
 
-    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1));
-    const persisted = saveDashboard.mock.calls[0][1];
-    expect(typeof persisted.rows[0].height).toBe('number');
-    expect(Number.isInteger(persisted.rows[0].height)).toBe(true);
+    await waitFor(() => expect(typeof currentConfig().rows[0].height).toBe('number'));
+    expect(Number.isInteger(currentConfig().rows[0].height)).toBe(true);
   });
 
-  test('a tick-mode height drag persists a HeightEnum token', async () => {
+  test('a tick-mode height drag commits a HeightEnum token', async () => {
     render(<Host />);
     const handle = screen.getByTestId('canvas-resize-height-row.0.item.0');
 
@@ -448,11 +452,9 @@ describe('full-stack resize gesture → REAL provider commit (jsdom pointer driv
     firePointer('pointermove', { clientX: 400, clientY: 335 });
     firePointer('pointerup', { clientX: 400, clientY: 335 });
 
-    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1));
-    const persisted = saveDashboard.mock.calls[0][1];
-    expect(typeof persisted.rows[0].height).toBe('string');
+    await waitFor(() => expect(typeof currentConfig().rows[0].height).toBe('string'));
     expect(['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge']).toContain(
-      persisted.rows[0].height
+      currentConfig().rows[0].height
     );
   });
 });

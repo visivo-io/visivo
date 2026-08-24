@@ -1726,13 +1726,14 @@ describe('workspace store slice', () => {
     ]);
   });
 
-  test('addDashboardRow appends an empty row, selects it, and persists the draft', () => {
+  test('addDashboardRow appends an empty row + selects it, optimistically (no persist, #46)', () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     act(() => {
       useStore.setState({
         dashboards: [
           { name: 'd1', config: { name: 'd1', rows: [{ height: 'small', items: [] }] } },
         ],
+        dashboardBaselines: {},
         saveDashboard,
       });
     });
@@ -1747,10 +1748,13 @@ describe('workspace store slice', () => {
     expect(dash.config.rows[1]).toEqual({ height: 'medium', items: [] });
     expect(returned).toBe(1);
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
-    expect(saveDashboard).toHaveBeenCalledWith(
-      'd1',
-      expect.objectContaining({ rows: expect.any(Array) })
-    );
+    // #46: nothing persists — the row lands in the working copy and the pre-edit
+    // config is captured as the baseline for the explicit Save/Discard footer.
+    expect(saveDashboard).not.toHaveBeenCalled();
+    expect(useStore.getState().dashboardBaselines.d1).toEqual({
+      name: 'd1',
+      rows: [{ height: 'small', items: [] }],
+    });
   });
 
   test('addDashboardRow is a no-op for an unknown dashboard', () => {
@@ -1805,18 +1809,19 @@ describe('workspace store slice', () => {
     expect(dash.config.rows).toEqual([{ height: 'medium', items: [] }]);
   });
 
-  test('addDashboardRow skips the persist call when saveDashboard is not wired up', () => {
+  test('addDashboardRow never persists — the working copy holds the new row (#46)', () => {
+    const saveDashboard = jest.fn();
     act(() => {
       useStore.setState({
         dashboards: [{ name: 'd1', config: { name: 'd1', rows: [] } }],
-        saveDashboard: undefined,
+        dashboardBaselines: {},
+        saveDashboard,
       });
     });
-    expect(() => {
-      act(() => {
-        useStore.getState().addDashboardRow('d1');
-      });
-    }).not.toThrow();
+    act(() => {
+      useStore.getState().addDashboardRow('d1');
+    });
+    expect(saveDashboard).not.toHaveBeenCalled();
     expect(useStore.getState().dashboards.find((d) => d.name === 'd1').config.rows).toHaveLength(1);
   });
 
@@ -1873,6 +1878,105 @@ describe('workspace store slice', () => {
       returned = useStore.getState().updateDashboardConfigOptimistic('d1', { rows: [] });
     });
     expect(returned).toBe(false);
+  });
+
+  // ── #46: dashboard explicit-save working copy ──────────────────────────────
+  describe('dashboard working copy (#46)', () => {
+    const seedDashboard = (config, extra = {}) => {
+      act(() => {
+        useStore.setState({
+          dashboards: [{ name: 'd1', config: { name: 'd1', ...config } }],
+          dashboardBaselines: {},
+          saveDashboard: jest.fn(() => Promise.resolve({ success: true })),
+          checkCommitStatus: jest.fn(),
+          ...extra,
+        });
+      });
+    };
+
+    test('captureDashboardBaseline snapshots the pre-edit config once', () => {
+      seedDashboard({ rows: [{ height: 'small', items: [] }] });
+      act(() => useStore.getState().captureDashboardBaseline('d1'));
+      expect(useStore.getState().dashboardBaselines.d1).toEqual({
+        name: 'd1',
+        rows: [{ height: 'small', items: [] }],
+      });
+
+      // A second capture after a mutation must NOT overwrite the baseline.
+      act(() =>
+        useStore.getState().updateDashboardConfigOptimistic('d1', {
+          name: 'd1',
+          rows: [{ height: 'large', items: [] }],
+        })
+      );
+      act(() => useStore.getState().captureDashboardBaseline('d1'));
+      expect(useStore.getState().dashboardBaselines.d1.rows[0].height).toBe('small');
+    });
+
+    test('isDashboardDirty is false until the working copy diverges from the baseline', () => {
+      seedDashboard({ rows: [{ height: 'small', items: [] }] });
+      expect(useStore.getState().isDashboardDirty('d1')).toBe(false); // no baseline yet
+
+      act(() => useStore.getState().captureDashboardBaseline('d1'));
+      expect(useStore.getState().isDashboardDirty('d1')).toBe(false); // baseline === working
+
+      act(() =>
+        useStore.getState().updateDashboardConfigOptimistic('d1', {
+          name: 'd1',
+          rows: [{ height: 'large', items: [] }],
+        })
+      );
+      expect(useStore.getState().isDashboardDirty('d1')).toBe(true);
+    });
+
+    test('commitDashboardEdits persists the working copy and clears the baseline', async () => {
+      const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+      seedDashboard({ rows: [{ height: 'small', items: [] }] }, { saveDashboard });
+
+      act(() => useStore.getState().captureDashboardBaseline('d1'));
+      act(() =>
+        useStore.getState().updateDashboardConfigOptimistic('d1', {
+          name: 'd1',
+          rows: [{ height: 'large', items: [] }],
+        })
+      );
+
+      let result;
+      await act(async () => {
+        result = await useStore.getState().commitDashboardEdits('d1');
+      });
+      expect(result).toEqual({ success: true });
+      expect(saveDashboard).toHaveBeenCalledWith('d1', {
+        name: 'd1',
+        rows: [{ height: 'large', items: [] }],
+      });
+      expect(useStore.getState().dashboardBaselines.d1).toBeUndefined();
+    });
+
+    test('discardDashboardEdits reverts the working copy to the baseline and drops it', () => {
+      seedDashboard({ rows: [{ height: 'small', items: [] }] });
+      act(() => useStore.getState().captureDashboardBaseline('d1'));
+      act(() =>
+        useStore.getState().updateDashboardConfigOptimistic('d1', {
+          name: 'd1',
+          rows: [{ height: 'large', items: [] }, { height: 'medium', items: [] }],
+        })
+      );
+      expect(useStore.getState().isDashboardDirty('d1')).toBe(true);
+
+      act(() => useStore.getState().discardDashboardEdits('d1'));
+      const dash = useStore.getState().dashboards.find(d => d.name === 'd1');
+      expect(dash.config).toEqual({ name: 'd1', rows: [{ height: 'small', items: [] }] });
+      expect(useStore.getState().dashboardBaselines.d1).toBeUndefined();
+      expect(useStore.getState().isDashboardDirty('d1')).toBe(false);
+    });
+
+    test('discardDashboardEdits is a no-op when there is nothing to discard', () => {
+      seedDashboard({ rows: [{ height: 'small', items: [] }] });
+      act(() => useStore.getState().discardDashboardEdits('d1'));
+      const dash = useStore.getState().dashboards.find(d => d.name === 'd1');
+      expect(dash.config.rows[0].height).toBe('small');
+    });
   });
 
   test('updateRecordConfigOptimistic replaces a non-dashboard record config without saving (VIS-1018)', () => {

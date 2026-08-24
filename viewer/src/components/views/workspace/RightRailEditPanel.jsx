@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import isEqual from 'lodash/isEqual';
 import { PiArrowCounterClockwise, PiPencil, PiPlus, PiTrash } from 'react-icons/pi';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
-import useDebouncedSave from './useDebouncedSave';
+import { FormFooter, FormAlert } from '../../styled/FormComponents';
 import SelectionChip from './SelectionChip';
 import EditPanelBreadcrumb from './EditPanelBreadcrumb';
 import {
@@ -28,7 +29,6 @@ import { COLLECTION_KEY } from './collectionKeys';
 import useRecordSave from '../../../hooks/useRecordSave';
 import RecordRunStatus from './RecordRunStatus';
 import { appendEmptyItem, createRow, runDashboardConfigGate } from './itemMutations';
-import { emitWorkspaceEvent } from './telemetry';
 
 /**
  * RightRailEditPanel — VIS-802 / Track G G-1.
@@ -41,7 +41,7 @@ import { emitWorkspaceEvent } from './telemetry';
  *   - Library-row object (chart/table/markdown/input/source/model/…)  → that
  *     type's existing edit form.
  *   - Scoped dashboard + Outline `dashboard` key  → bundled dashboard-chrome
- *     form (rows list, auto-saved).
+ *     form (rows list).
  *   - Scoped dashboard + Outline `row.N` key       → <RowEditForm>.
  *   - Scoped dashboard + Outline `row.N.item.M`    → the item's leaf form
  *     (Chart/Table/Markdown/Input) when it references one, else <ItemEditForm>.
@@ -52,9 +52,12 @@ import { emitWorkspaceEvent } from './telemetry';
  *     `saveDefaults`).
  *
  * Every form is fronted by a <SelectionChip> header (rainbow type colour +
- * name) and an inline auto-save indicator. There are NO Save buttons for the
- * dashboard-structure forms — edits flow through `saveDashboard` with a ~500ms
- * debounce (see useDebouncedSave).
+ * name). #46: the dashboard is edited as ONE working copy — the canvas and every
+ * dashboard-structure form (chrome / row / item) mutate it optimistically and
+ * nothing persists until an explicit Save. A single Delete · Discard · Save
+ * footer at the bottom of the dashboard-scoped panel governs the whole
+ * dashboard (Save flushes the working copy via `commitDashboardEdits`, Discard
+ * reverts to the last-saved baseline), matching every other edit panel.
  *
  * FORM SOURCING (VIS-996): dimension/metric/relation render through the generic
  * schema-driven <SchemaLeafForm> (field sets from the published `$defs`, not
@@ -173,8 +176,13 @@ const RightRailEditPanel = () => {
     [setWorkspaceSelection]
   );
   const dashboards = useStore(s => s.dashboards);
-  const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
+  const captureDashboardBaseline = useStore(s => s.captureDashboardBaseline);
+  const commitDashboardEdits = useStore(s => s.commitDashboardEdits);
+  const discardDashboardEdits = useStore(s => s.discardDashboardEdits);
+  const deleteDashboard = useStore(s => s.deleteDashboard);
+  const dashboardBaselines = useStore(s => s.dashboardBaselines);
+  const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   // VIS-1025: null = local serve (always editable); a cloud capability object
   // with can_edit:false makes every rail write a no-op.
@@ -200,67 +208,33 @@ const RightRailEditPanel = () => {
     [dashboardConfig]
   );
 
-  // Debounced auto-save bound to the scoped dashboard. The payload is the full
-  // next config; saveDashboard(name, config) round-trips through the draft cache.
-  const dashSaveFn = useCallback(
-    nextConfig => {
-      if (!dashboardName || typeof saveDashboard !== 'function') return undefined;
-      return saveDashboard(dashboardName, nextConfig);
-    },
-    [dashboardName, saveDashboard]
-  );
-  const { status: saveStatus, scheduleSave } = useDebouncedSave(dashSaveFn, {
-    delay: 500,
-  });
-  // VIS-993: validation errors ({path, message, keyword}[]) when the gate is
-  // holding persistence — the same status/errors contract useRecordSave uses.
+  // VIS-993: validation errors ({path, message, keyword}[]) when the gate holds
+  // an edit invalid — surfaced as a banner. #46: with explicit save these are
+  // FEEDBACK ONLY; nothing was going to auto-persist either way.
   const [validationErrors, setValidationErrors] = useState(null);
 
   /**
-   * Commit a next-config: optimistically update the store (so the form, the
-   * Outline tree, and the canvas reflect the edit immediately — independent of
-   * the backend round-trip), then GATE persistence (VIS-993 §3): structure
-   * configs are BORN valid (itemMutations), so this gate is defense-in-depth —
-   * schema ($defs AJV) + leaf mutual-exclusion checks run before the debounced
-   * save is armed, and an invalid config is never handed to saveDashboard. The
-   * optimistic write still happens so bound surfaces stay live; only
-   * PERSISTENCE is held, with `validationErrors` surfaced at the indicator.
+   * Commit a next-config into the dashboard WORKING COPY (#46). The dashboard is
+   * edited as one object: this optimistically updates the store (so the form,
+   * the Outline tree, and the canvas reflect the edit immediately) after
+   * capturing the pre-edit baseline once, but does NOT persist — the Save footer
+   * flushes the whole working copy. The gate still runs for live validity
+   * FEEDBACK (`validationErrors` → banner); it FAILS OPEN on gate-internal
+   * errors so a crash never masks an edit.
    */
   const persistConfig = useCallback(
-    (nextConfig, meta) => {
-      // VIS-1025 read-only hold — BEFORE the optimistic write and BEFORE the
-      // validation gate (not-allowed is not 'invalid'): structure edits under
-      // a read-only stage neither write into the store nor persist.
+    (nextConfig) => {
+      // VIS-1025 read-only hold — a read-only stage neither writes nor persists.
       if (readOnly) return;
+      captureDashboardBaseline?.(dashboardName);
       if (updateDashboardConfigOptimistic) {
         updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
-      const finish = blocked => {
-        if (blocked) {
-          setValidationErrors(blocked.errors);
-          emitWorkspaceEvent('right_rail_autosave_blocked', {
-            object: 'dashboard',
-            name: dashboardName,
-            errors: blocked.errors.length,
-            ...meta,
-          });
-          return;
-        }
-        setValidationErrors(null);
-        scheduleSave(nextConfig);
-        emitWorkspaceEvent('right_rail_autosave_scheduled', {
-          object: 'dashboard',
-          name: dashboardName,
-          ...meta,
-        });
-      };
-      // The shared gate runner (exclusivity → sync schema → async schema)
-      // delivers exactly one verdict and FAILS OPEN on gate-internal errors —
-      // a crashed gate must never silently swallow the save (the
-      // canvas-persist regression). Same runner as commitCanvasConfig.
-      runDashboardConfigGate(nextConfig, finish);
+      runDashboardConfigGate(nextConfig, blocked => {
+        setValidationErrors(blocked ? blocked.errors : null);
+      });
     },
-    [updateDashboardConfigOptimistic, scheduleSave, dashboardName, readOnly]
+    [captureDashboardBaseline, updateDashboardConfigOptimistic, dashboardName, readOnly]
   );
 
   // VIS-1025: the compact read-only band rendered above every structure form
@@ -275,15 +249,16 @@ const RightRailEditPanel = () => {
     [dashboardConfig, persistConfig]
   );
 
-  // VIS-993: while the gate holds persistence the indicator reads 'invalid'
-  // (the useRecordSave status vocabulary) and the rail lists the errors.
-  const effectiveSaveStatus = validationErrors ? 'invalid' : saveStatus;
+  // VIS-993: while the gate holds an edit invalid the chip indicator reads
+  // 'invalid' and the rail lists the errors. (#46: feedback only — save is
+  // explicit.)
+  const effectiveSaveStatus = validationErrors ? 'invalid' : undefined;
   const validationBanner = validationErrors ? (
     <div
       data-testid="right-rail-validation-errors"
       className="border-b border-highlight-200 bg-highlight-50 px-3 py-2 text-[11px] leading-relaxed text-highlight-600"
     >
-      <p className="font-semibold">Invalid configuration — changes are not being saved:</p>
+      <p className="font-semibold">Invalid configuration — fix before saving:</p>
       <ul className="mt-0.5 list-disc pl-4">
         {validationErrors.map((err, i) => (
           <li key={`${err.path}-${i}`}>
@@ -293,6 +268,82 @@ const RightRailEditPanel = () => {
         ))}
       </ul>
     </div>
+  ) : null;
+
+  // ── #46: the ONE dashboard-level Delete · Discard · Save footer ────────────
+  // The whole dashboard (chrome + rows + items + canvas layout) is one working
+  // copy; this footer governs all of it, no matter which node is selected. Save
+  // flushes the working copy, Discard reverts it to the last-saved baseline,
+  // Delete marks the dashboard for removal. Same footer the leaf panels use.
+  const dashboardDirty =
+    isDashboardScoped && dashboardConfig
+      ? (() => {
+          const baseline = dashboardBaselines?.[dashboardName];
+          return baseline !== undefined && !isEqual(dashboardConfig, baseline);
+        })()
+      : false;
+  const [dashboardSaving, setDashboardSaving] = useState(false);
+  const [dashboardDeleting, setDashboardDeleting] = useState(false);
+  const [showDashboardDeleteConfirm, setShowDashboardDeleteConfirm] = useState(false);
+  const [dashboardActionError, setDashboardActionError] = useState(null);
+
+  const handleDashboardSave = useCallback(async () => {
+    if (!dashboardName) return;
+    setDashboardSaving(true);
+    setDashboardActionError(null);
+    const result = await commitDashboardEdits(dashboardName);
+    setDashboardSaving(false);
+    if (result && result.success === false) {
+      setDashboardActionError(result.error || 'Failed to save dashboard');
+    }
+  }, [dashboardName, commitDashboardEdits]);
+
+  const handleDashboardDelete = useCallback(async () => {
+    if (!dashboardName) return;
+    setDashboardDeleting(true);
+    setDashboardActionError(null);
+    const result = await deleteDashboard(dashboardName);
+    setDashboardDeleting(false);
+    if (result?.success) {
+      setShowDashboardDeleteConfirm(false);
+      // The dashboard is gone — leave its workspace view.
+      closeWorkspaceTab?.(`dashboard:${dashboardName}`);
+    } else {
+      setDashboardActionError(result?.error || 'Failed to delete dashboard');
+      setShowDashboardDeleteConfirm(false);
+    }
+  }, [dashboardName, deleteDashboard, closeWorkspaceTab]);
+
+  const dashboardFooter = isDashboardScoped ? (
+    <>
+      {dashboardActionError && (
+        <div className="px-3 pt-2">
+          <FormAlert variant="error">{dashboardActionError}</FormAlert>
+        </div>
+      )}
+      <FormFooter
+        onCancel={() => discardDashboardEdits(dashboardName)}
+        onSave={handleDashboardSave}
+        saving={dashboardSaving}
+        cancelLabel="Discard"
+        cancelDisabled={!dashboardDirty || dashboardSaving || dashboardDeleting}
+        saveDisabled={!dashboardDirty}
+        showDelete={!showDashboardDeleteConfirm}
+        onDeleteClick={() => setShowDashboardDeleteConfirm(true)}
+        deleteConfirm={
+          showDashboardDeleteConfirm
+            ? {
+                show: true,
+                message:
+                  'Delete this dashboard? It will be marked for deletion and removed from YAML when you commit.',
+                onConfirm: handleDashboardDelete,
+                onCancel: () => setShowDashboardDeleteConfirm(false),
+                deleting: dashboardDeleting,
+              }
+            : null
+        }
+      />
+    </>
   ) : null;
 
   const handleSelectRef = useCallback(
@@ -451,6 +502,7 @@ const RightRailEditPanel = () => {
               <PiPlus className="h-3.5 w-3.5" /> Add row
             </button>
           </div>
+          {dashboardFooter}
         </div>
       );
     }
@@ -520,6 +572,7 @@ const RightRailEditPanel = () => {
               onSelectRef={handleSelectRef}
             />
           </div>
+          {dashboardFooter}
         </div>
       );
     }
@@ -597,6 +650,7 @@ const RightRailEditPanel = () => {
               RowComponent={RowEditForm}
             />
           </div>
+          {dashboardFooter}
         </div>
       );
     }

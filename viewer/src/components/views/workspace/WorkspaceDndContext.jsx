@@ -16,7 +16,6 @@ import LibraryDragPreview from './library/LibraryDragPreview';
 import { DROPPABLE_TYPES } from './library/LibraryRow';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
-import { runDashboardConfigGate } from './itemMutations';
 import { formatRefExpression } from '../../../utils/refString';
 import {
   reorderItemsInRow,
@@ -829,8 +828,8 @@ const WorkspaceDndContext = ({ children }) => {
   const project = useStore(s => s.project);
   const reassignDashboardLevel = useStore(s => s.reassignDashboardLevel);
   const moveLevel = useStore(s => s.moveLevel);
-  const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
+  const captureDashboardBaseline = useStore(s => s.captureDashboardBaseline);
 
   // Explore 2.0 Phase 3a: the exploration surface's drop-zone deps
   // (`routeExplorationDragEnd`) — read here (the shared shell-level context)
@@ -848,37 +847,21 @@ const WorkspaceDndContext = ({ children }) => {
   // and consumers (ProjectEditor) can read: `{ kind, name, level, type }`.
   const [activeDrag, setActiveDrag] = useState(null);
 
-  // Commit a canvas-driven config mutation (D-3): optimistically swap the
-  // store config so the canvas + Outline reflect it immediately, then GATE
-  // persistence (VIS-993 §3). The canvas transforms (canvasReorder) produce
-  // BORN-valid configs, so the gate — $defs schema (validateAgainstSchema)
-  // plus the leaf mutual-exclusion check the JSON schema cannot express — is
-  // defense-in-depth: an invalid config is never handed to saveDashboard
-  // (sanitizeDashboardConfig is retired; nothing repairs the payload). The
-  // shared runDashboardConfigGate delivers EXACTLY ONE verdict and FAILS OPEN
-  // on gate-internal errors (a crashed gate must never silently swallow the
-  // save — the canvas-persist regression). This is the SAME runner
-  // RightRailEditPanel.persistConfig uses on the structure-form path.
+  // Commit a canvas-driven config mutation (D-3): #46 — the dashboard is edited
+  // as ONE working copy that persists only on an explicit Save. A canvas drag/
+  // resize/insert captures the pre-edit baseline once, then optimistically swaps
+  // the store config so the canvas + Outline reflect the edit immediately. It
+  // does NOT persist — the dashboard-scoped Edit panel's Save footer flushes the
+  // whole working copy (and the backend validates it there).
   const commitCanvasConfig = useCallback(
     (dashboardName, nextConfig) => {
       if (!dashboardName) return;
+      captureDashboardBaseline?.(dashboardName);
       if (updateDashboardConfigOptimistic) {
         updateDashboardConfigOptimistic(dashboardName, nextConfig);
       }
-      runDashboardConfigGate(nextConfig, blocked => {
-        if (blocked) {
-          emitWorkspaceEvent('canvas_commit_blocked', {
-            name: dashboardName,
-            errors: blocked.errors.length,
-          });
-          return;
-        }
-        if (typeof saveDashboard === 'function') {
-          saveDashboard(dashboardName, nextConfig);
-        }
-      });
     },
-    [updateDashboardConfigOptimistic, saveDashboard]
+    [captureDashboardBaseline, updateDashboardConfigOptimistic]
   );
 
   // Context value: the live drag state PLUS the shared commit path. Consumers

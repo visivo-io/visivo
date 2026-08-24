@@ -12,7 +12,7 @@
  */
 /* eslint-disable no-template-curly-in-string -- fixtures use literal Visivo ref-string syntax, not JS template interpolation */
 import React from 'react';
-import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { useDraggable } from '@dnd-kit/core';
 import WorkspaceDndContext, {
   useWorkspaceDrag,
@@ -1318,10 +1318,9 @@ describe('WorkspaceDndContext drag overlay previews (VIS-901 #5 / VIS-1008)', ()
   });
 });
 
-describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () => {
-  // Warm the bundled project schema so the gate takes its SYNC path (matching
-  // the production workspace after preload); the async-fallback test below
-  // clears the cache explicitly.
+describe('WorkspaceDndContext commit path (#46 — optimistic working copy, no auto-persist)', () => {
+  // Warm the bundled project schema (harmless; the last test clears + restores
+  // it to prove the commit no longer depends on the gate).
   beforeAll(async () => {
     await preloadValidationSchema();
   });
@@ -1349,7 +1348,7 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
     ],
   };
 
-  test('useWorkspaceCommit optimistically applies, validates, then saves the SAME config', () => {
+  test('useWorkspaceCommit applies the SAME config to the working copy, no persist (#46)', () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     const updateDashboardConfigOptimistic = jest.fn();
     useStore.setState({ saveDashboard, updateDashboardConfigOptimistic });
@@ -1361,17 +1360,16 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
     );
     fireEvent.click(screen.getByTestId('commit-probe'));
 
+    // #46: a canvas commit writes the working copy byte-identical (canvas
+    // mutations are born valid — nothing sanitizes/repairs the payload) and
+    // does NOT auto-persist; the dashboard Save footer flushes it.
     expect(updateDashboardConfigOptimistic).toHaveBeenCalledTimes(1);
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const [name, persisted] = saveDashboard.mock.calls[0];
-    expect(name).toBe('dash');
-    // VIS-993: canvas mutations are BORN valid — nothing sanitizes/repairs the
-    // payload; optimistic + save receive the config byte-identical.
-    expect(persisted).toBe(VALID_CONFIG);
+    expect(updateDashboardConfigOptimistic.mock.calls[0][0]).toBe('dash');
     expect(updateDashboardConfigOptimistic.mock.calls[0][1]).toBe(VALID_CONFIG);
+    expect(saveDashboard).not.toHaveBeenCalled();
   });
 
-  test('an INVALID config is optimistically applied but NEVER persisted (gate blocks)', () => {
+  test('an INVALID config is optimistically applied but NEVER auto-persisted (#46)', () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     const updateDashboardConfigOptimistic = jest.fn();
     useStore.setState({ saveDashboard, updateDashboardConfigOptimistic });
@@ -1384,9 +1382,10 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
             rows: [
               {
                 height: 'medium',
-                // The legacy empty-string scaffold (schema-invalid + selector
-                // extra-forbidden). Sanitize is retired: nothing repairs this —
-                // the gate must hold persistence entirely.
+                // The legacy empty-string scaffold (schema-invalid). #46: the
+                // canvas no longer auto-persists at all, so an invalid edit
+                // lands in the working copy but never POSTs — the backend
+                // validates it at Save time.
                 items: [{ width: 1, chart: '', table: '', markdown: '', input: '', selector: '' }],
               },
             ],
@@ -1396,13 +1395,13 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
     );
     fireEvent.click(screen.getByTestId('commit-probe'));
 
-    // Bound surfaces stay live (useRecordSave contract)…
+    // Bound surfaces stay live…
     expect(updateDashboardConfigOptimistic).toHaveBeenCalledTimes(1);
-    // …but nothing invalid may POST.
+    // …but a canvas commit never auto-persists.
     expect(saveDashboard).not.toHaveBeenCalled();
   });
 
-  test('a TWO-LEAF item is blocked too (mutual exclusion is not in the JSON schema)', () => {
+  test('a TWO-LEAF item is not auto-persisted either (#46)', () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     useStore.setState({ saveDashboard, updateDashboardConfigOptimistic: jest.fn() });
 
@@ -1424,10 +1423,11 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
     expect(saveDashboard).not.toHaveBeenCalled();
   });
 
-  test('async fallback: with no schema loaded a valid commit still persists after validation', async () => {
+  test('a commit writes the working copy synchronously — no schema/gate dependency (#46)', async () => {
     clearValidationCache();
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic: jest.fn() });
+    const updateDashboardConfigOptimistic = jest.fn();
+    useStore.setState({ saveDashboard, updateDashboardConfigOptimistic });
 
     render(
       <WorkspaceDndContext>
@@ -1436,17 +1436,14 @@ describe('WorkspaceDndContext commit path (D-3 / D-4, gated per VIS-993)', () =>
     );
     fireEvent.click(screen.getByTestId('commit-probe'));
 
-    // Generous timeout: the fallback compiles the full Dashboard $defs graph.
-    // Kept inside this test's own budget rather than well under it — at 8s the
-    // waitFor gave up first, so a busy full-suite run (where jest workers
-    // contend for CPU) failed here while the suite passed in isolation. The
-    // work is CPU-bound compilation, not a hang.
-    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1), { timeout: 12000 });
-    expect(saveDashboard.mock.calls[0][1]).toBe(VALID_CONFIG);
+    // #46: commitCanvasConfig no longer runs the async validation gate before
+    // writing — the working copy updates immediately, even with the schema
+    // cache cleared, and nothing auto-persists.
+    expect(updateDashboardConfigOptimistic).toHaveBeenCalledTimes(1);
+    expect(updateDashboardConfigOptimistic.mock.calls[0][1]).toBe(VALID_CONFIG);
+    expect(saveDashboard).not.toHaveBeenCalled();
     // Restore the warm cache for any following test.
     await preloadValidationSchema();
-    // 30s, not 15s: the waitFor above can legitimately use 12s of that budget
-    // and the preload here is a second compile of the same graph.
   }, 30000);
 
   test('the commit is a safe no-op without a dashboard name', () => {
