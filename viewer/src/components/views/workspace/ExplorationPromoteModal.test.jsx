@@ -1095,11 +1095,11 @@ describe('ExplorationPromoteModal', () => {
       // assumed-instant window and timed them out).
       buildPromoteChecklist.mockResolvedValue([row({ name: 'query_1' })]);
       render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
-      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders_query'));
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders-query'));
       expect(buildPromoteChecklist).toHaveBeenCalledTimes(1);
       expect(
-        await screen.findByTestId('promote-row-model-orders_query-name-input')
-      ).toHaveValue('orders_query');
+        await screen.findByTestId('promote-row-model-orders-query-name-input')
+      ).toHaveValue('orders-query');
     });
 
     test('a field row referencing a just-renamed model shows the model\'s NEW name in its "(→ …)" suffix', async () => {
@@ -1113,9 +1113,9 @@ describe('ExplorationPromoteModal', () => {
         row({ tier: 'field', type: 'metric', name: 'total', parentModel: 'query_1' }),
       ]);
       render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
-      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders_query'));
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders-query'));
       expect(await screen.findByTestId('promote-row-metric-total')).toHaveTextContent(
-        '(→ orders_query)'
+        '(→ orders-query)'
       );
     });
 
@@ -1183,7 +1183,7 @@ describe('ExplorationPromoteModal', () => {
     // placeholder name stays and the row is still a normal editable field.
     test('a collision during auto-suggestion (initial load) fails open — no crash, placeholder name stays editable', async () => {
       const renameModelTab = jest.fn(() => {
-        throw Object.assign(new Error('Name "orders_query" is already in use. Choose a different name.'), {
+        throw Object.assign(new Error('Name "orders-query" is already in use. Choose a different name.'), {
           code: 'NAME_COLLISION',
         });
       });
@@ -1193,7 +1193,7 @@ describe('ExplorationPromoteModal', () => {
       });
       buildPromoteChecklist.mockResolvedValue([row({ name: 'query_1' })]);
       render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
-      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders_query'));
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('query_1', 'orders-query'));
       // The collision means the suggestion never "took" — the row keeps its
       // original (still-editable) name rather than the modal crashing.
       expect(

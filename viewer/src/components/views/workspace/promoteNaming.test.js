@@ -30,7 +30,7 @@ describe('suggestPromoteNames', () => {
   test('suggests <source>_query for a generically-named new model bound to a source', () => {
     const rows = [row({ name: 'query_1' })];
     const suggestions = suggestPromoteNames(rows, () => 'orders', []);
-    expect(suggestions.get('model:query_1')).toBe('orders_query');
+    expect(suggestions.get('model:query_1')).toBe('orders-query');
   });
 
   test('leaves a model with no bound source unsuggested (still editable, never guessed)', () => {
@@ -64,9 +64,9 @@ describe('suggestPromoteNames', () => {
       row({ tier: 'chart', type: 'chart', name: 'chart' }),
     ];
     const suggestions = suggestPromoteNames(rows, () => 'orders', []);
-    expect(suggestions.get('model:query_1')).toBe('orders_query');
-    expect(suggestions.get('insight:insight')).toBe('orders_query_insight');
-    expect(suggestions.get('chart:chart')).toBe('orders_query_insight_chart');
+    expect(suggestions.get('model:query_1')).toBe('orders-query');
+    expect(suggestions.get('insight:insight')).toBe('orders-query-insight');
+    expect(suggestions.get('chart:chart')).toBe('orders-query-insight-chart');
   });
 
   test('chart anchors on the model when no insight anchor is available', () => {
@@ -75,13 +75,13 @@ describe('suggestPromoteNames', () => {
       row({ tier: 'chart', type: 'chart', name: 'chart' }),
     ];
     const suggestions = suggestPromoteNames(rows, () => 'orders', []);
-    expect(suggestions.get('chart:chart')).toBe('orders_query_chart');
+    expect(suggestions.get('chart:chart')).toBe('orders-query-chart');
   });
 
   test('avoids colliding with a known existing name by suffixing', () => {
     const rows = [row({ name: 'query_1' })];
-    const suggestions = suggestPromoteNames(rows, () => 'orders', ['orders_query']);
-    expect(suggestions.get('model:query_1')).toBe('orders_query_2');
+    const suggestions = suggestPromoteNames(rows, () => 'orders', ['orders-query']);
+    expect(suggestions.get('model:query_1')).toBe('orders-query_2');
   });
 
   test('an already-meaningful model still anchors a generic insight/chart', () => {
@@ -90,7 +90,7 @@ describe('suggestPromoteNames', () => {
       row({ tier: 'insight', type: 'insight', name: 'insight' }),
     ];
     const suggestions = suggestPromoteNames(rows, () => null, []);
-    expect(suggestions.get('insight:insight')).toBe('orders_q_insight');
+    expect(suggestions.get('insight:insight')).toBe('orders_q-insight');
   });
 
   test('returns an empty map for an empty checklist', () => {
@@ -131,7 +131,7 @@ describe('suggestPromoteNames', () => {
     ];
     const suggestions = suggestPromoteNames(rows, () => 'orders', []);
     expect(suggestions.has('insight:insight')).toBe(false);
-    expect(suggestions.get('chart:chart')).toBe('insight_chart');
+    expect(suggestions.get('chart:chart')).toBe('insight-chart');
   });
 
   test('isGenericPromoteName never throws on a nullish name', () => {
