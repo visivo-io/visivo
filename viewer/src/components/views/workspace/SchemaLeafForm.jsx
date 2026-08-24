@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import useRecordSave from '../../../hooks/useRecordSave';
-import SaveStateIndicator from './SaveStateIndicator';
+import useFormBaseline from '../../../hooks/useFormBaseline';
 import { FormInput, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import RefTextArea from '../common/RefTextArea';
 import { validateName } from '../common/namedModel';
@@ -29,8 +29,9 @@ import { useFieldParentModel } from './fields/useFieldParentModel';
  * The chrome the bespoke forms each hand-rolled is owned ONCE here:
  *   - name identity input (read-only in edit mode, validateName on create)
  *   - create mode: explicit Save via the store's SAVE_ACTION[type]
- *   - edit mode: auto-save through the gated useRecordSave backbone (VIS-993) —
- *     no Save button; SaveStateIndicator reports the debounce
+ *   - edit mode: explicit Delete · Discard · Save (matching every other leaf
+ *     panel). Save flushes through the gated useRecordSave backbone (VIS-993),
+ *     Discard reverts to the last-saved values, Save is gated on real edits
  *   - embedded mode (inline object within a model): back-nav + delegating
  *     `onSave(type, name, config)` contract, plain-SQL-only expressions
  *   - delete with confirm (DELETE_ACTION[type]) incl. the NEW-object
@@ -85,7 +86,7 @@ const fieldLabel = (schema, name) =>
   schema?.properties?.[name]?.title ||
   name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
 
-const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoBack }) => {
+const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoBack, onDirtyChange }) => {
   const store = useStore();
   const checkCommitStatus = store.checkCommitStatus;
 
@@ -120,42 +121,48 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     return t === 'postgresql' ? 'postgres' : t;
   }, [sourceName, store.sources]);
 
-  // VIS-993: edit mode is AUTO-SAVE through the gated optimistic backbone.
-  const {
-    scheduleSave,
-    status: autoSaveStatus,
-    errors: gateErrors,
-  } = useRecordSave(type, isEditMode ? recordName || null : null, { sourceDialect });
+  // VIS-993: Save flushes through the gated optimistic backbone (schema + refs +
+  // expressions). Bound to this record only in edit mode; create/embedded persist
+  // through their own paths below.
+  const { saveNow, errors: gateErrors } = useRecordSave(
+    type,
+    isEditMode ? recordName || null : null,
+    { sourceDialect }
+  );
+
+  // VIS-1133: snapshot the last-saved config so Discard reverts to it and the
+  // footer's Save/Discard gate on real edits.
+  const applyValues = useCallback(cfg => setConfig(cfg), []);
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
 
   useEffect(() => {
     if (record) {
       const cfg = unwrapConfig(record) || {};
       // Embedded records keep their identity in config.name; standalone records
       // may only carry it at the record level.
-      setConfig({ ...cfg, name: cfg.name || record.name || '' });
+      seed({ ...cfg, name: cfg.name || record.name || '' });
     } else {
-      setConfig({});
+      seed({});
     }
     setLocalErrors({});
     setSaveError(null);
-    // Re-seed only when the record IDENTITY (or mode) changes — not on every
-    // optimistic store write our own scheduleSave round-trips back in.
+    // Re-seed when the record IDENTITY (or mode) changes — including the fresh
+    // object our own Save writes back optimistically, which is how the baseline
+    // advances after a save. `seed` is stable per `applyValues`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recordName, isCreate, type]);
+  }, [record, isCreate, type]);
 
   const name = config.name || '';
 
-  const applyChange = useCallback(
-    nextConfig => {
-      setConfig(nextConfig);
-      if (isEditMode) {
-        // Auto-save; the gate (schema + refs + expressions) decides persistence.
-        const { name: _n, ...body } = nextConfig;
-        scheduleSave({ name: recordName, ...body });
-      }
-    },
-    [isEditMode, scheduleSave, recordName]
-  );
+  // Edits update the working config; nothing persists until an explicit Save.
+  const applyChange = useCallback(nextConfig => setConfig(nextConfig), []);
+
+  const dirty = isDirtyAgainst(config);
+
+  // Report upward so the tab strip's unsaved dot + guarded close reflect edits.
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
 
   // ---- validation (create/embedded save path; edit mode is gate-driven) ----
   // FormShell warms the per-type schema cache on mount, so a sync read at
@@ -196,6 +203,17 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
         const result = await onSave(type, name, body);
         setSaving(false);
         if (!result?.success) setSaveError(result?.error || `Failed to save ${type}`);
+      } else if (isEditMode) {
+        // Standalone edit — flush through the gated optimistic backbone. The
+        // saveX refetch writes the record back, re-seeding the baseline so the
+        // form goes clean. A gate block surfaces inline via `gateErrors`, so
+        // only a hard failure gets the generic form-level message.
+        const { name: _n, ...rest } = body;
+        const result = await saveNow({ name: recordName, ...rest });
+        setSaving(false);
+        if (result && result.success === false && !result.validation) {
+          setSaveError(result.error || `Failed to save ${type}`);
+        }
       } else {
         // Create mode — persist through the type's store action.
         const saveAction = store[SAVE_ACTION[type]];
@@ -319,11 +337,12 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
       </FormLayout>
 
       <FormFooter
-        autoSave={isEditMode}
-        rightContent={isEditMode ? <SaveStateIndicator status={autoSaveStatus} /> : undefined}
-        onCancel={onClose}
+        onCancel={isEditMode ? discard : onClose}
         onSave={handleSave}
         saving={saving}
+        cancelLabel={isEditMode ? 'Discard' : 'Cancel'}
+        cancelDisabled={isEditMode && (!dirty || saving || deleting)}
+        saveDisabled={isEditMode && !dirty}
         showDelete={isEditMode && !showDeleteConfirm}
         onDeleteClick={() => setShowDeleteConfirm(true)}
         deleteConfirm={

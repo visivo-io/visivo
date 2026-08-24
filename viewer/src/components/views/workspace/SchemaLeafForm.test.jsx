@@ -256,26 +256,48 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
     });
   });
 
-  describe('edit mode auto-saves through the gated backbone (VIS-993)', () => {
+  describe('edit mode — explicit Save through the gated backbone (VIS-993)', () => {
     const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(x, 2)' } };
 
-    test('renders NO Save button — persistence is debounced auto-save', async () => {
+    test('renders the Delete · Discard · Save footer', async () => {
       await renderAndSettle(
         <SchemaLeafForm type={type} record={record} onClose={jest.fn()} onSave={jest.fn()} />
       );
-      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument();
+      expect(screen.getByTitle('Delete')).toBeInTheDocument();
     });
 
-    test('an expression edit schedules a debounced save with the full config', async () => {
+    test('Save is gated on edits, then flushes the full config through saveNow', async () => {
       await renderAndSettle(
         <SchemaLeafForm type={type} record={record} onClose={jest.fn()} onSave={jest.fn()} />
       );
+      // Untouched: Save disabled, nothing persists.
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+
       fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'ROUND(x, 3)' } });
-      expect(mockScheduleSave).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'existing', expression: 'ROUND(x, 3)' })
-      );
+      expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled();
+      // No auto-save — nothing persists on keystroke.
       expect(mockSaveNow).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(mockSaveNow).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'existing', expression: 'ROUND(x, 3)' })
+        )
+      );
+    });
+
+    test('Discard reverts an edit to the last-saved value', async () => {
+      await renderAndSettle(
+        <SchemaLeafForm type={type} record={record} onClose={jest.fn()} onSave={jest.fn()} />
+      );
+      const expr = screen.getByLabelText('Expression');
+      expect(expr).toHaveValue('ROUND(x, 2)');
+      fireEvent.change(expr, { target: { value: 'ROUND(x, 9)' } });
+      expect(screen.getByLabelText('Expression')).toHaveValue('ROUND(x, 9)');
+      fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+      expect(screen.getByLabelText('Expression')).toHaveValue('ROUND(x, 2)');
     });
 
     test('gate errors surface on the expression field', async () => {
@@ -328,7 +350,7 @@ describe('SchemaLeafForm Relation', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it('edit mode auto-saves a condition edit through the gated backbone', async () => {
+  it('edit mode — a Save flushes the condition edit through the gated backbone', async () => {
     const record = {
       name: 'rel1',
       config: { name: 'rel1', condition: 'a = b', join_type: 'inner' },
@@ -336,10 +358,13 @@ describe('SchemaLeafForm Relation', () => {
     await renderAndSettle(
       <SchemaLeafForm type="relation" record={record} onClose={jest.fn()} onSave={jest.fn()} />
     );
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Condition'), { target: { value: 'a = c' } });
-    expect(mockScheduleSave).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'rel1', condition: 'a = c' })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(mockSaveNow).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'rel1', condition: 'a = c' })
+      )
     );
   });
 

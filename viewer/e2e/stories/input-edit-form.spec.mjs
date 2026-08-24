@@ -1,15 +1,15 @@
 /**
- * Story: Right-rail Input edit form auto-save + inline validation
- * (VIS-898 / Track G — input slice).
+ * Story: Right-rail Input edit form — explicit Delete · Discard · Save
+ * (VIS-898 / Track G — input slice; unified panels).
  *
- * G-1 (VIS-802) built the right-rail Edit seam but routed input selections to
- * the LEGACY InputEditForm (Save button, no live validation). VIS-898 rewires
- * the Input form to AUTO-SAVE on a ~500ms debounce (no Save button) with inline,
- * non-blocking validation — matching the dashboard-structure form UX.
+ * The Input edit panel is a standard leaf form: edits are held locally and
+ * persisted only on an explicit Save through the shared Delete · Discard · Save
+ * footer (matching chart/insight/source/…). Save is gated on real edits, Discard
+ * reverts to the last-saved values, and validation is inline + non-blocking.
  *
- * This story selects an `input` Library object, confirms the inline form has NO
- * Save button, edits the Label, and confirms the change debounce-persists
- * (the SelectionChip save indicator transitions and the edit survives).
+ * This story selects an `input` Library object, confirms the footer, edits the
+ * Label, saves, and confirms the edit persists. It also confirms Discard reverts
+ * an in-progress edit and that inline validation surfaces without trapping.
  *
  * Precondition: an isolated sandbox running the integration project. BASE
  * defaults to :3047 but is env-overridable:
@@ -17,11 +17,6 @@
  *   VISIVO_SANDBOX_NAME=vis898 bash scripts/sandbox.sh start
  *   # then: VIS_INPUT_EDIT_FORM_BASE=http://localhost:3047 \
  *   #         npx playwright test input-edit-form
- *
- * NOTE: the sandbox backend runs from the `main` editable install, where the
- * VIS-902 validator fix is NOT present — so a "default not in options" backend
- * error may still surface. That is expected; this story exercises the FORM
- * (auto-save + inline display), not the validator.
  */
 
 import { test, expect } from '@playwright/test';
@@ -48,7 +43,7 @@ test.describe('Right-rail Input edit form (VIS-898)', () => {
   test.describe.configure({ mode: 'serial' });
   test.setTimeout(90000);
 
-  test('input form auto-saves a label edit with NO Save button', async ({ page }) => {
+  test('input form saves a label edit through the Delete · Discard · Save footer', async ({ page }) => {
     await page.goto(`${BASE}/workspace/dashboard/${DASHBOARD}`);
     await page.waitForLoadState('networkidle');
 
@@ -62,33 +57,53 @@ test.describe('Right-rail Input edit form (VIS-898)', () => {
     const leafForm = page.getByTestId('right-rail-edit-leaf-form');
     await expect(leafForm).toBeVisible({ timeout: WAIT });
 
-    // The SelectionChip identifies the input (rainbow type colour from
-    // objectTypeConfigs — indigo for inputs).
+    // The SelectionChip identifies the input.
     const chip = page.getByTestId('right-rail-selection-chip');
     await expect(chip).toHaveAttribute('data-object-type', 'input');
     await expect(chip).toContainText(INPUT_NAME);
 
-    // There is NO Save button in the auto-save form.
-    await expect(
-      leafForm.getByRole('button', { name: /^save$/i })
-    ).toHaveCount(0);
+    // The shared footer: Save is present and disabled until an edit is made.
+    const saveBtn = page.getByTestId('form-footer-save');
+    const discardBtn = page.getByTestId('form-footer-cancel');
+    await expect(saveBtn).toBeVisible({ timeout: WAIT });
+    await expect(discardBtn).toHaveText(/discard/i);
+    await expect(saveBtn).toBeDisabled();
 
-    // Edit the Label → debounced auto-save kicks in.
+    // Edit the Label → Save enables.
     const labelField = page.locator('#input-label');
     await expect(labelField).toBeVisible({ timeout: WAIT });
     const newLabel = `Split Threshold ${Date.now() % 10000}`;
     await labelField.fill(newLabel);
+    await expect(saveBtn).toBeEnabled();
 
-    // The auto-save indicator appears (pending → saving → saved). We assert it
-    // reaches a terminal state and the field keeps the edited value.
-    const indicator = page.getByTestId('right-rail-save-state');
-    await expect(indicator).toBeVisible({ timeout: WAIT });
-    await expect
-      .poll(() => indicator.getAttribute('data-status'), { timeout: WAIT })
-      .toMatch(/saved|error/);
+    // Save → the edit persists (the field keeps its value and Save re-disables
+    // once the baseline advances to the saved value).
+    await saveBtn.click();
     await expect(labelField).toHaveValue(newLabel);
+    await expect(saveBtn).toBeDisabled({ timeout: WAIT });
 
-    await page.screenshot({ path: `${SCREENS}/input-edit-form-autosave.png`, fullPage: false });
+    await page.screenshot({ path: `${SCREENS}/input-edit-form-save.png`, fullPage: false });
+  });
+
+  test('Discard reverts an in-progress label edit to the last-saved value', async ({ page }) => {
+    await page.goto(`${BASE}/workspace/dashboard/${DASHBOARD}`);
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('workspace-right-rail-tab-edit').click();
+    await expect(page.getByTestId('workspace-right-rail-edit')).toBeVisible({ timeout: WAIT });
+
+    await selectInput(page, INPUT_NAME);
+    await expect(page.getByTestId('right-rail-edit-leaf-form')).toBeVisible({ timeout: WAIT });
+
+    const labelField = page.locator('#input-label');
+    await expect(labelField).toBeVisible({ timeout: WAIT });
+    const saved = await labelField.inputValue();
+
+    await labelField.fill('Scratch edit — should not stick');
+    const discardBtn = page.getByTestId('form-footer-cancel');
+    await expect(discardBtn).toBeEnabled();
+    await discardBtn.click();
+
+    await expect(labelField).toHaveValue(saved);
   });
 
   test('inline validation: a default not in the options is shown without trapping the user', async ({

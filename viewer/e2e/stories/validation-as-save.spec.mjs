@@ -1,12 +1,12 @@
 /**
  * Story: validation-as-save (VIS-993).
  *
- * The rail is AUTO-SAVE with a gated backbone: there is no Save button in edit
- * mode — every field change debounces through useRecordSave, where a
- * semantically doomed edit (dangling ref, unparseable SQL expression) never
- * POSTs — no draft-cache write, no run under runs-on-changes, no cloud commit
- * block — and the blocking reason renders on the field. Fixing the value
- * auto-saves and the change lands in the backend pending set.
+ * The rail persists on an explicit Save through a gated backbone: Save flushes
+ * through useRecordSave, where a semantically doomed edit (dangling ref,
+ * unparseable SQL expression) never POSTs — no draft-cache write, no run under
+ * runs-on-changes, no cloud commit block — and the blocking reason renders on
+ * the field. Fixing the value and saving lands the change in the backend
+ * pending set.
  *
  * Runs in the `state-mutating` playwright project (the valid-save steps write
  * the in-memory draft cache; discarded in afterAll).
@@ -16,8 +16,8 @@ import { API } from '../helpers/sandbox.mjs';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 const WAIT = 20000;
-// The backbone debounces 500ms, then the async gate (schema + refs + backend
-// sqlglot) must run before any POST could fire. 1500ms comfortably covers it.
+// After the Save click the async gate (schema + refs + backend sqlglot) must run
+// before any POST could fire. 1500ms comfortably covers it.
 const SETTLE = 1500;
 
 const DIMENSION = 'x_rounded';
@@ -67,6 +67,14 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     await editable.pressSequentially(text, { delay: 10 });
   };
 
+  // Save is gated on real edits; an edit enables it, then it flushes the config
+  // through the gated backbone.
+  const clickSave = async () => {
+    const save = page.getByTestId('form-footer-save');
+    await expect(save).toBeEnabled({ timeout: WAIT });
+    await save.click();
+  };
+
   const backendPending = async name => {
     const changes = await page.request
       .get(`${API}/api/commit/pending/`)
@@ -75,14 +83,18 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     return (changes.pending || []).some(c => c.name === name);
   };
 
-  test('there is no Save button — the rail is auto-save', async () => {
+  test('the rail has an explicit Save, gated until an edit is made', async () => {
     await openForm('dimension', DIMENSION);
-    await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
+    const save = page.getByTestId('form-footer-save');
+    await expect(save).toBeVisible();
+    // Untouched edit form → nothing to save.
+    await expect(save).toBeDisabled();
   });
 
-  test('a dangling ref blocks the auto-save: inline reason, zero POSTs', async () => {
+  test('a dangling ref blocks the save: inline reason, zero POSTs', async () => {
     const postsBefore = posts.dimensions.length;
     await setExpression('${ref(ghost_model)}');
+    await clickSave();
     await page.waitForTimeout(SETTLE);
 
     // The gate's reason lands on the expression field.
@@ -93,10 +105,11 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     expect(await backendPending(DIMENSION)).toBe(false);
   });
 
-  test('fixing the expression auto-saves: POST fires without any Save click', async () => {
+  test('fixing the expression and saving persists: POST fires', async () => {
     const postsBefore = posts.dimensions.length;
 
     await setExpression('ROUND(x, 1)');
+    await clickSave();
 
     await expect
       .poll(() => posts.dimensions.length, { timeout: WAIT })
@@ -109,6 +122,7 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
 
     const postsBefore = posts.metrics.length;
     await setExpression('AVG(value)}');
+    await clickSave();
     await page.waitForTimeout(SETTLE);
 
     // The backend sqlglot parse error surfaces on the expression field.
@@ -120,10 +134,11 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     expect(await backendPending(METRIC)).toBe(false);
   });
 
-  test('fixing the metric expression auto-saves through', async () => {
+  test('fixing the metric expression and saving persists', async () => {
     const postsBefore = posts.metrics.length;
 
     await setExpression('AVG(value)');
+    await clickSave();
 
     await expect
       .poll(() => posts.metrics.length, { timeout: WAIT })
