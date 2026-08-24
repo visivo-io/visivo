@@ -40,6 +40,7 @@ build/
 tmp
 mkdocs_build/
 test-projects/*/dist
+test-projects/test
 visivo/dist
 node_modules
 htmlcov/
