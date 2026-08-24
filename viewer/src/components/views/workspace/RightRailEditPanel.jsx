@@ -646,15 +646,7 @@ const INLINE_LEAF_FORMS = {
   chart: (record, common) => <ChartEditForm chart={record} {...common} />,
   table: (record, common) => <TableEditForm table={record} {...common} />,
   markdown: (record, common) => <MarkdownEditForm markdown={record} {...common} />,
-  input: (record, common) => (
-    <InputEditForm
-      input={record}
-      isCreate={common.isCreate}
-      onSave={common.onSave}
-      onSaveStatusChange={common.onSaveStatusChange}
-      autoSave
-    />
-  ),
+  input: (record, common) => <InputEditForm input={record} {...common} />,
   source: (record, common) => <SourceEditForm source={record} {...common} />,
   insight: (record, common) => <InsightEditForm insight={record} {...common} />,
   model: (record, common) => (
@@ -686,11 +678,6 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   );
   const typeDef = getTypeByValue(type);
   const singular = typeDef?.singularLabel || type;
-
-  // Auto-saving leaf forms (currently Input — VIS-898) report their debounced
-  // save status up so the SelectionChip header renders the indicator, mirroring
-  // the dashboard-structure forms.
-  const [leafSaveStatus, setLeafSaveStatus] = useState(undefined);
 
   // No modal to close in the rail. This used to be handed to the forms as
   // `onClose`/`onCancel`, which made their Cancel button a literal no-op —
@@ -734,9 +721,10 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   //
   // Two `onSave` conventions exist across the leaf forms:
   //   - DELEGATING (chart/source/table/model/insight/input): call
-  //     `onSave(type, name, config)` and rely on the rail to persist → saveNow.
+  //     `onSave(type, name, config)` on Save and rely on the rail to persist →
+  //     saveNow.
   //   - SELF-SAVING (relation/dimension/metric/markdown): persist via their own
-  //     store action / `useRecordSave` FIRST, then call `onSave(config)` purely
+  //     store action / `useRecordSave` on Save, then call `onSave(config)` purely
   //     as a post-save NOTIFICATION. Re-persisting that here double-fired `saveX`
   //     (VIS-1018 adversarial-review fix), so the single-arg notification is a
   //     no-op — the form already wrote the record.
@@ -747,9 +735,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
     [saveNow]
   );
 
-  // Prefer a leaf form's own auto-save status (Input reports its debounce via
-  // onSaveStatusChange) and otherwise surface this record's save status.
-  const saveStatus = leafSaveStatus !== undefined ? leafSaveStatus : recordSaveStatus;
+  const saveStatus = recordSaveStatus;
 
   const renderForm = INLINE_LEAF_FORMS[type];
 
@@ -845,7 +831,6 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
       onSave: handleObjectSave,
       onNavigateToEmbedded: noop,
       onGoBack: noop,
-      onSaveStatusChange: setLeafSaveStatus,
       onDirtyChange: setLeafDirty,
     };
     return (
