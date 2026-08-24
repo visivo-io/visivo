@@ -53,6 +53,10 @@ const createDashboardSlice = (set, get) => ({
       // captured baseline, #46) is replaced wholesale, so drop every baseline
       // to keep a stale one from reporting false dirtiness on the fresh config.
       set({ dashboards: data.dashboards || [], dashboardsLoading: false, dashboardBaselines: {} });
+      // …then re-apply any UNSAVED working copy still valid for this server
+      // state, so an open editing session survives both a reload and an
+      // unrelated mid-edit refetch.
+      get().hydrateDashboardDrafts?.();
     } catch (error) {
       console.error('dashboardStore: fetch error', error);
       set({ dashboardsError: error.message, dashboardsLoading: false });

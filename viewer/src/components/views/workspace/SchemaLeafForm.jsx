@@ -133,7 +133,10 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   // VIS-1133: snapshot the last-saved config so Discard reverts to it and the
   // footer's Save/Discard gate on real edits.
   const applyValues = useCallback(cfg => setConfig(cfg), []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // Per-object drafts: unsaved edits survive navigating away and reloads.
+  // Embedded (inline-on-a-model) records have no standalone identity.
+  const draftKey = isEditMode && recordName ? `${type}:${recordName}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   useEffect(() => {
     if (record) {

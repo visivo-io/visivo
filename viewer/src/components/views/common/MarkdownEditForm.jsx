@@ -66,7 +66,9 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
     setAlign(values.align);
     setJustify(values.justify);
   }, []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // Per-object drafts: unsaved edits survive navigating away and reloads.
+  const draftKey = isEditMode && markdown?.name ? `markdown:${markdown.name}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   // Initialize form when markdown changes
   useEffect(() => {

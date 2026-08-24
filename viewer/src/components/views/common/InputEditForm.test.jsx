@@ -110,6 +110,101 @@ describe('InputEditForm — footer + save gating', () => {
   });
 });
 
+/**
+ * The user journey this exists for: "if I make changes to an object, then click
+ * away, then click back it discards all the changes." The right rail is a
+ * SINGLE instance bound to the active object, so clicking away really does
+ * unmount the form — unmount/remount here is that round trip.
+ */
+describe('InputEditForm — unsaved edits survive clicking away and back', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    seed();
+  });
+  afterEach(() => window.localStorage.clear());
+
+  const renderForm = () =>
+    render(<InputEditForm input={makeInput()} onSave={jest.fn()} onClose={jest.fn()} />);
+
+  it('restores the in-progress edit when the object is re-opened', () => {
+    const view = renderForm();
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Half-typed edit' } });
+    view.unmount(); // click away
+
+    renderForm(); // click back
+    expect(screen.getByLabelText('Label')).toHaveValue('Half-typed edit');
+    // Still reported as unsaved, against the values that were actually saved.
+    expect(screen.getByTestId('form-footer-save')).not.toBeDisabled();
+    expect(screen.getByTestId('form-footer-cancel')).not.toBeDisabled();
+  });
+
+  it('Discard after returning reverts to the saved values, and they stay reverted', () => {
+    const view = renderForm();
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Half-typed edit' } });
+    view.unmount();
+
+    const { unmount: leaveAgain } = renderForm();
+    fireEvent.click(screen.getByTestId('form-footer-cancel')); // Discard
+    expect(screen.getByLabelText('Label')).toHaveValue('Split Threshold');
+    leaveAgain();
+
+    renderForm();
+    expect(screen.getByLabelText('Label')).toHaveValue('Split Threshold');
+    expect(screen.getByTestId('form-footer-save')).toBeDisabled();
+  });
+
+  it('a saved edit leaves no draft behind', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    const view = render(
+      <InputEditForm input={makeInput()} onSave={onSave} onClose={jest.fn()} />
+    );
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Saved Label' } });
+    fireEvent.click(screen.getByTestId('form-footer-save'));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+
+    // The rail re-seeds the form from the saved record; nothing is left over.
+    const savedInput = makeInput({ label: 'Saved Label' });
+    view.rerender(<InputEditForm input={savedInput} onSave={onSave} onClose={jest.fn()} />);
+    view.unmount();
+
+    render(<InputEditForm input={savedInput} onSave={onSave} onClose={jest.fn()} />);
+    expect(screen.getByLabelText('Label')).toHaveValue('Saved Label');
+    expect(screen.getByTestId('form-footer-save')).toBeDisabled();
+  });
+
+  it('edits are kept per object — two inputs do not bleed into each other', () => {
+    const other = {
+      name: 'other_input',
+      status: 'PUBLISHED',
+      config: { name: 'other_input', type: 'single-select', label: 'Other', options: ['a'] },
+    };
+
+    const view = renderForm();
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Edit on A' } });
+    view.unmount();
+
+    // Open a DIFFERENT input: it must be untouched by A's draft.
+    const { unmount: leaveOther } = render(
+      <InputEditForm input={other} onSave={jest.fn()} onClose={jest.fn()} />
+    );
+    expect(screen.getByLabelText('Label')).toHaveValue('Other');
+    leaveOther();
+
+    // …and A's edit is still waiting.
+    renderForm();
+    expect(screen.getByLabelText('Label')).toHaveValue('Edit on A');
+  });
+
+  it('a corrupt stored draft is dropped and the saved values render', () => {
+    // Failure rule, end to end: a bad entry never surfaces as a broken form.
+    window.localStorage.setItem('visivo.draft.local.input:split_threshold', 'not json at all');
+    renderForm();
+    expect(screen.getByLabelText('Label')).toHaveValue('Split Threshold');
+    expect(screen.getByTestId('form-footer-save')).toBeDisabled();
+    expect(window.localStorage.getItem('visivo.draft.local.input:split_threshold')).toBeNull();
+  });
+});
+
 describe('InputEditForm — hydration variants', () => {
   beforeEach(() => seed());
 
