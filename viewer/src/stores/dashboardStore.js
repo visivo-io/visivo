@@ -49,7 +49,10 @@ const createDashboardSlice = (set, get) => ({
     try {
       const projectId = get().project?.id;
       const data = await dashboardsApi.fetchAllDashboards(projectId);
-      set({ dashboards: data.dashboards || [], dashboardsLoading: false });
+      // A refetch is server truth — the in-memory working copy (and any
+      // captured baseline, #46) is replaced wholesale, so drop every baseline
+      // to keep a stale one from reporting false dirtiness on the fresh config.
+      set({ dashboards: data.dashboards || [], dashboardsLoading: false, dashboardBaselines: {} });
     } catch (error) {
       console.error('dashboardStore: fetch error', error);
       set({ dashboardsError: error.message, dashboardsLoading: false });

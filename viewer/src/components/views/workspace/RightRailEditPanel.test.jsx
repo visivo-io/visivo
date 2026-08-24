@@ -252,6 +252,12 @@ const renderPanel = (entry = '/workspace/dashboard/simple-dashboard') => {
   return render(<RouterProvider router={router} future={futureFlags} />);
 };
 
+// #46: dashboard edits (canvas + sidebar) land in the WORKING COPY — the live
+// `dashboards` entry, written optimistically — not a persist. Read the current
+// working config straight from the store; the explicit Save footer flushes it.
+const liveConfig = (name = 'simple-dashboard') =>
+  useStore.getState().dashboards.find(d => d.name === name).config;
+
 describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
   test('dashboard-chrome (Outline key "dashboard") → dashboard rows form + chip', () => {
     resetStore({ workspaceOutlineSelectedKey: 'dashboard' });
@@ -435,45 +441,70 @@ describe('RightRailEditPanel nested container keys (arbitrary depth)', () => {
   });
 });
 
-describe('RightRailEditPanel auto-save (VIS-802)', () => {
+describe('RightRailEditPanel dashboard editing (#46 — working copy, explicit save)', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => {
     act(() => jest.runOnlyPendingTimers());
     jest.useRealTimers();
   });
 
-  test('row height change auto-saves through saveDashboard after the debounce (no Save button)', async () => {
+  test('a row-height edit updates the working copy (no auto-persist) and enables Save', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
     renderPanel();
 
-    // There is no Save button in the structure form.
-    expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
+    // The dashboard now carries the shared Delete · Discard · Save footer, with
+    // Save disabled until an edit is made.
+    const save = screen.getByTestId('form-footer-save');
+    expect(save).toBeDisabled();
 
-    // Change the row height select → schedules a debounced save. The brand
-    // <Select> menu portals to document.body; open it + click synchronously
-    // (fake timers are active, so react-select-event's async select can't run).
+    // The brand <Select> menu portals to document.body; open it + click
+    // synchronously (fake timers are active).
     selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
 
-    // Pending immediately, save fires only after the debounce window.
+    // The edit landed in the working copy synchronously…
+    expect(liveConfig().rows[0].height).toBe('large');
+    // …nothing auto-persisted…
     expect(saveDashboard).not.toHaveBeenCalled();
-    await act(async () => {
-      jest.advanceTimersByTime(600);
-    });
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    // …and Save is now enabled (the dashboard is dirty).
+    expect(save).not.toBeDisabled();
+  });
+
+  test('clicking Save flushes the whole working copy through saveDashboard', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+
+    fireEvent.click(screen.getByTestId('form-footer-save'));
+    await waitFor(() => expect(saveDashboard).toHaveBeenCalledTimes(1));
     const [name, config] = saveDashboard.mock.calls[0];
     expect(name).toBe('simple-dashboard');
     expect(config.rows[0].height).toBe('large');
   });
 
-  test('VIS-993: a legacy empty-string scaffold config is BLOCKED from persisting (gate, not sanitize)', async () => {
+  test('Discard reverts the working copy to the last-saved baseline', async () => {
+    resetStore({ workspaceOutlineSelectedKey: 'row.0' });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+    expect(liveConfig().rows[0].height).toBe('large');
+
+    fireEvent.click(screen.getByTestId('form-footer-cancel')); // Discard
+    expect(liveConfig().rows[0].height).toBe('medium');
+    expect(screen.getByTestId('form-footer-save')).toBeDisabled();
+  });
+
+  test('an invalid working copy still updates optimistically but surfaces the gate errors', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-    // A row whose item is the legacy invalid scaffold the old forms produced
-    // ({ chart:'', table:'', markdown:'', input:'', selector:'' }). The
-    // mutation module can no longer CREATE this shape; if it reaches the store
-    // anyway, the validation gate must hold persistence — sanitize is retired,
-    // nothing repairs the payload, and nothing invalid may POST.
+    // A row whose item is the legacy invalid scaffold ({ chart:'', table:'',
+    // markdown:'', input:'', selector:'' }). #46: the edit lands in the working
+    // copy (bound surfaces stay live) but never auto-persists, and the gate's
+    // FEEDBACK surfaces so the user fixes it before Save.
     const scaffoldDash = {
       name: 'simple-dashboard',
       config: {
@@ -493,24 +524,23 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
     });
     renderPanel();
 
-    // Any edit (row height) routes the full config through the gate.
     selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
 
-    // Nothing persisted; the rail surfaces the invalid status + the errors.
-    expect(saveDashboard).not.toHaveBeenCalled();
-    expect(screen.getByTestId('right-rail-save-state')).toHaveAttribute('data-status', 'invalid');
+    // The working copy updated…
+    expect(liveConfig().rows[0].height).toBe('large');
+    // …the gate feedback shows…
     expect(screen.getByTestId('right-rail-validation-errors')).toBeInTheDocument();
+    // …and nothing auto-persisted.
+    expect(saveDashboard).not.toHaveBeenCalled();
   });
 
   test('editing a NESTED container row writes the change at its nested path', async () => {
-    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     resetStore({
       workspaceOutlineSelectedKey: 'row.0.item.1.row.0',
-      saveDashboard,
       dashboards: [NESTED_DASHBOARD],
       charts: [
         { name: 'rev_chart', config: {} },
@@ -521,12 +551,8 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
 
     selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
-    await act(async () => {
-      jest.advanceTimersByTime(600);
-    });
 
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const [, config] = saveDashboard.mock.calls[0];
+    const config = liveConfig();
     // The NESTED row changed…
     expect(config.rows[0].items[1].rows[0].height).toBe('large');
     // …and the outer structure is untouched.
@@ -646,11 +672,6 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     jest.useRealTimers();
   });
 
-  const lastSavedConfig = saveDashboard => {
-    expect(saveDashboard).toHaveBeenCalled();
-    return saveDashboard.mock.calls[saveDashboard.mock.calls.length - 1][1];
-  };
-
   test('dashboard view: "Add row" appends an empty row', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     resetStore({ workspaceOutlineSelectedKey: 'dashboard', saveDashboard });
@@ -660,7 +681,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    const config = lastSavedConfig(saveDashboard);
+    const config = liveConfig();
     expect(config.rows).toHaveLength(3);
     // VIS-993: rows are BORN with one empty slot (itemMutations.createRow) so
     // they stay visible drop targets (VIS-989) — no sanitize re-seeding.
@@ -676,7 +697,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    const config = lastSavedConfig(saveDashboard);
+    const config = liveConfig();
     expect(config.rows).toHaveLength(1);
     expect(config.rows[0].height).toBe('small');
   });
@@ -691,7 +712,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    const config = lastSavedConfig(saveDashboard);
+    const config = liveConfig();
     expect(config.rows[0].items).toHaveLength(3);
     // VIS-993: the slot is BORN a bare { width } — never an empty-string
     // scaffold that needed sanitizing.
@@ -713,7 +734,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    const config = lastSavedConfig(saveDashboard);
+    const config = liveConfig();
     expect(config.rows[0].items).toHaveLength(1);
     expect(String(config.rows[0].items[0].width)).toBe('5');
   });
@@ -731,7 +752,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    let config = lastSavedConfig(saveDashboard);
+    let config = liveConfig();
     expect(config.rows[0].items).toHaveLength(3);
     expect(String(config.rows[0].items[0].width)).toBe('4');
     // The sibling row is untouched.
@@ -742,7 +763,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    config = lastSavedConfig(saveDashboard);
+    config = liveConfig();
     expect(config.rows[0].items).toHaveLength(2);
 
     // Removing the row itself drops it from the dashboard.
@@ -750,7 +771,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    config = lastSavedConfig(saveDashboard);
+    config = liveConfig();
     expect(config.rows).toHaveLength(1);
     expect(config.rows[0].height).toBe('small');
   });
@@ -766,7 +787,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    let config = lastSavedConfig(saveDashboard);
+    let config = liveConfig();
     expect(String(config.rows[0].items[1].width)).toBe('7');
 
     // Removing the item drops the slot; the selection now points at nothing and
@@ -776,7 +797,7 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    config = lastSavedConfig(saveDashboard);
+    config = liveConfig();
     expect(config.rows[0].items).toHaveLength(1);
   });
 
@@ -834,13 +855,9 @@ describe('RightRailEditPanel breadcrumb keyboard nav (VIS-804)', () => {
 
     // The selection follows the moved row to its new index…
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
-    // …and the reordered config persists through the debounced save.
-    await act(async () => {
-      jest.advanceTimersByTime(600);
-    });
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const [, config] = saveDashboard.mock.calls[0];
-    expect(config.rows.map(r => r.height)).toEqual(['small', 'medium']);
+    // …and the reordered config lands in the working copy (#46: no auto-persist).
+    expect(liveConfig().rows.map(r => r.height)).toEqual(['small', 'medium']);
+    expect(saveDashboard).not.toHaveBeenCalled();
   });
 
   test('⌘↑ at the top edge is a no-op (no save scheduled)', async () => {
@@ -1002,12 +1019,7 @@ describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
     jest.useRealTimers();
   });
 
-  const lastSavedConfig = saveDashboard => {
-    expect(saveDashboard).toHaveBeenCalled();
-    return saveDashboard.mock.calls[saveDashboard.mock.calls.length - 1][1];
-  };
-
-  test('a leaf drop through the form persists exactly ONE leaf key (born valid, schema-verified)', async () => {
+  test('a leaf drop through the form commits exactly ONE leaf key (born valid, schema-verified)', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     resetStore({
       workspaceOutlineSelectedKey: 'row.0',
@@ -1026,7 +1038,7 @@ describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
       jest.advanceTimersByTime(600);
     });
 
-    const config = lastSavedConfig(saveDashboard);
+    const config = liveConfig();
     expect(config.rows[0].items[0]).toEqual({
       width: 1,
       table: formatRefExpression('sales_table'),
@@ -1047,7 +1059,7 @@ describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
       jest.advanceTimersByTime(600);
     });
 
-    const config = lastSavedConfig(saveDashboard);
+    const config = liveConfig();
     // An empty-string leaf through the forms is impossible: cleared = GONE.
     expect(config.rows[0].items[0]).toEqual({ width: 1 });
     expect(validateRecordConfigSync('dashboard', config)).toEqual(
@@ -1095,7 +1107,7 @@ describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
     expect(screen.getByTestId('right-rail-validation-errors')).toHaveTextContent(/only one of/i);
   });
 
-  test('a subsequent VALID edit clears the invalid state and persists again', async () => {
+  test('a subsequent VALID edit clears the invalid gate feedback', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     const scaffoldDash = {
       name: 'simple-dashboard',
@@ -1111,36 +1123,36 @@ describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
     });
     renderPanel();
 
-    // First edit: blocked (the stored item is invalid).
+    // First edit: the stored item is invalid → the gate FEEDBACK shows.
     selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    expect(saveDashboard).not.toHaveBeenCalled();
-    expect(screen.getByTestId('right-rail-save-state')).toHaveAttribute('data-status', 'invalid');
+    expect(screen.getByTestId('right-rail-validation-errors')).toBeInTheDocument();
 
     // Dropping a real ref on the broken slot REPAIRS the config — the
     // born-valid mutation (applyLeafRef) strips the blank scaffold keys and
-    // writes the single leaf → the gate opens and the save flows.
+    // writes the single leaf → the gate opens (feedback clears).
     act(() => {
       mockRefDropZoneOnChange['row-0-item-0']({ type: 'chart', name: 'rev_chart' });
     });
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('right-rail-validation-errors')).not.toBeInTheDocument();
-    const [, config] = saveDashboard.mock.calls[0];
-    expect(config.rows[0].items[0]).toEqual({
+    // #46: the repaired slot lives in the working copy — persist is deferred to Save.
+    expect(saveDashboard).not.toHaveBeenCalled();
+    expect(liveConfig().rows[0].items[0]).toEqual({
       width: 1,
       chart: formatRefExpression('rev_chart'),
     });
   });
 
-  test('async fallback: when the schema is not yet loaded the gate still persists a valid edit', async () => {
-    // Drop the compiled validators — the sync path returns null and the gate
-    // must defer to the async validateRecordConfig before persisting.
+  test('async fallback: with no compiled schema a valid edit still lands in the working copy', async () => {
+    // Drop the compiled validators — the sync gate returns null and defers to
+    // the async validateRecordConfig for FEEDBACK; the optimistic write is
+    // independent and immediate.
     clearValidationCache();
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
@@ -1148,17 +1160,13 @@ describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
 
     selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
-    // Flush the async validation (microtasks), then the debounce window.
+    // The working copy updates synchronously, independent of the async gate.
+    expect(liveConfig().rows[0].height).toBe('large');
+    // Flush the async validation so no act() warning leaks.
     await act(async () => {
       await Promise.resolve();
     });
-    await act(async () => {
-      jest.advanceTimersByTime(600);
-    });
-
-    expect(saveDashboard).toHaveBeenCalledTimes(1);
-    const [, config] = saveDashboard.mock.calls[0];
-    expect(config.rows[0].height).toBe('large');
+    expect(saveDashboard).not.toHaveBeenCalled();
     // Restore the warm cache for any following test.
     await preloadValidationSchema();
   });

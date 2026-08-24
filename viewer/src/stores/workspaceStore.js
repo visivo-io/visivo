@@ -43,6 +43,7 @@
  * O3 — this slice only carries the state the shell needs in Phase 0.
  */
 
+import isEqual from 'lodash/isEqual';
 import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
@@ -1027,6 +1028,88 @@ const createWorkspaceSlice = (set, get) => ({
     return true;
   },
 
+  // ── Dashboard explicit-save working copy (#46) ────────────────────────────
+  // A dashboard is edited like every other object: canvas + sidebar edits
+  // mutate ONE in-memory working copy (its `dashboards` collection entry,
+  // written optimistically) and NOTHING persists until an explicit Save.
+  // `dashboardBaselines` holds the last-persisted config per dashboard,
+  // captured lazily on the first in-editor edit, so Save / Discard / dirty all
+  // compare the live working copy against it. Cleared wholesale by
+  // `fetchDashboards` (a refetch is server truth — any baseline is moot).
+  dashboardBaselines: {},
+
+  /**
+   * Snapshot a dashboard's current (pre-edit) config as the clean baseline —
+   * once per editing session. Called at the START of every in-editor mutation
+   * (canvas commit, sidebar structure form, add-row) BEFORE the optimistic
+   * write, so the baseline is the last-persisted config, never a mid-edit value.
+   * No-op once a baseline exists or when the dashboard isn't found.
+   */
+  captureDashboardBaseline: (dashboardName) => {
+    if (!dashboardName) return;
+    const state = get();
+    const baselines = state.dashboardBaselines || {};
+    if (dashboardName in baselines) return;
+    const entry = (state.dashboards || []).find((d) => d.name === dashboardName);
+    if (!entry) return;
+    set({ dashboardBaselines: { ...baselines, [dashboardName]: unwrapConfig(entry) } });
+  },
+
+  /**
+   * True when a dashboard has unsaved working-copy edits (its live config
+   * differs from the captured baseline). No baseline → never edited → clean.
+   */
+  isDashboardDirty: (dashboardName) => {
+    if (!dashboardName) return false;
+    const state = get();
+    const baseline = (state.dashboardBaselines || {})[dashboardName];
+    if (baseline === undefined) return false;
+    const entry = (state.dashboards || []).find((d) => d.name === dashboardName);
+    if (!entry) return false;
+    return !isEqual(unwrapConfig(entry), baseline);
+  },
+
+  /**
+   * Persist the dashboard working copy through the draft cache (explicit Save).
+   * `saveDashboard` refetches, which clears every baseline, so the next edit
+   * re-captures from the freshly-saved config. Also clears this dashboard's
+   * baseline on success as a belt-and-braces guard. Returns the save result.
+   */
+  commitDashboardEdits: async (dashboardName) => {
+    if (!dashboardName) return { success: false, error: 'no dashboard' };
+    const state = get();
+    const entry = (state.dashboards || []).find((d) => d.name === dashboardName);
+    if (!entry) return { success: false, error: 'dashboard not found' };
+    if (typeof state.saveDashboard !== 'function') {
+      return { success: false, error: 'saveDashboard unavailable' };
+    }
+    const result = await state.saveDashboard(dashboardName, unwrapConfig(entry));
+    if (result?.success) {
+      set((s) => {
+        const next = { ...(s.dashboardBaselines || {}) };
+        delete next[dashboardName];
+        return { dashboardBaselines: next };
+      });
+    }
+    return result;
+  },
+
+  /**
+   * Revert a dashboard's working copy to its captured baseline (explicit
+   * Discard) and drop the baseline. No-op when there's nothing to discard.
+   */
+  discardDashboardEdits: (dashboardName) => {
+    if (!dashboardName) return;
+    const baseline = (get().dashboardBaselines || {})[dashboardName];
+    if (baseline === undefined) return;
+    get().updateDashboardConfigOptimistic(dashboardName, baseline);
+    set((s) => {
+      const next = { ...(s.dashboardBaselines || {}) };
+      delete next[dashboardName];
+      return { dashboardBaselines: next };
+    });
+  },
+
   /**
    * Generic, type-keyed sibling of `updateDashboardConfigOptimistic`
    * (VIS-1018 step 1). Optimistically replace a record's draft config in its
@@ -1083,6 +1166,11 @@ const createWorkspaceSlice = (set, get) => ({
     const nextRows = [...rows, newRow];
     const nextConfig = { ...config, rows: nextRows };
 
+    // #46: capture the pre-edit baseline BEFORE mutating, then write the new
+    // row into the working copy optimistically. Nothing persists until an
+    // explicit dashboard Save.
+    get().captureDashboardBaseline(dashboardName);
+
     const nextEntry = withConfig(entry, nextConfig);
     const nextList = [...list];
     nextList[idx] = nextEntry;
@@ -1092,12 +1180,6 @@ const createWorkspaceSlice = (set, get) => ({
       dashboards: nextList,
       workspaceOutlineSelectedKey: `row.${newRowIndex}`,
     });
-
-    // Persist the draft. saveDashboard re-fetches, which reconciles the
-    // optimistic update above with the server's canonical config.
-    if (typeof state.saveDashboard === 'function') {
-      state.saveDashboard(dashboardName, nextConfig);
-    }
 
     return newRowIndex;
   },
