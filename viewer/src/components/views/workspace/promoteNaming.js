@@ -87,11 +87,11 @@ export function suggestPromoteNames(rows, getModelSourceName, knownNames) {
     let base = null;
     if (row.tier === 'model') {
       const sourceName = getModelSourceName ? getModelSourceName(row.name) : null;
-      base = sourceName ? `${sourceName}_query` : null;
+      base = sourceName ? `${sourceName}-query` : null;
     } else if (row.tier === 'insight') {
-      base = modelAnchor ? `${modelAnchor}_insight` : null;
+      base = modelAnchor ? `${modelAnchor}-insight` : null;
     } else if (row.tier === 'chart') {
-      base = insightAnchor ? `${insightAnchor}_chart` : modelAnchor ? `${modelAnchor}_chart` : null;
+      base = insightAnchor ? `${insightAnchor}-chart` : modelAnchor ? `${modelAnchor}-chart` : null;
     }
 
     // No usable anchor (e.g. a model with no source bound yet) — leave the

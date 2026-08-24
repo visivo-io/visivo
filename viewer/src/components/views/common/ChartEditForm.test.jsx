@@ -17,7 +17,9 @@ jest.mock('../../../schemas/schemas', () => ({
 
 // Stand-in SchemaEditor exposing the "remove the last layout property" path:
 // the real editor emits `undefined` (cleanEmptyObjects) when it empties out.
-jest.mock('./SchemaEditor', () => ({
+// The layout editor is now rendered by ChartEditFormFields, which imports the
+// SchemaEditor from './SchemaEditor/SchemaEditor' — mock THAT path.
+jest.mock('./SchemaEditor/SchemaEditor', () => ({
   __esModule: true,
   SchemaEditor: ({ onChange }) => (
     <button type="button" data-testid="mock-schema-clear" onClick={() => onChange(undefined)}>

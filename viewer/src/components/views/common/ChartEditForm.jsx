@@ -7,7 +7,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { validateName } from './namedModel';
-import { SchemaEditor } from './SchemaEditor';
+import ChartEditFormFields from './ChartEditFormFields';
 import { getSchema, isSchemaLoaded } from '../../../schemas/schemas';
 import { getTypeByValue } from './objectTypeConfigs';
 import { setAtPath } from './embeddedObjectUtils';
@@ -252,52 +252,38 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
-          {/* Basic Fields Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
-              Basic Information
-            </h3>
-
-            {/* Name field */}
-            <div className="relative">
-              <input
-                type="text"
-                id="chartName"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                disabled={isEditMode}
-                placeholder=" "
-                className={`
-                  block w-full px-3 py-2.5 text-sm text-gray-900
-                  bg-white rounded-md border appearance-none
-                  focus:outline-none focus:ring-2 focus:border-primary-500
-                  peer placeholder-transparent
-                  ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
-                  ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
-                `}
-              />
-              <label
-                htmlFor="chartName"
-                className={`
-                  absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-                  bg-white px-1 left-2
-                  peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-                  peer-placeholder-shown:top-1/2
-                  peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-                  ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
-                `}
-              >
-                Chart Name<span className="text-red-500 ml-0.5">*</span>
-              </label>
-              {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-            </div>
-          </div>
-
-          {/* Insights Section — VIS-1224: compose the chart's insights. The
-              chart no longer edits insight props inline (that's each insight's
-              own edit panel); "+ Add Insight" opens the same picker the
-              Explorer uses — pick an existing project insight, or add a New
-              blank one. */}
+          {/* Basic Information + Layout are the shared ChartEditFormFields
+              panel (VIS-1224); the chart's own insight-selection section (Add
+              Insight menu + ref/embedded pills) is passed in as its slot. */}
+          <ChartEditFormFields
+            showName
+            nameId="chartName"
+            nameLabel="Chart Name"
+            nameValue={name}
+            onNameChange={e => setName(e.target.value)}
+            nameDisabled={isEditMode}
+            nameError={errors.name}
+            layoutTitle="Layout Configuration (Optional)"
+            layoutSchema={layoutSchema}
+            layoutValues={layoutValues}
+            onLayoutChange={setLayoutValues}
+            layoutLoading={schemaLoading}
+            layoutError={schemaError}
+            layoutHint={
+              <p className="text-xs text-gray-500">
+                Plotly layout configuration. See{' '}
+                <a
+                  href="https://plotly.com/javascript/reference/layout/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 hover:underline"
+                >
+                  Plotly docs
+                </a>{' '}
+                for options.
+              </p>
+            }
+            insightsSection={
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-gray-200 pb-2">
               <h3 className="text-sm font-medium text-gray-700">Insights</h3>
@@ -415,42 +401,8 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
               );
             })()}
           </div>
-
-          {/* Layout Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
-              Layout Configuration (Optional)
-            </h3>
-
-            {schemaLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <CircularProgress size={24} />
-                <span className="ml-2 text-sm text-gray-600">Loading schema...</span>
-              </div>
-            ) : schemaError ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-700">{schemaError}</p>
-              </div>
-            ) : layoutSchema ? (
-              <SchemaEditor
-                schema={layoutSchema}
-                value={layoutValues}
-                onChange={setLayoutValues}
-              />
-            ) : null}
-            <p className="text-xs text-gray-500">
-              Plotly layout configuration. See{' '}
-              <a
-                href="https://plotly.com/javascript/reference/layout/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:underline"
-              >
-                Plotly docs
-              </a>{' '}
-              for options.
-            </p>
-          </div>
+            }
+          />
 
           {/* Save Error */}
           {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
