@@ -1,4 +1,9 @@
 from visivo.query.insight.insight_query_info import InsightQueryInfo
+from visivo.query.insight.default_ordering import (
+    renders_as_line,
+    default_sort_expressions,
+    post_query_order_clause,
+)
 from visivo.query.insight.prop_type_validator import (
     check_slice_type_compatibility,
     is_scalar_slice,
@@ -290,6 +295,7 @@ class InsightQueryBuilder:
         self.insight_hash = insight.name_hash()
         self.insight_name = insight.name
         self.unresolved_query_statements = insight.get_all_query_statements(dag)
+        self._default_sort_applied = False
         # `force_dynamic` (Explore 2.0 Phase 4 compile-draft endpoint): a draft
         # never has server-executed `pre_query` output to read back — its
         # `post_query` must ALWAYS be the DuckDB-dialect, model-hash-qualified
@@ -415,20 +421,10 @@ class InsightQueryBuilder:
         else:
             # Non-dynamic: Query the registered table directly (no .parquet extension)
             # Frontend registers parquet files as tables using insight_hash as table name
-            return f'SELECT * FROM "{self.insight_hash}"'
-
-    def _is_line_mode(self) -> bool:
-        """True when the insight renders a connected line: a scatter/scattergl
-        prop whose mode explicitly includes ``lines``. Marker-only scatters and
-        non-scatter types (bar, etc.) return False so they are never reordered."""
-        props = self.insight.props
-        if not props:
-            return False
-        prop_type = getattr(props.type, "value", props.type)
-        if prop_type not in ("scatter", "scattergl"):
-            return False
-        mode = getattr(props, "mode", None)
-        return bool(mode) and "lines" in mode
+            base = f'SELECT * FROM "{self.insight_hash}"'
+            if self._default_sort_applied:
+                base += post_query_order_clause(self.alias_hashes)
+            return base
 
     def resolve(self):
         """Sets the resolved_query_statements and alias_hashes"""
@@ -447,17 +443,18 @@ class InsightQueryBuilder:
             resolved_query_statements.append((key, resolved_statement))
 
         # Line charts connect points in row order, so an unsorted result renders
-        # a tangled web. When a line-mode insight has no explicit sort, default to
-        # ordering by the x-axis field ascending. Explicit sorts are never
-        # overridden, and non-line types (bar, marker-only scatter) are untouched.
+        # a tangled web (M4). Policy lives in default_ordering.py: line-rendered
+        # insights (scatter/scattergl, mode unset or containing "lines") with no
+        # explicit sort get ORDER BY split, x. Explicit sorts are never
+        # overridden; every other type keeps source order.
         has_sort = any(key == "sort" for key, _ in resolved_query_statements)
-        if not has_sort and self._is_line_mode():
-            x_statement = next(
-                (s for k, s in self.unresolved_query_statements if k == "props.x"), None
-            )
-            if x_statement:
-                default_sort = self.field_resolver.resolve_sort(expression=f"{x_statement} ASC")
-                resolved_query_statements.append(("sort", default_sort))
+        self._default_sort_applied = False
+        if not has_sort and renders_as_line(self.insight.props):
+            for expression in default_sort_expressions(self.unresolved_query_statements):
+                resolved_query_statements.append(
+                    ("sort", self.field_resolver.resolve_sort(expression=expression))
+                )
+                self._default_sort_applied = True
 
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True

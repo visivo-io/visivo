@@ -115,3 +115,80 @@ def test_explicit_sort_is_not_overridden(tmpdir, create_schema_file):
     )
     builder = _build(insight, tmpdir, create_schema_file)
     assert len(_sort_keys(builder)) == 1
+    # And an explicit sort never gets the default post_query ORDER BY imposed
+    # over it — the author's order is the order.
+    assert builder.post_query == f'SELECT * FROM "{builder.insight_hash}"'
+
+
+def test_scatter_with_no_mode_gets_default_x_sort(tmpdir, create_schema_file):
+    """M4: the product never sets `mode`, and Plotly's default scatter mode
+    draws connected lines — so a mode-UNSET scatter is exactly the chart that
+    rendered as an unreadable tangle. It must get the default sort."""
+    insight = Insight(
+        name="default_mode_insight",
+        props=InsightProps(
+            type="scatter",
+            x="?{${ref(line_model).x}}",
+            y="?{${ref(line_model).y}}",
+        ),
+    )
+    builder = _build(insight, tmpdir, create_schema_file)
+    assert len(_sort_keys(builder)) == 1
+    built_sql = builder.build().pre_query or ""
+    assert "ORDER BY" in built_sql.upper()
+
+
+def test_split_insight_orders_by_split_then_x(tmpdir, create_schema_file):
+    """A split insight gets ORDER BY split, x — series contiguous, x-ordered
+    within each series. Colour assignment stops churning across renders."""
+    insight = Insight(
+        name="split_insight",
+        props=InsightProps(
+            type="scatter",
+            x="?{${ref(line_model).x}}",
+            y="?{${ref(line_model).y}}",
+        ),
+        interactions=[InsightInteraction(split="?{${ref(line_model).x}}")],
+    )
+    builder = _build(insight, tmpdir, create_schema_file)
+    sorts = [s for k, s in builder.resolved_query_statements if k == "sort"]
+    assert len(sorts) == 2  # split first, then x
+    pre_query = builder.build().pre_query
+    order_by_idx = pre_query.upper().rindex("ORDER BY")
+    order_clause = pre_query[order_by_idx:]
+    assert order_clause.count(",") >= 1
+
+
+def test_default_sorted_post_query_orders_the_registered_table(tmpdir, create_schema_file):
+    """The static post_query must re-assert the default order — DuckDB does not
+    guarantee parquet scan order under parallelism, so a bare SELECT * can
+    render the sorted parquet shuffled."""
+    insight = Insight(
+        name="post_query_insight",
+        props=InsightProps(
+            type="scatter",
+            mode="lines",
+            x="?{${ref(line_model).x}}",
+            y="?{${ref(line_model).y}}",
+        ),
+    )
+    builder = _build(insight, tmpdir, create_schema_file)
+    post_query = builder.post_query
+    assert post_query.startswith(f'SELECT * FROM "{builder.insight_hash}"')
+    assert "ORDER BY" in post_query.upper()
+    x_alias = builder.alias_hashes["props.x"]
+    assert f'"{x_alias}"' in post_query
+
+
+def test_marker_only_scatter_post_query_stays_bare(tmpdir, create_schema_file):
+    insight = Insight(
+        name="markers_post_query",
+        props=InsightProps(
+            type="scatter",
+            mode="markers",
+            x="?{${ref(line_model).x}}",
+            y="?{${ref(line_model).y}}",
+        ),
+    )
+    builder = _build(insight, tmpdir, create_schema_file)
+    assert builder.post_query == f'SELECT * FROM "{builder.insight_hash}"'

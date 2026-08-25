@@ -46,6 +46,27 @@ from visivo.server.views.insight_draft_common import (
     extract_model_not_run_name,
 )
 
+import datetime
+
+
+def _isoformat_temporal_values(rows):
+    """Serialise datetime/date/time row values as ISO-8601 strings.
+
+    Left to Flask, ``jsonify`` renders ``datetime`` as RFC-1123
+    ("Mon, 01 Jun 2026 00:00:00 GMT"), which Plotly's date parser rejects —
+    the axis then autotypes as category in row order (B7-b / S2-19).
+    """
+    converted = []
+    for row in rows:
+        out = {}
+        for key, value in row.items():
+            if isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
+                out[key] = value.isoformat()
+            else:
+                out[key] = value
+        converted.append(out)
+    return converted
+
 
 def register_insight_execute_views(app, flask_app, output_dir):
     @app.route("/api/insight-execute-draft/", methods=["POST"])
@@ -174,6 +195,7 @@ def register_insight_execute_views(app, flask_app, output_dir):
                     # columns, rows, row_count, execution_time_ms — rows are the
                     # FINAL chart rows.
                     **result,
+                    "rows": _isoformat_temporal_values(result.get("rows") or []),
                     "props_mapping": query_info.props_mapping,
                     "static_props": query_info.static_props,
                     "props_slices": query_info.props_slices,
