@@ -868,6 +868,27 @@ describe('PropertyRow', () => {
       expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
     });
 
+    // "Custom aggregation…" was a one-way trip outside the Build rail: the
+    // return affordance was gated on `droppable`, which only that rail sets.
+    test('the way back from "Custom aggregation…" exists on a NON-droppable row', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{avg(${ref(orders_q).amount})}"
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+      // The pill is gone (raw text now), and the escape hatch is present.
+      expect(screen.queryByTestId('property-pill-x')).not.toBeInTheDocument();
+      expect(screen.getByTestId('property-x-back-to-pill')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('property-x-back-to-pill'));
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+    });
+
     test('a modifier and an index both show on the pill, in serialized order', () => {
       render(
         <PropertyRow

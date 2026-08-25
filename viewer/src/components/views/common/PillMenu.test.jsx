@@ -3,10 +3,16 @@ import React from 'react';
 import { render, screen, fireEvent, renderHook, act } from '@testing-library/react';
 import PillMenu, { usePillDialect } from './PillMenu';
 import useStore from '../../../stores/store';
+import { useModelColumns } from '../workspace/relations/useModelColumns';
+
+jest.mock('../workspace/relations/useModelColumns', () => ({
+  useModelColumns: jest.fn(() => ({ columnsByModel: {}, loading: false })),
+}));
 
 const openMenu = () => fireEvent.click(screen.getByTestId('pill-menu-trigger'));
 
 beforeEach(() => {
+  useModelColumns.mockReturnValue({ columnsByModel: {}, loading: false });
   useStore.setState({
     models: [],
     sources: [],
@@ -932,5 +938,101 @@ describe('PillMenu', () => {
       ref.current.open();
     });
     expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+  });
+});
+
+// VIS-1241 follow-up: the Index row first shipped as All / First / Last only,
+// silently dropping "At row…" and "Rows…" — both of which the standalone
+// SliceMenu had offered — and with them the slot-shape policy.
+describe('PillMenu — the Index row covers the whole slice vocabulary', () => {
+  const dimension = { kind: 'dimension', ref: 'orders_q', column: 'region' };
+
+  test('"At row…" reveals a row input and Apply commits that index', () => {
+    const onApply = jest.fn();
+    render(<PillMenu state={dimension} onApply={onApply} />);
+    openMenu();
+    fireEvent.change(screen.getByTestId('pill-menu-index'), { target: { value: 'at' } });
+    fireEvent.change(screen.getByTestId('pill-menu-index-at-row'), { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ slice: '[3]' }));
+  });
+
+  test('"Rows…" commits a start:end range', () => {
+    const onApply = jest.fn();
+    render(<PillMenu state={dimension} onApply={onApply} />);
+    openMenu();
+    fireEvent.change(screen.getByTestId('pill-menu-index'), { target: { value: 'range' } });
+    fireEvent.change(screen.getByTestId('pill-menu-index-range-start'), { target: { value: '1' } });
+    fireEvent.change(screen.getByTestId('pill-menu-index-range-end'), { target: { value: '5' } });
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ slice: '[1:5]' }));
+  });
+
+  test('an authored range re-opens in "Rows…" with both bounds filled', () => {
+    render(<PillMenu state={dimension} slice="[1:5]" />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-index')).toHaveValue('range');
+    expect(screen.getByTestId('pill-menu-index-range-start')).toHaveValue(1);
+    expect(screen.getByTestId('pill-menu-index-range-end')).toHaveValue(5);
+  });
+
+  test('an authored single row re-opens in "At row…"', () => {
+    render(<PillMenu state={dimension} slice="[7]" />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-index')).toHaveValue('at');
+    expect(screen.getByTestId('pill-menu-index-at-row')).toHaveValue(7);
+  });
+
+  test('a scalar-only slot disables the options that slot cannot accept', () => {
+    render(<PillMenu state={dimension} slotShape="scalar-only" />);
+    openMenu();
+    expect(screen.getByRole('option', { name: 'First (0)' })).toBeEnabled();
+    expect(screen.getByRole('option', { name: 'At row…' })).toBeEnabled();
+    // A prop that takes exactly one value has no use for a range or for "all".
+    expect(screen.getByRole('option', { name: 'Rows…' })).toBeDisabled();
+    expect(screen.getByRole('option', { name: 'All values' })).toBeDisabled();
+  });
+
+  test('an array-only slot disables the single-row options instead', () => {
+    render(<PillMenu state={dimension} slotShape="array-only" />);
+    openMenu();
+    expect(screen.getByRole('option', { name: 'Rows…' })).toBeEnabled();
+    expect(screen.getByRole('option', { name: 'First (0)' })).toBeDisabled();
+  });
+
+  test('a slice this form cannot model survives untouched rather than being rewritten', () => {
+    const onApply = jest.fn();
+    render(<PillMenu state={dimension} slice="[0,2,5]" onApply={onApply} />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-index')).toHaveValue('custom');
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ slice: '[0,2,5]' }));
+  });
+});
+
+// VIS-1242 follow-up: an unbound model pill opened with `draft.column === ''`,
+// which matches no <option> — so the browser showed the first column while the
+// draft still said "nothing chosen", and Apply committed an empty column.
+describe('PillMenu — an unbound model pill', () => {
+  const modelRef = { kind: 'modelRef', ref: 'new-model' };
+
+  test('Apply commits the column the picker is actually showing, even untouched', () => {
+    useModelColumns.mockReturnValue({
+      columnsByModel: { 'new-model': ['x', 'y'] },
+      loading: false,
+    });
+    const onApply = jest.fn();
+    render(<PillMenu state={modelRef} onApply={onApply} />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-property')).toHaveValue('x');
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ column: 'x' }));
+  });
+
+  test('Apply stays inert while there is no column to commit', () => {
+    useModelColumns.mockReturnValue({ columnsByModel: {}, loading: true });
+    render(<PillMenu state={modelRef} onApply={jest.fn()} />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-apply')).toBeDisabled();
   });
 });

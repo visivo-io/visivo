@@ -128,8 +128,14 @@ describe('validateProps - pattern violations never leak the raw regex (T4)', () 
       expect(err.message).not.toMatch(/\^.*\$/);
       expect(err.message.toLowerCase()).not.toContain('pattern "');
     });
-    // The actionable, human copy IS present.
-    expect(xErrors.some(e => e.message.includes('?{ref(model).column}'))).toBe(true);
+    // The actionable, human copy IS present...
+    // eslint-disable-next-line no-template-curly-in-string
+    expect(xErrors.some(e => e.message.includes('${ref(model).column}'))).toBe(true);
+    expect(xErrors.some(e => e.message.includes('Drag a column here'))).toBe(true);
+    // ...and it does NOT instruct the user to type the `?{ }` wrapper, which
+    // the editor adds for them — quoting the wrapped form described a string
+    // they can never produce by typing what the message showed.
+    xErrors.forEach(err => expect(err.message).not.toContain('?{ref('));
   });
 });
 

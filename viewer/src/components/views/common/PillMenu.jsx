@@ -1,4 +1,12 @@
-import React, { useCallback, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { PiCaretDown, PiWarningCircle, PiTextAa, PiTrash } from 'react-icons/pi';
 import useStore from '../../../stores/store';
@@ -8,6 +16,24 @@ import { parseRefValue } from '../../../utils/refString';
 import { inferColumnTypes } from '../../../utils/inferColumnTypes';
 import { getSourceDialect } from '../../../stores/explorerStore';
 import { useModelColumns } from '../workspace/relations/useModelColumns';
+import { menuPolicyFor } from './SchemaEditor/utils/slotShape';
+
+// The Index row models the same slice shapes the standalone SliceMenu did.
+// `draft.slice` stays the literal expression (`[0]`, `[3]`, `[1:5]`, `''`);
+// these translate it to and from the control's mode + inputs.
+const sliceModeOf = slice => {
+  if (!slice) return '';
+  if (slice === '[0]' || slice === '[-1]') return slice;
+  const inner = slice.slice(1, -1);
+  if (/^-?\d+$/.test(inner)) return 'at';
+  if (/^-?\d*:-?\d*$/.test(inner)) return 'range';
+  // Strided / list slices are valid but have no control here — see `custom`.
+  return 'custom';
+};
+const atRowOf = slice => (sliceModeOf(slice) === 'at' ? slice.slice(1, -1) : '');
+const rangePartsOf = slice =>
+  sliceModeOf(slice) === 'range' ? slice.slice(1, -1).split(':') : ['', ''];
+const rangeExpr = (start, end) => (start === '' && end === '' ? '' : `[${start}:${end}]`);
 
 const AGG_LABELS = {
   sum: 'SUM',
@@ -194,6 +220,7 @@ const PillMenu = React.forwardRef(
     {
       state,
       slice = null,
+      slotShape = 'unknown',
       onApply,
       onCustomAggregation,
       onSaveAsMetric,
@@ -292,6 +319,7 @@ const PillMenu = React.forwardRef(
         createPortal(
           <PillMenuPopover
             state={state}
+            slotShape={slotShape}
             draft={draft}
             setDraft={setDraft}
             onApply={handleApply}
@@ -328,6 +356,7 @@ PillMenu.displayName = 'PillMenu';
 
 const PillMenuPopover = ({
   state,
+  slotShape,
   draft,
   setDraft,
   onApply,
@@ -353,7 +382,52 @@ const PillMenuPopover = ({
   const modelName = isColumnBacked ? state?.ref || null : null;
   const modelNames = useMemo(() => (modelName ? [modelName] : []), [modelName]);
   const { columnsByModel, loading: columnsLoading } = useModelColumns(modelNames);
-  const columns = columnsByModel?.[modelName] || [];
+  const columns = useMemo(() => columnsByModel?.[modelName] || [], [columnsByModel, modelName]);
+
+  // An unbound `modelRef` (dropped model, nothing chosen yet) opens with
+  // `draft.column === ''`, which matches NO <option> — so the browser renders
+  // the FIRST column as the visible selection while the draft still says
+  // "nothing chosen". Apply then committed an empty column and the pill came
+  // back unbound, exactly as if the click had done nothing. Adopt whatever the
+  // control is actually showing the moment there is something to show, so the
+  // visible selection and the draft can never disagree.
+  useEffect(() => {
+    if (!columns.length) return;
+    setDraft(d => (d.column ? d : { ...d, column: columns[0] }));
+  }, [columns, setDraft]);
+
+  // The Index row first shipped as All / First / Last only, which dropped
+  // "At row…" and "Rows…" — both of which the standalone SliceMenu offered —
+  // along with the slot-shape policy that greys out the ones a given prop
+  // can't accept (a scalar-only prop has no use for a range). The popover
+  // mounts fresh on every open, so seeding from `draft.slice` here is enough.
+  const slicePolicy = menuPolicyFor(slotShape);
+  const [indexMode, setIndexMode] = useState(() => sliceModeOf(draft.slice));
+  const [atRow, setAtRow] = useState(() => atRowOf(draft.slice));
+  const [[rangeStart, rangeEnd], setRange] = useState(() => rangePartsOf(draft.slice));
+
+  const selectIndexMode = mode => {
+    setIndexMode(mode);
+    // Re-selecting `custom` keeps the authored expression as-is.
+    if (mode === 'custom') return;
+    const next =
+      mode === 'at'
+        ? atRow === ''
+          ? ''
+          : `[${atRow}]`
+        : mode === 'range'
+          ? rangeExpr(rangeStart, rangeEnd)
+          : mode;
+    setDraft(d => ({ ...d, slice: next }));
+  };
+  const setIndexAtRow = value => {
+    setAtRow(value);
+    setDraft(d => ({ ...d, slice: value === '' ? '' : `[${value}]` }));
+  };
+  const setIndexRange = (start, end) => {
+    setRange([start, end]);
+    setDraft(d => ({ ...d, slice: rangeExpr(start, end) }));
+  };
 
   // T4 (pills-buildrail #5): measured-then-flip. `style` is the DOWNWARD
   // guess computed before the popover's actual content (a variable-length
@@ -538,16 +612,66 @@ const PillMenuPopover = ({
       </div>
       <div className="px-3 pb-1.5">
         <select
-          value={draft.slice}
-          onChange={e => setDraft(d => ({ ...d, slice: e.target.value }))}
+          value={indexMode}
+          onChange={e => selectIndexMode(e.target.value)}
           data-testid="pill-menu-index"
           aria-label="Index"
           className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
         >
-          <option value="">All values</option>
-          <option value="[0]">First (0)</option>
-          <option value="[-1]">Last (-1)</option>
+          <option value="" disabled={!slicePolicy.all}>
+            All values
+          </option>
+          <option value="[0]" disabled={!slicePolicy.first}>
+            First (0)
+          </option>
+          <option value="[-1]" disabled={!slicePolicy.last}>
+            Last (-1)
+          </option>
+          <option value="at" disabled={!slicePolicy.atRow}>
+            At row…
+          </option>
+          <option value="range" disabled={!slicePolicy.range}>
+            Rows…
+          </option>
+          {/* An already-authored shape this form can't model (e.g. `[0,2,5]`,
+              a strided `[0:9:2]`) stays selectable rather than being silently
+              rewritten to something else the moment the menu opens. */}
+          {indexMode === 'custom' && <option value="custom">{draft.slice}</option>}
         </select>
+        {indexMode === 'at' && (
+          <input
+            type="number"
+            value={atRow}
+            onChange={e => setIndexAtRow(e.target.value)}
+            placeholder="row index"
+            data-testid="pill-menu-index-at-row"
+            aria-label="Row index"
+            className="mt-1 w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
+          />
+        )}
+        {indexMode === 'range' && (
+          <div className="mt-1 flex items-center gap-1.5">
+            <input
+              type="number"
+              value={rangeStart}
+              onChange={e => setIndexRange(e.target.value, rangeEnd)}
+              placeholder="start"
+              data-testid="pill-menu-index-range-start"
+              aria-label="First row"
+              className="w-full min-w-0 rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
+            />
+            <span className="flex-shrink-0 text-[11px] text-gray-400">to</span>
+            <input
+              type="number"
+              value={rangeEnd}
+              onChange={e => setIndexRange(rangeStart, e.target.value)}
+              placeholder="end"
+              data-testid="pill-menu-index-range-end"
+              aria-label="Last row"
+              className="w-full min-w-0 rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
+            />
+          </div>
+        )}
       </div>
 
       {/* Modifier — trailing SQL, applied INSIDE the `?{ }` so an index can
@@ -580,8 +704,14 @@ const PillMenuPopover = ({
         <button
           type="button"
           onClick={onApply}
+          // A column-backed pill with no column serializes to a dangling ref,
+          // so Apply stays inert until there is one to commit.
+          disabled={isColumnBacked && !draft.column}
+          title={
+            isColumnBacked && !draft.column ? 'Choose a dimension first' : undefined
+          }
           data-testid="pill-menu-apply"
-          className="rounded bg-primary-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-primary-700"
+          className="rounded bg-primary-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Apply
         </button>

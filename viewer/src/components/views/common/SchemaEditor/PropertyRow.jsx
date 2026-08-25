@@ -368,8 +368,15 @@ export function PropertyRow({
   // toggle that never mutates the underlying value (the raw text is already
   // valid; `onClick` just flips `forceRawEdit` back to `false` so the SAME
   // value renders as a pill instead of text).
-  const canReturnToPill =
-    droppable && currentMode === 'query' && forceRawEdit && pillEligible;
+  //
+  // The `droppable` gate that used to be here made that escape hatch reachable
+  // ONLY in the Build rail. VIS-1240 removed the same gate from `showPill`, so
+  // every other surface (the right rail included) renders pills but had no way
+  // back from raw text: "Custom aggregation…" swapped the interactive pill for
+  // a RefTextArea whose ref chips carry no menu, permanently. Dropping is what
+  // `droppable` governs; whether a value can RENDER as a pill is a property of
+  // the value, and so is whether it can render as one again.
+  const canReturnToPill = currentMode === 'query' && forceRawEdit && pillEligible;
 
   const pillType =
     pillState.kind === 'modelRef'
@@ -610,6 +617,10 @@ export function PropertyRow({
                       ref={pillMenuRef}
                       state={pillState}
                       slice={slice}
+                      // Drives which index options the menu offers — a
+                      // scalar-only prop can't take a range, an array-only
+                      // one can't take a single row.
+                      slotShape={slotShape}
                       onApply={handlePillApply}
                       onCustomAggregation={() => setForceRawEdit(true)}
                       onSaveAsMetric={
