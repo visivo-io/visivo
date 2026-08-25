@@ -2522,7 +2522,7 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
       result = await useStore.getState().commitWorkspacePivotDraftAsNew();
     });
     // sales-pivot-table_pivot is taken → _2 suffix.
-    expect(result.name).toBe('sales-pivot-table_pivot_2');
+    expect(result.name).toBe('sales-pivot-table_pivot-2');
   });
 
   test('commitWorkspacePivotDraftAsNew returns failure when there is no draft', async () => {

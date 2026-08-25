@@ -524,7 +524,7 @@ describe('ExplorationBuildRail', () => {
       });
       render(<ExplorationBuildRail />);
       await waitFor(() => {
-        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db-query_2']);
+        expect(useStore.getState().explorerModelTabs).toEqual(['orders_db-query-2']);
       });
     });
 
@@ -656,7 +656,7 @@ describe('ExplorationBuildRail', () => {
         });
         render(<ExplorationBuildRail />);
         await waitFor(() => {
-          expect(useStore.getState().explorerChartName).toBe('orders_db-query-insight-chart_2');
+          expect(useStore.getState().explorerChartName).toBe('orders_db-query-insight-chart-2');
         });
       });
 

@@ -260,6 +260,9 @@ const Library = () => {
   // `openCreate*Modal` flags had no mounted modal in the Workspace — every
   // "+ New X" was a silent no-op.)
   const createWorkspaceObject = useStore(s => s.createWorkspaceObject);
+  // A create with an unmet precondition (a relation needs two models) reports
+  // it through the shared workspace toast rather than failing silently.
+  const showWorkspaceToast = useStore(s => s.showWorkspaceToast);
   // Resolved at call time rather than subscribed per-type: there are eleven
   // delete actions and a row only ever needs the one matching its type.
   const storeApi = useStore;
@@ -424,30 +427,37 @@ const Library = () => {
             type: typeKey,
             name: result.name,
           });
+          return;
+        }
+        // A create that cannot happen has to SAY so. This used to fall through
+        // silently, which is what made "+ New" read as a dead button (VIS-1237)
+        // rather than an action with a precondition.
+        if (result?.error && showWorkspaceToast) {
+          showWorkspaceToast(result.error);
         }
       });
     },
-    [createWorkspaceObject, openWorkspaceTab, createExploration, scope.dashboardName]
+    [
+      createWorkspaceObject,
+      openWorkspaceTab,
+      createExploration,
+      scope.dashboardName,
+      showWorkspaceToast,
+    ]
   );
 
-  // "+ New" menu pick. Everything templatable goes through `handleCreate`; a
-  // relation can't be templated (its condition needs two real models), so
-  // "Relation" opens the Semantic Layer, where you author it by connecting two
-  // models — the same surface MiddlePane opens for relations.
+  // "+ New" menu pick — every type, relation included, drafts through the one
+  // shared inline-create flow and opens in the edit panel. Relations used to be
+  // special-cased into opening the Semantic Layer instead, which read as "+ New
+  // does nothing" (VIS-1237): a relation IS templatable, seeded with the
+  // project's first two models, and the ERD stays the way to author one
+  // visually rather than the only way.
   const handleNewPick = useCallback(
     typeKey => {
       setNewMenuOpen(false);
-      if (typeKey === 'relation') {
-        openWorkspaceTab({
-          id: 'semantic-layer:semantic-layer',
-          type: 'semantic-layer',
-          name: 'semantic-layer',
-        });
-        return;
-      }
       handleCreate(typeKey, 'library-menu');
     },
-    [openWorkspaceTab, handleCreate]
+    [handleCreate]
   );
 
   return (
