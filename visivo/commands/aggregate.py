@@ -7,6 +7,7 @@ from visivo.commands.options import output_dir
 @output_dir
 @click.option("-j", "--json-file", help="The file with the raw json results from the query")
 def aggregate(output_dir, json_file):
+    """Aggregates raw query results from a json file into the data files insights read."""
     from visivo.logger.logger import Logger
 
     Logger.instance().info("Aggregating")
