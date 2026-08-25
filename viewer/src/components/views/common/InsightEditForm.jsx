@@ -98,7 +98,11 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     setProps(values.props);
     setInteractions(values.interactions);
   }, []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // Per-object drafts: unsaved edits survive navigating away and reloads.
+  // Embedded insights have no standalone identity, so they opt out.
+  const draftKey =
+    isEditMode && !isEmbedded && insight?.name ? `insight:${insight.name}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   useEffect(() => {
     if (insight) {

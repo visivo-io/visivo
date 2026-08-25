@@ -112,7 +112,11 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     setInsights(values.insights);
     setLayoutValues(values.layoutValues);
   }, []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // VIS-1133 + per-object drafts: unsaved edits survive navigating away and
+  // reloads, keyed on this chart. Only a standalone, named record in edit mode
+  // has a stable identity to key on.
+  const draftKey = isEditMode && chart?.name ? `chart:${chart.name}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   // Initialize form when chart changes
   useEffect(() => {

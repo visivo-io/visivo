@@ -1977,6 +1977,112 @@ describe('workspace store slice', () => {
       const dash = useStore.getState().dashboards.find(d => d.name === 'd1');
       expect(dash.config.rows[0].height).toBe('small');
     });
+
+    // The dashboard working copy gets the same per-object draft persistence as
+    // the leaf panels: an open editing session survives a reload AND an
+    // unrelated mid-edit refetch (a level rename saving a DIFFERENT dashboard
+    // refetches the whole collection).
+    describe('draft persistence across a refetch', () => {
+      const startEditing = () => {
+        seedDashboard({ rows: [{ height: 'small', items: [] }] });
+        act(() => useStore.getState().captureDashboardBaseline('d1'));
+        act(() =>
+          useStore.getState().updateDashboardConfigOptimistic('d1', {
+            name: 'd1',
+            rows: [{ height: 'large', items: [] }],
+          })
+        );
+      };
+
+      test('an unsaved working copy is restored over a fresh server list', () => {
+        startEditing();
+        // A refetch replaces the list with server truth and drops every
+        // baseline (what dashboardStore.fetchDashboards does)…
+        act(() => {
+          useStore.setState({
+            dashboards: [{ name: 'd1', config: { name: 'd1', rows: [{ height: 'small', items: [] }] } }],
+            dashboardBaselines: {},
+          });
+          useStore.getState().hydrateDashboardDrafts();
+        });
+
+        // …and the unsaved edit comes back, still marked unsaved.
+        const dash = useStore.getState().dashboards.find(d => d.name === 'd1');
+        expect(dash.config.rows[0].height).toBe('large');
+        expect(useStore.getState().isDashboardDirty('d1')).toBe(true);
+      });
+
+      test('a draft is dropped when the server config moved on underneath', () => {
+        startEditing();
+        act(() => {
+          useStore.setState({
+            // Someone else saved this dashboard while we were editing.
+            dashboards: [
+              { name: 'd1', config: { name: 'd1', rows: [{ height: 'xlarge', items: [] }] } },
+            ],
+            dashboardBaselines: {},
+          });
+          useStore.getState().hydrateDashboardDrafts();
+        });
+
+        const dash = useStore.getState().dashboards.find(d => d.name === 'd1');
+        expect(dash.config.rows[0].height).toBe('xlarge'); // server truth wins
+        expect(useStore.getState().isDashboardDirty('d1')).toBe(false);
+      });
+
+      test('Discard clears the stored draft, so a refetch does not resurrect it', () => {
+        startEditing();
+        act(() => useStore.getState().discardDashboardEdits('d1'));
+        act(() => {
+          useStore.setState({
+            dashboards: [{ name: 'd1', config: { name: 'd1', rows: [{ height: 'small', items: [] }] } }],
+            dashboardBaselines: {},
+          });
+          useStore.getState().hydrateDashboardDrafts();
+        });
+        const dash = useStore.getState().dashboards.find(d => d.name === 'd1');
+        expect(dash.config.rows[0].height).toBe('small');
+      });
+
+      test('a successful Save clears the stored draft', async () => {
+        const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+        startEditing();
+        act(() => useStore.setState({ saveDashboard }));
+        await act(async () => {
+          await useStore.getState().commitDashboardEdits('d1');
+        });
+
+        act(() => {
+          useStore.setState({
+            dashboards: [{ name: 'd1', config: { name: 'd1', rows: [{ height: 'large', items: [] }] } }],
+            dashboardBaselines: {},
+          });
+          useStore.getState().hydrateDashboardDrafts();
+        });
+        expect(useStore.getState().isDashboardDirty('d1')).toBe(false);
+      });
+
+      test('an optimistic write with no open editing session stores nothing', () => {
+        seedDashboard({ rows: [{ height: 'small', items: [] }] });
+        // No captureDashboardBaseline → not an editing session (this is the
+        // path useRecordSave takes for its own optimistic writes).
+        act(() =>
+          useStore.getState().updateDashboardConfigOptimistic('d1', {
+            name: 'd1',
+            rows: [{ height: 'large', items: [] }],
+          })
+        );
+        act(() => {
+          useStore.setState({
+            dashboards: [{ name: 'd1', config: { name: 'd1', rows: [{ height: 'small', items: [] }] } }],
+            dashboardBaselines: {},
+          });
+          useStore.getState().hydrateDashboardDrafts();
+        });
+        const dash = useStore.getState().dashboards.find(d => d.name === 'd1');
+        expect(dash.config.rows[0].height).toBe('small');
+      });
+    });
   });
 
   test('updateRecordConfigOptimistic replaces a non-dashboard record config without saving (VIS-1018)', () => {

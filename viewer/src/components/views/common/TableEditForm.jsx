@@ -93,7 +93,9 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
     setRows(values.rows);
     setValues(values.values);
   }, []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // Per-object drafts: unsaved edits survive navigating away and reloads.
+  const draftKey = isEditMode && table?.name ? `table:${table.name}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   useEffect(() => {
     if (table) {

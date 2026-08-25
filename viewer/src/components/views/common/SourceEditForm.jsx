@@ -58,7 +58,11 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
     setSourceType(values.sourceType);
     setFormValues(values.formValues);
   }, []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // Per-object drafts: unsaved edits survive navigating away and reloads.
+  // Embedded sources (inline on a model) have no standalone identity.
+  const draftKey =
+    isEditMode && !isEmbedded && source?.name ? `source:${source.name}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   // Initialize form when source changes
   useEffect(() => {

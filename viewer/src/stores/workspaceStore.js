@@ -44,6 +44,7 @@
  */
 
 import isEqual from 'lodash/isEqual';
+import { clearDraft, restoreDraft, syncDraft } from '../utils/formDrafts';
 import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
@@ -1025,6 +1026,14 @@ const createWorkspaceSlice = (set, get) => ({
     const nextList = [...list];
     nextList[idx] = nextEntry;
     set({ dashboards: nextList });
+    // Mirror the working copy to storage while an editing session is open (a
+    // baseline exists), so unsaved dashboard edits survive a reload the same
+    // way the leaf panels' do. Non-editing optimistic writes have no baseline
+    // and are not drafts.
+    const baseline = (state.dashboardBaselines || {})[dashboardName];
+    if (baseline !== undefined) {
+      syncDraft(`dashboard:${dashboardName}`, baseline, nextConfig);
+    }
     return true;
   },
 
@@ -1085,6 +1094,7 @@ const createWorkspaceSlice = (set, get) => ({
     }
     const result = await state.saveDashboard(dashboardName, unwrapConfig(entry));
     if (result?.success) {
+      clearDraft(`dashboard:${dashboardName}`);
       set((s) => {
         const next = { ...(s.dashboardBaselines || {}) };
         delete next[dashboardName];
@@ -1096,18 +1106,53 @@ const createWorkspaceSlice = (set, get) => ({
 
   /**
    * Revert a dashboard's working copy to its captured baseline (explicit
-   * Discard) and drop the baseline. No-op when there's nothing to discard.
+   * Discard) and drop the baseline + stored draft. No-op when there's nothing
+   * to discard.
    */
   discardDashboardEdits: (dashboardName) => {
     if (!dashboardName) return;
     const baseline = (get().dashboardBaselines || {})[dashboardName];
     if (baseline === undefined) return;
     get().updateDashboardConfigOptimistic(dashboardName, baseline);
+    clearDraft(`dashboard:${dashboardName}`);
     set((s) => {
       const next = { ...(s.dashboardBaselines || {}) };
       delete next[dashboardName];
       return { dashboardBaselines: next };
     });
+  },
+
+  /**
+   * Re-apply stored dashboard drafts over a freshly-fetched collection.
+   *
+   * `fetchDashboards` replaces the list with server truth and drops every
+   * baseline, which would silently throw away an open editing session — both
+   * across a reload AND when an unrelated action (a level rename saving a
+   * DIFFERENT dashboard) refetches mid-edit. A draft is only re-applied when
+   * the saved values it was taken against still match what the server just
+   * returned; otherwise the record moved on and the draft is dropped
+   * (`restoreDraft`'s staleness rule).
+   */
+  hydrateDashboardDrafts: () => {
+    const list = get().dashboards || [];
+    if (!list.length) return;
+    const restoredBaselines = {};
+    let changed = false;
+    const nextList = list.map((entry) => {
+      const saved = unwrapConfig(entry);
+      const restored = restoreDraft(`dashboard:${entry.name}`, saved);
+      // `restoreDraft` hands back the SAME reference when there was no usable
+      // draft, so identity is the "nothing restored" signal.
+      if (restored === saved) return entry;
+      changed = true;
+      restoredBaselines[entry.name] = saved;
+      return withConfig(entry, restored);
+    });
+    if (!changed) return;
+    set((s) => ({
+      dashboards: nextList,
+      dashboardBaselines: { ...(s.dashboardBaselines || {}), ...restoredBaselines },
+    }));
   },
 
   /**

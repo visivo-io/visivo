@@ -141,7 +141,9 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
     setRangeEnd(values.rangeEnd);
     setRangeStep(values.rangeStep);
   }, []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // Per-object drafts: unsaved edits survive navigating away and reloads.
+  const draftKey = isEditMode && input?.name ? `input:${input.name}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   useEffect(() => {
     hydratedRef.current = false;

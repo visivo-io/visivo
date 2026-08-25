@@ -128,4 +128,16 @@ beforeEach(() => {
   // Set up a test URL config
   const testConfig = createURLConfig({ environment: 'server' });
   setGlobalURLConfig(testConfig);
+
+  // jsdom keeps ONE localStorage for the whole file, so persistent browser
+  // state (per-object edit drafts, workspace tabs, field-finder MRU) would leak
+  // from one test into the next — a test that leaves a form dirty would seed
+  // the following test's form with those edits. Each test starts from a clean
+  // browser. Test files that need seeded storage write it in their own
+  // beforeEach, which runs after this one.
+  try {
+    window.localStorage.clear();
+  } catch {
+    // Storage unavailable in this environment — nothing to reset.
+  }
 });

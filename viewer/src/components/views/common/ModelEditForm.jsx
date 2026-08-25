@@ -59,7 +59,9 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
     setDimensions(values.dimensions);
     setMetrics(values.metrics);
   }, []);
-  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues);
+  // Per-object drafts: unsaved edits survive navigating away and reloads.
+  const draftKey = !isCreate && model?.name ? `model:${model.name}` : undefined;
+  const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   useEffect(() => {
     if (model) {
