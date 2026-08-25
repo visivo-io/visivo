@@ -19,13 +19,15 @@ const seed = (dashboards, saveDashboard) => {
 };
 
 describe('dashboardStore createDashboard (Project Editor "+ New Dashboard")', () => {
-  test('creates an empty draft with a unique name and returns it', async () => {
+  // VIS-1231: the draft is no longer EMPTY — it starts with one row, because a
+  // zero-row dashboard cannot accept a drag.
+  test('creates a draft with one row and a unique name, and returns it', async () => {
     const saveDashboard = jest.fn(async () => ({ success: true }));
     seed([{ name: 'exec', config: {} }], saveDashboard);
 
     const result = await useStore.getState().createDashboard();
 
-    expect(saveDashboard).toHaveBeenCalledWith('new-dashboard', { rows: [] });
+    expect(saveDashboard).toHaveBeenCalledWith('new-dashboard', { rows: [{ height: 'medium', items: [{ width: 1 }] }] });
     expect(result).toMatchObject({ success: true, name: 'new-dashboard' });
   });
 
@@ -35,9 +37,10 @@ describe('dashboardStore createDashboard (Project Editor "+ New Dashboard")', ()
 
     const result = await useStore.getState().createDashboard();
 
-    expect(saveDashboard).toHaveBeenCalledWith(expect.not.stringMatching(/^new-dashboard$/), {
-      rows: [],
-    });
+    expect(saveDashboard).toHaveBeenCalledWith(
+      expect.not.stringMatching(/^new-dashboard$/),
+      { rows: [{ height: 'medium', items: [{ width: 1 }] }] }
+    );
     expect(result.success).toBe(true);
     expect(result.name).not.toBe('new-dashboard');
   });

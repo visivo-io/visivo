@@ -13,33 +13,57 @@ import RowTemplateMenu from './RowTemplateMenu';
  * selection + DnD overlays), it provides three surfaces from the D-7/D-8 briefs:
  *
  *   - A dashed "+ Add row" button at the END of the canvas (always present when
- *     the dashboard has ≥1 row).
+ *     the dashboard has ≥1 row), measured to sit just BELOW the last row rather
+ *     than pinned to the canvas floor, where it overlapped the last cell.
  *   - A between-rows "+ Add row" pill revealed on hover in each top-level row
  *     gap (measured from the live `data-canvas-path` row boxes, the same scheme
  *     CanvasDndLayer reads).
- *   - The EMPTY-canvas CTA (D-8): a prominent mulberry "Add row" button + helper
- *     copy + a one-time directional cue toward the Library, shown when the
- *     dashboard has zero rows.
+ *   - The EMPTY-canvas CTA (D-8), shown when the dashboard has zero rows:
+ *     helper copy with the SAME dashed "Add row" button under it (one shared
+ *     <AddRowButton>, not a look-alike — the empty state used to render its own
+ *     solid mulberry variant).
  *
  * Each trigger opens <RowTemplateMenu>; selecting a template builds a row of
  * empty slots (canvasReorder.buildTemplateRow) and inserts it at the trigger's
  * target index (insertRowAtIndex), committing through the shell's shared
- * `commitCanvasConfig` (optimistic → validate → save) — the SAME path the DnD
- * router uses. It also exposes the inline-create entry points (+ New Chart /
- * Table / Markdown): Explore 2.0 Phase 3b cutover (B5) replaced the old dead
- * `/explorer?create=<type>` navigation with the return_to placement-intent
- * mechanism — a fresh exploration is minted carrying `{dashboard}` and its
- * tab opens. Consuming the intent to place a promoted chart back into this
- * dashboard is Phase 4/5 (02-architecture.md §5); this only persists it.
+ * `commitCanvasConfig` — the SAME path the DnD router uses.
+ *
+ * VIS-1231: the empty state used to advertise dragging from the Library and
+ * offer "+ New chart / table / markdown" shortcuts into the Explorer. Neither
+ * worked from an empty dashboard — there is no row to drop into — so the copy
+ * promised something the canvas could not do. A row is the one thing that has
+ * to exist first, so the empty state now says exactly that, and a dashboard
+ * created from "+ New" starts with a row (see `inlineCreateStore`).
  *
  * Mulberry (`primary`) is the active/CTA colour (NOT a type colour).
  */
 
 const MULBERRY = 'var(--color-primary-500)';
+// Clearance between the last row and the end-of-canvas "Add row" button.
+const END_BUTTON_GAP = 12;
 const PlusIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
     <path d="M12 5v14M5 12h14" />
   </svg>
+);
+
+/**
+ * The dashed "+ Add row" button. ONE component for both the end-of-canvas
+ * trigger and the empty-canvas CTA, so the two are literally the same button
+ * rather than two look-alikes that drift (the empty state used to render a
+ * solid mulberry variant of its own).
+ */
+const AddRowButton = ({ testId, onClick }) => (
+  <button
+    type="button"
+    data-testid={testId}
+    onClick={onClick}
+    className="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-dashed bg-white px-4 text-[13px] font-medium transition-colors hover:bg-primary-50"
+    style={{ borderColor: MULBERRY, color: 'var(--color-primary-600)' }}
+  >
+    <PlusIcon className="h-4 w-4" />
+    Add row
+  </button>
 );
 
 const measure = (el, rootEl) => {
@@ -54,26 +78,18 @@ const measure = (el, rootEl) => {
   };
 };
 
-// Inline-create object types offered at the empty state / menus (D-7 AC). These
-// route to the Explorer to author a new layout item; the round-trip back to the
-// canvas is VIS-J2.
-const INLINE_CREATE_TYPES = [
-  { type: 'chart', label: 'New chart' },
-  { type: 'table', label: 'New table' },
-  { type: 'markdown', label: 'New markdown' },
-];
-
 const CanvasAddRow = ({ rootRef, dashboardName }) => {
   const dashboards = useStore(s => s.dashboards);
   const commitCanvasConfig = useWorkspaceCommit();
-  const createExploration = useStore(s => s.createExploration);
-  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
 
   // openMenu: which trigger's menu is open. null | { kind: 'end' } |
   // { kind: 'between', index } | { kind: 'empty' }.
   const [openMenu, setOpenMenu] = useState(null);
   const [hoverGap, setHoverGap] = useState(null);
   const [gapBoxes, setGapBoxes] = useState([]);
+  // Where the end-of-canvas button sits: measured from the last row so it
+  // never overlaps it. Null until the first measure (or with no rows).
+  const [endBox, setEndBox] = useState(null);
 
   const dashboardConfig = useMemo(() => {
     const entry = (dashboards || []).find(d => d.name === dashboardName);
@@ -93,6 +109,7 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
     const root = rootRef.current;
     if (!root || !rows.length) {
       setGapBoxes([]);
+      setEndBox(null);
       return;
     }
     const at = path => {
@@ -109,6 +126,16 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
       boxes.push({ index: ri, top: gapCenter, left: rowBox.left, width: rowBox.width });
     });
     setGapBoxes(boxes);
+
+    // Park the end button just BELOW the last row rather than pinned to the
+    // canvas floor. Pinned to the floor it sat on top of whatever row happened
+    // to reach the bottom — the dashed button straddling the last cell.
+    const lastBox = at(`row.${rows.length - 1}`);
+    setEndBox(
+      lastBox
+        ? { top: lastBox.top + lastBox.height + END_BUTTON_GAP, left: lastBox.left, width: lastBox.width }
+        : null
+    );
   }, [rootRef, rows]);
 
   useEffect(() => {
@@ -187,33 +214,6 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
     [dashboardConfig, dashboardName, commitCanvasConfig, targetIndex]
   );
 
-  const handleInlineCreate = useCallback(
-    async type => {
-      // §3.4 payload convention: `source` (where the create was initiated) +
-      // `kind` (the object type), matching the Library / broken-ref /
-      // project-editor inline-create sites.
-      emitWorkspaceEvent('inline_create_used', { source: 'canvas', kind: type, dashboardName });
-      setOpenMenu(null);
-      // Explore 2.0 Phase 3b cutover (B5): the old `/explorer?create=<type>`
-      // dead param (Explorer never read it) is replaced by the SAME
-      // return_to placement-intent mechanism the dashboard-scoped
-      // `/workspace/dashboard/:name/explorer` route uses — mint a fresh
-      // exploration carrying `{ dashboard: dashboardName }` and open its
-      // tab. Consuming the intent ("Place in <dashboard>") is Phase 4/5;
-      // this only persists it via the existing field.
-      if (!createExploration || !openWorkspaceTab) return;
-      const result = await createExploration(null, { dashboard: dashboardName });
-      if (result?.success) {
-        openWorkspaceTab({
-          id: `exploration:${result.id}`,
-          type: 'exploration',
-          name: result.id,
-        });
-      }
-    },
-    [createExploration, openWorkspaceTab, dashboardName]
-  );
-
   if (!dashboardConfig) return null;
 
   // ── Empty-canvas state (D-8) ───────────────────────────────────────────────
@@ -221,36 +221,31 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
     return (
       <div
         data-testid="canvas-add-row-empty"
-        className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center ${
+        // Anchored to the TOP with its own height, NOT `inset-0` + centering.
+        // With zero rows <Dashboard> renders nothing and the canvas root's
+        // `flex-1` is inert inside MiddlePane's plain `overflow-auto` wrapper,
+        // so the root collapses to ~0px. Centering inside that box spilled half
+        // the CTA UPWARD, behind the breadcrumb/lens chrome — whichever element
+        // sat on top was invisible (first the button, then the helper text).
+        // A real min-height gives the CTA somewhere to live.
+        className={`pointer-events-none absolute inset-x-0 top-0 flex min-h-[320px] flex-col items-center justify-center ${
           openMenu ? 'z-[100]' : 'z-10'
         }`}
       >
         <div className="pointer-events-auto relative flex flex-col items-center">
-          <button
-            type="button"
-            data-testid="canvas-add-row-empty-button"
-            onClick={() => setOpenMenu(o => (o?.kind === 'empty' ? null : { kind: 'empty' }))}
-            className="inline-flex h-12 items-center gap-2 rounded-lg px-6 text-[14px] font-semibold text-white shadow-md transition-colors"
-            style={{ backgroundColor: MULBERRY }}
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add row
-          </button>
-          <p className="mt-3 max-w-[360px] text-center text-[12.5px] leading-relaxed text-gray-500">
-            Drag a chart from the Library to begin, or pick a row template.
+          {/* VIS-1231: this used to read "Drag a chart from the Library to
+              begin", but an empty dashboard has no row to drop INTO — the drag
+              silently did nothing. Rows come first; say so, then offer the
+              action directly under it. */}
+          <p className="max-w-[360px] text-center text-[12.5px] leading-relaxed text-gray-500">
+            Dashboards are built from rows. Add one to start, then drag charts,
+            tables, and markdown from the Library into it.
           </p>
-          <div className="mt-2 flex items-center gap-3 text-[11.5px]">
-            {INLINE_CREATE_TYPES.map(({ type, label }) => (
-              <button
-                key={type}
-                type="button"
-                data-testid={`canvas-inline-create-${type}`}
-                onClick={() => handleInlineCreate(type)}
-                className="font-medium text-primary hover:underline"
-              >
-                {label}
-              </button>
-            ))}
+          <div className="mt-4">
+            <AddRowButton
+              testId="canvas-add-row-empty-button"
+              onClick={() => setOpenMenu(o => (o?.kind === 'empty' ? null : { kind: 'empty' }))}
+            />
           </div>
           {openMenu?.kind === 'empty' && (
             <RowTemplateMenu
@@ -323,19 +318,24 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
         );
       })}
 
-      {/* End-of-canvas "+ Add row" dashed button. */}
-      <div className="pointer-events-auto absolute inset-x-0 bottom-2 flex items-center justify-center">
+      {/* End-of-canvas "+ Add row" dashed button, parked below the last row.
+          It used to be pinned to the canvas floor (`bottom-2`), so on a
+          dashboard whose rows reached the bottom it rendered ON TOP of the last
+          cell. Falls back to the floor only until the first measurement. */}
+      <div
+        data-testid="canvas-add-row-end"
+        className="pointer-events-auto absolute flex items-center justify-center"
+        style={
+          endBox
+            ? { top: endBox.top, left: endBox.left, width: endBox.width }
+            : { left: 0, right: 0, bottom: 8 }
+        }
+      >
         <div className="relative flex items-center justify-center">
-          <button
-            type="button"
-            data-testid="canvas-add-row-end-button"
+          <AddRowButton
+            testId="canvas-add-row-end-button"
             onClick={() => setOpenMenu(o => (o?.kind === 'end' ? null : { kind: 'end' }))}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-dashed bg-white px-4 text-[13px] font-medium transition-colors hover:bg-primary-50"
-            style={{ borderColor: MULBERRY, color: 'var(--color-primary-600)' }}
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add row
-          </button>
+          />
           {openMenu?.kind === 'end' && (
             <RowTemplateMenu
               anchor="bottom"

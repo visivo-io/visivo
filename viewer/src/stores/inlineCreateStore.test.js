@@ -26,6 +26,20 @@ describe('createWorkspaceObject', () => {
     expect(result).toMatchObject({ success: true, name: template.namePrefix, type });
   });
 
+  // VIS-1231: a zero-row dashboard can't accept a drag (nothing to drop into),
+  // so "+ New" hands back one that is already usable.
+  test('a new dashboard starts with one row holding an empty slot', async () => {
+    const save = jest.fn(async () => ({ success: true }));
+    useStore.setState({ dashboards: [], saveDashboard: save });
+
+    await useStore.getState().createWorkspaceObject('dashboard');
+
+    const [, config] = save.mock.calls[0];
+    expect(config.rows).toHaveLength(1);
+    // Born valid, and a live drop target (VIS-989) rather than `items: []`.
+    expect(config.rows[0]).toEqual({ height: 'medium', items: [{ width: 1 }] });
+  });
+
   test('deduplicates against the existing collection', async () => {
     const save = jest.fn(async () => ({ success: true }));
     useStore.setState({
