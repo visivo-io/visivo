@@ -377,14 +377,27 @@ export function PropertyRow({
       : pillState.kind === 'aggregate' || pillState.kind === 'metricRef'
         ? 'metric'
         : 'dimension';
-  const pillLabel =
+  const pillBaseLabel =
     pillState.kind === 'modelRef'
-      ? `${pillState.ref} ▸ choose a property`
+      ? `${pillState.ref} ▸ choose a dimension`
       : pillState.kind === 'aggregate'
       ? `${(pillState.agg || '').toUpperCase()} · ${pillState.ref} ▸ ${pillState.column}`
       : pillState.kind === 'dimension'
         ? `${pillState.ref} ▸ ${pillState.column}`
         : pillState.ref;
+
+  // The pill claims to BE the expression, so it has to show all of it. The
+  // modifier and the index are both authored inside the pill's own editor and
+  // then rendered nowhere on it — `sum(gdp) / 100 }[0]` and a bare `sum(gdp)`
+  // were the same green chip. Suffix them in serialization order (modifier
+  // inside the braces, index outside and last) so the label reads like the
+  // string it generates. `slice` already carries its own brackets.
+  // An unbound `modelRef` has neither yet, so it keeps its bare prompt.
+  const pillSuffix =
+    pillState.kind === 'modelRef'
+      ? ''
+      : `${pillState.modifier ? ` ${pillState.modifier}` : ''}${slice || ''}`;
+  const pillLabel = `${pillBaseLabel}${pillSuffix}`;
 
   // T4 (pills-buildrail #4): the whole pill is a drag SOURCE too, so it can
   // move between slots (drag the x pill onto the y slot), not just receive
@@ -450,8 +463,12 @@ export function PropertyRow({
   // next to every pill. An index is now set from inside the pill's own editor,
   // and the badge appears only once there is a real index to show (and to
   // clear).
+  // ...and once the pill itself renders the index, the badge beside it is the
+  // same fact stated twice. Keep the badge only where there is no pill to carry
+  // it (raw-text / opaque values), where it stays the sole way to see and clear
+  // a slice.
   const showSliceBadge =
-    currentMode === 'query' && isQueryFormValue && !!slice && slotShape !== 'unknown';
+    currentMode === 'query' && isQueryFormValue && !!slice && slotShape !== 'unknown' && !showPill;
 
   return (
     <div

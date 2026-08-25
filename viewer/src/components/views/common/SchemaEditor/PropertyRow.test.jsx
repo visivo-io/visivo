@@ -862,6 +862,43 @@ describe('PropertyRow', () => {
           droppable
         />
       );
+      // The pill IS the expression, so it shows the index itself — and the
+      // badge beside it would be the same fact twice.
+      expect(screen.getByTestId('property-pill-x')).toHaveTextContent('[0]');
+      expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+    });
+
+    test('a modifier and an index both show on the pill, in serialized order', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount}) / 100}[0]"
+          droppable
+        />
+      );
+      // Modifier inside the braces, index outside and last — the pill reads
+      // like the string it generates.
+      expect(screen.getByTestId('property-pill-x')).toHaveTextContent(
+        'SUM · orders_q ▸ amount / 100[0]'
+      );
+    });
+
+    test('a value with no pill keeps the badge as its only slice affordance', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          // Two refs — deliberately opaque, so no pill renders.
+          value="?{${ref(orders_q).amount} + ${ref(orders_q).tax}}[0]"
+          droppable
+        />
+      );
+      expect(screen.queryByTestId('property-pill-x')).not.toBeInTheDocument();
       expect(screen.getByTestId('slice-badge')).toBeInTheDocument();
     });
 

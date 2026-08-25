@@ -25,7 +25,7 @@ const NUMERIC_ONLY_AGGS = new Set(['sum', 'avg', 'median']);
 const RESTRICTED_AGGS = new Set(['min', 'max', 'count', 'count_distinct']);
 
 const KIND_LABEL = {
-  modelRef: 'Model — pick a property',
+  modelRef: 'Model — pick a dimension',
   dimension: 'Dimension',
   aggregate: 'Aggregate',
   metricRef: 'Metric',
@@ -461,13 +461,13 @@ const PillMenuPopover = ({
 
       {isColumnBacked && (
         <>
-          {/* VIS-1241: the property picker — the half of the pill that could
+          {/* VIS-1241: the dimension picker — the half of the pill that could
               never be changed here. The header was static text, so re-pointing
               a pill at a different column meant a drag or a raw-text edit.
               Columns come from the model-schema endpoint, which only started
               answering for uncommitted models in #619. */}
           <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-            Property
+            Dimension
           </div>
           <div className="px-3 pb-1.5">
             {columns.length ? (
@@ -475,7 +475,7 @@ const PillMenuPopover = ({
                 value={draft.column}
                 onChange={e => setDraft(d => ({ ...d, column: e.target.value }))}
                 data-testid="pill-menu-property"
-                aria-label="Property"
+                aria-label="Dimension"
                 className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
               >
                 {!columns.includes(draft.column) && draft.column && (
@@ -495,7 +495,7 @@ const PillMenuPopover = ({
                 value={draft.column}
                 onChange={e => setDraft(d => ({ ...d, column: e.target.value }))}
                 data-testid="pill-menu-property"
-                aria-label="Property"
+                aria-label="Dimension"
                 className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
               />
             )}
@@ -511,7 +511,7 @@ const PillMenuPopover = ({
             Use as
           </div>
           <MenuRow
-            label="Dimension"
+            label="Value"
             selected={presetIsSelected('dimension')}
             onClick={() => onSelectPreset('dimension')}
             testId="pill-menu-preset-dimension"
