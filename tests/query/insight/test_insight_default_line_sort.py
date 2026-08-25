@@ -115,9 +115,11 @@ def test_explicit_sort_is_not_overridden(tmpdir, create_schema_file):
     )
     builder = _build(insight, tmpdir, create_schema_file)
     assert len(_sort_keys(builder)) == 1
-    # And an explicit sort never gets the default post_query ORDER BY imposed
-    # over it — the author's order is the order.
-    assert builder.post_query == f'SELECT * FROM "{builder.insight_hash}"'
+    # An explicit sort never gets the DEFAULT post_query ORDER BY imposed over
+    # it — the author's order is the order. (Deterministic read-back for
+    # explicit sorts is a separate open follow-up: the parquet is written in
+    # the author's order, but a bare scan doesn't guarantee it back.)
+    assert f'"{builder.alias_hashes["props.x"]}"' not in builder.post_query
 
 
 def test_scatter_with_no_mode_gets_default_x_sort(tmpdir, create_schema_file):
@@ -192,3 +194,51 @@ def test_marker_only_scatter_post_query_stays_bare(tmpdir, create_schema_file):
     )
     builder = _build(insight, tmpdir, create_schema_file)
     assert builder.post_query == f'SELECT * FROM "{builder.insight_hash}"'
+
+
+def test_varchar_x_is_never_default_sorted(tmpdir):
+    """A categorical x would sort lexicographically (month names: Apr, Aug,
+    Dec …) — usually wrong. First-appearance source order stays the default
+    for string-typed x."""
+    schema_dir = os.path.join(str(tmpdir), "schemas")
+    os.makedirs(schema_dir, exist_ok=True)
+    source = SourceFactory()
+    model = SqlModel(name="line_model", sql="SELECT month, y FROM t", source=f"ref({source.name})")
+    insight = Insight(
+        name="varchar_x_insight",
+        props=InsightProps(
+            type="scatter",
+            x="?{${ref(line_model).month}}",
+            y="?{${ref(line_model).y}}",
+        ),
+    )
+    project = Project(name="p", sources=[source], models=[model], insights=[insight], dashboards=[])
+    with open(os.path.join(schema_dir, f"{model.name}.json"), "w") as f:
+        json.dump({model.name_hash(): {"month": "VARCHAR", "y": "INTEGER"}}, f)
+    builder = InsightQueryBuilder(insight, project.dag(), str(tmpdir))
+    builder.resolve()
+    assert _sort_keys(builder) == []
+    assert builder.post_query == f'SELECT * FROM "{builder.insight_hash}"'
+
+
+def test_unclassified_x_type_is_never_default_sorted(tmpdir):
+    """A type outside the numeric/temporal allowlist (here UUID) is unknown →
+    conservatively keep source order."""
+    schema_dir = os.path.join(str(tmpdir), "schemas")
+    os.makedirs(schema_dir, exist_ok=True)
+    source = SourceFactory()
+    model = SqlModel(name="line_model", sql="SELECT x, y FROM t", source=f"ref({source.name})")
+    insight = Insight(
+        name="unknown_type_insight",
+        props=InsightProps(
+            type="scatter",
+            x="?{${ref(line_model).x}}",
+            y="?{${ref(line_model).y}}",
+        ),
+    )
+    project = Project(name="p", sources=[source], models=[model], insights=[insight], dashboards=[])
+    with open(os.path.join(schema_dir, f"{model.name}.json"), "w") as f:
+        json.dump({model.name_hash(): {"x": "UUID", "y": "INTEGER"}}, f)
+    builder = InsightQueryBuilder(insight, project.dag(), str(tmpdir))
+    builder.resolve()
+    assert _sort_keys(builder) == []

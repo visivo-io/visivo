@@ -20,6 +20,44 @@ and the rules are testable in isolation:
 
 LINE_RENDERED_TYPES = ("scatter", "scattergl")
 
+# Types with ONE natural order. A VARCHAR x would sort lexicographically
+# (month names render Apr, Aug, Dec, Feb …), which is usually wrong —
+# first-appearance source order is the better default for categorical x.
+# Unknown types are conservatively never reordered.
+_ORDERABLE_TYPE_NAMES = {
+    # numeric
+    "TINYINT",
+    "SMALLINT",
+    "INT",
+    "INTEGER",
+    "BIGINT",
+    "FLOAT",
+    "DOUBLE",
+    "DECIMAL",
+    "NUMERIC",
+    "REAL",
+    "NUMBER",
+    # temporal
+    "DATE",
+    "DATETIME",
+    "TIMESTAMP",
+    "TIMESTAMPTZ",
+    "TIMESTAMPLTZ",
+    "TIMESTAMPNTZ",
+    "TIME",
+    "TIMETZ",
+}
+
+
+def is_deterministically_orderable(sqlglot_dtype) -> bool:
+    """True when the x expression's inferred type has one natural sort order
+    (numeric or temporal). None/unknown/string/boolean return False."""
+    if sqlglot_dtype is None:
+        return False
+    this = getattr(sqlglot_dtype, "this", None)
+    name = this.value if hasattr(this, "value") else str(this)
+    return name in _ORDERABLE_TYPE_NAMES
+
 
 def renders_as_line(props) -> bool:
     """True when the insight will draw connected lines.
@@ -41,12 +79,17 @@ def renders_as_line(props) -> bool:
 
 def default_sort_expressions(unresolved_query_statements) -> list:
     """Unresolved sort expressions for a line-rendered insight with no
-    explicit sort: split ascending first, then x ascending."""
-    split_statement = next((s for k, s in unresolved_query_statements if k == "split"), None)
+    explicit sort: split ascending first, then x ascending.
+
+    When multiple split statements exist, the LAST one is used — matching the
+    builder's alias bookkeeping (``alias_hashes["split"]`` is written per
+    resolution, so the last split's alias is what ``post_query_order_clause``
+    re-asserts). Pre- and post-query must agree on which split orders."""
+    split_statements = [s for k, s in unresolved_query_statements if k == "split"]
     x_statement = next((s for k, s in unresolved_query_statements if k == "props.x"), None)
     expressions = []
-    if split_statement:
-        expressions.append(f"{split_statement} ASC")
+    if split_statements:
+        expressions.append(f"{split_statements[-1]} ASC")
     if x_statement:
         expressions.append(f"{x_statement} ASC")
     return expressions

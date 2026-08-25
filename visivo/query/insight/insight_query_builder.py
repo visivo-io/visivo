@@ -2,6 +2,7 @@ from visivo.query.insight.insight_query_info import InsightQueryInfo
 from visivo.query.insight.default_ordering import (
     renders_as_line,
     default_sort_expressions,
+    is_deterministically_orderable,
     post_query_order_clause,
 )
 from visivo.query.insight.prop_type_validator import (
@@ -445,16 +446,27 @@ class InsightQueryBuilder:
         # Line charts connect points in row order, so an unsorted result renders
         # a tangled web (M4). Policy lives in default_ordering.py: line-rendered
         # insights (scatter/scattergl, mode unset or containing "lines") with no
-        # explicit sort get ORDER BY split, x. Explicit sorts are never
-        # overridden; every other type keeps source order.
+        # explicit sort get ORDER BY split, x — but ONLY when x's inferred type
+        # has one natural order (numeric/temporal). A VARCHAR x would sort
+        # lexicographically (month names: Apr, Aug, Dec …), so categorical and
+        # unknown-typed x keep first-appearance source order. Explicit sorts are
+        # never overridden; every other type keeps source order.
         has_sort = any(key == "sort" for key, _ in resolved_query_statements)
         self._default_sort_applied = False
         if not has_sort and renders_as_line(self.insight.props):
-            for expression in default_sort_expressions(self.unresolved_query_statements):
-                resolved_query_statements.append(
-                    ("sort", self.field_resolver.resolve_sort(expression=expression))
-                )
-                self._default_sort_applied = True
+            resolved_x = next((s for k, s in resolved_query_statements if k == "props.x"), None)
+            bare_x = (
+                re.sub(r"\s+AS\s+\"[^\"]+\"\s*$", "", resolved_x, flags=re.IGNORECASE)
+                if resolved_x
+                else None
+            )
+            x_type = self._infer_expression_type(bare_x) if bare_x else None
+            if is_deterministically_orderable(x_type):
+                for expression in default_sort_expressions(self.unresolved_query_statements):
+                    resolved_query_statements.append(
+                        ("sort", self.field_resolver.resolve_sort(expression=expression))
+                    )
+                    self._default_sort_applied = True
 
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True

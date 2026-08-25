@@ -3,6 +3,8 @@
 import threading
 from flask import jsonify, request
 
+from visivo.server.views.temporal_json import isoformat_temporal_values
+
 from visivo.logger.logger import Logger
 from visivo.server.managers.model_query_job_manager import ModelQueryJobManager
 from visivo.server.jobs.model_query_job_executor import execute_model_query_job
@@ -91,7 +93,16 @@ def register_model_query_jobs_views(app, flask_app, output_dir):
             if not job:
                 return jsonify({"error": f"Job {job_id} not found"}), 404
 
-            return jsonify(job.to_dict())
+            payload = job.to_dict()
+            # B7-b: rows must reach the client ISO-8601, not Flask's RFC-1123 —
+            # this lane feeds DuckDB-WASM via read_json_auto with no coercion.
+            result = payload.get("result")
+            if isinstance(result, dict) and isinstance(result.get("rows"), list):
+                payload = {
+                    **payload,
+                    "result": {**result, "rows": isoformat_temporal_values(result["rows"])},
+                }
+            return jsonify(payload)
 
         except Exception as e:
             Logger.instance().error(f"Error getting model query job status: {str(e)}")
