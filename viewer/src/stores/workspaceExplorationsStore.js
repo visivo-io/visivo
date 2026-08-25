@@ -827,7 +827,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           success: false,
           error: checklistRow
             ? checklistRow.error || 'Failed validation and was not promoted'
-            : 'No longer present in the exploration and was not promoted',
+            : 'This object changed while the dialog was open and was not saved — reopen Save to project.',
         });
       }
 
@@ -894,9 +894,10 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           if (row?.status === 'modified') updateVsNew.updated += 1;
           else updateVsNew.new += 1;
         });
-      // Emit only when a save was actually attempted — the total-results
-      // entries above are selections that never reached a save action.
-      if (toPromote.length > 0) {
+      // Emit for every attempted promote, including a zero-save one (every
+      // selected row invalid or vanished) — that failure mode must be
+      // observable in telemetry, not silently absent.
+      if ((selection || []).length > 0) {
         emitWorkspaceEvent('exploration_promoted', {
           id,
           objectCounts,

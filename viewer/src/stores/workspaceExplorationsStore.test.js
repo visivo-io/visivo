@@ -1851,7 +1851,8 @@ describe('promoteExploration', () => {
       name: 'ghost',
       tier: null,
       success: false,
-      error: 'No longer present in the exploration and was not promoted',
+      error:
+        'This object changed while the dialog was open and was not saved — reopen Save to project.',
     });
     expect(result.results.find(r => r.name === 'orders_q').success).toBe(true);
   });
@@ -1893,7 +1894,7 @@ describe('promoteExploration', () => {
     expect(result.results.filter(r => r.success)).toHaveLength(2);
   });
 
-  test('M14: an invalid-only selection does not emit exploration_promoted (nothing was attempted)', async () => {
+  test('M14: an invalid-only selection still emits exploration_promoted (zero-save runs are observable)', async () => {
     const events = [];
     const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
     try {
@@ -1905,7 +1906,9 @@ describe('promoteExploration', () => {
         await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
       });
 
-      expect(events.find(e => e.eventName === 'exploration_promoted')).toBeUndefined();
+      const promoted = events.find(e => e.eventName === 'exploration_promoted');
+      expect(promoted).toBeDefined();
+      expect(promoted.payload.objectCounts).toEqual({});
     } finally {
       unsubscribe();
     }
