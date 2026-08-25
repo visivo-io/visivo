@@ -98,3 +98,34 @@ def test_extra_keys_are_rejected_everywhere():
 
 def test_codes_registry_documents_every_code():
     assert all(isinstance(desc, str) and desc for desc in DIAGNOSTIC_CODES.values())
+
+
+def test_id_field_is_optional_and_round_trips():
+    diagnostic = Diagnostic(
+        id="run:not_built:insight:churn",
+        phase=DiagnosticPhase.RUN,
+        code="not_built",
+        message="never built",
+    )
+    restored = Diagnostic.model_validate(diagnostic.model_dump(mode="json"))
+    assert restored.id == "run:not_built:insight:churn"
+    assert Diagnostic(phase=DiagnosticPhase.RUN, code="not_built", message="m").id is None
+
+
+def test_shipping_join_error_vocabulary_is_registered():
+    """The wire error_type values the viewer's join-fix cards already branch on
+    (relation_graph.py JoinPathError → JobResult.error_details) must be
+    expressible — W3 lifts them into Diagnostics without renaming."""
+    for code in ("missing_relation", "ambiguous_relation"):
+        Diagnostic(phase=DiagnosticPhase.RUN, code=code, message="m")
+
+
+def test_from_exception_never_raises_on_an_unregistered_code():
+    """A factory built to run inside except blocks must never mask the
+    original failure with its own ValidationError."""
+    diagnostic = Diagnostic.from_exception(
+        Exception("the real failure"), phase=DiagnosticPhase.RUN, code="typo_code"
+    )
+    assert diagnostic.code == "unexpected_error"
+    assert diagnostic.message == "the real failure"
+    assert "typo_code" in diagnostic.detail

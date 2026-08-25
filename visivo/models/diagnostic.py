@@ -59,11 +59,14 @@ DIAGNOSTIC_CODES = {
     "invalid_value": "A field is present but its value fails validation.",
     "broken_reference": "A ${ref(...)} names an object that does not exist.",
     "expression_parse_failed": "A query-string/context-string expression failed to parse.",
+    "yaml_parse_failed": "The YAML file itself did not parse (before any schema validation).",
     # Sources
     "source_locked": "The database file is held by another connection/process.",
     "source_connection_failed": "The source is unreachable or refused the connection.",
     # Jobs / runs
     "dependency_failed": "The job was skipped because something it depends on failed.",
+    "missing_relation": "An insight joins models with no relation declared between them.",
+    "ambiguous_relation": "More than one relation path exists between the joined models.",
     "query_execution_failed": "The source raised an error executing the job's query.",
     "schema_build_failed": "Schema inference for a model failed.",
     "not_built": "The artifact has never been produced (empty state, not an error).",
@@ -106,6 +109,14 @@ class DiagnosticRelated(BaseModel):
 class Diagnostic(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    id: Optional[str] = Field(
+        None,
+        description=(
+            "Stable identity for this diagnostic across polls/refetches — consumers "
+            "dedup and remember dismissals by it. Producers should derive it from "
+            "stable inputs (e.g. phase:code:object:field), never randomize per emit."
+        ),
+    )
     severity: DiagnosticSeverity = DiagnosticSeverity.ERROR
     phase: DiagnosticPhase
     code: str = Field(description="A key from DIAGNOSTIC_CODES.")
@@ -151,6 +162,18 @@ class Diagnostic(BaseModel):
         """
         text = str(exc).strip() or exc.__class__.__name__
         first_line = text.splitlines()[0]
+        # A factory built to run inside except blocks must never raise and
+        # mask the original failure — an unregistered code degrades to
+        # unexpected_error with the intended code preserved in detail.
+        if code not in DIAGNOSTIC_CODES:
+            return cls(
+                phase=phase,
+                code="unexpected_error",
+                message=first_line,
+                detail=f"(unregistered diagnostic code '{code}')\n{text}",
+                object=object,
+                hint=hint,
+            )
         return cls(
             phase=phase,
             code=code,

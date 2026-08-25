@@ -37,12 +37,44 @@ export const DIAGNOSTIC_SEVERITIES = ['error', 'warning', 'info', 'hint'];
 
 export const DIAGNOSTIC_PHASES = ['parse', 'compile', 'run', 'serve', 'save', 'commit', 'deploy'];
 
+// The append-only code vocabulary — mirror of DIAGNOSTIC_CODES in
+// visivo/models/diagnostic.py. Viewer branches (join-fix cards, not-built
+// empty states) key off these strings.
+export const DIAGNOSTIC_CODES = [
+  'extra_forbidden',
+  'missing_field',
+  'invalid_value',
+  'broken_reference',
+  'expression_parse_failed',
+  'yaml_parse_failed',
+  'source_locked',
+  'source_connection_failed',
+  'dependency_failed',
+  'missing_relation',
+  'ambiguous_relation',
+  'query_execution_failed',
+  'schema_build_failed',
+  'not_built',
+  'commit_validation_failed',
+  'unexpected_error',
+];
+
 /**
  * Read the diagnostics off any wire payload that may or may not carry them.
- * @param {?Object} payload  e.g. a run's `error_json` or an `error.json` body.
+ * Tolerates a payload that arrives as a JSON-encoded string — `error_json`
+ * is documented to show up that way in some older run rows.
+ * @param {?Object|string} payload  e.g. a run's `error_json` or an `error.json` body.
  * @returns {Diagnostic[]}
  */
 export const diagnosticsFrom = payload => {
-  if (!payload || !Array.isArray(payload.diagnostics)) return [];
-  return payload.diagnostics.filter(d => d && typeof d.message === 'string');
+  let parsed = payload;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  if (!parsed || !Array.isArray(parsed.diagnostics)) return [];
+  return parsed.diagnostics.filter(d => d && typeof d.message === 'string');
 };
