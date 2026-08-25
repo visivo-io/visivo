@@ -88,7 +88,11 @@ class DuckdbSource(ServerSource, BaseDuckdbSource):
                 Logger.instance().debug(
                     f"Database file {database_path} does not exist, creating it"
                 )
-                os.makedirs(os.path.dirname(database_path), exist_ok=True)
+                # `or "."` — a bare filename like `bike.duckdb` makes dirname()
+                # return '' and makedirs('') raises FileNotFoundError('' ),
+                # which surfaced as "[Errno 2] No such file or directory: ''"
+                # on the first seed run (M10).
+                os.makedirs(os.path.dirname(database_path) or ".", exist_ok=True)
                 # Create the database file
                 temp_conn = duckdb.connect(database_path)
                 temp_conn.close()
@@ -168,8 +172,9 @@ class DuckdbSource(ServerSource, BaseDuckdbSource):
         import duckdb
         import os
 
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(database_path), exist_ok=True)
+        # Ensure directory exists (`or "."`: bare filenames make dirname()
+        # return '' and makedirs('') raises — M10)
+        os.makedirs(os.path.dirname(database_path) or ".", exist_ok=True)
 
         # Remove file if it exists (in case it's an invalid empty file)
         if os.path.exists(database_path):
