@@ -18,8 +18,10 @@ import RowTemplateMenu from './RowTemplateMenu';
  *   - A between-rows "+ Add row" pill revealed on hover in each top-level row
  *     gap (measured from the live `data-canvas-path` row boxes, the same scheme
  *     CanvasDndLayer reads).
- *   - The EMPTY-canvas CTA (D-8): a prominent mulberry "Add row" button +
- *     helper copy, shown when the dashboard has zero rows.
+ *   - The EMPTY-canvas CTA (D-8), shown when the dashboard has zero rows:
+ *     helper copy with the SAME dashed "Add row" button under it (one shared
+ *     <AddRowButton>, not a look-alike — the empty state used to render its own
+ *     solid mulberry variant).
  *
  * Each trigger opens <RowTemplateMenu>; selecting a template builds a row of
  * empty slots (canvasReorder.buildTemplateRow) and inserts it at the trigger's
@@ -43,6 +45,25 @@ const PlusIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
     <path d="M12 5v14M5 12h14" />
   </svg>
+);
+
+/**
+ * The dashed "+ Add row" button. ONE component for both the end-of-canvas
+ * trigger and the empty-canvas CTA, so the two are literally the same button
+ * rather than two look-alikes that drift (the empty state used to render a
+ * solid mulberry variant of its own).
+ */
+const AddRowButton = ({ testId, onClick }) => (
+  <button
+    type="button"
+    data-testid={testId}
+    onClick={onClick}
+    className="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-dashed bg-white px-4 text-[13px] font-medium transition-colors hover:bg-primary-50"
+    style={{ borderColor: MULBERRY, color: 'var(--color-primary-600)' }}
+  >
+    <PlusIcon className="h-4 w-4" />
+    Add row
+  </button>
 );
 
 const measure = (el, rootEl) => {
@@ -200,28 +221,32 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
     return (
       <div
         data-testid="canvas-add-row-empty"
-        className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center ${
+        // Anchored to the TOP with its own height, NOT `inset-0` + centering.
+        // With zero rows <Dashboard> renders nothing and the canvas root's
+        // `flex-1` is inert inside MiddlePane's plain `overflow-auto` wrapper,
+        // so the root collapses to ~0px. Centering inside that box spilled half
+        // the CTA UPWARD, behind the breadcrumb/lens chrome — whichever element
+        // sat on top was invisible (first the button, then the helper text).
+        // A real min-height gives the CTA somewhere to live.
+        className={`pointer-events-none absolute inset-x-0 top-0 flex min-h-[320px] flex-col items-center justify-center ${
           openMenu ? 'z-[100]' : 'z-10'
         }`}
       >
         <div className="pointer-events-auto relative flex flex-col items-center">
-          <button
-            type="button"
-            data-testid="canvas-add-row-empty-button"
-            onClick={() => setOpenMenu(o => (o?.kind === 'empty' ? null : { kind: 'empty' }))}
-            className="inline-flex h-12 items-center gap-2 rounded-lg px-6 text-[14px] font-semibold text-white shadow-md transition-colors"
-            style={{ backgroundColor: MULBERRY }}
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add row
-          </button>
           {/* VIS-1231: this used to read "Drag a chart from the Library to
               begin", but an empty dashboard has no row to drop INTO — the drag
-              silently did nothing. Rows come first; say so. */}
-          <p className="mt-3 max-w-[360px] text-center text-[12.5px] leading-relaxed text-gray-500">
+              silently did nothing. Rows come first; say so, then offer the
+              action directly under it. */}
+          <p className="max-w-[360px] text-center text-[12.5px] leading-relaxed text-gray-500">
             Dashboards are built from rows. Add one to start, then drag charts,
             tables, and markdown from the Library into it.
           </p>
+          <div className="mt-4">
+            <AddRowButton
+              testId="canvas-add-row-empty-button"
+              onClick={() => setOpenMenu(o => (o?.kind === 'empty' ? null : { kind: 'empty' }))}
+            />
+          </div>
           {openMenu?.kind === 'empty' && (
             <RowTemplateMenu
               anchor="top"
@@ -307,16 +332,10 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
         }
       >
         <div className="relative flex items-center justify-center">
-          <button
-            type="button"
-            data-testid="canvas-add-row-end-button"
+          <AddRowButton
+            testId="canvas-add-row-end-button"
             onClick={() => setOpenMenu(o => (o?.kind === 'end' ? null : { kind: 'end' }))}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-dashed bg-white px-4 text-[13px] font-medium transition-colors hover:bg-primary-50"
-            style={{ borderColor: MULBERRY, color: 'var(--color-primary-600)' }}
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add row
-          </button>
+          />
           {openMenu?.kind === 'end' && (
             <RowTemplateMenu
               anchor="bottom"

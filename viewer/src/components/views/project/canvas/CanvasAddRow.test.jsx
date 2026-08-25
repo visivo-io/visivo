@@ -8,7 +8,7 @@
  * inline-create telemetry.
  */
 import React, { useRef } from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 import CanvasAddRow from './CanvasAddRow';
 import useStore from '../../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../../workspace/telemetry';
@@ -86,6 +86,34 @@ describe('CanvasAddRow — empty canvas (D-8)', () => {
     // does nothing on a dashboard with no row to drop into.
     expect(screen.getByText(/built from rows/i)).toBeInTheDocument();
     expect(screen.queryByText(/drag a chart from the library to begin/i)).not.toBeInTheDocument();
+  });
+
+  // The canvas root collapses to ~0px height when the dashboard has no rows
+  // (nothing renders inside it), so an `inset-0` + `justify-center` CTA spilled
+  // half its content UPWARD behind the breadcrumb/lens chrome — the helper text
+  // and the button took turns being invisible depending on their order.
+  test('gives the CTA its own height instead of centering in a zero-height root', () => {
+    render(<Harness dashboardName="empty-dash" />);
+    const layer = screen.getByTestId('canvas-add-row-empty');
+    expect(layer.className).toContain('top-0');
+    expect(layer.className).toMatch(/min-h-\[\d+px\]/);
+    // Not stretched to a root that has no height to stretch to.
+    expect(layer.className).not.toContain('inset-0');
+  });
+
+  // The empty CTA and the end-of-canvas trigger render the SAME dashed button,
+  // so the canvas offers one recognisable "Add row" affordance everywhere.
+  test('uses the same dashed Add row button as the rest of the canvas', () => {
+    render(<Harness dashboardName="empty-dash" />);
+    const emptyBtn = screen.getByTestId('canvas-add-row-empty-button');
+    expect(emptyBtn).toHaveTextContent('Add row');
+    expect(emptyBtn.className).toContain('border-dashed');
+
+    // Same classes the populated canvas's end button carries.
+    cleanup();
+    setDashboards([{ name: 'dash', config: { rows: [{ height: 'medium', items: [{ width: 1 }] }] } }]);
+    render(<Harness dashboardName="dash" />);
+    expect(screen.getByTestId('canvas-add-row-end-button').className).toBe(emptyBtn.className);
   });
 
   // VIS-1231: the "+ New chart / table / markdown" shortcuts are gone — they
