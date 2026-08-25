@@ -26,7 +26,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                 insight_file = os.path.join(output_dir, run_id, "insights", f"{name}.json")
 
                 if not os.path.exists(insight_file):
-                    Logger.instance().info(f"Insight file not found: {insight_file}")
+                    Logger.instance().debug(f"Insight file not found: {insight_file}")
                     missing_insights.append(name)
                     continue
 
@@ -63,7 +63,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                     return jsonify({"error": f"Error loading insight '{name}': {str(e)}"}), 500
 
             if missing_insights:
-                Logger.instance().info(f"Missing insight files: {missing_insights}")
+                Logger.instance().debug(f"Missing insight files: {missing_insights}")
                 if not insights:
                     return (
                         jsonify({"error": f"No insight files found for: {missing_insights}"}),
