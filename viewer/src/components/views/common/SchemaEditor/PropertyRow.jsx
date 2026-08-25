@@ -291,13 +291,42 @@ export function PropertyRow({
     () => pillGrammar.parse(body, pillFieldOpts),
     [body, pillFieldOpts]
   );
+
+  // VIS-1240: whether this value CAN render as a pill — a pure function of the
+  // parsed value.
+  const pillEligible =
+    isQueryFormValue && pillState.kind !== 'opaque' && pillState.kind !== 'custom';
+
+  // VIS-1240 (flip #1 — mid-typing). `pillEligible` is re-derived from the LIVE
+  // text on every keystroke, so typing an expression by hand used to swap the
+  // editor out from under the caret the instant a partial string happened to
+  // parse (`${ref(q).gdp}`), then swap back on the next character (` / 100`).
+  // While the raw editor holds focus the representation is frozen: the user is
+  // mid-thought, and re-deciding is what loses their cursor.
+  const [rawEditing, setRawEditing] = useState(false);
+  const handleRawFocus = useCallback(() => setRawEditing(true), []);
+  const handleRawBlur = useCallback(e => {
+    // Focus moving WITHIN the editor (to its "+ add ref" button, the mention
+    // dropdown) still fires focusout — only a real exit ends the edit.
+    if (!e.currentTarget.contains(e.relatedTarget)) setRawEditing(false);
+  }, []);
+
+  // VIS-1240 (flip #2 — async field tables). `pillFieldOpts` is built from
+  // `s.metrics`/`s.dimensions`, which start `[]`, so a bare `?{${ref(name)}}`
+  // parses as `opaque` until those lists arrive — it painted as raw code and
+  // then jumped to a pill (or back, if a refetch emptied them). Hold the last
+  // decision while a fetch is in flight instead of re-deciding on data that is
+  // still moving.
+  const fieldTablesLoading = useStore(s => !!s.metricsLoading || !!s.dimensionsLoading);
+  const lastEligibleRef = useRef(pillEligible);
+  if (!fieldTablesLoading) lastEligibleRef.current = pillEligible;
+  const stablePillEligible = fieldTablesLoading ? lastEligibleRef.current : pillEligible;
+
   const showPill =
-    droppable &&
     currentMode === 'query' &&
-    isQueryFormValue &&
-    pillState.kind !== 'opaque' &&
-    pillState.kind !== 'custom' &&
-    !forceRawEdit;
+    stablePillEligible &&
+    !forceRawEdit &&
+    !rawEditing;
 
   // D3 (e2e-gap-review.md delta pass): "Custom aggregation…" is otherwise a
   // ONE-WAY RATCHET into raw-text mode — `forceRawEdit` is only ever reset
@@ -314,12 +343,7 @@ export function PropertyRow({
   // valid; `onClick` just flips `forceRawEdit` back to `false` so the SAME
   // value renders as a pill instead of text).
   const canReturnToPill =
-    droppable &&
-    currentMode === 'query' &&
-    isQueryFormValue &&
-    forceRawEdit &&
-    pillState.kind !== 'opaque' &&
-    pillState.kind !== 'custom';
+    droppable && currentMode === 'query' && forceRawEdit && pillEligible;
 
   const pillType = pillState.kind === 'aggregate' || pillState.kind === 'metricRef' ? 'metric' : 'dimension';
   const pillLabel =
@@ -404,14 +428,25 @@ export function PropertyRow({
               type="button"
               aria-label="static value"
               aria-pressed={currentMode === 'static'}
-              disabled={disabled}
+              // VIS-1240 (flip #3): this button used to lie. `currentMode` is
+              // `forceQueryMode || isQueryMode`, so with a `?{...}` value
+              // stored, clicking "static" cleared the override but `isQueryMode`
+              // held the row in query mode — the button visibly depressed and
+              // snapped straight back. It CAN'T demote: a `?{...}` string in a
+              // static number input mangles character-by-character. So say why
+              // instead of pretending: an expression must be cleared first.
+              disabled={disabled || isQueryMode}
+              title={
+                isQueryMode
+                  ? 'Clear the expression to use a static value'
+                  : 'Static value'
+              }
               onClick={() => handleModeChange('static')}
               className={`p-1 transition-colors ${
                 currentMode === 'static'
                   ? 'bg-primary-100 text-primary-700'
                   : 'bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title="Static value"
             >
               <PiSliders size={14} />
             </button>
@@ -517,16 +552,26 @@ export function PropertyRow({
                 />
               ) : (
                 <>
-                  <RefTextArea
-                    value={body}
-                    onChange={handleQueryChange}
-                    label=""
-                    rows={2}
-                    helperText={description}
-                    disabled={disabled}
-                    allowedTypes={['model', 'dimension', 'metric', 'input']}
-                    restrictBrackets
-                  />
+                  {/* VIS-1240: the focus wrapper is what freezes pill-vs-text
+                      while the user is typing. React's onFocus/onBlur are
+                      focusin/focusout, so they catch focus anywhere inside —
+                      no prop changes to RefTextArea, which 8+ surfaces share. */}
+                  <div
+                    onFocus={handleRawFocus}
+                    onBlur={handleRawBlur}
+                    data-testid={`property-${path}-raw-editor`}
+                  >
+                    <RefTextArea
+                      value={body}
+                      onChange={handleQueryChange}
+                      label=""
+                      rows={2}
+                      helperText={description}
+                      disabled={disabled}
+                      allowedTypes={['model', 'dimension', 'metric', 'input']}
+                      restrictBrackets
+                    />
+                  </div>
                   {canReturnToPill && (
                     <button
                       type="button"

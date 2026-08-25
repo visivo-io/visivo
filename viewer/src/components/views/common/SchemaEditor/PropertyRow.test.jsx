@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { PropertyRow } from './PropertyRow';
 import useStore from '../../../../stores/store';
 
@@ -651,7 +651,79 @@ describe('PropertyRow', () => {
       expect(screen.getByTestId('property-pill-x')).not.toHaveAttribute('data-warning');
     });
 
-    test('the SAME recognized value falls back to RefTextArea when NOT droppable (fork is gated, not universal)', () => {
+    // ── VIS-1240: the three reasons the editor appeared to change at random ──
+
+    const queryRowProps = extra => ({
+      path: 'x',
+      value: '?{count(distinct ${ref(orders_q).id})}', // opaque -> raw editor
+      onChange: jest.fn(),
+      onRemove: jest.fn(),
+      schema: { oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] },
+      defs: queryStringDef,
+      droppable: true,
+      ...extra,
+    });
+
+    test('flip #1: typing does not swap the editor out from under the caret', () => {
+      const { rerender } = render(<PropertyRow {...queryRowProps()} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+      // The user clicks into the raw editor and starts typing.
+      fireEvent.focus(screen.getByTestId('ref-input'));
+      // Mid-keystroke the text momentarily parses as a clean ref. Before this
+      // fix the pill replaced the editor here and the caret was lost.
+      rerender(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+      expect(screen.queryByTestId('property-pill-x')).not.toBeInTheDocument();
+
+      // Once they leave the field, it settles into the pill.
+      fireEvent.blur(screen.getByTestId('property-x-raw-editor'));
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+    });
+
+    test('flip #1: focus moving WITHIN the raw editor does not end the edit', () => {
+      const { rerender } = render(<PropertyRow {...queryRowProps()} />);
+      const input = screen.getByTestId('ref-input');
+      fireEvent.focus(input);
+      // focusout fires when focus hops to a sibling control inside the editor
+      // (its "+ add ref" button); `relatedTarget` still inside means keep editing.
+      fireEvent.blur(screen.getByTestId('property-x-raw-editor'), { relatedTarget: input });
+      rerender(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+    });
+
+    test('flip #2: the representation is held while the field tables are loading', () => {
+      // A bare `${ref(name)}` only resolves once metrics/dimensions arrive; until
+      // then it parses as opaque. Re-deciding on data still in flight is what
+      // made a value paint as raw code and then jump to a pill.
+      const props = queryRowProps({ value: '?{${ref(revenue)}}' });
+      const { rerender } = render(<PropertyRow {...props} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+      act(() => useStore.setState({ metricsLoading: true }));
+      rerender(<PropertyRow {...props} />);
+      // Still the raw editor — not re-decided mid-fetch.
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+      act(() => useStore.setState({ metricsLoading: false }));
+    });
+
+    test('flip #3: the static toggle says why it cannot demote instead of snapping back', () => {
+      render(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+      const staticBtn = screen.getByLabelText('static value');
+      // It used to depress and immediately revert, because `currentMode` ORs in
+      // `isQueryMode`. A `?{...}` string cannot render in a static number input.
+      expect(staticBtn).toBeDisabled();
+      expect(staticBtn).toHaveAttribute('title', 'Clear the expression to use a static value');
+    });
+
+    // VIS-1240 (flip #3): this used to assert the opposite — the pill was gated
+    // on `droppable`, so the SAME stored value rendered as a pill in the Build
+    // rail and as raw text in the right rail. That surface-dependent split was
+    // one of the three reasons the editor appeared to change at random.
+    // DROPPING is still gated on `droppable`; how a value RENDERS is now a
+    // property of the value alone.
+    test('the SAME recognized value renders as a pill even when NOT droppable', () => {
       render(
         <PropertyRow
           {...defaultProps}
@@ -661,8 +733,10 @@ describe('PropertyRow', () => {
           value="?{${ref(orders_q).amount}}"
         />
       );
-      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
-      expect(screen.queryByTestId('pill-menu-trigger')).not.toBeInTheDocument();
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-trigger')).toBeInTheDocument();
+      // …but the row is not a drop target.
+      expect(screen.queryByTestId('droppable-property-x')).not.toBeInTheDocument();
     });
 
     test('an opaque/unparseable expression always falls back to RefTextArea, even when droppable', () => {
