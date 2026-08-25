@@ -1,4 +1,4 @@
-import React, { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PiCaretDown, PiWarningCircle, PiTextAa, PiTrash } from 'react-icons/pi';
 import useStore from '../../../stores/store';
@@ -7,6 +7,7 @@ import { PRESET_AGGREGATIONS, isMedianSupported } from './pillGrammar';
 import { parseRefValue } from '../../../utils/refString';
 import { inferColumnTypes } from '../../../utils/inferColumnTypes';
 import { getSourceDialect } from '../../../stores/explorerStore';
+import { useModelColumns } from '../workspace/relations/useModelColumns';
 
 const AGG_LABELS = {
   sum: 'SUM',
@@ -189,13 +190,43 @@ function Divider() {
  */
 const PillMenu = React.forwardRef(
   (
-    { state, onSelectPreset, onCustomAggregation, onSaveAsMetric, onRemove, disabled = false },
+    {
+      state,
+      slice = null,
+      onApply,
+      onCustomAggregation,
+      onSaveAsMetric,
+      onRemove,
+      disabled = false,
+    },
     ref
   ) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
 
-  useImperativeHandle(ref, () => ({ open: () => setOpen(true) }), []);
+  // VIS-1241: the menu is a FORM now, not a list of instant commands. Every
+  // click used to commit and close, so changing an aggregation AND an index
+  // meant opening the menu twice, and there was no way to change the property
+  // at all. Edits collect in a draft and land on Apply.
+  const buildDraft = useCallback(
+    () => ({
+      useAs: state?.kind === 'aggregate' ? state.agg : 'dimension',
+      column: state?.column ?? '',
+      modifier: state?.modifier ?? '',
+      slice: slice ?? '',
+    }),
+    [state, slice]
+  );
+  const [draft, setDraft] = useState(buildDraft);
+
+  // Seeded on OPEN (not on every state change) so a re-render mid-edit can't
+  // stomp what the user is typing.
+  const openMenu = useCallback(() => {
+    setDraft(buildDraft());
+    setOpen(true);
+  }, [buildDraft]);
+
+  useImperativeHandle(ref, () => ({ open: openMenu }), [openMenu]);
 
   const isColumnBacked = state?.kind === 'dimension' || state?.kind === 'aggregate';
   const isNumeric = useColumnIsNumeric(isColumnBacked ? state.ref : null, state?.column);
@@ -209,13 +240,13 @@ const PillMenu = React.forwardRef(
   const saveAsMetricEnabled =
     (state?.kind === 'aggregate' || state?.kind === 'custom') && typeof onSaveAsMetric === 'function';
 
-  const presetIsSelected = preset => {
-    if (preset === 'dimension') return state?.kind === 'dimension';
-    return state?.kind === 'aggregate' && state?.agg === preset;
-  };
+  const presetIsSelected = preset => draft.useAs === preset;
 
-  const handleSelect = preset => {
-    onSelectPreset?.(preset);
+  // Selecting a preset now EDITS the draft; nothing commits until Apply.
+  const handleSelect = preset => setDraft(d => ({ ...d, useAs: preset }));
+
+  const handleApply = () => {
+    onApply?.(draft);
     setOpen(false);
   };
 
@@ -240,7 +271,8 @@ const PillMenu = React.forwardRef(
         ref={triggerRef}
         onClick={e => {
           e.stopPropagation();
-          setOpen(o => !o);
+          if (open) setOpen(false);
+          else openMenu();
         }}
         disabled={disabled}
         aria-haspopup="menu"
@@ -256,6 +288,9 @@ const PillMenu = React.forwardRef(
         createPortal(
           <PillMenuPopover
             state={state}
+            draft={draft}
+            setDraft={setDraft}
+            onApply={handleApply}
             style={menuStyle}
             onClose={() => setOpen(false)}
             isNumeric={isNumeric}
@@ -289,6 +324,9 @@ PillMenu.displayName = 'PillMenu';
 
 const PillMenuPopover = ({
   state,
+  draft,
+  setDraft,
+  onApply,
   style,
   onClose,
   isNumeric,
@@ -304,6 +342,15 @@ const PillMenuPopover = ({
   triggerRef,
 }) => {
   const containerRef = useRef(null);
+  // Column list for the property picker. Requested HERE rather than in the
+  // parent because this component is mounted only while the menu is open — a
+  // property panel full of pills would otherwise fire one schema request per
+  // row on every render.
+  const modelName = isColumnBacked ? state?.ref || null : null;
+  const modelNames = useMemo(() => (modelName ? [modelName] : []), [modelName]);
+  const { columnsByModel, loading: columnsLoading } = useModelColumns(modelNames);
+  const columns = columnsByModel?.[modelName] || [];
+
   // T4 (pills-buildrail #5): measured-then-flip. `style` is the DOWNWARD
   // guess computed before the popover's actual content (a variable-length
   // preset list + header + collision warning) has rendered anywhere, so its
@@ -410,6 +457,52 @@ const PillMenuPopover = ({
 
       {isColumnBacked && (
         <>
+          {/* VIS-1241: the property picker — the half of the pill that could
+              never be changed here. The header was static text, so re-pointing
+              a pill at a different column meant a drag or a raw-text edit.
+              Columns come from the model-schema endpoint, which only started
+              answering for uncommitted models in #619. */}
+          <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            Property
+          </div>
+          <div className="px-3 pb-1.5">
+            {columns.length ? (
+              <select
+                value={draft.column}
+                onChange={e => setDraft(d => ({ ...d, column: e.target.value }))}
+                data-testid="pill-menu-property"
+                aria-label="Property"
+                className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
+              >
+                {!columns.includes(draft.column) && draft.column && (
+                  <option value={draft.column}>{draft.column}</option>
+                )}
+                {columns.map(c => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              // No schema to offer (never-run draft, non-SQL model): keep it
+              // editable rather than trapping the pill on its current column.
+              <input
+                type="text"
+                value={draft.column}
+                onChange={e => setDraft(d => ({ ...d, column: e.target.value }))}
+                data-testid="pill-menu-property"
+                aria-label="Property"
+                className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
+              />
+            )}
+            {/* A hint, not a replacement — the field stays editable while the
+                schema loads so a slow fetch never blocks the edit. */}
+            {columnsLoading && !columns.length && (
+              <div className="mt-1 text-[10px] text-gray-400" data-testid="pill-menu-columns-loading">
+                Loading columns…
+              </div>
+            )}
+          </div>
           <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
             Use as
           </div>
@@ -431,6 +524,65 @@ const PillMenuPopover = ({
           <Divider />
         </>
       )}
+
+      {/* Index — the post-query slice. Lived in a separate badge before, so
+          setting an aggregation and an index meant two different controls.
+          "All values" is the default and is deliberately NOT shown on the pill
+          itself; only a real index gets a badge. */}
+      <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+        Index
+      </div>
+      <div className="px-3 pb-1.5">
+        <select
+          value={draft.slice}
+          onChange={e => setDraft(d => ({ ...d, slice: e.target.value }))}
+          data-testid="pill-menu-index"
+          aria-label="Index"
+          className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
+        >
+          <option value="">All values</option>
+          <option value="[0]">First (0)</option>
+          <option value="[-1]">Last (-1)</option>
+        </select>
+      </div>
+
+      {/* Modifier — trailing SQL, applied INSIDE the `?{ }` so an index can
+          still follow it (`?{ sum(x) / 100 }[0]`). This is what keeps a
+          modified expression a pill instead of dropping it to raw text. */}
+      <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+        Modifier
+      </div>
+      <div className="px-3 pb-2">
+        <input
+          type="text"
+          value={draft.modifier}
+          onChange={e => setDraft(d => ({ ...d, modifier: e.target.value }))}
+          placeholder="/ 100"
+          data-testid="pill-menu-modifier"
+          aria-label="Modifier"
+          className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs font-mono text-gray-800 placeholder:text-gray-300 focus:border-primary-500 focus:outline-none"
+        />
+      </div>
+
+      <div className="flex items-center justify-end gap-2 px-3 pb-2 pt-1">
+        <button
+          type="button"
+          onClick={onClose}
+          data-testid="pill-menu-cancel"
+          className="rounded px-2 py-1 text-[11px] font-medium text-gray-500 hover:bg-gray-100"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onApply}
+          data-testid="pill-menu-apply"
+          className="rounded bg-primary-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-primary-700"
+        >
+          Apply
+        </button>
+      </div>
+      <Divider />
 
       <button
         type="button"

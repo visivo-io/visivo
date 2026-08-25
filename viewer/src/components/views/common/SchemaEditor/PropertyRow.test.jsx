@@ -768,7 +768,101 @@ describe('PropertyRow', () => {
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
       fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+      // VIS-1241: one commit, on Apply — not one per click.
+      expect(onChange).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
+      expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith('?{sum(${ref(orders_q).amount})}');
+    });
+
+    // ── VIS-1241: the pill is a self-contained editor ────────────────────
+    test('the modifier lands INSIDE the braces, so an index can still follow', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount})}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.change(screen.getByTestId('pill-menu-modifier'), { target: { value: '/ 100' } });
+      fireEvent.change(screen.getByTestId('pill-menu-index'), { target: { value: '[0]' } });
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
+
+      // `?{ ... }[0]`, never `?{ ... }[0] / 100` — the slice must be last.
+      expect(onChange).toHaveBeenCalledWith('?{sum(${ref(orders_q).amount}) / 100}[0]');
+    });
+
+    test('a modified expression re-opens as a pill with its modifier intact', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount}) / 100}[0]"
+          droppable
+        />
+      );
+      // Before the grammar learned modifiers this whole value was opaque and
+      // the pill vanished the moment a modifier was applied.
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      expect(screen.getByTestId('pill-menu-modifier')).toHaveValue('/ 100');
+      expect(screen.getByTestId('pill-menu-index')).toHaveValue('[0]');
+    });
+
+    test('changing the property re-points the pill', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      // No schema cached in jsdom, so the picker falls back to a text input —
+      // the point is that the property is editable here at all.
+      fireEvent.change(screen.getByTestId('pill-menu-property'), { target: { value: 'region' } });
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
+      expect(onChange).toHaveBeenCalledWith('?{${ref(orders_q).region}}');
+    });
+
+    test('the index badge is hidden at its default and shown once set', () => {
+      const { rerender } = render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      // "All values" is the default; it used to be restated on every row.
+      expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}[0]"
+          droppable
+        />
+      );
+      expect(screen.getByTestId('slice-badge')).toBeInTheDocument();
     });
 
     test('onSaveAsMetric threads through to PillMenu, called with the parsed pill state (Explore 2.0 Phase 4)', () => {
@@ -1091,7 +1185,7 @@ describe('PropertyRow', () => {
       });
     });
 
-    test('handleSelectPreset("dimension"): switching an AGGREGATE pill back to a plain dimension via the menu', () => {
+    test('Apply after picking "Dimension": switching an AGGREGATE pill back to a plain dimension via the menu', () => {
       const onChange = jest.fn();
       render(
         <PropertyRow
@@ -1106,6 +1200,7 @@ describe('PropertyRow', () => {
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
       fireEvent.click(screen.getByTestId('pill-menu-preset-dimension'));
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
       expect(onChange).toHaveBeenCalledWith('?{${ref(orders_q).amount}}');
     });
 

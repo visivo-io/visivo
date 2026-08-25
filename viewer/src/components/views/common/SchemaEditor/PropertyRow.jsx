@@ -371,15 +371,32 @@ export function PropertyRow({
     disabled: !showPill,
   });
 
-  const handleSelectPreset = useCallback(
-    preset => {
+  // VIS-1241: ONE commit for everything the pill editor changed — property,
+  // aggregation, modifier and index land in a single `onChange`. Previously
+  // each preset click committed on its own and the index was a separate
+  // control, so a two-part edit wrote the value twice.
+  const handlePillApply = useCallback(
+    ({ useAs, column, modifier, slice: nextSlice }) => {
+      const trimmedModifier = (modifier || '').trim();
+      const base =
+        useAs === 'dimension'
+          ? { kind: 'dimension', ref: pillState.ref, column }
+          : { kind: 'aggregate', agg: useAs, ref: pillState.ref, column };
+      // A metric/dimension REF pill has no model/column of its own — keep its
+      // kind and ref, and let the modifier ride along.
       const nextState =
-        preset === 'dimension'
-          ? { kind: 'dimension', ref: pillState.ref, column: pillState.column }
-          : { kind: 'aggregate', agg: preset, ref: pillState.ref, column: pillState.column };
-      handleQueryChange(pillGrammar.serialize(nextState));
+        pillState.kind === 'metricRef' || pillState.kind === 'dimensionRef'
+          ? { kind: pillState.kind, ref: pillState.ref }
+          : base;
+      if (trimmedModifier) nextState.modifier = trimmedModifier;
+      onChange(
+        serializeQueryString({
+          body: pillGrammar.serialize(nextState),
+          slice: nextSlice || null,
+        })
+      );
     },
-    [pillState, handleQueryChange]
+    [pillState, onChange]
   );
 
   const handlePillRemove = useCallback(() => {
@@ -395,11 +412,13 @@ export function PropertyRow({
   //    bare so we don't show a slicing UI for things we don't classify.
   // We also keep the badge visible when a slice is already authored
   // even if the body is empty, so the user can clear it.
+  // VIS-1241: only shown for a NON-DEFAULT index. Every query slot used to
+  // carry an "All values" badge — the default state, restated on every row,
+  // next to every pill. An index is now set from inside the pill's own editor,
+  // and the badge appears only once there is a real index to show (and to
+  // clear).
   const showSliceBadge =
-    currentMode === 'query' &&
-    isQueryFormValue &&
-    (!!body || !!slice) &&
-    slotShape !== 'unknown';
+    currentMode === 'query' && isQueryFormValue && !!slice && slotShape !== 'unknown';
 
   return (
     <div
@@ -540,7 +559,8 @@ export function PropertyRow({
                     <PillMenu
                       ref={pillMenuRef}
                       state={pillState}
-                      onSelectPreset={handleSelectPreset}
+                      slice={slice}
+                      onApply={handlePillApply}
                       onCustomAggregation={() => setForceRawEdit(true)}
                       onSaveAsMetric={
                         onSaveAsMetric ? () => onSaveAsMetric(pillState) : undefined

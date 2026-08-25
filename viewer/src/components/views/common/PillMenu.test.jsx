@@ -85,25 +85,28 @@ describe('PillMenu', () => {
     // up, re-opening the menu in the same tick that selecting a preset closed
     // it. The menu then stayed open forever and the next chevron click only
     // appeared to do nothing (it toggled the already-open menu shut).
-    const onSelectPreset = jest.fn();
+    const onApply = jest.fn();
     const reopen = jest.fn();
     render(
       // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
       <div onClick={reopen} data-testid="pill-body-ancestor">
         <PillMenu
           state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }}
-          onSelectPreset={onSelectPreset}
+          onApply={onApply}
         />
       </div>
     );
     openMenu();
     expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
 
+    // VIS-1241: a preset click EDITS the draft and leaves the menu open.
     fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+    expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
 
-    expect(onSelectPreset).toHaveBeenCalledWith('sum');
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'sum' }));
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
-    // The ancestor never saw the in-menu click, so nothing re-opened it.
+    // The ancestor never saw the in-menu clicks, so nothing re-opened it.
     expect(reopen).not.toHaveBeenCalled();
   });
 
@@ -117,31 +120,57 @@ describe('PillMenu', () => {
     expect(screen.getByTestId('pill-menu-preset-count')).toBeInTheDocument();
   });
 
-  test('selecting a preset calls onSelectPreset with the aggregation key and closes the menu', () => {
-    const onSelectPreset = jest.fn();
+  test('a preset selection stays open until Apply, then commits once', () => {
+    const onApply = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }}
-        onSelectPreset={onSelectPreset}
+        onApply={onApply}
       />
     );
     openMenu();
     fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
-    expect(onSelectPreset).toHaveBeenCalledWith('sum');
+    // Still open — the user may also want to set an index or a modifier.
+    expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+    expect(onApply).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'sum' }));
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
   });
 
-  test('clicking "Dimension" itself calls onSelectPreset(\'dimension\') and closes the menu', () => {
-    const onSelectPreset = jest.fn();
+  test('Cancel discards the draft without committing', () => {
+    const onApply = jest.fn();
+    render(
+      <PillMenu
+        state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }}
+        onApply={onApply}
+      />
+    );
+    openMenu();
+    fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+    fireEvent.click(screen.getByTestId('pill-menu-cancel'));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+
+    // Re-opening starts from the STORED state, not the abandoned draft.
+    openMenu();
+    expect(screen.getByTestId('pill-menu-preset-dimension')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('clicking "Dimension" drafts a switch back to a plain dimension', () => {
+    const onApply = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
-        onSelectPreset={onSelectPreset}
+        onApply={onApply}
       />
     );
     openMenu();
     fireEvent.click(screen.getByTestId('pill-menu-preset-dimension'));
-    expect(onSelectPreset).toHaveBeenCalledWith('dimension');
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'dimension' }));
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
   });
 
@@ -865,18 +894,19 @@ describe('PillMenu', () => {
     });
   });
 
-  test('selecting the "Dimension" row (not an aggregation preset) calls onSelectPreset with "dimension"', () => {
-    const onSelectPreset = jest.fn();
+  test('the "Dimension" row drafts `useAs: dimension` (not an aggregation preset)', () => {
+    const onApply = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
-        onSelectPreset={onSelectPreset}
+        onApply={onApply}
       />
     );
     openMenu();
     fireEvent.click(screen.getByTestId('pill-menu-preset-dimension'));
-    expect(onSelectPreset).toHaveBeenCalledWith('dimension');
-    expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pill-menu-preset-dimension')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'dimension' }));
   });
 
   test('a keydown inside the popover never bubbles to reach an ancestor handler (same portal-bubbling guard as click)', () => {

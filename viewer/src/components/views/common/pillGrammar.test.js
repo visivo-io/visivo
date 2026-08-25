@@ -223,3 +223,71 @@ describe('MEDIAN dialect gating', () => {
     expect(isMedianSupported('')).toBe(true);
   });
 });
+
+// ── VIS-1241: manual modifiers ────────────────────────────────────────────────
+// A modifier is trailing SQL after the reference (`/ 100`). Before this, ANY
+// trailing fragment dropped the whole expression to `opaque` and the pill
+// disappeared — which is why "add a modifier" meant "leave the editor".
+describe('pillGrammar — modifiers', () => {
+  test('aggregate + modifier parses, and round-trips byte-for-byte', () => {
+    const raw = 'sum(${ref(orders_q).amount}) / 100';
+    const state = parse(raw, OPTS);
+    expect(state).toEqual({
+      kind: 'aggregate',
+      agg: 'sum',
+      ref: 'orders_q',
+      column: 'amount',
+      modifier: '/ 100',
+      raw,
+    });
+    expect(serialize(state)).toBe(raw);
+  });
+
+  test('dimension + modifier parses and round-trips', () => {
+    const raw = '${ref(orders_q).region} || \'!\'';
+    const state = parse(raw, OPTS);
+    expect(state).toMatchObject({
+      kind: 'dimension',
+      ref: 'orders_q',
+      column: 'region',
+      modifier: "|| '!'",
+    });
+    expect(serialize(state)).toBe(raw);
+  });
+
+  test('a metric ref can carry a modifier too', () => {
+    const state = parse('${ref(churn_rate)} * 100', OPTS);
+    expect(state).toMatchObject({ kind: 'metricRef', ref: 'churn_rate', modifier: '* 100' });
+    expect(serialize(state)).toBe('${ref(churn_rate)} * 100');
+  });
+
+  test('the modifier serializes INSIDE the expression, so a slice can follow it', () => {
+    // `?{ sum(x) / 100 }[0]` is valid; `?{ sum(x) }[0] / 100` is not — the
+    // slice must be last. See mkdocs/topics/query-and-context-strings.md.
+    const body = serialize({
+      kind: 'aggregate',
+      agg: 'sum',
+      ref: 'orders_q',
+      column: 'amount',
+      modifier: '/ 100',
+    });
+    expect(`?{ ${body} }[0]`).toBe('?{ sum(${ref(orders_q).amount}) / 100 }[0]');
+  });
+
+  test('an unmodified expression is untouched by the modifier pass', () => {
+    const state = parse('sum(${ref(orders_q).amount})', OPTS);
+    expect(state.modifier).toBeUndefined();
+    expect(serialize(state)).toBe('sum(${ref(orders_q).amount})');
+  });
+
+  // The conservative half: a modifier means ONE reference plus trailing SQL.
+  // Anything else stays opaque rather than being misrepresented as a pill.
+  test.each([
+    ['a second reference is not a modifier', '${ref(a).x} + ${ref(b).y}'],
+    ['the canonical multi-call expression', 'count(distinct ${ref(orders_q).id}) / count(*)'],
+    ['arithmetic INSIDE the aggregate is different SQL', 'sum(${ref(orders_q).amount} / 100)'],
+    ['a non-preset function', 'date_trunc(\'week\', ${ref(orders_q).completed_at}) / 2'],
+  ])('%s -> opaque, raw verbatim', (_label, raw) => {
+    expect(parse(raw, OPTS)).toEqual({ kind: 'opaque', raw });
+  });
+});
