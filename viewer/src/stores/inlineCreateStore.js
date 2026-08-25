@@ -1,4 +1,5 @@
 import { generateUniqueName } from '../utils/uniqueName';
+import { createRow } from '../components/views/workspace/itemMutations';
 
 /**
  * Inline-create Store Slice
@@ -23,7 +24,12 @@ export const CREATE_TEMPLATES = {
     namePrefix: 'new-dashboard',
     collectionKey: 'dashboards',
     saveKey: 'saveDashboard',
-    config: () => ({ rows: [] }),
+    // VIS-1231: starts with ONE row, not zero. An empty dashboard can't accept
+    // a drag (there is no row to drop into), so a brand-new one landed the user
+    // on a canvas whose only useful action was "add a row" — the row is a
+    // prerequisite, not a choice. Born valid: one row holding one empty slot,
+    // which is also a live drop target (VIS-989).
+    config: () => ({ rows: [createRow()] }),
   },
   chart: {
     namePrefix: 'new-chart',

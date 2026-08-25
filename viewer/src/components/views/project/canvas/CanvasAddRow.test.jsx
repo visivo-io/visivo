@@ -8,7 +8,7 @@
  * inline-create telemetry.
  */
 import React, { useRef } from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import CanvasAddRow from './CanvasAddRow';
 import useStore from '../../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../../workspace/telemetry';
@@ -78,11 +78,24 @@ describe('CanvasAddRow — empty canvas (D-8)', () => {
     setDashboards([{ name: 'empty-dash', config: { rows: [] } }]);
   });
 
-  test('renders the prominent empty CTA + helper copy', () => {
+  test('renders the prominent empty CTA, and copy that names the row as the first step', () => {
     render(<Harness dashboardName="empty-dash" />);
     expect(screen.getByTestId('canvas-add-row-empty')).toBeInTheDocument();
     expect(screen.getByTestId('canvas-add-row-empty-button')).toBeInTheDocument();
-    expect(screen.getByText(/pick a row template/i)).toBeInTheDocument();
+    // VIS-1231: it used to say "drag a chart from the Library to begin", which
+    // does nothing on a dashboard with no row to drop into.
+    expect(screen.getByText(/built from rows/i)).toBeInTheDocument();
+    expect(screen.queryByText(/drag a chart from the library to begin/i)).not.toBeInTheDocument();
+  });
+
+  // VIS-1231: the "+ New chart / table / markdown" shortcuts are gone — they
+  // bounced the user to the Explorer from a dashboard that still had no row to
+  // place anything into.
+  test('offers no inline-create shortcuts', () => {
+    render(<Harness dashboardName="empty-dash" />);
+    ['chart', 'table', 'markdown'].forEach(type => {
+      expect(screen.queryByTestId(`canvas-inline-create-${type}`)).not.toBeInTheDocument();
+    });
   });
 
   test('opening the menu then picking a template commits a templated row at index 0', () => {
@@ -109,37 +122,6 @@ describe('CanvasAddRow — empty canvas (D-8)', () => {
     expect(addRow.payload).toMatchObject({ kind: 'add_row', template: 'blank' });
   });
 
-  // Explore 2.0 Phase 3b cutover (B5): the old dead `/explorer?create=<type>`
-  // navigation is replaced by the return_to placement-intent mechanism —
-  // mint a fresh exploration carrying `{dashboard}` and open its tab.
-  test('inline-create fires inline_create_used and mints a return_to-carrying exploration tab', async () => {
-    const events = [];
-    const unsub = setWorkspaceTelemetryListener(e => events.push(e));
-    render(<Harness dashboardName="empty-dash" />);
-    fireEvent.click(screen.getByTestId('canvas-inline-create-chart'));
-    await waitFor(() => expect(mockOpenWorkspaceTab).toHaveBeenCalled());
-    unsub();
-    // §3.4 payload convention: source (initiating surface) + kind (object type).
-    expect(events.find(e => e.eventName === 'inline_create_used')?.payload).toEqual({
-      source: 'canvas',
-      kind: 'chart',
-      dashboardName: 'empty-dash',
-    });
-    expect(mockCreateExploration).toHaveBeenCalledWith(null, { dashboard: 'empty-dash' });
-    expect(mockOpenWorkspaceTab).toHaveBeenCalledWith({
-      id: 'exploration:exp_new1',
-      type: 'exploration',
-      name: 'exp_new1',
-    });
-  });
-
-  test('inline-create does not open a tab when minting the exploration fails', async () => {
-    mockCreateExploration.mockResolvedValueOnce({ success: false });
-    render(<Harness dashboardName="empty-dash" />);
-    fireEvent.click(screen.getByTestId('canvas-inline-create-chart'));
-    await waitFor(() => expect(mockCreateExploration).toHaveBeenCalled());
-    expect(mockOpenWorkspaceTab).not.toHaveBeenCalled();
-  });
 });
 
 describe('CanvasAddRow — populated canvas (D-7)', () => {
@@ -162,6 +144,33 @@ describe('CanvasAddRow — populated canvas (D-7)', () => {
     expect(screen.getByTestId('canvas-add-row-end-button')).toBeInTheDocument();
     // The empty CTA is NOT shown when rows exist.
     expect(screen.queryByTestId('canvas-add-row-empty')).not.toBeInTheDocument();
+  });
+
+  // VIS-1231: the end button used to be pinned to the canvas floor
+  // (`bottom-2`), so on a dashboard whose rows reached the bottom the dashed
+  // button rendered ON TOP of the last cell. It is now measured from the last
+  // row's box.
+  test('parks the end button BELOW the last row, not pinned to the canvas floor', () => {
+    const BOXES = {
+      root: { top: 0, left: 0, width: 800, height: 600, bottom: 600, right: 800 },
+      'row-el-0': { top: 0, left: 0, width: 800, height: 200, bottom: 200, right: 800 },
+      'row-el-1': { top: 210, left: 0, width: 800, height: 190, bottom: 400, right: 800 },
+    };
+    const original = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function () {
+      const tid = this.getAttribute && this.getAttribute('data-testid');
+      return BOXES[tid] || BOXES.root;
+    };
+    try {
+      render(<DomHarness dashboardName="dash" />);
+      const holder = screen.getByTestId('canvas-add-row-end');
+      // Last row spans 210 → 400, so the button clears it by END_BUTTON_GAP.
+      expect(holder.style.top).toBe('412px');
+      // …and is no longer floor-pinned.
+      expect(holder.style.bottom).toBe('');
+    } finally {
+      Element.prototype.getBoundingClientRect = original;
+    }
   });
 
   test('end trigger → pick template → appends a row at the end', () => {
