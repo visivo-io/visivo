@@ -25,8 +25,17 @@ def test_every_command_option_has_help_text():
         for param in command.params:
             if param.param_type_name != "option":
                 continue
-            if param.name == "help":
-                continue
             if not param.help:
                 missing.append(f"{name} --{param.name}")
     assert missing == [], f"Options with blank help: {missing}"
+
+
+def test_group_level_options_have_help_text():
+    """`visivo --help` itself is the most visible screen — its own options
+    (-p/--profile, -e/--env-file, --verbose, --version) must carry help."""
+    missing = [
+        f"visivo --{param.name}"
+        for param in visivo.params
+        if param.param_type_name == "option" and not param.help
+    ]
+    assert missing == [], f"Group options with blank help: {missing}"

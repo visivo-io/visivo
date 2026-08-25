@@ -43,7 +43,7 @@ def init(project_dir, example, bare, headless, no_onboarding, port):
     By default, creates a scaffolded project.visivo.yml file with commented examples
     and continues into `visivo serve` to open the in-browser onboarding wizard.
 
-    Use --example to load an example project from GitHub instead of the scaffold.
+    Use --example to start from a bundled example project instead of the scaffold.
     Use --bare to skip auto-launching the dev server.
     Use --headless to skip opening the browser.
     Use --no-onboarding to skip the ?onboarding=1 query param when launching the browser.

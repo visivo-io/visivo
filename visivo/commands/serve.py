@@ -54,10 +54,11 @@ def serve(
     pd,
     no_deprecation_warnings,
 ):
-    """Compiles and runs the project, then serves the local web app for building and viewing dashboards.
+    """Serves the local web app for building and viewing dashboards.
 
-    Watches your project files and hot-reloads on changes. In an empty directory
-    (or with --new) it scaffolds a new project first.
+    Builds the project on launch, watches your project files, and hot-reloads
+    on changes. In an empty directory (or with --new) it starts a fresh
+    in-memory project and opens the in-browser setup wizard.
     """
     start_time = time()
     logger = Logger.instance()

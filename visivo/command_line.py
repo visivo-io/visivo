@@ -7,7 +7,10 @@ from visivo.logger.logger import Logger, TypeEnum
 
 # `visivo --version` / `--help` must emit only what was asked for — no startup
 # banner, no execution-time line (2.1 field test, CLI-help project).
-QUIET_INVOCATION = bool({"--version", "--help", "-h"} & set(_sys.argv[1:]))
+# Note: "-h" is NOT a help alias in this CLI — it is the short flag for
+# --host on deploy/archive/authorize — so only the long forms are quiet.
+# A bare `visivo` prints usage, which is help-shaped output too.
+QUIET_INVOCATION = len(_sys.argv) <= 1 or bool({"--version", "--help"} & set(_sys.argv[1:]))
 
 if not QUIET_INVOCATION:
     Logger.instance().info("Starting Visivo...")
@@ -39,8 +42,13 @@ from visivo.version import VISIVO_VERSION
 
 
 @click.group()
-@click.option("-p", "--profile", is_flag=True)
-@click.option("-e", "--env-file", default=".env")
+@click.option(
+    "-p",
+    "--profile",
+    is_flag=True,
+    help="Profile execution with cProfile and write visivo-profile.dmp on exit.",
+)
+@click.option("-e", "--env-file", default=".env", help="Env file to load before running.")
 @click.version_option(version=VISIVO_VERSION)
 @verbose
 def visivo(env_file, profile, verbose):
