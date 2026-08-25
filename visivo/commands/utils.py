@@ -88,11 +88,17 @@ def get_profile_file(home_dir=os.path.expanduser("~")):
 
 
 def create_file_database(url, output_dir: str):
+    """Create a database seeded with demo tables. For `visivo init` and tests ONLY.
+
+    Never call this on a path a user supplied — it writes `test_table` /
+    `second_test_table` into whatever database it is pointed at (M9).
+    User-supplied paths go through `ensure_file_database` instead.
+    """
     from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert
 
     if output_dir != "":
         os.makedirs(output_dir, exist_ok=True)
-    engine = create_engine(url, echo=True)
+    engine = create_engine(url)
     metadata_obj = MetaData()
     table = Table(
         "test_table",
@@ -112,6 +118,26 @@ def create_file_database(url, output_dir: str):
             connection.execute(insert(table).values(x=v[0], y=v[1]))
             connection.execute(insert(second_table).values(x=v[0], y=v[1] * 2))
             connection.commit()
+
+
+def ensure_file_database(source, output_dir: str):
+    """Create an empty database file for a file-backed source when none exists.
+
+    Connecting once is enough for SQLite/DuckDB to create the file; no DDL is
+    ever run. An existing file is left completely untouched — before this
+    guard, `create_source` ran `create_file_database` against the user's own
+    database and wrote `test_table` / `second_test_table` into it (M9).
+    """
+    from sqlalchemy import create_engine
+
+    if Path(source.database).exists():
+        return
+    if output_dir != "":
+        os.makedirs(output_dir, exist_ok=True)
+    engine = create_engine(source.url())
+    with engine.connect():
+        pass
+    engine.dispose()
 
 
 def create_project_path(project_dir=None) -> Union[str, None]:
@@ -186,13 +212,13 @@ def create_source(
             name=source_name, database=str(local_db_path), type=SourceTypeEnum.duckdb
         )
         if source_type == SourceTypeEnum.duckdb:
-            create_file_database(source.url(), project_dir)
+            ensure_file_database(source, project_dir)
 
         return source
 
     if source_type == SourceTypeEnum.sqlite:
         source = SqliteSource(name=source_name, database=str(local_db_path), type=source_type)
-        create_file_database(source.url(), project_dir)
+        ensure_file_database(source, project_dir)
         return source
 
     if source_type == SourceTypeEnum.postgresql:
