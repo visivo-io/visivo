@@ -88,7 +88,7 @@ def get_profile_file(home_dir=os.path.expanduser("~")):
 
 
 def create_file_database(url, output_dir: str):
-    """Create a database seeded with demo tables. For `visivo init` and tests ONLY.
+    """Create a database seeded with demo tables. Used by the test suite ONLY.
 
     Never call this on a path a user supplied — it writes `test_table` /
     `second_test_table` into whatever database it is pointed at (M9).
@@ -130,14 +130,21 @@ def ensure_file_database(source, output_dir: str):
     """
     from sqlalchemy import create_engine
 
-    if Path(source.database).exists():
+    database_path = Path(source.database)
+    if database_path.exists():
         return
     if output_dir != "":
         os.makedirs(output_dir, exist_ok=True)
+    # A relative path like `data/shop.db` needs its parent to exist before
+    # SQLite/DuckDB can create the file on connect.
+    if str(database_path.parent) not in ("", "."):
+        os.makedirs(database_path.parent, exist_ok=True)
     engine = create_engine(source.url())
-    with engine.connect():
-        pass
-    engine.dispose()
+    try:
+        with engine.connect():
+            pass
+    finally:
+        engine.dispose()
 
 
 def create_project_path(project_dir=None) -> Union[str, None]:

@@ -21,7 +21,6 @@ from visivo.models.item import Item
 from visivo.models.row import Row
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.defaults import Defaults
-from visivo.commands.utils import create_file_database
 from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.commands.utils import get_source_types
 from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType

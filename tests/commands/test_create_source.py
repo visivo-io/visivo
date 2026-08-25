@@ -1,3 +1,4 @@
+import contextlib
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -9,7 +10,7 @@ from visivo.models.source import SourceTypeEnum
 
 
 def _sqlite_table_names(path):
-    with sqlite3.connect(path) as conn:
+    with contextlib.closing(sqlite3.connect(path)) as conn:
         rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
     return {row[0] for row in rows}
 
@@ -74,7 +75,7 @@ def test_create_source_sqlite_never_writes_tables_into_an_existing_database():
     """
     with tempfile.TemporaryDirectory() as project_dir:
         db_path = Path(project_dir) / "shop.db"
-        with sqlite3.connect(db_path) as conn:
+        with contextlib.closing(sqlite3.connect(db_path)) as conn:
             conn.execute("CREATE TABLE orders (id INTEGER, total REAL)")
             conn.execute("INSERT INTO orders VALUES (1, 9.99)")
             conn.commit()
@@ -89,7 +90,7 @@ def test_create_source_sqlite_never_writes_tables_into_an_existing_database():
 
         assert _sqlite_table_names(db_path) == {"orders"}
         assert db_path.stat().st_size == size_before
-        with sqlite3.connect(db_path) as conn:
+        with contextlib.closing(sqlite3.connect(db_path)) as conn:
             assert conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 1
 
 
@@ -136,3 +137,17 @@ def test_create_source_duckdb_creates_an_empty_database_when_the_file_is_missing
         db_path = Path(source.database)
         assert db_path.exists()
         assert _duckdb_table_names(db_path) == set()
+
+
+def test_create_source_sqlite_creates_missing_parent_directories():
+    """A wizard entry like `data/shop.db` must not 500 on a missing `data/`."""
+    with tempfile.TemporaryDirectory() as project_dir:
+        source = create_source(
+            source_name="nested",
+            source_type=SourceTypeEnum.sqlite,
+            database="data/shop.db",
+            project_dir=project_dir,
+        )
+        db_path = Path(source.database)
+        assert db_path.exists()
+        assert _sqlite_table_names(db_path) == set()
