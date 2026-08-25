@@ -85,12 +85,16 @@ export const CREATE_TEMPLATES = {
     namePrefix: 'new_dimension',
     collectionKey: 'dimensions',
     saveKey: 'saveDimension',
+    // Declared, not inferred: the backend rejects a dash in a dimension name,
+    // and a user-named dimension (`region`) carries no separator to infer from.
+    nameSeparator: '_',
     config: () => ({ expression: '1' }),
   },
   metric: {
     namePrefix: 'new_metric',
     collectionKey: 'metrics',
     saveKey: 'saveMetric',
+    nameSeparator: '_',
     config: () => ({ expression: 'count(*)' }),
   },
   relation: {
@@ -141,7 +145,9 @@ const createInlineCreateSlice = (set, get) => ({
       return { success: false, error: blocked };
     }
     const existing = (get()[template.collectionKey] || []).map(o => o.name);
-    const name = generateUniqueName(template.namePrefix, existing);
+    const name = generateUniqueName(template.namePrefix, existing, {
+      separator: template.nameSeparator,
+    });
     const result = await save(name, template.config(get()));
     return result?.success ? { ...result, name, type } : result;
   },

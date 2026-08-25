@@ -29,10 +29,16 @@ import { generateUniqueName } from '../../../utils/uniqueName';
 // named directly (`explorerStore.js`'s `createModelTab`/`createInsight`,
 // `explorationLegacyBridge.js`'s seed path) — anything else is treated as
 // already-meaningful (a user typed it, or renamed a chip) and left alone.
+// The collision suffix these have to recognise comes from `generateUniqueName`,
+// which now mints `-2` (the hyphen house style) where it used to mint `_2`.
+// Both are accepted: a project can hold names generated before and after that
+// change, and matching only one convention would silently stop suggesting a
+// real name for half the placeholders — the failure mode is invisible, because
+// the modal just shows the placeholder as if the user had chosen it.
 const GENERIC_NAME_PATTERNS = {
-  model: /^(query_\d+|model)$/i,
-  insight: /^insight(_\d+)?$/i,
-  chart: /^chart(_\d+)?$/i,
+  model: /^(query[_-]\d+|model([_-]\d+)?)$/i,
+  insight: /^insight([_-]\d+)?$/i,
+  chart: /^chart([_-]\d+)?$/i,
 };
 
 /**

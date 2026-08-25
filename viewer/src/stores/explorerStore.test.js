@@ -238,7 +238,7 @@ describe('explorerStore', () => {
       const state = useStore.getState();
       expect(state.explorerModelTabs).toHaveLength(2);
       expect(state.explorerModelTabs[0]).toBe('model');
-      expect(state.explorerModelTabs[1]).toBe('model_2');
+      expect(state.explorerModelTabs[1]).toBe('model-2');
     });
 
     it('switches active tab to the newly created tab', () => {
@@ -810,7 +810,7 @@ describe('explorerStore', () => {
       const names = useStore.getState().explorerChartInsightNames;
       expect(names).toHaveLength(2);
       expect(names[0]).toBe('insight');
-      expect(names[1]).toBe('insight_2');
+      expect(names[1]).toBe('insight-2');
     });
 
     it('sets new insight as active', () => {
@@ -1235,13 +1235,13 @@ describe('explorerStore', () => {
         explorerChartName: null,
         models: [],
         insights: [],
-        charts: [{ name: 'chart' }, { name: 'chart_2' }],
+        charts: [{ name: 'chart' }, { name: 'chart-2' }],
       });
 
       const name = useStore.getState().ensureExplorerChartName();
 
-      expect(name).toBe('chart_3');
-      expect(useStore.getState().explorerChartName).toBe('chart_3');
+      expect(name).toBe('chart-3');
+      expect(useStore.getState().explorerChartName).toBe('chart-3');
     });
   });
 
@@ -2988,8 +2988,8 @@ describe('explorerStore', () => {
         });
         useStore.getState().createInsight();
         const state = useStore.getState();
-        // insight_2 because the explorer already has 'insight' in its working state
-        expect(state.explorerChartInsightNames).toContain('insight_2');
+        // insight-2 because the explorer already has 'insight' in its working state
+        expect(state.explorerChartInsightNames).toContain('insight-2');
       });
     });
 
@@ -3050,7 +3050,7 @@ describe('explorerStore', () => {
         });
         useStore.getState().createModelTab();
         const state = useStore.getState();
-        expect(state.explorerModelTabs).toContain('model_2');
+        expect(state.explorerModelTabs).toContain('model-2');
       });
     });
 

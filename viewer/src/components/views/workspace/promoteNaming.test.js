@@ -81,7 +81,7 @@ describe('suggestPromoteNames', () => {
   test('avoids colliding with a known existing name by suffixing', () => {
     const rows = [row({ name: 'query_1' })];
     const suggestions = suggestPromoteNames(rows, () => 'orders', ['orders-query']);
-    expect(suggestions.get('model:query_1')).toBe('orders-query_2');
+    expect(suggestions.get('model:query_1')).toBe('orders-query-2');
   });
 
   test('an already-meaningful model still anchors a generic insight/chart', () => {
