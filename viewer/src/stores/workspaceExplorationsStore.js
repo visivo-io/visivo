@@ -808,6 +808,29 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       const results = [];
       const reclassificationOffers = [];
 
+      // Results must be TOTAL over the selection (M14): a selected row that is
+      // invalid or has vanished from the checklist used to produce NO results
+      // entry at all, and the `results.every(r => r.success)` success predicate
+      // below was then trivially true over the survivors — so a partial promote
+      // read as complete ("Save 3" → "Saved 2", no explanation). Every selected
+      // key that will not be promoted gets an explicit failure entry up front.
+      const promotableKeys = new Set(toPromote.map(row => `${row.type}:${row.name}`));
+      const checklistByKey = new Map(checklist.map(row => [`${row.type}:${row.name}`, row]));
+      for (const sel of selection || []) {
+        const key = `${sel.type}:${sel.name}`;
+        if (promotableKeys.has(key)) continue;
+        const checklistRow = checklistByKey.get(key);
+        results.push({
+          type: sel.type,
+          name: sel.name,
+          tier: checklistRow?.tier ?? null,
+          success: false,
+          error: checklistRow
+            ? checklistRow.error || 'Failed validation and was not promoted'
+            : 'No longer present in the exploration and was not promoted',
+        });
+      }
+
       for (const row of toPromote) {
         const saveActionName = SAVE_ACTION[row.type];
         const saveFn = saveActionName ? get()[saveActionName] : null;
@@ -871,7 +894,9 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           if (row?.status === 'modified') updateVsNew.updated += 1;
           else updateVsNew.new += 1;
         });
-      if (results.length > 0) {
+      // Emit only when a save was actually attempted — the total-results
+      // entries above are selections that never reached a save action.
+      if (toPromote.length > 0) {
         emitWorkspaceEvent('exploration_promoted', {
           id,
           objectCounts,

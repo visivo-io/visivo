@@ -1806,6 +1806,111 @@ describe('promoteExploration', () => {
     expect(saveModel).not.toHaveBeenCalled();
   });
 
+  test('M14: a selected row the checklist marked invalid produces an explicit FAILURE result, not silence', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow({ valid: false, error: 'bad expression' })]);
+    seedRecord();
+    act(() => useStore.setState({ saveModel: jest.fn() }));
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.results).toEqual([
+      {
+        type: 'model',
+        name: 'orders_q',
+        tier: 'model',
+        success: false,
+        error: 'bad expression',
+      },
+    ]);
+  });
+
+  test('M14: a selected row that has vanished from the checklist produces an explicit FAILURE result', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    const saveModel = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => useStore.setState({ saveModel }));
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'orders_q' },
+        { type: 'insight', name: 'ghost' },
+      ]);
+    });
+
+    // "Save 2 to project" must never report "Saved 1" as a success.
+    expect(result.success).toBe(false);
+    expect(result.results).toHaveLength(2);
+    expect(result.results.find(r => r.name === 'ghost')).toEqual({
+      type: 'insight',
+      name: 'ghost',
+      tier: null,
+      success: false,
+      error: 'No longer present in the exploration and was not promoted',
+    });
+    expect(result.results.find(r => r.name === 'orders_q').success).toBe(true);
+  });
+
+  test('M14: results are total over the selection — every selected key appears exactly once', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow(),
+      checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: {} }),
+      checklistRow({ type: 'chart', tier: 'chart', name: 'c1', valid: false, error: null, config: {} }),
+    ]);
+    seedRecord();
+    act(() =>
+      useStore.setState({
+        saveModel: jest.fn().mockResolvedValue({ success: true }),
+        saveInsight: jest.fn().mockResolvedValue({ success: true }),
+        saveChart: jest.fn(),
+      })
+    );
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'orders_q' },
+        { type: 'insight', name: 'churn' },
+        { type: 'chart', name: 'c1' },
+      ]);
+    });
+
+    expect(result.results.map(r => `${r.type}:${r.name}`).sort()).toEqual([
+      'chart:c1',
+      'insight:churn',
+      'model:orders_q',
+    ]);
+    expect(result.success).toBe(false);
+    const failed = result.results.find(r => r.type === 'chart');
+    // A null checklist error still yields a human-readable reason.
+    expect(failed.error).toBe('Failed validation and was not promoted');
+    expect(result.results.filter(r => r.success)).toHaveLength(2);
+  });
+
+  test('M14: an invalid-only selection does not emit exploration_promoted (nothing was attempted)', async () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      buildPromoteChecklist.mockResolvedValue([checklistRow({ valid: false, error: 'nope' })]);
+      seedRecord();
+      act(() => useStore.setState({ saveModel: jest.fn() }));
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+      });
+
+      expect(events.find(e => e.eventName === 'exploration_promoted')).toBeUndefined();
+    } finally {
+      unsubscribe();
+    }
+  });
+
   test('promotes in dependency order: model before insight before chart, regardless of selection array order', async () => {
     const order = [];
     buildPromoteChecklist.mockResolvedValue([
