@@ -796,13 +796,23 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         );
       }
 
-      const checklist = await buildPromoteChecklist(get);
+      // includeUnchanged: an already-saved byte-identical row must be
+      // classifiable — on a RETRY after a partial failure (or a double
+      // submit), the rows saved by the previous run come back 'unchanged',
+      // and treating them as vanished would report false failures forever,
+      // making the fully-succeeded state unreachable.
+      const checklist = await buildPromoteChecklist(get, { includeUnchanged: true });
       // Re-sort by tier defensively — dependency order is THE invariant this
       // gate exists to guarantee (02 §3), so it must not silently depend on
       // buildPromoteChecklist's own sort never regressing.
       const tierOrder = { model: 0, field: 1, insight: 2, chart: 3 };
       const toPromote = checklist
-        .filter(row => row.valid && selectedKeys.has(`${row.type}:${row.name}`))
+        .filter(
+          row =>
+            row.valid &&
+            row.status !== 'unchanged' &&
+            selectedKeys.has(`${row.type}:${row.name}`)
+        )
         .sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
 
       const results = [];
@@ -813,16 +823,32 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       // entry at all, and the `results.every(r => r.success)` success predicate
       // below was then trivially true over the survivors — so a partial promote
       // read as complete ("Save 3" → "Saved 2", no explanation). Every selected
-      // key that will not be promoted gets an explicit failure entry up front.
+      // key that will not reach a save action gets an explicit entry up front:
+      // already-saved rows are successful no-ops (noop: true, excluded from
+      // telemetry counts), invalid rows carry their validation error, and only
+      // rows truly absent from the exploration read as failures.
       const promotableKeys = new Set(toPromote.map(row => `${row.type}:${row.name}`));
       const checklistByKey = new Map(checklist.map(row => [`${row.type}:${row.name}`, row]));
-      for (const sel of selection || []) {
-        const key = `${sel.type}:${sel.name}`;
+      for (const key of selectedKeys) {
         if (promotableKeys.has(key)) continue;
+        const separator = key.indexOf(':');
+        const type = key.slice(0, separator);
+        const name = key.slice(separator + 1);
         const checklistRow = checklistByKey.get(key);
+        if (checklistRow?.status === 'unchanged') {
+          results.push({
+            type,
+            name,
+            tier: checklistRow.tier ?? null,
+            success: true,
+            noop: true,
+            error: null,
+          });
+          continue;
+        }
         results.push({
-          type: sel.type,
-          name: sel.name,
+          type,
+          name,
           tier: checklistRow?.tier ?? null,
           success: false,
           error: checklistRow
@@ -887,7 +913,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       const objectCounts = {};
       const updateVsNew = { updated: 0, new: 0 };
       results
-        .filter(r => r.success)
+        .filter(r => r.success && !r.noop)
         .forEach(r => {
           objectCounts[r.type] = (objectCounts[r.type] || 0) + 1;
           const row = rowByKey.get(`${r.type}:${r.name}`);

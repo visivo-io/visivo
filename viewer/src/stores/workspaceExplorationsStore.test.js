@@ -1894,6 +1894,87 @@ describe('promoteExploration', () => {
     expect(result.results.filter(r => r.success)).toHaveLength(2);
   });
 
+  test('M14 retry: a row saved by a previous run (status unchanged) is a successful no-op, never a false failure', async () => {
+    // After a partial failure the modal keeps the Save button and the full
+    // selection. On retry, the rows saved by run 1 come back from the fresh
+    // checklist as status 'unchanged' — they must classify as success (noop),
+    // or the fully-succeeded state is unreachable and the modal reports
+    // "changed while the dialog was open" for objects that were saved fine.
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ name: 'saved_last_run', status: 'unchanged' }),
+      checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: {} }),
+    ]);
+    const saveModel = jest.fn();
+    const saveInsight = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => useStore.setState({ saveModel, saveInsight }));
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'saved_last_run' },
+        { type: 'insight', name: 'churn' },
+      ]);
+    });
+
+    expect(saveModel).not.toHaveBeenCalled(); // nothing to re-save
+    expect(saveInsight).toHaveBeenCalledWith('churn', {});
+    expect(result.success).toBe(true);
+    const noop = result.results.find(r => r.name === 'saved_last_run');
+    expect(noop).toMatchObject({ success: true, noop: true, error: null });
+    // includeUnchanged must actually be requested from the checklist builder.
+    expect(buildPromoteChecklist).toHaveBeenCalledWith(expect.any(Function), {
+      includeUnchanged: true,
+    });
+  });
+
+  test('M14 retry: unchanged no-ops are excluded from exploration_promoted object counts', async () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      buildPromoteChecklist.mockResolvedValue([
+        checklistRow({ name: 'saved_last_run', status: 'unchanged' }),
+        checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: {} }),
+      ]);
+      seedRecord();
+      act(() =>
+        useStore.setState({
+          saveModel: jest.fn(),
+          saveInsight: jest.fn().mockResolvedValue({ success: true }),
+        })
+      );
+      explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+      await act(async () => {
+        await useStore.getState().promoteExploration('exp_1', [
+          { type: 'model', name: 'saved_last_run' },
+          { type: 'insight', name: 'churn' },
+        ]);
+      });
+
+      const promoted = events.find(e => e.eventName === 'exploration_promoted');
+      expect(promoted.payload.objectCounts).toEqual({ insight: 1 });
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  test('M14: duplicate selection entries produce exactly one result entry', async () => {
+    buildPromoteChecklist.mockResolvedValue([checklistRow({ valid: false, error: 'nope' })]);
+    seedRecord();
+    act(() => useStore.setState({ saveModel: jest.fn() }));
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'orders_q' },
+        { type: 'model', name: 'orders_q' },
+      ]);
+    });
+    expect(result.results).toHaveLength(1);
+  });
+
   test('M14: an invalid-only selection still emits exploration_promoted (zero-save runs are observable)', async () => {
     const events = [];
     const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
