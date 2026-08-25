@@ -111,7 +111,7 @@ const LibrarySubsection = ({
                   <RowComponent
                     obj={obj}
                     selected={selectedRowId === obj.id}
-                    draggable={def.droppable || def.explorationDragSource}
+                    draggable={def.droppable || def.explorationDragSource || def.propertyDragSource}
                     onClick={onRowClick}
                     onContextAction={onContextAction}
                     canAddToExploration={canAddToExploration}

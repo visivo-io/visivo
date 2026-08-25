@@ -291,3 +291,32 @@ describe('pillGrammar — modifiers', () => {
     expect(parse(raw, OPTS)).toEqual({ kind: 'opaque', raw });
   });
 });
+
+// ── VIS-1242: an unbound model ref (drop-then-configure) ────────────────────
+describe('pillGrammar — modelRef', () => {
+  const WITH_MODELS = { ...OPTS, modelNames: ['orders_q'] };
+
+  test('a bare ref naming a MODEL is an unbound pill, not opaque', () => {
+    // Without this the dropped model parsed as `opaque`, which suppresses the
+    // pill entirely — so there was nothing to configure.
+    expect(parse('${ref(orders_q)}', WITH_MODELS)).toEqual({
+      kind: 'modelRef',
+      ref: 'orders_q',
+      raw: '${ref(orders_q)}',
+    });
+    expect(serialize({ kind: 'modelRef', ref: 'orders_q' })).toBe('${ref(orders_q)}');
+  });
+
+  test('a metric/dimension name still wins over a model of the same name', () => {
+    // Global-name-first, matching the backend's resolve_ref order.
+    const opts = { ...OPTS, modelNames: ['churn_rate'] };
+    expect(parse('${ref(churn_rate)}', opts)).toMatchObject({ kind: 'metricRef' });
+  });
+
+  test('an unknown bare ref is still opaque', () => {
+    expect(parse('${ref(nope)}', WITH_MODELS)).toEqual({
+      kind: 'opaque',
+      raw: '${ref(nope)}',
+    });
+  });
+});

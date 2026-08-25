@@ -25,6 +25,7 @@ const NUMERIC_ONLY_AGGS = new Set(['sum', 'avg', 'median']);
 const RESTRICTED_AGGS = new Set(['min', 'max', 'count', 'count_distinct']);
 
 const KIND_LABEL = {
+  modelRef: 'Model — pick a property',
   dimension: 'Dimension',
   aggregate: 'Aggregate',
   metricRef: 'Metric',
@@ -228,7 +229,10 @@ const PillMenu = React.forwardRef(
 
   useImperativeHandle(ref, () => ({ open: openMenu }), [openMenu]);
 
-  const isColumnBacked = state?.kind === 'dimension' || state?.kind === 'aggregate';
+  // A modelRef is "column-backed" in the sense that matters here: it has a
+  // model and needs a property picked (VIS-1242).
+  const isColumnBacked =
+    state?.kind === 'dimension' || state?.kind === 'aggregate' || state?.kind === 'modelRef';
   const isNumeric = useColumnIsNumeric(isColumnBacked ? state.ref : null, state?.column);
   const dialect = usePillDialect(state);
   const medianAllowed = isMedianSupported(dialect);

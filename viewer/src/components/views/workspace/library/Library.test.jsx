@@ -200,16 +200,26 @@ describe('Library', () => {
     );
   });
 
-  test('Layout-Items rows expose drag handles; model/relation Data-Layer rows do not', () => {
+  test('Layout-Items rows expose drag handles; relation rows do not', () => {
     renderLibrary();
     fireEvent.mouseEnter(screen.getByTestId('library-row-chart-waterfall'));
     expect(screen.getByTestId('library-row-chart-waterfall-drag-handle')).toBeInTheDocument();
     fireEvent.mouseEnter(screen.getByTestId('library-row-table-revenue_rows'));
     expect(screen.getByTestId('library-row-table-revenue_rows-drag-handle')).toBeInTheDocument();
-    fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
+    fireEvent.mouseEnter(screen.getByTestId('library-row-relation-customers_orders'));
     expect(
-      screen.queryByTestId('library-row-model-monthly_revenue-drag-handle')
+      screen.queryByTestId('library-row-relation-customers_orders-drag-handle')
     ).not.toBeInTheDocument();
+  });
+
+  // VIS-1242: model rows became draggable so a model can be dropped on an
+  // insight property slot and configured there. Like the source-row change
+  // below, this is a deliberate capability ADD — models were previously in
+  // neither drag list, so the drag could not start at all.
+  test('model rows expose a drag handle (droppable onto property slots)', () => {
+    renderLibrary();
+    fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
+    expect(screen.getByTestId('library-row-model-monthly_revenue-drag-handle')).toBeInTheDocument();
   });
 
   // Explore 2.0 Phase 3a (D9 / 02-architecture.md §4): source rows are now an

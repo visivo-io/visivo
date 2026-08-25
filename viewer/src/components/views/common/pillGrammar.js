@@ -176,7 +176,7 @@ const findGlobalField = (name, { metricFields, dimensionFields }) => {
  * @param {Array<{name: string, parentModel?: string}>} [opts.dimensionFields] -
  *   every known Dimension, same shape.
  * @returns {{
- *   kind: 'dimension'|'aggregate'|'metricRef'|'dimensionRef'|'custom'|'opaque',
+ *   kind: 'dimension'|'aggregate'|'metricRef'|'dimensionRef'|'modelRef'|'custom'|'opaque',
  *   ref?: string, column?: string, agg?: string, raw: string,
  *   statedModel?: string, resolvedParent?: string,
  * }}
@@ -190,6 +190,11 @@ export function parse(expr, opts = {}) {
     const name = bare[1].trim();
     const global = findGlobalField(name, opts);
     if (global) return { kind: global.kind, ref: name, raw };
+    // VIS-1242: a bare ref naming a MODEL is an unbound pill — a model was
+    // dropped and no property has been chosen yet. Without this it parsed as
+    // `opaque`, which suppresses the pill entirely, so a dropped model had
+    // nothing to configure.
+    if ((opts.modelNames || []).includes(name)) return { kind: 'modelRef', ref: name, raw };
     return { kind: 'opaque', raw };
   }
 
@@ -311,6 +316,7 @@ export function serialize(state) {
       return withModifier(`${state.agg}(${formatRefExpression(state.ref, state.column)})`);
     case 'metricRef':
     case 'dimensionRef':
+    case 'modelRef':
       return withModifier(formatRefExpression(state.ref));
     case 'custom':
     case 'opaque':

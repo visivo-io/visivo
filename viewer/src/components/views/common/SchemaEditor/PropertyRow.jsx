@@ -137,6 +137,7 @@ export function PropertyRow({
   // additive, not a replacement.
   const metrics = useStore(s => s.metrics);
   const dimensions = useStore(s => s.dimensions);
+  const models = useStore(s => s.models);
   const explorerModelStates = useStore(s => s.explorerModelStates);
   const pillFieldOpts = useMemo(() => {
     const toField = f => ({
@@ -175,8 +176,17 @@ export function PropertyRow({
         ...(Array.isArray(dimensions) ? dimensions.map(toField) : []),
         ...computedDimensionFields,
       ],
+      // VIS-1242: lets a bare `${ref(model)}` parse as an UNBOUND pill (a model
+      // was dropped, no property chosen yet) instead of opaque. Draft explorer
+      // models count — a scratch query is the common thing to drop.
+      modelNames: [
+        ...(Array.isArray(models) ? models.map(m => m?.name).filter(Boolean) : []),
+        ...Object.keys(explorerModelStates || {}),
+      ],
     };
-  }, [metrics, dimensions, explorerModelStates]);
+  }, [metrics, dimensions, models, explorerModelStates]);
+  const pillFieldOptsRef = useRef(pillFieldOpts);
+  pillFieldOptsRef.current = pillFieldOpts;
 
   // Escape hatch back to raw-text editing ("Custom aggregation…", 06 §4/§5) —
   // per-row local state so switching one pill to raw edit never affects its
@@ -287,6 +297,22 @@ export function PropertyRow({
     }
   }, []);
 
+  // VIS-1242: a dropped model lands as an UNBOUND pill, and the thing the user
+  // must do next is pick a property — so open the editor for them. Keyed on the
+  // value CHANGING into that state, so an insight loaded with an unbound ref
+  // doesn't pop a menu on every mount.
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    const changed = prevValueRef.current !== value;
+    prevValueRef.current = value;
+    if (!changed) return;
+    const parsedNow = pillGrammar.parse(
+      parseQueryString(value)?.body ?? '',
+      pillFieldOptsRef.current
+    );
+    if (parsedNow.kind === 'modelRef') pillMenuRef.current?.open();
+  }, [value]);
+
   const pillState = useMemo(
     () => pillGrammar.parse(body, pillFieldOpts),
     [body, pillFieldOpts]
@@ -345,9 +371,16 @@ export function PropertyRow({
   const canReturnToPill =
     droppable && currentMode === 'query' && forceRawEdit && pillEligible;
 
-  const pillType = pillState.kind === 'aggregate' || pillState.kind === 'metricRef' ? 'metric' : 'dimension';
+  const pillType =
+    pillState.kind === 'modelRef'
+      ? 'model'
+      : pillState.kind === 'aggregate' || pillState.kind === 'metricRef'
+        ? 'metric'
+        : 'dimension';
   const pillLabel =
-    pillState.kind === 'aggregate'
+    pillState.kind === 'modelRef'
+      ? `${pillState.ref} ▸ choose a property`
+      : pillState.kind === 'aggregate'
       ? `${(pillState.agg || '').toUpperCase()} · ${pillState.ref} ▸ ${pillState.column}`
       : pillState.kind === 'dimension'
         ? `${pillState.ref} ▸ ${pillState.column}`
