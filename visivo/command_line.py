@@ -1,10 +1,16 @@
+import sys as _sys
 from time import time
 
 start_time = time()
 from visivo.commands.options import verbose
 from visivo.logger.logger import Logger, TypeEnum
 
-Logger.instance().info("Starting Visivo...")
+# `visivo --version` / `--help` must emit only what was asked for — no startup
+# banner, no execution-time line (2.1 field test, CLI-help project).
+QUIET_INVOCATION = bool({"--version", "--help", "-h"} & set(_sys.argv[1:]))
+
+if not QUIET_INVOCATION:
+    Logger.instance().info("Starting Visivo...")
 import click
 import os
 from dotenv import load_dotenv
@@ -194,7 +200,8 @@ def safe_visivo():
 
         visivo(standalone_mode=False)
         execution_time = round(time() - start_time, 2)
-        Logger.instance().info(f"Visivo execution time: {execution_time}s")
+        if not QUIET_INVOCATION:
+            Logger.instance().info(f"Visivo execution time: {execution_time}s")
         success = True
 
         # Track successful command

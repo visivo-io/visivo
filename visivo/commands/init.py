@@ -9,7 +9,7 @@ from visivo.models.example_type import ExampleTypeEnum
 @click.option(
     "--example",
     type=click.Choice([e.value for e in ExampleTypeEnum]),
-    help="Load an example project from GitHub",
+    help="Start from a bundled example project",
     default=None,
 )
 @click.option(
