@@ -220,6 +220,60 @@ def test_multi_source_insight_is_rejected_400_multi_source(duckdb_file, tmp_path
     assert resp.get_json()["error_type"] == "multi_source"
 
 
+def test_datetime_rows_serialise_as_iso8601_not_rfc1123(duckdb_file, tmp_path):
+    """B7-b / S2-19: Flask's default jsonify renders datetime as RFC-1123
+    ("Mon, 01 Jun 2026 00:00:00 GMT"), which Plotly's date parser rejects —
+    the axis then autotypes as category in row order. Rows must carry ISO-8601.
+    """
+    import re
+
+    con = duckdb.connect(duckdb_file)
+    con.execute("CREATE TABLE readings (reading_ts TIMESTAMP, value INTEGER)")
+    con.execute(
+        "INSERT INTO readings VALUES "
+        "('2026-06-01 00:00:00', 10), ('2026-06-02 00:00:00', 20), ('2026-06-03 00:00:00', 30)"
+    )
+    con.close()
+
+    source = DuckdbSource(name="warehouse", database=duckdb_file, type="duckdb")
+    model = SqlModel(name="readings_q", sql="SELECT * FROM readings", source="ref(warehouse)")
+    proj = Project(name="p", sources=[source], models=[model])
+    app = Flask(__name__)
+    register_insight_execute_views(app, FlaskAppStub(proj), str(tmp_path))
+    client = app.test_client()
+
+    resp = client.post(
+        "/api/insight-execute-draft/",
+        json={
+            "insight": {
+                "name": "readings_by_day",
+                "props": {
+                    "type": "bar",
+                    "x": "?{${ref(readings_q).reading_ts}}",
+                    "y": "?{sum(${ref(readings_q).value})}",
+                },
+            },
+            "model_schemas": {"readings_q": {"reading_ts": "TIMESTAMP", "value": "INTEGER"}},
+        },
+    )
+    assert resp.status_code == 200, resp.get_json()
+    data = resp.get_json()
+
+    x_key = next(k for k in data["props_mapping"] if k.endswith("x"))
+    x_alias = data["props_mapping"][x_key]
+    # Plotly's DATETIME_REGEXP (plotly.js src/lib/dates.js) — the parser the
+    # values must satisfy for the axis to autotype as date.
+    plotly_datetime = re.compile(
+        r"^\s*(-?\d\d\d\d|\d\d)(-(0?[1-9]|1[012])(-([0-3]?\d)([ Tt]([01]?\d|2[0-3])"
+        r"(:([0-5]\d)(:([0-5]\d(\.\d+)?))?(Z|z|[+\-]\d\d(:?\d\d)?)?)?)?)?)?\s*$"
+    )
+    for row in data["rows"]:
+        value = row[x_alias]
+        assert isinstance(value, str)
+        assert plotly_datetime.match(value), f"not Plotly-parseable: {value!r}"
+        assert "GMT" not in value
+
+
 def test_model_schemas_as_non_dict_is_400_not_500(client):
     # Phase 4 review fix: a truthy non-dict model_schemas (a JSON list) must be a
     # clean 400, never an unhandled AttributeError → raw 500.

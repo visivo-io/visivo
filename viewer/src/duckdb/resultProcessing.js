@@ -37,8 +37,12 @@ export const processArrowResult = arrowResult => {
       Object.entries(rowData).map(([key, value]) => {
         if (timestampColumns.has(key) && value != null) {
           const numVal = typeof value === 'bigint' ? Number(value) : value;
-          // DuckDB timestamps are microseconds; JS Date expects milliseconds
-          return [key, new Date(numVal / 1000).toISOString()];
+          // apache-arrow's JS getters already normalise every timestamp/date
+          // unit (s/ms/us/ns, DateDay/DateMillisecond) to epoch MILLISECONDS
+          // before we ever see the value. The parquet on disk may store
+          // microseconds, but that never reaches this layer — dividing here
+          // again is what rendered every time axis as January 1970 (B7).
+          return [key, new Date(numVal).toISOString()];
         }
         if (typeof value === 'bigint') {
           return [key, value.toString()];
