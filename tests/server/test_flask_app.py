@@ -398,10 +398,13 @@ def test_serve_insight_data_by_name(client, output_dir):
 
 
 def test_serve_insight_data_by_name_not_found(client):
-    """Test serve insight data by name not found"""
+    """Never-built is a calm 200 empty state, not a 404 — the old 404 doubled
+    as the empty state and the client retried it as transient (M16)."""
     resp = client.get("/api/insight-jobs/?insight_names=unknown&run_id=main")
-    assert resp.status_code == 404
-    assert "No insight files found" in resp.get_json()["error"]
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["state"] == "not_built"
+    assert body["missing"] == ["unknown"]
 
 
 def test_serve_insight_data_by_name_default_run_id(client, output_dir):
