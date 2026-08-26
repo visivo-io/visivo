@@ -198,6 +198,70 @@ tasks:
       DEBUG: true
     filter: [test-projects/integration]
 
+  - key: test-dist-command
+    # `visivo dist` exits 0 even when the bundle it wrote cannot render — the
+    # command writes files and never loads them. That gap shipped a real
+    # regression: `/api/project/` stopped carrying the dereferenced project,
+    # resource lists moved to their own endpoints, and dist was never given an
+    # equivalent for the dashboards list, so every static build rendered
+    # "No dashboards found" while the command reported success.
+    #
+    # So this builds a bundle and actually LOADS a dashboard in a browser,
+    # asserting charts render with no failed `/data/*` request and no console
+    # errors. Unit tests cover the file shapes; only this covers "does it work".
+    use: [visivo-install, node-modules]
+    background-processes:
+      - key: dist-server
+        # Build THEN serve in the same process: the bundle doesn't exist until
+        # `visivo dist` runs, so a server started alongside the task would have
+        # nothing to answer with and its ready-check would never pass.
+        #
+        # `serve_dist.py` reproduces the `_redirects` SPA rule dist writes, so
+        # `/<dashboard>` resolves the way it does on a real static host rather
+        # than 404ing.
+        run: |
+          # Build the viewer from THIS commit's source. The committed
+          # `visivo/viewers/dist` bundle is only refreshed at release time, so
+          # on any non-release commit it lags the viewer source — testing it
+          # would assert against the last release, not the change under review.
+          set -e
+          cd viewer && yarn deploy:dist && cd ..
+          # `visivo` is pip-installed, so `DIST_PATH` resolves inside
+          # site-packages and the fresh build has to land THERE — `yarn
+          # deploy:dist` only writes the repo checkout, which the installed CLI
+          # never reads.
+          #
+          # Resolve that path from /tmp, not from here: the workspace root
+          # contains a `visivo/` package directory, and python puts cwd first on
+          # sys.path, so importing from here yields the CHECKOUT's DIST_PATH.
+          # Copying there leaves site-packages stale and `visivo dist` ships the
+          # last release's viewer — which is exactly how the first run of this
+          # task failed, with the browser throwing the pre-fix
+          # "'dashboardsList' is not available in 'dist' environment".
+          VIEWER_BUILD="$PWD/viewer/build"
+          DIST_PATH=$(cd /tmp && python -c "from visivo.utils import DIST_PATH; print(DIST_PATH)")
+          echo "Installing freshly-built viewer into $DIST_PATH"
+          rm -rf "$DIST_PATH"
+          cp -R "$VIEWER_BUILD" "$DIST_PATH"
+          # Fail loudly here rather than as a confusing browser error later.
+          diff -q "$VIEWER_BUILD/index.html" "$DIST_PATH/index.html"
+          cd test-projects/integration
+          visivo run -s local-duckdb
+          visivo dist -s local-duckdb
+          cd ../..
+          python scripts/serve_dist.py test-projects/integration/dist 8899
+        # Asserts the dashboards LIST is present and served — the exact
+        # artifact whose absence caused the regression — before the browser
+        # check starts, so a missing one fails here with a clear cause.
+        ready-check: curl -fsS http://localhost:8899/data/dashboards.json >/dev/null
+    run: |
+      cd viewer
+      yarn playwright install --with-deps chromium
+      node scripts/dist-smoke.mjs http://localhost:8899 simple-dashboard
+    env:
+      STACKTRACE: true
+    filter: [visivo, viewer, test-projects/integration, scripts]
+
   - key: binary-init-smoke
     # Runs the PyInstaller bundle (dist/visivo/visivo) end-to-end against
     # `visivo init` in an empty directory — the exact path that crashed
