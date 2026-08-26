@@ -210,6 +210,24 @@ describe('buildPromoteChecklist', () => {
     expect(rows).toHaveLength(0);
   });
 
+  test('includeUnchanged appends the unchanged rows, marked valid, after the promotable ones', async () => {
+    // promoteExploration needs them to classify a retried selection as an
+    // already-saved no-op instead of "vanished mid-dialog" (M14 retry).
+    const state = baseState({
+      explorerModelStates: {
+        orders_q: { sql: 'select 1', sourceName: 'w', isNew: false, computedColumns: [] },
+        fresh_q: { sql: 'select 2', sourceName: 'w', isNew: true, computedColumns: [] },
+      },
+      fetchExplorerDiff: jest.fn().mockResolvedValue({ models: { orders_q: null } }),
+    });
+    const rows = await buildPromoteChecklist(() => state, { includeUnchanged: true });
+    const unchanged = rows.find(r => r.name === 'orders_q');
+    expect(unchanged).toMatchObject({ status: 'unchanged', valid: true, error: null });
+    // Promotable rows come first, in tier order; unchanged rows trail.
+    expect(rows[rows.length - 1].status).toBe('unchanged');
+    expect(rows.find(r => r.name === 'fresh_q').status).toBe('new');
+  });
+
   test('an unreachable diff endpoint fails open — every candidate falls back to "new"', async () => {
     const state = baseState({
       explorerModelStates: { orders_q: { sql: 'select 1', sourceName: 'w', isNew: true, computedColumns: [] } },
