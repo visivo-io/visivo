@@ -181,6 +181,7 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
     inputJobsQuery: '/data/inputs.json',
+    dashboardsList: '/data/dashboards.json',
     dashboardQuery: '/data/dashboards/{name}.json',
     dashboardThumbnail: '/data/dashboards/{name}.png',
 

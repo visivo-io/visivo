@@ -57,7 +57,7 @@ def dist_phase(
         if os.path.exists(dashboards_dir):
             dist_dashboards_dir = os.path.join(dist_dir, "data", "dashboards")
             shutil.copytree(dashboards_dir, dist_dashboards_dir, dirs_exist_ok=True)
-        created_at = (datetime.datetime.now().isoformat(),)
+        created_at = datetime.datetime.now().isoformat()
         # Same canonical envelope the server serves at /api/project/, so the
         # viewer reads one shape in both modes. ``project_json`` below stays a
         # local variable — it drives the per-dashboard files written further
@@ -190,7 +190,14 @@ def dist_phase(
 
         # Generate dashboard JSON files for dist mode (keyed by clean name —
         # thumbnails on disk are also named <dashboard_name>.png after the
-        # storage refactor)
+        # storage refactor).
+        #
+        # Each entry mirrors the server's `/api/dashboards/` element shape
+        # (`object_manager._serialize_object`): id / name / status / config,
+        # plus the `signed_thumbnail_file_url` sibling the cards page reads.
+        # `config` is the load-bearing key — it carries rows/items, and without
+        # it the viewer has a dashboard's NAME but no layout to render.
+        dashboards_list = []
         if "dashboards" in project_json:
             os.makedirs(f"{dist_dir}/data/dashboards", exist_ok=True)
             for dashboard in project_json["dashboards"]:
@@ -203,6 +210,10 @@ def dist_phase(
                 dashboard_data = {
                     "id": dashboard_name,
                     "name": dashboard_name,
+                    # A dist bundle is a snapshot of committed state — nothing
+                    # in it is a draft, so every dashboard reads as published.
+                    "status": "published",
+                    "config": dashboard,
                     "signed_thumbnail_file_url": (
                         f"{deployment_root}/data/dashboards/{dashboard_name}.png"
                         if thumbnail_exists
@@ -212,6 +223,16 @@ def dist_phase(
 
                 with open(f"{dist_dir}/data/dashboards/{dashboard_name}.json", "w") as f:
                     json.dump(dashboard_data, f)
+                dashboards_list.append(dashboard_data)
+
+        # The LIST endpoint. `/api/project/` stopped carrying the whole
+        # dereferenced project ("Resource lists come from their own
+        # endpoints" — data_views.py), and dist was never given an equivalent:
+        # the viewer's dashboardStore called `dashboardsList`, which resolved
+        # to null in the dist environment, so every static build rendered
+        # "No dashboards found" no matter what the project contained.
+        with open(f"{dist_dir}/data/dashboards.json", "w") as f:
+            json.dump({"dashboards": dashboards_list}, f)
 
         shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
 
