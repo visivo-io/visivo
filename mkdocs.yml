@@ -116,6 +116,7 @@ nav:
       - Source Types: topics/source-types.md
       - Semantic Layer: topics/semantic-layer.md
       - Interactivity: topics/interactivity.md
+      - Query & Context Strings: topics/query-and-context-strings.md
       - Inputs: topics/inputs.md
       - Including: topics/including.md
       - Environment Variables: topics/environment-variables.md
