@@ -54,6 +54,12 @@ def serve(
     pd,
     no_deprecation_warnings,
 ):
+    """Serves the local web app for building and viewing dashboards.
+
+    Builds the project on launch, watches your project files, and hot-reloads
+    on changes. In an empty directory (or with --new) it starts a fresh
+    in-memory project and opens the in-browser setup wizard.
+    """
     start_time = time()
     logger = Logger.instance()
     server_url = f"http://localhost:{port}"
