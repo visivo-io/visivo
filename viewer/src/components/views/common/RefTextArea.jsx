@@ -1,4 +1,5 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect, useId } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import useStore from '../../../stores/store';
@@ -45,6 +46,7 @@ const RefTextArea = ({
   helperText,
   hideAddButton = false,
   restrictBrackets = false,
+  acceptDrops = false,
 }) => {
   const editableRef = useRef(null);
   const containerRef = useRef(null);
@@ -720,12 +722,11 @@ const RefTextArea = ({
 
   // --- DnD Cursor-Aware Insertion ---
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const handler = (e) => {
-      const { refExpr } = e.detail;
+  // Extracted from the `ref-insert-at-cursor` listener below so a dnd-kit drop
+  // can reuse the identical caret-aware insertion instead of replacing the
+  // whole value (which is what every non-RefTextArea drop target does).
+  const insertRefExpr = useCallback(
+    refExpr => {
       if (!refExpr || !editableRef.current) return;
 
       // Parse the ref expression to get name and property
@@ -789,11 +790,36 @@ const RefTextArea = ({
       }
 
       serializeAndUpdate();
-    };
+    },
+    [createPillElement, serializeAndUpdate]
+  );
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = e => insertRefExpr(e.detail?.refExpr);
     el.addEventListener('ref-insert-at-cursor', handler);
     return () => el.removeEventListener('ref-insert-at-cursor', handler);
-  }, [createPillElement, serializeAndUpdate]);
+  }, [insertRefExpr]);
+
+  // VIS-1243: a RefTextArea was never a drop target — dragging a model onto a
+  // dimension/metric expression, a relation condition, or a slot switched to
+  // "Custom aggregation…" simply did nothing. Only `PropertyRow`'s row wrapper
+  // accepted drops, and only in the Build rail (`droppable`). Opt-in so the 8+
+  // other surfaces that share this component keep their current behaviour.
+  const dropId = useId();
+  const { isOver, setNodeRef: setDropRef } = useDroppable({
+    id: `ref-text-${dropId}`,
+    data: { kind: 'ref-text', allowedTypes, onInsertRef: insertRefExpr },
+    disabled: !acceptDrops || disabled,
+  });
+  const setContainerRef = useCallback(
+    node => {
+      containerRef.current = node;
+      if (acceptDrops && !disabled) setDropRef(node);
+    },
+    [acceptDrops, disabled, setDropRef]
+  );
 
   // --- Render ---
 
@@ -894,7 +920,14 @@ const RefTextArea = ({
     : null;
 
   return (
-    <div className="space-y-1" ref={containerRef} data-has-cursor={hasCursor ? 'true' : 'false'}>
+    <div
+      className={`space-y-1 rounded-md transition-shadow ${
+        isOver ? 'ring-2 ring-primary-300 ring-offset-1' : ''
+      }`}
+      ref={setContainerRef}
+      data-has-cursor={hasCursor ? 'true' : 'false'}
+      data-drop-target={acceptDrops ? 'ref-text' : undefined}
+    >
       {/* Label */}
       {label && (
         <div className="flex items-center justify-between h-6">

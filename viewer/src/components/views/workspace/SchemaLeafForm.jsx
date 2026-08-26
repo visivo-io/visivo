@@ -281,6 +281,10 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
           required
           error={error}
           allowedTypes={isEmbedded ? [] : typeConfig.allowedTypes || []}
+          // VIS-1243: a dimension/metric expression and a relation condition
+          // are authored here and nowhere else, so this is the surface where
+          // "drag a model in" has to work.
+          acceptDrops={!isEmbedded}
           hideAddButton={isEmbedded}
           rows={typeConfig.rows || 4}
           helperText={

@@ -492,6 +492,60 @@ describe('routeWorkspaceDragEnd — pivot field branch (VIS-1008)', () => {
   });
 });
 
+// VIS-1243: a RefTextArea accepted no drops at all — dragging a model onto a
+// dimension/metric expression, a relation condition, or a slot switched to
+// "Custom aggregation…" did nothing, silently.
+describe('routeWorkspaceDragEnd — ref-text branch', () => {
+  const refTextDrop = (dragData, allowedTypes, onInsertRef) =>
+    routeWorkspaceDragEnd(
+      {
+        active: { data: { current: dragData } },
+        over: { data: { current: { kind: 'ref-text', allowedTypes, onInsertRef } } },
+      },
+      { emit: jest.fn() }
+    );
+
+  test('a dragged model inserts a bare ref rather than replacing the value', () => {
+    const onInsertRef = jest.fn();
+    const result = refTextDrop(
+      { source: 'library', type: 'model', name: 'orders' },
+      ['model', 'metric'],
+      onInsertRef
+    );
+    expect(result).toBe('ref_text_accepted');
+    // eslint-disable-next-line no-template-curly-in-string
+    expect(onInsertRef).toHaveBeenCalledWith('${ref(orders)}');
+  });
+
+  test('a dragged metric carries its parent model into the ref', () => {
+    const onInsertRef = jest.fn();
+    refTextDrop(
+      { source: 'library', type: 'metric', name: 'revenue', parentModel: 'orders' },
+      ['metric'],
+      onInsertRef
+    );
+    // eslint-disable-next-line no-template-curly-in-string
+    expect(onInsertRef).toHaveBeenCalledWith('${ref(orders).revenue}');
+  });
+
+  test('a type the field does not allow is rejected without writing anything', () => {
+    const onInsertRef = jest.fn();
+    const result = refTextDrop(
+      { source: 'library', type: 'dashboard', name: 'sales' },
+      ['model'],
+      onInsertRef
+    );
+    expect(result).toBe('ref_text_rejected');
+    expect(onInsertRef).not.toHaveBeenCalled();
+  });
+
+  test('a zone with no insert callback is a noop, not a crash', () => {
+    expect(
+      refTextDrop({ source: 'library', type: 'model', name: 'orders' }, ['model'], undefined)
+    ).toBe('noop');
+  });
+});
+
 describe('routeWorkspaceDragEnd — property-zone branch (Explore 2.0 Phase 3b, S5 §1/D10)', () => {
   test('a Library drag dropped on a property-zone invokes the ROW-OWNED onDropField with the full drag payload', () => {
     const onDropField = jest.fn();

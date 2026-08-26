@@ -650,6 +650,9 @@ export function PropertyRow({
                       helperText={description}
                       disabled={disabled}
                       allowedTypes={['model', 'dimension', 'metric', 'input']}
+                      // Raw-text mode has no pill to drop onto, and outside the
+                      // Build rail the row wrapper isn't a drop target either.
+                      acceptDrops
                       restrictBrackets
                     />
                   </div>
