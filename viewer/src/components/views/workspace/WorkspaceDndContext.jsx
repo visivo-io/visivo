@@ -274,7 +274,7 @@ export const routeWorkspaceDragEnd = (
   // overwriting would discard whatever the user already wrote. Before this,
   // a RefTextArea was not a drop target at all: dragging a model onto a
   // dimension/metric expression, a relation condition, or a slot switched to
-  // "Custom aggregation…" did nothing whatsoever, with no feedback.
+  // "Manually edit field…" did nothing whatsoever, with no feedback.
   if (dropData.kind === 'ref-text') {
     const allowed = dropData.allowedTypes || [];
     const isValid = allowed.includes(dragData.type);

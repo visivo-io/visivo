@@ -494,7 +494,7 @@ describe('routeWorkspaceDragEnd — pivot field branch (VIS-1008)', () => {
 
 // VIS-1243: a RefTextArea accepted no drops at all — dragging a model onto a
 // dimension/metric expression, a relation condition, or a slot switched to
-// "Custom aggregation…" did nothing, silently.
+// "Manually edit field…" did nothing, silently.
 describe('routeWorkspaceDragEnd — ref-text branch', () => {
   const refTextDrop = (dragData, allowedTypes, onInsertRef) =>
     routeWorkspaceDragEnd(

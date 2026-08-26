@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
+import { createRefTokenElement } from './refTokenElement';
 import { parseTextWithRefs } from '../../../utils/contextString';
 import { serializeContentEditableToRefString } from '../../../utils/contextString';
 import { formatRefExpression } from '../../../utils/refString';
@@ -47,6 +48,7 @@ const RefTextArea = ({
   hideAddButton = false,
   restrictBrackets = false,
   acceptDrops = false,
+  plainRefs = false,
 }) => {
   const editableRef = useRef(null);
   const containerRef = useRef(null);
@@ -224,6 +226,16 @@ const RefTextArea = ({
     return pill;
   }, [getPillTypeConfig, getInputAccessors]);
 
+  // Plain-text refs (see refTokenElement.js) — the pill/plain decision lives
+  // in this one place rather than at all four insertion sites below.
+  const createRefNode = useCallback(
+    (name, property) =>
+      plainRefs
+        ? createRefTokenElement(name, property, getPillTypeConfig(name, property))
+        : createPillElement(name, property),
+    [plainRefs, getPillTypeConfig, createPillElement]
+  );
+
   const buildDOMFromValue = useCallback((val) => {
     const el = editableRef.current;
     if (!el) return;
@@ -237,18 +249,19 @@ const RefTextArea = ({
     // Use zero-width space (\u200B) for cursor positioning around pills
     const ZWS = '\u200B';
 
-    // Ensure there's a text node before the first pill for cursor placement
-    if (segments.length > 0 && segments[0].type === 'ref') {
+    // Cursor-parking ZWS exists because a chip is `contenteditable=false` and
+    // otherwise has no place to put the caret beside it. A plain token is
+    // editable text, so it needs none — and they would show up as stray
+    // characters mid-expression.
+    if (!plainRefs && segments.length > 0 && segments[0].type === 'ref') {
       el.appendChild(document.createTextNode(ZWS));
     }
 
     segments.forEach((segment, i) => {
       if (segment.type === 'ref') {
-        const pill = createPillElement(segment.name, segment.property);
-        el.appendChild(pill);
-        // Ensure there's a text node after each pill for cursor placement
+        el.appendChild(createRefNode(segment.name, segment.property));
         const next = segments[i + 1];
-        if (!next || next.type === 'ref') {
+        if (!plainRefs && (!next || next.type === 'ref')) {
           el.appendChild(document.createTextNode(ZWS));
         }
       } else {
@@ -256,7 +269,7 @@ const RefTextArea = ({
         el.appendChild(textNode);
       }
     });
-  }, [createPillElement]);
+  }, [createRefNode, plainRefs]);
 
   // Sync DOM from value prop when not focused
   useEffect(() => {
@@ -506,7 +519,7 @@ const RefTextArea = ({
     const segments = parseTextWithRefs(text);
     segments.forEach(segment => {
       if (segment.type === 'ref') {
-        const pill = createPillElement(segment.name, segment.property);
+        const pill = createRefNode(segment.name, segment.property);
         range.insertNode(pill);
         range.setStartAfter(pill);
       } else {
@@ -521,7 +534,7 @@ const RefTextArea = ({
     sel.addRange(range);
 
     serializeAndUpdate();
-  }, [createPillElement, serializeAndUpdate, restrictBrackets]);
+  }, [createRefNode, serializeAndUpdate, restrictBrackets]);
 
   // In restrictBrackets mode the editor is chip-body-only — bracket
   // characters are reserved for the SliceBadge's authored slice suffix.
@@ -677,7 +690,7 @@ const RefTextArea = ({
         const after = text.slice(offset);
 
         // Build pill
-        const pill = createPillElement(item.name, item.property || null);
+        const pill = createRefNode(item.name, item.property || null);
 
         // Replace text node content
         node.textContent = before;
@@ -715,7 +728,7 @@ const RefTextArea = ({
 
     setMentionState({ active: false, query: '', rect: null, selectedIndex: 0 });
     serializeAndUpdate();
-  }, [createPillElement, serializeAndUpdate]);
+  }, [createRefNode, serializeAndUpdate]);
 
   // Keep ref in sync with latest insertMentionItem
   insertMentionItemRef.current = insertMentionItem;
@@ -734,7 +747,7 @@ const RefTextArea = ({
       const refSegment = segments.find(s => s.type === 'ref');
       if (!refSegment) return;
 
-      const pill = createPillElement(refSegment.name, refSegment.property);
+      const pill = createRefNode(refSegment.name, refSegment.property);
       const editable = editableRef.current;
 
       if (savedCursorOffsetRef.current !== null) {
@@ -763,10 +776,16 @@ const RefTextArea = ({
               inserted = true;
             }
             currentOffset += len;
-          } else if (child.nodeType === Node.ELEMENT_NODE && child.hasAttribute('data-ref-name')) {
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            // A chip's serialized length comes from its attributes; anything
+            // else (a plain ref token, a wrapper) already reads as its own
+            // text. Counting only chips skipped plain tokens entirely and
+            // landed the insert short of where it was dropped.
             const refName = child.getAttribute('data-ref-name');
             const refProp = child.getAttribute('data-ref-property');
-            const refLen = refProp ? `\${ref(${refName}).${refProp}}`.length : `\${ref(${refName})}`.length;
+            const refLen = refName
+              ? (refProp ? `\${ref(${refName}).${refProp}}` : `\${ref(${refName})}`).length
+              : child.textContent.length;
             if (currentOffset + refLen >= targetOffset) {
               if (child.nextSibling) {
                 editable.insertBefore(pill, child.nextSibling);
@@ -791,7 +810,7 @@ const RefTextArea = ({
 
       serializeAndUpdate();
     },
-    [createPillElement, serializeAndUpdate]
+    [createRefNode, serializeAndUpdate]
   );
 
   useEffect(() => {
@@ -804,7 +823,7 @@ const RefTextArea = ({
 
   // VIS-1243: a RefTextArea was never a drop target — dragging a model onto a
   // dimension/metric expression, a relation condition, or a slot switched to
-  // "Custom aggregation…" simply did nothing. Only `PropertyRow`'s row wrapper
+  // "Manually edit field…" simply did nothing. Only `PropertyRow`'s row wrapper
   // accepted drops, and only in the Build rail (`droppable`). Opt-in so the 8+
   // other surfaces that share this component keep their current behaviour.
   const dropId = useId();

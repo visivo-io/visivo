@@ -798,3 +798,62 @@ describe('RefTextArea — rendering', () => {
     );
   });
 });
+
+
+// The "Manually edit field…" escape hatch handed the user an expression whose
+// refs were `contenteditable="false"` chips — the one part of the text they
+// could not actually edit. `plainRefs` renders them as editable literal text,
+// while staying on the contentEditable so a bad ref can still be marked up.
+describe('RefTextArea — plainRefs (editable literal refs)', () => {
+  beforeEach(() => {
+    useStore.setState({
+      sources: [],
+      models: [{ name: 'orders' }],
+      dimensions: [],
+      metrics: [],
+      relations: [],
+      inputs: [],
+      explorerModelStates: {},
+    });
+  });
+
+  const editableOf = () => screen.getByRole('textbox');
+
+  test('a ref renders as the literal text, not an uneditable chip', () => {
+    render(<RefTextArea value={`avg(${R('orders', 'amount')})`} onChange={jest.fn()} plainRefs />);
+    const editable = editableOf();
+    expect(editable.textContent).toBe(`avg(${R('orders', 'amount')})`);
+    // No chip: nothing is walled off from the caret.
+    expect(editable.querySelector('[contenteditable="false"]')).toBeNull();
+    expect(editable.querySelector('[data-ref-name]')).toBeNull();
+    expect(editable.querySelector('[data-ref-token="orders"]')).not.toBeNull();
+  });
+
+  test('without plainRefs the same value still renders a chip', () => {
+    render(<RefTextArea value={R('orders', 'amount')} onChange={jest.fn()} />);
+    expect(editableOf().querySelector('[data-ref-name="orders"]')).not.toBeNull();
+  });
+
+  test('a name matching no known object is marked so it can be called out', () => {
+    render(<RefTextArea value={R('no_such_model', 'x')} onChange={jest.fn()} plainRefs />);
+    const token = editableOf().querySelector('[data-ref-token="no_such_model"]');
+    expect(token).not.toBeNull();
+    expect(token.getAttribute('data-ref-unknown')).toBe('true');
+    // ...and a resolvable one is not.
+    expect(token.textContent).toBe(R('no_such_model', 'x'));
+  });
+
+  test('a known ref carries no unknown marker', () => {
+    render(<RefTextArea value={R('orders', 'amount')} onChange={jest.fn()} plainRefs />);
+    const token = editableOf().querySelector('[data-ref-token="orders"]');
+    expect(token.hasAttribute('data-ref-unknown')).toBe(false);
+  });
+
+  test('no zero-width cursor-parking characters leak into the text', () => {
+    // They exist only so a caret can sit beside an uneditable chip; a plain
+    // token is editable text, so they would just be stray characters.
+    render(<RefTextArea value={R('orders')} onChange={jest.fn()} plainRefs />);
+    expect(editableOf().textContent).not.toContain('\u200B');
+    expect(editableOf().textContent).toBe(R('orders'));
+  });
+});

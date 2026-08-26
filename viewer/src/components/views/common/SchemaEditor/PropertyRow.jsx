@@ -188,7 +188,7 @@ export function PropertyRow({
   const pillFieldOptsRef = useRef(pillFieldOpts);
   pillFieldOptsRef.current = pillFieldOpts;
 
-  // Escape hatch back to raw-text editing ("Custom aggregation…", 06 §4/§5) —
+  // Escape hatch back to raw-text editing ("Manually edit field…", 06 §4/§5) —
   // per-row local state so switching one pill to raw edit never affects its
   // siblings. Resets whenever the row's OWN path changes (a different field
   // entirely) so a stale escape-hatch flag can't leak across fields.
@@ -354,7 +354,7 @@ export function PropertyRow({
     !forceRawEdit &&
     !rawEditing;
 
-  // D3 (e2e-gap-review.md delta pass): "Custom aggregation…" is otherwise a
+  // D3 (e2e-gap-review.md delta pass): "Manually edit field…" is otherwise a
   // ONE-WAY RATCHET into raw-text mode — `forceRawEdit` is only ever reset
   // by the `useEffect` above, keyed on `path` (stable for the row's whole
   // mount), so even retyping the EXACT original recognized shape (e.g.
@@ -372,7 +372,7 @@ export function PropertyRow({
   // The `droppable` gate that used to be here made that escape hatch reachable
   // ONLY in the Build rail. VIS-1240 removed the same gate from `showPill`, so
   // every other surface (the right rail included) renders pills but had no way
-  // back from raw text: "Custom aggregation…" swapped the interactive pill for
+  // back from raw text: "Manually edit field…" swapped the interactive pill for
   // a RefTextArea whose ref chips carry no menu, permanently. Dropping is what
   // `droppable` governs; whether a value can RENDER as a pill is a property of
   // the value, and so is whether it can render as one again.
@@ -622,7 +622,7 @@ export function PropertyRow({
                       // one can't take a single row.
                       slotShape={slotShape}
                       onApply={handlePillApply}
-                      onCustomAggregation={() => setForceRawEdit(true)}
+                      onManualEdit={() => setForceRawEdit(true)}
                       onSaveAsMetric={
                         onSaveAsMetric ? () => onSaveAsMetric(pillState) : undefined
                       }
@@ -653,7 +653,12 @@ export function PropertyRow({
                       // Raw-text mode has no pill to drop onto, and outside the
                       // Build rail the row wrapper isn't a drop target either.
                       acceptDrops
-                      restrictBrackets
+                      // "Manually edit field…" means the WHOLE expression is
+                      // text, refs included — a chip there is the one part the
+                      // manual escape hatch can't edit. An opaque value the
+                      // user never opted into editing keeps its chips.
+                      plainRefs={forceRawEdit}
+                      restrictBrackets={!forceRawEdit}
                     />
                   </div>
                   {canReturnToPill && (

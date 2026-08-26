@@ -868,9 +868,9 @@ describe('PropertyRow', () => {
       expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
     });
 
-    // "Custom aggregation…" was a one-way trip outside the Build rail: the
+    // "Manually edit field…" was a one-way trip outside the Build rail: the
     // return affordance was gated on `droppable`, which only that rail sets.
-    test('the way back from "Custom aggregation…" exists on a NON-droppable row', () => {
+    test('the way back from "Manually edit field…" exists on a NON-droppable row', () => {
       render(
         <PropertyRow
           {...defaultProps}
@@ -881,7 +881,7 @@ describe('PropertyRow', () => {
         />
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-      fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+      fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
       // The pill is gone (raw text now), and the escape hatch is present.
       expect(screen.queryByTestId('property-pill-x')).not.toBeInTheDocument();
       expect(screen.getByTestId('property-x-back-to-pill')).toBeInTheDocument();
@@ -977,7 +977,7 @@ describe('PropertyRow', () => {
       expect(onChange).toHaveBeenCalledWith('');
     });
 
-    test('"Custom aggregation…" switches the slot back to RefTextArea, pre-filled with the current body', () => {
+    test('"Manually edit field…" switches the slot back to RefTextArea, pre-filled with the current body', () => {
       render(
         <PropertyRow
           {...defaultProps}
@@ -989,18 +989,18 @@ describe('PropertyRow', () => {
         />
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-      fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+      fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
       expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
       expect(screen.getByTestId('ref-input')).toHaveValue('${ref(orders_q).amount}');
     });
 
-    // D3 (e2e-gap-review.md delta pass): the "Custom aggregation…" escape
+    // D3 (e2e-gap-review.md delta pass): the "Manually edit field…" escape
     // hatch used to be a one-way ratchet — no way back to pill rendering
     // short of an unrelated remount, even once the raw text re-parses as a
     // clean, recognized shape. These three tests lock in the "Back to pill"
     // affordance's exact contract.
     describe('"Back to pill" return path (D3)', () => {
-      test('the affordance is ABSENT immediately after "Custom aggregation…" while the raw text is still opaque/custom-shaped', () => {
+      test('the affordance is ABSENT immediately after "Manually edit field…" while the raw text is still opaque/custom-shaped', () => {
         render(
           <PropertyRow
             {...defaultProps}
@@ -1035,7 +1035,7 @@ describe('PropertyRow', () => {
           />
         );
         fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
         // Still the exact original recognized shape — RefTextArea is showing
         // (forceRawEdit is true) but the affordance should already be visible
         // since the raw text re-parses as a clean 'dimension' pill.
@@ -1086,7 +1086,7 @@ describe('PropertyRow', () => {
           />
         );
         fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
         expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
 
         fireEvent.click(screen.getByTestId('property-x-back-to-pill'));

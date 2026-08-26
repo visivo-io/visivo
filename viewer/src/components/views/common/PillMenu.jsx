@@ -180,7 +180,7 @@ function Divider() {
  * small chevron trigger + a `SliceMenu`-shaped portal popover.
  *
  * Phase 3b shipped PRESETS-ONLY (S5 §5 item 6): dimension ↔ preset
- * aggregation toggling, dialect-gated MEDIAN, "Custom aggregation…" (switches
+ * aggregation toggling, dialect-gated MEDIAN, "Manually edit field…" (switches
  * the slot back to raw `RefTextArea` editing — reuses the existing widget,
  * 06 §5), and a preflight warning for the global-name-first ref-collision
  * case. Phase 4 (06 §4) enables "Save as metric…" — for `kind: 'aggregate'`
@@ -198,7 +198,7 @@ function Divider() {
  * @param {(preset: 'dimension'|string) => void} props.onSelectPreset -
  *   called with `'dimension'` or an aggregation key from
  *   `PRESET_AGGREGATIONS`; the caller rebuilds + serializes the new state.
- * @param {() => void} props.onCustomAggregation - switch this slot to raw
+ * @param {() => void} props.onManualEdit - switch this slot to raw
  *   `RefTextArea` editing, pre-filled with the current body.
  * @param {() => void} [props.onSaveAsMetric] - Explore 2.0 Phase 4: promote
  *   this slot's aggregate expression to a named Metric. Enables the action
@@ -222,7 +222,7 @@ const PillMenu = React.forwardRef(
       slice = null,
       slotShape = 'unknown',
       onApply,
-      onCustomAggregation,
+      onManualEdit,
       onSaveAsMetric,
       onRemove,
       disabled = false,
@@ -331,8 +331,8 @@ const PillMenu = React.forwardRef(
             hasCollisionWarning={hasCollisionWarning}
             presetIsSelected={presetIsSelected}
             onSelectPreset={handleSelect}
-            onCustomAggregation={() => {
-              onCustomAggregation?.();
+            onManualEdit={() => {
+              onManualEdit?.();
               setOpen(false);
             }}
             saveAsMetricEnabled={saveAsMetricEnabled}
@@ -368,7 +368,7 @@ const PillMenuPopover = ({
   hasCollisionWarning,
   presetIsSelected,
   onSelectPreset,
-  onCustomAggregation,
+  onManualEdit,
   saveAsMetricEnabled,
   onSaveAsMetric,
   onRemove,
@@ -721,12 +721,12 @@ const PillMenuPopover = ({
       <button
         type="button"
         role="menuitem"
-        onClick={onCustomAggregation}
-        data-testid="pill-menu-custom-aggregation"
+        onClick={onManualEdit}
+        data-testid="pill-menu-manual-edit"
         className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-primary-50 text-gray-700"
       >
         <PiTextAa size={13} />
-        Custom aggregation…
+        Manually edit field…
       </button>
       <button
         type="button"

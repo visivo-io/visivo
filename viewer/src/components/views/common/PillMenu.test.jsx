@@ -472,7 +472,7 @@ describe('PillMenu', () => {
     expect(screen.queryByTestId('pill-menu-preset-dimension')).not.toBeInTheDocument();
     expect(screen.queryByTestId('pill-menu-preset-sum')).not.toBeInTheDocument();
     // The universal actions still render.
-    expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+    expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     expect(screen.getByTestId('pill-menu-save-as-metric')).toBeInTheDocument();
     expect(screen.getByTestId('pill-menu-remove')).toBeInTheDocument();
   });
@@ -545,17 +545,17 @@ describe('PillMenu', () => {
     });
   });
 
-  test('"Custom aggregation…" calls onCustomAggregation and closes the menu', () => {
-    const onCustomAggregation = jest.fn();
+  test('"Manually edit field…" calls onManualEdit and closes the menu', () => {
+    const onManualEdit = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
-        onCustomAggregation={onCustomAggregation}
+        onManualEdit={onManualEdit}
       />
     );
     openMenu();
-    fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
-    expect(onCustomAggregation).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
+    expect(onManualEdit).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
   });
 
@@ -708,7 +708,7 @@ describe('PillMenu', () => {
       render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} />);
       openMenu();
       // snowflake supports MEDIAN -> resolved via config.model, not parentModel.
-      expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     });
 
     test('dimensionRef resolves against the dimensions list (not metrics)', () => {
@@ -730,7 +730,7 @@ describe('PillMenu', () => {
       // again, "Use as" never renders for a non-column-backed kind, so assert
       // the dialect-gated custom-aggregation control is present and the menu
       // doesn't crash.
-      expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     });
 
     test('resolves via model.source (no .config wrapper) when the model has no config.source', () => {
@@ -796,7 +796,7 @@ describe('PillMenu', () => {
       useStore.setState({ metrics: undefined });
       render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} />);
       openMenu();
-      expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     });
 
     test('a dimension pill with `models` itself undefined fails open, no crash', () => {
