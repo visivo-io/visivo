@@ -70,6 +70,14 @@ class Dimension(NamedModel, ParentModel):
 
     @field_validator("expression")
     @classmethod
+    def validate_not_self_aliased(cls, v: str) -> str:
+        """A dimension's name is its alias; `gdp as gdp2` breaks the built query."""
+        from visivo.models.base.field_expression import reject_aliased_expression
+
+        return reject_aliased_expression(v, "dimension")
+
+    @field_validator("expression")
+    @classmethod
     def validate_no_ref_in_nested_expression(cls, v: str, info) -> str:
         """Prevent ref() syntax in nested dimension expressions."""
         from visivo.query.patterns import has_CONTEXT_STRING_REF_PATTERN

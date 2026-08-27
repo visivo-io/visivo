@@ -221,3 +221,23 @@ describe('Chart', () => {
     });
   });
 });
+
+// The insight preview passed `height={400}` alongside `hideToolbar` (which
+// turns on autosize). Plotly discards explicit dimensions when autosize is on,
+// so the value was silently dropped — but not before a re-render could paint at
+// it, which is a wrong-height flash in a container of any other size.
+describe('Chart — autosize and explicit dimensions are mutually exclusive', () => {
+  test('an autosize chart ignores an explicit height rather than fighting it', () => {
+    render(<Chart chart={chart} projectId="p1" hideToolbar height={400} shouldLoad />);
+    expect(capturedLayout.autosize).toBe(true);
+    expect(capturedLayout.height).toBeUndefined();
+    expect(capturedLayout.width).toBeUndefined();
+  });
+
+  test('a fixed-size chart still honours its height — the dashboard path', () => {
+    render(<Chart chart={chart} projectId="p1" height={320} width={640} shouldLoad />);
+    expect(capturedLayout.autosize).toBeFalsy();
+    expect(capturedLayout.height).toBe(320);
+    expect(capturedLayout.width).toBe(640);
+  });
+});
