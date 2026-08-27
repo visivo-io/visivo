@@ -18,6 +18,7 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
+import { refKindsFor } from '../common/fieldTypes';
 
 const INSIGHT_COLORS = getTypeColors('insight');
 const InsightTypeIcon = getTypeIcon('insight');
@@ -66,7 +67,7 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
           }}
           label=""
           rows={1}
-          allowedTypes={['model', 'dimension', 'metric', 'input']}
+          allowedTypes={refKindsFor('interaction', 'filter')}
         />
       </div>
       <button

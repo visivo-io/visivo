@@ -3,7 +3,7 @@ import useStore, { ObjectStatus } from '../../../stores/store';
 import useRecordSave from '../../../hooks/useRecordSave';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { FormInput, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
-import RefTextArea from '../common/RefTextArea';
+import ExpressionField from '../common/ExpressionField';
 import { validateName } from '../common/namedModel';
 import { isEmbeddedObject } from '../common/embeddedObjectUtils';
 import { getTypeByValue } from '../common/objectTypeConfigs';
@@ -44,16 +44,21 @@ import { useFieldParentModel } from './fields/useFieldParentModel';
  */
 
 /**
- * Per-type declarative layer. `expressionField` names the schema field that
- * should render through RefTextArea instead of the generic engine widget;
- * `allowedTypes` scopes its + ref-insert menu; `helperText`/`embeddedHelperText`
- * carry the authoring guidance the schema description doesn't.
+ * Per-type declarative layer — PROSE AND LAYOUT ONLY. `expressionField` names
+ * the schema field that renders through `ExpressionField` instead of the
+ * generic engine widget; `helperText`/`embeddedHelperText`/`rows` carry
+ * guidance and sizing the schema description doesn't.
+ *
+ * The authoring RULES — which editor, which refs are legal, whether a bare ref
+ * or an index is allowed — deliberately do NOT live here any more. They're in
+ * `common/fieldTypes.js`, so the Explorer's computed-column popover and this
+ * form can't disagree about the same field. `allowedTypes` used to sit here and
+ * was one of seven such literals.
  */
 export const TYPE_CONFIG = {
   dimension: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    allowedTypes: ['model', 'dimension'],
     helperText: 'SQL expression for this dimension. Use the + button to insert references.',
     embeddedHelperText: 'Plain SQL expression referencing columns from the parent model.',
     rows: 4,
@@ -61,7 +66,6 @@ export const TYPE_CONFIG = {
   metric: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    allowedTypes: ['model', 'metric', 'dimension'],
     helperText: 'SQL aggregate expression for this metric. Use the + button to insert references.',
     embeddedHelperText: 'Plain SQL aggregate expression over the parent model.',
     rows: 4,
@@ -69,7 +73,6 @@ export const TYPE_CONFIG = {
   relation: {
     expressionField: 'condition',
     expressionLabel: 'Condition',
-    allowedTypes: ['model'],
     // eslint-disable-next-line no-template-curly-in-string
     helperText: 'Join condition using ${ref(model).field} syntax. Must reference at least two models.',
     rows: 4,
@@ -266,26 +269,26 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
 
   const mergedErrors = { ...fieldErrors, ...localErrors };
 
-  // ---- expression widget override (RefTextArea) ----
+  // ---- expression widget override ----
+  // Which editor this field gets, and which refs it may contain, come from the
+  // field-type registry rather than from `typeConfig` literals. `isEmbedded` is
+  // the nested case: a metric/dimension defined UNDER a model, where
+  // `sql_model.py` rejects any ref — so the registry resolves it to `plain-sql`
+  // and `ExpressionField` renders a bare textarea with no ref affordances.
   const overrides = useMemo(() => {
     const exprField = typeConfig.expressionField;
     if (!exprField) return {};
     return {
       [exprField]: ({ value, onChange, error }) => (
-        <RefTextArea
-          value={value ?? ''}
+        <ExpressionField
+          objectType={type}
+          field={exprField}
+          nested={isEmbedded}
+          value={value}
           onChange={onChange}
-          label={
-            typeConfig.expressionLabel || fieldLabel(getObjectSchemaSync(type), exprField)
-          }
-          required
           error={error}
-          allowedTypes={isEmbedded ? [] : typeConfig.allowedTypes || []}
-          // VIS-1243: a dimension/metric expression and a relation condition
-          // are authored here and nowhere else, so this is the surface where
-          // "drag a model in" has to work.
-          acceptDrops={!isEmbedded}
-          hideAddButton={isEmbedded}
+          required
+          label={typeConfig.expressionLabel || fieldLabel(getObjectSchemaSync(type), exprField)}
           rows={typeConfig.rows || 4}
           helperText={
             isEmbedded && typeConfig.embeddedHelperText

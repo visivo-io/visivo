@@ -18,6 +18,7 @@ import { getSlotShape, menuPolicyFor } from './utils/slotShape';
 import { getFieldComponent } from './fields/fields';
 import { SliceBadge } from './SliceBadge';
 import { SliceBanner } from './SliceBanner';
+import { refKindsFor } from '../fieldTypes';
 
 /**
  * PropertyRow - A single property in the schema editor with optional query-string toggle
@@ -649,7 +650,7 @@ export function PropertyRow({
                       rows={2}
                       helperText={description}
                       disabled={disabled}
-                      allowedTypes={['model', 'dimension', 'metric', 'input']}
+                      allowedTypes={refKindsFor('insight', 'props')}
                       // Raw-text mode has no pill to drop onto, and outside the
                       // Build rail the row wrapper isn't a drop target either.
                       acceptDrops

@@ -38,7 +38,13 @@ import { formatRefExpression } from '../../../utils/refString';
 const RefTextArea = ({
   value = '',
   onChange,
-  allowedTypes = ['model', 'dimension', 'metric', 'source'],
+  // VIS-1254: `source` was in this default and nowhere else. A source has no
+  // value to reference from inside an expression — it names a connection, not a
+  // column — so offering it produced a ref that can never resolve. Surfaces
+  // that pass nothing (SQLEditor, RequiredFieldsSection) inherited it silently.
+  // Callers with a declared field type should pass `refKindsFor(...)` instead
+  // of relying on this at all.
+  allowedTypes = ['model', 'dimension', 'metric'],
   label,
   error,
   required = false,

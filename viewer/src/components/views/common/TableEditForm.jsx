@@ -12,6 +12,7 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
 import RefTextArea from './RefTextArea';
 import Select from '../../common/Select';
+import { refKindsFor } from './fieldTypes';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -517,7 +518,7 @@ const RefListField = ({ label, items, onChange, helperText, error }) => {
             <RefTextArea
               value={item}
               onChange={value => handleChange(index, value)}
-              allowedTypes={['model', 'insight', 'dimension', 'metric']}
+              allowedTypes={refKindsFor('table', 'columns')}
               rows={1}
               hideAddButton
             />
