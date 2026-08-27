@@ -403,3 +403,36 @@ describe('SchemaLeafForm unknown-type resilience', () => {
     expect(await screen.findByTestId('form-shell-empty')).toBeInTheDocument();
   });
 });
+
+
+
+// `parentModel` is a SIBLING of `config`, not a field inside it — Metric and
+// Dimension declare no `model` field and forbid extras, so nesting is only
+// expressible positionally in the YAML. Building the save body as
+// `{ ...config, name }` dropped it, the object validated as standalone, and
+// `project_writer` wrote it at the top level: an ordinary save silently
+// un-nested a field from its model.
+describe('SchemaLeafForm — a model-scoped field keeps its parent on save', () => {
+  const edit = record =>
+    render(<SchemaLeafForm type="dimension" record={record} onClose={jest.fn()} onSave={jest.fn()} />);
+
+  test('the save body carries parentModel through', async () => {
+    edit({ name: 'gdp2', parentModel: 'new-model', config: { expression: 'gdp' } });
+    fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'gdp * 2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalled());
+    expect(mockSaveNow).toHaveBeenCalledWith(
+      expect.objectContaining({ parentModel: 'new-model' })
+    );
+  });
+
+  test('a standalone field sends no parentModel', async () => {
+    edit({ name: 'region', config: { expression: 'region' } });
+    fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'upper(region)' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalled());
+    expect(mockSaveNow.mock.calls[0][0]).not.toHaveProperty('parentModel');
+  });
+});
