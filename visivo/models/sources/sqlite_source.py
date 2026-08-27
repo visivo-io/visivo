@@ -1,3 +1,4 @@
+import os
 from typing import List, Literal, Optional, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
@@ -65,6 +66,16 @@ class SqliteSource(ServerSource, SqlalchemySource):
         None,
         description="List of other local SQLite database sources to attach in the connection that will be available in the base SQL query.",
     )
+
+    def get_engine(self):
+        # SQLite creates a missing database file on connect, but NOT missing
+        # parent directories — `database: nested/dir/local.db` fails with a raw
+        # "unable to open database file" (M10). Create the parents first; an
+        # existing file/dir is untouched.
+        parent = os.path.dirname(str(self.database))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        return super().get_engine()
 
     def get_connection_dialect(self):
         return "sqlite+pysqlite"

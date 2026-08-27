@@ -214,7 +214,6 @@ const ContextMenu = ({ obj, onAction, onDismiss, canAddToExploration = false }) 
             <ContextMenuItem
               icon={getTypeDef('chart').icon}
               label="Wrap in Chart…"
-              hint="⌘⇧W"
               onClick={handle('wrapInChart')}
             />
           </li>

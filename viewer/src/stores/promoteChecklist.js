@@ -88,11 +88,14 @@ const validateRow = async (type, config, syntheticState) => {
  *   `workspaceExplorationsStore.js` is one of the slices composed INTO it).
  * @returns {Promise<Array<{
  *   tier: 'model'|'field'|'insight'|'chart', type: string, name: string,
- *   parentModel: string|null, status: 'new'|'modified', valid: boolean,
+ *   parentModel: string|null, status: 'new'|'modified'|'unchanged', valid: boolean,
  *   error: string|null, config: object,
  * }>>}
+ * With `includeUnchanged`, already-saved byte-identical rows are appended
+ * (status 'unchanged', valid true) instead of dropped — see the M14 retry
+ * classification in `promoteExploration`.
  */
-export const buildPromoteChecklist = async getState => {
+export const buildPromoteChecklist = async (getState, { includeUnchanged = false } = {}) => {
   const state = getState();
   const candidates = [];
 
@@ -212,7 +215,7 @@ export const buildPromoteChecklist = async getState => {
     return fallbackIsNew === false ? 'modified' : 'new';
   };
 
-  const rows = candidates
+  const statusedCandidates = candidates
     .map(candidate => {
       const bucket =
         candidate.type === 'model'
@@ -231,9 +234,14 @@ export const buildPromoteChecklist = async getState => {
             : diff.chart || (candidate.isNew === false ? 'modified' : 'new')
           : statusFor(bucket, candidate.name, candidate.isNew);
       return { ...candidate, status };
-    })
-    // Nothing to promote for an already-published, byte-identical object.
-    .filter(row => row.status !== 'unchanged');
+    });
+
+  // Nothing to promote for an already-published, byte-identical object. The
+  // unchanged rows are kept aside: promoteExploration needs them (with
+  // includeUnchanged) to tell "already saved — a retry no-op" apart from
+  // "vanished from the exploration mid-dialog", which are opposite outcomes.
+  const unchangedRows = statusedCandidates.filter(row => row.status === 'unchanged');
+  const rows = statusedCandidates.filter(row => row.status !== 'unchanged');
 
   // Synthetic-sibling state: every candidate row's name stubbed into its
   // collection so a chart/insight referencing a sibling ALSO in this
@@ -269,7 +277,16 @@ export const buildPromoteChecklist = async getState => {
   );
 
   const tierOrder = { model: 0, field: 1, insight: 2, chart: 3 };
-  return validated.sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
+  const sorted = validated.sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
+
+  if (includeUnchanged) {
+    // Appended un-validated: they are already saved byte-identical, so there
+    // is nothing to validate and nothing to promote — callers use the
+    // status === 'unchanged' marker to classify a retried selection as a
+    // successful no-op rather than a drop.
+    return [...sorted, ...unchangedRows.map(row => ({ ...row, valid: true, error: null }))];
+  }
+  return sorted;
 };
 
 export default buildPromoteChecklist;

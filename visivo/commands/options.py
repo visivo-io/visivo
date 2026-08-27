@@ -90,7 +90,7 @@ def user_dir(function):
     click.option(
         "-u",
         "--user-dir",
-        help="Directory containing profile",
+        help="Directory that contains your .visivo folder — defaults to your home directory",
         default=os.path.expanduser("~"),
     )(function)
     return function

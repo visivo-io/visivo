@@ -46,6 +46,8 @@ from visivo.server.views.insight_draft_common import (
     extract_model_not_run_name,
 )
 
+from visivo.server.views.temporal_json import isoformat_temporal_values
+
 
 def register_insight_execute_views(app, flask_app, output_dir):
     @app.route("/api/insight-execute-draft/", methods=["POST"])
@@ -174,6 +176,7 @@ def register_insight_execute_views(app, flask_app, output_dir):
                     # columns, rows, row_count, execution_time_ms — rows are the
                     # FINAL chart rows.
                     **result,
+                    "rows": isoformat_temporal_values(result.get("rows") or []),
                     "props_mapping": query_info.props_mapping,
                     "static_props": query_info.static_props,
                     "props_slices": query_info.props_slices,

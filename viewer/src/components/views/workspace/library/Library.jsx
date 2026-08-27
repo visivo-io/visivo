@@ -13,6 +13,7 @@ import { emitWorkspaceEvent } from '../telemetry';
 import ViewSwitcher from '../ViewSwitcher';
 import { useConfirm } from '../../../common/ConfirmDialog';
 import { ObjectStatus } from '../../../../stores/store';
+import { generateUniqueName } from '../../../../utils/uniqueName';
 
 // Row Delete -> the per-type store action. Every one has the same shape (API
 // call, refetch, checkCommitStatus) and returns `{ success, error }`, so the
@@ -116,6 +117,8 @@ const Library = () => {
   const createExploration = useStore(s => s.createExploration);
   const buildExplorationSeedState = useStore(s => s.buildExplorationSeedState);
   const addObjectToActiveExploration = useStore(s => s.addObjectToActiveExploration);
+  const saveChart = useStore(s => s.saveChart);
+  const charts = useStore(s => s.charts);
   // VIS-1067: "Add to exploration" is only offered while an exploration tab
   // is the ACTIVE one — that's the exploration whose live legacy working
   // state `addObjectToActiveExploration` actually mutates.
@@ -337,10 +340,22 @@ const Library = () => {
         name: obj.name,
         action,
       });
-      // VIS-811 / O-2: the open actions are live; `wrapInChart`/`delete` stay
-      // telemetry-only until their tracks wire them. VIS-1067 wires
-      // `exploreThis`/`addToExploration`; `showLineage` is wired below.
       const type = routeType(obj);
+      if (action === 'wrapInChart' && saveChart) {
+        // B2: the advertised affordance existed and was a silent no-op. A
+        // wrap creates a chart whose only content is this insight — the
+        // hyphenated cascade name (#615) with -2 disambiguation (#620).
+        const existingChartNames = (charts || []).map(chart => chart.name);
+        const chartName = generateUniqueName(`${obj.name}-chart`, existingChartNames, {
+          separator: '-',
+        });
+        saveChart(chartName, { insights: [`ref(${obj.name})`] }).then(result => {
+          if (result?.success && openWorkspaceTab) {
+            openWorkspaceTab({ id: `chart:${chartName}`, type: 'chart', name: chartName });
+          }
+        });
+        return;
+      }
       if (action === 'edit' && openWorkspaceTab) {
         openWorkspaceTab({ id: `${type}:${obj.name}`, type, name: obj.name });
       } else if (action === 'openInNewTab' && openWorkspaceTabBackground) {
@@ -387,6 +402,8 @@ const Library = () => {
       createExploration,
       buildExplorationSeedState,
       addObjectToActiveExploration,
+      saveChart,
+      charts,
       handleDelete,
       handleRestore,
     ]

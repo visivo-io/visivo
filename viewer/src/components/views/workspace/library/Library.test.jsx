@@ -288,6 +288,64 @@ describe('Library', () => {
     );
   });
 
+  test('Wrap in Chart creates a chart wrapping the insight and opens its tab (B2)', async () => {
+    // The menu item existed and was a silent telemetry-only no-op — the
+    // advertised affordance for the headline insight→dashboard path.
+    const openWorkspaceTab = jest.fn();
+    const saveChart = jest.fn().mockResolvedValue({ success: true });
+    seedStore({ openWorkspaceTab, saveChart });
+    renderLibrary();
+    fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+    fireEvent.click(screen.getByText('Wrap in Chart…'));
+    expect(saveChart).toHaveBeenCalledWith('revenue_growth-chart', {
+      insights: ['ref(revenue_growth)'],
+    });
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'chart:revenue_growth-chart',
+        type: 'chart',
+        name: 'revenue_growth-chart',
+      })
+    );
+  });
+
+  test('Wrap in Chart disambiguates against an existing chart name with -2', () => {
+    const saveChart = jest.fn().mockResolvedValue({ success: true });
+    seedStore({
+      saveChart,
+      charts: [{ name: 'revenue_growth-chart' }],
+    });
+    renderLibrary();
+    fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+    fireEvent.click(screen.getByText('Wrap in Chart…'));
+    expect(saveChart).toHaveBeenCalledWith('revenue_growth-chart-2', {
+      insights: ['ref(revenue_growth)'],
+    });
+  });
+
+  test('a failed wrap save opens no tab', async () => {
+    const openWorkspaceTab = jest.fn();
+    const saveChart = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    seedStore({ openWorkspaceTab, saveChart });
+    renderLibrary();
+    fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+    fireEvent.click(screen.getByText('Wrap in Chart…'));
+    await waitFor(() => expect(saveChart).toHaveBeenCalled());
+    expect(openWorkspaceTab).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'chart' })
+    );
+  });
+
+  test('the Wrap in Chart item advertises no unbound keyboard accelerator', () => {
+    seedStore();
+    renderLibrary();
+    fireEvent.contextMenu(screen.getByTestId('library-row-insight-revenue_growth'));
+    // No ⌘⇧W hint anywhere in the open menu — the accelerator was never
+    // bound, so advertising it fails a user who tries it.
+    expect(screen.getByText('Wrap in Chart…')).toBeInTheDocument();
+    expect(screen.queryByText(/⌘/)).not.toBeInTheDocument();
+  });
+
   test('a source row reaches the same context actions as any other row', () => {
     // `onContextAction` was already being passed to the source row by
     // LibrarySubsection — the old component just never accepted it, so the
