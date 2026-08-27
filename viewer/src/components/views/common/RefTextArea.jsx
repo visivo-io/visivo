@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
 import { createRefTokenElement } from './refTokenElement';
+import PillMenu, { CHIP_SECTIONS } from './PillMenu';
 import { parseTextWithRefs } from '../../../utils/contextString';
 import { serializeContentEditableToRefString } from '../../../utils/contextString';
 import { formatRefExpression } from '../../../utils/refString';
@@ -55,6 +56,10 @@ const RefTextArea = ({
   restrictBrackets = false,
   acceptDrops = false,
   plainRefs = false,
+  // VIS-1243: make each ref chip configurable in place — click it to re-point
+  // the ref instead of deleting and retyping. Opt-in, since 8+ surfaces share
+  // this component.
+  configurableChips = false,
 }) => {
   const editableRef = useRef(null);
   const containerRef = useRef(null);
@@ -140,6 +145,13 @@ const RefTextArea = ({
   // Accessor dropdown for input pills
   const [accessorDropdown, setAccessorDropdown] = useState(null);
   const accessorAnchorRef = useRef(null);
+  // The chip whose menu is open. Held by INDEX, not by node: opening the menu
+  // re-renders, and the value->DOM sync rebuilds every chip, so a captured node
+  // is detached by the time Apply runs. The index identifies THIS chip rather
+  // than the first textually-identical one — the same lesson the accessor
+  // dropdown learned.
+  const [chipMenu, setChipMenu] = useState(null);
+  const chipMenuRef = useRef(null);
 
   const getInputAccessors = useCallback((refName) => {
     const input = (inputs || []).find(i => i.name === refName);
@@ -578,7 +590,7 @@ const RefTextArea = ({
     e.clipboardData.setData('text/plain', serialized);
   }, []);
 
-  // Handle click for accessor dropdown
+  // Handle click for accessor dropdown / chip menu
   const handleClick = useCallback((e) => {
     const target = e.target;
     const accessorName = target.getAttribute('data-accessor-name');
@@ -588,8 +600,24 @@ const RefTextArea = ({
       const property = target.getAttribute('data-accessor-property');
       const isOpen = accessorDropdown?.name === accessorName;
       setAccessorDropdown(isOpen ? null : { name: accessorName, property });
+      return;
     }
-  }, [accessorDropdown]);
+
+    if (!configurableChips) return;
+    // The click can land on the chip's icon or label span, so walk up to the
+    // chip itself. An input accessor is handled above and keeps its own menu.
+    const chip = target.closest?.('[data-ref-name]');
+    if (chip && editableRef.current?.contains(chip)) {
+      e.stopPropagation();
+      const chips = [...editableRef.current.querySelectorAll('[data-ref-name]')];
+      setChipMenu({
+        index: chips.indexOf(chip),
+        name: chip.getAttribute('data-ref-name'),
+        property: chip.getAttribute('data-ref-property') || null,
+        rect: chip.getBoundingClientRect(),
+      });
+    }
+  }, [accessorDropdown, configurableChips]);
 
   // After any click, if the browser selected a pill as a block or placed the caret
   // at a container-level offset, resolve it to a text node position so the caret is visible.
@@ -846,6 +874,70 @@ const RefTextArea = ({
     [acceptDrops, disabled, setDropRef]
   );
 
+  // Re-point the open chip. Mutating the node's attributes (rather than a
+  // string replace on the value) is what makes this correct when the same ref
+  // appears more than once — the accessor dropdown learned the same lesson.
+  const chipAt = index => {
+    if (index == null || index < 0 || !editableRef.current) return null;
+    return editableRef.current.querySelectorAll('[data-ref-name]')[index] || null;
+  };
+
+  const handleChipApply = useCallback(
+    draft => {
+      const chip = chipAt(chipMenu?.index);
+      setChipMenu(null);
+      if (!chip) return;
+      const nextProperty = (draft?.column || '').trim();
+      if (!nextProperty) return;
+      chip.setAttribute('data-ref-property', nextProperty);
+      const propSpan = chip.querySelector('span:last-child');
+      if (propSpan && propSpan.textContent.startsWith('.')) {
+        propSpan.textContent = `.${nextProperty}`;
+      }
+      serializeAndUpdate();
+    },
+    [chipMenu, serializeAndUpdate]
+  );
+
+  const handleChipRemove = useCallback(() => {
+    const chip = chipAt(chipMenu?.index);
+    setChipMenu(null);
+    if (!chip) return;
+    chip.remove();
+    serializeAndUpdate();
+  }, [chipMenu, serializeAndUpdate]);
+
+  // Auto-open on mount: the anchor is an invisible zero-size span placed over
+  // the chip, so PillMenu's own positioning works unchanged.
+  useEffect(() => {
+    if (chipMenu && chipMenuRef.current) chipMenuRef.current.open();
+  }, [chipMenu]);
+
+  const chipMenuPortal =
+    chipMenu &&
+    createPortal(
+      <span
+        style={{
+          position: 'fixed',
+          top: chipMenu.rect.top,
+          left: chipMenu.rect.right,
+          width: 0,
+          height: chipMenu.rect.height,
+          opacity: 0,
+        }}
+        data-testid="chip-menu-anchor"
+      >
+        <PillMenu
+          ref={chipMenuRef}
+          state={{ kind: 'dimension', ref: chipMenu.name, column: chipMenu.property }}
+          sections={CHIP_SECTIONS}
+          onApply={handleChipApply}
+          onRemove={handleChipRemove}
+        />
+      </span>,
+      document.body
+    );
+
   // --- Render ---
 
   const editorMinHeight = Math.max(40, rows * 20);
@@ -1011,6 +1103,9 @@ const RefTextArea = ({
 
       {/* Accessor dropdown */}
       {accessorDropdownPortal}
+
+      {/* Chip re-point menu (VIS-1243) */}
+      {chipMenuPortal}
 
       {/* @ mention dropdown */}
       {mentionDropdownPortal}
