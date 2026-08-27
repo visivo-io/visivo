@@ -1,8 +1,11 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect, useId } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
+import { createRefTokenElement } from './refTokenElement';
+import PillMenu, { CHIP_SECTIONS } from './PillMenu';
 import { parseTextWithRefs } from '../../../utils/contextString';
 import { serializeContentEditableToRefString } from '../../../utils/contextString';
 import { formatRefExpression } from '../../../utils/refString';
@@ -27,16 +30,37 @@ import { formatRefExpression } from '../../../utils/refString';
  * - disabled: Whether the field is disabled
  * - rows: Number of rows (approximate height)
  * - helperText: Helper text shown below the editor
- * - hideAddButton: Whether to hide add-ref affordances
+ * - hideAddButton: legacy no-op. There has never been an add-ref BUTTON in this
+ *   component — references are inserted by typing `@` (the mention dropdown) or
+ *   by dropping one in. Helper copy across the app told users to "use the +
+ *   button", describing a control that does not exist. Kept only so existing
+ *   call sites don't break; it gates nothing.
  * - restrictBrackets: Block typing/pasting `[` and `]`. Only for chip-body
  *   editors where slices are authored separately (SchemaEditor PropertyRow +
  *   SliceBadge); free-form SQL fields must keep brackets (array indexing,
  *   quoted identifiers, json access).
  */
+/**
+ * How a reference actually gets into one of these editors — the same wording
+ * this component's own docs use ("Type @ to insert references"), so the help
+ * text and the feature description can't drift apart. Exported so every surface
+ * says the same true thing instead of each inventing its own copy.
+ *
+ * Notably it does NOT mention a "+ button": several fields told users to use
+ * one, and no such control has ever existed here.
+ */
+export const REF_INSERT_HINT = 'Type @ to insert references, or drag them in from the library.';
+
 const RefTextArea = ({
   value = '',
   onChange,
-  allowedTypes = ['model', 'dimension', 'metric', 'source'],
+  // VIS-1254: `source` was in this default and nowhere else. A source has no
+  // value to reference from inside an expression — it names a connection, not a
+  // column — so offering it produced a ref that can never resolve. Surfaces
+  // that pass nothing (SQLEditor, RequiredFieldsSection) inherited it silently.
+  // Callers with a declared field type should pass `refKindsFor(...)` instead
+  // of relying on this at all.
+  allowedTypes = ['model', 'dimension', 'metric'],
   label,
   error,
   required = false,
@@ -45,6 +69,12 @@ const RefTextArea = ({
   helperText,
   hideAddButton = false,
   restrictBrackets = false,
+  acceptDrops = false,
+  plainRefs = false,
+  // VIS-1243: make each ref chip configurable in place — click it to re-point
+  // the ref instead of deleting and retyping. Opt-in, since 8+ surfaces share
+  // this component.
+  configurableChips = false,
 }) => {
   const editableRef = useRef(null);
   const containerRef = useRef(null);
@@ -130,6 +160,14 @@ const RefTextArea = ({
   // Accessor dropdown for input pills
   const [accessorDropdown, setAccessorDropdown] = useState(null);
   const accessorAnchorRef = useRef(null);
+  // The chip whose menu is open. Held by INDEX, not by node: opening the menu
+  // re-renders, and the value->DOM sync rebuilds every chip, so a captured node
+  // is detached by the time Apply runs. The index identifies THIS chip rather
+  // than the first textually-identical one — the same lesson the accessor
+  // dropdown learned.
+  const showWorkspaceToast = useStore(state => state.showWorkspaceToast);
+  const [chipMenu, setChipMenu] = useState(null);
+  const chipMenuRef = useRef(null);
 
   const getInputAccessors = useCallback((refName) => {
     const input = (inputs || []).find(i => i.name === refName);
@@ -222,6 +260,16 @@ const RefTextArea = ({
     return pill;
   }, [getPillTypeConfig, getInputAccessors]);
 
+  // Plain-text refs (see refTokenElement.js) — the pill/plain decision lives
+  // in this one place rather than at all four insertion sites below.
+  const createRefNode = useCallback(
+    (name, property) =>
+      plainRefs
+        ? createRefTokenElement(name, property, getPillTypeConfig(name, property))
+        : createPillElement(name, property),
+    [plainRefs, getPillTypeConfig, createPillElement]
+  );
+
   const buildDOMFromValue = useCallback((val) => {
     const el = editableRef.current;
     if (!el) return;
@@ -235,18 +283,19 @@ const RefTextArea = ({
     // Use zero-width space (\u200B) for cursor positioning around pills
     const ZWS = '\u200B';
 
-    // Ensure there's a text node before the first pill for cursor placement
-    if (segments.length > 0 && segments[0].type === 'ref') {
+    // Cursor-parking ZWS exists because a chip is `contenteditable=false` and
+    // otherwise has no place to put the caret beside it. A plain token is
+    // editable text, so it needs none — and they would show up as stray
+    // characters mid-expression.
+    if (!plainRefs && segments.length > 0 && segments[0].type === 'ref') {
       el.appendChild(document.createTextNode(ZWS));
     }
 
     segments.forEach((segment, i) => {
       if (segment.type === 'ref') {
-        const pill = createPillElement(segment.name, segment.property);
-        el.appendChild(pill);
-        // Ensure there's a text node after each pill for cursor placement
+        el.appendChild(createRefNode(segment.name, segment.property));
         const next = segments[i + 1];
-        if (!next || next.type === 'ref') {
+        if (!plainRefs && (!next || next.type === 'ref')) {
           el.appendChild(document.createTextNode(ZWS));
         }
       } else {
@@ -254,7 +303,7 @@ const RefTextArea = ({
         el.appendChild(textNode);
       }
     });
-  }, [createPillElement]);
+  }, [createRefNode, plainRefs]);
 
   // Sync DOM from value prop when not focused
   useEffect(() => {
@@ -504,7 +553,7 @@ const RefTextArea = ({
     const segments = parseTextWithRefs(text);
     segments.forEach(segment => {
       if (segment.type === 'ref') {
-        const pill = createPillElement(segment.name, segment.property);
+        const pill = createRefNode(segment.name, segment.property);
         range.insertNode(pill);
         range.setStartAfter(pill);
       } else {
@@ -519,7 +568,7 @@ const RefTextArea = ({
     sel.addRange(range);
 
     serializeAndUpdate();
-  }, [createPillElement, serializeAndUpdate, restrictBrackets]);
+  }, [createRefNode, serializeAndUpdate, restrictBrackets]);
 
   // In restrictBrackets mode the editor is chip-body-only — bracket
   // characters are reserved for the SliceBadge's authored slice suffix.
@@ -557,7 +606,7 @@ const RefTextArea = ({
     e.clipboardData.setData('text/plain', serialized);
   }, []);
 
-  // Handle click for accessor dropdown
+  // Handle click for accessor dropdown / chip menu
   const handleClick = useCallback((e) => {
     const target = e.target;
     const accessorName = target.getAttribute('data-accessor-name');
@@ -567,8 +616,24 @@ const RefTextArea = ({
       const property = target.getAttribute('data-accessor-property');
       const isOpen = accessorDropdown?.name === accessorName;
       setAccessorDropdown(isOpen ? null : { name: accessorName, property });
+      return;
     }
-  }, [accessorDropdown]);
+
+    if (!configurableChips) return;
+    // The click can land on the chip's icon or label span, so walk up to the
+    // chip itself. An input accessor is handled above and keeps its own menu.
+    const chip = target.closest?.('[data-ref-name]');
+    if (chip && editableRef.current?.contains(chip)) {
+      e.stopPropagation();
+      const chips = [...editableRef.current.querySelectorAll('[data-ref-name]')];
+      setChipMenu({
+        index: chips.indexOf(chip),
+        name: chip.getAttribute('data-ref-name'),
+        property: chip.getAttribute('data-ref-property') || null,
+        rect: chip.getBoundingClientRect(),
+      });
+    }
+  }, [accessorDropdown, configurableChips]);
 
   // After any click, if the browser selected a pill as a block or placed the caret
   // at a container-level offset, resolve it to a text node position so the caret is visible.
@@ -675,7 +740,7 @@ const RefTextArea = ({
         const after = text.slice(offset);
 
         // Build pill
-        const pill = createPillElement(item.name, item.property || null);
+        const pill = createRefNode(item.name, item.property || null);
 
         // Replace text node content
         node.textContent = before;
@@ -713,19 +778,18 @@ const RefTextArea = ({
 
     setMentionState({ active: false, query: '', rect: null, selectedIndex: 0 });
     serializeAndUpdate();
-  }, [createPillElement, serializeAndUpdate]);
+  }, [createRefNode, serializeAndUpdate]);
 
   // Keep ref in sync with latest insertMentionItem
   insertMentionItemRef.current = insertMentionItem;
 
   // --- DnD Cursor-Aware Insertion ---
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const handler = (e) => {
-      const { refExpr } = e.detail;
+  // Extracted from the `ref-insert-at-cursor` listener below so a dnd-kit drop
+  // can reuse the identical caret-aware insertion instead of replacing the
+  // whole value (which is what every non-RefTextArea drop target does).
+  const insertRefExpr = useCallback(
+    refExpr => {
       if (!refExpr || !editableRef.current) return;
 
       // Parse the ref expression to get name and property
@@ -733,7 +797,7 @@ const RefTextArea = ({
       const refSegment = segments.find(s => s.type === 'ref');
       if (!refSegment) return;
 
-      const pill = createPillElement(refSegment.name, refSegment.property);
+      const pill = createRefNode(refSegment.name, refSegment.property);
       const editable = editableRef.current;
 
       if (savedCursorOffsetRef.current !== null) {
@@ -762,10 +826,16 @@ const RefTextArea = ({
               inserted = true;
             }
             currentOffset += len;
-          } else if (child.nodeType === Node.ELEMENT_NODE && child.hasAttribute('data-ref-name')) {
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            // A chip's serialized length comes from its attributes; anything
+            // else (a plain ref token, a wrapper) already reads as its own
+            // text. Counting only chips skipped plain tokens entirely and
+            // landed the insert short of where it was dropped.
             const refName = child.getAttribute('data-ref-name');
             const refProp = child.getAttribute('data-ref-property');
-            const refLen = refProp ? `\${ref(${refName}).${refProp}}`.length : `\${ref(${refName})}`.length;
+            const refLen = refName
+              ? (refProp ? `\${ref(${refName}).${refProp}}` : `\${ref(${refName})}`).length
+              : child.textContent.length;
             if (currentOffset + refLen >= targetOffset) {
               if (child.nextSibling) {
                 editable.insertBefore(pill, child.nextSibling);
@@ -789,11 +859,114 @@ const RefTextArea = ({
       }
 
       serializeAndUpdate();
-    };
+    },
+    [createRefNode, serializeAndUpdate]
+  );
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = e => insertRefExpr(e.detail?.refExpr);
     el.addEventListener('ref-insert-at-cursor', handler);
     return () => el.removeEventListener('ref-insert-at-cursor', handler);
-  }, [createPillElement, serializeAndUpdate]);
+  }, [insertRefExpr]);
+
+  // VIS-1243: a RefTextArea was never a drop target — dragging a model onto a
+  // dimension/metric expression, a relation condition, or a slot switched to
+  // "Manually edit field…" simply did nothing. Only `PropertyRow`'s row wrapper
+  // accepted drops, and only in the Build rail (`droppable`). Opt-in so the 8+
+  // other surfaces that share this component keep their current behaviour.
+  const dropId = useId();
+  const { isOver, setNodeRef: setDropRef } = useDroppable({
+    id: `ref-text-${dropId}`,
+    data: {
+      kind: 'ref-text',
+      allowedTypes,
+      onInsertRef: insertRefExpr,
+      // A drop this zone won't accept has to SAY so. The property-zone branch
+      // has had a rejection toast since VIS-1242, but that allowlist only runs
+      // on rows that are themselves droppable — so on every other surface an
+      // unacceptable drop was a silent no-op: no pill, no error, no animation,
+      // which `InsightBuildSection` rightly calls the most trust-destroying
+      // moment in the flow. The zone that refuses is the zone that must speak.
+      onReject: type =>
+        showWorkspaceToast?.(
+          type ? `Can't use a ${type} as a reference here.` : "Can't use that here."
+        ),
+    },
+    disabled: !acceptDrops || disabled,
+  });
+  const setContainerRef = useCallback(
+    node => {
+      containerRef.current = node;
+      if (acceptDrops && !disabled) setDropRef(node);
+    },
+    [acceptDrops, disabled, setDropRef]
+  );
+
+  // Re-point the open chip. Mutating the node's attributes (rather than a
+  // string replace on the value) is what makes this correct when the same ref
+  // appears more than once — the accessor dropdown learned the same lesson.
+  const chipAt = index => {
+    if (index == null || index < 0 || !editableRef.current) return null;
+    return editableRef.current.querySelectorAll('[data-ref-name]')[index] || null;
+  };
+
+  const handleChipApply = useCallback(
+    draft => {
+      const chip = chipAt(chipMenu?.index);
+      setChipMenu(null);
+      if (!chip) return;
+      const nextProperty = (draft?.column || '').trim();
+      if (!nextProperty) return;
+      chip.setAttribute('data-ref-property', nextProperty);
+      const propSpan = chip.querySelector('span:last-child');
+      if (propSpan && propSpan.textContent.startsWith('.')) {
+        propSpan.textContent = `.${nextProperty}`;
+      }
+      serializeAndUpdate();
+    },
+    [chipMenu, serializeAndUpdate]
+  );
+
+  const handleChipRemove = useCallback(() => {
+    const chip = chipAt(chipMenu?.index);
+    setChipMenu(null);
+    if (!chip) return;
+    chip.remove();
+    serializeAndUpdate();
+  }, [chipMenu, serializeAndUpdate]);
+
+  // Auto-open on mount: the anchor is an invisible zero-size span placed over
+  // the chip, so PillMenu's own positioning works unchanged.
+  useEffect(() => {
+    if (chipMenu && chipMenuRef.current) chipMenuRef.current.open();
+  }, [chipMenu]);
+
+  const chipMenuPortal =
+    chipMenu &&
+    createPortal(
+      <span
+        style={{
+          position: 'fixed',
+          top: chipMenu.rect.top,
+          left: chipMenu.rect.right,
+          width: 0,
+          height: chipMenu.rect.height,
+          opacity: 0,
+        }}
+        data-testid="chip-menu-anchor"
+      >
+        <PillMenu
+          ref={chipMenuRef}
+          state={{ kind: 'dimension', ref: chipMenu.name, column: chipMenu.property }}
+          sections={CHIP_SECTIONS}
+          onApply={handleChipApply}
+          onRemove={handleChipRemove}
+        />
+      </span>,
+      document.body
+    );
 
   // --- Render ---
 
@@ -894,7 +1067,14 @@ const RefTextArea = ({
     : null;
 
   return (
-    <div className="space-y-1" ref={containerRef} data-has-cursor={hasCursor ? 'true' : 'false'}>
+    <div
+      className={`space-y-1 rounded-md transition-shadow ${
+        isOver ? 'ring-2 ring-primary-300 ring-offset-1' : ''
+      }`}
+      ref={setContainerRef}
+      data-has-cursor={hasCursor ? 'true' : 'false'}
+      data-drop-target={acceptDrops ? 'ref-text' : undefined}
+    >
       {/* Label */}
       {label && (
         <div className="flex items-center justify-between h-6">
@@ -953,6 +1133,9 @@ const RefTextArea = ({
 
       {/* Accessor dropdown */}
       {accessorDropdownPortal}
+
+      {/* Chip re-point menu (VIS-1243) */}
+      {chipMenuPortal}
 
       {/* @ mention dropdown */}
       {mentionDropdownPortal}

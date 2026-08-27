@@ -268,6 +268,38 @@ export const routeWorkspaceDragEnd = (
     return 'ref_accepted';
   }
 
+  // ── Branch 2b: any compatible drag → a RefTextArea (VIS-1243) ───────────
+  // The only editor that holds free text AROUND its refs, so unlike every
+  // other zone this INSERTS at the caret rather than replacing the value —
+  // overwriting would discard whatever the user already wrote. Before this,
+  // a RefTextArea was not a drop target at all: dragging a model onto a
+  // dimension/metric expression, a relation condition, or a slot switched to
+  // "Manually edit field…" did nothing whatsoever, with no feedback.
+  if (dropData.kind === 'ref-text') {
+    const allowed = dropData.allowedTypes || [];
+    const isValid = allowed.includes(dragData.type);
+    emit &&
+      emit('ref_text_drop', {
+        type: dragData.type,
+        name: dragData.name,
+        accepted: isValid,
+      });
+    if (!isValid) {
+      // Tell the user, rather than leaving the drag to evaporate.
+      dropData.onReject?.(dragData.type);
+      return 'ref_text_rejected';
+    }
+    // A dimension/metric names its own parent model; everything else (a model,
+    // an input) is referenced by name alone and the user narrows it from there.
+    const refExpr =
+      (dragData.type === 'metric' || dragData.type === 'dimension') && dragData.parentModel
+        ? formatRefExpression(dragData.parentModel, dragData.name)
+        : formatRefExpression(dragData.name);
+    if (typeof dropData.onInsertRef !== 'function') return 'noop';
+    dropData.onInsertRef(refExpr);
+    return 'ref_text_accepted';
+  }
+
   // ── Branch 2a: Library model → Relation ERD canvas (VIS-1006b) ───────────
   // A Library MODEL row dropped on the Relation ERD's canvas droppable (which
   // carries `{ kind: 'erd-canvas', onAddModel }`) adds that model to the ERD so

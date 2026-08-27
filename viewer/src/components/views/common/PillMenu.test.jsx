@@ -3,10 +3,16 @@ import React from 'react';
 import { render, screen, fireEvent, renderHook, act } from '@testing-library/react';
 import PillMenu, { usePillDialect } from './PillMenu';
 import useStore from '../../../stores/store';
+import { useModelColumns } from '../workspace/relations/useModelColumns';
+
+jest.mock('../workspace/relations/useModelColumns', () => ({
+  useModelColumns: jest.fn(() => ({ columnsByModel: {}, loading: false })),
+}));
 
 const openMenu = () => fireEvent.click(screen.getByTestId('pill-menu-trigger'));
 
 beforeEach(() => {
+  useModelColumns.mockReturnValue({ columnsByModel: {}, loading: false });
   useStore.setState({
     models: [],
     sources: [],
@@ -85,25 +91,28 @@ describe('PillMenu', () => {
     // up, re-opening the menu in the same tick that selecting a preset closed
     // it. The menu then stayed open forever and the next chevron click only
     // appeared to do nothing (it toggled the already-open menu shut).
-    const onSelectPreset = jest.fn();
+    const onApply = jest.fn();
     const reopen = jest.fn();
     render(
       // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
       <div onClick={reopen} data-testid="pill-body-ancestor">
         <PillMenu
           state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }}
-          onSelectPreset={onSelectPreset}
+          onApply={onApply}
         />
       </div>
     );
     openMenu();
     expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
 
+    // VIS-1241: a preset click EDITS the draft and leaves the menu open.
     fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+    expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
 
-    expect(onSelectPreset).toHaveBeenCalledWith('sum');
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'sum' }));
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
-    // The ancestor never saw the in-menu click, so nothing re-opened it.
+    // The ancestor never saw the in-menu clicks, so nothing re-opened it.
     expect(reopen).not.toHaveBeenCalled();
   });
 
@@ -117,31 +126,57 @@ describe('PillMenu', () => {
     expect(screen.getByTestId('pill-menu-preset-count')).toBeInTheDocument();
   });
 
-  test('selecting a preset calls onSelectPreset with the aggregation key and closes the menu', () => {
-    const onSelectPreset = jest.fn();
+  test('a preset selection stays open until Apply, then commits once', () => {
+    const onApply = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }}
-        onSelectPreset={onSelectPreset}
+        onApply={onApply}
       />
     );
     openMenu();
     fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
-    expect(onSelectPreset).toHaveBeenCalledWith('sum');
+    // Still open — the user may also want to set an index or a modifier.
+    expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+    expect(onApply).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'sum' }));
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
   });
 
-  test('clicking "Dimension" itself calls onSelectPreset(\'dimension\') and closes the menu', () => {
-    const onSelectPreset = jest.fn();
+  test('Cancel discards the draft without committing', () => {
+    const onApply = jest.fn();
+    render(
+      <PillMenu
+        state={{ kind: 'dimension', ref: 'orders_q', column: 'amount' }}
+        onApply={onApply}
+      />
+    );
+    openMenu();
+    fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+    fireEvent.click(screen.getByTestId('pill-menu-cancel'));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+
+    // Re-opening starts from the STORED state, not the abandoned draft.
+    openMenu();
+    expect(screen.getByTestId('pill-menu-preset-dimension')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('clicking "Dimension" drafts a switch back to a plain dimension', () => {
+    const onApply = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
-        onSelectPreset={onSelectPreset}
+        onApply={onApply}
       />
     );
     openMenu();
     fireEvent.click(screen.getByTestId('pill-menu-preset-dimension'));
-    expect(onSelectPreset).toHaveBeenCalledWith('dimension');
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'dimension' }));
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
   });
 
@@ -432,21 +467,41 @@ describe('PillMenu', () => {
   });
 
   test('metricRef/dimensionRef pills hide the "Use as" preset section entirely', () => {
-    render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} />);
+    render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} onSaveAsMetric={jest.fn()} />);
     openMenu();
     expect(screen.queryByTestId('pill-menu-preset-dimension')).not.toBeInTheDocument();
     expect(screen.queryByTestId('pill-menu-preset-sum')).not.toBeInTheDocument();
     // The universal actions still render.
-    expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+    expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     expect(screen.getByTestId('pill-menu-save-as-metric')).toBeInTheDocument();
     expect(screen.getByTestId('pill-menu-remove')).toBeInTheDocument();
   });
 
   describe('"Save as metric…" (Explore 2.0 Phase 4, 06 §4)', () => {
-    test('disabled with no onSaveAsMetric handler, even on an aggregate pill', () => {
+    // Review finding #3: a surface that doesn't wire the handler used to show a
+    // DISABLED item blaming the pill — on an aggregate pill, whose own header
+    // read `Aggregate (AVG)`. Two different facts, treated differently now: a
+    // flow this surface never offers is omitted, rather than shown dead with a
+    // reason that isn't the reason.
+    test('omitted entirely when the surface does not offer the flow', () => {
       render(<PillMenu state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }} />);
       openMenu();
-      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+      expect(screen.queryByTestId('pill-menu-save-as-metric')).not.toBeInTheDocument();
+      // ...and no orphaned explanation for an item that isn't there.
+      expect(
+        screen.queryByTestId('pill-menu-save-as-metric-disabled-hint')
+      ).not.toBeInTheDocument();
+    });
+
+    test('an aggregate pill on a surface that DOES offer it is enabled', () => {
+      render(
+        <PillMenu
+          state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
+          onSaveAsMetric={jest.fn()}
+        />
+      );
+      openMenu();
+      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeEnabled();
     });
 
     test('disabled on a dimension pill even WITH a handler — only aggregate/custom qualify', () => {
@@ -489,7 +544,15 @@ describe('PillMenu', () => {
     // on hover — a visible line is required so the reason isn't invisible
     // until the user happens to hover a greyed-out item.
     test('a disabled "Save as metric…" shows a VISIBLE reason, not just a hover title', () => {
-      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }} />);
+      // The reason is only shown where it is TRUE: the surface offers the flow,
+      // and this particular pill isn't an aggregate — which it can become from
+      // this very menu.
+      render(
+        <PillMenu
+          state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
+          onSaveAsMetric={jest.fn()}
+        />
+      );
       openMenu();
       expect(screen.getByTestId('pill-menu-save-as-metric-disabled-hint')).toHaveTextContent(
         'Only an aggregate pill'
@@ -510,17 +573,17 @@ describe('PillMenu', () => {
     });
   });
 
-  test('"Custom aggregation…" calls onCustomAggregation and closes the menu', () => {
-    const onCustomAggregation = jest.fn();
+  test('"Manually edit field…" calls onManualEdit and closes the menu', () => {
+    const onManualEdit = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
-        onCustomAggregation={onCustomAggregation}
+        onManualEdit={onManualEdit}
       />
     );
     openMenu();
-    fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
-    expect(onCustomAggregation).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
+    expect(onManualEdit).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
   });
 
@@ -673,7 +736,7 @@ describe('PillMenu', () => {
       render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} />);
       openMenu();
       // snowflake supports MEDIAN -> resolved via config.model, not parentModel.
-      expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     });
 
     test('dimensionRef resolves against the dimensions list (not metrics)', () => {
@@ -695,7 +758,7 @@ describe('PillMenu', () => {
       // again, "Use as" never renders for a non-column-backed kind, so assert
       // the dialect-gated custom-aggregation control is present and the menu
       // doesn't crash.
-      expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     });
 
     test('resolves via model.source (no .config wrapper) when the model has no config.source', () => {
@@ -761,7 +824,7 @@ describe('PillMenu', () => {
       useStore.setState({ metrics: undefined });
       render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} />);
       openMenu();
-      expect(screen.getByTestId('pill-menu-custom-aggregation')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-manual-edit')).toBeInTheDocument();
     });
 
     test('a dimension pill with `models` itself undefined fails open, no crash', () => {
@@ -865,18 +928,19 @@ describe('PillMenu', () => {
     });
   });
 
-  test('selecting the "Dimension" row (not an aggregation preset) calls onSelectPreset with "dimension"', () => {
-    const onSelectPreset = jest.fn();
+  test('the "Dimension" row drafts `useAs: dimension` (not an aggregation preset)', () => {
+    const onApply = jest.fn();
     render(
       <PillMenu
         state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
-        onSelectPreset={onSelectPreset}
+        onApply={onApply}
       />
     );
     openMenu();
     fireEvent.click(screen.getByTestId('pill-menu-preset-dimension'));
-    expect(onSelectPreset).toHaveBeenCalledWith('dimension');
-    expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pill-menu-preset-dimension')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'dimension' }));
   });
 
   test('a keydown inside the popover never bubbles to reach an ancestor handler (same portal-bubbling guard as click)', () => {
@@ -902,5 +966,139 @@ describe('PillMenu', () => {
       ref.current.open();
     });
     expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+  });
+});
+
+// VIS-1241 follow-up: the Index row first shipped as All / First / Last only,
+// silently dropping "At row…" and "Rows…" — both of which the standalone
+// SliceMenu had offered — and with them the slot-shape policy.
+describe('PillMenu — the Index row covers the whole slice vocabulary', () => {
+  const dimension = { kind: 'dimension', ref: 'orders_q', column: 'region' };
+
+  test('"At row…" reveals a row input and Apply commits that index', () => {
+    const onApply = jest.fn();
+    render(<PillMenu state={dimension} onApply={onApply} />);
+    openMenu();
+    fireEvent.change(screen.getByTestId('pill-menu-index'), { target: { value: 'at' } });
+    fireEvent.change(screen.getByTestId('pill-menu-index-at-row'), { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ slice: '[3]' }));
+  });
+
+  test('"Rows…" commits a start:end range', () => {
+    const onApply = jest.fn();
+    render(<PillMenu state={dimension} onApply={onApply} />);
+    openMenu();
+    fireEvent.change(screen.getByTestId('pill-menu-index'), { target: { value: 'range' } });
+    fireEvent.change(screen.getByTestId('pill-menu-index-range-start'), { target: { value: '1' } });
+    fireEvent.change(screen.getByTestId('pill-menu-index-range-end'), { target: { value: '5' } });
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ slice: '[1:5]' }));
+  });
+
+  test('an authored range re-opens in "Rows…" with both bounds filled', () => {
+    render(<PillMenu state={dimension} slice="[1:5]" />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-index')).toHaveValue('range');
+    expect(screen.getByTestId('pill-menu-index-range-start')).toHaveValue(1);
+    expect(screen.getByTestId('pill-menu-index-range-end')).toHaveValue(5);
+  });
+
+  test('an authored single row re-opens in "At row…"', () => {
+    render(<PillMenu state={dimension} slice="[7]" />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-index')).toHaveValue('at');
+    expect(screen.getByTestId('pill-menu-index-at-row')).toHaveValue(7);
+  });
+
+  test('a scalar-only slot disables the options that slot cannot accept', () => {
+    render(<PillMenu state={dimension} slotShape="scalar-only" />);
+    openMenu();
+    expect(screen.getByRole('option', { name: 'First (0)' })).toBeEnabled();
+    expect(screen.getByRole('option', { name: 'At row…' })).toBeEnabled();
+    // A prop that takes exactly one value has no use for a range or for "all".
+    expect(screen.getByRole('option', { name: 'Rows…' })).toBeDisabled();
+    expect(screen.getByRole('option', { name: 'All values' })).toBeDisabled();
+  });
+
+  test('an array-only slot disables the single-row options instead', () => {
+    render(<PillMenu state={dimension} slotShape="array-only" />);
+    openMenu();
+    expect(screen.getByRole('option', { name: 'Rows…' })).toBeEnabled();
+    expect(screen.getByRole('option', { name: 'First (0)' })).toBeDisabled();
+  });
+
+  test('a slice this form cannot model survives untouched rather than being rewritten', () => {
+    const onApply = jest.fn();
+    render(<PillMenu state={dimension} slice="[0,2,5]" onApply={onApply} />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-index')).toHaveValue('custom');
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ slice: '[0,2,5]' }));
+  });
+});
+
+// VIS-1242 follow-up: an unbound model pill opened with `draft.column === ''`,
+// which matches no <option> — so the browser showed the first column while the
+// draft still said "nothing chosen", and Apply committed an empty column.
+describe('PillMenu — an unbound model pill', () => {
+  const modelRef = { kind: 'modelRef', ref: 'new-model' };
+
+  // Finding #5: this used to seed the first column so the DISPLAY and the draft
+  // agreed — but that made the pill's "choose a dimension" a lie, since a
+  // choice had silently been made. The control now says what is true: nothing
+  // is chosen, and Apply waits.
+  test('an unbound pill shows a placeholder, not a silently-chosen column', () => {
+    useModelColumns.mockReturnValue({
+      columnsByModel: { 'new-model': ['x', 'y'] },
+      loading: false,
+    });
+    render(<PillMenu state={modelRef} onApply={jest.fn()} />);
+    openMenu();
+
+    expect(screen.getByTestId('pill-menu-property')).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'Choose a dimension…' })).toBeInTheDocument();
+    // The original bug this replaces: Apply must never commit an empty column.
+    expect(screen.getByTestId('pill-menu-apply')).toBeDisabled();
+  });
+
+  test('choosing a dimension enables Apply and commits it', () => {
+    useModelColumns.mockReturnValue({
+      columnsByModel: { 'new-model': ['x', 'y'] },
+      loading: false,
+    });
+    const onApply = jest.fn();
+    render(<PillMenu state={modelRef} onApply={onApply} />);
+    openMenu();
+
+    fireEvent.change(screen.getByTestId('pill-menu-property'), { target: { value: 'y' } });
+    expect(screen.getByTestId('pill-menu-apply')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ column: 'y' }));
+  });
+
+  test('a CONFIGURED pill still round-trips its column untouched', () => {
+    useModelColumns.mockReturnValue({
+      columnsByModel: { orders_q: ['amount', 'region'] },
+      loading: false,
+    });
+    const onApply = jest.fn();
+    render(
+      <PillMenu
+        state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
+        onApply={onApply}
+      />
+    );
+    openMenu();
+    expect(screen.queryByRole('option', { name: 'Choose a dimension…' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ column: 'region' }));
+  });
+
+  test('Apply stays inert while there is no column to commit', () => {
+    useModelColumns.mockReturnValue({ columnsByModel: {}, loading: true });
+    render(<PillMenu state={modelRef} onApply={jest.fn()} />);
+    openMenu();
+    expect(screen.getByTestId('pill-menu-apply')).toBeDisabled();
   });
 });

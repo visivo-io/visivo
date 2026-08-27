@@ -14,6 +14,8 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { refKindsFor } from './fieldTypes';
+import { REF_INSERT_HINT } from './RefTextArea';
 import {
   SectionContainer,
   EmptyState,
@@ -330,9 +332,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                       value={interaction.value}
                       onChange={value => updateInteractionValue(index, value)}
                       label={typeConfig.label}
-                      allowedTypes={['model', 'dimension', 'metric']}
+                      allowedTypes={refKindsFor('interaction', 'filter')}
                       rows={2}
-                      helperText={typeConfig.helperText}
+                      helperText={`${typeConfig.helperText} ${REF_INSERT_HINT}`}
                     />
                   </div>
                 );

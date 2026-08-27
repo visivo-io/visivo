@@ -12,6 +12,7 @@ import Select from '../../common/Select';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { validateName } from './namedModel';
 import { validateInputDraft, buildInputConfig } from './inputConfigValidation';
+import { refKindsFor } from './fieldTypes';
 
 const INPUT_TYPES = [
   { value: 'single-select', label: 'Single Select' },
@@ -407,7 +408,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
               <RefTextArea
                 value={optionsQuery}
                 onChange={val => setOptionsQuery(val)}
-                allowedTypes={['model']}
+                allowedTypes={refKindsFor('input', 'options')}
                 label=""
                 rows={3}
                 // eslint-disable-next-line no-template-curly-in-string

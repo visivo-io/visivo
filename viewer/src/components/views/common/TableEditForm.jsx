@@ -12,6 +12,8 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
 import RefTextArea from './RefTextArea';
 import Select from '../../common/Select';
+import { refKindsFor } from './fieldTypes';
+import { REF_INSERT_HINT } from './RefTextArea';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -382,7 +384,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
                 label="Columns"
                 items={columns}
                 onChange={setColumns}
-                helperText="Field references for pivot column headers"
+                helperText={`Field references for pivot column headers. ${REF_INSERT_HINT}`}
                 error={errors.columns}
               />
 
@@ -390,7 +392,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
                 label="Rows"
                 items={rows}
                 onChange={setRows}
-                helperText="Field references for pivot row grouping"
+                helperText={`Field references for pivot row grouping. ${REF_INSERT_HINT}`}
                 error={errors.rows}
               />
 
@@ -398,7 +400,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
                 label="Values"
                 items={values}
                 onChange={setValues}
-                helperText="Aggregation expressions, e.g. sum(...)"
+                helperText={`Aggregation expressions, e.g. sum(...). ${REF_INSERT_HINT}`}
                 error={errors.values}
               />
             </div>
@@ -517,9 +519,8 @@ const RefListField = ({ label, items, onChange, helperText, error }) => {
             <RefTextArea
               value={item}
               onChange={value => handleChange(index, value)}
-              allowedTypes={['model', 'insight', 'dimension', 'metric']}
+              allowedTypes={refKindsFor('table', 'columns')}
               rows={1}
-              hideAddButton
             />
           </div>
           <button

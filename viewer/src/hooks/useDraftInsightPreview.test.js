@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import { renderHook, act } from '@testing-library/react';
 import useStore from '../stores/store';
-import useDraftInsightPreview, { draftInsightKey } from './useDraftInsightPreview';
+import useDraftInsightPreview, { draftInsightKey, unconfiguredModelRef } from './useDraftInsightPreview';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import { getConnection } from '../duckdb/duckdb';
 import { runDuckDBQuery } from '../duckdb/queries';
@@ -1362,5 +1362,44 @@ describe('useDraftInsightPreview', () => {
     expect(useStore.getState().insightJobs[draftInsightKey('my_insight')]?.data).toEqual([
       { a: 1 },
     ]);
+  });
+});
+
+
+// Review finding #2: a model dropped on a slot lands UNCONFIGURED on purpose
+// (`?{${ref(model)}}`, no property) so the pill can open its editor. Compiling
+// that placeholder answered 400 with a raw `'SqlModel' object has no attribute
+// 'expression'` — a console error on the headline drop-a-model path.
+describe('unconfiguredModelRef', () => {
+  const modelStates = { orders: {}, users: {} };
+
+  test('a bare MODEL ref is a placeholder', () => {
+    expect(unconfiguredModelRef({ x: '?{${ref(orders)}}' }, modelStates)).toBe('orders');
+  });
+
+  test('a model ref WITH a property is configured', () => {
+    expect(unconfiguredModelRef({ x: '?{${ref(orders).amount}}' }, modelStates)).toBeNull();
+  });
+
+  test('a bare ref to a metric/dimension is legitimate, not a placeholder', () => {
+    // `${ref(revenue)}` resolves — only a MODEL has no expression to resolve.
+    expect(unconfiguredModelRef({ x: '?{${ref(revenue)}}' }, modelStates)).toBeNull();
+  });
+
+  test('finds the placeholder among configured siblings', () => {
+    const props = {
+        x: '?{${ref(orders).amount}}',
+        y: '?{${ref(users)}}',
+    };
+    expect(unconfiguredModelRef(props, modelStates)).toBe('users');
+  });
+
+  test('no models, no verdict', () => {
+    expect(unconfiguredModelRef({ x: '?{${ref(orders)}}' }, {})).toBeNull();
+  });
+
+  test('non-string and empty props are ignored', () => {
+    expect(unconfiguredModelRef({ x: 5, y: null, z: '' }, modelStates)).toBeNull();
+    expect(unconfiguredModelRef(null, modelStates)).toBeNull();
   });
 });

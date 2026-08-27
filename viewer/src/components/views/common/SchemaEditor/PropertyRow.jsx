@@ -18,6 +18,7 @@ import { getSlotShape, menuPolicyFor } from './utils/slotShape';
 import { getFieldComponent } from './fields/fields';
 import { SliceBadge } from './SliceBadge';
 import { SliceBanner } from './SliceBanner';
+import { refKindsFor } from '../fieldTypes';
 
 /**
  * PropertyRow - A single property in the schema editor with optional query-string toggle
@@ -135,8 +136,10 @@ export function PropertyRow({
   // surfaces this phase's gate doesn't cover). `RefTextArea` remains the
   // fallback for opaque/custom expressions on the Build rail too — this is
   // additive, not a replacement.
+  const showWorkspaceToast = useStore(s => s.showWorkspaceToast);
   const metrics = useStore(s => s.metrics);
   const dimensions = useStore(s => s.dimensions);
+  const models = useStore(s => s.models);
   const explorerModelStates = useStore(s => s.explorerModelStates);
   const pillFieldOpts = useMemo(() => {
     const toField = f => ({
@@ -175,10 +178,19 @@ export function PropertyRow({
         ...(Array.isArray(dimensions) ? dimensions.map(toField) : []),
         ...computedDimensionFields,
       ],
+      // VIS-1242: lets a bare `${ref(model)}` parse as an UNBOUND pill (a model
+      // was dropped, no property chosen yet) instead of opaque. Draft explorer
+      // models count — a scratch query is the common thing to drop.
+      modelNames: [
+        ...(Array.isArray(models) ? models.map(m => m?.name).filter(Boolean) : []),
+        ...Object.keys(explorerModelStates || {}),
+      ],
     };
-  }, [metrics, dimensions, explorerModelStates]);
+  }, [metrics, dimensions, models, explorerModelStates]);
+  const pillFieldOptsRef = useRef(pillFieldOpts);
+  pillFieldOptsRef.current = pillFieldOpts;
 
-  // Escape hatch back to raw-text editing ("Custom aggregation…", 06 §4/§5) —
+  // Escape hatch back to raw-text editing ("Manually edit field…", 06 §4/§5) —
   // per-row local state so switching one pill to raw edit never affects its
   // siblings. Resets whenever the row's OWN path changes (a different field
   // entirely) so a stale escape-hatch flag can't leak across fields.
@@ -287,19 +299,64 @@ export function PropertyRow({
     }
   }, []);
 
+  // VIS-1242: a dropped model lands as an UNBOUND pill, and the thing the user
+  // must do next is pick a property — so open the editor for them. Keyed on the
+  // value CHANGING into that state, so an insight loaded with an unbound ref
+  // doesn't pop a menu on every mount.
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    const changed = prevValueRef.current !== value;
+    prevValueRef.current = value;
+    if (!changed) return;
+    const parsedNow = pillGrammar.parse(
+      parseQueryString(value)?.body ?? '',
+      pillFieldOptsRef.current
+    );
+    if (parsedNow.kind === 'modelRef') pillMenuRef.current?.open();
+  }, [value]);
+
   const pillState = useMemo(
     () => pillGrammar.parse(body, pillFieldOpts),
     [body, pillFieldOpts]
   );
-  const showPill =
-    droppable &&
-    currentMode === 'query' &&
-    isQueryFormValue &&
-    pillState.kind !== 'opaque' &&
-    pillState.kind !== 'custom' &&
-    !forceRawEdit;
 
-  // D3 (e2e-gap-review.md delta pass): "Custom aggregation…" is otherwise a
+  // VIS-1240: whether this value CAN render as a pill — a pure function of the
+  // parsed value.
+  const pillEligible =
+    isQueryFormValue && pillState.kind !== 'opaque' && pillState.kind !== 'custom';
+
+  // VIS-1240 (flip #1 — mid-typing). `pillEligible` is re-derived from the LIVE
+  // text on every keystroke, so typing an expression by hand used to swap the
+  // editor out from under the caret the instant a partial string happened to
+  // parse (`${ref(q).gdp}`), then swap back on the next character (` / 100`).
+  // While the raw editor holds focus the representation is frozen: the user is
+  // mid-thought, and re-deciding is what loses their cursor.
+  const [rawEditing, setRawEditing] = useState(false);
+  const handleRawFocus = useCallback(() => setRawEditing(true), []);
+  const handleRawBlur = useCallback(e => {
+    // Focus moving WITHIN the editor (to its "+ add ref" button, the mention
+    // dropdown) still fires focusout — only a real exit ends the edit.
+    if (!e.currentTarget.contains(e.relatedTarget)) setRawEditing(false);
+  }, []);
+
+  // VIS-1240 (flip #2 — async field tables). `pillFieldOpts` is built from
+  // `s.metrics`/`s.dimensions`, which start `[]`, so a bare `?{${ref(name)}}`
+  // parses as `opaque` until those lists arrive — it painted as raw code and
+  // then jumped to a pill (or back, if a refetch emptied them). Hold the last
+  // decision while a fetch is in flight instead of re-deciding on data that is
+  // still moving.
+  const fieldTablesLoading = useStore(s => !!s.metricsLoading || !!s.dimensionsLoading);
+  const lastEligibleRef = useRef(pillEligible);
+  if (!fieldTablesLoading) lastEligibleRef.current = pillEligible;
+  const stablePillEligible = fieldTablesLoading ? lastEligibleRef.current : pillEligible;
+
+  const showPill =
+    currentMode === 'query' &&
+    stablePillEligible &&
+    !forceRawEdit &&
+    !rawEditing;
+
+  // D3 (e2e-gap-review.md delta pass): "Manually edit field…" is otherwise a
   // ONE-WAY RATCHET into raw-text mode — `forceRawEdit` is only ever reset
   // by the `useEffect` above, keyed on `path` (stable for the row's whole
   // mount), so even retyping the EXACT original recognized shape (e.g.
@@ -313,21 +370,43 @@ export function PropertyRow({
   // toggle that never mutates the underlying value (the raw text is already
   // valid; `onClick` just flips `forceRawEdit` back to `false` so the SAME
   // value renders as a pill instead of text).
-  const canReturnToPill =
-    droppable &&
-    currentMode === 'query' &&
-    isQueryFormValue &&
-    forceRawEdit &&
-    pillState.kind !== 'opaque' &&
-    pillState.kind !== 'custom';
+  //
+  // The `droppable` gate that used to be here made that escape hatch reachable
+  // ONLY in the Build rail. VIS-1240 removed the same gate from `showPill`, so
+  // every other surface (the right rail included) renders pills but had no way
+  // back from raw text: "Manually edit field…" swapped the interactive pill for
+  // a RefTextArea whose ref chips carry no menu, permanently. Dropping is what
+  // `droppable` governs; whether a value can RENDER as a pill is a property of
+  // the value, and so is whether it can render as one again.
+  const canReturnToPill = currentMode === 'query' && forceRawEdit && pillEligible;
 
-  const pillType = pillState.kind === 'aggregate' || pillState.kind === 'metricRef' ? 'metric' : 'dimension';
-  const pillLabel =
-    pillState.kind === 'aggregate'
-      ? `${(pillState.agg || '').toUpperCase()} · ${pillState.ref} ▸ ${pillState.column}`
+  const pillType =
+    pillState.kind === 'modelRef'
+      ? 'model'
+      : pillState.kind === 'aggregate' || pillState.kind === 'metricRef'
+        ? 'metric'
+        : 'dimension';
+  const pillBaseLabel =
+    pillState.kind === 'modelRef'
+      ? `${pillState.ref} ▸ choose a dimension`
+      : pillState.kind === 'aggregate'
+      ? `${(pillState.agg || '').toUpperCase()} · ${pillState.ref} ▸ ${pillState.propertyPath ?? pillState.column}`
       : pillState.kind === 'dimension'
-        ? `${pillState.ref} ▸ ${pillState.column}`
+        ? `${pillState.ref} ▸ ${pillState.propertyPath ?? pillState.column}`
         : pillState.ref;
+
+  // The pill claims to BE the expression, so it has to show all of it. The
+  // modifier and the index are both authored inside the pill's own editor and
+  // then rendered nowhere on it — `sum(gdp) / 100 }[0]` and a bare `sum(gdp)`
+  // were the same green chip. Suffix them in serialization order (modifier
+  // inside the braces, index outside and last) so the label reads like the
+  // string it generates. `slice` already carries its own brackets.
+  // An unbound `modelRef` has neither yet, so it keeps its bare prompt.
+  const pillSuffix =
+    pillState.kind === 'modelRef'
+      ? ''
+      : `${pillState.modifier ? ` ${pillState.modifier}` : ''}${slice || ''}`;
+  const pillLabel = `${pillBaseLabel}${pillSuffix}`;
 
   // T4 (pills-buildrail #4): the whole pill is a drag SOURCE too, so it can
   // move between slots (drag the x pill onto the y slot), not just receive
@@ -347,15 +426,32 @@ export function PropertyRow({
     disabled: !showPill,
   });
 
-  const handleSelectPreset = useCallback(
-    preset => {
+  // VIS-1241: ONE commit for everything the pill editor changed — property,
+  // aggregation, modifier and index land in a single `onChange`. Previously
+  // each preset click committed on its own and the index was a separate
+  // control, so a two-part edit wrote the value twice.
+  const handlePillApply = useCallback(
+    ({ useAs, column, modifier, slice: nextSlice }) => {
+      const trimmedModifier = (modifier || '').trim();
+      const base =
+        useAs === 'dimension'
+          ? { kind: 'dimension', ref: pillState.ref, column }
+          : { kind: 'aggregate', agg: useAs, ref: pillState.ref, column };
+      // A metric/dimension REF pill has no model/column of its own — keep its
+      // kind and ref, and let the modifier ride along.
       const nextState =
-        preset === 'dimension'
-          ? { kind: 'dimension', ref: pillState.ref, column: pillState.column }
-          : { kind: 'aggregate', agg: preset, ref: pillState.ref, column: pillState.column };
-      handleQueryChange(pillGrammar.serialize(nextState));
+        pillState.kind === 'metricRef' || pillState.kind === 'dimensionRef'
+          ? { kind: pillState.kind, ref: pillState.ref }
+          : base;
+      if (trimmedModifier) nextState.modifier = trimmedModifier;
+      onChange(
+        serializeQueryString({
+          body: pillGrammar.serialize(nextState),
+          slice: nextSlice || null,
+        })
+      );
     },
-    [pillState, handleQueryChange]
+    [pillState, onChange]
   );
 
   const handlePillRemove = useCallback(() => {
@@ -371,11 +467,17 @@ export function PropertyRow({
   //    bare so we don't show a slicing UI for things we don't classify.
   // We also keep the badge visible when a slice is already authored
   // even if the body is empty, so the user can clear it.
+  // VIS-1241: only shown for a NON-DEFAULT index. Every query slot used to
+  // carry an "All values" badge — the default state, restated on every row,
+  // next to every pill. An index is now set from inside the pill's own editor,
+  // and the badge appears only once there is a real index to show (and to
+  // clear).
+  // ...and once the pill itself renders the index, the badge beside it is the
+  // same fact stated twice. Keep the badge only where there is no pill to carry
+  // it (raw-text / opaque values), where it stays the sole way to see and clear
+  // a slice.
   const showSliceBadge =
-    currentMode === 'query' &&
-    isQueryFormValue &&
-    (!!body || !!slice) &&
-    slotShape !== 'unknown';
+    currentMode === 'query' && isQueryFormValue && !!slice && slotShape !== 'unknown' && !showPill;
 
   return (
     <div
@@ -404,14 +506,40 @@ export function PropertyRow({
               type="button"
               aria-label="static value"
               aria-pressed={currentMode === 'static'}
+              // VIS-1240 (flip #3): this button used to lie. `currentMode` is
+              // `forceQueryMode || isQueryMode`, so with a `?{...}` value
+              // stored, clicking "static" cleared the override but `isQueryMode`
+              // held the row in query mode — the button visibly depressed and
+              // snapped straight back. It CAN'T demote: a `?{...}` string in a
+              // static number input mangles character-by-character. So say why
+              // instead of pretending: an expression must be cleared first.
+              // Review finding #4: the "says why" was a `title` alone — hover
+              // only, and a real `disabled` button swallows the click, so a
+              // user who clicked simply got nothing. Keep it inert and look
+              // inert, but stay REACHABLE (`aria-disabled` rather than
+              // `disabled`) so the click it already invites can answer itself.
+              // Genuine form-level disabling still uses the real attribute.
               disabled={disabled}
-              onClick={() => handleModeChange('static')}
+              aria-disabled={disabled || isQueryMode}
+              title={
+                isQueryMode
+                  ? 'Clear the expression to use a static value'
+                  : 'Static value'
+              }
+              onClick={() => {
+                if (isQueryMode) {
+                  showWorkspaceToast?.(
+                    'Clear the expression to use a static value.'
+                  );
+                  return;
+                }
+                handleModeChange('static');
+              }}
               className={`p-1 transition-colors ${
                 currentMode === 'static'
                   ? 'bg-primary-100 text-primary-700'
                   : 'bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title="Static value"
+              } disabled:opacity-50 disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}
             >
               <PiSliders size={14} />
             </button>
@@ -505,8 +633,13 @@ export function PropertyRow({
                     <PillMenu
                       ref={pillMenuRef}
                       state={pillState}
-                      onSelectPreset={handleSelectPreset}
-                      onCustomAggregation={() => setForceRawEdit(true)}
+                      slice={slice}
+                      // Drives which index options the menu offers — a
+                      // scalar-only prop can't take a range, an array-only
+                      // one can't take a single row.
+                      slotShape={slotShape}
+                      onApply={handlePillApply}
+                      onManualEdit={() => setForceRawEdit(true)}
                       onSaveAsMetric={
                         onSaveAsMetric ? () => onSaveAsMetric(pillState) : undefined
                       }
@@ -517,16 +650,44 @@ export function PropertyRow({
                 />
               ) : (
                 <>
-                  <RefTextArea
-                    value={body}
-                    onChange={handleQueryChange}
-                    label=""
-                    rows={2}
-                    helperText={description}
-                    disabled={disabled}
-                    allowedTypes={['model', 'dimension', 'metric', 'input']}
-                    restrictBrackets
-                  />
+                  {/* VIS-1240: the focus wrapper is what freezes pill-vs-text
+                      while the user is typing. React's onFocus/onBlur are
+                      focusin/focusout, so they catch focus anywhere inside —
+                      no prop changes to RefTextArea, which 8+ surfaces share. */}
+                  <div
+                    onFocus={handleRawFocus}
+                    onBlur={handleRawBlur}
+                    data-testid={`property-${path}-raw-editor`}
+                  >
+                    <RefTextArea
+                      value={body}
+                      onChange={handleQueryChange}
+                      label=""
+                      rows={2}
+                      helperText={description}
+                      disabled={disabled}
+                      allowedTypes={refKindsFor('insight', 'props')}
+                      // ONLY when the row itself isn't a drop target. This
+                      // editor's droppable nests INSIDE the row's
+                      // `property-zone`, and `pointerWithin` resolves to the
+                      // innermost hit — so registering both made the inner one
+                      // shadow the row. That broke column drops in the Build
+                      // rail: `property-zone` builds `${ref(activeModel).col}`
+                      // from the drag payload, while `ref-text` only knows how
+                      // to insert a ref BY NAME, so a column fell outside its
+                      // allowlist and the drop silently did nothing. A model
+                      // drag passed the allowlist, which is why only columns
+                      // broke. Where the row IS droppable it already handles
+                      // this correctly; where it isn't, this is the only target.
+                      acceptDrops={!droppable}
+                      // "Manually edit field…" means the WHOLE expression is
+                      // text, refs included — a chip there is the one part the
+                      // manual escape hatch can't edit. An opaque value the
+                      // user never opted into editing keeps its chips.
+                      plainRefs={forceRawEdit}
+                      restrictBrackets={!forceRawEdit}
+                    />
+                  </div>
                   {canReturnToPill && (
                     <button
                       type="button"

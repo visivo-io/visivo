@@ -3,6 +3,17 @@ import { createPortal } from 'react-dom';
 import { PiPlus, PiX, PiCheckCircle, PiWarningCircle, PiSpinner } from 'react-icons/pi';
 import { recordOnboardingAction } from '../onboarding/onboardingState';
 import { getTypeColors } from '../views/common/objectTypeConfigs';
+import { refKindsFor } from '../views/common/fieldTypes';
+
+// A "computed column" is the Explorer's name for a MODEL-SCOPED metric or
+// dimension: it promotes with a `parentModel`, and `project_writer._new` nests
+// it under `model.metrics` / `model.dimensions`. Nesting is what makes
+// `sql_model.py` reject any `ref()` in the expression, so this field's declared
+// ref vocabulary is empty — which is why the editor below is a bare textarea
+// and not `RefTextArea`. Read it from the registry rather than asserting it
+// here, so if the rule ever changes this surface follows. See VIS-1253.
+const COMPUTED_COLUMN_REF_KINDS = refKindsFor('metric', 'expression', { nested: true });
+const REF_PATTERN = /\$\{\s*ref\s*\(/;
 
 const DEBOUNCE_MS = 750;
 
@@ -203,6 +214,10 @@ const AddComputedColumnPopover = ({
           <label className="block text-xs font-medium text-secondary-600 mb-1">
             SQL Expression
           </label>
+          {/* Deliberately plain: no ref-insert menu, no @ mention, no drop
+              target. `COMPUTED_COLUMN_REF_KINDS` is empty, so every one of
+              those affordances would offer an insertion the backend rejects on
+              save. Do not "upgrade" this to RefTextArea. */}
           <textarea
             value={expression}
             onChange={handleExpressionChange}
@@ -211,6 +226,16 @@ const AddComputedColumnPopover = ({
             className="w-full px-2 py-1.5 text-xs font-mono border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             data-testid="computed-col-expression"
           />
+          {/* Caught while typing rather than as a Pydantic error after Save. */}
+          {!COMPUTED_COLUMN_REF_KINDS.length && REF_PATTERN.test(expression) && (
+            <p
+              className="mt-1 text-xs font-medium text-highlight-600"
+              data-testid="computed-col-ref-warning"
+            >
+              References aren&apos;t available here — a computed column reads columns from its
+              model directly. Saving with a <code>ref()</code> will fail.
+            </p>
+          )}
         </div>
 
         {isValidating && (

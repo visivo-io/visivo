@@ -798,3 +798,134 @@ describe('RefTextArea — rendering', () => {
     );
   });
 });
+
+
+// The "Manually edit field…" escape hatch handed the user an expression whose
+// refs were `contenteditable="false"` chips — the one part of the text they
+// could not actually edit. `plainRefs` renders them as editable literal text,
+// while staying on the contentEditable so a bad ref can still be marked up.
+describe('RefTextArea — plainRefs (editable literal refs)', () => {
+  beforeEach(() => {
+    useStore.setState({
+      sources: [],
+      models: [{ name: 'orders' }],
+      dimensions: [],
+      metrics: [],
+      relations: [],
+      inputs: [],
+      explorerModelStates: {},
+    });
+  });
+
+  const editableOf = () => screen.getByRole('textbox');
+
+  test('a ref renders as the literal text, not an uneditable chip', () => {
+    render(<RefTextArea value={`avg(${R('orders', 'amount')})`} onChange={jest.fn()} plainRefs />);
+    const editable = editableOf();
+    expect(editable.textContent).toBe(`avg(${R('orders', 'amount')})`);
+    // No chip: nothing is walled off from the caret.
+    expect(editable.querySelector('[contenteditable="false"]')).toBeNull();
+    expect(editable.querySelector('[data-ref-name]')).toBeNull();
+    expect(editable.querySelector('[data-ref-token="orders"]')).not.toBeNull();
+  });
+
+  test('without plainRefs the same value still renders a chip', () => {
+    render(<RefTextArea value={R('orders', 'amount')} onChange={jest.fn()} />);
+    expect(editableOf().querySelector('[data-ref-name="orders"]')).not.toBeNull();
+  });
+
+  test('a name matching no known object is marked so it can be called out', () => {
+    render(<RefTextArea value={R('no_such_model', 'x')} onChange={jest.fn()} plainRefs />);
+    const token = editableOf().querySelector('[data-ref-token="no_such_model"]');
+    expect(token).not.toBeNull();
+    expect(token.getAttribute('data-ref-unknown')).toBe('true');
+    // ...and a resolvable one is not.
+    expect(token.textContent).toBe(R('no_such_model', 'x'));
+  });
+
+  test('a known ref carries no unknown marker', () => {
+    render(<RefTextArea value={R('orders', 'amount')} onChange={jest.fn()} plainRefs />);
+    const token = editableOf().querySelector('[data-ref-token="orders"]');
+    expect(token.hasAttribute('data-ref-unknown')).toBe(false);
+  });
+
+  test('no zero-width cursor-parking characters leak into the text', () => {
+    // They exist only so a caret can sit beside an uneditable chip; a plain
+    // token is editable text, so they would just be stray characters.
+    render(<RefTextArea value={R('orders')} onChange={jest.fn()} plainRefs />);
+    expect(editableOf().textContent).not.toContain('\u200B');
+    expect(editableOf().textContent).toBe(R('orders'));
+  });
+});
+
+
+// VIS-1243: a chip was display-only — re-pointing a ref meant deleting it and
+// retyping. Now clicking one opens the same PillMenu a standalone pill uses,
+// scoped to what actually applies inside free text.
+describe('RefTextArea — configurable chips', () => {
+  beforeEach(() => {
+    useStore.setState({
+      sources: [], models: [{ name: 'orders' }], dimensions: [], metrics: [],
+      relations: [], inputs: [], explorerModelStates: {},
+    });
+  });
+
+  const clickChip = () => {
+    const chip = screen.getByRole('textbox').querySelector('[data-ref-name="orders"]');
+    fireEvent.click(chip, { bubbles: true });
+    return chip;
+  };
+
+  test('a chip is inert unless the surface opts in', () => {
+    render(<RefTextArea value={R('orders', 'amount')} onChange={jest.fn()} />);
+    clickChip();
+    expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+  });
+
+  test('clicking a chip opens its menu', () => {
+    render(<RefTextArea value={R('orders', 'amount')} onChange={jest.fn()} configurableChips />);
+    clickChip();
+    expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('pill-menu-property')).toHaveValue('amount');
+  });
+
+  test('the menu offers only what applies to an embedded ref', () => {
+    render(<RefTextArea value={R('orders', 'amount')} onChange={jest.fn()} configurableChips />);
+    clickChip();
+    // Re-pointing the ref applies...
+    expect(screen.getByTestId('pill-menu-property')).toBeInTheDocument();
+    // ...but an aggregation, an index and a modifier are the SURROUNDING SQL
+    // here, not properties of the chip, so offering them would ask the user to
+    // author something this editor can't place.
+    expect(screen.queryByTestId('pill-menu-index')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('pill-menu-modifier')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('pill-menu-preset-dimension')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('pill-menu-manual-edit')).not.toBeInTheDocument();
+  });
+
+  test('applying a new property rewrites the ref and preserves surrounding text', () => {
+    const onChange = jest.fn();
+    render(
+      <RefTextArea
+        value={`sum(${R('orders', 'amount')}) / 100`}
+        onChange={onChange}
+        configurableChips
+      />
+    );
+    clickChip();
+    fireEvent.change(screen.getByTestId('pill-menu-property'), { target: { value: 'revenue' } });
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    // The free text around the ref is untouched — only the ref moved.
+    expect(onChange).toHaveBeenCalledWith(`sum(${R('orders', 'revenue')}) / 100`);
+  });
+
+  test('removing a chip leaves the rest of the expression intact', () => {
+    const onChange = jest.fn();
+    render(
+      <RefTextArea value={`sum(${R('orders', 'amount')})`} onChange={onChange} configurableChips />
+    );
+    clickChip();
+    fireEvent.click(screen.getByTestId('pill-menu-remove'));
+    expect(onChange).toHaveBeenCalledWith('sum()');
+  });
+});
