@@ -509,3 +509,41 @@ describe('LibraryRow', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 });
+
+
+// `list_all_dimensions` / `list_all_metrics` return standalone AND nested
+// fields in ONE flat list, and these rows rendered them identically. The
+// distinction is not cosmetic: a nested field is plain SQL where `${ref()}` is
+// a hard save-time error, while a standalone one is authored WITH refs. Two
+// things that look the same and behave differently is the worst combination.
+describe('LibraryRow — model-scoped marker', () => {
+  const scoped = { type: 'dimension', name: 'gdp2', parentModel: 'new-model', status: 'published' };
+  const standalone = { type: 'dimension', name: 'region', status: 'published' };
+
+  test('a model-scoped field names the model that owns it', () => {
+    render(withDnd(<LibraryRow obj={scoped} />));
+    const marker = screen.getByTestId('library-row-dimension-gdp2-scoped-to');
+    expect(marker).toHaveTextContent('new-model');
+  });
+
+  test('the marker explains what scoping COSTS, not just that it exists', () => {
+    render(withDnd(<LibraryRow obj={scoped} />));
+    // The reason a user cares: refs are unavailable in that field.
+    expect(screen.getByTestId('library-row-dimension-gdp2-scoped-to')).toHaveAttribute(
+      'title',
+      expect.stringContaining("ref() isn't available")
+    );
+  });
+
+  test('a standalone field carries no marker', () => {
+    render(withDnd(<LibraryRow obj={standalone} />));
+    expect(screen.queryByTestId('library-row-dimension-region-scoped-to')).not.toBeInTheDocument();
+  });
+
+  test('the two are distinguishable in the same list', () => {
+    const { rerender } = render(withDnd(<LibraryRow obj={scoped} />));
+    expect(screen.getByTestId('library-row-dimension-gdp2-scoped-to')).toBeInTheDocument();
+    rerender(withDnd(<LibraryRow obj={standalone} />));
+    expect(screen.queryByTestId('library-row-dimension-region-scoped-to')).not.toBeInTheDocument();
+  });
+});

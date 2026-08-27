@@ -404,6 +404,9 @@ const LibraryRow = ({
 
   const showActions = hovered || popoverOpen || menuOpen;
   const tid = testId || `library-row-${obj.type}-${obj.name}`;
+  // Via `getTypeDef`, not `getTypeColors` — this file is the Library's one
+  // source of per-type metadata (see the note above DROPPABLE_TYPES).
+  const modelColors = getTypeDef('model').colors;
 
   return (
     <>
@@ -474,6 +477,23 @@ const LibraryRow = ({
         <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
           {obj.name}
         </span>
+        {/* Model-scoped marker. `list_all_dimensions` / `list_all_metrics`
+            return standalone AND nested fields in ONE flat list, and these rows
+            rendered them identically — so a user could not tell which kind they
+            were about to edit. That distinction is not cosmetic: a nested field
+            is plain SQL where `${ref()}` is a hard save-time error
+            (`sql_model.py`), while a standalone one is authored WITH refs. The
+            two look the same and behave differently, which is the worst
+            combination. Model amber, from the shared palette. */}
+        {obj.parentModel && (
+          <span
+            className={`shrink-0 max-w-[45%] truncate rounded px-1 py-px text-[10px] font-medium ${modelColors.bg} ${modelColors.text}`}
+            title={`Scoped to model ${obj.parentModel} — reads its columns directly, so ref() isn't available`}
+            data-testid={`${tid}-scoped-to`}
+          >
+            {obj.parentModel}
+          </span>
+        )}
         <div
           className={[
             'flex shrink-0 items-center gap-0.5 transition-opacity',
