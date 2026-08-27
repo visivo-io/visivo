@@ -99,6 +99,25 @@ export function isMedianSupported(dialect) {
 
 // Reuses pivotDraft's exact anchored single-ref pattern.
 const SINGLE_REF = /^\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\.\s*([^}\s]+)\s*\}$/;
+
+/**
+ * Split a matched property path into its column and its full path.
+ *
+ * The backend's `PROPERTY_PATH_PATTERN` allows dots and brackets after the ref
+ * — `${ref(m).gdp}`, `${ref(m).gdp[0]}`, `${ref(m).list[0].prop}` are all
+ * valid. `SINGLE_REF`'s `([^}\s]+)` captures ALL of that as one blob, and it
+ * was being reported as the column NAME. So a pill on `gdp[0]` claimed its
+ * column was "gdp[0]", and `saveAsMetricFlow` built `sum(gdp[0])` — invalid
+ * SQL, which is the bug this fixes.
+ *
+ * `column` is the bare first segment (what a column picker and a generated
+ * aggregate need); `propertyPath` is the whole thing (what serialization needs
+ * to round-trip the value unchanged).
+ */
+const splitPropertyPath = path => ({
+  column: path.split(/[.[]/)[0],
+  propertyPath: path,
+});
 // New: a bare ref with no `.field` — only ever a metric/dimension-ref pill.
 const BARE_REF = /^\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\}$/;
 // Reuses pivotDraft's exact leading-function-call pattern.
@@ -224,9 +243,9 @@ export function parse(expr, opts = {}) {
     }
     if (agg) {
       if (!PRESET_AGGREGATIONS.includes(agg)) return null;
-      return { kind: 'aggregate', agg, ref: statedModel, column: field, raw };
+      return { kind: 'aggregate', agg, ref: statedModel, ...splitPropertyPath(field), raw };
     }
-    return { kind: 'dimension', ref: statedModel, column: field, raw };
+    return { kind: 'dimension', ref: statedModel, ...splitPropertyPath(field), raw };
   };
 
   const direct = trySingleRef(raw);
@@ -311,9 +330,11 @@ export function serialize(state) {
   const withModifier = core => (state.modifier ? `${core} ${state.modifier}` : core);
   switch (state.kind) {
     case 'dimension':
-      return withModifier(formatRefExpression(state.ref, state.column));
+      return withModifier(formatRefExpression(state.ref, state.propertyPath ?? state.column));
     case 'aggregate':
-      return withModifier(`${state.agg}(${formatRefExpression(state.ref, state.column)})`);
+      return withModifier(
+        `${state.agg}(${formatRefExpression(state.ref, state.propertyPath ?? state.column)})`
+      );
     case 'metricRef':
     case 'dimensionRef':
     case 'modelRef':

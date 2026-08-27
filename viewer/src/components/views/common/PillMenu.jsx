@@ -239,7 +239,9 @@ const PillMenu = React.forwardRef(
   const buildDraft = useCallback(
     () => ({
       useAs: state?.kind === 'aggregate' ? state.agg : 'dimension',
-      column: state?.column ?? '',
+      // The FULL path, not the bare column: an Apply that doesn't touch the
+      // property must round-trip `gdp[0]` unchanged.
+      column: state?.propertyPath ?? state?.column ?? '',
       modifier: state?.modifier ?? '',
       slice: slice ?? '',
     }),

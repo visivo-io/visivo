@@ -389,9 +389,9 @@ export function PropertyRow({
     pillState.kind === 'modelRef'
       ? `${pillState.ref} ▸ choose a dimension`
       : pillState.kind === 'aggregate'
-      ? `${(pillState.agg || '').toUpperCase()} · ${pillState.ref} ▸ ${pillState.column}`
+      ? `${(pillState.agg || '').toUpperCase()} · ${pillState.ref} ▸ ${pillState.propertyPath ?? pillState.column}`
       : pillState.kind === 'dimension'
-        ? `${pillState.ref} ▸ ${pillState.column}`
+        ? `${pillState.ref} ▸ ${pillState.propertyPath ?? pillState.column}`
         : pillState.ref;
 
   // The pill claims to BE the expression, so it has to show all of it. The

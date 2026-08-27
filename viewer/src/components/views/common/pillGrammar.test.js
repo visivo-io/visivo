@@ -18,6 +18,7 @@ describe('pillGrammar.parse', () => {
       kind: 'dimension',
       ref: 'orders_q',
       column: 'region',
+      propertyPath: 'region',
       raw: '${ref(orders_q).region}',
     });
   });
@@ -29,6 +30,7 @@ describe('pillGrammar.parse', () => {
       agg: 'sum',
       ref: 'orders_q',
       column: 'amount',
+      propertyPath: 'amount',
       raw: 'sum(${ref(orders_q).amount})',
     });
   });
@@ -237,6 +239,7 @@ describe('pillGrammar — modifiers', () => {
       agg: 'sum',
       ref: 'orders_q',
       column: 'amount',
+      propertyPath: 'amount',
       modifier: '/ 100',
       raw,
     });
@@ -250,6 +253,7 @@ describe('pillGrammar — modifiers', () => {
       kind: 'dimension',
       ref: 'orders_q',
       column: 'region',
+      propertyPath: 'region',
       modifier: "|| '!'",
     });
     expect(serialize(state)).toBe(raw);
@@ -269,6 +273,7 @@ describe('pillGrammar — modifiers', () => {
       agg: 'sum',
       ref: 'orders_q',
       column: 'amount',
+      propertyPath: 'amount',
       modifier: '/ 100',
     });
     expect(`?{ ${body} }[0]`).toBe('?{ sum(${ref(orders_q).amount}) / 100 }[0]');
@@ -318,5 +323,52 @@ describe('pillGrammar — modelRef', () => {
       kind: 'opaque',
       raw: '${ref(nope)}',
     });
+  });
+});
+
+
+// The backend's PROPERTY_PATH_PATTERN allows dots and brackets after a ref, but
+// `SINGLE_REF` captured all of it as one blob and reported it as the COLUMN
+// NAME. Downstream, `saveAsMetricFlow` built `${agg}(${column})` — producing
+// `sum(gdp[0])`, which is not valid SQL. There were zero tests for `[0]` or
+// dotted paths before this.
+describe('pillGrammar — property paths are parsed, not swallowed', () => {
+  const R = (name, prop) => '${ref(' + name + ')' + (prop ? '.' + prop : '') + '}';
+
+  test.each([
+    ['gdp', 'gdp', 'gdp'],
+    ['gdp[0]', 'gdp', 'gdp[0]'],
+    ['gdp[-1]', 'gdp', 'gdp[-1]'],
+    ['list[0].prop', 'list', 'list[0].prop'],
+    ['nested.deep', 'nested', 'nested.deep'],
+  ])('%s -> column %s, path %s', (path, column, propertyPath) => {
+    const state = parse(R('orders', path));
+    expect(state.kind).toBe('dimension');
+    expect(state.column).toBe(column);
+    expect(state.propertyPath).toBe(propertyPath);
+  });
+
+  test('an aggregate over an indexed property keeps a usable column name', () => {
+    const state = parse(`sum(${R('orders', 'gdp[0]')})`);
+    expect(state.kind).toBe('aggregate');
+    expect(state.agg).toBe('sum');
+    // This is the value saveAsMetricFlow interpolates; `gdp[0]` here was the bug.
+    expect(state.column).toBe('gdp');
+    expect(state.propertyPath).toBe('gdp[0]');
+  });
+
+  test('serialization round-trips the FULL path, not the bare column', () => {
+    [R('orders', 'gdp[0]'), R('orders', 'list[0].prop'), `sum(${R('orders', 'gdp[0]')})`].forEach(
+      raw => {
+        expect(serialize(parse(raw))).toBe(raw);
+      }
+    );
+  });
+
+  test('a plain column is unaffected — column and path agree', () => {
+    const state = parse(R('orders', 'amount'));
+    expect(state.column).toBe('amount');
+    expect(state.propertyPath).toBe('amount');
+    expect(serialize(state)).toBe(R('orders', 'amount'));
   });
 });
