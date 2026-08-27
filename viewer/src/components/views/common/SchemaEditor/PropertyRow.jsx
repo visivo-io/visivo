@@ -136,6 +136,7 @@ export function PropertyRow({
   // surfaces this phase's gate doesn't cover). `RefTextArea` remains the
   // fallback for opaque/custom expressions on the Build rail too — this is
   // additive, not a replacement.
+  const showWorkspaceToast = useStore(s => s.showWorkspaceToast);
   const metrics = useStore(s => s.metrics);
   const dimensions = useStore(s => s.dimensions);
   const models = useStore(s => s.models);
@@ -512,18 +513,33 @@ export function PropertyRow({
               // snapped straight back. It CAN'T demote: a `?{...}` string in a
               // static number input mangles character-by-character. So say why
               // instead of pretending: an expression must be cleared first.
-              disabled={disabled || isQueryMode}
+              // Review finding #4: the "says why" was a `title` alone — hover
+              // only, and a real `disabled` button swallows the click, so a
+              // user who clicked simply got nothing. Keep it inert and look
+              // inert, but stay REACHABLE (`aria-disabled` rather than
+              // `disabled`) so the click it already invites can answer itself.
+              // Genuine form-level disabling still uses the real attribute.
+              disabled={disabled}
+              aria-disabled={disabled || isQueryMode}
               title={
                 isQueryMode
                   ? 'Clear the expression to use a static value'
                   : 'Static value'
               }
-              onClick={() => handleModeChange('static')}
+              onClick={() => {
+                if (isQueryMode) {
+                  showWorkspaceToast?.(
+                    'Clear the expression to use a static value.'
+                  );
+                  return;
+                }
+                handleModeChange('static');
+              }}
               className={`p-1 transition-colors ${
                 currentMode === 'static'
                   ? 'bg-primary-100 text-primary-700'
                   : 'bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              } disabled:opacity-50 disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}
             >
               <PiSliders size={14} />
             </button>

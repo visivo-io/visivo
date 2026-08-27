@@ -467,7 +467,7 @@ describe('PillMenu', () => {
   });
 
   test('metricRef/dimensionRef pills hide the "Use as" preset section entirely', () => {
-    render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} />);
+    render(<PillMenu state={{ kind: 'metricRef', ref: 'churn_rate' }} onSaveAsMetric={jest.fn()} />);
     openMenu();
     expect(screen.queryByTestId('pill-menu-preset-dimension')).not.toBeInTheDocument();
     expect(screen.queryByTestId('pill-menu-preset-sum')).not.toBeInTheDocument();
@@ -478,10 +478,30 @@ describe('PillMenu', () => {
   });
 
   describe('"Save as metric…" (Explore 2.0 Phase 4, 06 §4)', () => {
-    test('disabled with no onSaveAsMetric handler, even on an aggregate pill', () => {
+    // Review finding #3: a surface that doesn't wire the handler used to show a
+    // DISABLED item blaming the pill — on an aggregate pill, whose own header
+    // read `Aggregate (AVG)`. Two different facts, treated differently now: a
+    // flow this surface never offers is omitted, rather than shown dead with a
+    // reason that isn't the reason.
+    test('omitted entirely when the surface does not offer the flow', () => {
       render(<PillMenu state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }} />);
       openMenu();
-      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+      expect(screen.queryByTestId('pill-menu-save-as-metric')).not.toBeInTheDocument();
+      // ...and no orphaned explanation for an item that isn't there.
+      expect(
+        screen.queryByTestId('pill-menu-save-as-metric-disabled-hint')
+      ).not.toBeInTheDocument();
+    });
+
+    test('an aggregate pill on a surface that DOES offer it is enabled', () => {
+      render(
+        <PillMenu
+          state={{ kind: 'aggregate', agg: 'sum', ref: 'orders_q', column: 'amount' }}
+          onSaveAsMetric={jest.fn()}
+        />
+      );
+      openMenu();
+      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeEnabled();
     });
 
     test('disabled on a dimension pill even WITH a handler — only aggregate/custom qualify', () => {
@@ -524,7 +544,15 @@ describe('PillMenu', () => {
     // on hover — a visible line is required so the reason isn't invisible
     // until the user happens to hover a greyed-out item.
     test('a disabled "Save as metric…" shows a VISIBLE reason, not just a hover title', () => {
-      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }} />);
+      // The reason is only shown where it is TRUE: the surface offers the flow,
+      // and this particular pill isn't an aggregate — which it can become from
+      // this very menu.
+      render(
+        <PillMenu
+          state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
+          onSaveAsMetric={jest.fn()}
+        />
+      );
       openMenu();
       expect(screen.getByTestId('pill-menu-save-as-metric-disabled-hint')).toHaveTextContent(
         'Only an aggregate pill'
@@ -1016,7 +1044,25 @@ describe('PillMenu — the Index row covers the whole slice vocabulary', () => {
 describe('PillMenu — an unbound model pill', () => {
   const modelRef = { kind: 'modelRef', ref: 'new-model' };
 
-  test('Apply commits the column the picker is actually showing, even untouched', () => {
+  // Finding #5: this used to seed the first column so the DISPLAY and the draft
+  // agreed — but that made the pill's "choose a dimension" a lie, since a
+  // choice had silently been made. The control now says what is true: nothing
+  // is chosen, and Apply waits.
+  test('an unbound pill shows a placeholder, not a silently-chosen column', () => {
+    useModelColumns.mockReturnValue({
+      columnsByModel: { 'new-model': ['x', 'y'] },
+      loading: false,
+    });
+    render(<PillMenu state={modelRef} onApply={jest.fn()} />);
+    openMenu();
+
+    expect(screen.getByTestId('pill-menu-property')).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'Choose a dimension…' })).toBeInTheDocument();
+    // The original bug this replaces: Apply must never commit an empty column.
+    expect(screen.getByTestId('pill-menu-apply')).toBeDisabled();
+  });
+
+  test('choosing a dimension enables Apply and commits it', () => {
     useModelColumns.mockReturnValue({
       columnsByModel: { 'new-model': ['x', 'y'] },
       loading: false,
@@ -1024,9 +1070,29 @@ describe('PillMenu — an unbound model pill', () => {
     const onApply = jest.fn();
     render(<PillMenu state={modelRef} onApply={onApply} />);
     openMenu();
-    expect(screen.getByTestId('pill-menu-property')).toHaveValue('x');
+
+    fireEvent.change(screen.getByTestId('pill-menu-property'), { target: { value: 'y' } });
+    expect(screen.getByTestId('pill-menu-apply')).toBeEnabled();
     fireEvent.click(screen.getByTestId('pill-menu-apply'));
-    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ column: 'x' }));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ column: 'y' }));
+  });
+
+  test('a CONFIGURED pill still round-trips its column untouched', () => {
+    useModelColumns.mockReturnValue({
+      columnsByModel: { orders_q: ['amount', 'region'] },
+      loading: false,
+    });
+    const onApply = jest.fn();
+    render(
+      <PillMenu
+        state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
+        onApply={onApply}
+      />
+    );
+    openMenu();
+    expect(screen.queryByRole('option', { name: 'Choose a dimension…' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ column: 'region' }));
   });
 
   test('Apply stays inert while there is no column to commit', () => {

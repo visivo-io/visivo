@@ -713,8 +713,35 @@ describe('PropertyRow', () => {
       const staticBtn = screen.getByLabelText('static value');
       // It used to depress and immediately revert, because `currentMode` ORs in
       // `isQueryMode`. A `?{...}` string cannot render in a static number input.
-      expect(staticBtn).toBeDisabled();
+      // Inert and marked inert — but REACHABLE (finding #4): a real `disabled`
+      // swallows the click, so a user who clicked got nothing at all unless
+      // they hovered and waited for the title.
+      expect(staticBtn).toHaveAttribute('aria-disabled', 'true');
       expect(staticBtn).toHaveAttribute('title', 'Clear the expression to use a static value');
+    });
+
+    test('flip #3: clicking the inert static toggle explains itself', () => {
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({ showWorkspaceToast });
+      render(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+
+      fireEvent.click(screen.getByLabelText('static value'));
+
+      expect(showWorkspaceToast).toHaveBeenCalledWith(
+        'Clear the expression to use a static value.'
+      );
+    });
+
+    test('the toggle still demotes when there IS no expression to clear', () => {
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({ showWorkspaceToast });
+      render(<PropertyRow {...queryRowProps({ value: 42 })} />);
+
+      const staticBtn = screen.getByLabelText('static value');
+      expect(staticBtn).not.toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(staticBtn);
+      // Nothing to explain — it just works.
+      expect(showWorkspaceToast).not.toHaveBeenCalled();
     });
 
     // VIS-1240 (flip #3): this used to assert the opposite — the pill was gated
@@ -944,7 +971,7 @@ describe('PropertyRow', () => {
       );
     });
 
-    test('without onSaveAsMetric, PillMenu renders the action disabled even on an aggregate pill', () => {
+    test('without onSaveAsMetric, PillMenu omits the action rather than showing it dead', () => {
       render(
         <PropertyRow
           {...defaultProps}
@@ -956,7 +983,10 @@ describe('PropertyRow', () => {
         />
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+      // Finding #3: it used to render disabled, blaming the pill for not being
+      // an aggregate — on an aggregate pill. A flow this surface never offers
+      // is omitted instead.
+      expect(screen.queryByTestId('pill-menu-save-as-metric')).not.toBeInTheDocument();
     });
 
     test('PillMenu Remove clears the slot value (never the whole property)', () => {

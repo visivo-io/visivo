@@ -1,6 +1,5 @@
 import React, {
   useCallback,
-  useEffect,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
@@ -294,8 +293,20 @@ const PillMenu = React.forwardRef(
   // 06 §4: "Save-as-metric only when state is aggregate/custom" — `custom`
   // isn't reachable via `parse()` today (see pillGrammar.js's docstring), so
   // in practice this is exactly the `aggregate` kind.
-  const saveAsMetricEnabled =
-    (state?.kind === 'aggregate' || state?.kind === 'custom') && typeof onSaveAsMetric === 'function';
+  // Review finding #3: these were ANDed into one flag, so a surface that
+  // simply doesn't wire the handler produced a disabled item blaming the pill
+  // ("Only an aggregate pill can be saved as a metric") — on a pill whose own
+  // header two lines above read `Aggregate (AVG)`. The same lying-affordance
+  // class this PR set out to kill, made newly reachable in the right rail once
+  // Phase 1 dropped the `droppable` gate on pills.
+  //
+  // They are different facts and get treated differently: a pill that isn't an
+  // aggregate CAN become one from this very menu, so the item stays visible and
+  // explains itself. A surface that doesn't offer the flow at all never will,
+  // so the item is omitted rather than shown permanently dead.
+  const saveAsMetricOffered = typeof onSaveAsMetric === 'function';
+  const pillIsAggregate = state?.kind === 'aggregate' || state?.kind === 'custom';
+  const saveAsMetricEnabled = saveAsMetricOffered && pillIsAggregate;
 
   const presetIsSelected = preset => draft.useAs === preset;
 
@@ -363,6 +374,7 @@ const PillMenu = React.forwardRef(
               setOpen(false);
             }}
             saveAsMetricEnabled={saveAsMetricEnabled}
+            saveAsMetricOffered={saveAsMetricOffered}
             onSaveAsMetric={() => {
               onSaveAsMetric?.();
               setOpen(false);
@@ -398,6 +410,7 @@ const PillMenuPopover = ({
   onSelectPreset,
   onManualEdit,
   saveAsMetricEnabled,
+  saveAsMetricOffered,
   onSaveAsMetric,
   onRemove,
   triggerRef,
@@ -412,17 +425,6 @@ const PillMenuPopover = ({
   const { columnsByModel, loading: columnsLoading } = useModelColumns(modelNames);
   const columns = useMemo(() => columnsByModel?.[modelName] || [], [columnsByModel, modelName]);
 
-  // An unbound `modelRef` (dropped model, nothing chosen yet) opens with
-  // `draft.column === ''`, which matches NO <option> — so the browser renders
-  // the FIRST column as the visible selection while the draft still says
-  // "nothing chosen". Apply then committed an empty column and the pill came
-  // back unbound, exactly as if the click had done nothing. Adopt whatever the
-  // control is actually showing the moment there is something to show, so the
-  // visible selection and the draft can never disagree.
-  useEffect(() => {
-    if (!columns.length) return;
-    setDraft(d => (d.column ? d : { ...d, column: columns[0] }));
-  }, [columns, setDraft]);
 
   // The Index row first shipped as All / First / Last only, which dropped
   // "At row…" and "Rows…" — both of which the standalone SliceMenu offered —
@@ -580,6 +582,21 @@ const PillMenuPopover = ({
                 aria-label="Dimension"
                 className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
               >
+                {/* Review finding #5: an unbound pill reads "choose a dimension"
+                    while the select showed the first column — the label and the
+                    control disagreeing about whether a choice had been made.
+                    Seeding `draft.column` from the first column fixed an
+                    earlier bug (a `value` matching no <option> let the browser
+                    DISPLAY one while the draft said "nothing chosen", so Apply
+                    committed empty) but it fixed it by making the lie true.
+                    An explicit placeholder makes the control honest instead:
+                    the displayed state and the draft agree, and Apply stays
+                    inert until the user actually picks. */}
+                {!draft.column && (
+                  <option value="" disabled>
+                    Choose a dimension…
+                  </option>
+                )}
                 {!columns.includes(draft.column) && draft.column && (
                   <option value={draft.column}>{draft.column}</option>
                 )}
@@ -770,6 +787,8 @@ const PillMenuPopover = ({
         <PiTextAa size={13} />
         Manually edit field…
       </button>
+      {saveAsMetricOffered && (
+        <>
       <button
         type="button"
         role="menuitem"
@@ -804,6 +823,8 @@ const PillMenuPopover = ({
         >
           Only an aggregate pill (SUM, AVG, …) can be saved as a metric.
         </p>
+      )}
+        </>
       )}
         </>
       )}
