@@ -6,9 +6,9 @@ import useStore from '../../../../stores/store';
 
 // Mock the RefTextArea component
 jest.mock('../RefTextArea', () => {
-  return function MockRefTextArea({ value, onChange, helperText, disabled }) {
+  return function MockRefTextArea({ value, onChange, helperText, disabled, acceptDrops }) {
     return (
-      <div data-testid="ref-text-area">
+      <div data-testid="ref-text-area" data-accept-drops={acceptDrops ? 'true' : 'false'}>
         <input
           value={value || ''}
           onChange={e => onChange(e.target.value)}
@@ -1496,4 +1496,35 @@ describe('PropertyRow', () => {
       expect(onChange).toHaveBeenCalledWith('new value');
     });
   });
+
+
+  // The raw editor's droppable nests INSIDE the row's `property-zone`, and
+  // dnd-kit's `pointerWithin` resolves to the innermost hit. Registering both
+  // let the inner one shadow the row, which broke COLUMN drops in the Build
+  // rail: `property-zone` builds `${ref(activeModel).col}` from the payload,
+  // while `ref-text` can only insert a ref by name — so a column fell outside
+  // its allowlist and the drop silently did nothing. A model passed the
+  // allowlist, so only columns broke.
+  describe('the raw editor does not shadow the row as a drop target', () => {
+    const defs = { 'query-string': { type: 'string', pattern: '^\\?\\{.*\\}$' } };
+    const rawProps = {
+      ...defaultProps,
+      path: 'x',
+      schema: { oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] },
+      defs,
+      // Two refs — deliberately opaque, so the raw editor renders.
+      value: '?{${ref(orders_q).amount} + ${ref(orders_q).tax}}',
+    };
+
+    test('a droppable row keeps ownership of drops', () => {
+      render(<PropertyRow {...rawProps} droppable />);
+      expect(screen.getByTestId('ref-text-area')).toHaveAttribute('data-accept-drops', 'false');
+    });
+
+    test('a NON-droppable row lets the editor accept them — the only target there', () => {
+      render(<PropertyRow {...rawProps} />);
+      expect(screen.getByTestId('ref-text-area')).toHaveAttribute('data-accept-drops', 'true');
+    });
+  });
+
 });

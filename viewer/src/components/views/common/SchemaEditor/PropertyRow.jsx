@@ -651,9 +651,19 @@ export function PropertyRow({
                       helperText={description}
                       disabled={disabled}
                       allowedTypes={refKindsFor('insight', 'props')}
-                      // Raw-text mode has no pill to drop onto, and outside the
-                      // Build rail the row wrapper isn't a drop target either.
-                      acceptDrops
+                      // ONLY when the row itself isn't a drop target. This
+                      // editor's droppable nests INSIDE the row's
+                      // `property-zone`, and `pointerWithin` resolves to the
+                      // innermost hit — so registering both made the inner one
+                      // shadow the row. That broke column drops in the Build
+                      // rail: `property-zone` builds `${ref(activeModel).col}`
+                      // from the drag payload, while `ref-text` only knows how
+                      // to insert a ref BY NAME, so a column fell outside its
+                      // allowlist and the drop silently did nothing. A model
+                      // drag passed the allowlist, which is why only columns
+                      // broke. Where the row IS droppable it already handles
+                      // this correctly; where it isn't, this is the only target.
+                      acceptDrops={!droppable}
                       // "Manually edit field…" means the WHOLE expression is
                       // text, refs included — a chip there is the one part the
                       // manual escape hatch can't edit. An opaque value the
