@@ -98,10 +98,10 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   // MODEL-SCOPED is not the same thing as EMBEDDED, and conflating them was a
   // bug. `isEmbedded` means "edited in place inside its parent's config" — it
   // reads `record._embedded`. A metric/dimension defined UNDER a model is
-  // loaded from its OWN collection with `_embedded` unset.
-  //
-  // That distinction decides the GRAMMAR: `sql_model.py` rejects any ref() in a
-  // nested expression, so a model-scoped field must get the plain editor.
+  // loaded from its OWN collection with `_embedded` unset, carrying the parent
+  // as a SIBLING of `config` rather than a field inside it: `Metric`/`Dimension`
+  // declare no `model` field and forbid extras, so nesting can only be
+  // expressed positionally in the YAML.
   //
   // Exactly two keys mean "scoped to a model", and both are load-bearing:
   //   - `parentModel`, attached by the managers ONLY when walking
@@ -109,10 +109,17 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   //   - `config.parentModel`, which `saveAsMetricFlow` and `promoteChecklist`
   //     write to REQUEST nesting; `project_writer._new` then nests it.
   //
-  // Deliberately NOT `config.model`: `Dimension`/`Metric` declare no `model`
-  // field and forbid extras, so the server can never return one. Testing for it
-  // could only ever produce a false positive — a standalone field wrongly
-  // demoted to plain SQL, losing its ref editor.
+  // Deliberately NOT `config.model`: `Dimension`/`Metric` can never return one,
+  // so testing for it could only ever produce a false positive — a standalone
+  // field wrongly demoted to plain SQL, losing its ref editor.
+  //
+  // This one value drives two things, and each was a separate bug:
+  //   1. the GRAMMAR — `sql_model.py` rejects any ref() in a nested expression,
+  //      so a model-scoped field must get the plain editor, not the ref one;
+  //   2. the SAVE BODY — built as `{ ...config, name }`, it dropped every
+  //      sibling key, so the object validated as standalone and
+  //      `project_writer` wrote it to the top level, silently un-nesting a
+  //      field from its model on an ordinary save.
   const parentModelName = record?.parentModel || record?.config?.parentModel || null;
   const isModelScoped = isEmbedded || !!parentModelName;
   const parentName = record?._embedded?.parentName;
@@ -223,7 +230,8 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     if (!validateForm()) return;
     setSaving(true);
     setSaveError(null);
-    const body = { ...config, name };
+    // Carry the scope through the round trip; see `parentModelName` above.
+    const body = { ...config, name, ...(parentModelName ? { parentModel: parentModelName } : {}) };
     try {
       if (isEmbedded) {
         // Embedded object — delegate; the parent applies it via its edit stack.

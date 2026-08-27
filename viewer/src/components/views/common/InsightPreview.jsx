@@ -137,12 +137,17 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
 
       <div className="flex-1 min-h-0 p-4 overflow-hidden">
         <div className="w-full h-full relative" style={{ minWidth: 0 }}>
+          {/* No explicit height/width: `hideToolbar` turns on Plotly's
+              `autosize`, which means the resize handler owns the dimensions and
+              the chart fills its container. Passing `height` alongside it gives
+              Plotly two sizing authorities — the layout forces the fixed value,
+              autosize measures the container and strips it back — so the chart
+              can paint at the wrong size before settling. This is the only
+              Chart call site that ever passed both. */}
           <Chart
             chart={chart}
             projectId={projectId}
             itemWidth={1}
-            height={400}
-            width={undefined}
             shouldLoad={true}
             hideToolbar={true}
           />
