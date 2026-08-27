@@ -11,6 +11,9 @@ from visivo.models.validators.metric_references_validator import MetricReference
 from visivo.models.validators.dimension_references_validator import DimensionReferencesValidator
 from visivo.models.validators.relation_references_validator import RelationReferencesValidator
 from visivo.models.validators.single_source_validator import SingleSourceValidator
+from visivo.models.validators.standalone_field_refs_validator import (
+    StandaloneFieldRefsValidator,
+)
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
@@ -39,6 +42,10 @@ class ProjectValidator:
             MetricReferencesValidator(),
             DimensionReferencesValidator(),
             RelationReferencesValidator(),
+            # Before SingleSourceValidator, so the common cause of "does not
+            # tie back to any source" is reported as the local, actionable
+            # mistake it is rather than as a whole-project failure.
+            StandaloneFieldRefsValidator(),
             SingleSourceValidator(),
         ]
 

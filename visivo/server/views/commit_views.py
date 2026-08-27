@@ -483,6 +483,31 @@ def register_commit_views(app, flask_app, output_dir):
             if not named_children:
                 return jsonify({"message": "No changes to commit", "published_count": 0})
 
+            # A commit must never write YAML the project cannot parse. Nothing
+            # checked this before: the writer wrote, the file watcher then
+            # failed to re-parse, and the server was left serving a broken
+            # project — every list empty, the sidebar apparently losing objects
+            # that were still on disk, and the real cause buried in a traceback
+            # in the server log. The editor's per-object saves validate ONE
+            # object, which cannot catch a rule about the whole project
+            # (a field that ties back to no source, a duplicate name, a
+            # dangling ref).
+            #
+            # Validate the project this commit WOULD produce, and refuse before
+            # touching a file. Mirrors the gate cloud already has
+            # (core's `validate_commit`).
+            commit_error = _validate_pending_project(flask_app)
+            if commit_error:
+                return (
+                    jsonify(
+                        {
+                            "error": "Commit would leave the project invalid.",
+                            "detail": commit_error,
+                        }
+                    ),
+                    400,
+                )
+
             # Serialize with the file watcher for the whole write→refresh
             # window. Without this, the YAML writes below fire a debounced
             # watcher recompile that races the synchronous one — both clone
@@ -600,6 +625,75 @@ def register_commit_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error discarding changes: {str(e)}")
             return jsonify({"error": str(e)}), 500
+
+
+def _renest_model_scoped_fields(project):
+    """Put draft metrics/dimensions back under the model they belong to.
+
+    ``inject_cached_objects`` overlays every manager's cached objects onto the
+    project by appending to the matching TOP-LEVEL list — so a draft field that
+    is model-scoped lands in ``project.metrics`` rather than under its model.
+    For a run that is harmless; for validation it is not, because "is this
+    field nested?" is exactly the question the project-level rules ask. Without
+    this, a perfectly good nested draft is reported as a project-level field
+    that references nothing, and the commit is refused.
+
+    ``project_writer`` nests by ``parent_model`` when it writes, so this makes
+    the validated shape match the shape that would land on disk.
+    """
+    for field_attr, model_attr in (("metrics", "metrics"), ("dimensions", "dimensions")):
+        remaining = []
+        for field in getattr(project, field_attr, None) or []:
+            parent_name = getattr(field, "_parent_name", None)
+            if not parent_name:
+                remaining.append(field)
+                continue
+            owner = next(
+                (m for m in project.models if getattr(m, "name", None) == parent_name), None
+            )
+            if owner is None:
+                # Orphaned scope — leave it top-level so the normal validators
+                # report it rather than silently dropping the field.
+                remaining.append(field)
+                continue
+            owned = list(getattr(owner, model_attr, None) or [])
+            owned = [o for o in owned if getattr(o, "name", None) != field.name] + [field]
+            setattr(owner, model_attr, owned)
+        setattr(project, field_attr, remaining)
+
+
+def _validate_pending_project(flask_app):
+    """The validation error a commit would produce, or None.
+
+    Assembles the project as it would be AFTER the commit — the parsed project
+    with every manager's cached (draft) object overlaid, which is the same
+    overlay a run uses — and re-constructs it so Pydantic runs the full
+    validator chain. Re-constructing is the point: ``inject_cached_objects``
+    mutates via ``setattr``, which does not re-validate, so only a fresh
+    ``Project(**dump)`` exercises the project-level rules.
+
+    Fails OPEN on an unexpected error: this gate exists to catch a *known*
+    invalid project, and must not become a new way for a commit to fail.
+    """
+    from copy import deepcopy
+
+    from visivo.models.project import Project
+    from visivo.server.jobs.project_injection import inject_cached_objects
+
+    try:
+        pending = deepcopy(flask_app.project)
+        inject_cached_objects(flask_app, pending)
+        _renest_model_scoped_fields(pending)
+        Project(**pending.model_dump(exclude_none=True))
+    except ValueError as error:
+        message = str(error)
+        # Pydantic wraps the raised message; surface the useful line.
+        if "Value error, " in message:
+            message = message.split("Value error, ")[1].split(" [type")[0]
+        return message
+    except Exception:
+        return None
+    return None
 
 
 def _build_child_info(

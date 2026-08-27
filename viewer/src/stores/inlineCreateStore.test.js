@@ -137,6 +137,53 @@ describe('createWorkspaceObject', () => {
     });
   });
 
+  // Same shape of bug as the relation one above, found the hard way: the
+  // scaffolds were `count(*)` and `1`, which reference no model. A PROJECT-level
+  // metric or dimension reaches a source only through a `${ref()}`, so the
+  // draft saved, then the commit wrote YAML the next parse refused — and every
+  // metric and dimension vanished from the editor with only
+  // "does not tie back to any source" in the server log.
+  describe('metric and dimension drafts reference a real model', () => {
+    const draftConfig = async type => {
+      const save = jest.fn(async () => ({ success: true }));
+      useStore.setState({
+        models: [{ name: 'orders' }, { name: 'users' }],
+        [CREATE_TEMPLATES[type].collectionKey]: [],
+        [CREATE_TEMPLATES[type].saveKey]: save,
+      });
+      await useStore.getState().createWorkspaceObject(type);
+      return save.mock.calls[0][1];
+    };
+
+    test('a metric counts a column of the first model', async () => {
+      // eslint-disable-next-line no-template-curly-in-string
+      expect((await draftConfig('metric')).expression).toBe('count(${ref(orders).id})');
+    });
+
+    test('a dimension selects a column of the first model', async () => {
+      // eslint-disable-next-line no-template-curly-in-string
+      expect((await draftConfig('dimension')).expression).toBe('${ref(orders).id}');
+    });
+
+    test.each(['metric', 'dimension'])(
+      'a %s says WHY it cannot draft one with no models, rather than posting a doomed config',
+      async type => {
+        const save = jest.fn(async () => ({ success: true }));
+        useStore.setState({
+          models: [],
+          [CREATE_TEMPLATES[type].collectionKey]: [],
+          [CREATE_TEMPLATES[type].saveKey]: save,
+        });
+
+        const result = await useStore.getState().createWorkspaceObject(type);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toMatch(/model/i);
+        expect(save).not.toHaveBeenCalled();
+      }
+    );
+  });
+
   test('propagates a failed save', async () => {
     useStore.setState({
       charts: [],
