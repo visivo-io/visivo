@@ -29,10 +29,11 @@ def test_basic_init_writes_scaffolded_yaml():
 
     content = yml_path.read_text()
     # Comment markers (the user-facing copy) must be present.
-    assert "# A Source is where your data lives" in content
-    assert "# A Model is a SQL query saved against a Source." in content
-    assert "# An Insight is a chart configured against a Model." in content
-    assert "# A Dashboard arranges Insights into a layout." in content
+    assert "## A Source is where your data lives" in content
+    assert "## A Model is a SQL query saved against a Source." in content
+    assert "## An Insight is a chart configured against a Model." in content
+    assert "## A Chart wraps one or more Insights" in content
+    assert "## A Dashboard arranges Charts into rows of items." in content
     # name should match directory basename
     assert "name: my-scaffold-project" in content
 
@@ -124,3 +125,46 @@ def test_scaffold_template_constants_are_strings():
     assert isinstance(SCAFFOLD_TEMPLATE, str) and len(SCAFFOLD_TEMPLATE) > 0
     assert isinstance(GITIGNORE_CONTENT, str) and "target/" in GITIGNORE_CONTENT
     assert isinstance(ENV_EXAMPLE_CONTENT, str) and ENV_EXAMPLE_CONTENT.startswith("#")
+
+
+def _uncomment_examples(scaffold_text):
+    """Strip prose (##) lines and uncomment example (#) lines.
+
+    The template's own header documents the convention: `##` is guidance,
+    a single `#` marks a runnable example that must parse once uncommented.
+    """
+    lines = []
+    for line in scaffold_text.splitlines():
+        stripped = line.lstrip()
+        indent = line[: len(line) - len(stripped)]
+        if stripped.startswith("##"):
+            continue
+        if stripped.startswith("# "):
+            lines.append(indent + stripped[2:])
+        elif stripped == "#":
+            continue
+        else:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def test_scaffold_examples_parse_with_the_real_project_model():
+    """M8: four field testers copied the scaffold's dashboard example and were
+    rejected by the tool's own parser (`insight:` is not a dashboard item —
+    items take chart/table/markdown/input). Uncommenting every example must
+    yield a project the real Project model accepts."""
+    scaffold = SCAFFOLD_TEMPLATE.format(project_name="scaffold_test")
+    uncommented = _uncomment_examples(scaffold)
+    data = yaml.safe_load(uncommented)
+    project = Project(**data)
+    assert project.name == "scaffold_test"
+    assert [d.name for d in project.dashboards] == ["my_dashboard"]
+    assert [c.name for c in project.charts] == ["revenue_chart"]
+
+
+def test_scaffold_teaches_the_chart_wrapper_not_bare_insights_on_items():
+    """The decision of 27 Aug: dashboard items never take a bare insight —
+    the Chart wrapper is the composition boundary. The scaffold must teach
+    exactly that shape."""
+    assert "chart: ${ref(revenue_chart)}" in SCAFFOLD_TEMPLATE.format(project_name="x")
+    assert "insight: ${ref(" not in SCAFFOLD_TEMPLATE.format(project_name="x")
