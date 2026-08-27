@@ -30,12 +30,27 @@ import { formatRefExpression } from '../../../utils/refString';
  * - disabled: Whether the field is disabled
  * - rows: Number of rows (approximate height)
  * - helperText: Helper text shown below the editor
- * - hideAddButton: Whether to hide add-ref affordances
+ * - hideAddButton: legacy no-op. There has never been an add-ref BUTTON in this
+ *   component — references are inserted by typing `@` (the mention dropdown) or
+ *   by dropping one in. Helper copy across the app told users to "use the +
+ *   button", describing a control that does not exist. Kept only so existing
+ *   call sites don't break; it gates nothing.
  * - restrictBrackets: Block typing/pasting `[` and `]`. Only for chip-body
  *   editors where slices are authored separately (SchemaEditor PropertyRow +
  *   SliceBadge); free-form SQL fields must keep brackets (array indexing,
  *   quoted identifiers, json access).
  */
+/**
+ * How a reference actually gets into one of these editors — the same wording
+ * this component's own docs use ("Type @ to insert references"), so the help
+ * text and the feature description can't drift apart. Exported so every surface
+ * says the same true thing instead of each inventing its own copy.
+ *
+ * Notably it does NOT mention a "+ button": several fields told users to use
+ * one, and no such control has ever existed here.
+ */
+export const REF_INSERT_HINT = 'Type @ to insert references, or drag them in from the library.';
+
 const RefTextArea = ({
   value = '',
   onChange,

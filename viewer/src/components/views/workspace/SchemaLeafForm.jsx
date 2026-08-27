@@ -4,6 +4,7 @@ import useRecordSave from '../../../hooks/useRecordSave';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { FormInput, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import ExpressionField from '../common/ExpressionField';
+import { REF_INSERT_HINT } from '../common/RefTextArea';
 import { validateName } from '../common/namedModel';
 import { isEmbeddedObject } from '../common/embeddedObjectUtils';
 import { getTypeByValue } from '../common/objectTypeConfigs';
@@ -59,14 +60,14 @@ export const TYPE_CONFIG = {
   dimension: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    helperText: 'SQL expression for this dimension. Use the + button to insert references.',
+    helperText: `SQL expression for this dimension. ${REF_INSERT_HINT}`,
     embeddedHelperText: 'Plain SQL expression referencing columns from the parent model.',
     rows: 4,
   },
   metric: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    helperText: 'SQL aggregate expression for this metric. Use the + button to insert references.',
+    helperText: `SQL aggregate expression for this metric. ${REF_INSERT_HINT}`,
     embeddedHelperText: 'Plain SQL aggregate expression over the parent model.',
     rows: 4,
   },
@@ -74,7 +75,7 @@ export const TYPE_CONFIG = {
     expressionField: 'condition',
     expressionLabel: 'Condition',
     // eslint-disable-next-line no-template-curly-in-string
-    helperText: 'Join condition using ${ref(model).field} syntax. Must reference at least two models.',
+    helperText: `Join condition between two models — every reference needs a column. ${REF_INSERT_HINT}`,
     rows: 4,
   },
 };
@@ -94,6 +95,20 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   const checkCommitStatus = store.checkCommitStatus;
 
   const isEmbedded = isEmbeddedObject(record);
+  // MODEL-SCOPED is not the same thing as EMBEDDED, and conflating them was a
+  // bug. `isEmbedded` means "edited in place inside its parent's config" — it
+  // reads `record._embedded`. A metric/dimension defined under a model is
+  // loaded from its OWN collection with `_embedded` unset, carrying only
+  // `parentModel` (which `dimension_manager`/`metric_manager` attach from
+  // `_parent_name`) or a `config.parentModel` from a draft promote.
+  //
+  // That distinction decides the GRAMMAR: `sql_model.py` rejects any ref() in a
+  // nested expression. Keying `nested` off `isEmbedded` alone left model-scoped
+  // fields rendering the ref editor, so a model could be dropped into one and
+  // the expression only failed at save. Same signal the rest of the app uses
+  // (`explorerStore.belongsToModel`, `useFieldParentModel`).
+  const isModelScoped =
+    isEmbedded || !!(record?.parentModel || record?.config?.parentModel || record?.config?.model);
   const parentName = record?._embedded?.parentName;
   const isEditMode = !!record && !isCreate && !isEmbedded;
   const isNewObject = record?.status === ObjectStatus.NEW;
@@ -283,7 +298,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
         <ExpressionField
           objectType={type}
           field={exprField}
-          nested={isEmbedded}
+          nested={isModelScoped}
           value={value}
           onChange={onChange}
           error={error}
@@ -291,7 +306,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
           label={typeConfig.expressionLabel || fieldLabel(getObjectSchemaSync(type), exprField)}
           rows={typeConfig.rows || 4}
           helperText={
-            isEmbedded && typeConfig.embeddedHelperText
+            isModelScoped && typeConfig.embeddedHelperText
               ? typeConfig.embeddedHelperText
               : typeConfig.helperText
           }
@@ -300,7 +315,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     };
     // typeConfig is a stable module-level object per type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, isEmbedded]);
+  }, [type, isModelScoped]);
 
   const typeDef = getTypeByValue(type);
   const singular = typeDef?.singularLabel || type;

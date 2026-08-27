@@ -64,6 +64,9 @@ export function ExpressionField({
         helperText={helperText}
         allowedTypes={spec.refKinds}
         acceptDrops
+        // A ref here is editable in place: click the chip to re-point it
+        // instead of deleting and retyping the whole `${ref(model).column}`.
+        configurableChips
       />
     );
   }

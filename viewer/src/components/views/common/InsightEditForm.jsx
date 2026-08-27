@@ -15,6 +15,7 @@ import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { refKindsFor } from './fieldTypes';
+import { REF_INSERT_HINT } from './RefTextArea';
 import {
   SectionContainer,
   EmptyState,
@@ -333,7 +334,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                       label={typeConfig.label}
                       allowedTypes={refKindsFor('interaction', 'filter')}
                       rows={2}
-                      helperText={typeConfig.helperText}
+                      helperText={`${typeConfig.helperText} ${REF_INSERT_HINT}`}
                     />
                   </div>
                 );
