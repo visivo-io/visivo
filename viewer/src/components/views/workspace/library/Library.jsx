@@ -597,6 +597,7 @@ const Library = () => {
             onRowClick={handleRowClick}
             onContextAction={handleContextAction}
             canAddToExploration={canAddToExploration}
+            nestedFieldsByModel={data.nestedFieldsByModel}
           />
         ))}
         {renderedTypes.length === 0 && (

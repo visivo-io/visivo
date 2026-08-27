@@ -30,6 +30,10 @@ export function ExpressionField({
   disabled = false,
   rows = 4,
   helperText,
+  // The model this field is scoped to, when it is. Named in the copy so a user
+  // can tell at a glance WHY refs are unavailable — and can catch us being
+  // wrong about it.
+  scopedToModel = null,
   'data-testid': dataTestId,
 }) {
   const spec = useMemo(
@@ -64,6 +68,9 @@ export function ExpressionField({
         helperText={helperText}
         allowedTypes={spec.refKinds}
         acceptDrops
+        // A ref here is editable in place: click the chip to re-point it
+        // instead of deleting and retyping the whole `${ref(model).column}`.
+        configurableChips
       />
     );
   }
@@ -93,8 +100,18 @@ export function ExpressionField({
         />
         {strayRef && (
           <p className="text-xs font-medium text-highlight-600" data-testid="plain-sql-ref-warning">
-            References aren&apos;t available in this field — it reads columns from its parent model
-            directly. Saving with a <code>ref()</code> will fail.
+            {scopedToModel ? (
+              <>
+                Scoped to <strong>{scopedToModel}</strong>, so it reads that model&apos;s columns
+                directly — references aren&apos;t available here and saving with a{' '}
+                <code>ref()</code> will fail.
+              </>
+            ) : (
+              <>
+                References aren&apos;t available in this field — it reads columns from its parent
+                model directly. Saving with a <code>ref()</code> will fail.
+              </>
+            )}
           </p>
         )}
         {helperText && !strayRef && <p className="text-xs text-gray-500">{helperText}</p>}

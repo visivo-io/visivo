@@ -4,6 +4,7 @@ import useRecordSave from '../../../hooks/useRecordSave';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { FormInput, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import ExpressionField from '../common/ExpressionField';
+import { REF_INSERT_HINT } from '../common/RefTextArea';
 import { validateName } from '../common/namedModel';
 import { isEmbeddedObject } from '../common/embeddedObjectUtils';
 import { getTypeByValue } from '../common/objectTypeConfigs';
@@ -59,14 +60,14 @@ export const TYPE_CONFIG = {
   dimension: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    helperText: 'SQL expression for this dimension. Use the + button to insert references.',
+    helperText: `SQL expression for this dimension. ${REF_INSERT_HINT}`,
     embeddedHelperText: 'Plain SQL expression referencing columns from the parent model.',
     rows: 4,
   },
   metric: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    helperText: 'SQL aggregate expression for this metric. Use the + button to insert references.',
+    helperText: `SQL aggregate expression for this metric. ${REF_INSERT_HINT}`,
     embeddedHelperText: 'Plain SQL aggregate expression over the parent model.',
     rows: 4,
   },
@@ -74,7 +75,7 @@ export const TYPE_CONFIG = {
     expressionField: 'condition',
     expressionLabel: 'Condition',
     // eslint-disable-next-line no-template-curly-in-string
-    helperText: 'Join condition using ${ref(model).field} syntax. Must reference at least two models.',
+    helperText: `Join condition between two models — every reference needs a column. ${REF_INSERT_HINT}`,
     rows: 4,
   },
 };
@@ -94,16 +95,33 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   const checkCommitStatus = store.checkCommitStatus;
 
   const isEmbedded = isEmbeddedObject(record);
-  // The model a nested (model-scoped) metric/dimension belongs to. It is a
-  // SIBLING of `config`, not a field inside it — `Metric`/`Dimension` declare
-  // no `model` field and forbid extras, so nesting can only be expressed
-  // positionally in the YAML. The managers surface it as `parentModel` on read,
-  // and both save views pop it back off and call `set_parent_name`.
+  // MODEL-SCOPED is not the same thing as EMBEDDED, and conflating them was a
+  // bug. `isEmbedded` means "edited in place inside its parent's config" — it
+  // reads `record._embedded`. A metric/dimension defined UNDER a model is
+  // loaded from its OWN collection with `_embedded` unset, carrying the parent
+  // as a SIBLING of `config` rather than a field inside it: `Metric`/`Dimension`
+  // declare no `model` field and forbid extras, so nesting can only be
+  // expressed positionally in the YAML.
   //
-  // This form built its save body as `{ ...config, name }`, which drops it. The
-  // object then validated as STANDALONE, and `project_writer` wrote it at the
-  // top level — silently un-nesting a field from its model on an ordinary save.
+  // Exactly two keys mean "scoped to a model", and both are load-bearing:
+  //   - `parentModel`, attached by the managers ONLY when walking
+  //     `model.dimensions` / `model.metrics` (i.e. genuinely nested), and
+  //   - `config.parentModel`, which `saveAsMetricFlow` and `promoteChecklist`
+  //     write to REQUEST nesting; `project_writer._new` then nests it.
+  //
+  // Deliberately NOT `config.model`: `Dimension`/`Metric` can never return one,
+  // so testing for it could only ever produce a false positive — a standalone
+  // field wrongly demoted to plain SQL, losing its ref editor.
+  //
+  // This one value drives two things, and each was a separate bug:
+  //   1. the GRAMMAR — `sql_model.py` rejects any ref() in a nested expression,
+  //      so a model-scoped field must get the plain editor, not the ref one;
+  //   2. the SAVE BODY — built as `{ ...config, name }`, it dropped every
+  //      sibling key, so the object validated as standalone and
+  //      `project_writer` wrote it to the top level, silently un-nesting a
+  //      field from its model on an ordinary save.
   const parentModelName = record?.parentModel || record?.config?.parentModel || null;
+  const isModelScoped = isEmbedded || !!parentModelName;
   const parentName = record?._embedded?.parentName;
   const isEditMode = !!record && !isCreate && !isEmbedded;
   const isNewObject = record?.status === ObjectStatus.NEW;
@@ -294,7 +312,8 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
         <ExpressionField
           objectType={type}
           field={exprField}
-          nested={isEmbedded}
+          nested={isModelScoped}
+          scopedToModel={parentModelName}
           value={value}
           onChange={onChange}
           error={error}
@@ -302,7 +321,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
           label={typeConfig.expressionLabel || fieldLabel(getObjectSchemaSync(type), exprField)}
           rows={typeConfig.rows || 4}
           helperText={
-            isEmbedded && typeConfig.embeddedHelperText
+            isModelScoped && typeConfig.embeddedHelperText
               ? typeConfig.embeddedHelperText
               : typeConfig.helperText
           }
@@ -311,7 +330,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     };
     // typeConfig is a stable module-level object per type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, isEmbedded]);
+  }, [type, isModelScoped]);
 
   const typeDef = getTypeByValue(type);
   const singular = typeDef?.singularLabel || type;

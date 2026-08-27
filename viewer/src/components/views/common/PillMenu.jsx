@@ -35,6 +35,24 @@ const rangePartsOf = slice =>
   sliceModeOf(slice) === 'range' ? slice.slice(1, -1).split(':') : ['', ''];
 const rangeExpr = (start, end) => (start === '' && end === '' ? '' : `[${start}:${end}]`);
 
+/**
+ * The rows a PillMenu can offer. `useAs`, `index` and `modifier` only make
+ * sense when the pill owns the ENTIRE value — they serialize into the wrapper
+ * around the ref (`sum(...)`, a trailing `[0]`, a trailing `/ 100`). Inside a
+ * RefTextArea the wrapper is free text the user already controls, so a chip
+ * there asks for `property` alone.
+ */
+export const PILL_SECTIONS = {
+  PROPERTY: 'property',
+  USE_AS: 'useAs',
+  INDEX: 'index',
+  MODIFIER: 'modifier',
+  ACTIONS: 'actions',
+};
+const ALL_SECTIONS = Object.values(PILL_SECTIONS);
+/** What an embedded chip offers: re-point the ref, or remove it. */
+export const CHIP_SECTIONS = [PILL_SECTIONS.PROPERTY];
+
 const AGG_LABELS = {
   sum: 'SUM',
   avg: 'AVG',
@@ -221,6 +239,12 @@ const PillMenu = React.forwardRef(
       state,
       slice = null,
       slotShape = 'unknown',
+      // Which rows this menu offers. A pill that OWNS its whole value wants all
+      // of them; a chip embedded in free text does not — its aggregation,
+      // index and modifier are the surrounding SQL, not properties of the ref,
+      // so offering them there would ask the user to author something the
+      // editor can't place. Callers narrow rather than the menu guessing.
+      sections = ALL_SECTIONS,
       onApply,
       onManualEdit,
       onSaveAsMetric,
@@ -322,6 +346,7 @@ const PillMenu = React.forwardRef(
           <PillMenuPopover
             state={state}
             slotShape={slotShape}
+            sections={sections}
             draft={draft}
             setDraft={setDraft}
             onApply={handleApply}
@@ -359,6 +384,7 @@ PillMenu.displayName = 'PillMenu';
 const PillMenuPopover = ({
   state,
   slotShape,
+  sections,
   draft,
   setDraft,
   onApply,
@@ -583,6 +609,8 @@ const PillMenuPopover = ({
               </div>
             )}
           </div>
+          {sections.includes(PILL_SECTIONS.USE_AS) && (
+            <>
           <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
             Use as
           </div>
@@ -601,6 +629,8 @@ const PillMenuPopover = ({
               testId={`pill-menu-preset-${agg}`}
             />
           ))}
+            </>
+          )}
           <Divider />
         </>
       )}
@@ -609,6 +639,8 @@ const PillMenuPopover = ({
           setting an aggregation and an index meant two different controls.
           "All values" is the default and is deliberately NOT shown on the pill
           itself; only a real index gets a badge. */}
+      {sections.includes(PILL_SECTIONS.INDEX) && (
+        <>
       <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
         Index
       </div>
@@ -675,7 +707,11 @@ const PillMenuPopover = ({
           </div>
         )}
       </div>
+        </>
+      )}
 
+      {sections.includes(PILL_SECTIONS.MODIFIER) && (
+        <>
       {/* Modifier — trailing SQL, applied INSIDE the `?{ }` so an index can
           still follow it (`?{ sum(x) / 100 }[0]`). This is what keeps a
           modified expression a pill instead of dropping it to raw text. */}
@@ -693,6 +729,8 @@ const PillMenuPopover = ({
           className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs font-mono text-gray-800 placeholder:text-gray-300 focus:border-primary-500 focus:outline-none"
         />
       </div>
+        </>
+      )}
 
       <div className="flex items-center justify-end gap-2 px-3 pb-2 pt-1">
         <button
@@ -718,6 +756,8 @@ const PillMenuPopover = ({
           Apply
         </button>
       </div>
+      {sections.includes(PILL_SECTIONS.ACTIONS) && (
+        <>
       <Divider />
 
       <button
@@ -765,6 +805,9 @@ const PillMenuPopover = ({
           Only an aggregate pill (SUM, AVG, …) can be saved as a metric.
         </p>
       )}
+        </>
+      )}
+
       <Divider />
       <button
         type="button"

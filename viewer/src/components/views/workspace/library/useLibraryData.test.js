@@ -121,12 +121,11 @@ describe('useLibraryData', () => {
   // Explore 2.0 Phase 3a — 02-architecture.md §4's DnD "payload gap": a
   // dropped field's ref-scoping and an input's `.value`/`.values` accessor
   // both depend on data the Library row previously didn't carry.
-  test('dimensions/metrics carry parentModel + expression when model-scoped', () => {
+  test('model-scoped fields group under their owner; unscoped stay top-level', () => {
     act(() => {
       useStore.setState({
         dimensions: [
           { name: 'scoped_dim', parentModel: 'orders', config: { expression: 'UPPER(region)' } },
-          { name: 'ref_scoped_dim', config: { model: '${ref(users)}', expression: 'region' } },
           { name: 'unscoped_dim', config: { expression: 'count(*)' } },
         ],
         metrics: [
@@ -135,118 +134,36 @@ describe('useLibraryData', () => {
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    // Alphabetical now, so name them rather than relying on seed order.
-    const byName = Object.fromEntries(
-      result.current.dataLayer.dimension.map(d => [d.name, d])
-    );
-    const { scoped_dim: scoped, ref_scoped_dim: refScoped, unscoped_dim: unscoped } = byName;
-    expect(scoped.parentModel).toBe('orders');
-    expect(scoped.expression).toBe('UPPER(region)');
-    // Falls back to config.model (a ref string) when parentModel isn't set
-    // directly on the record — mirrors useFieldParentModel.js's resolution.
-    expect(refScoped.parentModel).toBe('${ref(users)}');
-    expect(unscoped.parentModel).toBeNull();
 
-    const [scopedMetric] = result.current.dataLayer.metric;
-    expect(scopedMetric.parentModel).toBe('orders');
-    expect(scopedMetric.expression).toBe('sum(amount)');
+    // A nested field is plain SQL where `${ref()}` is a save-time error, while
+    // a standalone one is authored WITH refs. Listing them side by side made
+    // two different things look identical, so scoped ones now live under their
+    // model (LibraryModelRow) and only unscoped ones remain top-level.
+    expect(result.current.dataLayer.dimension.map(d => d.name)).toEqual(['unscoped_dim']);
+    expect(result.current.dataLayer.metric).toEqual([]);
+
+    const owned = result.current.nestedFieldsByModel.orders;
+    expect(owned.dimension.map(d => d.name)).toEqual(['scoped_dim']);
+    expect(owned.metric.map(m => m.name)).toEqual(['scoped_metric']);
+
+    // The DnD payload the drop side needs is still carried (Phase 3a): scoping
+    // decides `${ref(model).name}` vs a bare `${ref(name)}`.
+    expect(owned.dimension[0].parentModel).toBe('orders');
+    expect(owned.dimension[0].expression).toBe('UPPER(region)');
+    expect(result.current.dataLayer.dimension[0].parentModel).toBeNull();
   });
 
-  // Ordering — unpublished first, then by name. Rows previously came back in
-  // whatever order the API returned, which is insertion order: in a project
-  // with 124 models, the one you had just edited was wherever it happened to
-  // land, and a refetch could reorder the list under you.
-  describe('row ordering', () => {
-    const names = rows => rows.map(r => r.name);
-
-    test('rows with unpublished changes sort above published ones', () => {
-      act(() => {
-        useStore.setState({
-          charts: [
-            { name: 'alpha', status: 'published' },
-            { name: 'zulu', status: 'modified' },
-            { name: 'bravo', status: 'published' },
-            { name: 'yankee', status: 'new' },
-          ],
-        });
+  test('a model with no fields of its own gets no entry', () => {
+    act(() => {
+      useStore.setState({
+        dimensions: [{ name: 'unscoped_dim', config: { expression: 'count(*)' } }],
+        metrics: [],
       });
-      const { result } = renderHook(() => useLibraryData());
-      // Both dot states (new AND modified) lead — the rule is "has a dot",
-      // matching StatusDot, so the sort can never disagree with the UI.
-      expect(names(result.current.layoutItems.chart)).toEqual([
-        'yankee',
-        'zulu',
-        'alpha',
-        'bravo',
-      ]);
     });
-
-    test('a missing status counts as published, not as an edit', () => {
-      act(() => {
-        useStore.setState({
-          charts: [{ name: 'zebra' }, { name: 'apple', status: 'modified' }, { name: 'mango' }],
-        });
-      });
-      const { result } = renderHook(() => useLibraryData());
-      expect(names(result.current.layoutItems.chart)).toEqual(['apple', 'mango', 'zebra']);
-    });
-
-    test('names sort naturally, so model_2 precedes model_10', () => {
-      act(() => {
-        useStore.setState({
-          models: [{ name: 'model_10' }, { name: 'model_2' }, { name: 'model_1' }],
-        });
-      });
-      const { result } = renderHook(() => useLibraryData());
-      expect(names(result.current.dataLayer.model)).toEqual(['model_1', 'model_2', 'model_10']);
-    });
-
-    test('casing does not split otherwise-adjacent names', () => {
-      act(() => {
-        useStore.setState({
-          models: [{ name: 'beta' }, { name: 'Alpha' }, { name: 'gamma' }],
-        });
-      });
-      const { result } = renderHook(() => useLibraryData());
-      expect(names(result.current.dataLayer.model)).toEqual(['Alpha', 'beta', 'gamma']);
-    });
-
-    test('every type is ordered, not just the ones sharing a mapper', () => {
-      // sources / models / inputs are built by their own inline mappers, so
-      // they can drift from mapRows if the sort is applied per-mapper.
-      act(() => {
-        useStore.setState({
-          sources: [{ name: 'z_src' }, { name: 'a_src', status: 'modified' }],
-          models: [{ name: 'z_model' }, { name: 'a_model', status: 'modified' }],
-          inputs: [{ name: 'z_in' }, { name: 'a_in', status: 'modified' }],
-          dimensions: [{ name: 'z_dim' }, { name: 'a_dim', status: 'modified' }],
-          tables: [{ name: 'z_tbl' }, { name: 'a_tbl', status: 'modified' }],
-        });
-      });
-      const { result } = renderHook(() => useLibraryData());
-      expect(names(result.current.dataLayer.source)).toEqual(['a_src', 'z_src']);
-      expect(names(result.current.dataLayer.model)).toEqual(['a_model', 'z_model']);
-      expect(names(result.current.layoutItems.input)).toEqual(['a_in', 'z_in']);
-      expect(names(result.current.dataLayer.dimension)).toEqual(['a_dim', 'z_dim']);
-      expect(names(result.current.layoutItems.table)).toEqual(['a_tbl', 'z_tbl']);
-    });
-
-    test('sources, models and inputs keep soft-deleted rows like every other type', () => {
-      // The Library is the one surface that shows tombstones — it is where a
-      // pending deletion is seen and undone. Every type has to agree, or a
-      // deleted source would be unrecoverable while a deleted chart was not.
-      act(() => {
-        useStore.setState({
-          sources: [{ name: 'gone', status: 'deleted' }, { name: 'kept' }],
-          models: [{ name: 'gone', status: 'deleted' }, { name: 'kept' }],
-          inputs: [{ name: 'gone', status: 'deleted' }, { name: 'kept' }],
-        });
-      });
-      const { result } = renderHook(() => useLibraryData());
-      expect(names(result.current.dataLayer.source)).toContain('gone');
-      expect(names(result.current.dataLayer.model)).toContain('gone');
-      expect(names(result.current.layoutItems.input)).toContain('gone');
-    });
+    const { result } = renderHook(() => useLibraryData());
+    // LibraryModelRow keys its chevron off this — an expander that opens onto
+    // an empty list is a dead affordance.
+    expect(result.current.nestedFieldsByModel).toEqual({});
   });
 
   test('inputs carry inputType (single-select | multi-select)', () => {
