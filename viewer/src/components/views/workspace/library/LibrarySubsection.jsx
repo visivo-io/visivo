@@ -3,6 +3,7 @@ import { PiCaretDown } from 'react-icons/pi';
 import LibraryRow from './LibraryRow';
 import { getTypeDef } from './LibraryRow';
 import LibrarySourceRow from './LibrarySourceRow';
+import LibraryModelRow from './LibraryModelRow';
 import useStore from '../../../../stores/store';
 import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsStore';
 
@@ -37,10 +38,14 @@ const LibrarySubsection = ({
   onRowClick,
   onContextAction,
   canAddToExploration = false,
+  // Model-scoped fields, keyed by owning model — only `model` rows use it.
+  nestedFieldsByModel = null,
 }) => {
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
-  const RowComponent = typeKey === 'source' ? LibrarySourceRow : LibraryRow;
+  // Sources and models both drill down; everything else is a plain row.
+  const RowComponent =
+    typeKey === 'source' ? LibrarySourceRow : typeKey === 'model' ? LibraryModelRow : LibraryRow;
 
   // Subsections default to COLLAPSED (VIS-828): absence of a saved preference
   // reads as collapsed; an explicit `false` keeps a user-expanded subsection
@@ -115,6 +120,7 @@ const LibrarySubsection = ({
                     onClick={onRowClick}
                     onContextAction={onContextAction}
                     canAddToExploration={canAddToExploration}
+                    nestedFields={nestedFieldsByModel?.[obj.name]}
                   />
                 </li>
               ))}

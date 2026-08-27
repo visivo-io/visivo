@@ -28,12 +28,32 @@ const createModelSlice = (set, get) => ({
   },
 
   // Save model to cache
+  /**
+   * Refresh the collections a model can change by proxy. Nested metrics and
+   * dimensions have no independent existence: the managers assemble their lists
+   * by walking `model.metrics` / `model.dimensions`, so a model write is also a
+   * write to those. Tolerates their absence — the stores are composed, and a
+   * partial store (tests, embedded hosts) must not break a model save.
+   */
+  refetchModelScopedFields: async () => {
+    await Promise.all([
+      get().fetchDimensions?.(),
+      get().fetchMetrics?.(),
+    ]);
+  },
+
   saveModel: async (name, config) => {
     try {
       const projectId = get().project?.id;
       const result = await modelsApi.saveModel(name, config, projectId);
       // Refresh models list to get updated status
       await get().fetchModels();
+      // A model OWNS its nested metrics/dimensions — `list_all_dimensions` /
+      // `list_all_metrics` walk the models to build their lists — so saving one
+      // can add or remove entries in those collections. Refetching only
+      // `models` left the Library showing fields that no longer exist, and
+      // hiding ones just added, until a full page reload.
+      await get().refetchModelScopedFields?.();
       // Trigger commit status check
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();
@@ -52,6 +72,8 @@ const createModelSlice = (set, get) => ({
       const projectId = get().project?.id;
       await modelsApi.deleteModel(name, projectId);
       await get().fetchModels();
+      // Deleting a model takes its nested fields with it.
+      await get().refetchModelScopedFields?.();
       // Trigger commit status check
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();
