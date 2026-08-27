@@ -182,8 +182,13 @@ def test_collect_deploy_resources_emits_all_deploy_types():
 
     assert {s["name"] for s in layer["sources"]} >= {"source"}
     assert {m["name"] for m in layer["models"]} >= {"m1", "m2"}
-    assert {d["name"] for d in layer["dimensions"]} >= {"d1"}
-    assert {m["name"] for m in layer["metrics"]} >= {"mt1"}
+    # VIS-1259: d1/mt1 are authored INSIDE m1, so they are not standalone
+    # records — they travel in the model's own dump.
+    assert layer["dimensions"] == []
+    assert layer["metrics"] == []
+    m1 = next(m for m in layer["models"] if m["name"] == "m1")
+    assert {d["name"] for d in m1["dimensions"]} == {"d1"}
+    assert {m["name"] for m in m1["metrics"]} == {"mt1"}
     assert {r["name"] for r in layer["relations"]} == {"r1"}
 
     # The SqlModel subtype bucket must not leak csv-script / local-merge models.
@@ -204,8 +209,9 @@ def test_collect_deploy_resources_finds_objects_nested_in_other_objects():
       * ``top_source``        — declared top-level
       * ``nested_source``     — inlined inside a model (``model.source``)
       * ``nested_dim`` /
-        ``nested_metric``     — defined inside a model (``model.dimensions`` /
-                                 ``model.metrics``)
+        ``nested_metric``     — defined inside a model; these must NOT be
+                                 collected standalone (VIS-1259), they ride
+                                 inside the model's own dump
       * ``nested_chart``      — inlined inside a dashboard item
       * ``nested_insight``    — inlined inside that chart
 
@@ -240,7 +246,48 @@ def test_collect_deploy_resources_finds_objects_nested_in_other_objects():
     # Top-level and nested objects are both collected.
     assert {s["name"] for s in layer["sources"]} == {"top_source", "nested_source"}
     assert {m["name"] for m in layer["models"]} == {"top_model"}
-    assert {d["name"] for d in layer["dimensions"]} == {"nested_dim"}
-    assert {m["name"] for m in layer["metrics"]} == {"nested_metric"}
+    # VIS-1259: a model-scoped field is NOT its own deploy record. Emitting it
+    # here was lossy — `_parent_name` is a PrivateAttr, so the dump carried no
+    # owner and the cloud could not tell it from a project-level field — and it
+    # shipped the same field twice, once standalone and once inside its model.
+    assert layer["dimensions"] == []
+    assert layer["metrics"] == []
+    # It travels with its model instead, which is what records the nesting.
+    (deployed_model,) = layer["models"]
+    assert {d["name"] for d in deployed_model["dimensions"]} == {"nested_dim"}
+    assert {m["name"] for m in deployed_model["metrics"]} == {"nested_metric"}
     assert {c["name"] for c in layer["charts"]} == {"nested_chart"}
     assert {i["name"] for i in layer["insights"]} == {"nested_insight"}
+
+
+def test_collect_deploy_resources_still_emits_project_level_fields():
+    """The other half of VIS-1259: a PROJECT-LEVEL metric/dimension is its own
+    object and must still deploy as its own record.
+
+    Nesting is the only thing that distinguishes the two — neither type has a
+    `model` or `parentModel` field, and both forbid extras — so the filter has
+    to key off `_parent_name`, not off the type."""
+    model = SqlModelFactory(
+        name="scoped_model",
+        dimensions=[DimensionFactory(name="nested_dim")],
+    )
+    # A project-level field must tie back to a source through a model
+    # (single_source_validator), so these reference the model explicitly.
+    project = ProjectFactory(
+        models=[model],
+        dimensions=[DimensionFactory(name="global_dim", expression="${ref(scoped_model).x}")],
+        metrics=[MetricFactory(name="global_metric", expression="sum(${ref(scoped_model).x})")],
+        insights=[],
+        charts=[],
+        dashboards=[],
+    )
+    project.invalidate_dag_cache()
+
+    layer = Serializer(project=project).collect_deploy_resources()
+
+    assert {d["name"] for d in layer["dimensions"]} == {"global_dim"}
+    assert {m["name"] for m in layer["metrics"]} == {"global_metric"}
+    # ...and the nested one is still absent from the flat list, present in the model.
+    assert "nested_dim" not in {d["name"] for d in layer["dimensions"]}
+    (deployed_model,) = layer["models"]
+    assert {d["name"] for d in deployed_model["dimensions"]} == {"nested_dim"}
