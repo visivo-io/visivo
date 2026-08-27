@@ -91,6 +91,16 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   const checkCommitStatus = store.checkCommitStatus;
 
   const isEmbedded = isEmbeddedObject(record);
+  // The model a nested (model-scoped) metric/dimension belongs to. It is a
+  // SIBLING of `config`, not a field inside it — `Metric`/`Dimension` declare
+  // no `model` field and forbid extras, so nesting can only be expressed
+  // positionally in the YAML. The managers surface it as `parentModel` on read,
+  // and both save views pop it back off and call `set_parent_name`.
+  //
+  // This form built its save body as `{ ...config, name }`, which drops it. The
+  // object then validated as STANDALONE, and `project_writer` wrote it at the
+  // top level — silently un-nesting a field from its model on an ordinary save.
+  const parentModelName = record?.parentModel || record?.config?.parentModel || null;
   const parentName = record?._embedded?.parentName;
   const isEditMode = !!record && !isCreate && !isEmbedded;
   const isNewObject = record?.status === ObjectStatus.NEW;
@@ -199,7 +209,8 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     if (!validateForm()) return;
     setSaving(true);
     setSaveError(null);
-    const body = { ...config, name };
+    // Carry the scope through the round trip; see `parentModelName` above.
+    const body = { ...config, name, ...(parentModelName ? { parentModel: parentModelName } : {}) };
     try {
       if (isEmbedded) {
         // Embedded object — delegate; the parent applies it via its edit stack.

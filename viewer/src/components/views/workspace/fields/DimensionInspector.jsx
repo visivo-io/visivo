@@ -28,6 +28,40 @@ import { useFieldParentModel } from './useFieldParentModel';
  */
 const DERIVED_COL = '__dimension__';
 
+/**
+ * Turn a DuckDB failure into something the user can act on.
+ *
+ * The expression is wrapped as `SELECT (<expr>) AS "__dimension__"`, so a
+ * malformed one fails deep inside generated SQL and DuckDB reports it by
+ * quoting table names the user never wrote:
+ *
+ *   Parser Error: syntax error at or near "as" LINE 1: CREATE TABLE
+ *   "dim_derived_1787846540440" AS SELECT (gdp as gdp2) AS "__dimension__"
+ *
+ * By far the most common cause is an expression that aliases itself — the
+ * dimension's NAME is its alias, so `gdp as gdp2` can never wrap. That is now
+ * rejected at save (`field_expression.reject_aliased_expression`), but values
+ * saved before it existed still land here, so name the likely cause rather than
+ * pasting the parser dump and leaving the user to decode it.
+ *
+ * Deliberately does NOT parse the SQL to decide — there is no parser in the
+ * browser, and guessing with a regex is how you produce a confidently wrong
+ * diagnosis. It keys off DuckDB's own "near \"as\"" report and offers the
+ * explanation as a possibility, with the original error kept underneath.
+ */
+export const explainProfileError = (err, expression) => {
+  const raw = err?.message || String(err);
+  if (/syntax error at or near "as"/i.test(raw)) {
+    return (
+      `This expression can't be evaluated on its own. A dimension's name is already ` +
+      `its alias, so an expression like \`gdp as gdp2\` becomes ` +
+      `\`(gdp as gdp2) AS "…"\` in the query — drop the \`as\` and keep just the ` +
+      `value.\n\n${raw}`
+    );
+  }
+  return raw;
+};
+
 const FieldCallout = ({ testId, title, body }) => (
   <div
     data-testid={testId}
@@ -162,7 +196,7 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
         const col = (profileResult.columns || []).find(c => c.name === DERIVED_COL) || null;
         setProfile(col ? { ...col, name, row_count: profileResult.row_count } : null);
       } catch (err) {
-        if (!cancelled) setProfileError(err.message || String(err));
+        if (!cancelled) setProfileError(explainProfileError(err, expression));
       } finally {
         if (!cancelled) setProfiling(false);
       }
