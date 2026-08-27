@@ -17,6 +17,27 @@ import { collectInsightRefNames } from '../utils/refWalk';
  * the original name), since Chart.jsx only ever reads whatever key
  * `chart.insights[].name` names, and the exploration's OWN live-preview
  * chart config is the only place that references this key. */
+/**
+ * The model named by a prop that is still just a dropped placeholder.
+ *
+ * A configured ref carries a property (`${ref(m).col}`); an unconfigured one
+ * does not (`${ref(m)}`). Only the second is a placeholder — and only when the
+ * name is a MODEL, since a bare `${ref(x)}` naming a metric or dimension is a
+ * legitimate, resolvable reference.
+ *
+ * @returns {string|null} the model name, or null when every prop is ready
+ */
+export const unconfiguredModelRef = (props, modelStates) => {
+  const modelNames = new Set(Object.keys(modelStates || {}));
+  if (!modelNames.size) return null;
+  for (const value of Object.values(props || {})) {
+    if (typeof value !== 'string') continue;
+    const match = value.match(/\$\{\s*ref\(\s*([^).]+?)\s*\)\s*\}/);
+    if (match && modelNames.has(match[1])) return match[1];
+  }
+  return null;
+};
+
 export const draftInsightKey = name => `__draft__:${name}`;
 
 // The debounce coalesces rapid edits before hitting the server compile +
@@ -323,6 +344,28 @@ const useDraftInsightPreview = () => {
             error: null,
             blockedReason: 'no_data_props',
             blockedModel: null,
+          });
+          continue;
+        }
+
+        // VIS-1242 follow-up: a model dropped on a slot lands UNCONFIGURED on
+        // purpose — `?{${ref(model)}}`, a bare model ref with no property — so
+        // the pill can open its editor and let the user pick one. That is a
+        // placeholder, not an expression: the backend resolves `${ref(x)}` by
+        // looking for an `expression` on x, and a SqlModel has none, so
+        // compiling it answered 400 with a raw `'SqlModel' object has no
+        // attribute 'expression'` on the headline drop-a-model path.
+        //
+        // Nothing surfaced in the UI, which made it worse — a console error on
+        // the flow's happy path. Wait for the property, the same way an insight
+        // with nothing mapped yet is never compiled.
+        const unconfigured = unconfiguredModelRef(state.props, modelStates);
+        if (unconfigured) {
+          setInsightStatus(name, {
+            isLoading: false,
+            error: null,
+            blockedReason: 'unconfigured_model_ref',
+            blockedModel: unconfigured,
           });
           continue;
         }

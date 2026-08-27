@@ -528,6 +528,40 @@ describe('routeWorkspaceDragEnd — ref-text branch', () => {
     expect(onInsertRef).toHaveBeenCalledWith('${ref(orders).revenue}');
   });
 
+  // Review finding #1: the property-zone allowlist toasts on rejection, but it
+  // only runs on rows that are THEMSELVES droppable. Everywhere else an
+  // unacceptable drop was a silent no-op — no pill, no error, no animation —
+  // which is the single most trust-destroying moment in the flow. The zone that
+  // refuses has to be the zone that speaks.
+  test('a rejected drop tells the user, rather than evaporating', () => {
+    const onReject = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'source', name: 'warehouse' } } },
+        over: { data: { current: { kind: 'ref-text', allowedTypes: ['model'], onReject } } },
+      },
+      { emit: jest.fn() }
+    );
+    expect(result).toBe('ref_text_rejected');
+    expect(onReject).toHaveBeenCalledWith('source');
+  });
+
+  test('an accepted drop stays silent', () => {
+    const onReject = jest.fn();
+    routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'model', name: 'orders' } } },
+        over: {
+          data: {
+            current: { kind: 'ref-text', allowedTypes: ['model'], onInsertRef: jest.fn(), onReject },
+          },
+        },
+      },
+      { emit: jest.fn() }
+    );
+    expect(onReject).not.toHaveBeenCalled();
+  });
+
   test('a type the field does not allow is rejected without writing anything', () => {
     const onInsertRef = jest.fn();
     const result = refTextDrop(

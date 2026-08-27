@@ -165,6 +165,7 @@ const RefTextArea = ({
   // is detached by the time Apply runs. The index identifies THIS chip rather
   // than the first textually-identical one — the same lesson the accessor
   // dropdown learned.
+  const showWorkspaceToast = useStore(state => state.showWorkspaceToast);
   const [chipMenu, setChipMenu] = useState(null);
   const chipMenuRef = useRef(null);
 
@@ -878,7 +879,21 @@ const RefTextArea = ({
   const dropId = useId();
   const { isOver, setNodeRef: setDropRef } = useDroppable({
     id: `ref-text-${dropId}`,
-    data: { kind: 'ref-text', allowedTypes, onInsertRef: insertRefExpr },
+    data: {
+      kind: 'ref-text',
+      allowedTypes,
+      onInsertRef: insertRefExpr,
+      // A drop this zone won't accept has to SAY so. The property-zone branch
+      // has had a rejection toast since VIS-1242, but that allowlist only runs
+      // on rows that are themselves droppable — so on every other surface an
+      // unacceptable drop was a silent no-op: no pill, no error, no animation,
+      // which `InsightBuildSection` rightly calls the most trust-destroying
+      // moment in the flow. The zone that refuses is the zone that must speak.
+      onReject: type =>
+        showWorkspaceToast?.(
+          type ? `Can't use a ${type} as a reference here.` : "Can't use that here."
+        ),
+    },
     disabled: !acceptDrops || disabled,
   });
   const setContainerRef = useCallback(

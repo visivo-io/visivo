@@ -284,7 +284,11 @@ export const routeWorkspaceDragEnd = (
         name: dragData.name,
         accepted: isValid,
       });
-    if (!isValid) return 'ref_text_rejected';
+    if (!isValid) {
+      // Tell the user, rather than leaving the drag to evaporate.
+      dropData.onReject?.(dragData.type);
+      return 'ref_text_rejected';
+    }
     // A dimension/metric names its own parent model; everything else (a model,
     // an input) is referenced by name alone and the user narrows it from there.
     const refExpr =
