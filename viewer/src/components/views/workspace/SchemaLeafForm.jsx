@@ -97,18 +97,24 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   const isEmbedded = isEmbeddedObject(record);
   // MODEL-SCOPED is not the same thing as EMBEDDED, and conflating them was a
   // bug. `isEmbedded` means "edited in place inside its parent's config" — it
-  // reads `record._embedded`. A metric/dimension defined under a model is
-  // loaded from its OWN collection with `_embedded` unset, carrying only
-  // `parentModel` (which `dimension_manager`/`metric_manager` attach from
-  // `_parent_name`) or a `config.parentModel` from a draft promote.
+  // reads `record._embedded`. A metric/dimension defined UNDER a model is
+  // loaded from its OWN collection with `_embedded` unset.
   //
   // That distinction decides the GRAMMAR: `sql_model.py` rejects any ref() in a
-  // nested expression. Keying `nested` off `isEmbedded` alone left model-scoped
-  // fields rendering the ref editor, so a model could be dropped into one and
-  // the expression only failed at save. Same signal the rest of the app uses
-  // (`explorerStore.belongsToModel`, `useFieldParentModel`).
-  const isModelScoped =
-    isEmbedded || !!(record?.parentModel || record?.config?.parentModel || record?.config?.model);
+  // nested expression, so a model-scoped field must get the plain editor.
+  //
+  // Exactly two keys mean "scoped to a model", and both are load-bearing:
+  //   - `parentModel`, attached by the managers ONLY when walking
+  //     `model.dimensions` / `model.metrics` (i.e. genuinely nested), and
+  //   - `config.parentModel`, which `saveAsMetricFlow` and `promoteChecklist`
+  //     write to REQUEST nesting; `project_writer._new` then nests it.
+  //
+  // Deliberately NOT `config.model`: `Dimension`/`Metric` declare no `model`
+  // field and forbid extras, so the server can never return one. Testing for it
+  // could only ever produce a false positive — a standalone field wrongly
+  // demoted to plain SQL, losing its ref editor.
+  const parentModelName = record?.parentModel || record?.config?.parentModel || null;
+  const isModelScoped = isEmbedded || !!parentModelName;
   const parentName = record?._embedded?.parentName;
   const isEditMode = !!record && !isCreate && !isEmbedded;
   const isNewObject = record?.status === ObjectStatus.NEW;
@@ -299,6 +305,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
           objectType={type}
           field={exprField}
           nested={isModelScoped}
+          scopedToModel={parentModelName}
           value={value}
           onChange={onChange}
           error={error}

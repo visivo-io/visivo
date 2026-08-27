@@ -114,4 +114,40 @@ describe('ExpressionField — the editor comes from the declared field type', ()
     ).toThrow(/PropertyRow/);
     spy.mockRestore();
   });
+
+  // A dimension can be model-scoped or standalone, and the Library lists both in
+  // one flat DIMENSIONS section — so a user has no way to tell which they're
+  // editing. Naming the model makes the classification checkable at a glance
+  // instead of only by reading the YAML.
+  test('the ref-free warning names the model it is scoped to', () => {
+    render(
+      <ExpressionField
+        objectType="dimension"
+        field="expression"
+        nested
+        scopedToModel="new-model"
+        value="${ref(new-model)}"
+        onChange={jest.fn()}
+      />
+    );
+    const warning = screen.getByTestId('plain-sql-ref-warning');
+    expect(warning).toHaveTextContent('Scoped to');
+    expect(warning).toHaveTextContent('new-model');
+  });
+
+  test('falls back to generic copy when the model is unknown', () => {
+    render(
+      <ExpressionField
+        objectType="dimension"
+        field="expression"
+        nested
+        value="${ref(x)}"
+        onChange={jest.fn()}
+      />
+    );
+    expect(screen.getByTestId('plain-sql-ref-warning')).toHaveTextContent(
+      /References aren't available/
+    );
+  });
+
 });
