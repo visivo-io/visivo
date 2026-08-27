@@ -38,6 +38,7 @@ import {
   buildLibraryItem,
 } from '../project/canvas/canvasReorder';
 import useStore from '../../../stores/store';
+import { generateUniqueName } from '../../../utils/uniqueName';
 
 const clone = value => JSON.parse(JSON.stringify(value));
 
@@ -262,6 +263,18 @@ describe('router → REAL commit integration (drag-end payloads commit to the wo
     moveLevel: jest.fn(),
     commitCanvasConfig,
     emit: jest.fn(),
+    // Mirrors the component's wrapInsight dep (auto-wrap on insight drop):
+    // fresh store reads, same naming + save path as Library "Wrap in Chart…".
+    wrapInsight: {
+      mintChartName: insightName => {
+        const existing = (useStore.getState().charts || []).map(c => c.name);
+        return generateUniqueName(`${insightName}-chart`, existing, { separator: '-' });
+      },
+      createChart: (chartName, insightName) => {
+        const save = useStore.getState().saveChart;
+        if (save) save(chartName, { insights: [`ref(${insightName})`] });
+      },
+    },
   });
 
   const RouterProbe = ({ event }) => {
@@ -329,6 +342,103 @@ describe('router → REAL commit integration (drag-end payloads commit to the wo
     expect(committed).toHaveBeenCalledTimes(1);
     const persisted = committed.mock.calls[0][1];
     expect(persisted.rows[1].items[2].chart).toBe('ref(indicator-chart)');
+  });
+
+  test('an insight drop AUTO-WRAPS: mints a chart, saves it, places chart: ref(...) (B2)', () => {
+    // Decision 27 Aug: items never take a bare insight — the drop mints a
+    // wrapper chart and places THAT. Same naming/save path as Library
+    // "Wrap in Chart…" (#632).
+    const config = clone(API_SHAPED_CONFIG);
+    const saveChart = jest.fn().mockResolvedValue({ success: true });
+    useStore.setState({ charts: [], saveChart });
+    const committed = driveRouter({
+      active: { data: { current: { source: 'library', type: 'insight', name: 'rev-insight' } } },
+      over: {
+        data: {
+          current: {
+            kind: 'canvas-drop',
+            dashboardName: 'simple-dashboard',
+            config,
+            target: { kind: 'end-of-row', rowPath: 'row.1' },
+          },
+        },
+      },
+    });
+    expect(committed).toHaveBeenCalledTimes(1);
+    const persisted = committed.mock.calls[0][1];
+    expect(persisted.rows[1].items[2].chart).toBe('ref(rev-insight-chart)');
+    expect(persisted.rows[1].items[2].insight).toBeUndefined();
+    expect(saveChart).toHaveBeenCalledWith('rev-insight-chart', {
+      insights: ['ref(rev-insight)'],
+    });
+  });
+
+  test('an insight drop disambiguates the wrapper name against existing charts', () => {
+    const config = clone(API_SHAPED_CONFIG);
+    const saveChart = jest.fn().mockResolvedValue({ success: true });
+    useStore.setState({ charts: [{ name: 'rev-insight-chart' }], saveChart });
+    const committed = driveRouter({
+      active: { data: { current: { source: 'library', type: 'insight', name: 'rev-insight' } } },
+      over: {
+        data: {
+          current: {
+            kind: 'canvas-drop',
+            dashboardName: 'simple-dashboard',
+            config,
+            target: { kind: 'end-of-row', rowPath: 'row.1' },
+          },
+        },
+      },
+    });
+    const persisted = committed.mock.calls[0][1];
+    expect(persisted.rows[1].items[2].chart).toBe('ref(rev-insight-chart-2)');
+    expect(saveChart).toHaveBeenCalledWith('rev-insight-chart-2', {
+      insights: ['ref(rev-insight)'],
+    });
+  });
+
+  test('a rejected insight drop mints NO chart (no orphan drafts)', () => {
+    const config = clone(API_SHAPED_CONFIG);
+    const saveChart = jest.fn();
+    useStore.setState({ charts: [], saveChart });
+    const committed = driveRouter({
+      active: { data: { current: { source: 'library', type: 'insight', name: 'rev-insight' } } },
+      over: {
+        data: {
+          current: {
+            kind: 'canvas-drop',
+            dashboardName: 'simple-dashboard',
+            config,
+            // A malformed target path → insertItemAtTarget returns the SAME
+            // config reference, which the router treats as a rejected drop.
+            target: { kind: 'on-item', rowPath: 'not-a-row-path' },
+          },
+        },
+      },
+    });
+    expect(committed).not.toHaveBeenCalled();
+    expect(saveChart).not.toHaveBeenCalled();
+  });
+
+  test('non-insight exploration drag types (metric) still never insert on the canvas', () => {
+    const config = clone(API_SHAPED_CONFIG);
+    const saveChart = jest.fn();
+    useStore.setState({ charts: [], saveChart });
+    const committed = driveRouter({
+      active: { data: { current: { source: 'library', type: 'metric', name: 'churn_rate' } } },
+      over: {
+        data: {
+          current: {
+            kind: 'canvas-drop',
+            dashboardName: 'simple-dashboard',
+            config,
+            target: { kind: 'end-of-row', rowPath: 'row.1' },
+          },
+        },
+      },
+    });
+    expect(committed).not.toHaveBeenCalled();
+    expect(saveChart).not.toHaveBeenCalled();
   });
 
   test('a real drag-end cross-row item move routes through and commits', () => {
