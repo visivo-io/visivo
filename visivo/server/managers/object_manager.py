@@ -184,9 +184,20 @@ class ObjectManager(ABC, Generic[T]):
         if obj1 is None or obj2 is None:
             return False
 
-        # For Pydantic models, compare serialized dictionaries
+        # For Pydantic models, compare serialized dictionaries.
+        #
+        # `path` and `file_path` are excluded for the same reason
+        # `_serialize_object` strips them from the API config: they are
+        # parser-assigned locators, not user data. A published object loaded
+        # through the DAG always carries `path` (Project.set_path_on_named_models
+        # stamps it) and carries `file_path` in any project with includes, while
+        # an object rebuilt from the config the frontend round-trips can never
+        # carry either — so comparing them made every no-op save look MODIFIED.
         if hasattr(obj1, "model_dump") and hasattr(obj2, "model_dump"):
-            return obj1.model_dump(exclude_none=True) == obj2.model_dump(exclude_none=True)
+            locators = {"path", "file_path"}
+            return obj1.model_dump(exclude_none=True, exclude=locators) == obj2.model_dump(
+                exclude_none=True, exclude=locators
+            )
 
         # Fallback to direct comparison
         return obj1 == obj2
