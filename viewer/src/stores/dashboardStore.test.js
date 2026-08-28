@@ -133,7 +133,11 @@ describe('dashboardStore placeChartInNewDashboard (W6 zero-dashboard promote)', 
     expect(saveDashboard).toHaveBeenCalledTimes(1);
   });
 
-  test('propagates a failed placement save (create succeeded)', async () => {
+  /**
+   * The create succeeds (the born dashboard is already in the draft cache and
+   * in `state.dashboards`) and the placement save then fails.
+   */
+  const seedCreateOkPlaceFailing = (deleteDashboard) => {
     const saveDashboard = jest
       .fn()
       .mockImplementationOnce(async (name, config) => {
@@ -144,11 +148,91 @@ describe('dashboardStore placeChartInNewDashboard (W6 zero-dashboard promote)', 
       })
       .mockImplementationOnce(async () => ({ success: false, error: 'validation refused it' }));
     seed([], saveDashboard);
+    useStore.setState({ deleteDashboard });
+    return saveDashboard;
+  };
+
+  test('propagates a failed placement save (create succeeded)', async () => {
+    const deleteDashboard = jest.fn(async () => ({ success: true }));
+    seedCreateOkPlaceFailing(deleteDashboard);
 
     const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('validation refused it');
+  });
+
+  // The create and the placement are two separate saves. A placement failure
+  // used to leave the dashboard the create had just made sitting in the
+  // project as an EMPTY orphan — invisible in the inline error, shipped in the
+  // next commit, and multiplied by every retry (`new-dashboard-1`, `-2`, …).
+  test('ROLLS BACK the just-created dashboard when the placement save fails — no empty orphan is left behind', async () => {
+    const deleteDashboard = jest.fn(async name => {
+      useStore.setState({
+        dashboards: (useStore.getState().dashboards || []).filter(d => d.name !== name),
+      });
+      return { success: true };
+    });
+    seedCreateOkPlaceFailing(deleteDashboard);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result).toEqual({ success: false, error: 'validation refused it' });
+    expect(deleteDashboard).toHaveBeenCalledWith('new-dashboard');
+    // The project is back to where it started — nothing to ride along into
+    // the user's .visivo.yml, and a retry creates `new-dashboard` again
+    // rather than piling up `new-dashboard-1`.
+    expect(useStore.getState().dashboards).toEqual([]);
+  });
+
+  test('retrying after a rolled-back failure creates the SAME name again, never a second orphan', async () => {
+    const saveDashboard = jest
+      .fn()
+      // Attempt 1: create ok, placement fails.
+      .mockImplementationOnce(async (name, config) => {
+        useStore.setState({
+          dashboards: (useStore.getState().dashboards || []).concat([{ name, config }]),
+        });
+        return { success: true };
+      })
+      .mockImplementationOnce(async () => ({ success: false, error: 'validation refused it' }))
+      // Attempt 2: both saves succeed.
+      .mockImplementation(async (name, config) => {
+        const current = useStore.getState().dashboards || [];
+        useStore.setState({
+          dashboards: current.filter(d => d.name !== name).concat([{ name, config }]),
+        });
+        return { success: true };
+      });
+    seed([], saveDashboard);
+    useStore.setState({
+      deleteDashboard: jest.fn(async name => {
+        useStore.setState({
+          dashboards: (useStore.getState().dashboards || []).filter(d => d.name !== name),
+        });
+        return { success: true };
+      }),
+    });
+
+    await useStore.getState().placeChartInNewDashboard('churn_chart');
+    const retry = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(retry).toMatchObject({ success: true, dashboardName: 'new-dashboard' });
+    // Exactly one dashboard exists at the end — the successful retry's.
+    expect(useStore.getState().dashboards.map(d => d.name)).toEqual(['new-dashboard']);
+  });
+
+  test('a rollback that itself fails is DISCLOSED — the error names the dashboard left behind', async () => {
+    const deleteDashboard = jest.fn(async () => ({ success: false, error: 'delete refused' }));
+    seedCreateOkPlaceFailing(deleteDashboard);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('validation refused it');
+    expect(result.error).toContain('new-dashboard');
+    // The orphan is real, so the message must not pretend otherwise.
+    expect(useStore.getState().dashboards.map(d => d.name)).toEqual(['new-dashboard']);
   });
 
   test('defensive: a born config with NO empty slot still lands the chart (appended, never dropped)', async () => {

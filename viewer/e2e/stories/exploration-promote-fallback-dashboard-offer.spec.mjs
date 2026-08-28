@@ -20,8 +20,11 @@
  *
  * Also covers W6 (Dashboard Building v1 — "Post-promote always offers a
  * destination, including a brand-new dashboard"): the ZERO-dashboard
- * first-run case, manufactured in-test by soft-deleting every dashboard
- * before the app loads (afterEach's commit/discard restores them).
+ * first-run case, manufactured in-test by HIDING the project's existing
+ * dashboards from the viewer's list fetch (`page.route`) before the app
+ * loads — never by deleting them, so this file's blast radius on the shared
+ * sandbox stays "one appended row" rather than "the whole dashboard
+ * collection, restored only if afterEach gets to run".
  *
  * Precondition: sandbox running (integration project — has ≥1 real
  * dashboard), e.g.
@@ -254,18 +257,48 @@ test.describe('Post-promote fallback dashboard offer, reached through the ordina
   test('ZERO dashboards: promote offers "New dashboard…", creates one, and fills its born slot with the chart', async ({
     page,
   }) => {
-    // Manufacture the first-run state BEFORE the app loads, so the viewer's
-    // dashboard fetch really returns nothing: soft-delete every dashboard
-    // (tombstoned — afterEach's commit/discard restores them all).
+    // Manufacture the first-run state BEFORE the app loads — WITHOUT mutating
+    // the shared project. An earlier version of this test soft-deleted every
+    // dashboard in the sandbox and leaned on afterEach's best-effort
+    // `commit/discard` to put them back: that escalated this file's blast
+    // radius from "appends one row to a shared dashboard" to "tombstones the
+    // whole dashboard collection", and a worker crash, a timeout before
+    // afterEach, or a 500 on the discard would leave every later spec in the
+    // serial `exploration-mutations` project (and this file's own first test,
+    // on retry) running against a dashboard-less project.
+    //
+    // Hiding them from the VIEWER's list fetch produces exactly the state
+    // under test — `dashboards` is empty in the store, which is all
+    // `ExplorationPromoteModal` reads — while leaving the backend untouched.
     const listRes = await page.request.get(`${apiBase}/api/dashboards/`);
     expect(listRes.ok()).toBe(true);
-    const { dashboards: preexisting } = await listRes.json();
-    for (const d of preexisting) {
-      await page.request.delete(`${apiBase}/api/dashboards/${encodeURIComponent(d.name)}/`);
-    }
-    const emptyRes = await page.request.get(`${apiBase}/api/dashboards/`);
-    expect(emptyRes.ok()).toBe(true);
-    expect((await emptyRes.json()).dashboards).toHaveLength(0);
+    const preexisting = new Set((await listRes.json()).dashboards.map(d => d.name));
+    // The created dashboard is named by `generateUniqueName('new-dashboard',
+    // <the names the VIEWER can see>)`, so a hidden real dashboard called
+    // `new-dashboard*` could be overwritten by the create. Fail loudly here
+    // rather than silently clobbering a fixture.
+    expect(
+      [...preexisting].filter(name => name.startsWith('new-dashboard')),
+      'no fixture dashboard may share the created dashboard\'s name prefix'
+    ).toEqual([]);
+    // Matches the LIST endpoint only (with or without a `?project_id=` query);
+    // the per-dashboard save/delete routes live under
+    // `/api/dashboards/<name>/` and are deliberately left alone.
+    await page.route(
+      url => url.pathname === '/api/dashboards/',
+      async route => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        const response = await route.fetch();
+        const body = await response.json();
+        await route.fulfill({
+          response,
+          json: {
+            ...body,
+            dashboards: (body.dashboards || []).filter(d => !preexisting.has(d.name)),
+          },
+        });
+      }
+    );
 
     // The same ordinary flow as the test above — Explorer home, source tile,
     // query, chart, Save to project. No dashboard exists anywhere.
@@ -301,14 +334,17 @@ test.describe('Post-promote fallback dashboard offer, reached through the ordina
     await page.getByTestId('exploration-promote-fallback-place').click();
 
     // A dashboard now exists that didn't a moment ago; register it for
-    // cleanup and confirm its tab opened.
+    // cleanup and confirm its tab opened. Identified as "not one of the
+    // dashboards that existed before this test", which holds whether or not
+    // the route filter above applies to `page.request`.
     let createdDashboardName;
     await expect(async () => {
       const res = await page.request.get(`${apiBase}/api/dashboards/`);
       expect(res.ok()).toBe(true);
       const { dashboards } = await res.json();
-      expect(dashboards).toHaveLength(1);
-      createdDashboardName = dashboards[0].name;
+      const created = dashboards.filter(d => !preexisting.has(d.name));
+      expect(created).toHaveLength(1);
+      createdDashboardName = created[0].name;
     }).toPass({ timeout: 20000 });
     createdObjects.push({ segment: 'dashboards', name: createdDashboardName });
     await expect(page.getByTestId(`dashboard_${createdDashboardName}`)).toBeVisible({

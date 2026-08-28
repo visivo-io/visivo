@@ -178,6 +178,11 @@ const createDashboardSlice = (set, get) => ({
    * post-save refetch resets baselines — any subsequent canvas editing
    * session starts its explicit-save working copy clean on server truth.
    *
+   * The create and the placement are two saves, so a placement failure is
+   * ROLLED BACK (the just-created empty dashboard is deleted) rather than
+   * left as an orphan in the project's pending changes — see the rollback
+   * block below.
+   *
    * Returns `{ success, dashboardName, … }` so the caller can open the new
    * dashboard's tab; `{ success: false, error }` otherwise.
    */
@@ -237,7 +242,30 @@ const createDashboardSlice = (set, get) => ({
       });
     }
     const saved = await get().saveDashboard(dashboardName, nextConfig);
-    return saved?.success ? { ...saved, dashboardName } : saved;
+    if (saved?.success) {
+      return { ...saved, dashboardName };
+    }
+    // ROLLBACK. The create succeeded and the placement did not, so without
+    // this the project is left carrying an EMPTY orphan dashboard: it rides
+    // along in pending changes into the user's .visivo.yml, the inline error
+    // never mentions it exists, and every retry mints another one
+    // (`new-dashboard-1`, `-2`, …) because `generateUniqueName` dedupes
+    // against the one already there. Undoing the create is safe here in a way
+    // a general delete is not — the dashboard was created microseconds ago by
+    // this action, is empty, and nothing references it — and it leaves no
+    // staged change behind: `mark_for_deletion` DROPS a never-published
+    // object outright rather than tombstoning it (object_manager.py).
+    const rollback = await get().deleteDashboard?.(dashboardName);
+    const placeError = saved?.error || 'Could not place the chart in the dashboard';
+    if (!rollback?.success) {
+      // The orphan really is still there — say so, rather than reporting a
+      // clean failure the project state contradicts.
+      return {
+        success: false,
+        error: `${placeError}. An empty dashboard "${dashboardName}" was created and could not be removed — delete it from the Library.`,
+      };
+    }
+    return { success: false, error: placeError };
   },
 
   // Mark dashboard for deletion

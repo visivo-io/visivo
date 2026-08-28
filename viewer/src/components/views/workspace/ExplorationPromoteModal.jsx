@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PiCheckCircle, PiXCircle, PiCircleNotch, PiPencilSimple } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { useGuardedAsync } from '../../../hooks/useGuardedAsync';
@@ -15,10 +15,25 @@ const TIER_ORDER = ['model', 'field', 'insight', 'chart'];
 
 const rowKey = row => `${row.type}:${row.name}`;
 
-// W6 (Dashboard Building v1) — the sentinel value for the fallback dashboard
-// offer's "New dashboard…" choice. Not a valid object name (names are
-// validated identifiers), so it can never collide with a real dashboard.
+// W6 (Dashboard Building v1) — the BASE sentinel value for the fallback
+// dashboard offer's "New dashboard…" choice.
+//
+// It is NOT safe to assume this can never be a real dashboard name: the
+// viewer's `NAME_PATTERN` (namedModel.js) forbids a leading underscore only
+// for names typed into VIEWER forms — the backend's `NamedModel.name` is a
+// plain `Optional[str]` with no validator, so a hand-authored .visivo.yml may
+// legitimately declare `dashboards: [{ name: __new__, … }]`. Two options
+// sharing one value would make `Select`'s `flatOptions.find(o => o.value ===
+// value)` match the sentinel first: the real dashboard would RENDER as "New
+// dashboard…", and picking it would silently create a different dashboard
+// instead. `resolveNewDashboardValue` escapes the sentinel until it collides
+// with nothing, so the two choices are always distinguishable.
 const NEW_DASHBOARD_VALUE = '__new__';
+export const resolveNewDashboardValue = takenNames => {
+  let sentinel = NEW_DASHBOARD_VALUE;
+  while (takenNames.has(sentinel)) sentinel = `_${sentinel}_`;
+  return sentinel;
+};
 
 // D11 (specs/plan/explorer-workspace-unification/08-ux-overhaul.md) — the ONE
 // user-facing verb for this whole chain is "Save to project"; "promote"
@@ -411,23 +426,54 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // inline-create path and fills its born row's empty slot (#621) via
   // `placeChartInNewDashboard`.
   const showFallbackDashboardOffer = !!promotedChart && !returnTo?.dashboard;
-  // The user's explicit pick, or `null` until they choose one. The effective
-  // name is derived SYNCHRONOUSLY (default = first dashboard) rather than seeded
-  // via an effect: an effect costs an extra render, and the guarded placement
-  // below (whose fn is swapped in post-commit by useGuardedAsync) could capture
-  // the pre-effect empty value if the click lands in that window — which is
-  // exactly the flake a render-timing change surfaced (VIS-1226 review).
-  //
-  // Zero dashboards defaults to "New dashboard…" (the only choice there is);
-  // with dashboards present the default stays the first one, and a malformed
-  // nameless first dashboard still degrades to '' (Add disabled) as before.
+  // The offer's destination options, plus the collision-free sentinel value
+  // standing for "New dashboard…" (see `resolveNewDashboardValue` above).
+  const fallbackDashboardOptions = useMemo(() => {
+    const existing = dashboards.map(d => ({ value: d.name, label: d.name }));
+    const newDashboardValue = resolveNewDashboardValue(new Set(existing.map(o => o.value)));
+    return {
+      newDashboardValue,
+      // W6: "New dashboard…" is offered ALWAYS — as the only (and default)
+      // choice in a zero-dashboard project, closing the first-run dead end,
+      // and alongside the existing dashboards in every other project.
+      options: [{ value: newDashboardValue, label: 'New dashboard…' }, ...existing],
+    };
+  }, [dashboards]);
+  // The user's explicit pick as a TAGGED choice (`{ isNew: true }` or
+  // `{ name }`) — never a bare string, so no dashboard name can ever be
+  // mistaken for the "New dashboard…" option — or `null` until they choose.
   const [fallbackDashboardChoice, setFallbackDashboardChoice] = useState(null);
-  const fallbackDashboardName =
-    fallbackDashboardChoice != null
-      ? fallbackDashboardChoice
-      : dashboards.length > 0
-        ? dashboards[0]?.name || ''
-        : NEW_DASHBOARD_VALUE;
+  // The default is FROZEN the first time the offer renders, and derived
+  // SYNCHRONOUSLY (never seeded via an effect: an effect costs an extra
+  // render, and the guarded placement below — whose fn is swapped in
+  // post-commit by useGuardedAsync — could capture the pre-effect empty value
+  // if the click lands in that window, exactly the flake a render-timing
+  // change surfaced in the VIS-1226 review).
+  //
+  // Freezing is what keeps the destination HONEST. `placeChartInNewDashboard`
+  // creates the dashboard before it places the chart, and that create refetches
+  // `dashboards` — so a create-succeeded/placement-failed run turns a
+  // zero-dashboard project into a one-dashboard project while this offer is
+  // still on screen. Re-deriving the default there silently flipped the
+  // untouched select from "New dashboard…" to the orphan the failed attempt had
+  // just created, and the user's retry click then routed to
+  // `placeChartInDashboardSlot` with no slot — appending a SECOND row below the
+  // still-empty born one, the exact layout #621 and this offer exist to avoid.
+  const defaultFallbackChoiceRef = useRef(null);
+  if (showFallbackDashboardOffer && !defaultFallbackChoiceRef.current) {
+    // Zero dashboards defaults to "New dashboard…" (the only choice there is);
+    // with dashboards present the default stays the first one, and a malformed
+    // nameless first dashboard still degrades to '' (Add disabled) as before.
+    defaultFallbackChoiceRef.current =
+      dashboards.length > 0 ? { name: dashboards[0]?.name || '' } : { isNew: true };
+  }
+  const fallbackChoice =
+    fallbackDashboardChoice || defaultFallbackChoiceRef.current || { isNew: true };
+  const placingIntoNewDashboard = !!fallbackChoice.isNew;
+  const fallbackDashboardName = placingIntoNewDashboard ? '' : fallbackChoice.name || '';
+  const fallbackSelectValue = placingIntoNewDashboard
+    ? fallbackDashboardOptions.newDashboardValue
+    : fallbackDashboardName;
   const [fallbackPlaceError, setFallbackPlaceError] = useState(null);
 
   // The double-click guard + `pending` flag for these placement actions lives
@@ -443,15 +489,16 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     // fills its born row's empty slot; an existing pick places into that
     // dashboard exactly as before. Either way the placed-into dashboard's
     // tab opens so the user lands looking at the chart.
-    const placingIntoNew = fallbackDashboardName === NEW_DASHBOARD_VALUE;
-    const placeResult = placingIntoNew
+    const placeResult = placingIntoNewDashboard
       ? await placeChartInNewDashboard(promotedChart.name)
       : await placeChartInDashboardSlot(fallbackDashboardName, promotedChart.name);
     if (!placeResult?.success) {
       setFallbackPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
       return;
     }
-    const placedDashboardName = placingIntoNew ? placeResult.dashboardName : fallbackDashboardName;
+    const placedDashboardName = placingIntoNewDashboard
+      ? placeResult.dashboardName
+      : fallbackDashboardName;
     openWorkspaceTab?.({
       id: `dashboard:${placedDashboardName}`,
       type: 'dashboard',
@@ -460,13 +507,13 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     onClose?.();
   });
   const handleFallbackPlace = () => {
-    if (!promotedChart || !fallbackDashboardName) return;
+    if (!promotedChart) return;
+    if (!placingIntoNewDashboard && !fallbackDashboardName) return;
     // Preconditions stay OUTSIDE the guarded run (a no-op click never flips
     // `pending`): each choice needs its own store action to exist.
-    const placeAction =
-      fallbackDashboardName === NEW_DASHBOARD_VALUE
-        ? placeChartInNewDashboard
-        : placeChartInDashboardSlot;
+    const placeAction = placingIntoNewDashboard
+      ? placeChartInNewDashboard
+      : placeChartInDashboardSlot;
     if (!placeAction) return;
     runFallbackPlace();
   };
@@ -826,18 +873,18 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
               Add <span className="font-medium">{promotedChart.name}</span> to
               <Select
                 data-testid="exploration-promote-fallback-dashboard-select"
-                value={fallbackDashboardName}
-                onChange={setFallbackDashboardChoice}
+                value={fallbackSelectValue}
+                onChange={value =>
+                  setFallbackDashboardChoice(
+                    value === fallbackDashboardOptions.newDashboardValue
+                      ? { isNew: true }
+                      : { name: value }
+                  )
+                }
                 disabled={fallbackPlacing}
                 size="sm"
                 isSearchable={false}
-                options={[
-                  // W6: always offered — in a zero-dashboard project it is
-                  // the only (and default) choice, closing the first-run
-                  // dead end where promote had no destination at all.
-                  { value: NEW_DASHBOARD_VALUE, label: 'New dashboard…' },
-                  ...dashboards.map(d => ({ value: d.name, label: d.name })),
-                ]}
+                options={fallbackDashboardOptions.options}
                 className="min-w-[7rem]"
               />
               ?
@@ -846,7 +893,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
               type="button"
               data-testid="exploration-promote-fallback-place"
               onClick={handleFallbackPlace}
-              disabled={fallbackPlacing || !fallbackDashboardName}
+              disabled={fallbackPlacing || (!placingIntoNewDashboard && !fallbackDashboardName)}
               className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {fallbackPlacing ? 'Adding…' : 'Add'}
