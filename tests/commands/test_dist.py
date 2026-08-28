@@ -153,6 +153,100 @@ def test_dist_works_for_a_project_with_no_name(setup_unnamed_project, output_dir
     assert "defaults" in data["config"]
 
 
+class TestCurrentArtifacts:
+    """`visivo run` only ever ADDS artifacts — it never removes the ones a
+    rename or a naming-scheme change orphaned.
+
+    Before VIS-1128 each artifact was written as `alpha_hash(name).json`; now it
+    is `<name>.json`. A project that predates the change has both on disk,
+    carrying the same `"name"`. dist globbed the directory, so every object
+    shipped TWICE in `insights.json` / `inputs.json` — and the stale copy's
+    parquet URL used the old hashed filename, which nothing copies any more. A
+    hosted bundle 404'd on its own data and DuckDB reported
+    `Table with name m… does not exist`.
+    """
+
+    def _write(self, directory, filename, payload):
+        # `temp_folder()` only names a path; nothing has created it yet.
+        os.makedirs(directory, exist_ok=True)
+        path = os.path.join(directory, filename)
+        with open(path, "w") as f:
+            json.dump(payload, f)
+        return path
+
+    def test_the_current_artifact_wins_over_the_hashed_one(self):
+        from visivo.commands.dist_phase import _current_artifacts
+        from visivo.models.base.named_model import alpha_hash
+
+        directory = temp_folder()
+        stale = self._write(
+            directory,
+            f"{alpha_hash('station-bubbles')}.json",
+            {"name": "station-bubbles", "files": [{"signed_data_file_url": "/old.parquet"}]},
+        )
+        current = self._write(
+            directory,
+            "station-bubbles.json",
+            {"name": "station-bubbles", "files": [{"signed_data_file_url": "/new.parquet"}]},
+        )
+
+        resolved = _current_artifacts([stale, current])
+
+        assert len(resolved) == 1
+        path, data = resolved[0]
+        assert path == current
+        assert data["files"][0]["signed_data_file_url"] == "/new.parquet"
+
+    def test_order_on_disk_does_not_decide_it(self):
+        """The glob's order is arbitrary; the answer must not be."""
+        from visivo.commands.dist_phase import _current_artifacts
+        from visivo.models.base.named_model import alpha_hash
+
+        directory = temp_folder()
+        stale = self._write(directory, f"{alpha_hash('x')}.json", {"name": "x"})
+        current = self._write(directory, "x.json", {"name": "x"})
+
+        for order in ([stale, current], [current, stale]):
+            ((path, _),) = _current_artifacts(order)
+            assert path == current
+
+    def test_distinct_objects_are_all_kept(self):
+        from visivo.commands.dist_phase import _current_artifacts
+
+        directory = temp_folder()
+        paths = [
+            self._write(directory, "a.json", {"name": "a"}),
+            self._write(directory, "b.json", {"name": "b"}),
+        ]
+
+        assert sorted(d["name"] for _p, d in _current_artifacts(paths)) == ["a", "b"]
+
+    def test_an_object_with_only_a_stale_artifact_still_ships(self):
+        """Dropping it would turn a cosmetic staleness into a missing insight."""
+        from visivo.commands.dist_phase import _current_artifacts
+        from visivo.models.base.named_model import alpha_hash
+
+        directory = temp_folder()
+        stale = self._write(directory, f"{alpha_hash('only')}.json", {"name": "only"})
+
+        ((path, data),) = _current_artifacts([stale])
+        assert path == stale
+        assert data["name"] == "only"
+
+    def test_unreadable_or_nameless_files_are_skipped_not_fatal(self):
+        from visivo.commands.dist_phase import _current_artifacts
+
+        directory = temp_folder()
+        nameless = self._write(directory, "nameless.json", {"files": []})
+        broken = os.path.join(directory, "broken.json")
+        os.makedirs(directory, exist_ok=True)
+        with open(broken, "w") as f:
+            f.write("{not json")
+        good = self._write(directory, "good.json", {"name": "good"})
+
+        assert [d["name"] for _p, d in _current_artifacts([nameless, broken, good])] == ["good"]
+
+
 def test_dist_writes_a_dashboards_list_with_layout(setup_project, output_dir, dist_dir):
     """The bundle must carry the dashboards LIST, with each config's layout.
 

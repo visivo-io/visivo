@@ -4,6 +4,58 @@ from visivo.models.base.named_model import alpha_hash
 import traceback
 
 
+def _current_artifacts(json_paths):
+    """One artifact per object name, dropping residue from older runs.
+
+    `visivo run` writes each artifact as `<object_name>.json` (VIS-1128). It did
+    NOT always: the previous scheme named them by `alpha_hash(name)`, and a run
+    only ever ADDS files — it never removes the ones a rename or a scheme change
+    orphaned. A project that predates VIS-1128 therefore has both on disk:
+
+        target/main/insights/station-bubbles.json                 <- current
+        target/main/insights/mifawvncyzdkmlywzcggvituhvlwb.json   <- residue
+
+    Both carry `"name": "station-bubbles"`, so globbing the directory shipped
+    every object TWICE in `insights.json` / `inputs.json`. The viewer took the
+    first entry for a name — often the stale one — and asked for a parquet whose
+    hashed filename no longer exists, so a hosted bundle 404'd on its own data
+    and DuckDB reported `Table with name m… does not exist`.
+
+    Serve never hit this: it reads objects through the managers, from the
+    project. Only dist derived its manifest from whatever was lying in the
+    directory.
+
+    Resolution is by NAME, preferring the file whose stem matches the name it
+    declares — that is exactly what distinguishes a current artifact from
+    residue. When nothing matches (every candidate is from an older scheme), the
+    most recently written one wins, so a bundle still gets built.
+    """
+    import json
+    import os
+
+    by_name = {}
+    for path in sorted(json_paths):
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        name = data.get("name")
+        if not name:
+            continue
+        stem = os.path.splitext(os.path.basename(path))[0]
+        current = by_name.get(name)
+        if current is None:
+            by_name[name] = (path, data, stem == name)
+            continue
+        _, _, current_is_named = current
+        if current_is_named:
+            continue
+        if stem == name or os.path.getmtime(path) > os.path.getmtime(current[0]):
+            by_name[name] = (path, data, stem == name)
+    return [(path, data) for path, data, _ in by_name.values()]
+
+
 def dist_phase(
     output_dir,
     dist_dir,
@@ -149,10 +201,7 @@ def dist_phase(
         insights_list = []
         if os.path.isdir(insights_src):
             os.makedirs(f"{dist_dir}/data/insights", exist_ok=True)
-            for insight_file in glob(f"{insights_src}/*.json"):
-                with open(insight_file, "r") as f:
-                    insight_data = json.load(f)
-
+            for insight_file, insight_data in _current_artifacts(glob(f"{insights_src}/*.json")):
                 insight_data["id"] = insight_data["name"]
 
                 # Rewrite file URLs to dist paths
@@ -180,10 +229,7 @@ def dist_phase(
         inputs_list = []
         if os.path.isdir(inputs_src):
             os.makedirs(f"{dist_dir}/data/inputs", exist_ok=True)
-            for input_file in glob(f"{inputs_src}/*.json"):
-                with open(input_file, "r") as f:
-                    input_data = json.load(f)
-
+            for input_file, input_data in _current_artifacts(glob(f"{inputs_src}/*.json")):
                 input_data["id"] = input_data["name"]
 
                 # Rewrite file URLs to dist paths
