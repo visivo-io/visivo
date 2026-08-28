@@ -29,7 +29,7 @@ def dist_dir():
     return temp_folder()
 
 
-def _make_runnable_project():
+def _make_runnable_project(**overrides):
     """Create a project with an insight that references a model, suitable for running."""
     model = SqlModelFactory(name="model", source="ref(source)")
     insight = InsightFactory(name="insight", model=model)
@@ -43,18 +43,37 @@ def _make_runnable_project():
     return ProjectFactory(
         models=[model],
         dashboards=[dashboard],
+        **overrides,
     )
+
+
+def _write_project(project, output_dir):
+    """Put `project` on disk as a working dir `dist` can be pointed at."""
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json(exclude_none=True)), name=PROJECT_FILE_NAME
+    )
+    return os.path.dirname(tmp)
 
 
 @pytest.fixture
 def setup_project(output_dir):
     project = _make_runnable_project()
+    return project, _write_project(project, output_dir)
 
-    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
-    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
-    working_dir = os.path.dirname(tmp)
-    return project, working_dir
+@pytest.fixture
+def setup_unnamed_project(output_dir):
+    """A project with no `name:` — which the schema allows.
+
+    `ProjectFactory` supplies `name = "project"`, so every fixture in this file
+    had one and the optional case was never represented. That is why a
+    KeyError on `project_json["name"]` shipped: the assertion covering it
+    (`data["name"] == project.name`) was real, the fixture just never varied.
+    """
+    project = _make_runnable_project(name=None)
+    assert project.name is None
+    return project, _write_project(project, output_dir)
 
 
 def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
@@ -87,8 +106,51 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
         assert "project_json" not in data
         assert data["name"] == project.name
         assert "defaults" in data["config"]
-        assert "dashboard_count" in data
-        assert "source_count" in data
+        # COUNTS, not just presence. These were read out of the dereferenced
+        # dump, and `Serializer.dereference` deliberately empties the
+        # top-level collections once everything is inlined into the dashboards
+        # (`project.sources = []`, and the same for charts/models/insights/…).
+        # So `source_count` was structurally guaranteed to be 0 in every bundle
+        # ever built, for every project, no matter how many sources it had.
+        assert data["dashboard_count"] == len(project.dashboards)
+        assert data["source_count"] == len(project.sources)
+        assert data["source_count"] > 0
+
+
+def test_dist_works_for_a_project_with_no_name(setup_unnamed_project, output_dir, dist_dir):
+    """`visivo dist` used to die with `KeyError: 'name'` on any project that
+    didn't declare one.
+
+    The envelope is dumped with `exclude_none=True`, so an optional field left
+    unset is not `null` in the JSON — it is ABSENT. `project_json["name"]` was
+    the one field here read without a default, so the whole command failed for
+    a perfectly valid project. Reading it off the model, the way the server's
+    `/api/project/` does, gives `None` instead: the viewer already falls back
+    to "project" for display.
+    """
+    project, working_dir = setup_unnamed_project
+
+    from visivo.commands.run import run
+
+    run_result = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
+    assert run_result.exit_code == 0
+
+    result = runner.invoke(
+        dist,
+        ["-w", working_dir, "-s", "source", "--output-dir", output_dir, "--dist-dir", dist_dir],
+    )
+
+    assert result.exit_code == 0, result.output
+    with open(os.path.join(dist_dir, "data", "project.json")) as project_json:
+        data = json.load(project_json)
+    # Present and null, matching the server envelope — not missing, which would
+    # move the same failure into the viewer.
+    assert "name" in data
+    assert data["name"] is None
+    # The rest of the bundle is unaffected.
+    assert data["dashboard_count"] == 1
+    assert data["source_count"] == 1
+    assert "defaults" in data["config"]
 
 
 def test_dist_writes_a_dashboards_list_with_layout(setup_project, output_dir, dist_dir):

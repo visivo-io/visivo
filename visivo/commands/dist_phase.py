@@ -59,19 +59,37 @@ def dist_phase(
             shutil.copytree(dashboards_dir, dist_dashboards_dir, dirs_exist_ok=True)
         created_at = datetime.datetime.now().isoformat()
         # Same canonical envelope the server serves at /api/project/, so the
-        # viewer reads one shape in both modes. ``project_json`` below stays a
-        # local variable — it drives the per-dashboard files written further
-        # down — but the whole blob is no longer shipped in the bundle.
+        # viewer reads one shape in both modes. The whole blob stopped being
+        # shipped in the bundle a while back; `project_json` survives for ONE
+        # reason — it is the DEREFERENCED project, so a dashboard's
+        # `${ref(chart)}` is expanded into the inline chart the per-dashboard
+        # config below has to carry. Anything that doesn't need that expansion
+        # reads the model directly.
+        #
+        # Every field here comes off the MODEL, exactly as
+        # `data_views.projects_api` builds the same envelope. Nothing in it
+        # needs dereferencing, and reading it out of `project_json` cost us a
+        # crash: that dump is taken with `exclude_none=True`, so an optional
+        # field left unset is not null in the JSON — it is ABSENT.
+        # `project_json["name"]` therefore raised KeyError for any project
+        # without a `name:`, which the schema allows (`NamedModel.name` is
+        # Optional). The model always has the attribute.
         with open(f"{dist_dir}/data/project.json", "w") as f:
             f.write(
                 json.dumps(
                     {
                         "id": "id",
-                        "name": project_json["name"],
-                        "project_dir": project_json.get("project_dir") or "",
-                        "config": {"defaults": project_json.get("defaults", {})},
-                        "dashboard_count": len(project_json.get("dashboards") or []),
-                        "source_count": len(project_json.get("sources") or []),
+                        "name": project.name,
+                        "project_dir": project.project_dir or "",
+                        "config": {
+                            "defaults": (
+                                project.defaults.model_dump(exclude_none=True, mode="json")
+                                if project.defaults
+                                else {}
+                            )
+                        },
+                        "dashboard_count": len(project.dashboards or []),
+                        "source_count": len(project.sources or []),
                         "created_at": created_at,
                     }
                 )
