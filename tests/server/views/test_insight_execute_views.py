@@ -183,7 +183,7 @@ def test_multi_source_insight_is_rejected_400_multi_source(duckdb_file, tmp_path
     source1 = DuckdbSource(name="warehouse", database=duckdb_file, type="duckdb")
     source2 = DuckdbSource(name="warehouse2", database=db2, type="duckdb")
     model_a = SqlModel(name="orders_q", sql="SELECT * FROM orders", source="ref(warehouse)")
-    model_b = SqlModel(name="users_q", sql="SELECT * FROM users", source="ref(warehouse2)")
+    model_b = SqlModel(name="users_q", sql="SELECT * FROM users", source="ref(warehouse)")
     insight = Insight(
         name="cross",
         props=InsightProps(
@@ -195,6 +195,11 @@ def test_multi_source_insight_is_rejected_400_multi_source(duckdb_file, tmp_path
     proj = Project(
         name="p", sources=[source1, source2], models=[model_a, model_b], insights=[insight]
     )
+    # CrossSourceValidator now refuses to construct a project that spans
+    # sources, so move the second model afterwards — the endpoint's job is to
+    # catch exactly the drafts that never went through project validation.
+    model_b.source = "ref(warehouse2)"
+    proj.invalidate_dag_cache()
     app = Flask(__name__)
     register_insight_execute_views(app, FlaskAppStub(proj), str(tmp_path))
     client = app.test_client()
@@ -217,7 +222,13 @@ def test_multi_source_insight_is_rejected_400_multi_source(duckdb_file, tmp_path
         },
     )
     assert resp.status_code == 400
-    assert resp.get_json()["error_type"] == "multi_source"
+    body = resp.get_json()
+    assert body["error_type"] == "multi_source"
+    # One wording across compile, run and preview — see visivo/query/source_scope.py.
+    assert "references models from more than one source: warehouse, warehouse2" in body["error"]
+    assert body["error_models"] == ["orders_q", "users_q"]
+    assert body["diagnostic"]["code"] == "cross_source"
+    assert body["diagnostic"]["phase"] == "serve"
 
 
 def test_datetime_rows_serialise_as_iso8601_not_rfc1123(duckdb_file, tmp_path):

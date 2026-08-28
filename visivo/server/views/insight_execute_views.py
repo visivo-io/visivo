@@ -37,7 +37,8 @@ from flask import request, jsonify
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.jobs.run_model_data_job import execute_and_get_result
-from visivo.jobs.utils import get_source_for_model
+from visivo.models.diagnostic import DiagnosticPhase
+from visivo.query.source_scope import cross_source_insight_error
 from visivo.query.insight.draft_overlay import build_draft_overlay, DraftOverlayError
 from visivo.server.views.insight_draft_common import (
     parse_draft_request,
@@ -85,26 +86,25 @@ def register_insight_execute_views(app, flask_app, output_dir):
         # picks an ARBITRARY model's source rather than enforcing this, so a
         # two-source insight would otherwise execute against one source and
         # surface a raw "table does not exist" driver error for the other's
-        # tables. `dependent_models` is reused for the response payload below.
+        # tables. The wording comes from visivo.query.source_scope so a draft
+        # rejected here reads exactly like the same project rejected at compile
+        # or at run. `dependent_models` is reused for the response payload below.
         try:
             dependent_models = insight.get_all_dependent_models(dag)
-            source_names = {
-                src.name
-                for src in (get_source_for_model(m, dag, run_output_dir) for m in dependent_models)
-                if src
-            }
+            cross_source = cross_source_insight_error(
+                insight.name, dependent_models, dag, run_output_dir
+            )
         except Exception as e:
             return jsonify({"error": str(e)}), 400
-        if len(source_names) > 1:
+        if cross_source:
             return (
                 jsonify(
                     {
-                        "error": (
-                            f"Insight '{insight.name}' references models from more than one "
-                            f"source ({', '.join(sorted(source_names))}) and cannot be "
-                            "previewed server-side."
+                        "error": cross_source.message,
+                        **cross_source.error_details(),
+                        "diagnostic": cross_source.diagnostic(DiagnosticPhase.SERVE).model_dump(
+                            mode="json", exclude_none=True
                         ),
-                        "error_type": "multi_source",
                     }
                 ),
                 400,

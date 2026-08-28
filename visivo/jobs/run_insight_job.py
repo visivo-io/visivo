@@ -11,6 +11,8 @@ from visivo.jobs.job import (
 from visivo.logger.query_error_logger import log_failed_query, extract_error_location
 from time import time
 from visivo.jobs.utils import get_source_for_model
+from visivo.models.diagnostic import DiagnosticPhase
+from visivo.query.source_scope import CrossSourceError, resolve_insight_source
 from visivo.constants import DEFAULT_RUN_ID
 import json
 import os
@@ -33,8 +35,16 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
     insight_query_info = None
 
     try:
-        model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-        source = get_source_for_model(model, dag, run_output_dir)
+        # Which source runs this insight is not a free choice: the built
+        # pre_query embeds EVERY dependent model as a CTE, so a two-source
+        # insight has half its tables missing wherever it executes. The old
+        # `[0]` pick made that an arbitrary — and, off a set, run-to-run
+        # unstable — bet, and the user got the losing source's driver error
+        # about a table it had never heard of. Refuse, in the same words the
+        # compile-time validator uses.
+        source = resolve_insight_source(
+            insight.name, insight.get_all_dependent_models(dag), dag, run_output_dir
+        )
 
         insight_query_info = insight.get_query_info(dag, run_output_dir)
 
@@ -135,6 +145,14 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
         error_details = None
         if isinstance(e, JoinPathError):
             error_details = join_error_to_structured_fields(e)
+        elif isinstance(e, CrossSourceError):
+            # Same shape the join failures use (error_type + the models the
+            # failure is about), plus the Diagnostic so a consumer that speaks
+            # the contract does not have to re-derive it from the message.
+            error_details = e.error_details()
+            error_details["diagnostic"] = e.diagnostic(DiagnosticPhase.RUN).model_dump(
+                mode="json", exclude_none=True
+            )
 
         # Log failed query to file for debugging
         query_file = None
