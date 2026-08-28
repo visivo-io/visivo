@@ -2,10 +2,10 @@
  * Story: the Explorer's chart preview FILLS its pane, and TRACKS it when the
  * pane changes size without the window changing size (M28).
  *
- * This file measures rendered geometry — `getBoundingClientRect()` of the pane
- * versus the Plotly root — rather than eyeballing a screenshot, because the
- * two failure modes it guards are both invisible to a "looks fine" glance at a
- * single viewport:
+ * This file measures rendered geometry — `getBoundingClientRect()` of the pane,
+ * the chart's slot within it, and the Plotly root — rather than eyeballing a
+ * screenshot, because the two failure modes it guards are both invisible to a
+ * "looks fine" glance at a single viewport:
  *
  *   FILL — `ExplorerChartPreview`'s root used to be `flex flex-1 min-h-0
  *   flex-col`. Its parent (`CenterPanel`'s chart pane) is `display:block`, so
@@ -40,12 +40,31 @@ import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
 const SOURCE = 'local-duckdb';
 const TABLE = 'test_table';
 
-/** The pane the chart is supposed to fill: `CenterPanel`'s chart slot, whose
+/** The pane the preview is supposed to fill: `CenterPanel`'s chart slot, whose
  *  height is definite (a flex child of a `h-full flex-col` section). */
 const PANE = '[data-testid="chart-preview-pane"]';
+/** The chart's OWN slot inside that pane — `ExplorerChartPreview`'s `flex-1
+ *  min-h-0` div. The pane is not the chart's box: the preview renders its own
+ *  chrome above the chart (`PreviewInputControls`, the unresolved-inputs
+ *  banner, the promoted-poll-failed banner), so measuring the plot against the
+ *  PANE would read a ~50px input strip as a broken flex chain and fail on a
+ *  chart that is filling its slot exactly. The pane stays in the chain — the
+ *  slot has to reach its bottom edge — but the chart is measured against the
+ *  box it is actually given. */
+const SLOT = '[data-testid="chart-preview-slot"]';
 /** Plotly's own root node — what actually got drawn, at whatever size Plotly
  *  decided on. `.js-plotly-plot` is Plotly's class, not ours. */
 const PLOT = '.js-plotly-plot';
+
+/** `ItemContainer` (inside `ChartPreview`) is `border` — 1px, box-border — so
+ *  the Plot's `height:100%`/`width:100%` resolve against a content box exactly
+ *  2px smaller than the slot in each axis. Anything beyond that is real
+ *  mis-sizing; the pre-fix signature was 59px and 190px. Named rather than
+ *  spelled `2` inline so a future 1px of padding in the chain reads as a
+ *  deliberate change to this constant, not a mystery off-by-one. */
+const CHROME_PX = 2;
+/** Sub-pixel layout rounding, on top of the border above. */
+const ROUNDING_PX = 2;
 
 async function dragAndDrop(page, sourceLocator, targetLocator) {
   const sourceBox = await sourceLocator.boundingBox();
@@ -144,9 +163,13 @@ async function buildDraftChart(page) {
 /**
  * Read every box in ONE evaluate so they all describe the same layout frame.
  *
- * Three numbers, because two of them can disagree and only the third is proof:
+ * Four numbers, because three of them can disagree and only the last is proof:
  *
- *   pane  — the box the chart is supposed to fill.
+ *   pane  — the box the PREVIEW is supposed to fill, chrome included.
+ *   slot  — the box the CHART is given: the pane minus whatever chrome the
+ *           preview rendered above it. Its bottom edge is what proves the
+ *           height chain, since a root without `h-full` is auto-height and
+ *           stops short of the pane's bottom.
  *   box   — the Plotly root's CSS box. `Chart.jsx` gives it
  *           `style={{width:'100%',height:'100%'}}`, so its WIDTH always equals
  *           its parent's whether or not anything is wired correctly. Its
@@ -161,21 +184,25 @@ async function buildDraftChart(page) {
  */
 async function measure(page) {
   return page.evaluate(
-    ([paneSel, plotSel]) => {
+    ([paneSel, slotSel, plotSel]) => {
+      const rect = el => {
+        const r = el.getBoundingClientRect();
+        return { width: r.width, height: r.height, top: r.top, bottom: r.bottom };
+      };
       const pane = document.querySelector(paneSel);
+      const slot = document.querySelector(slotSel);
       const gd = document.querySelector(plotSel);
-      if (!pane || !gd) return null;
-      const p = pane.getBoundingClientRect();
-      const q = gd.getBoundingClientRect();
+      if (!pane || !slot || !gd) return null;
       return {
-        pane: { width: p.width, height: p.height },
-        box: { width: q.width, height: q.height },
+        pane: rect(pane),
+        slot: rect(slot),
+        box: rect(gd),
         drawn: gd._fullLayout
           ? { width: gd._fullLayout.width, height: gd._fullLayout.height }
           : null,
       };
     },
-    [PANE, PLOT]
+    [PANE, SLOT, PLOT]
   );
 }
 
@@ -209,33 +236,138 @@ test.describe('Explorer chart preview fills and tracks its pane (M28)', () => {
       // Plotly settles asynchronously after its own resize debounce (100ms).
       await expect(async () => {
         const m = await measure(page);
-        expect(m, 'both the pane and the Plotly root are in the DOM').not.toBeNull();
+        expect(m, 'the pane, the chart slot and the Plotly root are in the DOM').not.toBeNull();
         expect(m.drawn, 'Plotly has resolved a full layout').not.toBeNull();
         expect(m.pane.height, 'the pane itself has a real height').toBeGreaterThan(200);
-        // Two claims, because either can fail alone: the CSS chain resolves to
-        // the pane's height (the `h-full` half), AND Plotly drew the figure at
-        // that height (the measurement half). Sub-pixel layout rounding is the
-        // only slack allowed.
-        const geom = `pane ${m.pane.height} / box ${m.box.height} / drawn ${m.drawn.height}`;
+        const geom =
+          `pane ${m.pane.height} / slot ${m.slot.height} / ` +
+          `box ${m.box.height} / drawn ${m.drawn.height}`;
+
+        // 1. The HEIGHT CHAIN, measured against the pane. The slot is the last
+        //    thing in a `h-full` column, so its bottom edge lands on the
+        //    pane's — unless the chain broke, in which case the root is
+        //    auto-height and the slot stops at whatever Plotly drew inside it
+        //    (the pre-fix 450px), well short of the pane. Comparing edges
+        //    rather than heights is what lets the preview's own chrome sit
+        //    above the chart without the assertion mistaking it for the bug.
         expect(
-          Math.abs(m.box.height - m.pane.height),
-          `CSS box fills pane — ${geom}`
-        ).toBeLessThanOrEqual(2);
+          Math.abs(m.slot.bottom - m.pane.bottom),
+          `the chart slot reaches the pane's bottom edge — ${geom}`
+        ).toBeLessThanOrEqual(ROUNDING_PX);
+        expect(m.slot.top, 'the slot starts inside the pane').toBeGreaterThanOrEqual(
+          m.pane.top - ROUNDING_PX
+        );
+        expect(m.slot.height, 'the slot has a real height of its own').toBeGreaterThan(200);
+
+        // 2. The chart fills that slot — two claims, because either can fail
+        //    alone: the CSS chain resolves to the slot's height, AND Plotly
+        //    drew the figure at that height. `ItemContainer`'s 1px border plus
+        //    sub-pixel rounding is the only slack allowed.
+        expect(Math.abs(m.box.height - m.slot.height), `CSS box fills slot — ${geom}`)
+          .toBeLessThanOrEqual(CHROME_PX + ROUNDING_PX);
         expect(
-          Math.abs(m.drawn.height - m.pane.height),
-          `Plotly drew at the pane height — ${geom}`
-        ).toBeLessThanOrEqual(2);
+          Math.abs(m.drawn.height - m.slot.height),
+          `Plotly drew at the slot height — ${geom}`
+        ).toBeLessThanOrEqual(CHROME_PX + ROUNDING_PX);
       }).toPass({ timeout: 20000 });
 
       const m = await measure(page);
       // Guard the specific pre-fix signature as well as the general one: 450 is
       // plotly.js's built-in default height, which is what an indefinite-height
-      // container produces. Skipped when the pane happens to be ~450 tall.
-      if (Math.abs(m.pane.height - 450) > 5) {
+      // container produces. Skipped when the slot happens to be ~450 tall.
+      if (Math.abs(m.slot.height - 450) > 5) {
         expect(Math.round(m.drawn.height), 'not the Plotly default').not.toBe(450);
       }
     });
   }
+
+  // CHROME. The preview is entitled to render things above the chart — the
+  // `PreviewInputControls` strip whenever the insight references an input, the
+  // unresolved-inputs banner, the promoted-poll-failed banner. None of those is
+  // a sizing bug, but a fill assertion anchored on the PANE reads every one of
+  // them as ~50px of missing chart and fails a chart that is filling its slot
+  // exactly. This test creates that chrome deliberately and pins both halves:
+  // the chart still fills its slot, and the pane-anchored comparison is exactly
+  // the one that would have lied.
+  //
+  // The chrome is injected rather than provoked with a real input because the
+  // geometry is what is under test, not the input machinery — and injecting it
+  // has a second payoff: the slot shrinks while the WINDOW does not, so
+  // settling back to the new height is the M28 container observation doing its
+  // job on the vertical axis (the rail-drag test below covers the horizontal).
+  test('the preview\'s own chrome is not mistaken for a chart that stopped short', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await buildDraftChart(page);
+
+    const CHROME_HEIGHT = 50;
+    await expect(async () => {
+      const m = await measure(page);
+      expect(m).not.toBeNull();
+      expect(m.drawn).not.toBeNull();
+      expect(Math.abs(m.drawn.height - m.slot.height)).toBeLessThanOrEqual(
+        CHROME_PX + ROUNDING_PX
+      );
+    }).toPass({ timeout: 20000 });
+
+    // Stand in for `PreviewInputControls`: a fixed-height, non-shrinking strip
+    // as the slot's previous sibling, i.e. exactly where the real chrome sits.
+    // Idempotent so `toPass` can re-run it if React reconciles it away.
+    const insertChrome = () =>
+      page.evaluate(
+        ([slotSel, h]) => {
+          if (document.getElementById('m28-fake-chrome')) return;
+          const slot = document.querySelector(slotSel);
+          const strip = document.createElement('div');
+          strip.id = 'm28-fake-chrome';
+          strip.style.height = `${h}px`;
+          strip.style.flex = '0 0 auto';
+          slot.parentElement.insertBefore(strip, slot);
+        },
+        [SLOT, CHROME_HEIGHT]
+      );
+    await insertChrome();
+
+    await expect(async () => {
+      await insertChrome();
+      const m = await measure(page);
+      expect(m).not.toBeNull();
+      expect(m.drawn).not.toBeNull();
+      const geom =
+        `pane ${m.pane.height} / slot ${m.slot.height} / ` +
+        `box ${m.box.height} / drawn ${m.drawn.height}`;
+
+      // The chrome really took its bite out of the slot…
+      expect(
+        Math.abs(m.slot.height - (m.pane.height - CHROME_HEIGHT)),
+        `the slot gave up exactly the chrome's height — ${geom}`
+      ).toBeLessThanOrEqual(ROUNDING_PX);
+      // …the slot still reaches the pane's bottom edge (the height chain is
+      // intact — this is the claim the pane is still needed for)…
+      expect(
+        Math.abs(m.slot.bottom - m.pane.bottom),
+        `the slot still reaches the pane's bottom — ${geom}`
+      ).toBeLessThanOrEqual(ROUNDING_PX);
+      // …and the chart fills what it was given, Plotly's own resolved height
+      // included: nothing about this is a defect.
+      expect(Math.abs(m.box.height - m.slot.height), `CSS box fills slot — ${geom}`)
+        .toBeLessThanOrEqual(CHROME_PX + ROUNDING_PX);
+      expect(
+        Math.abs(m.drawn.height - m.slot.height),
+        `Plotly re-measured to the shrunken slot — ${geom}`
+      ).toBeLessThanOrEqual(CHROME_PX + ROUNDING_PX);
+
+      // The load-bearing half: measured against the PANE instead, this exact
+      // healthy state is off by the chrome — which is the false failure the
+      // slot anchor exists to prevent. If this ever stops holding, the chrome
+      // is gone and this test is no longer testing anything.
+      expect(
+        m.pane.height - m.box.height,
+        `a pane-anchored assertion would have failed here — ${geom}`
+      ).toBeGreaterThan(CHROME_PX + ROUNDING_PX);
+    }).toPass({ timeout: 20000 });
+  });
 
   // TRACK. The right-rail gutter changes the chart pane's WIDTH while leaving
   // every `CenterPanel` split ratio untouched and never resizing the window —
@@ -250,7 +382,9 @@ test.describe('Explorer chart preview fills and tracks its pane (M28)', () => {
       const m = await measure(page);
       expect(m).not.toBeNull();
       expect(m.drawn).not.toBeNull();
-      expect(Math.abs(m.drawn.width - m.pane.width)).toBeLessThanOrEqual(2);
+      expect(Math.abs(m.drawn.width - m.slot.width)).toBeLessThanOrEqual(
+        CHROME_PX + ROUNDING_PX
+      );
     }).toPass({ timeout: 20000 });
 
     const before = await measure(page);
@@ -277,11 +411,12 @@ test.describe('Explorer chart preview fills and tracks its pane (M28)', () => {
       // width Plotly RESOLVED proves it re-measured.
       const geom =
         `pane ${before.pane.width}→${after.pane.width}, ` +
+        `slot ${before.slot.width}→${after.slot.width}, ` +
         `drawn ${before.drawn.width}→${after.drawn.width}`;
       expect(
-        Math.abs(after.drawn.width - after.pane.width),
-        `Plotly re-measured and re-drew at the new pane width — ${geom}`
-      ).toBeLessThanOrEqual(2);
+        Math.abs(after.drawn.width - after.slot.width),
+        `Plotly re-measured and re-drew at the new slot width — ${geom}`
+      ).toBeLessThanOrEqual(CHROME_PX + ROUNDING_PX);
       expect(after.drawn.width, `the drawn width actually moved — ${geom}`).toBeLessThan(
         before.drawn.width - 50
       );

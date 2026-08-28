@@ -240,6 +240,32 @@ describe('Chart — autosize and explicit dimensions are mutually exclusive', ()
     expect(capturedLayout.height).toBe(320);
     expect(capturedLayout.width).toBe(640);
   });
+
+  // The mirror of the case above, and the one that was unguarded: the fixed
+  // dimensions can come from the chart's OWN layout rather than from a prop.
+  // `surface-chart` in test-projects/integration is exactly this config, and
+  // every one of its keys is schema-allowed. Previewing it (workspace
+  // ChartPreview passes `hideToolbar`) produced `{autosize: true, width: 500,
+  // height: 500}` — two authorities, which Plotly resolves in favour of the
+  // dimensions, so the "fill the pane" the `hideToolbar` autosize exists to
+  // produce never happened and the plot stayed 500x500 in a pane of any size.
+  test('a config-supplied width/height does not survive the autosize hideToolbar forces', () => {
+    chart.layout = { title: { text: 'Plot' }, autosize: false, width: 500, height: 500 };
+    render(<Chart chart={chart} projectId="p1" hideToolbar shouldLoad />);
+    expect(capturedLayout.autosize).toBe(true);
+    expect(capturedLayout.width).toBeUndefined();
+    expect(capturedLayout.height).toBeUndefined();
+    // Everything else about the authored layout is untouched.
+    expect(capturedLayout.title).toEqual({ text: 'Plot' });
+  });
+
+  test('a config-supplied width/height IS honoured when nothing forces autosize', () => {
+    chart.layout = { autosize: false, width: 500, height: 500 };
+    render(<Chart chart={chart} projectId="p1" shouldLoad />);
+    expect(capturedLayout.autosize).toBe(false);
+    expect(capturedLayout.width).toBe(500);
+    expect(capturedLayout.height).toBe(500);
+  });
 });
 
 // M28 — Plotly re-measures its node only on a window `resize` event
@@ -388,6 +414,56 @@ describe('Chart — a container resize reaches Plotly (M28)', () => {
 
     expect(capturedLayout.autosize).toBeFalsy();
     expect(observers).toHaveLength(0);
+  });
+
+  // The gate has to be Plotly's own predicate — "is either dimension missing?"
+  // — rather than the `autosize` key, because Plotly answers that question
+  // three times (supplyLayoutGlobalDefaults' `coerce('autosize', !(width &&
+  // height))`, plotAutoSize's `!layout.width`/`!layout.height`, Plots.resize's
+  // `layout.width && layout.height` early return) and never once by looking at
+  // `autosize` alone. The next three cases are where the two predicates
+  // disagree; all three were wrong before.
+  test('observes a chart with NO dimensions at all — Plotly autosizes it implicitly', () => {
+    // No `hideToolbar`, so nothing sets `autosize`; Plotly turns it on itself
+    // because both dimensions are missing. Gating on the key skipped this.
+    render(<Chart chart={chart} projectId="p1" shouldLoad />);
+
+    expect(capturedLayout.autosize).toBeUndefined();
+    expect(observers).toHaveLength(1);
+    expect(observers[0].targets[0]).toBeInstanceOf(HTMLElement);
+  });
+
+  test('observes a chart given only ONE dimension — Plotly still sizes the other', () => {
+    render(<Chart chart={chart} projectId="p1" height={320} shouldLoad />);
+
+    expect(capturedLayout.height).toBe(320);
+    expect(capturedLayout.width).toBeUndefined();
+    expect(observers).toHaveLength(1);
+  });
+
+  test('does NOT observe a chart sized by its own config — the dimensions still win', () => {
+    // `surface-chart` from test-projects/integration, rendered without
+    // `hideToolbar`: the layout keeps its authored 500x500, so Plotly owns
+    // nothing and there is nothing for a container resize to change.
+    chart.layout = { autosize: false, width: 500, height: 500 };
+    render(<Chart chart={chart} projectId="p1" shouldLoad />);
+
+    expect(capturedLayout.width).toBe(500);
+    expect(capturedLayout.height).toBe(500);
+    expect(observers).toHaveLength(0);
+  });
+
+  test('observes that same config once hideToolbar hands sizing to the container', () => {
+    // …and now the observation is real work rather than a no-op dispatch:
+    // `Plots.resize` early-returns on `layout.width && layout.height`, so
+    // before the dimensions were stripped every one of these dispatches woke
+    // every window-resize listener in the app and moved nothing.
+    chart.layout = { autosize: false, width: 500, height: 500 };
+    render(<Chart chart={chart} projectId="p1" hideToolbar shouldLoad />);
+
+    expect(capturedLayout.width).toBeUndefined();
+    expect(capturedLayout.height).toBeUndefined();
+    expect(observers).toHaveLength(1);
   });
 
   test('does not observe while the chart is still showing Loading', () => {

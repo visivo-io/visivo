@@ -417,7 +417,7 @@ const ExplorerChartPreview = () => {
   // the chain. Every branch above this one already returned `h-full`, which is
   // why the placeholders looked right and only the real chart was wrong.
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col" data-testid="explorer-chart-preview">
       <PreviewInputControls inputConfigs={inputConfigs} projectId={projectId} />
       {unresolvedNames.length > 0 && (
         <div
@@ -442,7 +442,15 @@ const ExplorerChartPreview = () => {
           It may still be running server-side — try reopening this exploration.
         </div>
       )}
-      <div className="flex-1 min-h-0">
+      {/* M28 — the chart's own slot: whatever height the pane has left after
+          the chrome above (the input strip and either banner). The testid is
+          what the e2e story anchors its geometry on, because measuring the
+          plot against the PANE instead would read that chrome as a broken
+          flex chain and fail on a perfectly-filling chart the moment an
+          insight references an input. The story still proves the chain from
+          the pane down, by asserting this slot reaches the pane's bottom
+          edge. */}
+      <div className="flex-1 min-h-0" data-testid="chart-preview-slot">
         <ChartPreview
           chartConfig={chartConfig}
           insightKeys={previewInsightKeys}
