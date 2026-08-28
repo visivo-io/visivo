@@ -8,16 +8,9 @@ import {
 } from '../components/views/workspace/validateAgainstSchema';
 import { checkRefTargets } from '../components/views/workspace/refPreflight';
 import { checkExpressions } from '../components/views/workspace/expressionPreflight';
-
-/**
- * Cloud read-only probe (VIS-1025). `capabilities` is null/undefined under
- * local serve (always editable); in cloud it's the stage's capability object
- * and `can_edit === false` holds every write.
- */
-const isReadOnly = state => {
-  const caps = state.capabilities;
-  return !!(caps && caps.can_edit === false);
-};
+// VIS-1025 read-only probe — defined next to the `capabilities` state it reads
+// (branchingStore) so every write path shares ONE predicate.
+import { isReadOnly } from '../stores/branchingStore';
 
 /**
  * useRecordSave(type, name, opts) — the unified optimistic + debounced save

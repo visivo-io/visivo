@@ -17,6 +17,20 @@
  * path). The story never presses the dashboard Save, so the layout is not
  * persisted; the draft wrapper chart is uniquely named per run.
  *
+ * Because that draft SURVIVES the run, the auto-wrap assertion must never be
+ * a prefix probe: it reads the wrapper's name back out of the slot and asserts
+ * THAT EXACT chart exists exactly once, so a leftover `<insight>-chart` from an
+ * earlier run (or an earlier retry attempt — retries: 2) cannot satisfy it.
+ *
+ * ISOLATION: this file is deliberately NOT registered in the 'state-mutating'
+ * project despite drafting a chart into the backend cache. That project exists
+ * to serialise specs that share the DEFAULT :3001 sandbox; this story, like
+ * every other dedicated-port canvas story (canvas-keyboard-nav,
+ * canvas-wrap-container, canvas-nested-dnd, broken-ref-fix…), runs against its
+ * own sandbox via VIS_PICK_BASE and is environmentally unrunnable on :3001.
+ * Listing it there would be misleading AND (via that project's
+ * `dependencies: ['parallel']`) would mean it never executes at all.
+ *
  * Precondition: an isolated sandbox running the integration project.
  *   VISIVO_SANDBOX_BACKEND_PORT=8050 VISIVO_SANDBOX_FRONTEND_PORT=3050 \
  *   VISIVO_SANDBOX_NAME=pick bash scripts/sandbox.sh start
@@ -61,6 +75,14 @@ const appendEmptySlotRow = async page =>
     },
     { dashboard: DASHBOARD }
   );
+
+// `${ref(name)}` / `ref(name)` → `name`.
+const parseRefName = value => {
+  const match = String(value || '').match(/^\$?\{?\s*ref\(\s*([^)]+?)\s*\)\s*\}?$/);
+  return match ? match[1] : String(value || '');
+};
+
+const escapeRe = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Read the item config at a composite canvas path from the live working copy.
 const readItemAtPath = async (page, itemPath) =>
@@ -184,21 +206,35 @@ test.describe('Canvas click-to-pick (W5 / Track L)', () => {
     const item = await readItemAtPath(page, itemPath);
     expect(item.insight).toBeUndefined();
 
-    // The wrapper chart exists as a draft in the chart store, holding exactly
-    // the wrapped insight (same shape as Library "Wrap in Chart…", #632).
+    // Read the wrapper's name back OUT of the slot and assert THAT EXACT chart
+    // exists. A `startsWith(<insight>-chart)` probe is satisfied by a draft
+    // this story left behind on an earlier run (or on an earlier retry
+    // attempt — playwright.config.mjs sets retries: 2), so the auto-wrap half
+    // of the #637 check would silently stop biting: a collision just bumps the
+    // NEW mint to `-2` while the stale `-chart` keeps the assertion green.
+    // Naming the exact chart the slot points at is the only honest check.
+    const placedName = parseRefName(item.chart);
+    expect(placedName).toMatch(new RegExp(`^${escapeRe(insightName)}-chart(-\\d+)?$`));
+
+    // That chart exists as a draft holding exactly the wrapped insight (same
+    // shape as Library "Wrap in Chart…", #632) — and exists exactly once.
     await expect
       .poll(
         async () =>
           page.evaluate(
-            name =>
-              (window.useStore.getState().charts || []).some(c =>
-                c.name.startsWith(`${name}-chart`)
-              ),
-            insightName
+            name => {
+              const matches = (window.useStore.getState().charts || []).filter(
+                c => c.name === name
+              );
+              if (matches.length !== 1) return { count: matches.length };
+              const cfg = matches[0].config || matches[0];
+              return { count: 1, insights: cfg.insights };
+            },
+            placedName
           ),
         { timeout: WAIT }
       )
-      .toBe(true);
+      .toEqual({ count: 1, insights: [`ref(${insightName})`] });
 
     await page.screenshot({ path: `${SCREENS}/pick-03-insight-wrapped.png`, fullPage: true });
   });
@@ -245,9 +281,22 @@ test.describe('Canvas click-to-pick (W5 / Track L)', () => {
     const itemPath = await appendEmptySlotRow(page);
 
     // Focus the slot button directly (it is in the tab order) and open with Enter.
-    await page.getByTestId('canvas-empty-slot').last().focus();
+    const slot = page.getByTestId('canvas-empty-slot').last();
+    await slot.focus();
     await page.keyboard.press('Enter');
     const picker = page.getByTestId('reference-picker');
+    await expect(picker).toBeVisible({ timeout: WAIT });
+
+    // Escaping HANDS FOCUS BACK to the slot. Without that the keyboard user
+    // lands on <body> and has to Tab from the top of the document to reach the
+    // slot they were filling — a modal that is "keyboard-completable" only in
+    // the forward direction is not keyboard-completable.
+    await page.keyboard.press('Escape');
+    await expect(picker).not.toBeVisible();
+    await expect(slot).toBeFocused();
+
+    // Re-open and complete the pick from the keyboard.
+    await page.keyboard.press('Enter');
     await expect(picker).toBeVisible({ timeout: WAIT });
 
     // Search auto-focuses; Tab moves into the list; Enter picks the row.

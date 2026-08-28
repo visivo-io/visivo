@@ -12,6 +12,33 @@ import { useVisibleRows } from '../../hooks/useVisibleRows';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
 /**
+ * The empty canvas slot's VISIBLE label. Shared with the slot's accessible
+ * name so the two can never diverge (WCAG 2.5.3, Label in Name).
+ */
+export const EMPTY_SLOT_LABEL = 'Empty slot — click to choose';
+
+/**
+ * Turn a composite canvas path (`row.0.item.2`, or a nested
+ * `row.0.item.1.row.0.item.0`) into a 1-indexed human location —
+ * `"row 1, item 3"` — so identical empty slots announce distinguishably to a
+ * screen reader instead of all reading the same generic name.
+ *
+ * Returns '' for an absent/unparseable path (the caller then falls back to the
+ * button's own text).
+ */
+export const describeSlotPath = itemPath => {
+  const tokens = String(itemPath || '').split('.');
+  const parts = [];
+  for (let i = 0; i + 1 < tokens.length; i += 2) {
+    const axis = tokens[i];
+    const index = Number(tokens[i + 1]);
+    if ((axis !== 'row' && axis !== 'item') || !Number.isInteger(index)) return '';
+    parts.push(`${axis} ${index + 1}`);
+  }
+  return parts.join(', ');
+};
+
+/**
  * Normalize a chart/table `insights` array so Chart/Table always receive
  * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
  * (`"${ref(insight-name)}"`).
@@ -628,17 +655,25 @@ const Dashboard = ({
     // way to fill an empty slot.
     if (canvasMode) {
       if (typeof onEmptySlotClick === 'function') {
+        // Accessible name = the VISIBLE label plus this slot's location. Two
+        // rules ride on that shape: WCAG 2.5.3 (Label in Name) needs the
+        // visible string to be contained in the accessible name, or speaking
+        // the on-screen label doesn't activate the control; and a row template
+        // paints several identical slots at once, so the name has to say WHICH
+        // one it is. `undefined` (not a bare label) when there is no path, so
+        // the button falls back to its own text rather than a duplicate name.
+        const slotLocation = describeSlotPath(itemPath);
         return (
           <button
             key={key}
             type="button"
             data-testid="canvas-empty-slot"
-            aria-label="Empty slot — choose content"
+            aria-label={slotLocation ? `${EMPTY_SLOT_LABEL} (${slotLocation})` : undefined}
             onClick={() => onEmptySlotClick({ itemPath })}
             className="flex h-full w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-[11px] font-medium text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
             style={{ minHeight: 48 }}
           >
-            Empty slot — click to choose
+            {EMPTY_SLOT_LABEL}
           </button>
         );
       }

@@ -187,3 +187,107 @@ describe('ReferencePicker — multi-type mode (W5 click-to-pick)', () => {
     expect(screen.queryByTestId('reference-picker-section-chart')).not.toBeInTheDocument();
   });
 });
+
+// ── Modal focus management (W5) ─────────────────────────────────────────────
+// Click-to-pick promotes this dialog from a failure-state repair tool to the
+// PRIMARY affordance for filling an empty slot, and the flow is sold as
+// keyboard-completable. `aria-modal="true"` promises assistive tech that focus
+// is contained here and that closing returns it where it came from; both have
+// to actually be true.
+describe('ReferencePicker — focus management', () => {
+  const renderWithTrigger = (props = {}) => {
+    const utils = render(
+      <>
+        <button type="button" data-testid="opener">
+          Empty slot
+        </button>
+        <ReferencePicker type="chart" onSelect={jest.fn()} onClose={jest.fn()} {...props} />
+      </>
+    );
+    return utils;
+  };
+
+  test('focuses the search box on open', () => {
+    render(<ReferencePicker type="chart" onSelect={jest.fn()} onClose={jest.fn()} />);
+    expect(screen.getByTestId('reference-picker-search')).toHaveFocus();
+  });
+
+  test('returns focus to the opener when the picker closes', () => {
+    // Mount the trigger first and focus it, exactly as a real slot click does.
+    const { rerender } = render(
+      <button type="button" data-testid="opener">
+        Empty slot
+      </button>
+    );
+    screen.getByTestId('opener').focus();
+    expect(screen.getByTestId('opener')).toHaveFocus();
+
+    rerender(
+      <>
+        <button type="button" data-testid="opener">
+          Empty slot
+        </button>
+        <ReferencePicker type="chart" onSelect={jest.fn()} onClose={jest.fn()} />
+      </>
+    );
+    expect(screen.getByTestId('reference-picker-search')).toHaveFocus();
+
+    // Close (Escape / X / backdrop all unmount the picker).
+    rerender(
+      <button type="button" data-testid="opener">
+        Empty slot
+      </button>
+    );
+    expect(screen.getByTestId('opener')).toHaveFocus();
+  });
+
+  test('leaves focus alone when the opener is gone (a filled slot unmounts it)', () => {
+    const { rerender } = render(
+      <button type="button" data-testid="opener">
+        Empty slot
+      </button>
+    );
+    screen.getByTestId('opener').focus();
+    rerender(
+      <>
+        <button type="button" data-testid="opener">
+          Empty slot
+        </button>
+        <ReferencePicker type="chart" onSelect={jest.fn()} onClose={jest.fn()} />
+      </>
+    );
+    // A successful pick replaces the slot button with real content.
+    expect(() => rerender(<div data-testid="filled" />)).not.toThrow();
+    expect(screen.queryByTestId('opener')).not.toBeInTheDocument();
+  });
+
+  // DOM order inside the dialog: close (X) → search → object rows → footer
+  // create link (absent here — no onCreateNew). So the trap's endpoints are
+  // the close button and the LAST object row.
+  const firstFocusable = () => screen.getByTestId('reference-picker-close');
+  const lastFocusable = () => screen.getByTestId('reference-picker-row-orders_chart');
+
+  test('Tab from the last focusable wraps to the first (focus trap)', () => {
+    renderWithTrigger();
+    lastFocusable().focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(firstFocusable()).toHaveFocus();
+  });
+
+  test('Shift+Tab from the first focusable wraps to the last, never out of the dialog', () => {
+    renderWithTrigger();
+    firstFocusable().focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(lastFocusable()).toHaveFocus();
+    // aria-modal="true" claims nothing behind the backdrop is reachable.
+    expect(screen.getByTestId('opener')).not.toHaveFocus();
+  });
+
+  test('Tab from outside the dialog is pulled back in', () => {
+    renderWithTrigger();
+    screen.getByTestId('opener').focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(firstFocusable()).toHaveFocus();
+    expect(screen.getByTestId('opener')).not.toHaveFocus();
+  });
+});

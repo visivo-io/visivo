@@ -48,6 +48,18 @@ const TYPE_SLICES = {
   insight: { listKey: 'insights', singular: 'insight' },
 };
 
+// Tab-order members of the dialog, for the focus trap. Deliberately does NOT
+// filter on visibility (jsdom reports every element as unrendered), so the
+// trap behaves identically in tests and the browser.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
 // A short, type-appropriate description line for an object row.
 const describeObject = (type, obj) => {
   if (!obj) return null;
@@ -171,15 +183,60 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
   const [query, setQuery] = useState('');
   const dialogRef = useRef(null);
   const searchRef = useRef(null);
+  const returnFocusRef = useRef(null);
 
   useEffect(() => {
-    // Focus the search box on open so keyboard users can filter immediately.
+    // Remember what opened us, focus the search box so keyboard users can
+    // filter immediately, and hand focus BACK on close. Without the restore,
+    // closing (Escape / X / backdrop) drops `document.activeElement` to
+    // <body>, and the next Tab restarts at the top of the document — the
+    // click-to-pick path is sold as keyboard-completable, so stranding the
+    // user away from the slot they were filling is not acceptable. When the
+    // opener is gone (a successful pick unmounts the slot button it filled)
+    // there is nothing to return to, so we leave focus alone rather than
+    // throwing at a detached node.
+    returnFocusRef.current = typeof document !== 'undefined' ? document.activeElement : null;
     if (searchRef.current) searchRef.current.focus();
+    return () => {
+      const opener = returnFocusRef.current;
+      if (opener && opener.isConnected && typeof opener.focus === 'function') {
+        opener.focus();
+      }
+    };
   }, []);
 
   useEffect(() => {
     const onKey = e => {
-      if (e.key === 'Escape') onClose && onClose();
+      if (e.key === 'Escape') {
+        onClose && onClose();
+        return;
+      }
+      // Focus TRAP. `aria-modal="true"` promises assistive tech that nothing
+      // outside this dialog is reachable; without a trap that promise is a
+      // lie — Shift+Tab from the search box walks straight out into the page
+      // behind the backdrop. Cycle within the dialog instead, and pull focus
+      // back in if it ever escapes.
+      if (e.key !== 'Tab') return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (!dialog.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
