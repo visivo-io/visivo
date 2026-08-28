@@ -2,6 +2,8 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useDroppable } from '@dnd-kit/core';
 import SQLEditor from './SQLEditor';
+import { clearEventBuffer, getEventBuffer } from '../onboarding/telemetry';
+import { clearTimeToValueLedger } from '../onboarding/timeToValue';
 
 // Mock Monaco editor — selection state is configurable per-test
 let mockSelectionIsEmpty = true;
@@ -219,6 +221,30 @@ describe('SQLEditor', () => {
     await waitFor(() => {
       expect(mockExecuteQuery).toHaveBeenCalledWith('test_source', 'SELECT 1');
     });
+  });
+
+  // Guided First Run W1: running a query is step 3 of the time-to-value
+  // ladder — the moment the user first asks their own data a question. Uses
+  // the REAL timeToValue module (not a mock) so this covers the thing that
+  // actually has to hold: two runs, one mark, and never the user's SQL.
+  it('marks the time-to-value first_query_run step exactly once, with no SQL in the payload', async () => {
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    render(<SQLEditor initialValue="SELECT customer_email FROM users" sourceName="test_source" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+
+    await waitFor(() => {
+      expect(mockExecuteQuery).toHaveBeenCalled();
+    });
+
+    const runMarks = getEventBuffer().filter(e => e.event === 'first_query_run');
+    expect(runMarks).toHaveLength(1);
+    expect(runMarks[0].props.step_index).toBe(3);
+    expect(JSON.stringify(runMarks[0].props)).not.toContain('SELECT');
+    expect(JSON.stringify(runMarks[0].props)).not.toContain('test_source');
   });
 
   it('shows Cancel button when query is running', () => {

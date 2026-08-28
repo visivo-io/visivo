@@ -1,5 +1,6 @@
 import * as insightsApi from '../api/insights';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
+import { markTimeToValueStep, TTV_STEPS } from '../components/onboarding/timeToValue';
 
 /**
  * Insight Store Slice
@@ -40,6 +41,10 @@ const createInsightSlice = (set, get) => ({
       }
       // Tap for the onboarding "Create an Insight" checklist row.
       recordOnboardingAction('insight_saved');
+      // Step 5 of the time-to-value ladder (Guided First Run W1). Distinct
+      // from the tap above, which no-ops until onboarding is complete. No
+      // name in the payload.
+      markTimeToValueStep(TTV_STEPS.FIRST_INSIGHT_CREATED);
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

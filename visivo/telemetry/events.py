@@ -158,6 +158,57 @@ class NewInstallationEvent(BaseEvent):
 
 
 @dataclass
+class FirstRunStepEvent(BaseEvent):
+    """
+    Event for one step mark on the time-to-value ladder (Guided First Run W1).
+
+    The ladder and every required property are specified in
+    ``specs/marketing-relaunch/event-taxonomy.md`` §4. The event NAME is the
+    step id itself (``first_run_launched``, ...) so a funnel reads the ladder
+    step-by-step; ``step_id``/``step_index`` ride along as properties so a
+    single insight can read it generically too.
+
+    ``surface: "cli"`` is set explicitly here — the taxonomy requires a
+    ``surface`` on every event, and the viewer's half of the same ladder
+    carries ``surface: "viewer"`` from its PostHog super properties.
+    """
+
+    @classmethod
+    def create(
+        cls,
+        step_id: str,
+        properties: Optional[Dict[str, Any]] = None,
+        project_hash: Optional[str] = None,
+    ) -> "FirstRunStepEvent":
+        """Create a first-run step event carrying the ladder payload plus system properties."""
+        # machine_id is the distinct_id already, but the taxonomy requires it as
+        # a PROPERTY on every step mark: the viewer's half of the ladder ships
+        # under a browser distinct_id, so `machine_id` is the only column the
+        # two halves can be joined on.
+        merged_properties = {
+            **(properties or {}),
+            "machine_id": _get_machine_id(),
+            "surface": "cli",
+            "plan": "anonymous",
+            "visivo_version": VISIVO_VERSION,
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": platform.system().lower(),
+            "is_ci": is_ci_environment(),
+        }
+
+        if project_hash:
+            merged_properties["project_hash"] = project_hash
+
+        return cls(
+            event_type=step_id,
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            session_id=SESSION_ID,
+            machine_id=_get_machine_id(),
+            properties=merged_properties,
+        )
+
+
+@dataclass
 class WorkspaceEvent(BaseEvent):
     """
     Event for a viewer Workspace interaction (dashboard-building telemetry).

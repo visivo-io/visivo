@@ -1,4 +1,5 @@
 import * as sourcesApi from '../api/sources';
+import { markTimeToValueStep, TTV_STEPS } from '../components/onboarding/timeToValue';
 
 // Object status constants (matches backend ObjectStatus enum)
 export const ObjectStatus = {
@@ -46,6 +47,15 @@ const createSourceSlice = (set, get) => ({
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();
       }
+      // Step 2 of the time-to-value ladder (Guided First Run W1). The
+      // onboarding flow has its own call site; this covers every other door
+      // into a first source — Library "New", the Explorer, an import. The
+      // mark is idempotent per journey, so whichever fires first wins and the
+      // other is a no-op. Type only, never the source name.
+      markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED, {
+        source_type: config?.type ?? null,
+        via: 'source_store',
+      });
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

@@ -43,7 +43,7 @@ let initStarted = false;
  * window.__VISIVO_TELEMETRY_DISABLED === true. Absent/undefined => enabled, so
  * cloud and local-not-opted-out both send; only an explicit `true` (injected by
  * `visivo serve` when the CLI telemetry opt-out is active) disables it. */
-function isTelemetryDisabled() {
+export function isTelemetryDisabled() {
   return typeof window !== 'undefined' && window.__VISIVO_TELEMETRY_DISABLED === true;
 }
 

@@ -4,6 +4,7 @@ import os
 import re
 from flask import jsonify, request, send_file, send_from_directory
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
+from visivo.telemetry import first_run
 from visivo.telemetry.config import is_telemetry_enabled
 
 
@@ -86,6 +87,26 @@ def register_data_views(app, flask_app, output_dir):
         project_defaults = getattr(flask_app._project, "defaults", None)
         if not is_telemetry_enabled(project_defaults):
             scripts = "<script>window.__VISIVO_TELEMETRY_DISABLED=true</script>" + scripts
+        else:
+            # Time-to-value ladder (Guided First Run W1). Serving the viewer's
+            # HTML is the first moment the product is actually in front of the
+            # user, so this is where step 1 fires — once per machine, guarded by
+            # the ledger in ~/.visivo/first_run.json, not by this request.
+            #
+            # The journey is then handed to the page so the viewer's marks
+            # (steps 2-6) carry the same journey_id and machine_id and the whole
+            # span is one subtraction. Under the opt-out this branch never runs:
+            # no ledger is written, no journey is injected, and the viewer has
+            # nothing to mark — the opt-out needs no second implementation in JS.
+            first_run.mark_step(
+                first_run.STEP_FIRST_RUN_LAUNCHED, project_defaults=project_defaults
+            )
+            journey = first_run.viewer_journey_context(project_defaults=project_defaults)
+            if journey:
+                # json.dumps handles the escaping; `</` is split so a value can
+                # never terminate the <script> element early.
+                journey_json = json.dumps(journey).replace("</", "<\\/")
+                scripts = f"<script>window.__VISIVO_FIRST_RUN={journey_json}</script>" + scripts
 
         html = html.replace("</head>", f"{scripts}</head>")
 

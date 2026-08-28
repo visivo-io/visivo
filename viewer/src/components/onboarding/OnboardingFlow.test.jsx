@@ -10,6 +10,7 @@ import {
   writeOnboardingState,
 } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
+import { clearTimeToValueLedger } from './timeToValue';
 
 jest.mock('../../stores/store');
 jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => (
@@ -147,6 +148,33 @@ describe('OnboardingFlow', () => {
     expect(await screen.findByTestId('onb-step-cloud')).toBeInTheDocument();
     const events = getEventBuffer().map(e => e.event);
     expect(events).toContain('onboarding_data_connect_succeeded');
+  });
+
+  // Guided First Run W1: connecting a source is step 2 of the time-to-value
+  // ladder. It is a mark of its own rather than a rename of the onboarding
+  // event above, because `source_connected` also has to fire for a source
+  // created outside this flow — the ladder measures the journey whichever
+  // door the user came in.
+  test('connect-data path marks the time-to-value source_connected step', async () => {
+    clearTimeToValueLedger();
+    renderFlow();
+    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
+    fireEvent.click(screen.getByTestId('onb-role-analytics_engineer'));
+    fireEvent.click(screen.getByTestId('onb-role-continue'));
+    for (let i = 0; i < 7; i++) {
+      fireEvent.click(screen.getByTestId('onb-concept-continue'));
+    }
+    fireEvent.click(screen.getByTestId('onb-data-connect'));
+    fireEvent.click(screen.getByText('mock-connect'));
+    expect(await screen.findByTestId('onb-step-cloud')).toBeInTheDocument();
+
+    const marks = getEventBuffer().filter(e => e.event === 'source_connected');
+    expect(marks).toHaveLength(1);
+    expect(marks[0].props.step_index).toBe(2);
+    expect(marks[0].props.source_type).toBe('postgres');
+    expect(marks[0].props.via).toBe('onboarding');
+    // Type, never the name the user typed.
+    expect(JSON.stringify(marks[0].props)).not.toContain('demo');
   });
 
   test('cloud "maybe later" advances to handoff', () => {

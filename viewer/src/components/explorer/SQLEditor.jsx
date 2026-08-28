@@ -10,6 +10,7 @@ import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import { recordOnboardingAction } from '../onboarding/onboardingState';
+import { markTimeToValueStep, TTV_STEPS } from '../onboarding/timeToValue';
 
 const SQLEditor = ({
   initialValue = '',
@@ -122,6 +123,10 @@ const SQLEditor = ({
     runContextRef.current = queryContext ?? null;
     executeQuery(sourceName, queryText.trim());
     recordOnboardingAction('query_run');
+    // Step 3 of the time-to-value ladder (Guided First Run W1) — the moment
+    // the user first asks their own data a question. Metadata only: never the
+    // SQL text, the source name, or anything else the user typed.
+    markTimeToValueStep(TTV_STEPS.FIRST_QUERY_RUN);
   }, [sourceName, sql, executeQuery, queryContext]);
 
   // Handle cancel
