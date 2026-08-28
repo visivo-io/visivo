@@ -15,6 +15,11 @@ const TIER_ORDER = ['model', 'field', 'insight', 'chart'];
 
 const rowKey = row => `${row.type}:${row.name}`;
 
+// W6 (Dashboard Building v1) — the sentinel value for the fallback dashboard
+// offer's "New dashboard…" choice. Not a valid object name (names are
+// validated identifiers), so it can never collide with a real dashboard.
+const NEW_DASHBOARD_VALUE = '__new__';
+
 // D11 (specs/plan/explorer-workspace-unification/08-ux-overhaul.md) — the ONE
 // user-facing verb for this whole chain is "Save to project"; "promote"
 // stays as internal-only vocabulary (store/API names, test ids). A row can
@@ -106,6 +111,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const dashboards = useStore(s => s.dashboards || EMPTY_DASHBOARDS);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const placeChartInDashboardSlot = useStore(s => s.placeChartInDashboardSlot);
+  const placeChartInNewDashboard = useStore(s => s.placeChartInNewDashboard);
   const consumeExplorationReturnTo = useStore(s => s.consumeExplorationReturnTo);
   // VIS-1069 — Semantic Layer reciprocal: "View in Semantic Layer" after
   // promoting a metric/dimension.
@@ -308,10 +314,12 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       succeeded.find(r => r.type === 'metric' || r.type === 'dimension') ||
       succeeded.find(r => r.type === 'model') ||
       null;
+    // W6: a promoted chart ALWAYS has a placement offer now — return_to when
+    // armed, otherwise the fallback offer, whose "New dashboard…" option
+    // exists even in a project with zero dashboards (the first-run case that
+    // used to dead-end right here by auto-closing with no next step).
     const hasOffer =
-      (result.reclassificationOffers?.length || 0) > 0 ||
-      (!!promotedChart && (!!returnTo?.dashboard || dashboards.length > 0)) ||
-      !!promotedField;
+      (result.reclassificationOffers?.length || 0) > 0 || !!promotedChart || !!promotedField;
 
     setPromoting(false);
 
@@ -337,7 +345,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     if (result.reclassificationOffers?.length > 0) {
       setReclassificationOffers(result.reclassificationOffers);
     }
-  }, [selected, promoteExploration, explorationId, returnTo, dashboards, onClose]);
+  }, [selected, promoteExploration, explorationId, onClose]);
 
   const dismissOffer = useCallback(index => {
     setReclassificationOffers(prev => prev.filter((_, i) => i !== index));
@@ -394,16 +402,32 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // plumbing for the common case: a chart was promoted this run, there's no
   // `return_to` intent already offering placement, and at least one
   // dashboard exists to place it in.
-  const showFallbackDashboardOffer = !!promotedChart && !returnTo?.dashboard && dashboards.length > 0;
+  //
+  // W6 (Dashboard Building v1): the `dashboards.length > 0` term is GONE — a
+  // first-run user has ZERO dashboards, so the one working exit ramp from
+  // Explorer to a dashboard never fired for exactly the user who needs it
+  // most. The offer's select now always carries a "New dashboard…" option
+  // (`NEW_DASHBOARD_VALUE`), which creates one through the standard
+  // inline-create path and fills its born row's empty slot (#621) via
+  // `placeChartInNewDashboard`.
+  const showFallbackDashboardOffer = !!promotedChart && !returnTo?.dashboard;
   // The user's explicit pick, or `null` until they choose one. The effective
   // name is derived SYNCHRONOUSLY (default = first dashboard) rather than seeded
   // via an effect: an effect costs an extra render, and the guarded placement
   // below (whose fn is swapped in post-commit by useGuardedAsync) could capture
   // the pre-effect empty value if the click lands in that window — which is
   // exactly the flake a render-timing change surfaced (VIS-1226 review).
+  //
+  // Zero dashboards defaults to "New dashboard…" (the only choice there is);
+  // with dashboards present the default stays the first one, and a malformed
+  // nameless first dashboard still degrades to '' (Add disabled) as before.
   const [fallbackDashboardChoice, setFallbackDashboardChoice] = useState(null);
   const fallbackDashboardName =
-    fallbackDashboardChoice != null ? fallbackDashboardChoice : dashboards[0]?.name || '';
+    fallbackDashboardChoice != null
+      ? fallbackDashboardChoice
+      : dashboards.length > 0
+        ? dashboards[0]?.name || ''
+        : NEW_DASHBOARD_VALUE;
   const [fallbackPlaceError, setFallbackPlaceError] = useState(null);
 
   // The double-click guard + `pending` flag for these placement actions lives
@@ -415,20 +439,35 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   // no-op click never flips `pending` — a clean no-op, as before.
   const [runFallbackPlace, fallbackPlacing] = useGuardedAsync(async () => {
     setFallbackPlaceError(null);
-    const placeResult = await placeChartInDashboardSlot(fallbackDashboardName, promotedChart.name);
+    // W6: "New dashboard…" creates one (standard inline-create path) and
+    // fills its born row's empty slot; an existing pick places into that
+    // dashboard exactly as before. Either way the placed-into dashboard's
+    // tab opens so the user lands looking at the chart.
+    const placingIntoNew = fallbackDashboardName === NEW_DASHBOARD_VALUE;
+    const placeResult = placingIntoNew
+      ? await placeChartInNewDashboard(promotedChart.name)
+      : await placeChartInDashboardSlot(fallbackDashboardName, promotedChart.name);
     if (!placeResult?.success) {
       setFallbackPlaceError(placeResult?.error || 'Could not place the chart in the dashboard');
       return;
     }
+    const placedDashboardName = placingIntoNew ? placeResult.dashboardName : fallbackDashboardName;
     openWorkspaceTab?.({
-      id: `dashboard:${fallbackDashboardName}`,
+      id: `dashboard:${placedDashboardName}`,
       type: 'dashboard',
-      name: fallbackDashboardName,
+      name: placedDashboardName,
     });
     onClose?.();
   });
   const handleFallbackPlace = () => {
-    if (!promotedChart || !fallbackDashboardName || !placeChartInDashboardSlot) return;
+    if (!promotedChart || !fallbackDashboardName) return;
+    // Preconditions stay OUTSIDE the guarded run (a no-op click never flips
+    // `pending`): each choice needs its own store action to exist.
+    const placeAction =
+      fallbackDashboardName === NEW_DASHBOARD_VALUE
+        ? placeChartInNewDashboard
+        : placeChartInDashboardSlot;
+    if (!placeAction) return;
     runFallbackPlace();
   };
 
@@ -792,7 +831,13 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                 disabled={fallbackPlacing}
                 size="sm"
                 isSearchable={false}
-                options={dashboards.map(d => ({ value: d.name, label: d.name }))}
+                options={[
+                  // W6: always offered — in a zero-dashboard project it is
+                  // the only (and default) choice, closing the first-run
+                  // dead end where promote had no destination at all.
+                  { value: NEW_DASHBOARD_VALUE, label: 'New dashboard…' },
+                  ...dashboards.map(d => ({ value: d.name, label: d.name })),
+                ]}
                 className="min-w-[7rem]"
               />
               ?

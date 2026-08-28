@@ -42,7 +42,7 @@ describe('ExplorationPromoteModal', () => {
     expect(screen.queryByTestId('exploration-promote-return-to-offer')).not.toBeInTheDocument();
   });
 
-  test('fails safe (no crash) when the dashboards collection is undefined, and closes the clean success', async () => {
+  test('fails safe (no crash) when the dashboards collection is undefined — the fallback offer still renders, defaulting to "New dashboard…" (W6)', async () => {
     buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
     useStore.setState({
       dashboards: undefined,
@@ -56,12 +56,12 @@ describe('ExplorationPromoteModal', () => {
     render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
     await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
     fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-    // dashboards undefined must not throw; with no dashboards and no field this
-    // is a clean success, so the modal closes rather than linger (VIS-1226).
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(
-      screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
-    ).not.toBeInTheDocument();
+    // dashboards undefined must not throw — and no longer auto-closes: W6
+    // dropped the dashboards.length gate, so a promoted chart ALWAYS gets a
+    // destination offer, "New dashboard…" being the zero-dashboard default.
+    const offer = await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+    expect(offer).toHaveTextContent('New dashboard…');
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   test('fails safe when promoteExploration resolves with no `results` array at all', async () => {
@@ -500,7 +500,13 @@ describe('ExplorationPromoteModal', () => {
       expect(fallback).toHaveTextContent('churn_chart');
     });
 
-    test('closes on a clean success when a chart is promoted but no dashboards exist to place it in (VIS-1226)', async () => {
+    // W6 (Dashboard Building v1) — REVERSES the old "closes on a clean
+    // success when no dashboards exist" behavior. A first-run user has ZERO
+    // dashboards, so the auto-close made promote a dead end in exactly the
+    // exit-gate scenario: the chart was saved, the modal vanished, and no
+    // path toward a dashboard was ever offered. The offer now always renders
+    // for a promoted chart, defaulting to "New dashboard…".
+    test('ZERO dashboards: the fallback offer still renders, defaulting to "New dashboard…" — never a dead-end auto-close (W6)', async () => {
       seedReturnTo(null, { dashboards: [] });
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
       useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
@@ -508,12 +514,139 @@ describe('ExplorationPromoteModal', () => {
       render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
       await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
       fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-      // No dashboards to offer and no field to jump to -> nothing to act on, so
-      // the modal closes instead of lingering on a bare "Saved" receipt.
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      const offer = await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+      expect(offer).toHaveTextContent('churn_chart');
+      expect(offer).toHaveTextContent('New dashboard…');
+      expect(onClose).not.toHaveBeenCalled();
+      // The Add button is live — "New dashboard…" is a real destination, not
+      // a disabled placeholder.
+      expect(screen.getByTestId('exploration-promote-fallback-place')).toBeEnabled();
+    });
+
+    test('ZERO dashboards: accepting "New dashboard…" creates + places via placeChartInNewDashboard, opens the NEW dashboard tab, and closes (W6)', async () => {
+      seedReturnTo(null, {
+        dashboards: [],
+        placeChartInNewDashboard: jest
+          .fn()
+          .mockResolvedValue({ success: true, dashboardName: 'new-dashboard' }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+
+      await waitFor(() =>
+        expect(useStore.getState().placeChartInNewDashboard).toHaveBeenCalledWith('churn_chart')
+      );
+      // Never the existing-dashboard placement path — there is no dashboard.
+      expect(useStore.getState().placeChartInDashboardSlot).not.toHaveBeenCalled();
+      // Opens the tab of the dashboard the store action just created (its
+      // REAL name comes from the action's result, never guessed here).
+      await waitFor(() =>
+        expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'dashboard:new-dashboard',
+          type: 'dashboard',
+          name: 'new-dashboard',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    test('ZERO dashboards: a failed create-and-place shows the inline error and does not close (W6)', async () => {
+      seedReturnTo(null, {
+        dashboards: [],
+        placeChartInNewDashboard: jest
+          .fn()
+          .mockResolvedValue({ success: false, error: 'could not create a new dashboard' }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('exploration-promote-fallback-place-error')).toHaveTextContent(
+          'could not create a new dashboard'
+        )
+      );
+      expect(useStore.getState().openWorkspaceTab).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    test('ZERO dashboards: a failed create-and-place with no `error` field falls back to the generic message (W6)', async () => {
+      seedReturnTo(null, {
+        dashboards: [],
+        placeChartInNewDashboard: jest.fn().mockResolvedValue({ success: false }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
       expect(
-        screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
+        await screen.findByTestId('exploration-promote-fallback-place-error')
+      ).toHaveTextContent('Could not place the chart in the dashboard');
+    });
+
+    test('ZERO dashboards: clicking Add when placeChartInNewDashboard is missing from the store is a safe no-op (W6)', async () => {
+      seedReturnTo(null, { dashboards: [], placeChartInNewDashboard: undefined });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+
+      // No crash, no error banner, no navigation, no close — and the
+      // existing-dashboard path was never wrongly invoked as a stand-in.
+      expect(
+        screen.queryByTestId('exploration-promote-fallback-place-error')
       ).not.toBeInTheDocument();
+      expect(useStore.getState().placeChartInDashboardSlot).not.toHaveBeenCalled();
+      expect(useStore.getState().openWorkspaceTab).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    test('with existing dashboards the "New dashboard…" option is offered ALONGSIDE them, and the default stays the first dashboard (W6)', async () => {
+      seedReturnTo(null, {
+        placeChartInNewDashboard: jest
+          .fn()
+          .mockResolvedValue({ success: true, dashboardName: 'new-dashboard' }),
+      });
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      const offer = await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+      // Default is unchanged: the FIRST existing dashboard, not the new-
+      // dashboard sentinel.
+      expect(offer).toHaveTextContent('sales');
+
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+
+      await waitFor(() =>
+        expect(useStore.getState().placeChartInDashboardSlot).toHaveBeenCalledWith(
+          'sales',
+          'churn_chart'
+        )
+      );
+      expect(useStore.getState().placeChartInNewDashboard).not.toHaveBeenCalled();
     });
 
     test('no fallback offer when no chart was promoted this run (even with no return_to)', async () => {
@@ -1368,20 +1501,42 @@ describe('ExplorationPromoteModal', () => {
       expect(fallback).toHaveTextContent('churn_chart');
     });
 
-    test('closes on a clean success when a chart is promoted but no dashboards exist to place it in (VIS-1226)', async () => {
-      seedReturnTo(null, { dashboards: [] });
+    // W6 — the coverage-push twin of the primary describe's zero-dashboard
+    // suite: pins that the old auto-close (VIS-1226's "nothing to act on")
+    // no longer swallows the first-run case, and that the sentinel routes to
+    // placeChartInNewDashboard rather than the existing-dashboard action.
+    test('ZERO dashboards: the offer renders with "New dashboard…" and accepting routes through placeChartInNewDashboard (W6)', async () => {
+      seedReturnTo(null, {
+        dashboards: [],
+        placeChartInNewDashboard: jest
+          .fn()
+          .mockResolvedValue({ success: true, dashboardName: 'new-dashboard' }),
+      });
       buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
       useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
       const onClose = jest.fn();
       render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
       await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
       fireEvent.click(screen.getByTestId('exploration-promote-submit'));
-      // No dashboards to offer and no field to jump to -> nothing to act on, so
-      // the modal closes instead of lingering on a bare "Saved" receipt.
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
-      expect(
-        screen.queryByTestId('exploration-promote-fallback-dashboard-offer')
-      ).not.toBeInTheDocument();
+
+      const offer = await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+      expect(offer).toHaveTextContent('New dashboard…');
+      expect(onClose).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('exploration-promote-fallback-place'));
+
+      await waitFor(() =>
+        expect(useStore.getState().placeChartInNewDashboard).toHaveBeenCalledWith('churn_chart')
+      );
+      expect(useStore.getState().placeChartInDashboardSlot).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'dashboard:new-dashboard',
+          type: 'dashboard',
+          name: 'new-dashboard',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
     });
 
     test('no fallback offer when no chart was promoted this run (even with no return_to)', async () => {

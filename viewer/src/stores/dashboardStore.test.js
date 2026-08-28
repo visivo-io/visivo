@@ -56,6 +56,146 @@ describe('dashboardStore createDashboard (Project Editor "+ New Dashboard")', ()
   });
 });
 
+// W6 (Dashboard Building v1) — the promote modal's "New dashboard…" exit ramp
+// for a project with ZERO dashboards: create through the standard
+// inline-create path, then FILL the born row's empty slot (#621) — never
+// append a second row.
+describe('dashboardStore placeChartInNewDashboard (W6 zero-dashboard promote)', () => {
+  /**
+   * Stub `saveDashboard` to also simulate its refetch: the saved config
+   * lands in `state.dashboards`, which is where `placeChartInNewDashboard`
+   * reads the born config back from after the create.
+   */
+  const seedWithRefetchingSave = (dashboards = []) => {
+    const saveDashboard = jest.fn(async (name, config) => {
+      const current = useStore.getState().dashboards || [];
+      useStore.setState({
+        dashboards: current.filter(d => d.name !== name).concat([{ name, config }]),
+      });
+      return { success: true };
+    });
+    seed(dashboards, saveDashboard);
+    return saveDashboard;
+  };
+
+  test('creates a dashboard via the standard path and FILLS the born row\'s empty slot — one row, one item, never a second row', async () => {
+    const saveDashboard = seedWithRefetchingSave([]);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result).toMatchObject({ success: true, dashboardName: 'new-dashboard' });
+    // Two saves: the born template (create), then the filled slot (place).
+    expect(saveDashboard).toHaveBeenCalledTimes(2);
+    expect(saveDashboard.mock.calls[0]).toEqual([
+      'new-dashboard',
+      { rows: [{ height: 'medium', items: [{ width: 1 }] }] },
+    ]);
+    const [placedName, placedConfig] = saveDashboard.mock.calls[1];
+    expect(placedName).toBe('new-dashboard');
+    // The #621 born slot is FILLED in place (itemMutations' context-string
+    // ref form) — the config still has exactly one row with one item, so the
+    // new dashboard opens showing the chart, not an empty placeholder row.
+    expect(placedConfig.rows).toHaveLength(1);
+    expect(placedConfig.rows[0].items).toHaveLength(1);
+    // eslint-disable-next-line no-template-curly-in-string
+    expect(placedConfig.rows[0].items[0]).toEqual({ width: 1, chart: '${ref(churn_chart)}' });
+  });
+
+  test('deduplicates the new dashboard name and reports the REAL created name back', async () => {
+    const saveDashboard = seedWithRefetchingSave([{ name: 'new-dashboard', config: {} }]);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result.success).toBe(true);
+    expect(result.dashboardName).not.toBe('new-dashboard');
+    // Both saves address the deduplicated name.
+    expect(saveDashboard.mock.calls[0][0]).toBe(result.dashboardName);
+    expect(saveDashboard.mock.calls[1][0]).toBe(result.dashboardName);
+  });
+
+  test('requires a chart name — no dashboard is created without one', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seed([], saveDashboard);
+
+    const result = await useStore.getState().placeChartInNewDashboard('');
+
+    expect(result.success).toBe(false);
+    expect(saveDashboard).not.toHaveBeenCalled();
+  });
+
+  test('propagates a failed create and never attempts a placement save', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: false, error: 'disk full' }));
+    seed([], saveDashboard);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result).toEqual({ success: false, error: 'disk full' });
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+  });
+
+  test('propagates a failed placement save (create succeeded)', async () => {
+    const saveDashboard = jest
+      .fn()
+      .mockImplementationOnce(async (name, config) => {
+        useStore.setState({
+          dashboards: (useStore.getState().dashboards || []).concat([{ name, config }]),
+        });
+        return { success: true };
+      })
+      .mockImplementationOnce(async () => ({ success: false, error: 'validation refused it' }));
+    seed([], saveDashboard);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('validation refused it');
+  });
+
+  test('defensive: a born config with NO empty slot still lands the chart (appended, never dropped)', async () => {
+    // Simulate a server that normalizes the created dashboard into a config
+    // whose only slot is already occupied — the #621 template guarantees an
+    // empty slot, but the placement must never silently drop the chart if
+    // that guarantee ever changes.
+    const saveDashboard = jest.fn(async (name, config) => {
+      const occupied = {
+        // eslint-disable-next-line no-template-curly-in-string
+        rows: [{ height: 'medium', items: [{ width: 1, chart: '${ref(already_there)}' }] }],
+      };
+      const stored = saveDashboard.mock.calls.length === 1 ? occupied : config;
+      const current = useStore.getState().dashboards || [];
+      useStore.setState({
+        dashboards: current.filter(d => d.name !== name).concat([{ name, config: stored }]),
+      });
+      return { success: true };
+    });
+    seed([], saveDashboard);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result.success).toBe(true);
+    const [, placedConfig] = saveDashboard.mock.calls[1];
+    const allItems = placedConfig.rows.flatMap(r => r.items || []);
+    expect(allItems.some(item => (item.chart || '').includes('churn_chart'))).toBe(true);
+    // The occupied slot was not overwritten.
+    expect(allItems.some(item => (item.chart || '').includes('already_there'))).toBe(true);
+  });
+
+  test('defensive: when the refetch misses the new dashboard, the born template shape is assumed and the slot still fills', async () => {
+    // saveDashboard succeeds but never lands the dashboard in the list (a
+    // refetch race) — the placement falls back to the template's own shape.
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seed([], saveDashboard);
+
+    const result = await useStore.getState().placeChartInNewDashboard('churn_chart');
+
+    expect(result).toMatchObject({ success: true, dashboardName: 'new-dashboard' });
+    const [, placedConfig] = saveDashboard.mock.calls[1];
+    expect(placedConfig.rows).toHaveLength(1);
+    // eslint-disable-next-line no-template-curly-in-string
+    expect(placedConfig.rows[0].items[0]).toEqual({ width: 1, chart: '${ref(churn_chart)}' });
+  });
+});
+
 describe('dashboardStore reassignDashboardLevel', () => {
   test('saves the dashboard config with the new level', async () => {
     const saveDashboard = jest.fn(async () => ({ success: true }));

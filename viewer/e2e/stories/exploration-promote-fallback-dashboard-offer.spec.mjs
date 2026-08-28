@@ -18,6 +18,11 @@
  * reuses the same `placeChartInDashboardSlot` plumbing the return_to-driven
  * offer does.
  *
+ * Also covers W6 (Dashboard Building v1 — "Post-promote always offers a
+ * destination, including a brand-new dashboard"): the ZERO-dashboard
+ * first-run case, manufactured in-test by soft-deleting every dashboard
+ * before the app loads (afterEach's commit/discard restores them).
+ *
  * Precondition: sandbox running (integration project — has ≥1 real
  * dashboard), e.g.
  *   VISIVO_SANDBOX_NAME=fallbackOffer VISIVO_SANDBOX_BACKEND_PORT=8055 \
@@ -133,6 +138,16 @@ async function bindXSlotToNumericColumn(page) {
   await expect(xSlot.getByTestId('pill-menu-trigger')).toBeVisible({ timeout: 10000 });
 }
 
+/** Rename the draft chart via its name input (select-all + type + blur). */
+async function nameChart(page, chartName) {
+  const nameInput = page.getByTestId('chart-name-input');
+  await nameInput.click();
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.press(`${modifier}+a`);
+  await page.keyboard.type(chartName, { delay: 5 });
+  await nameInput.blur();
+}
+
 async function fetchDashboard(page, name) {
   const res = await page.request.get(`${apiBase}/api/dashboards/${encodeURIComponent(name)}/`);
   expect(res.ok()).toBe(true);
@@ -186,12 +201,7 @@ test.describe('Post-promote fallback dashboard offer, reached through the ordina
 
     await bindXSlotToNumericColumn(page);
     const chartName = `e2e_fallback_offer_chart_${Date.now()}`;
-    const nameInput = page.getByTestId('chart-name-input');
-    await nameInput.click();
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await page.keyboard.press(`${modifier}+a`);
-    await page.keyboard.type(chartName, { delay: 5 });
-    await nameInput.blur();
+    await nameChart(page, chartName);
 
     const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
     const insightName = await page.evaluate(
@@ -230,6 +240,90 @@ test.describe('Post-promote fallback dashboard offer, reached through the ordina
       const dashboard = await fetchDashboard(page, dashboardName);
       expect(dashboardReferencesChart(dashboard, chartName)).toBe(true);
     }).toPass({ timeout: 20000 });
+  });
+
+  // W6 (Dashboard Building v1 — "Post-promote always offers a destination,
+  // including a brand-new dashboard"): the FIRST-RUN case. A project with
+  // ZERO dashboards used to auto-close the modal on a clean chart promote
+  // (`showFallbackDashboardOffer` required `dashboards.length > 0`), so the
+  // one working exit ramp from Explorer to a dashboard never fired for
+  // exactly the user who needs it most — every field-test tester. Now the
+  // offer renders with a "New dashboard…" default; accepting creates a
+  // dashboard through the standard inline-create path and FILLS the born
+  // row's existing empty slot (#621) — never appends a second row.
+  test('ZERO dashboards: promote offers "New dashboard…", creates one, and fills its born slot with the chart', async ({
+    page,
+  }) => {
+    // Manufacture the first-run state BEFORE the app loads, so the viewer's
+    // dashboard fetch really returns nothing: soft-delete every dashboard
+    // (tombstoned — afterEach's commit/discard restores them all).
+    const listRes = await page.request.get(`${apiBase}/api/dashboards/`);
+    expect(listRes.ok()).toBe(true);
+    const { dashboards: preexisting } = await listRes.json();
+    for (const d of preexisting) {
+      await page.request.delete(`${apiBase}/api/dashboards/${encodeURIComponent(d.name)}/`);
+    }
+    const emptyRes = await page.request.get(`${apiBase}/api/dashboards/`);
+    expect(emptyRes.ok()).toBe(true);
+    expect((await emptyRes.json()).dashboards).toHaveLength(0);
+
+    // The same ordinary flow as the test above — Explorer home, source tile,
+    // query, chart, Save to project. No dashboard exists anywhere.
+    await gotoExplorerHome(page);
+    await startFromSourceTile(page);
+    await bindXSlotToNumericColumn(page);
+    const chartName = `e2e_zero_dash_chart_${Date.now()}`;
+    await nameChart(page, chartName);
+
+    const queryName = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+    const insightName = await page.evaluate(
+      () => window.useStore.getState().explorerChartInsightNames[0]
+    );
+
+    await page.getByTestId('explorer-save-button').click();
+    await expect(page.getByTestId('exploration-promote-modal')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('exploration-promote-submit').click();
+    await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
+    createdObjects.push(
+      { segment: 'models', name: queryName },
+      { segment: 'insights', name: insightName },
+      { segment: 'charts', name: chartName }
+    );
+
+    // The modal did NOT auto-close as a "clean success with nothing to act
+    // on" — the offer renders, and with zero dashboards its select defaults
+    // to the "New dashboard…" sentinel (no picking needed).
+    const fallbackOffer = page.getByTestId('exploration-promote-fallback-dashboard-offer');
+    await expect(fallbackOffer).toBeVisible({ timeout: 10000 });
+    await expect(fallbackOffer).toContainText(chartName);
+    await expect(fallbackOffer).toContainText('New dashboard…');
+
+    await page.getByTestId('exploration-promote-fallback-place').click();
+
+    // A dashboard now exists that didn't a moment ago; register it for
+    // cleanup and confirm its tab opened.
+    let createdDashboardName;
+    await expect(async () => {
+      const res = await page.request.get(`${apiBase}/api/dashboards/`);
+      expect(res.ok()).toBe(true);
+      const { dashboards } = await res.json();
+      expect(dashboards).toHaveLength(1);
+      createdDashboardName = dashboards[0].name;
+    }).toPass({ timeout: 20000 });
+    createdObjects.push({ segment: 'dashboards', name: createdDashboardName });
+    await expect(page.getByTestId(`dashboard_${createdDashboardName}`)).toBeVisible({
+      timeout: 20000,
+    });
+
+    // Backend-asserted (feedback_backend_diffing.md): the chart FILLED the
+    // born row's existing empty slot — exactly one row holding exactly one
+    // item, and that item IS the chart. Never a second row appended below an
+    // empty placeholder row.
+    const dashboard = await fetchDashboard(page, createdDashboardName);
+    const rows = dashboard?.config?.rows || [];
+    expect(rows).toHaveLength(1);
+    expect(rows[0].items).toHaveLength(1);
+    expect(rows[0].items[0].chart || '').toContain(chartName);
   });
 
   test('the fallback offer never appears when nothing was promoted this run', async ({ page }) => {
