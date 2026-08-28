@@ -26,10 +26,13 @@ venv.bak/
 prds/
 test-results/
 
+# scripts/sandbox.sh writes its PID + log files here, one dir per
+# VISIVO_SANDBOX_NAME. Listing them individually meant every new sandbox name
+# was committable until someone noticed — `.sandbox-nyc/` got as far as a PR.
 .sandbox/
-.sandbox-publish/
-.sandbox-onb-empty/
-.sandbox-docs/
+.sandbox-*/
+# `rwx logs` downloads CI logs here. The rest of .rwx/ is real config.
+.rwx/downloads/
 viewer/e2e/screenshots/
 viewer/test-results/
 
