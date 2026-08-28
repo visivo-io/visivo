@@ -165,18 +165,31 @@ class Serializer:
         managers serve in ``visivo serve`` for the local editor (they read this
         same DAG).
 
-        Dimensions and metrics are
-        surfaced even when authored inside a model, since they are their own
-        named nodes in the DAG. Charts/insights/tables/markdowns/inputs are
+        Dimensions and metrics are emitted ONLY when project-level. A
+        model-scoped one stays inside its model's config, which is the only
+        thing that records the nesting — neither type has a `model` or
+        `parentModel` field, and both forbid extras. They remain their own DAG
+        nodes (validators and bare-`${ref()}` resolution depend on that); this
+        is about the wire, not the graph. Charts/insights/tables/markdowns/inputs are
         emitted in source (ref) form — distinct from the baked, inlined copies
         carried on the dashboards for rendering.
         """
         dag = self._get_dag()
 
-        def collect(node_type):
+        def collect(node_type, standalone_only=False):
             collected = []
             seen = set()
             for node in all_descendants_of_type(type=node_type, dag=dag):
+                # VIS-1259: a metric/dimension authored INSIDE a model is not
+                # its own object — it belongs to the model and rides along in
+                # the model's own dump. Emitting it here as a separate record
+                # was lossy: `_parent_name` is a PrivateAttr, so `model_dump()`
+                # produced `{name, expression}` with NO owner at all, and the
+                # cloud could not tell a nested field from a project-level one.
+                # Worse, it shipped the same field twice — once standalone,
+                # once inside its model.
+                if standalone_only and getattr(node, "_parent_name", None):
+                    continue
                 name = getattr(node, "name", None)
                 if name and name not in seen:
                     seen.add(name)
@@ -186,8 +199,8 @@ class Serializer:
         return {
             "sources": collect(Source),
             "models": collect(SqlModel),
-            "dimensions": collect(Dimension),
-            "metrics": collect(Metric),
+            "dimensions": collect(Dimension, standalone_only=True),
+            "metrics": collect(Metric, standalone_only=True),
             "relations": collect(Relation),
             "charts": collect(Chart),
             "insights": collect(Insight),
