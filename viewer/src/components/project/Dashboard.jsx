@@ -223,6 +223,12 @@ const Dashboard = ({
   // renderer falls back to the legacy "<Type> not found: <name>" placeholder so
   // static viewing stays at parity.
   renderBrokenRef = null,
+  // Optional click handler for an EMPTY canvas slot (W5 click-to-pick). When
+  // provided (canvas build surface), the empty-slot placeholder renders as a
+  // real <button> and clicking it calls `({ itemPath })` so the canvas can open
+  // the <ReferencePicker> for that slot. When absent, the placeholder stays the
+  // inert VIS-901 #3 div (and View mode still renders nothing at all).
+  onEmptySlotClick = null,
 }) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
@@ -616,7 +622,26 @@ const Dashboard = ({
     // renders nothing (parity preserved); on the canvas build surface we paint a
     // visible dashed placeholder so the slot is discoverable + a drop target
     // (VIS-901 #3). Backend persistence of a truly-empty item lands with VIS-900.
+    // W5 (click-to-pick): when the canvas supplies `onEmptySlotClick`, the
+    // placeholder is a real button — clicking (or keyboard-activating) it opens
+    // the ReferencePicker for this slot, so drag-and-drop stops being the only
+    // way to fill an empty slot.
     if (canvasMode) {
+      if (typeof onEmptySlotClick === 'function') {
+        return (
+          <button
+            key={key}
+            type="button"
+            data-testid="canvas-empty-slot"
+            aria-label="Empty slot — choose content"
+            onClick={() => onEmptySlotClick({ itemPath })}
+            className="flex h-full w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-[11px] font-medium text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            style={{ minHeight: 48 }}
+          >
+            Empty slot — click to choose
+          </button>
+        );
+      }
       return (
         <div
           key={key}

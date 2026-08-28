@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import RefDropZone from './RefDropZone';
+import ReferencePicker from '../project/canvas/ReferencePicker';
+import useStore from '../../../stores/store';
+import { emitWorkspaceEvent } from '../workspace/telemetry';
+import { mintWrapperChartName, buildWrapperChartConfig } from '../../../utils/insightWrap';
 import { parseRefValue } from '../../../utils/refString';
 import {
   LEAF_REF_FIELDS,
@@ -92,6 +96,83 @@ export const isContainerItem = item => Array.isArray(item?.rows);
  *                                `row-<rowId>-item-<idx>` id so existing
  *                                bundled behavior stays byte-identical.
  */
+/**
+ * LeafChooseControl — the W5 click-to-pick affordance for an EMPTY leaf slot:
+ * a "Choose…" button that opens the same <ReferencePicker> the canvas
+ * empty-slot click uses (charts + insights), so drag-and-drop is never the
+ * only way to fill a slot from the right rail.
+ *
+ * A separate component (mounted only for empty leaves) so <ItemEditForm>
+ * itself stays hook-free — its picker state lives here.
+ *
+ * A pick lands the SAME way a canvas pick does. A chart pick sets the item's
+ * `chart` leaf. An insight pick AUTO-WRAPS (#637 pattern): mint the unique
+ * `<insight>-chart` name (pure), validate the placement transform FIRST, and
+ * only then save the wrapper chart — a rejected placement must never leave an
+ * orphan draft chart. The item change flows through `onChange` into the
+ * dashboard working copy (#617 — the explicit Save footer persists it).
+ */
+const LeafChooseControl = ({ item, itemId, onChange }) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const handlePickerSelect = (pickedName, pickedType) => {
+    setPickerOpen(false);
+    if (!pickedName || !pickedType) return;
+
+    if (pickedType === 'insight') {
+      const state = useStore.getState();
+      const existingCharts = (state.charts || []).map(chart => chart.name);
+      const chartName = mintWrapperChartName(pickedName, existingCharts);
+      const next = applyLeafRef(item, { type: 'chart', name: chartName });
+      if (!next || !next.chart) return; // rejected placement → mint nothing
+      if (typeof state.saveChart === 'function') {
+        state.saveChart(chartName, buildWrapperChartConfig(pickedName));
+      }
+      onChange(next);
+      emitWorkspaceEvent('canvas_action', {
+        kind: 'add_item',
+        source: 'picker',
+        type: 'insight',
+        name: pickedName,
+        wrapped_chart: chartName,
+        itemId,
+      });
+      return;
+    }
+
+    const next = applyLeafRef(item, { type: pickedType, name: pickedName });
+    if (!next || !next[pickedType]) return;
+    onChange(next);
+    emitWorkspaceEvent('canvas_action', {
+      kind: 'add_item',
+      source: 'picker',
+      type: pickedType,
+      name: pickedName,
+      itemId,
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        data-testid={`item-${itemId}-choose`}
+        onClick={() => setPickerOpen(true)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 transition-colors hover:text-primary-700"
+      >
+        Choose…
+      </button>
+      {pickerOpen && (
+        <ReferencePicker
+          types={['chart', 'insight']}
+          onSelect={handlePickerSelect}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+    </>
+  );
+};
+
 const ItemEditForm = ({
   item,
   itemId,
@@ -287,15 +368,20 @@ const ItemEditForm = ({
           </button>
         </div>
       ) : (
-        <RefDropZone
-          id={resolvedLeafDropZoneId}
-          allowedTypes={ALLOWED_LEAF_TYPES}
-          value={leafRef}
-          onClear={() => handleLeafRefChange(null)}
-          onChange={ref => handleLeafRefChange(ref)}
-          onSelectRef={onSelectRef}
-          hint="Drop a chart, table, markdown, or input"
-        />
+        <div className="space-y-1.5">
+          <RefDropZone
+            id={resolvedLeafDropZoneId}
+            allowedTypes={ALLOWED_LEAF_TYPES}
+            value={leafRef}
+            onClear={() => handleLeafRefChange(null)}
+            onChange={ref => handleLeafRefChange(ref)}
+            onSelectRef={onSelectRef}
+            hint="Drop a chart, table, markdown, or input"
+          />
+          {/* W5 click-to-pick: click alternative to the drop zone, empty leaf
+              only (a filled slot shows its pill; clear it first to re-pick). */}
+          {!leafRef && <LeafChooseControl item={item} itemId={itemId} onChange={onChange} />}
+        </div>
       )}
     </div>
   );

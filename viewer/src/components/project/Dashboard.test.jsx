@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { futureFlags } from '../../router-config';
 import Dashboard from './Dashboard';
@@ -297,6 +297,23 @@ describe('Dashboard', () => {
     it('renders nothing for an empty slot in View mode (parity preserved)', () => {
       renderEmptySlot();
       expect(screen.queryByTestId('canvas-empty-slot')).not.toBeInTheDocument();
+    });
+
+    // ---------- W5 click-to-pick: the empty slot becomes clickable ----------
+    it('renders the empty slot as a real button when onEmptySlotClick is provided', () => {
+      const onEmptySlotClick = jest.fn();
+      renderEmptySlot({ canvasMode: true, onEmptySlotClick });
+      const slot = screen.getByTestId('canvas-empty-slot');
+      // A BUTTON — focusable, so the picker path is keyboard-completable.
+      expect(slot.tagName).toBe('BUTTON');
+      fireEvent.click(slot);
+      expect(onEmptySlotClick).toHaveBeenCalledTimes(1);
+      expect(onEmptySlotClick).toHaveBeenCalledWith({ itemPath: 'row.0.item.0' });
+    });
+
+    it('keeps the inert placeholder div when onEmptySlotClick is absent', () => {
+      renderEmptySlot({ canvasMode: true });
+      expect(screen.getByTestId('canvas-empty-slot').tagName).toBe('DIV');
     });
   });
 
