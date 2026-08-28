@@ -1,7 +1,9 @@
 import pytest
+from visivo.models.chart import Chart
+from visivo.models.dashboard import Dashboard
 from visivo.models.models.sql_model import SqlModel
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
-from tests.factories.model_factories import SqlModelFactory
+from tests.factories.model_factories import DashboardFactory, MetricFactory, SqlModelFactory
 
 
 class ConcreteObjectManager(ObjectManager[dict]):
@@ -481,3 +483,135 @@ class TestObjectsEqualIgnoresLocationFields:
 
         assert manager.get_status("orders") == ObjectStatus.MODIFIED
         assert manager.has_unpublished_changes() is True
+
+
+class TestLocationStripReachesEveryDepth:
+    """``exclude=`` reaches only the TOP level of a dump.
+
+    A composite carries location bookkeeping on every nested node — a
+    dashboard's rows, its items, and any chart written inline inside one all
+    have their own ``path``. Excluding just the outermost pair left the leak
+    fully in place one level down: the API kept handing the client the
+    bookkeeping the constant claims it strips, a client that sent a genuinely
+    clean config was still reported MODIFIED, and a commit still wrote
+    ``path:`` and absolute ``file_path:`` lines into tracked YAML.
+    """
+
+    @staticmethod
+    def _dashboard_with_nested_bookkeeping():
+        dashboard = DashboardFactory(name="sales")
+        dashboard.path = "project.dashboards[0]"
+        dashboard.file_path = "/repo/dashboards.visivo.yml"
+        dashboard.rows[0].path = "project.dashboards[0].rows[0]"
+        dashboard.rows[0].items[0].path = "project.dashboards[0].rows[0].items[0]"
+        dashboard.rows[0].items[0].chart.path = "project.dashboards[0].rows[0].items[0].chart"
+        return dashboard
+
+    def test_serialize_object_strips_nested_bookkeeping(self):
+        dashboard = self._dashboard_with_nested_bookkeeping()
+
+        config = ConcreteObjectManager()._serialize_object(
+            "sales", dashboard, ObjectStatus.PUBLISHED
+        )["config"]
+
+        assert "path" not in config and "file_path" not in config
+        assert "path" not in config["rows"][0]
+        assert "path" not in config["rows"][0]["items"][0]
+        assert "path" not in config["rows"][0]["items"][0]["chart"]
+
+    def test_a_clean_composite_config_is_equal_to_its_published_twin(self):
+        """The status symptom for composites.
+
+        A schema-driven client sends a config with no bookkeeping at ANY depth
+        — the only kind the API's own docstring says it can send. That config
+        was still reported MODIFIED for every dashboard in the project.
+        """
+        manager = ConcreteObjectManager()
+        published = self._dashboard_with_nested_bookkeeping()
+        manager._published_objects["sales"] = published
+
+        clean = manager._serialize_object("sales", published, ObjectStatus.PUBLISHED)["config"]
+        manager.save("sales", Dashboard(**clean))
+
+        assert manager.get_status("sales") == ObjectStatus.PUBLISHED
+
+    def test_a_nested_content_edit_is_still_modified(self):
+        """The complement: stripping deeply must not blind the comparison."""
+        manager = ConcreteObjectManager()
+        published = self._dashboard_with_nested_bookkeeping()
+        manager._published_objects["sales"] = published
+
+        clean = manager._serialize_object("sales", published, ObjectStatus.PUBLISHED)["config"]
+        clean["rows"][0]["height"] = "large"
+        manager.save("sales", Dashboard(**clean))
+
+        assert manager.get_status("sales") == ObjectStatus.MODIFIED
+
+    def test_a_plotly_shape_path_is_left_alone(self):
+        """The false positive a name-based strip would produce.
+
+        ``layout.shapes[].path`` is a real Plotly property — the SVG path of a
+        drawn shape — living in free-form prop space where it is never a
+        declared model field. Deleting it would silently corrupt a valid chart
+        on commit, which is worse than the leak being fixed. The strip is
+        guided by the model instance precisely so this survives.
+        """
+        chart = Chart(
+            name="shaped",
+            layout={"shapes": [{"type": "path", "path": "M 0 0 L 10 10 Z"}]},
+        )
+        chart.path = "project.charts[0]"
+        chart.file_path = "/repo/charts.visivo.yml"
+
+        config = ConcreteObjectManager()._serialize_object("shaped", chart, ObjectStatus.PUBLISHED)[
+            "config"
+        ]
+
+        assert "path" not in config and "file_path" not in config
+        assert config["layout"]["shapes"][0]["path"] == "M 0 0 L 10 10 Z"
+
+
+class TestObjectsEqualComparesModelScope:
+    """``_parent_name`` is content, and no ``model_dump`` can see it.
+
+    For a metric or dimension it names the model the field is scoped to.
+    ``commit_views._build_child_info`` reads it to choose which YAML file the
+    field is written into and whether it nests under ``model.metrics`` — so a
+    save that ONLY re-parents a field is a real change. Because it is a
+    ``PrivateAttr``, a dump-only comparison called it equal: the save reported
+    PUBLISHED, never entered the pending set, and was dropped when the draft
+    cache was cleared.
+    """
+
+    def test_re_parenting_alone_is_not_equal(self):
+        published = MetricFactory(name="revenue")
+        published.set_parent_name("orders")
+        re_parented = MetricFactory(name="revenue")
+        re_parented.set_parent_name("orders_v2")
+
+        assert published.model_dump() == re_parented.model_dump(), "premise: dumps are identical"
+        assert not ConcreteObjectManager().objects_equal(re_parented, published)
+
+    def test_un_scoping_a_field_is_not_equal(self):
+        published = MetricFactory(name="revenue")
+        published.set_parent_name("orders")
+        unscoped = MetricFactory(name="revenue")
+
+        assert not ConcreteObjectManager().objects_equal(unscoped, published)
+
+    def test_the_same_scope_is_still_equal(self):
+        """The complement: an unchanged scope must not invent a change."""
+        published = MetricFactory(name="revenue", path="project.models[0].metrics[0]")
+        published.set_parent_name("orders")
+        round_tripped = MetricFactory(name="revenue")
+        round_tripped.set_parent_name("orders")
+
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)
+
+    def test_objects_without_the_attribute_are_unaffected(self):
+        """Only metrics/dimensions carry ``_parent_name``; everything else must
+        compare exactly as before."""
+        published = SqlModelFactory(name="orders", path="project.models[0]")
+        round_tripped = SqlModelFactory(name="orders")
+
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)

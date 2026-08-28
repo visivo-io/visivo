@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 from flask import Flask
 
+from visivo.server.flask_app import FlaskApp
 from visivo.server.views.commit_views import register_commit_views
 from visivo.server.managers.object_manager import ObjectStatus
 
@@ -60,6 +61,11 @@ class TestCommitViews:
         flask_app.input_manager.has_unpublished_changes.return_value = False
         flask_app.input_manager.cached_objects = {}
         flask_app._cached_defaults = None
+        # A real published value and the REAL comparison, not a Mock that is
+        # always truthy: "is a defaults object cached?" is exactly the question
+        # these endpoints stopped asking, so the mock must not answer it.
+        flask_app.project.defaults = None
+        flask_app.defaults_changed.side_effect = lambda: FlaskApp.defaults_changed(flask_app)
 
         register_commit_views(app, flask_app, "/tmp/output")
 

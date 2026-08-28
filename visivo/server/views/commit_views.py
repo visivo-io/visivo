@@ -3,7 +3,7 @@ import os
 from dotenv import dotenv_values
 from flask import jsonify
 from visivo.logger.logger import Logger
-from visivo.server.managers.object_manager import LOCATION_FIELDS, ObjectStatus
+from visivo.server.managers.object_manager import ObjectStatus, location_free_dump
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.user_config import get_run_trigger
 
@@ -41,7 +41,7 @@ def register_commit_views(app, flask_app, output_dir):
                 or flask_app.table_manager.has_unpublished_changes()
                 or flask_app.dashboard_manager.has_unpublished_changes()
                 or flask_app.input_manager.has_unpublished_changes()
-                or flask_app._cached_defaults is not None
+                or flask_app.defaults_changed()
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -179,7 +179,7 @@ def register_commit_views(app, flask_app, output_dir):
                     pending.append(input_info)
 
             # Get defaults changes
-            if flask_app._cached_defaults is not None:
+            if flask_app.defaults_changed():
                 pending.append(
                     {
                         "name": "defaults",
@@ -261,7 +261,7 @@ def register_commit_views(app, flask_app, output_dir):
                             to_remove.append(entry)
                         else:
                             to_publish.append(entry)
-            if flask_app._cached_defaults is not None:
+            if flask_app.defaults_changed():
                 to_publish.append({"name": "defaults", "type": "defaults", "status": "modified"})
             # `staged` is a different question from `to_publish`: what a RUN
             # would build, not what a COMMIT would publish. A chart colour edit
@@ -467,15 +467,17 @@ def register_commit_views(app, flask_app, output_dir):
                     published_count += 1
 
             # Process defaults
-            if flask_app._cached_defaults is not None:
-                exclude_fields = LOCATION_FIELDS
+            if flask_app.defaults_changed():
                 named_children["defaults"] = {
                     "status": "Modified",
                     "file_path": flask_app.project.project_file_path,
                     "new_file_path": flask_app.project.project_file_path,
                     "type_key": "defaults",
-                    "config": flask_app._cached_defaults.model_dump(
-                        exclude_none=True, exclude=exclude_fields
+                    # ``mode="json"`` like every other config in this function.
+                    # Without it ``levels`` arrives as a list of ``Level``
+                    # enums, which ruamel cannot represent.
+                    "config": location_free_dump(
+                        flask_app._cached_defaults, mode="json", exclude_none=True
                     ),
                 }
                 published_count += 1
@@ -608,9 +610,9 @@ def register_commit_views(app, flask_app, output_dir):
                     if status and status != ObjectStatus.PUBLISHED:
                         discarded_count += 1
                 manager.clear_cache()
-            if flask_app._cached_defaults is not None:
+            if flask_app.defaults_changed():
                 discarded_count += 1
-                flask_app._cached_defaults = None
+            flask_app._cached_defaults = None
 
             return jsonify(
                 {
@@ -725,11 +727,6 @@ def _build_child_info(
     }
     writer_status = status_map.get(status, "Unchanged")
 
-    # Fields that should not be written to YAML files (internal tracking fields).
-    # The same set ``objects_equal`` ignores — what is not written cannot be
-    # what makes an object look changed.
-    exclude_fields = LOCATION_FIELDS
-
     # Detect a model-scoped metric/dimension via the PrivateAttr set in the
     # save endpoint. PrivateAttrs survive on the Pydantic instance.
     parent_model_name = None
@@ -752,9 +749,7 @@ def _build_child_info(
         else:
             file_path = project_file_path
             new_file_path = project_file_path
-        config = (
-            obj.model_dump(mode="json", exclude_none=True, exclude=exclude_fields) if obj else {}
-        )
+        config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
     elif status == ObjectStatus.DELETED:
         # Deleted objects use path from published version
         file_path = _get_file_path(published_obj, project_file_path)
@@ -764,9 +759,7 @@ def _build_child_info(
         # Modified objects use path from published version
         file_path = _get_file_path(published_obj, project_file_path)
         new_file_path = file_path
-        config = (
-            obj.model_dump(mode="json", exclude_none=True, exclude=exclude_fields) if obj else {}
-        )
+        config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
 
     info = {
         "status": writer_status,

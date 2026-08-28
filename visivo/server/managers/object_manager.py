@@ -4,6 +4,8 @@ from enum import Enum
 from threading import Lock
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
+from pydantic import BaseModel as PydanticBaseModel
+
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
 
@@ -12,9 +14,61 @@ T = TypeVar("T")
 # Bookkeeping fields that record where an object lives, not what it is. The
 # parser stamps them on; every serializer that hands a config to a client
 # strips them off again (``ObjectManager._serialize_object``,
-# ``commit_views._build_child_info``), so they can never survive a round trip
+# ``InputManager._serialize_object``, ``commit_views._build_child_info``,
+# ``run_views._resource_fingerprint``), so they can never survive a round trip
 # and must not participate in "did this change?".
 LOCATION_FIELDS = {"path", "file_path"}
+
+
+def strip_location_fields(instance: Any, dump: Any) -> Any:
+    """``dump`` with location bookkeeping removed at EVERY depth — and nowhere else.
+
+    ``model_dump(exclude={"path", "file_path"})`` only reaches the TOP level,
+    and a composite carries bookkeeping on every nested node: a dashboard's
+    dump arrives with ``path`` on each row, each item and each inline chart.
+    Excluding only the outermost pair therefore left the leak fully in place
+    one level down — client configs still carried it, a client that sent a
+    genuinely clean config was still reported MODIFIED, and a commit still
+    wrote ``path:``/absolute ``file_path:`` lines into tracked YAML.
+
+    The walk is guided by the MODEL INSTANCE, not by key name, and that is the
+    whole point: ``path`` is also a real, user-authored Plotly property
+    (``layout.shapes[].path``, ``layout.selections[].path`` — the SVG path of a
+    drawn shape). Those live in free-form prop space, where they are extras on
+    a ``JsonSchemaBase``, never a declared field. A name-only strip would
+    silently delete a valid chart's shapes from the YAML it commits, which is
+    a far worse bug than the one being fixed. So a key is dropped only where it
+    is a DECLARED field of the visivo model at that node.
+
+    Fails safe: where the dump's shape cannot be matched back to the instance
+    (a custom serializer that renames keys, ``by_alias=True``), the subtree is
+    returned untouched rather than guessed at.
+    """
+    if isinstance(dump, dict):
+        if isinstance(instance, PydanticBaseModel):
+            declared = LOCATION_FIELDS.intersection(type(instance).model_fields)
+            return {
+                key: strip_location_fields(getattr(instance, key, None), value)
+                for key, value in dump.items()
+                if key not in declared
+            }
+        if isinstance(instance, dict):
+            return {
+                key: strip_location_fields(instance.get(key), value) for key, value in dump.items()
+            }
+        return dump
+    if isinstance(dump, list):
+        items = instance if isinstance(instance, (list, tuple)) else ()
+        return [
+            strip_location_fields(items[index] if index < len(items) else None, value)
+            for index, value in enumerate(dump)
+        ]
+    return dump
+
+
+def location_free_dump(obj: Any, **dump_kwargs) -> Any:
+    """``obj.model_dump(**dump_kwargs)`` with location bookkeeping removed at every depth."""
+    return strip_location_fields(obj, obj.model_dump(**dump_kwargs))
 
 
 class ObjectStatus(str, Enum):
@@ -179,14 +233,23 @@ class ObjectManager(ABC, Generic[T]):
 
         Uses model_dump() for Pydantic models, otherwise uses direct comparison.
 
-        ``path`` and ``file_path`` are excluded: they record where an object
-        LIVES, not what it IS. The parser stamps both onto every published
-        object, while a config that came back from a client never carries
-        them — ``_serialize_object`` and ``commit_views._build_child_info``
-        strip both on the way out, so the round trip cannot restore them.
-        Comparing them meant a client-saved object could never be PUBLISHED:
-        re-saving the exact config the API had just handed out reported
-        MODIFIED, permanently, for every object in the project.
+        ``path`` and ``file_path`` are excluded AT EVERY DEPTH: they record
+        where an object LIVES, not what it IS. The parser stamps them onto
+        every published object and every nested node of it, while a config that
+        came back from a client never carries them — the serializers strip them
+        on the way out, so the round trip cannot restore them. Comparing them
+        meant a client-saved object could never be PUBLISHED: re-saving the
+        exact config the API had just handed out reported MODIFIED,
+        permanently, for every object in the project.
+
+        ``_parent_name`` IS compared, even though it is a ``PrivateAttr`` that
+        no ``model_dump`` can see. For a metric or dimension it is the model it
+        is scoped to — real content, not location: ``commit_views``
+        ``_build_child_info`` reads it to choose which YAML file the field is
+        written to and whether it nests under ``model.metrics``. Left out, a
+        save that ONLY re-parents a field (drag it to another model, same
+        expression) compared equal, was reported PUBLISHED, never entered the
+        pending set, and was silently dropped when the draft cache was cleared.
 
         Args:
             obj1: First object
@@ -202,8 +265,10 @@ class ObjectManager(ABC, Generic[T]):
 
         # For Pydantic models, compare serialized dictionaries
         if hasattr(obj1, "model_dump") and hasattr(obj2, "model_dump"):
-            return obj1.model_dump(exclude_none=True, exclude=LOCATION_FIELDS) == obj2.model_dump(
-                exclude_none=True, exclude=LOCATION_FIELDS
+            if getattr(obj1, "_parent_name", None) != getattr(obj2, "_parent_name", None):
+                return False
+            return location_free_dump(obj1, exclude_none=True) == location_free_dump(
+                obj2, exclude_none=True
             )
 
         # Fallback to direct comparison
@@ -351,5 +416,5 @@ class ObjectManager(ABC, Generic[T]):
             "name": name,
             "status": status.value if status else None,
             "child_item_names": child_names,
-            "config": obj.model_dump(mode="json", exclude_none=True, exclude=LOCATION_FIELDS),
+            "config": location_free_dump(obj, mode="json", exclude_none=True),
         }

@@ -117,11 +117,38 @@ class FlaskApp:
             self.dashboard_manager,
         ]
 
+    def defaults_changed(self) -> bool:
+        """True when the cached ``defaults`` block DIFFERS from the published one.
+
+        Every caller used to ask ``_cached_defaults is not None``, which
+        answers "has the Defaults panel been saved this session?", not "did
+        anything change?". Opening the panel and pressing Save without editing
+        left a pending change the editor could never clear — the same phantom
+        MODIFIED this lane removes everywhere else, surviving for the one
+        object that no ``ObjectManager`` owns.
+
+        Note this reads ``self._cached_defaults`` (what ``POST /api/defaults/``
+        writes), NOT ``self.project_manager._cached_defaults``: those are two
+        separate caches, and the project_manager one is only ever populated by
+        the project-scoped endpoint, so deferring to
+        ``project_manager.get_status()`` here would report every real defaults
+        edit as PUBLISHED.
+        """
+        cached = self._cached_defaults
+        if cached is None:
+            return False
+        published = self.project.defaults
+        if published is None:
+            return True
+        return cached.model_dump(mode="json", exclude_none=True) != published.model_dump(
+            mode="json", exclude_none=True
+        )
+
     def has_draft_changes(self) -> bool:
-        """True when any manager holds an unpublished draft (or defaults are cached)."""
+        """True when any manager holds an unpublished draft (or defaults changed)."""
         return (
             any(m.has_unpublished_changes() for m in self._all_object_managers())
-            or self._cached_defaults is not None
+            or self.defaults_changed()
         )
 
     def clear_draft_caches(self) -> None:
