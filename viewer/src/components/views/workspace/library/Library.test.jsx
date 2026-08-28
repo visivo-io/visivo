@@ -733,6 +733,69 @@ describe('Library', () => {
     }
   });
 
+  // A "+ New" item whose precondition isn't met stays VISIBLE and says why on
+  // hover. Hiding it would make the type look unsupported; letting it look live
+  // and then fail teaches nothing about what the project is missing.
+  describe('create items whose preconditions are not met', () => {
+    const showWorkspaceToast = jest.fn();
+
+    test('a relation needs two models — one is not enough', () => {
+      seedStore({ models: [{ name: 'orders' }], showWorkspaceToast });
+      renderLibrary();
+      openNewMenu();
+
+      const item = screen.getByTestId('library-new-object-relation');
+      expect(item).toHaveAttribute('aria-disabled', 'true');
+      expect(item).toHaveAttribute('title', expect.stringMatching(/two models/i));
+    });
+
+    test.each(['metric', 'dimension'])('a %s needs a model to reference', type => {
+      seedStore({ models: [], showWorkspaceToast });
+      renderLibrary();
+      openNewMenu();
+
+      const item = screen.getByTestId(`library-new-object-${type}`);
+      expect(item).toHaveAttribute('aria-disabled', 'true');
+      expect(item).toHaveAttribute('title', expect.stringMatching(/model/i));
+    });
+
+    test('a blocked item does not draft, and answers the click with the reason', () => {
+      const createWorkspaceObject = jest.fn();
+      seedStore({ models: [{ name: 'orders' }], createWorkspaceObject, showWorkspaceToast });
+      renderLibrary();
+      openNewMenu();
+
+      fireEvent.click(screen.getByTestId('library-new-object-relation'));
+
+      expect(createWorkspaceObject).not.toHaveBeenCalled();
+      expect(showWorkspaceToast).toHaveBeenCalledWith(expect.stringMatching(/two models/i));
+    });
+
+    test('the same items are live once the models exist', () => {
+      seedStore({ models: [{ name: 'orders' }, { name: 'users' }], showWorkspaceToast });
+      renderLibrary();
+      openNewMenu();
+
+      ['relation', 'metric', 'dimension'].forEach(type => {
+        expect(screen.getByTestId(`library-new-object-${type}`)).not.toHaveAttribute(
+          'aria-disabled'
+        );
+      });
+    });
+
+    test('types with no model precondition are never blocked', () => {
+      seedStore({ models: [], showWorkspaceToast });
+      renderLibrary();
+      openNewMenu();
+
+      ['chart', 'dashboard', 'markdown', 'source'].forEach(type => {
+        expect(screen.getByTestId(`library-new-object-${type}`)).not.toHaveAttribute(
+          'aria-disabled'
+        );
+      });
+    });
+  });
+
   // VIS-1237: Relation used to be special-cased into opening the Semantic
   // Layer, which read as "+ New does nothing". It now drafts like every other
   // type and opens in the edit panel.
@@ -743,7 +806,13 @@ describe('Library', () => {
       type: 'relation',
     }));
     const openWorkspaceTab = jest.fn();
-    seedStore({ createWorkspaceObject, openWorkspaceTab });
+    // Two models: a relation joins two, so with fewer the menu item is
+    // deliberately inert (see the guard tests below).
+    seedStore({
+      createWorkspaceObject,
+      openWorkspaceTab,
+      models: [{ name: 'orders' }, { name: 'users' }],
+    });
     renderLibrary();
     openNewMenu();
     fireEvent.click(screen.getByTestId('library-new-object-relation'));
