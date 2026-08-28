@@ -280,6 +280,66 @@ class TestBuildDraftOverlayModelScopedDraftFields:
         assert matching[0].expression == "avg(amount)"
 
 
+class TestBuildDraftOverlayModelScopedCachedFields:
+    """The other way a model-scoped field reaches this overlay: not on the wire
+    as a draft, but SAVED into the editor's cached tier and not yet committed —
+    a computed column the user promoted, then went on using.
+
+    Those arrive through ``inject_cached_objects``, which can only append them
+    to the flat top-level list. Left there, the very reference the Explorer
+    emits for them — ``${ref(model).field}`` — no longer finds them, and the
+    same "computed metric behaves like a dimension" symptom comes back on a
+    field that was, from the user's side, already promoted."""
+
+    def _bar_insight(self):
+        return {
+            "name": "draft_insight",
+            "props": {
+                "type": "bar",
+                "x": "?{${ref(orders_q).region}}",
+                "y": "?{${ref(orders_q).avg_total}}",
+            },
+        }
+
+    def _flask_app_with_cached_metric(self, project):
+        from types import SimpleNamespace
+
+        cached = Metric(name="avg_total", expression="avg(amount)")
+        cached.set_parent_name("orders_q")
+        app = FlaskAppStub(project)
+        app.metric_manager = SimpleNamespace(cached_objects={"avg_total": cached})
+        return app
+
+    def test_a_cached_model_scoped_metric_lands_on_its_model(self, project_with_model):
+        app = self._flask_app_with_cached_metric(project_with_model)
+
+        project, dag, _ = build_draft_overlay(app, self._bar_insight())
+
+        model_node = dag.get_descendant_by_name("orders_q")
+        assert [m.name for m in model_node.metrics or []] == ["avg_total"]
+        assert all(m.name != "avg_total" for m in (project.metrics or []))
+
+    def test_a_cached_model_scoped_metric_compiles_as_an_aggregate(
+        self, project_with_model, tmp_path
+    ):
+        app = self._flask_app_with_cached_metric(project_with_model)
+
+        _, dag, insight = build_draft_overlay(app, self._bar_insight())
+        model_node = dag.get_descendant_by_name("orders_q")
+        query_info = insight.get_query_info(
+            dag,
+            str(tmp_path),
+            schema_overrides={
+                "orders_q": {model_node.name_hash(): {"region": "VARCHAR", "amount": "DOUBLE"}}
+            },
+            force_dynamic=True,
+        )
+
+        post_query = (query_info.post_query or "").lower()
+        assert "avg(" in post_query
+        assert "group by" in post_query
+
+
 class TestBuildDraftOverlayNameShadowing:
     def test_a_draft_model_reusing_a_real_published_name_shadows_it_in_the_ephemeral_copy_only(
         self, flask_app, project_with_model
