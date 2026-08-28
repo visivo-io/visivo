@@ -1,88 +1,24 @@
 import json
 import os
-import re
-from pathlib import Path
 
 import yaml
-from pydantic import SecretStr
 from visivo.logger.logger import Logger
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
 from visivo.models.row import Row
-from visivo.query.patterns import ENV_VAR_CONTEXT_PATTERN
 
-# Fields on a source that hold a credential we never want written into the
-# project YAML. Anything present here is moved to .env and referenced via
-# ${env.*} instead (VIS-1216).
-CREDENTIAL_FIELDS = ("username", "password", "credentials_base64")
-
-
-def _env_var_name(source_name: str, field: str) -> str:
-    """A per-source, per-field env var name, e.g. "my-source" + password ->
-    MY_SOURCE_PASSWORD. Per-source so multiple sources never collide on a
-    single shared DB_PASSWORD."""
-    prefix = re.sub(r"\W", "_", source_name).strip("_").upper()
-    return f"{prefix}_{field.upper()}" if prefix else field.upper()
-
-
-def merge_env_file(project_dir, env_values):
-    """Upsert KEY=VALUE pairs into the project's .env, preserving any existing
-    keys, comments, and unrelated vars (the old code clobbered the whole file)."""
-    if not env_values:
-        return
-    env_path = Path(project_dir) / ".env" if project_dir else Path(".env")
-    lines = env_path.read_text().splitlines() if env_path.exists() else []
-
-    seen = set()
-    out = []
-    for line in lines:
-        stripped = line.strip()
-        if "=" in stripped and not stripped.startswith("#"):
-            key = stripped.split("=", 1)[0].strip()
-            if key in env_values:
-                out.append(f"{key}={env_values[key]}")
-                seen.add(key)
-                continue
-        out.append(line)
-    for key, value in env_values.items():
-        if key not in seen:
-            out.append(f"{key}={value}")
-
-    env_path.write_text("\n".join(out) + "\n")
-
-
-def externalize_source_credentials(source, project_dir):
-    """Move a freshly-built source's credentials out of the project YAML.
-
-    For every credential field present, the real value is written to .env
-    (merged, not clobbered), loaded into os.environ so the ${env.*} ref resolves
-    in this same running server process, and the field on the returned dict is
-    replaced with a ${env.<NAME>} reference. Returns the source as a JSON-ready
-    dict with the credentials swapped for refs.
-    """
-    source_dict = json.loads(source.model_dump_json(exclude_none=True))
-
-    env_values = {}
-    for field in CREDENTIAL_FIELDS:
-        value = getattr(source, field, None)
-        if value is None:
-            continue
-        raw = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
-        if not raw:
-            # An empty credential must not survive as a masked "**********"
-            # literal in the YAML — drop it entirely.
-            source_dict.pop(field, None)
-            continue
-        if re.search(ENV_VAR_CONTEXT_PATTERN, raw):
-            continue  # already a ${env.*} ref — leave it be
-
-        var_name = _env_var_name(source.name, field)
-        env_values[var_name] = raw
-        source_dict[field] = f"${{env.{var_name}}}"
-
-    merge_env_file(project_dir, env_values)
-    os.environ.update(env_values)
-    return source_dict
+# Credential-externalisation helpers moved to visivo.server.source_credentials
+# so the SourceManager save path can share them without importing a views
+# module. Re-exported here to keep the onboarding path's import site (and any
+# external callers) working unchanged. `_env_var_name` keeps its old private
+# name as an alias for the same reason.
+from visivo.server.source_credentials import (  # noqa: F401
+    CREDENTIAL_FIELDS,
+    env_var_name,
+    env_var_name as _env_var_name,
+    externalize_source_credentials,
+    merge_env_file,
+)
 
 
 def load_csv(conn, file_path, table_name):

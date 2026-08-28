@@ -1,12 +1,15 @@
+import os
 from typing import Any, Dict, List, Optional
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from visivo.logger.logger import Logger
+from visivo.models.base.env_var_string import EnvVarString
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.sources.fields import SourceField
 from visivo.models.sources.source import Source
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+from visivo.server.source_credentials import SECRET_MASK, env_var_name, merge_env_file
 from visivo.server.source_metadata import _test_source_connection
 
 
@@ -18,11 +21,17 @@ class SourceManager(ObjectManager[Source]):
     - Immediate validation using Pydantic TypeAdapter(SourceField)
     - Connection testing on cached sources
     - Database/schema/table introspection on cached sources
+    - Credential protection on save: secret-typed fields never reach the
+      project YAML as plaintext or as Pydantic's "**********" mask
     """
 
-    def __init__(self):
+    def __init__(self, project_dir: Optional[str] = None):
         super().__init__()
         self._source_adapter = TypeAdapter(SourceField)
+        # Where the project's .env lives (the serve working dir). Falls back
+        # to the process cwd inside merge_env_file when None, matching the
+        # CLI's own --working-dir default.
+        self.project_dir = project_dir
 
     def validate_object(self, obj_data: dict) -> Source:
         """
@@ -61,6 +70,12 @@ class SourceManager(ObjectManager[Source]):
         """
         Validate and save source from configuration dict.
 
+        Secret-typed fields (Pydantic SecretStr — password, private key
+        passphrases, tokens) are protected before the source is cached, so
+        that neither a plaintext secret nor the API's "**********" mask can
+        later be written into the project YAML by a commit. See
+        ``_protect_secrets`` for the exact rules.
+
         Args:
             config: Dictionary containing source configuration
 
@@ -71,8 +86,103 @@ class SourceManager(ObjectManager[Source]):
             ValidationError: If the source configuration is invalid
         """
         source = self.validate_object(config)
+        source = self._protect_secrets(source)
         self.save(source.name, source)
         return source
+
+    def _secret_field_names(self, source: Source) -> List[str]:
+        """Names of fields on this source instance currently holding a
+        plaintext SecretStr.
+
+        Detected from the live values rather than a hardcoded field list, so
+        every SecretStrOrEnvVar field on every source type is covered
+        (ServerSource.password, SnowflakeSource.private_key_passphrase,
+        BigQuerySource.credentials_base64, and any future ones). Fields
+        already holding a ${env.*} reference validate to EnvVarString, not
+        SecretStr, so they are naturally excluded.
+        """
+        return [
+            field_name
+            for field_name in type(source).model_fields
+            if isinstance(getattr(source, field_name, None), SecretStr)
+        ]
+
+    def _protect_secrets(self, source: Source) -> Source:
+        """Keep secrets out of the YAML that a later commit will write.
+
+        The commit path serializes the cached object with
+        ``model_dump(mode="json")``, which renders any plaintext SecretStr as
+        the literal ``**********`` mask — silently destroying the credential.
+        So the cached object must never hold a plaintext SecretStr that could
+        be committed. Rules, per secret-typed field:
+
+        1. Incoming value == the mask (the API's echo of a stored secret,
+           round-tripped by the frontend): preserve the stored value —
+           an existing ``${env.*}`` reference is kept verbatim, an existing
+           literal keeps its real value. A mask with nothing stored behind it
+           is dropped, never written.
+        2. Empty string: dropped (mirrors the onboarding path).
+        3. Any plaintext that would be committed (the source differs from its
+           published form) is externalized: the real value goes to the
+           project's .env (merged) and os.environ, and the field becomes a
+           ``${env.<SOURCE>_<FIELD>}`` reference — the same naming convention
+           the onboarding path uses. A plaintext literal on a source that is
+           byte-identical to its published YAML form is left alone, so a
+           no-op save never rewrites the project file.
+        """
+        existing = self.get(source.name)
+        updates: Dict[str, Any] = {}
+
+        for field_name in self._secret_field_names(source):
+            raw = getattr(source, field_name).get_secret_value()
+            if not raw:
+                # An empty credential must not survive to YAML — drop it.
+                updates[field_name] = None
+                continue
+            if raw == SECRET_MASK:
+                prior = getattr(existing, field_name, None) if existing is not None else None
+                if prior is not None:
+                    # Preserve whatever is stored — env-var ref or literal.
+                    updates[field_name] = prior
+                else:
+                    # A mask with no stored secret behind it (e.g. a config
+                    # copied from another source's masked API response) —
+                    # there is nothing real to store, and the mask itself
+                    # must never be written.
+                    Logger.instance().info(
+                        f"Source '{source.name}': dropping masked secret field "
+                        f"'{field_name}' with no previously stored value."
+                    )
+                    updates[field_name] = None
+
+        if updates:
+            source = source.model_copy(update=updates)
+
+        remaining = self._secret_field_names(source)
+        if not remaining:
+            return source
+
+        # Plaintext secrets remain (new/changed values, or preserved literals).
+        # If the source is identical to its published YAML form, no commit will
+        # rewrite it — leave the literal exactly where it already is. Otherwise
+        # a commit WILL re-serialize this object into YAML, so every plaintext
+        # secret must move to .env with a ${env.*} reference in its place.
+        published = self._published_objects.get(source.name)
+        if published is not None and self.objects_equal(source, published):
+            return source
+
+        env_values: Dict[str, str] = {}
+        ref_updates: Dict[str, Any] = {}
+        for field_name in remaining:
+            var_name = env_var_name(source.name, field_name)
+            env_values[var_name] = getattr(source, field_name).get_secret_value()
+            ref_updates[field_name] = EnvVarString(f"${{env.{var_name}}}")
+
+        merge_env_file(self.project_dir, env_values)
+        # Load into the running server so the refs resolve immediately,
+        # matching the onboarding path (VIS-1216).
+        os.environ.update(env_values)
+        return source.model_copy(update=ref_updates)
 
     def test_connection(self, name: str) -> Dict[str, Any]:
         """
