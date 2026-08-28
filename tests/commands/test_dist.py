@@ -96,6 +96,12 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "project.json"))
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "dashboards"))
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "insights"))
+    # Traces are gone from the product — there is no Trace model, `Project` has
+    # no `traces` field, and nothing writes `target/traces/`. dist kept a block
+    # that globbed for them anyway, so every bundle shipped an empty
+    # `data/traces/` and a `data/traces.json` of `[]`.
+    assert not os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "traces"))
+    assert not os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "traces.json"))
 
     with open(os.path.join(dist_dir, "data", "project.json")) as project_json:
         data = json.load(project_json)

@@ -1,6 +1,5 @@
 from visivo.utils import DIST_PATH
 from visivo.logger.logger import Logger
-from visivo.models.base.named_model import alpha_hash
 import traceback
 
 
@@ -153,34 +152,6 @@ def dist_phase(
             f.write(json.dumps({}))
         with open(f"{dist_dir}/data/project_history.json", "w") as f:
             f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
-
-        # Generate traces.json for dist mode
-
-        trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
-        traces_list = []
-        os.makedirs(f"{dist_dir}/data/traces", exist_ok=True)
-
-        for trace_dir in trace_dirs:
-            trace_name = os.path.basename(os.path.normpath(trace_dir))
-            if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
-                # Create hash-based filename for trace data
-                trace_name_hash = alpha_hash(trace_name)
-                shutil.copyfile(
-                    f"{output_dir}/traces/{trace_name}/data.json",
-                    f"{dist_dir}/data/traces/{trace_name_hash}.json",
-                )
-                # Add trace info for traces.json
-                traces_list.append(
-                    {
-                        "name": trace_name,
-                        "id": trace_name,
-                        "signed_data_file_url": f"{deployment_root}/data/traces/{trace_name_hash}.json",
-                    }
-                )
-
-        # Write traces.json
-        with open(f"{dist_dir}/data/traces.json", "w") as f:
-            json.dump(traces_list, f)
 
         # Copy parquet data files used by insights and inputs. The run writes
         # them into the directory named for what produced them (VIS-1128), but
