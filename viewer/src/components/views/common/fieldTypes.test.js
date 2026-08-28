@@ -38,7 +38,7 @@ describe('fieldTypeFor — container vs vocabulary are separate axes', () => {
 
 // `relation.validate_condition_has_models` requires two distinct models, and a
 // bare `${ref(orders)}` names a table — it cannot be one side of an `=`.
-describe('relation.condition — the only field with a minimum ref count', () => {
+describe('relation.condition — a join needs two models', () => {
   const entry = fieldTypeFor('relation', 'condition');
 
   test('requires at least two refs', () => {
@@ -52,15 +52,31 @@ describe('relation.condition — the only field with a minimum ref count', () =>
   test('offers models only — a metric ref would be an aggregate, not a join key', () => {
     expect(entry.refKinds).toEqual(['model']);
   });
+});
 
-  test('no other declared field imposes a minimum', () => {
-    const others = [
-      fieldTypeFor('metric', 'expression'),
-      fieldTypeFor('dimension', 'expression'),
-      fieldTypeFor('insight', 'props'),
-      fieldTypeFor('interaction', 'filter'),
-    ];
-    others.forEach(e => expect(e.minRefs).toBe(0));
+// A PROJECT-LEVEL metric/dimension has exactly one route to a source: naming a
+// model in its expression. `count(*)` here saved fine and then stopped the whole
+// project parsing on commit ("does not tie back to any source"), taking every
+// metric and dimension out of the editor with it.
+describe('project-level metric/dimension — at least one ref', () => {
+  test.each(['metric', 'dimension'])('%s.expression requires one', type => {
+    expect(fieldTypeFor(type, 'expression').minRefs).toBe(1);
+  });
+
+  test('nesting satisfies the same requirement structurally, so the minimum lifts', () => {
+    // Otherwise the merged rule would demand a ref that `maxRefs: 0` forbids —
+    // an unsatisfiable field.
+    ['metric', 'dimension'].forEach(type => {
+      const nested = fieldTypeFor(type, 'expression', { nested: true });
+      expect(nested.minRefs).toBe(0);
+      expect(nested.maxRefs).toBe(0);
+    });
+  });
+
+  test('fields with no source to tie back to impose no minimum', () => {
+    [fieldTypeFor('insight', 'props'), fieldTypeFor('interaction', 'filter')].forEach(e =>
+      expect(e.minRefs).toBe(0)
+    );
   });
 });
 

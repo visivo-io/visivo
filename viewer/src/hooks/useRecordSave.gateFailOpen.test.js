@@ -15,6 +15,7 @@ import useStore from '../stores/store';
 import { validateRecordConfig } from '../components/views/workspace/validateAgainstSchema';
 import { checkRefTargets } from '../components/views/workspace/refPreflight';
 import { checkExpressions } from '../components/views/workspace/expressionPreflight';
+import { checkRefCounts } from '../components/views/workspace/refCountPreflight';
 
 jest.mock('../components/views/workspace/validateAgainstSchema', () => ({
   validateRecordConfig: jest.fn(),
@@ -26,6 +27,9 @@ jest.mock('../components/views/workspace/refPreflight', () => ({
 jest.mock('../components/views/workspace/expressionPreflight', () => ({
   checkExpressions: jest.fn(async () => ({ valid: true, errors: [] })),
 }));
+jest.mock('../components/views/workspace/refCountPreflight', () => ({
+  checkRefCounts: jest.fn(() => ({ valid: true, errors: [] })),
+}));
 
 let consoleErrorSpy;
 beforeEach(() => {
@@ -35,6 +39,7 @@ beforeEach(() => {
   // cannot leak into the next.
   checkRefTargets.mockImplementation(() => ({ valid: true, errors: [] }));
   checkExpressions.mockImplementation(async () => ({ valid: true, errors: [] }));
+  checkRefCounts.mockImplementation(() => ({ valid: true, errors: [] }));
 });
 afterEach(() => {
   consoleErrorSpy.mockRestore();
@@ -69,6 +74,30 @@ test('a REJECTING expression layer fails open too (all 3 layers in one try/catch
   // silently swallow the save, which is the exact canvas-persist bug shape.
   validateRecordConfig.mockResolvedValue({ valid: true, errors: [] });
   checkExpressions.mockRejectedValue(new Error('expression endpoint exploded'));
+  const saveFn = jest.fn(() => Promise.resolve({ success: true }));
+  useStore.setState({
+    metrics: [{ name: 'm', config: { name: 'm', expression: 'SUM(x)' } }],
+    saveMetric: saveFn,
+    saveActivityCount: 0,
+    lastSaveFailed: false,
+  });
+
+  const { result } = renderHook(() => useRecordSave('metric', 'm', { delay: 0 }));
+
+  await act(async () => {
+    await result.current.saveNow({ name: 'm', expression: 'SUM(y)' });
+  });
+
+  expect(saveFn).toHaveBeenCalledTimes(1);
+  expect(result.current.status).not.toBe('invalid');
+});
+
+test('a THROWING ref-count layer fails open too', async () => {
+  // Same contract as every other layer: only a real invalid VERDICT blocks.
+  validateRecordConfig.mockResolvedValue({ valid: true, errors: [] });
+  checkRefCounts.mockImplementation(() => {
+    throw new Error('ref-count walk exploded');
+  });
   const saveFn = jest.fn(() => Promise.resolve({ success: true }));
   useStore.setState({
     metrics: [{ name: 'm', config: { name: 'm', expression: 'SUM(x)' } }],

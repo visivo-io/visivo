@@ -14,6 +14,7 @@ import { SAVE_ACTION, DELETE_ACTION } from './collectionKeys';
 import { unwrapConfig } from './unwrapRecordConfig';
 import { getObjectSchemaSync } from '../../../schemas/projectSchema';
 import { useFieldParentModel } from './fields/useFieldParentModel';
+import { checkRefCounts } from './refCountPreflight';
 
 /**
  * SchemaLeafForm (VIS-996) — the generic schema-driven leaf edit form.
@@ -82,8 +83,6 @@ export const TYPE_CONFIG = {
 
 /** Fields the host renders as chrome — withheld from the generated groups. */
 const CHROME_FIELDS = ['name'];
-
-const REF_PATTERN = /\$\{\s*ref\s*\(/;
 
 /** Title-case a schema field name for messages ('join_type' → 'Join type'). */
 const fieldLabel = (schema, name) =>
@@ -215,12 +214,14 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
         errs[f] = `${fieldLabel(schemaForValidation, f)} is required`;
       }
     });
-    // Embedded (inline) expressions cannot contain ref() — plain SQL only.
-    const exprField = typeConfig.expressionField;
-    if (isEmbedded && exprField && REF_PATTERN.test(config[exprField] || '')) {
-      errs[exprField] =
-        `Inline ${type}s cannot use ref() expressions. Use plain SQL referencing fields from the parent model.`;
-    }
+    // Ref-count bounds from the field-type registry — BOTH directions from one
+    // rule: nested expressions may contain no ref (`sql_model.py` rejects them),
+    // project-level metric/dimension expressions must contain at least one (it
+    // is the only thing tying them to a source). Reported per-field so it
+    // renders under the input, like every other validation message.
+    checkRefCounts(type, config, { nested: isModelScoped || isEmbedded }).errors.forEach(e => {
+      if (!errs[e.path]) errs[e.path] = e.message;
+    });
     setLocalErrors(errs);
     return Object.keys(errs).length === 0;
   };

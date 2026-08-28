@@ -1,0 +1,101 @@
+yarn run v1.22.22
+$ yarn run copy-schemas && cp src/LocalProviders.jsx src/Providers.jsx && vite
+$ cp ../visivo/schema/*.schema.json src/schemas/
+
+  VITE v6.4.1  ready in 650 ms
+
+  ➜  Local:   http://localhost:3011/
+  ➜  Network: use --host to expose
+Sourcemap for "/Users/tgsoverly/code/visivo/viewer/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js" points to missing source files
+9:34:21 PM [vite] ws proxy socket error:
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
+    at writeGeneric (node:internal/stream_base_commons:152:3)
+    at Socket._writeGeneric (node:net:954:11)
+    at Socket._write (node:net:966:8)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Socket.ondata (node:internal/streams/readable:1007:22)
+    at Socket.emit (node:events:519:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+9:37:28 PM [vite] ws proxy socket error:
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
+    at writeGeneric (node:internal/stream_base_commons:152:3)
+    at Socket._writeGeneric (node:net:954:11)
+    at Socket._write (node:net:966:8)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Socket.ondata (node:internal/streams/readable:1007:22)
+    at Socket.emit (node:events:519:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+9:38:00 PM [vite] ws proxy socket error:
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
+    at writeGeneric (node:internal/stream_base_commons:152:3)
+    at Socket._writeGeneric (node:net:954:11)
+    at Socket._write (node:net:966:8)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Socket.ondata (node:internal/streams/readable:1007:22)
+    at Socket.emit (node:events:519:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+9:38:31 PM [vite] ws proxy socket error:
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
+    at writeGeneric (node:internal/stream_base_commons:152:3)
+    at Socket._writeGeneric (node:net:954:11)
+    at Socket._write (node:net:966:8)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Socket.ondata (node:internal/streams/readable:1007:22)
+    at Socket.emit (node:events:519:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+9:39:48 PM [vite] ws proxy socket error:
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
+    at writeGeneric (node:internal/stream_base_commons:152:3)
+    at Socket._writeGeneric (node:net:954:11)
+    at Socket._write (node:net:966:8)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Socket.ondata (node:internal/streams/readable:1007:22)
+    at Socket.emit (node:events:519:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+9:40:04 PM [vite] ws proxy socket error:
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
+    at writeGeneric (node:internal/stream_base_commons:152:3)
+    at Socket._writeGeneric (node:net:954:11)
+    at Socket._write (node:net:966:8)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Socket.ondata (node:internal/streams/readable:1007:22)
+    at Socket.emit (node:events:519:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+error Command failed with exit code 143.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.

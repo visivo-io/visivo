@@ -162,12 +162,19 @@ const FIELD_TYPES = {
     // `${ref(other_metric)}` composes metrics. The field resolver handles it
     // explicitly ("when field name is none, the name is a metric or dimension").
     bareRefs: true,
+    // A metric reaches a source two ways: nesting it inside a model, or naming
+    // one in the expression. At PROJECT level only the second is available, so
+    // a ref is not a nicety — `count(*)` here can never resolve, and the
+    // project stops parsing (`does not tie back to any source`). See
+    // NESTED_OVERRIDES: nesting satisfies the same requirement structurally.
+    minRefs: 1,
     why: 'An aggregate expression that may compose other metrics and model columns.',
   },
   'dimension.expression': {
     editor: EDITORS.CONTEXT_SQL,
     refKinds: ['model', 'dimension'],
     bareRefs: true,
+    minRefs: 1,
     why: 'A row-level expression over model columns and other dimensions.',
   },
 };
@@ -190,6 +197,11 @@ const NESTED_OVERRIDES = {
     refKinds: [],
     bareRefs: false,
     maxRefs: 0,
+    // Explicitly back to 0, undoing the project-level `minRefs: 1`: nesting IS
+    // the tie to a source here, so `count(*)` is not just legal, it is the
+    // normal shape. Without this reset the merge would demand a ref the other
+    // rule forbids — an unsatisfiable field.
+    minRefs: 0,
     why: 'Nested in a model: plain SQL over the parent model’s columns. Refs are a save-time error.',
   },
   'dimension.expression': {
@@ -197,6 +209,7 @@ const NESTED_OVERRIDES = {
     refKinds: [],
     bareRefs: false,
     maxRefs: 0,
+    minRefs: 0,
     why: 'Nested in a model: plain SQL over the parent model’s columns. Refs are a save-time error.',
   },
 };
