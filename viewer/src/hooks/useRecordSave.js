@@ -7,6 +7,7 @@ import {
   validateRecordConfigSync,
 } from '../components/views/workspace/validateAgainstSchema';
 import { checkRefTargets } from '../components/views/workspace/refPreflight';
+import { checkRefCounts } from '../components/views/workspace/refCountPreflight';
 import { checkExpressions } from '../components/views/workspace/expressionPreflight';
 
 /**
@@ -160,6 +161,14 @@ export default function useRecordSave(type, name, opts = {}) {
       if (!blocked) {
         const refCheck = checkRefTargets(config, useStore.getState());
         if (!refCheck.valid) blocked = refCheck;
+      }
+      if (!blocked) {
+        // Ref COUNT, not ref targets: a project-level metric/dimension whose
+        // expression names no model can never tie back to a source, and the
+        // whole project stops parsing on commit. Blocked here so the message
+        // lands on the expression field rather than arriving as a 400 banner.
+        const countCheck = checkRefCounts(t, config, { nested: Boolean(config.parentModel) });
+        if (!countCheck.valid) blocked = countCheck;
       }
       if (!blocked) {
         const exprCheck = await checkExpressions(t, config, sourceDialectRef.current);

@@ -215,7 +215,7 @@ class TestModelScopedResourceViews:
         mgr = getattr(fa, mgr_attr)
         mgr.save_from_config.return_value = Mock()
         mgr.get_status.return_value = ObjectStatus.NEW
-        resp = client.post(f"/api/{key}/d/", json={"expression": "sum(x)"})
+        resp = client.post(f"/api/{key}/d/", json={"expression": "sum(${ref(orders).x})"})
         assert resp.status_code == 201
         assert resp.get_json()["status"] == "new"
 
@@ -225,10 +225,46 @@ class TestModelScopedResourceViews:
         mgr.save_from_config.return_value = Mock()
         mgr.get_status.return_value = ObjectStatus.MODIFIED
 
-        resp = client.post(f"/api/{key}/d/", json={"expression": "sum(x)"})
+        resp = client.post(f"/api/{key}/d/", json={"expression": "sum(${ref(orders).x})"})
 
         assert resp.status_code == 200
         assert resp.get_json()["status"] == "modified"
+
+    def test_save_refuses_a_project_level_field_that_references_nothing(
+        self, key, register, mgr_attr, get_all, get_one
+    ):
+        """A save that the project would reject must not reach the cache.
+
+        Committing one of these produced YAML the next parse refused, and the
+        editor then showed NO metrics or dimensions at all — the failure
+        surfaced far from the field that caused it.
+        """
+        client, fa = _client(register)
+        mgr = getattr(fa, mgr_attr)
+        mgr.save_from_config.return_value = Mock()
+        mgr.get_status.return_value = ObjectStatus.NEW
+
+        resp = client.post(f"/api/{key}/d/", json={"expression": "count(*)"})
+
+        assert resp.status_code == 400
+        assert "must reference at least one model" in resp.get_json()["error"]
+        mgr.save_from_config.assert_not_called()
+
+    def test_save_allows_a_MODEL_SCOPED_field_that_references_nothing(
+        self, key, register, mgr_attr, get_all, get_one
+    ):
+        """Nested is the other way of tying to a source, and a nested
+        expression may not contain a ref at all (`sql_model.py` rejects one)."""
+        client, fa = _client(register)
+        mgr = getattr(fa, mgr_attr)
+        mgr.save_from_config.return_value = Mock()
+        mgr.get_status.return_value = ObjectStatus.NEW
+
+        resp = client.post(
+            f"/api/{key}/d/", json={"expression": "count(*)", "parentModel": "orders"}
+        )
+
+        assert resp.status_code == 201
 
     def test_delete(self, key, register, mgr_attr, get_all, get_one):
         client, fa = _client(register)

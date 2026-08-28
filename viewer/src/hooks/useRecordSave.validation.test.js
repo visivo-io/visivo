@@ -214,15 +214,21 @@ describe('useRecordSave validation gate (VIS-993)', () => {
     validateExpressions.mockResolvedValueOnce({
       results: [{ name: 'expression', valid: false, error: "Expecting ). Line 1, Col: 25." }],
     });
+    // Carries a ref so it clears the two cheaper, sync layers — ref COUNT (a
+    // project-level metric must name a model) and ref TARGETS (that model must
+    // exist) — and actually reaches the expression parse this test is about.
+    // eslint-disable-next-line no-template-curly-in-string
+    const valid = 'AVG(${ref(orders).value})';
     const saveFn = setupCollection(
       'metrics',
       'avg_value',
-      { name: 'avg_value', expression: 'AVG(value)' },
+      { name: 'avg_value', expression: valid },
       'saveMetric'
     );
+    useStore.setState({ models: [{ name: 'orders', config: { name: 'orders' } }] });
     const { result } = renderHook(() => useRecordSave('metric', 'avg_value', { delay: 500 }));
 
-    act(() => result.current.scheduleSave({ name: 'avg_value', expression: 'AVG(value)}' }));
+    act(() => result.current.scheduleSave({ name: 'avg_value', expression: `${valid}}` }));
     await act(async () => {
       jest.advanceTimersByTime(500);
     });

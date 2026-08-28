@@ -33,6 +33,25 @@ const firstTwoModelNames = state => {
   const names = (state.models || []).map(m => m?.name).filter(Boolean);
   return names.length >= 2 ? [names[0], names[1]] : null;
 };
+
+/**
+ * The model a project-level metric/dimension is drafted against, or null when
+ * the project has none.
+ *
+ * A project-level field reaches a source only by naming a model in its
+ * expression — nesting it inside a model is the other way, and that is a
+ * different object. So a scaffold like `count(*)` is not "a draft to fill in",
+ * it is a field that can never resolve: the project stops parsing on commit and
+ * every metric and dimension disappears from the editor. Same precedent as
+ * `relation` below — the model reference is real (which is what validation
+ * requires), the column is a guess the user re-points.
+ */
+const firstModelName = state =>
+  (state.models || []).map(m => m?.name).find(Boolean) || null;
+
+const NEEDS_A_MODEL =
+  'A project-level metric or dimension has to reference a model. Create a model first.';
+
 export const CREATE_TEMPLATES = {
   dashboard: {
     namePrefix: 'new-dashboard',
@@ -94,14 +113,18 @@ export const CREATE_TEMPLATES = {
     // Declared, not inferred: the backend rejects a dash in a dimension name,
     // and a user-named dimension (`region`) carries no separator to infer from.
     nameSeparator: '_',
-    config: () => ({ expression: '1' }),
+    requires: state => (firstModelName(state) ? null : NEEDS_A_MODEL),
+    // eslint-disable-next-line no-template-curly-in-string
+    config: state => ({ expression: `\${ref(${firstModelName(state)}).id}` }),
   },
   metric: {
     namePrefix: 'new_metric',
     collectionKey: 'metrics',
     saveKey: 'saveMetric',
     nameSeparator: '_',
-    config: () => ({ expression: 'count(*)' }),
+    requires: state => (firstModelName(state) ? null : NEEDS_A_MODEL),
+    // eslint-disable-next-line no-template-curly-in-string
+    config: state => ({ expression: `count(\${ref(${firstModelName(state)}).id})` }),
   },
   relation: {
     namePrefix: 'new_relation',

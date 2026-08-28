@@ -11,6 +11,10 @@ from visivo.models.validators.metric_references_validator import MetricReference
 from visivo.models.validators.dimension_references_validator import DimensionReferencesValidator
 from visivo.models.validators.relation_references_validator import RelationReferencesValidator
 from visivo.models.validators.single_source_validator import SingleSourceValidator
+from visivo.models.validators.standalone_field_refs_validator import (
+    StandaloneFieldRefsValidator,
+    standalone_field_ref_error,
+)
 from visivo.models.validators.project_validator import ProjectValidator
 
 __all__ = [
@@ -25,5 +29,7 @@ __all__ = [
     "DimensionReferencesValidator",
     "RelationReferencesValidator",
     "SingleSourceValidator",
+    "StandaloneFieldRefsValidator",
+    "standalone_field_ref_error",
     "ProjectValidator",
 ]

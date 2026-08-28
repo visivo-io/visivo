@@ -168,8 +168,13 @@ class TestSingleSourceValidator:
         assert "source2" in str(exc_info.value)
 
     def test_metric_without_source_fails(self):
-        """Test that a metric must tie back to a source."""
-        # Metric with no model reference
+        """A metric with no model reference is still rejected — but by
+        `StandaloneFieldRefsValidator`, which runs first and names the fix.
+
+        "does not tie back to any source" describes the whole project failing;
+        the cause here is local and mechanical (this expression references no
+        model), so that is what the user is told.
+        """
         metric = Metric(name="orphan_metric", expression="42")
 
         with pytest.raises(ValueError) as exc_info:
@@ -179,11 +184,10 @@ class TestSingleSourceValidator:
                 dashboards=[],
             )
 
-        assert "does not tie back to any source" in str(exc_info.value)
+        assert "must reference at least one model" in str(exc_info.value)
 
     def test_dimension_without_source_fails(self):
-        """Test that a dimension must tie back to a source."""
-        # Dimension with no model reference
+        """As above, for a dimension."""
         dimension = Dimension(name="orphan_dimension", expression="42")
 
         with pytest.raises(ValueError) as exc_info:
@@ -193,7 +197,7 @@ class TestSingleSourceValidator:
                 dashboards=[],
             )
 
-        assert "does not tie back to any source" in str(exc_info.value)
+        assert "must reference at least one model" in str(exc_info.value)
 
     def test_metric_chain_ties_to_single_source(self):
         """Test that a chain of metrics all tie back to the same source."""
