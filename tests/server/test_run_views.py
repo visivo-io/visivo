@@ -194,6 +194,120 @@ class TestRunOnSave:
         assert runs[0]["dag_filter"] == "+a+,+b+"
 
 
+class TestRunFailureDiagnostics:
+    """W4: a failed run's error_json carries the failed jobs' Diagnostics —
+    killing the bare ``{"phase": "run"}`` payload the viewer used to render
+    verbatim."""
+
+    def _wait_terminal(self, integration_app):
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            runs = integration_app.run_manager.list()
+            if runs and runs[0]["state"] in ("succeeded", "failed"):
+                return runs[0]
+            time.sleep(0.05)
+        raise AssertionError("run never reached a terminal state")
+
+    def _failed_result(self, diagnostic=None):
+        from tests.factories.model_factories import SqlModelFactory
+        from visivo.jobs.job import JobResult
+
+        return JobResult(
+            item=SqlModelFactory(name="orders"),
+            success=False,
+            message="Failed query \033[31m[FAILURE]\033[0m",
+            diagnostic=diagnostic,
+        )
+
+    def test_error_json_is_the_exact_diagnostics_envelope(self, integration_app):
+        from visivo.models.diagnostic import Diagnostic, DiagnosticObjectRef, DiagnosticPhase
+
+        diagnostic = Diagnostic(
+            phase=DiagnosticPhase.RUN,
+            code="query_execution_failed",
+            message="no such table: orders",
+            object=DiagnosticObjectRef(type="model", name="orders"),
+        )
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            inst = MockRunner.return_value
+            inst.failed_job_results = [self._failed_result(diagnostic)]
+            inst.successful_job_results = []
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        assert run["state"] == "failed"
+        assert run["error_json"] == {
+            "phase": "run",
+            "diagnostics": [
+                {
+                    "severity": "error",
+                    "phase": "run",
+                    "code": "query_execution_failed",
+                    "message": "no such table: orders",
+                    "object": {"type": "model", "name": "orders"},
+                    "related": [],
+                }
+            ],
+        }
+
+    def test_a_result_without_a_diagnostic_gets_an_ansi_free_fallback(self, integration_app):
+        import json
+
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            inst = MockRunner.return_value
+            inst.failed_job_results = [self._failed_result(diagnostic=None)]
+            inst.successful_job_results = []
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        diagnostics = run["error_json"]["diagnostics"]
+        assert len(diagnostics) == 1
+        assert diagnostics[0]["code"] == "unexpected_error"
+        assert "orders" in diagnostics[0]["message"]
+        assert diagnostics[0]["object"] == {"type": "model", "name": "orders"}
+        # Never the dot-padded ANSI terminal message.
+        assert "\033" not in json.dumps(run["error_json"])
+
+    def test_diagnostics_are_capped_at_fifty(self, integration_app):
+        from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
+
+        results = [
+            self._failed_result(
+                Diagnostic(
+                    phase=DiagnosticPhase.RUN,
+                    code="query_execution_failed",
+                    message=f"failure {i}",
+                )
+            )
+            for i in range(55)
+        ]
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            inst = MockRunner.return_value
+            inst.failed_job_results = results
+            inst.successful_job_results = []
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        assert len(run["error_json"]["diagnostics"]) == 50
+
+    def test_the_exception_path_reports_a_diagnostic_too(self, integration_app):
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            MockRunner.return_value.run.side_effect = RuntimeError("compile exploded")
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        assert run["state"] == "failed"
+        # `error` stays for older consumers; diagnostics carries the same failure.
+        assert run["error_json"]["phase"] == "run"
+        assert run["error_json"]["error"] == "compile exploded"
+        assert run["error_json"]["diagnostics"][0]["code"] == "unexpected_error"
+        assert run["error_json"]["diagnostics"][0]["message"] == "compile exploded"
+
+
 class TestExplorationRunIsolation:
     """Explorations are workbench drafts, never DAG/YAML config — saving or
     deleting one must never schedule a run (02-architecture.md §2, 07 S3

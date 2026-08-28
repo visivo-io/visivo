@@ -10,6 +10,7 @@ import {
   parseDagFilterNames,
   extractRunError,
   findLatestRunFailureFor,
+  pickDiagnosticFor,
   selectLatestRunFailureFor,
 } from './runFailures';
 
@@ -52,6 +53,12 @@ describe('extractRunError', () => {
 
   it('stringifies objects without a known message key', () => {
     expect(extractRunError({ code: 500 })).toBe('{"code":500}');
+  });
+
+  it('never renders the bare {"phase":"run"} envelope (M16)', () => {
+    expect(extractRunError({ phase: 'run' })).toBe('Run failed');
+    expect(extractRunError('{"phase":"run"}')).toBe('Run failed');
+    expect(extractRunError({ phase: 'run', diagnostics: [] })).toBe('Run failed');
   });
 
   it('parses a JSON-encoded string payload', () => {
@@ -116,6 +123,7 @@ describe('findLatestRunFailureFor', () => {
     expect(findLatestRunFailureFor([failed()], 'revenue_insight')).toEqual({
       runId: 'run-failed',
       error: 'query exploded',
+      diagnostic: null,
       createdAt: '2026-07-01T12:00:00Z',
     });
     // Also matches the OTHER name in the same dag_filter.
@@ -189,5 +197,90 @@ describe('findLatestRunFailureFor', () => {
     expect(selector({ runs: [] })).toBeNull();
     expect(selector({})).toBeNull();
     expect(selector(undefined)).toBeNull();
+  });
+});
+
+describe('diagnostics payloads (W4)', () => {
+  const insightDiagnostic = {
+    severity: 'error',
+    phase: 'run',
+    code: 'query_execution_failed',
+    message: 'no such table: orders',
+    object: { type: 'insight', name: 'revenue_insight' },
+    hint: 'Check the model SQL.',
+    related: [],
+  };
+  const sourceDiagnostic = {
+    severity: 'error',
+    phase: 'run',
+    code: 'source_locked',
+    message: "Database file for 'warehouse' is held by another connection",
+    object: { type: 'source', name: 'warehouse' },
+    related: [],
+  };
+  const failedWithDiagnostics = (diagnostics, over = {}) => ({
+    id: 'run-diag',
+    state: 'failed',
+    dag_filter: '+revenue_insight+,+warehouse+',
+    error_json: { phase: 'run', diagnostics },
+    is_superseded: false,
+    created_at: '2026-07-01T12:00:00Z',
+    ...over,
+  });
+
+  describe('pickDiagnosticFor', () => {
+    it('prefers the diagnostic about the record itself', () => {
+      expect(pickDiagnosticFor([sourceDiagnostic, insightDiagnostic], 'revenue_insight')).toBe(
+        insightDiagnostic
+      );
+    });
+
+    it('falls back to the first diagnostic when none matches', () => {
+      expect(pickDiagnosticFor([sourceDiagnostic], 'revenue_insight')).toBe(sourceDiagnostic);
+    });
+
+    it('returns null for empty / missing lists', () => {
+      expect(pickDiagnosticFor([], 'x')).toBeNull();
+      expect(pickDiagnosticFor(undefined, 'x')).toBeNull();
+    });
+  });
+
+  it('the failure carries the matching diagnostic and its message', () => {
+    const runs = [failedWithDiagnostics([sourceDiagnostic, insightDiagnostic])];
+    expect(findLatestRunFailureFor(runs, 'revenue_insight')).toEqual({
+      runId: 'run-diag',
+      error: 'no such table: orders',
+      diagnostic: insightDiagnostic,
+      createdAt: '2026-07-01T12:00:00Z',
+    });
+  });
+
+  it('a record failed upstream reports the upstream diagnostic', () => {
+    const runs = [failedWithDiagnostics([sourceDiagnostic])];
+    expect(findLatestRunFailureFor(runs, 'revenue_insight')).toMatchObject({
+      error: "Database file for 'warehouse' is held by another connection",
+      diagnostic: sourceDiagnostic,
+    });
+  });
+
+  it('tolerates a JSON-encoded diagnostics payload', () => {
+    const runs = [
+      failedWithDiagnostics([], {
+        error_json: JSON.stringify({ phase: 'run', diagnostics: [insightDiagnostic] }),
+      }),
+    ];
+    expect(findLatestRunFailureFor(runs, 'revenue_insight')).toMatchObject({
+      error: 'no such table: orders',
+    });
+  });
+
+  it('a legacy bare {"phase":"run"} payload degrades to the generic message, never raw JSON', () => {
+    const runs = [failedWithDiagnostics([], { error_json: { phase: 'run' } })];
+    expect(findLatestRunFailureFor(runs, 'revenue_insight')).toEqual({
+      runId: 'run-diag',
+      error: 'Run failed',
+      diagnostic: null,
+      createdAt: '2026-07-01T12:00:00Z',
+    });
   });
 });

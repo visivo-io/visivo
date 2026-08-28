@@ -21,9 +21,28 @@
  * select `s.runs` and memoize `findLatestRunFailureFor` instead, as
  * RecordRunStatus does. The factory suits imperative reads
  * (`selectLatestRunFailureFor(name)(useStore.getState())`).
+ *
+ * W4 (Error Legibility): `error_json` now carries `diagnostics` (the shared
+ * Diagnostic contract). The failure result prefers the diagnostic matching the
+ * record — message/hint/object come from it — with the dag_filter matching and
+ * `extractRunError` kept as the fallback for payloads that predate the
+ * contract (older local serves, cloud).
  */
+import { diagnosticsFrom } from '../types/diagnostic';
 
 const FALLBACK_ERROR = 'Run failed';
+
+/**
+ * The diagnostic to show ON a given record: the one about the record itself
+ * when present, else the first — a run that failed upstream of this record
+ * reports the upstream failure rather than nothing.
+ * @param {import('../types/diagnostic').Diagnostic[]} diagnostics
+ * @param {string} name
+ */
+export const pickDiagnosticFor = (diagnostics, name) => {
+  if (!Array.isArray(diagnostics) || diagnostics.length === 0) return null;
+  return diagnostics.find(d => d?.object?.name === name) ?? diagnostics[0];
+};
 
 /**
  * "+revenue_insight+,+orders_model+" → ['revenue_insight', 'orders_model'].
@@ -49,6 +68,11 @@ export const extractRunError = errorJson => {
   if (typeof errorJson === 'object') {
     const message = errorJson.message || errorJson.error || errorJson.detail;
     if (typeof message === 'string' && message) return message;
+    // A run envelope with nothing readable — the bare {"phase":"run"} payload
+    // pre-diagnostics servers emit. Rendering its JSON verbatim was the M16
+    // bug; a generic message beats the raw envelope. (Diagnostics-carrying
+    // payloads never reach this: callers read them via diagnosticsFrom first.)
+    if ('phase' in errorJson || Array.isArray(errorJson.diagnostics)) return FALLBACK_ERROR;
     try {
       return JSON.stringify(errorJson);
     } catch (e) {
@@ -77,9 +101,13 @@ const runTime = run => {
 /**
  * The failure currently applying to `name`, per the module semantics above.
  *
+ * `diagnostic` is the structured failure to render for this record (message +
+ * hint + object), null for payloads that predate the contract; `error` is the
+ * one-line message either way.
+ *
  * @param {Array|undefined} runs the cloud runs list (state.runs)
  * @param {string} name the record name to match against dag_filter
- * @returns {{runId: string, error: string, createdAt: string|null} | null}
+ * @returns {{runId: string, error: string, diagnostic: Object|null, createdAt: string|null} | null}
  */
 export const findLatestRunFailureFor = (runs, name) => {
   if (!Array.isArray(runs) || runs.length === 0 || !name) return null;
@@ -96,9 +124,11 @@ export const findLatestRunFailureFor = (runs, name) => {
   for (const { run } of relevant) {
     if (run.state === 'succeeded') return null; // a newer success clears it
     if (run.state === 'failed') {
+      const diagnostic = pickDiagnosticFor(diagnosticsFrom(run.error_json), name);
       return {
         runId: run.id,
-        error: extractRunError(run.error_json),
+        error: diagnostic ? diagnostic.message : extractRunError(run.error_json),
+        diagnostic,
         createdAt: run.created_at ?? null,
       };
     }
