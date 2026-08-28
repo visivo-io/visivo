@@ -12,6 +12,9 @@ curl -fsSL https://visivo.sh | bash
 
 The script installs the `visivo` binary to `~/.visivo/bin` and adds it to your `PATH`. On Windows, run it inside [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), or use the [pip installation](installation.md#python-package-pip) instead.
 
+!!! warning "The installer requires macOS 15 or later"
+    On macOS the script checks `sw_vers -productVersion` before it downloads anything, and exits with `Error: macOS version <yours> is not supported. Requires macOS 15 or later.` on anything older. There is no flag to override it — install with [pip](installation.md#python-package-pip) instead on macOS 14 and below. Linux needs `x86_64`; Apple Silicon and Intel Macs are both covered.
+
 Confirm it landed:
 
 ```bash
@@ -28,8 +31,18 @@ That single command:
 
 1. Copies the `ev-sales` sample into the current directory — a `project.visivo.yml`, the DuckDB file it queries, and the CSV that data came from.
 2. Names the project after the directory you ran it in.
-3. Compiles the project and runs every model and insight query.
-4. Starts the dev server at `http://localhost:8000` and opens your browser.
+3. Parses and validates the YAML — a syntax error stops you here, at the command line.
+4. Starts the dev server at `http://localhost:8000`.
+5. *Then* compiles and runs every model and insight query. The build runs after the server is already listening, not before, so the terminal is your progress bar: wait for `Initial Data Refresh Complete.`
+6. Opens your browser at `http://localhost:8000/?onboarding=1`.
+
+!!! warning "Your browser opens on the onboarding wizard, not on the dashboard"
+    That `?onboarding=1` is not decoration: the viewer redirects it to the in-browser setup wizard ("Welcome to Visivo — you will leave this 2 minute flow with a working dashboard"), even though the example already ships a source, a model, and data that just finished building. To get to the EV Sales dashboard:
+
+    - click **Skip onboarding and go straight to the editor**, or re-run with `visivo init --example ev-sales --no-onboarding` to skip the redirect entirely; then
+    - from the project home — a three-card chooser, not a dashboard — pick **Dashboards** (`http://localhost:8000/project`) and open **EV Sales**.
+
+    The wizard exists for `visivo init` with no `--example`, where you really do have no source yet. Skip it here.
 
 !!! success "No downloads, no database to set up"
     The examples ship inside the Visivo package and query a small bundled DuckDB file, so this works offline and the YAML always matches the version of Visivo you just installed.
@@ -47,6 +60,7 @@ Each one is deliberately small — one source, one model, five insights, five ch
 !!! tip "Useful `init` flags"
     - `--bare` — write the project files and stop, without launching the dev server.
     - `--headless` — start the dev server but don't open a browser.
+    - `--no-onboarding` — open the browser at the project home instead of the onboarding wizard.
     - `-p, --port` — serve on a port other than `8000`.
     - `-pd, --project-dir` — initialize into a subdirectory instead of the current one.
 
@@ -61,7 +75,7 @@ Each one is deliberately small — one source, one model, five insights, five ch
 
 ### 3. Read the Project
 
-Open `project.visivo.yml`. Every Visivo project is the same five-object chain, and the example is a complete, working instance of it:
+Open `project.visivo.yml`. Every Visivo project is the same five-object chain, and the example is a complete, working instance of it. Below is that chain trimmed to one insight and one chart so it fits on a screen — the file you just installed carries five of each, wired the same way:
 
 ```yaml
 name: ev-demo
@@ -113,17 +127,28 @@ dashboards:
 
 ### 4. Edit It and Watch It Reload
 
-With the dev server running, find `units_by_quarter_chart` in `project.visivo.yml` and change its title:
+With the dev server running — and with the EV Sales dashboard on screen, not the onboarding wizard — find `units_by_quarter_chart` in `project.visivo.yml` and edit exactly one line, the `text:` under its `layout.title`:
 
-```yaml
-charts:
-  - name: units_by_quarter_chart
-    layout:
-      title:
-        text: "Quarterly EV demand"
+- from `text: "EV units sold by quarter"`
+- to `text: "Quarterly EV demand"`
+
+!!! danger "Change the line — don't replace the block"
+    Leave the chart's `insights:` list where it is. `Chart.insights` defaults to an empty list, so a chart that lists none is perfectly valid: the project compiles, `visivo run` exits `0`, and the dashboard item renders an *empty* chart with no error anywhere. The only hint you would get is `No jobs run.` in the terminal — which, one section down, this page tells you is normal.
+
+Save the file (Cmd+S / Ctrl+S). That's it — no build command, no page refresh. Visivo recompiles the project and pushes the result to the open browser tab. Your terminal shows:
+
+```text
+Server has detected changes to the project. Re-running project...
+Compile completed in 0.03s imports: 0.91s, parse: 0.03s
+Running project across 8 threads
+
+No jobs run. Ensure your filter contains nodes that are runnable.
+File Change Data Refresh Complete.
+View your project at: http://localhost:8000
 ```
 
-Save the file (Cmd+S / Ctrl+S). That's it — no build command, no page refresh. Visivo recompiles the project, re-runs the queries, and pushes the result to the open browser tab.
+!!! note "`No jobs run.` after a title change is the right answer"
+    A title lives in `layout`, so nothing needed re-querying — the watcher recompiled, found no runnable node in the changed slice, and pushed the new title to the browser anyway. Nothing failed. Change an insight's `props` or a model's `sql` instead and the same watcher does re-run the affected queries, logging `Updated data for insight ...` before `File Change Data Refresh Complete.`
 
 <figure markdown>
   ![Live reload demonstration](assets/interactivity-example.gif)
@@ -146,7 +171,9 @@ visivo init
 This writes a `project.visivo.yml` scaffold of commented examples, plus a `.gitignore` and a `.env.example` if you don't already have them, and then opens the in-browser setup wizard so you can add a source without hand-writing connection details.
 
 !!! note "The scaffold is empty on purpose"
-    Everything in the scaffold is commented out, so `visivo run` reports `No jobs run. Ensure your filter contains nodes that are runnable.` until you define a real source and model. That message is expected here — it means there is nothing to build yet, not that something failed. Uncomment the examples in the file, or add a source through the wizard.
+    Everything in the scaffold is commented out, so `visivo run` reports `No jobs run. Ensure your filter contains nodes that are runnable.` until you define a real source and model. That message is expected here — it means nothing failed, only that this run selected no runnable node. Uncomment the examples in the file, or add a source through the wizard.
+
+    The same line shows up in two other places, and it never means "something broke": after a layout-only edit in a complete project (nothing needed re-querying), and after a chart lost its `insights:` list (nothing is attached to build). Read it as *this run had no work*, then check which of the three you are in.
 
 ## What `visivo serve` Does
 
