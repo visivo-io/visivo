@@ -32,6 +32,17 @@ const RecordRunStatus = ({ name, showRunsLink = false }) => {
 
   if (!failure) return null;
 
+  // W4: diagnostics-carrying payloads name the failed object and say what to
+  // do; older payloads keep the extracted one-liner. When the failure is
+  // about a DIFFERENT object (this record was skipped because an upstream
+  // failed), say which one.
+  const diagnosticObject = failure.diagnostic?.object;
+  const objectLabel =
+    diagnosticObject?.name && diagnosticObject.name !== name
+      ? `${diagnosticObject.type ? `${diagnosticObject.type} ` : ''}'${diagnosticObject.name}': `
+      : '';
+  const hint = failure.diagnostic?.hint;
+
   return (
     <div
       data-testid="record-run-status"
@@ -45,8 +56,18 @@ const RecordRunStatus = ({ name, showRunsLink = false }) => {
       <div className="min-w-0 flex-1">
         <p className="text-[11.5px] font-semibold text-highlight">Last run failed</p>
         <p className="truncate text-[11px] text-highlight-600" title={failure.error}>
+          {objectLabel}
           {failure.error}
         </p>
+        {hint && (
+          <p
+            data-testid="record-run-status-hint"
+            className="truncate text-[11px] text-highlight-500"
+            title={hint}
+          >
+            {hint}
+          </p>
+        )}
       </div>
       {showRunsLink && (
         <Link

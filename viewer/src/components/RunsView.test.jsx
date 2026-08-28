@@ -125,6 +125,58 @@ describe('RunsView is self-contained (6c-T2 dark-on-dark hardening)', () => {
   });
 });
 
+describe('RunsView — RunDetail diagnostics (W4)', () => {
+  const diagnosticsErrorJson = {
+    phase: 'run',
+    diagnostics: [
+      {
+        severity: 'error',
+        phase: 'run',
+        code: 'query_execution_failed',
+        message: 'no such table: orders',
+        object: { type: 'model', name: 'orders' },
+        hint: 'Check the model SQL, then run again.',
+        related: [],
+      },
+      {
+        severity: 'error',
+        phase: 'run',
+        code: 'dependency_failed',
+        message: "Skipped insight 'revenue' because its dependency 'orders' failed.",
+        object: { type: 'insight', name: 'revenue' },
+        related: [],
+      },
+    ],
+  };
+
+  test('a diagnostics-carrying failure renders one entry per failed job, with object and hint', () => {
+    mockQueries({
+      runs: [run({ state: 'failed', error_json: diagnosticsErrorJson })],
+      log: { state: 'failed', logs: 'boom', error_json: diagnosticsErrorJson },
+    });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /failed/i }));
+
+    const list = screen.getByTestId('run-detail-diagnostics');
+    expect(list).toHaveTextContent("model 'orders' — no such table: orders");
+    expect(list).toHaveTextContent('Check the model SQL, then run again.');
+    expect(list).toHaveTextContent(
+      "insight 'revenue' — Skipped insight 'revenue' because its dependency 'orders' failed."
+    );
+  });
+
+  test('a legacy payload without diagnostics renders no diagnostics list', () => {
+    mockQueries({
+      runs: [run({ state: 'failed', error_json: { phase: 'run' } })],
+      log: { state: 'failed', logs: 'boom', error_json: { phase: 'run' } },
+    });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /failed/i }));
+
+    expect(screen.queryByTestId('run-detail-diagnostics')).not.toBeInTheDocument();
+  });
+});
+
 describe('RunsView — RunDetail meta + console-text fallback chain', () => {
   test('a queued run with no dag_filter shows "not set yet" in its OWN detail meta row (distinct from the list Scope column)', () => {
     mockQueries({ runs: [run({ state: 'queued', dag_filter: '' })] });

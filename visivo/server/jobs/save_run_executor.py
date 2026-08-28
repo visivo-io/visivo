@@ -13,12 +13,18 @@ from copy import deepcopy
 
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.jobs.filtered_runner import FilteredRunner
+from visivo.jobs.job import diagnostic_object_ref
 from visivo.logger.logger import Logger
+from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
 from visivo.server.jobs.project_injection import inject_cached_objects
 from visivo.server.managers.run_manager import RunState
 
 # Coalesce rapid saves (e.g. one editor action touching several rows) into one run.
 _DEBOUNCE_SECONDS = 0.5
+
+# error_json is a polled status payload, not the log channel — cap it. The
+# full text stays on GET /api/runs/<run_id>/logs/.
+_MAX_DIAGNOSTICS = 50
 
 _pending_names = set()
 _pending_lock = threading.Lock()
@@ -119,7 +125,9 @@ def _execute(flask_app, run_id, dag_filter):
 
         logs = _format_logs(runner)
         if runner.failed_job_results:
-            run_manager.set_state(run_id, RunState.FAILED, logs=logs, error_json={"phase": "run"})
+            run_manager.set_state(
+                run_id, RunState.FAILED, logs=logs, error_json=_error_json_from(runner)
+            )
         else:
             # Record what this run built, so the staged list drops exactly the
             # items it covered. A failure deliberately leaves them staged — the
@@ -132,8 +140,51 @@ def _execute(flask_app, run_id, dag_filter):
             run_id,
             RunState.FAILED,
             logs=str(exc),
-            error_json={"phase": "run", "error": str(exc)},
+            # `error` stays for older viewers (extractRunError renders it);
+            # `diagnostics` is the same failure in the shared contract shape.
+            error_json={
+                "phase": "run",
+                "error": str(exc),
+                "diagnostics": [
+                    Diagnostic.from_exception(exc, phase=DiagnosticPhase.RUN).model_dump(
+                        mode="json", exclude_none=True
+                    )
+                ],
+            },
         )
+
+
+def _error_json_from(runner):
+    """The structured payload for a failed run (W4, Error Legibility).
+
+    ``{'phase': 'run'}`` used to be the ENTIRE payload — the runner's
+    failed_job_results were discarded one line after being formatted into the
+    logs, so the viewer's per-record failure banner rendered the literal JSON
+    envelope. ``diagnostics`` now carries each failed job's Diagnostic
+    (additive: ``phase`` stays for consumers that predate the contract).
+    """
+    diagnostics = []
+    for result in runner.failed_job_results:
+        if len(diagnostics) >= _MAX_DIAGNOSTICS:
+            break
+        if result.diagnostic is not None:
+            diagnostics.append(result.diagnostic.model_dump(mode="json", exclude_none=True))
+        else:
+            # Every W3 failure site populates a diagnostic; this belt covers
+            # any producer that predates the contract. Never the dot-padded,
+            # ANSI-coloured terminal message — point at the logs instead.
+            diagnostics.append(
+                Diagnostic(
+                    phase=DiagnosticPhase.RUN,
+                    code="unexpected_error",
+                    message=(
+                        f"Job for '{getattr(result.item, 'name', 'unknown')}' failed — "
+                        f"see the run logs for details."
+                    ),
+                    object=diagnostic_object_ref(result.item),
+                ).model_dump(mode="json", exclude_none=True)
+            )
+    return {"phase": "run", "diagnostics": diagnostics}
 
 
 def mark_staged_built(flask_app, dag_filter):
