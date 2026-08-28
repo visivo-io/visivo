@@ -431,17 +431,22 @@ export function PropertyRow({
   // each preset click committed on its own and the index was a separate
   // control, so a two-part edit wrote the value twice.
   const handlePillApply = useCallback(
-    ({ useAs, column, modifier, slice: nextSlice }) => {
+    ({ useAs, ref, column, modifier, slice: nextSlice }) => {
       const trimmedModifier = (modifier || '').trim();
+      // The referenced object is part of the draft now (the menu offers other
+      // names of the same type), so an Apply that re-points the pill has to
+      // carry the new name through. Falls back to the committed one for a
+      // caller that doesn't send it.
+      const nextRef = ref || pillState.ref;
       const base =
         useAs === 'dimension'
-          ? { kind: 'dimension', ref: pillState.ref, column }
-          : { kind: 'aggregate', agg: useAs, ref: pillState.ref, column };
+          ? { kind: 'dimension', ref: nextRef, column }
+          : { kind: 'aggregate', agg: useAs, ref: nextRef, column };
       // A metric/dimension REF pill has no model/column of its own — keep its
-      // kind and ref, and let the modifier ride along.
+      // kind, and let the modifier ride along.
       const nextState =
         pillState.kind === 'metricRef' || pillState.kind === 'dimensionRef'
-          ? { kind: pillState.kind, ref: pillState.ref }
+          ? { kind: pillState.kind, ref: nextRef }
           : base;
       if (trimmedModifier) nextState.modifier = trimmedModifier;
       onChange(

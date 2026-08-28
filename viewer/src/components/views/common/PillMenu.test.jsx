@@ -1038,6 +1038,74 @@ describe('PillMenu — the Index row covers the whole slice vocabulary', () => {
   });
 });
 
+// The pill's BASE name used to be the one part of it that could never be
+// changed here — you deleted the pill and dragged another in. `+ New` has to
+// scaffold against SOME model, so re-pointing is the normal follow-up move.
+describe('PillMenu — re-pointing the reference', () => {
+  const modelPill = { kind: 'dimension', ref: 'orders', column: 'amount' };
+
+  beforeEach(() => {
+    useModelColumns.mockReturnValue({
+      columnsByModel: { orders: ['amount', 'id'], users: ['email', 'signed_up'] },
+      loading: false,
+    });
+  });
+
+  test('offers the project\'s other models, and commits the one picked', () => {
+    useStore.setState({ models: [{ name: 'orders' }, { name: 'users' }] });
+    const onApply = jest.fn();
+    render(<PillMenu state={modelPill} onApply={onApply} />);
+    openMenu();
+
+    const picker = screen.getByTestId('pill-menu-ref');
+    expect(picker).toHaveValue('orders');
+    expect(screen.getByRole('option', { name: 'users' })).toBeInTheDocument();
+
+    fireEvent.change(picker, { target: { value: 'users' } });
+    fireEvent.change(screen.getByTestId('pill-menu-property'), {
+      target: { value: 'email' },
+    });
+    fireEvent.click(screen.getByTestId('pill-menu-apply'));
+
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ ref: 'users', column: 'email' }));
+  });
+
+  test('changing the model clears the column — it belonged to the old one', () => {
+    useStore.setState({ models: [{ name: 'orders' }, { name: 'users' }] });
+    render(<PillMenu state={modelPill} onApply={jest.fn()} />);
+    openMenu();
+
+    expect(screen.getByTestId('pill-menu-property')).toHaveValue('amount');
+    fireEvent.change(screen.getByTestId('pill-menu-ref'), { target: { value: 'users' } });
+
+    // `users` has no `amount`; carrying it over is the bug the `+ New` scaffold
+    // used to ship (a hardcoded `.id` against models that had none).
+    expect(screen.getByTestId('pill-menu-property')).toHaveValue('');
+    expect(screen.getByTestId('pill-menu-apply')).toBeDisabled();
+  });
+
+  test('a metric pill is re-pointed within METRICS, not models', () => {
+    useStore.setState({
+      models: [{ name: 'orders' }],
+      metrics: [{ name: 'revenue' }, { name: 'margin' }],
+    });
+    render(<PillMenu state={{ kind: 'metricRef', ref: 'revenue' }} onApply={jest.fn()} />);
+    openMenu();
+
+    expect(screen.getByTestId('pill-menu-ref')).toHaveValue('revenue');
+    expect(screen.getByRole('option', { name: 'margin' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'orders' })).not.toBeInTheDocument();
+  });
+
+  test('no picker when there is nothing else to point at', () => {
+    useStore.setState({ models: [{ name: 'orders' }] });
+    render(<PillMenu state={modelPill} onApply={jest.fn()} />);
+    openMenu();
+
+    expect(screen.queryByTestId('pill-menu-ref')).not.toBeInTheDocument();
+  });
+});
+
 // VIS-1242 follow-up: an unbound model pill opened with `draft.column === ''`,
 // which matches no <option> — so the browser showed the first column while the
 // draft still said "nothing chosen", and Apply committed an empty column.

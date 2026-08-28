@@ -76,6 +76,19 @@ const KIND_LABEL = {
 };
 
 /**
+ * Which store collection a pill's BASE name may be re-pointed within, and what
+ * to call it in the picker. A pill referencing a model can only ever move to
+ * another model — swapping in a metric would change the pill's whole grammar.
+ */
+const REF_SOURCE = {
+  modelRef: { collection: 'models', label: 'Model' },
+  dimension: { collection: 'models', label: 'Model' },
+  aggregate: { collection: 'models', label: 'Model' },
+  metricRef: { collection: 'metrics', label: 'Metric' },
+  dimensionRef: { collection: 'dimensions', label: 'Dimension' },
+};
+
+/**
  * Best-effort "is this pill's bound column numeric" check (06 §3's drop-time
  * heuristic, reused here to TYPE-RESTRICT the preset list per 06 §4). Reuses
  * the exact row-value inference `CenterPanel`'s results grid already runs
@@ -262,6 +275,10 @@ const PillMenu = React.forwardRef(
   const buildDraft = useCallback(
     () => ({
       useAs: state?.kind === 'aggregate' ? state.agg : 'dimension',
+      // The object being referenced. Editable for the same reason the property
+      // is: `+ New` has to pick SOME model to scaffold against, and re-pointing
+      // the reference otherwise meant deleting the pill and dragging another.
+      ref: state?.ref ?? '',
       // The FULL path, not the bare column: an Apply that doesn't touch the
       // property must round-trip `gdp[0]` unchanged.
       column: state?.propertyPath ?? state?.column ?? '',
@@ -420,10 +437,26 @@ const PillMenuPopover = ({
   // parent because this component is mounted only while the menu is open — a
   // property panel full of pills would otherwise fire one schema request per
   // row on every render.
-  const modelName = isColumnBacked ? state?.ref || null : null;
+  // The DRAFT's model, not the pill's committed one: re-pointing the reference
+  // has to re-ask for that model's columns, or the property picker would keep
+  // offering the old model's.
+  const modelName = isColumnBacked ? draft.ref || state?.ref || null : null;
   const modelNames = useMemo(() => (modelName ? [modelName] : []), [modelName]);
   const { columnsByModel, loading: columnsLoading } = useModelColumns(modelNames);
   const columns = useMemo(() => columnsByModel?.[modelName] || [], [columnsByModel, modelName]);
+
+  // The names this pill may be re-pointed at — every OTHER object of the same
+  // type, plus its own so the select has something selected.
+  const refSource = REF_SOURCE[state?.kind] || null;
+  const refCandidates = useStore(s => (refSource ? s[refSource.collection] : null));
+  const refNames = useMemo(() => {
+    const names = (refCandidates || []).map(o => o?.name).filter(Boolean);
+    // A pill can reference something not (yet) in the collection — a draft, or
+    // a name the user typed. Keep it selectable rather than silently dropping
+    // the current value out of its own picker.
+    if (draft.ref && !names.includes(draft.ref)) names.unshift(draft.ref);
+    return names;
+  }, [refCandidates, draft.ref]);
 
 
   // The Index row first shipped as All / First / Last only, which dropped
@@ -561,6 +594,44 @@ const PillMenuPopover = ({
             &apos;s data.
           </span>
         </div>
+      )}
+
+      {/* The BASE name. `+ New` has to scaffold against SOME model, so the
+          reference it picks is a starting point — this is where it gets
+          re-pointed, without deleting the pill and dragging another in.
+          Only names of the same type are offered: a model pill swapped for a
+          metric would be a different grammar, not an edited reference. */}
+      {refSource && refNames.length > 1 && (
+        <>
+          <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            {refSource.label}
+          </div>
+          <div className="px-3 pb-1.5">
+            <select
+              value={draft.ref}
+              onChange={e =>
+                setDraft(d => ({
+                  ...d,
+                  ref: e.target.value,
+                  // A column belongs to the model it came from. Carrying it
+                  // across would leave the pill pointing at a column the new
+                  // model may not have — the exact class of bug the `+ New`
+                  // scaffold used to ship. Clear it and make the user pick.
+                  column: e.target.value === state?.ref ? d.column : '',
+                }))
+              }
+              data-testid="pill-menu-ref"
+              aria-label={refSource.label}
+              className="w-full rounded border border-gray-300 px-1.5 py-1 text-xs text-gray-800 focus:border-primary-500 focus:outline-none"
+            >
+              {refNames.map(name => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
       )}
 
       {isColumnBacked && (
