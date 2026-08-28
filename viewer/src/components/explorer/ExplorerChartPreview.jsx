@@ -403,8 +403,21 @@ const ExplorerChartPreview = () => {
     );
   }
 
+  // M28 — `h-full`, NOT `flex-1`. This root's parent is CenterPanel's chart
+  // pane, a `display:block` div (`flex-1 min-h-0 overflow-hidden`), so
+  // `flex-1` here was inert: it only means anything to a flex CONTAINER's
+  // child, and a block parent is not one. With no `h-full` either, this div's
+  // height was `auto` — indefinite — which made every percentage height below
+  // it (ChartPreview's `h-full`, ItemContainer's `h-full`, the Plot's
+  // `style.height: 100%`) resolve to `auto` in turn, and Plotly fell back to
+  // its built-in 450px default no matter how tall the pane was. Measured
+  // before the fix: pane 509px / plot 450px at a 1280px viewport, and pane
+  // 260px / plot 450px at 1600px — short in one layout, overflowing in the
+  // other. `h-full` resolves against the pane's definite height and restores
+  // the chain. Every branch above this one already returned `h-full`, which is
+  // why the placeholders looked right and only the real chart was wrong.
   return (
-    <div className="flex flex-1 min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <PreviewInputControls inputConfigs={inputConfigs} projectId={projectId} />
       {unresolvedNames.length > 0 && (
         <div

@@ -293,7 +293,12 @@ const CenterPanel = ({
   const renderChartSection = () => (
     <div className="h-full flex flex-col" data-testid="chart-section">
       <ExplorerInputsToolbar projectId={projectId} />
-      <div className="flex-1 min-h-0 overflow-hidden">
+      {/* M28 — the box the chart is supposed to fill. Its height is definite
+          (a flex child of the `h-full flex-col` section above), which is what
+          makes `h-full` resolvable all the way down to the Plotly root; the
+          testid exists so an e2e story can measure pane-vs-plot geometry
+          instead of eyeballing a screenshot. */}
+      <div className="flex-1 min-h-0 overflow-hidden" data-testid="chart-preview-pane">
         <ExplorerErrorBoundary fallback="Chart preview error">
           <ExplorerChartPreview />
         </ExplorerErrorBoundary>

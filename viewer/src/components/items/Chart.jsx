@@ -1,6 +1,6 @@
 import Loading from '../common/Loading';
 import Plot from 'react-plotly.js';
-import React, { useState, useMemo, useImperativeHandle } from 'react';
+import React, { useState, useMemo, useImperativeHandle, useEffect, useRef } from 'react';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
 import { chartDataFromInsightData } from '../../models/Insight';
@@ -148,12 +148,68 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     [plotlyConfig]
   );
 
+  // M28 — make a CONTAINER resize reach Plotly.
+  //
+  // Plotly only ever re-measures its node when something tells it to, and the
+  // only thing that ever does is a window `resize` event: react-plotly.js's
+  // `useResizeHandler` (below) installs a window listener, and plotly.js
+  // itself contains no ResizeObserver at all (upstream plotly.js#3984/#7059,
+  // react-plotly.js#41/#64). So a pane that changes size while the WINDOW does
+  // not — a rail drag, a collapsed editor, a banner appearing above the plot —
+  // leaves the figure drawn at its last measured size. Measured before this
+  // fix: dragging the workspace right rail took the chart pane from 454px to
+  // 354px wide while Plotly's own resolved width moved 452 → 442, i.e. 88px
+  // stale.
+  //
+  // Observing the container and re-firing that same window event adds a
+  // TRIGGER for the sizing authority that already exists; it never introduces
+  // a second one (#634 — "don't give Plotly two sizing authorities"). The
+  // corollary is the `plotlyOwnsSizing` gate: when the caller passes explicit
+  // width/height, `autosize` is off, the CALLER owns the dimensions, and
+  // re-measuring the container would be exactly the second authority #634
+  // removed — so we don't observe at all. (This is also why the dashboard is
+  // untouched: it passes both dimensions.)
+  //
+  // Cost of using the window event rather than reaching into react-plotly.js
+  // for the private per-plot handler: it wakes every other window-resize
+  // listener on the page. That is the same trade CenterPanel.jsx and
+  // ExplorerInputsToolbar.jsx already make for their own divider/toolbar
+  // reflows, it is bounded to autosize charts, it is coalesced to one dispatch
+  // per animation frame below, and it depends on no library internals.
+  const containerRef = useRef(null);
+  const plotlyOwnsSizing = !!plotLayout.autosize;
+  useEffect(() => {
+    if (!plotlyOwnsSizing || isDataLoading) return undefined;
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+
+    let frame = null;
+    const observer = new ResizeObserver(entries => {
+      // A zero box means the pane is hidden (display:none) or detached;
+      // Plotly rejects a resize on a non-displayed div, so skip it.
+      const rect = entries[0]?.contentRect;
+      if (rect && rect.width === 0 && rect.height === 0) return;
+      // A drag emits an entry per frame — coalesce them into one dispatch.
+      if (frame !== null) return;
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        window.dispatchEvent(new Event('resize'));
+      });
+    });
+    observer.observe(node);
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [plotlyOwnsSizing, isDataLoading]);
+
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
 
   return (
     <ItemContainer
+      ref={containerRef}
       className={hideToolbar ? 'h-full' : ''}
       id={itemNameToSlug(chart.name)}
     >
