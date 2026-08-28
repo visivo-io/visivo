@@ -30,6 +30,9 @@ Response contract:
         baked server-side; the client falls back to its DuckDB sample lane.
   422 { error, error_type: "model_not_run", model } — a ref names a scratch
         model with no schema (never run, and no ``model_schemas`` sent).
+  400 bodies additionally carry `diagnostic` (visivo/models/diagnostic.py)
+        when the build failure produced one — e.g. a positional axis bound to
+        a STRUCT (WB9/S5-14). Absent otherwise.
 """
 
 from flask import request, jsonify
@@ -42,6 +45,7 @@ from visivo.query.insight.draft_overlay import build_draft_overlay, DraftOverlay
 from visivo.server.views.insight_draft_common import (
     parse_draft_request,
     build_schema_overrides,
+    diagnostic_fields,
     is_model_not_run_error,
     extract_model_not_run_name,
 )
@@ -133,7 +137,7 @@ def register_insight_execute_views(app, flask_app, output_dir):
                     422,
                 )
             Logger.instance().error(f"execute-draft: query build failed: {e}")
-            return jsonify({"error": message}), 400
+            return jsonify({"error": message, **diagnostic_fields(e)}), 400
 
         # A dynamic insight (references a real Input) has pre_query=None — its
         # query carries unfilled ${input} placeholders the server can't bake, so

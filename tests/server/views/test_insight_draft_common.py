@@ -8,6 +8,7 @@ from flask import Flask
 from visivo.server.views.insight_draft_common import (
     parse_draft_request,
     build_schema_overrides,
+    diagnostic_fields,
     is_model_not_run_error,
     extract_model_not_run_name,
 )
@@ -103,3 +104,34 @@ def test_model_not_run_markers_and_name_extraction():
     assert extract_model_not_run_name(ast_msg) == "orders_q"
     assert extract_model_not_run_name(dyn_msg) == "cohort_q"
     assert extract_model_not_run_name("no name here") is None
+
+
+class TestDiagnosticFields:
+    """WB9: build failures that carry a Diagnostic surface it on the 400 body;
+    every other failure leaves the body byte-identical to before."""
+
+    def test_returns_the_serialised_diagnostic_when_the_error_carries_one(self):
+        from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
+        from visivo.query.insight.prop_type_validator import PositionalAxisTypeError
+
+        diagnostic = Diagnostic(
+            phase=DiagnosticPhase.COMPILE,
+            code="non_plottable_axis_type",
+            message="positional axis prop 'props.x' resolves to a STRUCT",
+            field="props.x",
+        )
+        fields = diagnostic_fields(PositionalAxisTypeError(diagnostic))
+        assert fields["diagnostic"]["code"] == "non_plottable_axis_type"
+        assert fields["diagnostic"]["phase"] == "compile"
+        assert fields["diagnostic"]["field"] == "props.x"
+        # exclude_none: absent optionals must not become explicit nulls.
+        assert "location" not in fields["diagnostic"]
+
+    def test_returns_nothing_for_an_ordinary_exception(self):
+        assert diagnostic_fields(ValueError("boom")) == {}
+
+    def test_returns_nothing_when_the_attribute_is_not_a_diagnostic(self):
+        class Weird(Exception):
+            diagnostic = "not a model"
+
+        assert diagnostic_fields(Weird()) == {}

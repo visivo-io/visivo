@@ -129,3 +129,15 @@ def test_from_exception_never_raises_on_an_unregistered_code():
     assert diagnostic.code == "unexpected_error"
     assert diagnostic.message == "the real failure"
     assert "typo_code" in diagnostic.detail
+
+
+def test_non_plottable_axis_type_code_is_registered():
+    """WB9's code joins the append-only vocabulary; consumers branch on it."""
+    assert "non_plottable_axis_type" in DIAGNOSTIC_CODES
+    diagnostic = Diagnostic(
+        phase=DiagnosticPhase.COMPILE,
+        code="non_plottable_axis_type",
+        message="positional axis prop 'props.x' resolves to a STRUCT",
+        field="props.x",
+    )
+    assert diagnostic.code == "non_plottable_axis_type"

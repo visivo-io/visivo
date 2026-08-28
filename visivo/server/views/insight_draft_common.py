@@ -93,3 +93,17 @@ def extract_model_not_run_name(message):
         if match:
             return match.group(1).strip()
     return None
+
+
+def diagnostic_fields(exc):
+    """Structured ``{"diagnostic": {...}}`` for a build failure that carries a
+    :class:`~visivo.models.diagnostic.Diagnostic`, ``{}`` for one that doesn't.
+
+    Additive by design: the 400 body keeps its ``error`` string exactly as it
+    was, and a client that doesn't know about diagnostics never sees a
+    difference. Producers today: ``PositionalAxisTypeError`` (WB9 / S5-14).
+    """
+    diagnostic = getattr(exc, "diagnostic", None)
+    if diagnostic is None or not hasattr(diagnostic, "model_dump"):
+        return {}
+    return {"diagnostic": diagnostic.model_dump(mode="json", exclude_none=True)}

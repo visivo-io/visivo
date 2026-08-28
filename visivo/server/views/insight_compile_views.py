@@ -19,8 +19,11 @@ text via ``Insight.get_query_info(..., force_dynamic=True)``, and stops.
 Response contract:
   200 { post_query, pre_query: null, props_mapping, static_props,
         props_slices, split_key, type, models: [{name, name_hash}] }
-  400 { error } — malformed body / draft Pydantic validation / ref-resolution
-        / SQLGlot failure
+  400 { error, diagnostic? } — malformed body / draft Pydantic validation /
+        ref-resolution / SQLGlot failure. `diagnostic` is the structured
+        `Diagnostic` (visivo/models/diagnostic.py) when the build failure
+        carried one (e.g. a positional axis bound to a STRUCT, WB9/S5-14);
+        absent otherwise, so `error` stays the only field a client needs.
   422 { error, error_type: "model_not_run", model: str|null } — a raw-column
         ref names a scratch model with no schema (client never sent
         `model_schemas` for it, and it has never been run for real either) —
@@ -36,6 +39,7 @@ from visivo.query.insight.draft_overlay import build_draft_overlay, DraftOverlay
 from visivo.server.views.insight_draft_common import (
     parse_draft_request,
     build_schema_overrides,
+    diagnostic_fields,
     is_model_not_run_error,
     extract_model_not_run_name,
 )
@@ -91,7 +95,7 @@ def register_insight_compile_views(app, flask_app, output_dir):
                     422,
                 )
             Logger.instance().error(f"compile-draft: query build failed: {e}")
-            return jsonify({"error": message}), 400
+            return jsonify({"error": message, **diagnostic_fields(e)}), 400
 
         try:
             dependent_models = insight.get_all_dependent_models(dag)

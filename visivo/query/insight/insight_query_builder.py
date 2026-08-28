@@ -6,7 +6,10 @@ from visivo.query.insight.default_ordering import (
     post_query_order_clause,
 )
 from visivo.query.insight.prop_type_validator import (
+    PositionalAxisTypeError,
+    check_positional_axis_plottability,
     check_slice_type_compatibility,
+    is_positional_axis_prop,
     is_scalar_slice,
 )
 from visivo.models.base.project_dag import ProjectDag
@@ -1228,6 +1231,19 @@ class InsightQueryBuilder:
 
         return order_by_expressions
 
+    def _resolved_props_sql(self) -> Dict[str, str]:
+        """Map prop path -> the resolved SQL for that prop, alias included.
+
+        ``resolved_query_statements`` is ``[(key, sql_with_alias)]``; the
+        alias is left ON the fragment and unwrapped by SQLGlot downstream
+        (``_infer_expression_type``) rather than stripped with a regex.
+        """
+        return {
+            key: sql
+            for key, sql in (self.resolved_query_statements or [])
+            if key and "props." in key
+        }
+
     def _validate_prop_slice_types(self, props_slices: Dict[str, str]) -> None:
         """Type-check each sliced ``?{...}[N|a:b]`` prop against the broad
         type class the Plotly schema expects at that path.
@@ -1247,15 +1263,7 @@ class InsightQueryBuilder:
         if not trace_type:
             return
 
-        # Map prop path -> resolved SQL expression (no alias suffix).
-        # `resolved_query_statements` is `[(key, sql_with_alias)]`. We
-        # strip a trailing `AS "<hash>"` to get a usable bare expression.
-        resolved_by_path: Dict[str, str] = {}
-        for key, sql in self.resolved_query_statements or []:
-            if not key or "props." not in key:
-                continue
-            bare = re.sub(r"\s+AS\s+\"[^\"]+\"\s*$", "", sql, flags=re.IGNORECASE)
-            resolved_by_path[key] = bare
+        resolved_by_path = self._resolved_props_sql()
 
         for prop_path, slice_expr in props_slices.items():
             if not is_scalar_slice(slice_expr):
@@ -1276,6 +1284,39 @@ class InsightQueryBuilder:
             if not ok:
                 raise ValueError(message)
 
+    def _validate_positional_axis_types(self) -> None:
+        """WB9 / S5-14: hard-fail the build when a prop bound to a
+        POSITIONAL AXIS (``x``, ``y``, ``lat``, ``r``, ...) resolves to a
+        record-shaped SQL type (STRUCT/MAP/OBJECT/UNION/NESTED).
+
+        Such an insight builds "successfully" today and renders a blank
+        chart with a SUCCESS job — the silent failure S5-14 reports. The
+        canonical producer is a doubled query string ``?{?{col}}``, which
+        SQLGlot parses as a DuckDB struct literal.
+
+        Raises ``PositionalAxisTypeError`` (a ``ValueError``) carrying the
+        structured ``Diagnostic``. Types the gate does not recognise, and
+        every type an axis can render, pass through untouched — see
+        ``prop_type_validator.axis_plottability``.
+        """
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
+        sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
+        for prop_path, resolved_sql in self._resolved_props_sql().items():
+            if not is_positional_axis_prop(prop_path):
+                continue
+            if not resolved_sql:
+                continue
+            diagnostic = check_positional_axis_plottability(
+                insight_name=self.insight_name,
+                prop_path=prop_path,
+                sqlglot_dtype=self._infer_expression_type(resolved_sql),
+                resolved_sql=resolved_sql,
+                dialect=sqlglot_dialect,
+            )
+            if diagnostic is not None:
+                raise PositionalAxisTypeError(diagnostic)
+
     def _infer_expression_type(self, expression_sql: str) -> Optional[exp.DataType]:
         """Best-effort sqlglot type inference for a resolved expression.
 
@@ -1283,6 +1324,11 @@ class InsightQueryBuilder:
         ``annotate_types`` against the union of all referenced models'
         schemas. Returns None if any step fails — callers treat that as
         ``unknown`` and skip validation.
+
+        ``expression_sql`` may carry its own trailing ``AS "<alias>"`` (the
+        form ``resolved_query_statements`` holds); the alias is unwrapped
+        from the parsed AST rather than stripped from the text, so no
+        caller has to regex SQL apart.
         """
         try:
             from visivo.query.sqlglot_utils import get_sqlglot_dialect
@@ -1316,7 +1362,7 @@ class InsightQueryBuilder:
             # Wrap the expression in a tiny SELECT so annotate_types has
             # somewhere to attach its inferences.
             from_table = next(iter(mapping.keys()))
-            wrapped = f'SELECT {expression_sql} AS _vtype FROM "{from_table}"'
+            wrapped = f'SELECT {expression_sql} FROM "{from_table}"'
             parsed = sqlglot.parse_one(wrapped, dialect=sqlglot_dialect)
             annotated = annotate_types(parsed, schema=mapping_schema)
             select = annotated.find(exp.Select)
@@ -1405,6 +1451,11 @@ class InsightQueryBuilder:
         # unknown SQL type) pass through.
         if props_slices:
             self._validate_prop_slice_types(props_slices)
+
+        # WB9 / S5-14: a positional axis bound to a record-shaped column
+        # (STRUCT/MAP/...) builds fine and renders nothing. Fail here, with
+        # a Diagnostic, instead of shipping a SUCCESS job and a blank chart.
+        self._validate_positional_axis_types()
 
         data = {
             "pre_query": pre_query,
