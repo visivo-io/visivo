@@ -20,6 +20,16 @@ const row = (overrides = {}) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // `clearAllMocks` only clears CALL records — it drains neither the
+  // `mockResolvedValueOnce` queue nor a lingering `mockResolvedValue`
+  // implementation. Several tests here queue N `once` values whose
+  // consumption is CONTINGENT on the behavior under test (a rename that
+  // doesn't commit consumes one fewer rebuild), so an unconsumed leftover
+  // used to be served to the NEXT test's mount — turning one real regression
+  // into a spray of ~1s timeouts in four unrelated tests that pointed at the
+  // wrong features entirely. `mockReset` drains both, so each test's failure
+  // is its own.
+  buildPromoteChecklist.mockReset();
   useStore.setState({
     promoteExploration: jest.fn().mockResolvedValue({ success: true, results: [], reclassificationOffers: [] }),
     setInsightProp: jest.fn(),
@@ -1246,6 +1256,94 @@ describe('ExplorationPromoteModal', () => {
       expect(
         await screen.findByTestId('promote-row-insight-churn_by_cohort-name-input')
       ).toHaveValue('churn_by_cohort');
+    });
+
+    // M14 review follow-up — the OTHER half of "only rows under a NEW key take
+    // the rebuilt store name". Preserving a draft is right for a row the user
+    // is still typing into; it is WRONG for the row they just committed, and
+    // key churn alone can't tell those apart: `renameModelTab`/`renameInsight`
+    // silently `return` (no throw) for a draft with `isNew === false`, while
+    // renamability here is decided by the BACKEND diff — `_diff_object`
+    // reports 'new' for anything the manager can no longer `get`, which is
+    // exactly a loaded working copy whose project object was deleted out of
+    // band. The rename then no-ops, the key never moves, and the field would
+    // keep displaying a name that the save will never use.
+    test("a rename the store silently REFUSES snaps the field back — it never keeps displaying a name the save won't use", async () => {
+      // A no-op rename action, mirroring the store's own `if (!isNew) return`.
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist
+        .mockResolvedValueOnce([row()])
+        // The rebuild reads the store back: the row is STILL `orders_q`,
+        // because the rename was refused.
+        .mockResolvedValueOnce([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'daily_orders' } });
+      expect(input).toHaveValue('daily_orders');
+      fireEvent.blur(input);
+
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+      // The rebuild has landed once the field is re-enabled (`renamingKey`
+      // is cleared last).
+      await waitFor(() =>
+        expect(screen.getByTestId('promote-row-model-orders_q-name-input')).toBeEnabled()
+      );
+      // The row — its checkbox, its verdict, and whatever "Save 1 to project"
+      // writes — is still `orders_q`, so the FIELD must say `orders_q` too.
+      expect(screen.getByTestId('promote-row-model-orders_q-name-input')).toHaveValue('orders_q');
+      expect(screen.getByTestId('promote-row-model-orders_q-checkbox')).toBeInTheDocument();
+    });
+
+    // …and it says WHY, rather than mutely reverting the user's typing: the
+    // object still gets saved, just under the name it was loaded with.
+    test('a silently-refused rename explains itself inline instead of reverting with no reason', async () => {
+      useStore.setState({ renameModelTab: jest.fn() });
+      buildPromoteChecklist.mockResolvedValueOnce([row()]).mockResolvedValueOnce([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'daily_orders' } });
+      fireEvent.blur(input);
+
+      expect(
+        await screen.findByTestId('promote-row-model-orders_q-name-error')
+      ).toHaveTextContent('it will be saved under that name');
+    });
+
+    // The other half of `mergeNameDrafts` — building `next` FRESH so keys
+    // absent from the rebuilt checklist drop out. Renaming away from a name
+    // and then back to it is the shortest path that proves it: without the
+    // drop, the stale draft parked under the original key resurfaces and the
+    // field shows the OLD name for an object that no longer has it (and the
+    // next blur would fire a rename the user never asked for).
+    test('renaming a row back to a name it previously had does not resurrect that name\'s stale draft', async () => {
+      const renameInsight = jest.fn();
+      useStore.setState({ renameInsight });
+      const insightRow = name => row({ tier: 'insight', type: 'insight', name });
+      buildPromoteChecklist
+        .mockResolvedValueOnce([insightRow('my_insight')])
+        .mockResolvedValueOnce([insightRow('temp_name')])
+        .mockResolvedValueOnce([insightRow('my_insight')]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+
+      // my_insight -> temp_name (leaves a draft parked under insight:my_insight)
+      const first = await screen.findByTestId('promote-row-insight-my_insight-name-input');
+      fireEvent.change(first, { target: { value: 'temp_name' } });
+      fireEvent.blur(first);
+      await waitFor(() => expect(renameInsight).toHaveBeenCalledWith('my_insight', 'temp_name'));
+      const second = await screen.findByTestId('promote-row-insight-temp_name-name-input');
+      expect(second).toHaveValue('temp_name');
+
+      // …and straight back to my_insight.
+      fireEvent.change(second, { target: { value: 'my_insight' } });
+      fireEvent.blur(second);
+      await waitFor(() => expect(renameInsight).toHaveBeenCalledWith('temp_name', 'my_insight'));
+
+      const back = await screen.findByTestId('promote-row-insight-my_insight-name-input');
+      expect(back).toHaveValue('my_insight');
+      // …and no phantom third rename fires from the resurrected draft.
+      fireEvent.blur(back);
+      await waitFor(() => expect(renameInsight).toHaveBeenCalledTimes(2));
     });
 
     test('committing a rename on an INSIGHT row calls renameInsight (not renameModelTab)', async () => {
