@@ -17,8 +17,8 @@ Two independent checks live here:
 
 2. **Positional-axis plottability gate** (WB9 / S5-14): a prop bound to a
    coordinate of the chart (``x``, ``y``, ``lat``, ``r``, ...) whose SQL
-   resolves to a *record-shaped* type — a STRUCT, MAP, OBJECT, UNION or
-   NESTED — cannot be drawn on an axis. Today that combination builds
+   resolves to a *record-shaped* type — a STRUCT, MAP, UNION or NESTED —
+   cannot be drawn on an axis. Today that combination builds
    "successfully" and renders a blank chart: the worst failure mode there
    is, because the run reports SUCCESS. The gate turns it into a build
    error carrying a :class:`~visivo.models.diagnostic.Diagnostic`.
@@ -288,6 +288,12 @@ def check_slice_type_compatibility(
 #   parents            the hierarchy edge that places a node (sunburst,
 #                      treemap, icicle) — a record here blanks the chart the
 #                      same way ``labels`` does
+#   value              the datum itself — the number an ``indicator`` displays,
+#                      and the 4th dimension of ``isosurface``/``volume``. It is
+#                      the only top-level ``value`` prop in ``visivo/schema``,
+#                      it is numeric in all three, and it is this module's
+#                      motivating example (see the header docstring), so a
+#                      record there is the same silent blank.
 #
 # Deliberately EXCLUDED, with reasons:
 #   * ``ids`` — present on every trace type but it is a key for animation
@@ -326,6 +332,7 @@ POSITIONAL_AXIS_PROP_NAMES = frozenset(
         "values",
         "labels",
         "parents",
+        "value",
     }
 )
 
@@ -338,8 +345,8 @@ POSITIONAL_AXIS_PROP_NAMES = frozenset(
 #   * numerics of every width/sign/precision, including the unsigned and
 #     wide integer types ClickHouse/DuckDB emit;
 #   * strings of every flavour (categorical axes), plus the string-backed
-#     scalars (UUID, INET, IP*, ENUM*, MONEY, XML, JSON/JSONB/VARIANT/SUPER
-#     — semi-structured columns arrive as JSON *text* and plot as categories);
+#     scalars (UUID, INET, IP*, ENUM*, MONEY, XML, and the semi-structured
+#     JSON/JSONB/VARIANT/SUPER/OBJECT — see the note on OBJECT below);
 #   * temporals (date/time axes) and INTERVAL;
 #   * BOOLEAN, which plots as a two-value categorical axis.
 #
@@ -407,6 +414,17 @@ PLOTTABLE_AXIS_TYPES = frozenset(
         "JSONB",
         "VARIANT",
         "SUPER",
+        # OBJECT is sqlglot's name for Snowflake's ``OBJECT`` — a VARIANT
+        # constrained to objects, and the ONLY dialect Visivo supports whose
+        # information_schema reports a bare ``OBJECT`` data_type. It has the
+        # same wire shape as VARIANT (the connector hands both back as JSON
+        # text) and the same parquet column, so it plots as a category exactly
+        # like VARIANT does. Denylisting it while allowlisting VARIANT would
+        # hard-fail a project that builds and renders today — a false positive,
+        # which this gate treats as strictly worse than a missed blank chart.
+        # sqlglot files OBJECT under ``DataType.STRUCT_TYPES``; that grouping is
+        # about SQL-level shape, not about what reaches the browser.
+        "OBJECT",
         # --- temporal ---------------------------------------------------
         "DATE",
         "DATE32",
@@ -435,15 +453,30 @@ PLOTTABLE_AXIS_TYPES = frozenset(
 # an axis of objects — the exact silent-blank failure WB9 exists to stop.
 #
 # This is sqlglot's own ``exp.DataType.STRUCT_TYPES`` (STRUCT / OBJECT /
-# NESTED / UNION) plus MAP, spelled out here rather than imported so the
-# rejected set is pinned by THIS file and cannot widen under us when sqlglot
-# reclassifies a type.
+# NESTED / UNION) plus MAP, MINUS OBJECT, spelled out here rather than imported
+# so the rejected set is pinned by THIS file and cannot widen under us when
+# sqlglot reclassifies a type. Every name left here is record-shaped ON THE
+# WIRE for the dialects Visivo supports: DuckDB/BigQuery STRUCT, DuckDB/
+# ClickHouse/Trino MAP, ClickHouse Nested, DuckDB UNION. OBJECT is the one
+# STRUCT_TYPES member that is not (Snowflake hands it back as JSON text) — see
+# its entry in PLOTTABLE_AXIS_TYPES.
 #
-# ARRAY and LIST are deliberately NOT here even though they are also nested:
-# a positional prop carrying a scalar slice (``x: ?{...}[0]``) binds a SINGLE
-# row's value to the prop, so an array-valued column becomes a perfectly
-# plottable array of scalars. Rejecting arrays would be a real false positive.
-NON_PLOTTABLE_AXIS_TYPES = frozenset({"STRUCT", "OBJECT", "NESTED", "UNION", "MAP"})
+# ARRAY and LIST are deliberately NOT here, for a reason narrower than the
+# denylist and broader than a single authoring form:
+#   * With a scalar slice (``x: ?{...}[0]``) the prop binds a SINGLE row's
+#     value, so an array-valued column becomes a plottable array of scalars.
+#     Rejecting that would be a plain false positive.
+#   * WITHOUT a slice the prop binds an array-of-arrays, which a linear axis
+#     does render as nothing — but ARRAY is exactly as ambiguous as OBJECT is.
+#     sqlglot spells DuckDB's genuinely-nested LIST and Snowflake's ARRAY (a
+#     VARIANT constrained to arrays, delivered as JSON *text*, categorical and
+#     perfectly plottable) with the SAME ``DataType.Type.ARRAY``, and nothing
+#     in ``DataType.this`` tells them apart. Rejecting the unsliced case would
+#     therefore hard-fail every Snowflake ARRAY column bound to an axis.
+# So ARRAY/LIST classify "unknown" and the gate stays silent on them —
+# deliberately fail-open, not an oversight. Splitting the sliced from the
+# unsliced case would not help: the Snowflake half is a false positive in both.
+NON_PLOTTABLE_AXIS_TYPES = frozenset({"STRUCT", "NESTED", "UNION", "MAP"})
 
 
 def axis_plottability(sqlglot_dtype: Optional[exp.DataType]) -> str:
@@ -467,6 +500,17 @@ def axis_plottability(sqlglot_dtype: Optional[exp.DataType]) -> str:
     if name in PLOTTABLE_AXIS_TYPES:
         return "plottable"
     return "unknown"
+
+
+def _article_for(type_name: str) -> str:
+    """``"an"`` before a type name that reads as vowel-initial, else ``"a"``.
+
+    Type names are ASCII SQL keywords, so first-letter is enough — there is no
+    "a UNION"-style consonant-sounding vowel among them. Kept as a helper (not
+    hardcoded to the current denylist) so a later addition — OBJECT, ARRAY,
+    INTERVAL — cannot silently reintroduce "a OBJECT".
+    """
+    return "an" if type_name[:1].upper() in "AEIOU" else "a"
 
 
 def is_positional_axis_prop(prop_path: str) -> bool:
@@ -541,10 +585,12 @@ def check_positional_axis_plottability(
     else:
         column_clause = ""
 
+    article = _article_for(type_name)
     message = (
-        f"Insight '{insight_name}': positional axis prop '{prop_path}' resolves to a "
-        f"{type_name}{column_clause}. A chart axis cannot plot a {type_name}, so this "
-        f"insight would build successfully and then render an empty chart."
+        f"Insight '{insight_name}': positional axis prop '{prop_path}' resolves to "
+        f"{article} {type_name}{column_clause}. A chart axis cannot plot {article} "
+        f"{type_name}, so this insight would build successfully and then render an "
+        f"empty chart."
     )
 
     hint = f"Bind '{prop_path}' to a single scalar column or expression."

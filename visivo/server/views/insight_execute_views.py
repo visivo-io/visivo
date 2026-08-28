@@ -30,9 +30,11 @@ Response contract:
         baked server-side; the client falls back to its DuckDB sample lane.
   422 { error, error_type: "model_not_run", model } — a ref names a scratch
         model with no schema (never run, and no ``model_schemas`` sent).
-  400 bodies additionally carry `diagnostic` (visivo/models/diagnostic.py)
-        when the build failure produced one — e.g. a positional axis bound to
-        a STRUCT (WB9/S5-14). Absent otherwise.
+  400 bodies additionally carry `diagnostics` — a LIST of structured
+        `Diagnostic` objects (visivo/models/diagnostic.py), the plural shape
+        `diagnosticsFrom` in viewer/src/types/diagnostic.js reads — when the
+        build failure produced one, e.g. a positional axis bound to a STRUCT
+        (WB9/S5-14). Absent otherwise.
 """
 
 from flask import request, jsonify

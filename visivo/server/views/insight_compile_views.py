@@ -19,11 +19,13 @@ text via ``Insight.get_query_info(..., force_dynamic=True)``, and stops.
 Response contract:
   200 { post_query, pre_query: null, props_mapping, static_props,
         props_slices, split_key, type, models: [{name, name_hash}] }
-  400 { error, diagnostic? } — malformed body / draft Pydantic validation /
-        ref-resolution / SQLGlot failure. `diagnostic` is the structured
-        `Diagnostic` (visivo/models/diagnostic.py) when the build failure
-        carried one (e.g. a positional axis bound to a STRUCT, WB9/S5-14);
-        absent otherwise, so `error` stays the only field a client needs.
+  400 { error, diagnostics? } — malformed body / draft Pydantic validation /
+        ref-resolution / SQLGlot failure. `diagnostics` is a LIST of structured
+        `Diagnostic` objects (visivo/models/diagnostic.py) when the build
+        failure carried one (e.g. a positional axis bound to a STRUCT,
+        WB9/S5-14) — the plural shape `diagnosticsFrom` in
+        viewer/src/types/diagnostic.js reads. Absent otherwise, so `error`
+        stays the only field a client needs.
   422 { error, error_type: "model_not_run", model: str|null } — a raw-column
         ref names a scratch model with no schema (client never sent
         `model_schemas` for it, and it has never been run for real either) —

@@ -289,3 +289,62 @@ def test_malformed_body_is_400(client):
     assert (
         client.post("/api/insight-execute-draft/", json={"insight": {}}).status_code == 400
     )  # no name
+
+
+class TestExecuteDraftPositionalAxisTypeGate:
+    """WB9 / S5-14: the execute-draft path is the one the Explorer's preview
+    lane actually calls, so its 400 must carry the structured diagnostics too.
+
+    The compile view got dedicated endpoint tests for this; this view's
+    identical wiring shipped with none — falsified by reverting the view's
+    `**diagnostic_fields(e)` to a bare `{"error": message}` and watching the
+    whole suite stay green.
+    """
+
+    def _struct_payload(self):
+        return {
+            "insight": {
+                "name": "blank_chart",
+                "props": {
+                    "type": "bar",
+                    # The S5-14 double-wrap: the inner ?{...} survives into the
+                    # resolved SQL and SQLGlot reads it as a struct literal.
+                    "x": "?{?{${ref(orders_q).region}}}",
+                    "y": "?{sum(${ref(orders_q).amount})}",
+                },
+            },
+            "model_schemas": MODEL_SCHEMAS,
+        }
+
+    def test_struct_bound_to_x_is_a_400_not_a_blank_200(self, client):
+        resp = client.post("/api/insight-execute-draft/", json=self._struct_payload())
+        assert resp.status_code == 400, resp.get_json()
+        error = resp.get_json()["error"]
+        assert "blank_chart" in error
+        assert "props.x" in error
+        assert "STRUCT" in error
+
+    def test_the_400_carries_the_structured_diagnostics(self, client):
+        resp = client.post("/api/insight-execute-draft/", json=self._struct_payload())
+        body = resp.get_json()
+        # PLURAL key, LIST value — the shape `diagnosticsFrom` in
+        # viewer/src/types/diagnostic.js reads.
+        assert isinstance(body["diagnostics"], list)
+        assert len(body["diagnostics"]) == 1
+        diagnostic = body["diagnostics"][0]
+        assert diagnostic["code"] == "non_plottable_axis_type"
+        assert diagnostic["phase"] == "compile"
+        assert diagnostic["severity"] == "error"
+        assert diagnostic["field"] == "props.x"
+        assert diagnostic["object"] == {"type": "insight", "name": "blank_chart"}
+        assert diagnostic["hint"]
+
+    def test_an_ordinary_build_failure_carries_no_diagnostics_key(self, client):
+        """`diagnostics` is additive — a 400 from a failure that produced none
+        must not grow an empty/null key."""
+        resp = client.post(
+            "/api/insight-execute-draft/",
+            json={**self._struct_payload(), "model_schemas": [1, 2]},
+        )
+        assert resp.status_code == 400
+        assert "diagnostics" not in resp.get_json()

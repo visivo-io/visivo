@@ -61,7 +61,7 @@ DIAGNOSTIC_CODES = {
     "expression_parse_failed": "A query-string/context-string expression failed to parse.",
     "non_plottable_axis_type": (
         "A prop bound to a positional axis (x/y/lat/r/...) resolves to a SQL type no "
-        "axis can render — a record-shaped STRUCT/MAP/OBJECT/UNION/NESTED — so the "
+        "axis can render — a record-shaped STRUCT/MAP/UNION/NESTED — so the "
         "chart would build successfully and draw nothing."
     ),
     "yaml_parse_failed": "The YAML file itself did not parse (before any schema validation).",

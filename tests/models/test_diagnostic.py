@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -141,3 +144,58 @@ def test_non_plottable_axis_type_code_is_registered():
         field="props.x",
     )
     assert diagnostic.code == "non_plottable_axis_type"
+
+
+# ---------------------------------------------------------------------------
+# The Python <-> viewer mirror
+# ---------------------------------------------------------------------------
+
+VIEWER_DIAGNOSTIC_JS = (
+    Path(__file__).resolve().parents[2] / "viewer" / "src" / "types" / "diagnostic.js"
+)
+
+
+def _js_string_array(source: str, name: str):
+    """The string literals of a top-level ``export const <name> = [...]``.
+
+    Deliberately a tiny reader over a flat literal array rather than a JS
+    parser: the arrays are hand-maintained flat lists of quoted strings, and
+    the whole point of this guard is that it stays cheap enough to keep.
+    """
+    match = re.search(rf"export const {name} = \[(.*?)\];", source, re.DOTALL)
+    assert match, f"{name} not found in {VIEWER_DIAGNOSTIC_JS}"
+    return [m.group(1) for m in re.finditer(r"'([^']+)'", match.group(1))]
+
+
+@pytest.mark.skipif(
+    not VIEWER_DIAGNOSTIC_JS.exists(),
+    reason="viewer sources are not present (packaged install)",
+)
+def test_viewer_mirror_lists_every_diagnostic_code():
+    """``visivo/models/diagnostic.py`` states: "The mirror typedef for viewer
+    code lives at viewer/src/types/diagnostic.js. Keep the two in sync — the
+    shape is the contract." Nothing enforced it, and WB9's
+    ``non_plottable_axis_type`` shipped on the Python side only.
+
+    A code missing from the viewer list is not inert: viewer surfaces branch on
+    the vocabulary (join-fix cards, not-built empty states), so an unlisted code
+    falls through to the generic path with no card — the same silent failure
+    class the code was added to close.
+    """
+    source = VIEWER_DIAGNOSTIC_JS.read_text()
+    assert _js_string_array(source, "DIAGNOSTIC_CODES") == list(DIAGNOSTIC_CODES), (
+        "DIAGNOSTIC_CODES drifted between visivo/models/diagnostic.py and "
+        f"{VIEWER_DIAGNOSTIC_JS}"
+    )
+
+
+@pytest.mark.skipif(
+    not VIEWER_DIAGNOSTIC_JS.exists(),
+    reason="viewer sources are not present (packaged install)",
+)
+def test_viewer_mirror_lists_every_phase_and_severity():
+    source = VIEWER_DIAGNOSTIC_JS.read_text()
+    assert _js_string_array(source, "DIAGNOSTIC_PHASES") == [p.value for p in DiagnosticPhase]
+    assert _js_string_array(source, "DIAGNOSTIC_SEVERITIES") == [
+        s.value for s in DiagnosticSeverity
+    ]

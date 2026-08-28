@@ -255,7 +255,13 @@ class TestCompileDraftPositionalAxisTypeGate:
             tmp_path, "orders_q", alpha_hash("orders_q"), {"region": "VARCHAR", "amount": "DOUBLE"}
         )
         resp = client.post("/api/insight-compile-draft/", json=self._struct_payload())
-        diagnostic = resp.get_json()["diagnostic"]
+        body = resp.get_json()
+        # PLURAL key, LIST value — the shape `diagnosticsFrom` in
+        # viewer/src/types/diagnostic.js reads. A singular object would be
+        # invisible to every existing client.
+        assert isinstance(body["diagnostics"], list)
+        assert len(body["diagnostics"]) == 1
+        diagnostic = body["diagnostics"][0]
         assert diagnostic["code"] == "non_plottable_axis_type"
         assert diagnostic["phase"] == "compile"
         assert diagnostic["severity"] == "error"
@@ -271,4 +277,4 @@ class TestCompileDraftPositionalAxisTypeGate:
             json=insight_payload(model_name="totally_made_up_model"),
         )
         assert resp.status_code == 400
-        assert "diagnostic" not in resp.get_json()
+        assert "diagnostics" not in resp.get_json()

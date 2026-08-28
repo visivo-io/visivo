@@ -121,11 +121,19 @@ class TestDiagnosticFields:
             field="props.x",
         )
         fields = diagnostic_fields(PositionalAxisTypeError(diagnostic))
-        assert fields["diagnostic"]["code"] == "non_plottable_axis_type"
-        assert fields["diagnostic"]["phase"] == "compile"
-        assert fields["diagnostic"]["field"] == "props.x"
+        # The contract shape is PLURAL + LIST: visivo/models/diagnostic.py
+        # documents payloads as growing a `diagnostics` key, and the viewer's
+        # only reader (`diagnosticsFrom`) returns [] for anything that is not
+        # `Array.isArray(payload.diagnostics)`. This helper is the first
+        # producer on the wire, so it sets the precedent.
+        assert list(fields) == ["diagnostics"]
+        assert isinstance(fields["diagnostics"], list)
+        assert len(fields["diagnostics"]) == 1
+        assert fields["diagnostics"][0]["code"] == "non_plottable_axis_type"
+        assert fields["diagnostics"][0]["phase"] == "compile"
+        assert fields["diagnostics"][0]["field"] == "props.x"
         # exclude_none: absent optionals must not become explicit nulls.
-        assert "location" not in fields["diagnostic"]
+        assert "location" not in fields["diagnostics"][0]
 
     def test_returns_nothing_for_an_ordinary_exception(self):
         assert diagnostic_fields(ValueError("boom")) == {}
