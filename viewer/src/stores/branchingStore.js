@@ -1,6 +1,26 @@
 import * as branchingApi from '../api/branching';
 
 /**
+ * Cloud read-only probe (VIS-1025) — the ONE predicate every write path holds
+ * behind. `capabilities` is null/undefined under local serve (always editable);
+ * in cloud it is the stage's capability object and `can_edit === false` marks
+ * the stage read-only.
+ *
+ * Usable as a zustand selector (`useStore(isReadOnly)`) or against a snapshot
+ * (`isReadOnly(useStore.getState())`), so a surface that fires a store write
+ * OUTSIDE `useRecordSave`/`persistConfig` — e.g. the right rail's
+ * click-to-pick "Choose…", which calls `saveChart` directly — cannot drift
+ * from the hook's own reading of read-only.
+ *
+ * Lives here (next to the `capabilities` state it reads) rather than in a
+ * consumer so the predicate is never re-derived by hand.
+ */
+export const isReadOnly = state => {
+  const caps = state?.capabilities;
+  return !!(caps && caps.can_edit === false);
+};
+
+/**
  * Branching slice — backend-agnostic.
  *
  * The viewer always probes capabilities and creates a draft/branch through the

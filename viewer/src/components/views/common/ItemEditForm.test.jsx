@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string -- assertions use literal Visivo `${ref(...)}` strings */
 import React from 'react';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import { DndContext } from '@dnd-kit/core';
 import ItemEditForm, {
@@ -392,6 +392,10 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
       inputs: [],
       insights: [{ name: 'rev-insight' }],
       saveChart: jest.fn().mockResolvedValue({ success: true }),
+      openCreateChartModal: jest.fn(),
+      // VIS-1025: null = local serve (always editable). Set explicitly so a
+      // read-only case can't leak into the neighbouring tests.
+      capabilities: null,
     });
   });
 
@@ -487,5 +491,102 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
     expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
     expect(useStore.getState().saveChart).not.toHaveBeenCalled();
+  });
+
+  // ── #637: a REJECTED placement must mint NOTHING ──────────────────────────
+  // `setItemLeaf` normalises the picked name (it trims it, and drops a name
+  // that trims to nothing), so the slot does not always end up referencing the
+  // name the handler holds. Wherever it doesn't, saving a wrapper chart under
+  // that name would leave an orphan draft chart pointed at by nothing — the
+  // exact failure the #637 ordering exists to prevent.
+  test('an insight whose wrapper name the transform rewrites mints NOTHING', () => {
+    // `' rev'` → wrapper name `' rev-chart'`, which `setItemLeaf` TRIMS to
+    // `rev-chart`: the slot would reference a DIFFERENT chart than the one
+    // saveChart creates — an orphan draft plus a broken ref.
+    useStore.setState({ insights: [{ name: ' rev' }] });
+    const onChange = jest.fn();
+    renderItem({ item: emptyItem, onChange });
+    openPicker();
+    fireEvent.click(screen.getByRole('button', { name: 'rev' }));
+
+    expect(useStore.getState().saveChart).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(events.filter(e => e.eventName === 'canvas_action')).toHaveLength(0);
+  });
+
+  test('a chart whose name the transform drops places NOTHING', () => {
+    useStore.setState({ charts: [{ name: ' orphan' }], insights: [] });
+    const onChange = jest.fn();
+    renderItem({ item: emptyItem, onChange });
+    openPicker();
+    fireEvent.click(screen.getByRole('button', { name: 'orphan' }));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(events.filter(e => e.eventName === 'canvas_action')).toHaveLength(0);
+  });
+
+  // ── VIS-1025: read-only holds the ONE write that bypasses persistConfig ────
+  // `saveChart` is fired straight at the store, so the rail's persistConfig
+  // read-only hold cannot cover it: without this gate a read-only stage POSTs
+  // a wrapper chart and THEN discards the placement — an orphan draft chart on
+  // a project the user is not allowed to edit.
+  describe('read-only stage (capabilities.can_edit === false)', () => {
+    beforeEach(() => {
+      useStore.setState({ capabilities: { can_edit: false, edit_action: 'Create a draft to edit' } });
+    });
+
+    test('the Choose… trigger is disabled and cannot open the picker', () => {
+      renderItem({ item: emptyItem });
+      const choose = screen.getByTestId('item-row-0-item-0-choose');
+      expect(choose).toBeDisabled();
+      fireEvent.click(choose);
+      expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
+      expect(useStore.getState().saveChart).not.toHaveBeenCalled();
+    });
+
+    test('a stage that flips read-only while the picker is OPEN holds the pick', () => {
+      useStore.setState({ capabilities: null });
+      const onChange = jest.fn();
+      renderItem({ item: emptyItem, onChange });
+      openPicker();
+
+      // Capabilities flip mid-flow (e.g. the draft was published from another
+      // tab). The mounted picker's rows are still live.
+      act(() => {
+        useStore.setState({ capabilities: { can_edit: false } });
+      });
+      fireEvent.click(screen.getByTestId('reference-picker-row-rev-insight'));
+
+      expect(useStore.getState().saveChart).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(events.filter(e => e.eventName === 'canvas_action')).toHaveLength(0);
+    });
+  });
+
+  // ── The rail and the canvas mount the SAME picker ─────────────────────────
+  // ProjectCanvas passes `onCreateNew`; without it the picker's own empty
+  // state renders "Create a chart to fill this slot" with nothing to click,
+  // so an empty project's Choose… is a dead-end modal.
+  test('an EMPTY project offers create-new from the picker (parity with the canvas)', () => {
+    useStore.setState({ charts: [], insights: [] });
+    renderItem({ item: emptyItem });
+    openPicker();
+
+    expect(screen.getByTestId('reference-picker-empty')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('reference-picker-empty-create'));
+
+    expect(useStore.getState().openCreateChartModal).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
+    expect(events.find(e => e.eventName === 'inline_create_used').payload).toEqual({
+      source: 'picker',
+      kind: 'chart',
+    });
+  });
+
+  test('the picker footer create link is available whenever objects exist', () => {
+    renderItem({ item: emptyItem });
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-create'));
+    expect(useStore.getState().openCreateChartModal).toHaveBeenCalledTimes(1);
   });
 });
