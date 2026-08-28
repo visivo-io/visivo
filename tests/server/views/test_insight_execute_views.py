@@ -18,6 +18,7 @@ from visivo.models.props.insight_props import InsightProps
 from visivo.models.interaction import InsightInteraction
 from visivo.models.inputs.types.multi_select import MultiSelectInput
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.relation import Relation
 from visivo.models.sources.duckdb_source import DuckdbSource
 from visivo.server.views.insight_execute_views import register_insight_execute_views
 
@@ -229,6 +230,87 @@ def test_multi_source_insight_is_rejected_400_multi_source(duckdb_file, tmp_path
     assert body["error_models"] == ["orders_q", "users_q"]
     assert body["diagnostic"]["code"] == "cross_source"
     assert body["diagnostic"]["phase"] == "serve"
+
+
+def test_multi_source_DYNAMIC_insight_is_409_client_lane_not_400(duckdb_file, tmp_path):
+    """The mirror image of the test above, and the one that keeps the guard
+    honest.
+
+    Identical two-source setup, except the insight reads an Input, so it is
+    dynamic: there is no ``pre_query`` for this endpoint to bake, and the client
+    runs it in DuckDB over each model's OWN parquet — the lane on which
+    cross-source is the documented feature, not a failure. 400-ing it here would
+    dead-end a chart that works, so it has to fall through to the ordinary
+    ``requires_client_lane`` handoff.
+    """
+    db2 = str(tmp_path / "warehouse2.duckdb")
+    con = duckdb.connect(db2)
+    con.execute("CREATE TABLE users (id INTEGER)")
+    con.execute("INSERT INTO users VALUES (1), (2)")
+    con.close()
+
+    source1 = DuckdbSource(name="warehouse", database=duckdb_file, type="duckdb")
+    source2 = DuckdbSource(name="warehouse2", database=db2, type="duckdb")
+    model_a = SqlModel(name="orders_q", sql="SELECT * FROM orders", source="ref(warehouse)")
+    model_b = SqlModel(name="users_q", sql="SELECT * FROM users", source="ref(warehouse2)")
+    an_input = MultiSelectInput(name="region_filter", label="Region", options=["west", "east"])
+    insight = Insight(
+        name="cross_dynamic",
+        props=InsightProps(
+            type="scatter",
+            x="?{${ref(orders_q).amount}}",
+            y="?{${ref(users_q).id}}",
+        ),
+        interactions=[
+            InsightInteraction(
+                filter="?{${ref(orders_q).region} IN (${ref(region_filter).values})}"
+            )
+        ],
+    )
+    # A relation so the two models have a join path at all. Nothing executes on
+    # this lane, so joining amount to id is only shape, not semantics.
+    relation = Relation(
+        name="orders_to_users", condition="${ref(orders_q).amount} = ${ref(users_q).id}"
+    )
+    # No post-construction mutation needed: this project is VALID, two sources,
+    # a cross-source relation and all. CrossSourceValidator lets the dynamic
+    # lane — and the relation only that lane compiles — through.
+    proj = Project(
+        name="p",
+        sources=[source1, source2],
+        models=[model_a, model_b],
+        relations=[relation],
+        inputs=[an_input],
+        insights=[insight],
+    )
+    app = Flask(__name__)
+    register_insight_execute_views(app, FlaskAppStub(proj), str(tmp_path))
+    client = app.test_client()
+
+    resp = client.post(
+        "/api/insight-execute-draft/",
+        json={
+            "insight": {
+                "name": "cross_dynamic",
+                "props": {
+                    "type": "scatter",
+                    "x": "?{${ref(orders_q).amount}}",
+                    "y": "?{${ref(users_q).id}}",
+                },
+                "interactions": [
+                    {"filter": "?{${ref(orders_q).region} IN (${ref(region_filter).values})}"}
+                ],
+            },
+            "model_schemas": {
+                "orders_q": {"amount": "INTEGER", "region": "VARCHAR"},
+                "users_q": {"id": "INTEGER"},
+            },
+        },
+    )
+    body = resp.get_json()
+    assert resp.status_code == 409, body
+    assert body["error_type"] == "requires_client_lane"
+    assert "multi_source" not in json.dumps(body)
 
 
 def test_datetime_rows_serialise_as_iso8601_not_rfc1123(duckdb_file, tmp_path):

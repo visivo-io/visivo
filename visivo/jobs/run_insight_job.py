@@ -35,15 +35,26 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
     insight_query_info = None
 
     try:
-        # Which source runs this insight is not a free choice: the built
-        # pre_query embeds EVERY dependent model as a CTE, so a two-source
-        # insight has half its tables missing wherever it executes. The old
-        # `[0]` pick made that an arbitrary — and, off a set, run-to-run
+        # Which source runs this insight is not a free choice WHEN there is a
+        # pre_query: it embeds EVERY dependent model as a CTE, so a two-source
+        # static insight has half its tables missing wherever it executes. The
+        # old `[0]` pick made that an arbitrary — and, off a set, run-to-run
         # unstable — bet, and the user got the losing source's driver error
         # about a table it had never heard of. Refuse, in the same words the
         # compile-time validator uses.
+        #
+        # A DYNAMIC insight has no pre_query and never touches `source` below:
+        # its models were each materialised against their own source by
+        # run_sql_model_job and the DuckDB post_query joins those parquet files
+        # in the browser. Refusing it here would break the multi-source charts
+        # mkdocs/topics/sources.md documents, so pass the lane through and keep
+        # only the deterministic pick.
         source = resolve_insight_source(
-            insight.name, insight.get_all_dependent_models(dag), dag, run_output_dir
+            insight.name,
+            insight.get_all_dependent_models(dag),
+            dag,
+            run_output_dir,
+            is_dynamic=insight.is_dynamic(dag),
         )
 
         insight_query_info = insight.get_query_info(dag, run_output_dir)

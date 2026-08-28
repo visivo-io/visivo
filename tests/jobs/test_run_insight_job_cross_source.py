@@ -1,21 +1,31 @@
 """The runtime half: what happens to a cross-source insight that got past compile.
 
-``CrossSourceValidator`` refuses to let such a project exist, so everything here
-reaches the invalid state the way the code paths that skip project validation do
-— an in-memory overlay, a project assembled in code, a mutation after
-construction. The point of the guard is that those paths fail with the SAME
-sentence rather than executing a query whose CTEs name tables the chosen source
-has never heard of.
+Two lanes, two opposite answers, and both of them are the point:
+
+* **Static** — ``CrossSourceValidator`` refuses to let such a project exist, so
+  the tests below reach the invalid state the way the code paths that skip
+  project validation do (an in-memory overlay, a project assembled in code, a
+  mutation after construction). Those paths must fail with the SAME sentence
+  rather than executing a query whose CTEs name tables the chosen source has
+  never heard of.
+* **Dynamic** — ``TestTheDynamicLane`` runs the real jobs against two real
+  DuckDB files and asserts the insight SUCCEEDS, because there the join is
+  DuckDB's over each model's own parquet. Nothing about this test is a mock:
+  if the guard ever fires on the dynamic lane again, the assertion that the
+  post_query joins both model hashes and returns the joined row fails.
 """
 
 import json
 
+import duckdb
 import pytest
 
 from tests.factories.model_factories import (
     DuckdbSourceFactory,
+    InputFactory,
     InsightFactory,
     ProjectFactory,
+    RelationFactory,
     SqlModelFactory,
 )
 from visivo.jobs.run_insight_job import action
@@ -157,3 +167,136 @@ class TestRunInsightJob:
 
         assert result.success is False
         assert result.error_details["error_type"] == "missing_relation"
+
+
+class TestTheDynamicLane:
+    """Two real DuckDB files, two real models, the real jobs — and it works.
+
+    This is the shape ``mkdocs/topics/sources.md`` sells: "you can bring data
+    together in a single chart with insights whose models originate from
+    different sources". It works because a dynamic insight has NO ``pre_query``:
+    ``run_sql_model_job`` materialises each model against ITS OWN source into
+    ``models/<name>.parquet``, and the DuckDB-dialect ``post_query`` joins those
+    parquet files. Guarding it would turn a working project into one that does
+    not load at all.
+    """
+
+    @staticmethod
+    def _two_databases(tmp_path):
+        a_db = str(tmp_path / "a.duckdb")
+        b_db = str(tmp_path / "b.duckdb")
+        connection = duckdb.connect(a_db)
+        connection.execute(
+            "CREATE TABLE orders AS SELECT * FROM "
+            "(VALUES (1, 10, 'east'), (2, 20, 'west')) t(id, amount, region)"
+        )
+        connection.close()
+        connection = duckdb.connect(b_db)
+        connection.execute(
+            "CREATE TABLE users AS SELECT * FROM (VALUES (1, 30), (2, 40)) t(id, age)"
+        )
+        connection.close()
+        return a_db, b_db
+
+    @staticmethod
+    def _project(a_db, b_db):
+        insight = InsightFactory(
+            name="cross_dynamic",
+            props=InsightProps(
+                type="scatter",
+                x="?{ ${ ref(orders).amount } }",
+                y="?{ ${ ref(users).age } }",
+            ),
+            interactions=[{"filter": "?{ ${ref(orders).region} = ${ref(region_pick).value} }"}],
+        )
+        project = ProjectFactory(
+            sources=[
+                DuckdbSourceFactory(name="source_a", database=a_db),
+                DuckdbSourceFactory(name="source_b", database=b_db),
+            ],
+            models=[
+                SqlModelFactory(name="orders", sql="SELECT * FROM orders", source="ref(source_a)"),
+                SqlModelFactory(name="users", sql="SELECT * FROM users", source="ref(source_b)"),
+            ],
+            relations=[
+                RelationFactory(
+                    name="orders_to_users", condition="${ref(orders).id} = ${ref(users).id}"
+                )
+            ],
+            inputs=[InputFactory(name="region_pick", label="Region", options=["east", "west"])],
+            insights=[insight],
+            dashboards=[],
+        )
+        return project, insight
+
+    def test_the_project_loads_and_the_insight_job_succeeds_across_two_sources(self, tmp_path):
+        from visivo.jobs.run_input_job import action as run_input
+        from visivo.jobs.run_source_schema_job import action as run_source_schema
+        from visivo.jobs.run_sql_model_job import model_query_and_schema_action
+
+        a_db, b_db = self._two_databases(tmp_path)
+        # Constructed through the ordinary constructor: CrossSourceValidator runs
+        # here, and this project must survive it.
+        project, insight = self._project(a_db, b_db)
+        dag = project.dag()
+        assert insight.is_dynamic(dag) is True
+
+        output_dir = str(tmp_path / "target")
+        # The real pipeline, in the real order: introspect each source, then
+        # materialise each model AGAINST ITS OWN SOURCE, then the inputs.
+        for source in project.sources:
+            assert run_source_schema(source, output_dir=output_dir, run_id="main").success
+        for model in project.models:
+            assert model_query_and_schema_action(model, dag, output_dir, run_id="main").success
+        for input_obj in project.inputs:
+            assert run_input(input_obj, dag, output_dir, run_id="main").success
+
+        result = action(insight, dag, output_dir, run_id="main")
+        assert result.success is True, result.message
+
+        with open(f"{output_dir}/main/insights/cross_dynamic.json") as file:
+            insight_data = json.load(file)
+
+        # Both models' OWN parquet, each written against its own database.
+        hashes = {model.name: model.name_hash() for model in project.models}
+        assert {file_entry["name_hash"] for file_entry in insight_data["files"]} == set(
+            hashes.values()
+        )
+        # No pre_query result was written; the join is in the post_query.
+        query = insight_data["query"]
+        assert hashes["orders"] in query and hashes["users"] in query
+        assert "JOIN" in query.upper()
+
+        # And it is not just well-formed text: register both parquet files and
+        # run it. Filtering region='east' leaves order 1 (amount 10) joined to
+        # user 1 (age 30).
+        connection = duckdb.connect()
+        for file_entry in insight_data["files"]:
+            connection.execute(
+                f'CREATE VIEW "{file_entry["name_hash"]}" AS '
+                f"SELECT * FROM read_parquet('{file_entry['signed_data_file_url']}')"
+            )
+        rows = connection.execute(query.replace("${region_pick.value}", "east")).fetchall()
+        connection.close()
+        assert rows == [(10, 30)]
+
+    def test_the_builder_also_lets_a_forced_dynamic_draft_across_sources_through(self, tmp_path):
+        """``force_dynamic=True`` is how /api/insight-compile-draft/ builds every
+        draft — the DuckDB-over-parquet form. A draft that introduces a second
+        source must not 400 there either."""
+        a_db, b_db = self._two_databases(tmp_path)
+        project, insight = self._project(a_db, b_db)
+        dag = project.dag()
+        output_dir = str(tmp_path / "target")
+
+        from visivo.jobs.run_source_schema_job import action as run_source_schema
+        from visivo.jobs.run_sql_model_job import model_query_and_schema_action
+
+        for source in project.sources:
+            assert run_source_schema(source, output_dir=output_dir, run_id="main").success
+        for model in project.models:
+            assert model_query_and_schema_action(model, dag, output_dir, run_id="main").success
+
+        builder = InsightQueryBuilder(insight, dag, f"{output_dir}/main", force_dynamic=True)
+        assert builder.is_dynamic is True
+        assert {model.name for model in builder.models} == {"orders", "users"}

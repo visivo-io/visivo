@@ -10,6 +10,7 @@ covers it actually being asked at compile, and
 import subprocess
 import sys
 import textwrap
+from functools import lru_cache
 
 import pytest
 
@@ -20,6 +21,8 @@ from tests.factories.model_factories import (
     RelationFactory,
     SqlModelFactory,
 )
+from visivo.jobs.utils import get_source_for_model
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.diagnostic import DIAGNOSTIC_CODES, DiagnosticPhase
 from visivo.query.source_scope import (
@@ -92,11 +95,43 @@ class TestSourceNamesByModel:
 
     def test_a_model_with_no_resolvable_source_is_omitted_not_guessed(self):
         """ModelsHaveSourcesValidator owns "no source"; guessing here would turn
-        a missing source into a bogus cross-source complaint."""
+        a missing source into a bogus cross-source complaint.
+
+        A REAL model whose source does not resolve — ``source`` unset and
+        nothing tying it to a Source in the dag, the shape a draft-overlay model
+        arrives in — not a ``None`` placeholder, which would only exercise the
+        loop's other guard."""
+        project = one_source_project()
+        dag = project.dag()
+        orders = dag.get_descendant_by_name("orders")
+        unattached = SqlModel(name="unattached", sql="SELECT 1")
+        assert get_source_for_model(unattached, dag, "") is None
+
+        resolved = source_names_by_model([orders, unattached], dag)
+
+        # Omitted entirely: not a placeholder name, not the only other source in
+        # the project. One model left means len(resolved) < 2, so no rule fires.
+        assert resolved == {"orders": "source_a"}
+
+    def test_a_none_placeholder_is_skipped_before_it_is_dereferenced(self):
+        """The other guard in the same loop: ``None`` never reaches
+        ``model.name``."""
         project = one_source_project()
         dag = project.dag()
         orders = dag.get_descendant_by_name("orders")
         assert source_names_by_model([orders, None], dag) == {"orders": "source_a"}
+
+    def test_an_unresolvable_model_cannot_manufacture_a_cross_source_error(self):
+        """The consequence the omission exists for. If the unresolved model were
+        given any stand-in name, this single-source project would be refused
+        with a message naming a source that does not exist."""
+        insight = joining_insight()
+        project = one_source_project(insights=[insight])
+        dag = project.dag()
+        models = list(insight.get_all_dependent_models(dag)) + [
+            SqlModel(name="unattached", sql="SELECT 1")
+        ]
+        assert cross_source_insight_error(insight.name, models, dag) is None
 
 
 class TestRelationRule:
@@ -171,6 +206,30 @@ class TestInsightRule:
             is None
         )
 
+    def test_the_dynamic_lane_is_not_an_error(self):
+        """``is_dynamic`` means there is no ``pre_query`` to be wrong: each model
+        was materialised against its own source and the DuckDB ``post_query``
+        joins the parquet files. Same models, same two sources, no failure."""
+        insight = joining_insight()
+        project = two_source_project(insights=[insight])
+        dag = project.dag()
+        models = insight.get_all_dependent_models(dag)
+
+        # Falsifiable against itself: strict is the default, so the ONLY
+        # difference between these two lines is the lane.
+        assert cross_source_insight_error(insight.name, models, dag) is not None
+        assert cross_source_insight_error(insight.name, models, dag, is_dynamic=True) is None
+
+    def test_the_flag_is_keyword_only_so_it_cannot_be_passed_by_accident(self):
+        """A positional fourth argument is ``output_dir``. If ``is_dynamic``
+        could be passed positionally, every caller that threads an output_dir
+        would silently disable the rule."""
+        insight = joining_insight()
+        project = two_source_project(insights=[insight])
+        dag = project.dag()
+        models = insight.get_all_dependent_models(dag)
+        assert cross_source_insight_error(insight.name, models, dag, "/tmp/anything") is not None
+
 
 class TestResolveInsightSource:
     def test_returns_the_one_shared_source(self):
@@ -187,6 +246,21 @@ class TestResolveInsightSource:
         with pytest.raises(CrossSourceError) as excinfo:
             resolve_insight_source(insight.name, insight.get_all_dependent_models(dag), dag)
         assert excinfo.value.source_names == ["source_a", "source_b"]
+
+    def test_the_dynamic_lane_gets_a_deterministic_source_instead_of_a_refusal(self):
+        """The dynamic builder still reads a dialect off A source, it just never
+        executes against it. The pick must not be the old ``list(a_set)[0]``:
+        models are walked in NAME order, so 'orders' (source_a) wins every run
+        regardless of how the set was iterated."""
+        insight = joining_insight()
+        project = two_source_project(insights=[insight])
+        dag = project.dag()
+        models = insight.get_all_dependent_models(dag)
+
+        source = resolve_insight_source(insight.name, models, dag, is_dynamic=True)
+        assert source.name == "source_a"
+        # In-process this only proves the name-order rule; the seeded subprocess
+        # run below proves it does not move between processes either.
 
     def test_no_models_is_a_sentence_not_an_index_error(self):
         project = one_source_project()
@@ -228,46 +302,95 @@ class TestDiagnostic:
         assert error.diagnostic(DiagnosticPhase.SERVE).id == "serve:cross_source:insight:cross"
 
 
-# The message is built from a *set* of model names, and Python randomises str
-# hashes per process — so before this the same broken project blamed either half
-# of the join depending on the run, which is exactly what makes a cross-source
-# failure feel like a flake rather than a fact. Running the build under several
-# PYTHONHASHSEEDs is the only honest way to prove the sort holds.
+# Both messages are built from *sets* — the models come out of
+# `get_all_dependent_models`, and the insight headline comma-joins a set of
+# SOURCE names on top of that. Python randomises str hashes per process, so
+# before the sorts the same broken project blamed either half of the join
+# depending on the run, which is exactly what makes a cross-source failure feel
+# like a flake rather than a fact. Running the build under several
+# PYTHONHASHSEEDs is the only honest way to prove the sorts hold.
+#
+# Every set-derived string the module emits has to be in here. The relation
+# message alone is not enough: `sorted(set(resolved.values()))` in
+# `cross_source_insight_error` is the ONLY place a set of source names is
+# joined into a headline, and it appears in no relation message — so with only
+# the relation covered, dropping that sort still passes roughly one run in six.
+# The dynamic lane's source pick is here for the same reason: nothing raises on
+# that path, so a `list(a_set)[0]` regression would be invisible otherwise.
+#
+# THREE models on THREE sources, not two, and deliberately so: with two names a
+# random order is right half the time, so an unsorted build can still come out
+# identical across a handful of seeds by luck. With three there are six
+# permutations, and "every seed agrees AND agrees on the alphabetical one" stops
+# being something chance produces.
 _DETERMINISM_SCRIPT = textwrap.dedent("""
     from visivo.models.project import Project
     from visivo.models.relation import Relation
+    from visivo.models.insight import Insight
     from visivo.models.models.sql_model import SqlModel
+    from visivo.models.props.insight_props import InsightProps
     from visivo.models.sources.duckdb_source import DuckdbSource
-    from visivo.query.source_scope import cross_source_relation_error
+    from visivo.query.source_scope import (
+        cross_source_insight_error,
+        cross_source_relation_error,
+        resolve_insight_source,
+    )
 
     relation = Relation(
         name="orders_to_users",
         condition="${ref(zebra).user_id} = ${ref(apple).id}",
+    )
+    insight = Insight(
+        name="cross",
+        props=InsightProps(
+            type="scatter",
+            x="?{ ${ ref(zebra).amount } }",
+            y="?{ ${ ref(apple).age } }",
+        ),
+        interactions=[{"filter": "?{ ${ref(cherry).flag} = 1 }"}],
     )
     project = Project(
         name="p",
         sources=[
             DuckdbSource(name="s_zebra", database="z.duckdb", type="duckdb"),
             DuckdbSource(name="s_apple", database="a.duckdb", type="duckdb"),
+            DuckdbSource(name="s_cherry", database="c.duckdb", type="duckdb"),
         ],
         models=[
             SqlModel(name="zebra", sql="SELECT 1", source="ref(s_zebra)"),
             SqlModel(name="apple", sql="SELECT 1", source="ref(s_zebra)"),
+            SqlModel(name="cherry", sql="SELECT 1", source="ref(s_zebra)"),
         ],
         relations=[relation],
+        insights=[insight],
         dashboards=[],
     )
+    # Spread them AFTER construction — CrossSourceValidator would (correctly)
+    # refuse this static insight otherwise.
     for model in project.models:
         if model.name == "apple":
             model.source = "ref(s_apple)"
+        if model.name == "cherry":
+            model.source = "ref(s_cherry)"
     project.invalidate_dag_cache()
-    print(repr(str(cross_source_relation_error(relation, project.dag()))))
+    dag = project.dag()
+    models = insight.get_all_dependent_models(dag)
+    print(repr(str(cross_source_relation_error(relation, dag))))
+    print(repr(str(cross_source_insight_error(insight.name, models, dag))))
+    print(repr(resolve_insight_source(insight.name, models, dag, is_dynamic=True).name))
     """)
 
+_SEEDS = ("0", "1", "42", "12345", "31337", "808")
 
-def test_the_message_is_identical_under_every_hash_seed():
-    messages = set()
-    for seed in ("0", "1", "42", "12345"):
+
+@lru_cache(maxsize=1)
+def _under_every_hash_seed():
+    """stdout of the script, once per seed, asserted identical.
+
+    Cached: six interpreter starts is the price of the proof, and the three
+    assertions below are three different reads of the SAME six runs."""
+    outputs = set()
+    for seed in _SEEDS:
         completed = subprocess.run(
             [sys.executable, "-c", _DETERMINISM_SCRIPT],
             capture_output=True,
@@ -275,9 +398,31 @@ def test_the_message_is_identical_under_every_hash_seed():
             env={"PYTHONHASHSEED": seed, "PATH": "/usr/bin:/bin"},
         )
         assert completed.returncode == 0, completed.stderr
-        messages.add(completed.stdout.strip())
+        outputs.add(completed.stdout)
 
-    assert len(messages) == 1, f"message varies with hash seed: {messages}"
-    # And it is sorted by model name, not by whatever the set handed back.
-    only = messages.pop()
-    assert only.index("Model 'apple'") < only.index("Model 'zebra'")
+    assert len(outputs) == 1, f"output varies with hash seed: {outputs}"
+    return outputs.pop().strip().splitlines()
+
+
+def test_the_relation_message_is_identical_under_every_hash_seed():
+    relation_message, _, _ = _under_every_hash_seed()
+    # Sorted by model name, not by whatever the set handed back.
+    assert relation_message.index("Model 'apple'") < relation_message.index("Model 'zebra'")
+
+
+def test_the_insight_message_is_identical_under_every_hash_seed():
+    _, insight_message, _ = _under_every_hash_seed()
+    # The headline joins a set of SOURCE names — the one string in the module
+    # whose order no relation message can vouch for.
+    assert "more than one source: s_apple, s_cherry, s_zebra." in insight_message
+    assert (
+        insight_message.index("Model 'apple'")
+        < insight_message.index("Model 'cherry'")
+        < insight_message.index("Model 'zebra'")
+    )
+
+
+def test_the_dynamic_lane_source_pick_is_identical_under_every_hash_seed():
+    _, _, picked_source = _under_every_hash_seed()
+    # 'apple' sorts before 'zebra', so its source answers — every process.
+    assert picked_source == "'s_apple'"

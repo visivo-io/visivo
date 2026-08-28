@@ -171,6 +171,36 @@ describe('InsightPreview', () => {
       expect(screen.queryByTestId('missing-relation-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('ambiguous-relation-card')).not.toBeInTheDocument();
     });
+
+    it('preserves the newlines of a deliberately multi-line backend error', () => {
+      // The cross-source refusal (visivo/query/source_scope.py) is a headline,
+      // one indented line per model, then a closing sentence — and errorType
+      // 'multi_source' matches neither typed card, so it lands in this block.
+      // HTML collapses newlines, so without whitespace-pre-line the whole
+      // thing renders as one run-on sentence.
+      const multiLine =
+        "Insight 'cross' references models from more than one source: source_a, source_b.\n" +
+        '\n' +
+        "  Model 'orders' uses source: source_a\n" +
+        "  Model 'users' uses source: source_b\n" +
+        '\n' +
+        'Cross-source insights are not currently supported. Every model an insight references must use the same source.';
+      setResolver({
+        error: multiLine,
+        errorDetails: { error_type: 'multi_source', error_models: ['orders', 'users'] },
+      });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      expect(screen.getByTestId('preview-error')).toBeInTheDocument();
+      // Identity normalizer: the default one collapses whitespace, which is
+      // precisely the thing under test.
+      const paragraph = screen.getByText(multiLine, { normalizer: value => value });
+      expect(paragraph.tagName).toBe('P');
+      expect(paragraph.textContent).toBe(multiLine);
+      // The class is the whole fix: it is what makes those \n characters render
+      // as line breaks instead of collapsing into one run-on sentence.
+      expect(paragraph).toHaveClass('whitespace-pre-line');
+    });
   });
 
   describe('Typed relation errors (VIS-1007)', () => {

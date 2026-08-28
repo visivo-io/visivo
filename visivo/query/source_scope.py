@@ -1,13 +1,35 @@
-"""Does this thing live in exactly ONE source?
+"""Does this ONE STATEMENT live in exactly ONE source?
 
-A relation joins two models with a SQL ``JOIN``; an insight embeds every model
-it touches as a CTE in one statement and hands that statement to a single
-``source.read_sql``. Both are single-source constructs by construction — when
-the objects they name resolve to two different databases there is no correct
-query to build, only a wrong one.
+The rule is about a *lane*, not about an object. Visivo executes an insight two
+different ways, and only one of them can be wrong across sources:
 
-The rule already existed and was never asked. ``Relation.validate_same_source``
-was written, worded well and fully tested, and called by nothing outside its own
+* **Static lane** (``pre_query``) — the builder embeds every dependent model as
+  a CTE in one statement and hands that statement to a single
+  ``source.read_sql``. Two sources means half the CTEs name tables the executing
+  database has never heard of. There is no correct query to build, only a wrong
+  one.
+* **Dynamic lane** (``post_query``, an insight with an ``Input`` descendant, or
+  a ``force_dynamic`` draft) — ``pre_query`` is ``None``. ``run_sql_model_job``
+  has already materialised EACH model against ITS OWN source into
+  ``models/<name>.parquet``, and the DuckDB-dialect ``post_query`` joins those
+  parquet files client-side. Cross-source is not a mistake here, it is the
+  documented feature (``mkdocs/topics/sources.md``: "you can bring data together
+  in a single chart with insights whose models originate from different
+  sources"). Refusing it would break projects that run correctly today.
+
+So ``cross_source_insight_error`` takes ``is_dynamic`` and answers ``None`` for
+the dynamic lane. The flag is keyword-only and defaults to ``False`` — the
+strict single-statement reading — so a caller that has not thought about the
+lane gets the conservative answer rather than a silent hole.
+
+A **relation** is a join condition, not an executable thing: whether it can be
+compiled depends entirely on which insight consumes it, so the caller
+(``CrossSourceValidator``) decides whether a relation is reachable from the
+static lane before asking. ``cross_source_relation_error`` stays a pure
+predicate over two models.
+
+The rule existed and was never asked. ``Relation.validate_same_source`` was
+written, worded well and fully tested, and called by nothing outside its own
 tests, so a cross-source relation compiled clean and failed much later as a raw
 driver error ("table X does not exist") against whichever source an arbitrary
 ``list(models)[0]`` pick landed on. That pick is from a *set*, so which half of
@@ -176,15 +198,26 @@ def cross_source_relation_error(relation, dag, output_dir: str = "") -> Optional
 
 
 def cross_source_insight_error(
-    insight_name: str, models, dag, output_dir: str = ""
+    insight_name: str, models, dag, output_dir: str = "", *, is_dynamic: bool = False
 ) -> Optional[CrossSourceError]:
-    """The failure for an insight whose models span sources, or ``None``.
+    """The failure for a STATIC insight whose models span sources, or ``None``.
 
     The built ``pre_query`` embeds every dependent model's CTE but executes
     against exactly one source, so two sources means one of them is absent at
     execution time — historically surfacing as the *other* source's driver
     complaining about a table it has never heard of.
+
+    ``is_dynamic=True`` (the insight has an ``Input`` descendant, or the caller
+    forced the dynamic build) short-circuits to ``None``: that lane has no
+    ``pre_query`` at all. Each model was materialised against its own source
+    into ``models/<name>.parquet`` and the DuckDB ``post_query`` joins the
+    parquet files, so spanning sources there is the documented feature rather
+    than a mistake. Keyword-only and defaulted off so the strict, single
+    statement reading is what a caller gets by accident.
     """
+    if is_dynamic:
+        return None
+
     resolved = source_names_by_model(models, dag, output_dir)
     source_names = sorted(set(resolved.values()))
     if len(source_names) < 2:
@@ -206,14 +239,22 @@ def cross_source_insight_error(
     )
 
 
-def resolve_insight_source(insight_name: str, models, dag, output_dir: str = ""):
-    """The one source every model of an insight resolves to.
+def resolve_insight_source(
+    insight_name: str, models, dag, output_dir: str = "", *, is_dynamic: bool = False
+):
+    """The one source a STATIC insight's models resolve to.
 
     Raises ``CrossSourceError`` when they disagree, so no caller is ever handed
     an arbitrary winner. When they agree the pick walks models in name order
     rather than ``list(a_set)[0]``: the source that comes back is the same
     either way once they agree, but the *model* named by any downstream
     "no source found" message stops changing between runs.
+
+    ``is_dynamic=True`` keeps the deterministic walk and drops the refusal. The
+    dynamic lane still wants A source — the builder reads a dialect off it —
+    but it never executes ``pre_query`` against it, so which of two legitimately
+    different sources answers is immaterial as long as it is the same one every
+    run.
     """
     from visivo.jobs.utils import get_source_for_model
 
@@ -221,7 +262,9 @@ def resolve_insight_source(insight_name: str, models, dag, output_dir: str = "")
     if not ordered:
         raise ValueError(f"Insight '{insight_name}' has no dependent models")
 
-    error = cross_source_insight_error(insight_name, ordered, dag, output_dir)
+    error = cross_source_insight_error(
+        insight_name, ordered, dag, output_dir, is_dynamic=is_dynamic
+    )
     if error:
         raise error
 

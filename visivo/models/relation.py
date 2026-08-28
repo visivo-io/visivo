@@ -105,12 +105,21 @@ class Relation(NamedModel, ParentModel):
         return children
 
     def validate_same_source(self, dag, output_dir: str = "") -> None:
-        """Validate that all models in this relation use the same source.
+        """Raise if the two models in this relation use different sources.
 
-        Relations between models from different sources are not supported because
-        SQL joins require all tables to be accessible from a single database connection.
+        A cross-source join cannot be expressed in the SQL a single database
+        connection executes — which is why it is refused wherever a relation is
+        compiled into one ``pre_query``.
 
-        The rule itself now lives in ``visivo.query.source_scope`` so the
+        CAVEAT, and the reason ``CrossSourceValidator`` does not call this for
+        every relation in a project: it is unconditional. A relation reached
+        only by DYNAMIC insights is joined by DuckDB over each model's own
+        parquet, where two sources is the documented feature — so asking this
+        question about such a relation gets a "failure" that is not one. Ask it
+        only about a relation you know a static insight compiles. See
+        ``visivo.query.source_scope``'s module docstring for the two lanes.
+
+        The rule itself lives in ``visivo.query.source_scope`` so the
         compile-time validator (``CrossSourceValidator``), the insight query
         builder and the run job all read one wording; this stays as the entry
         point for callers that already hold a dag. ``output_dir`` is optional

@@ -80,19 +80,31 @@ def register_insight_execute_views(app, flask_app, output_dir):
         run_output_dir = f"{output_dir}/{DEFAULT_RUN_ID}"
 
         # Reject a genuinely MULTI-SOURCE insight up front (before the query
-        # build). A relation-join insight spans >1 model and the built pre_query
-        # embeds every model's CTE, so all dependent models must resolve to ONE
+        # build) — but only on THIS endpoint's lane. Here `force_dynamic=False`,
+        # so a relation-join insight spans >1 model and the built pre_query
+        # embeds every model's CTE: all dependent models must resolve to ONE
         # source for a single source.read_sql to be correct. get_dependent_source
         # picks an ARBITRARY model's source rather than enforcing this, so a
         # two-source insight would otherwise execute against one source and
         # surface a raw "table does not exist" driver error for the other's
         # tables. The wording comes from visivo.query.source_scope so a draft
         # rejected here reads exactly like the same project rejected at compile
-        # or at run. `dependent_models` is reused for the response payload below.
+        # or at run.
+        #
+        # A DYNAMIC draft has no pre_query to bake, so it is not this endpoint's
+        # to refuse: it belongs in the 409 `requires_client_lane` branch below,
+        # where the client runs it in DuckDB over the models' own parquet — the
+        # lane on which cross-source is the documented feature. 400-ing it here
+        # would dead-end a chart that works. `dependent_models` is reused for
+        # the response payload below.
         try:
             dependent_models = insight.get_all_dependent_models(dag)
             cross_source = cross_source_insight_error(
-                insight.name, dependent_models, dag, run_output_dir
+                insight.name,
+                dependent_models,
+                dag,
+                run_output_dir,
+                is_dynamic=insight.is_dynamic(dag),
             )
         except Exception as e:
             return jsonify({"error": str(e)}), 400
