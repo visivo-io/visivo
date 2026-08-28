@@ -1,7 +1,58 @@
 from visivo.utils import DIST_PATH
 from visivo.logger.logger import Logger
-from visivo.models.base.named_model import alpha_hash
 import traceback
+
+
+def _current_artifacts(json_paths):
+    """One artifact per object name, dropping residue from older runs.
+
+    `visivo run` writes each artifact as `<object_name>.json` (VIS-1128). It did
+    NOT always: the previous scheme named them by `alpha_hash(name)`, and a run
+    only ever ADDS files — it never removes the ones a rename or a scheme change
+    orphaned. A project that predates VIS-1128 therefore has both on disk:
+
+        target/main/insights/station-bubbles.json                 <- current
+        target/main/insights/mifawvncyzdkmlywzcggvituhvlwb.json   <- residue
+
+    Both carry `"name": "station-bubbles"`, so globbing the directory shipped
+    every object TWICE in `insights.json` / `inputs.json`. The viewer took the
+    first entry for a name — often the stale one — and asked for a parquet whose
+    hashed filename no longer exists, so a hosted bundle 404'd on its own data
+    and DuckDB reported `Table with name m… does not exist`.
+
+    Serve never hit this: it reads objects through the managers, from the
+    project. Only dist derived its manifest from whatever was lying in the
+    directory.
+
+    Resolution is by NAME, preferring the file whose stem matches the name it
+    declares — that is exactly what distinguishes a current artifact from
+    residue. When nothing matches (every candidate is from an older scheme), the
+    most recently written one wins, so a bundle still gets built.
+    """
+    import json
+    import os
+
+    by_name = {}
+    for path in sorted(json_paths):
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        name = data.get("name")
+        if not name:
+            continue
+        stem = os.path.splitext(os.path.basename(path))[0]
+        current = by_name.get(name)
+        if current is None:
+            by_name[name] = (path, data, stem == name)
+            continue
+        _, _, current_is_named = current
+        if current_is_named:
+            continue
+        if stem == name or os.path.getmtime(path) > os.path.getmtime(current[0]):
+            by_name[name] = (path, data, stem == name)
+    return [(path, data) for path, data, _ in by_name.values()]
 
 
 def dist_phase(
@@ -59,19 +110,37 @@ def dist_phase(
             shutil.copytree(dashboards_dir, dist_dashboards_dir, dirs_exist_ok=True)
         created_at = datetime.datetime.now().isoformat()
         # Same canonical envelope the server serves at /api/project/, so the
-        # viewer reads one shape in both modes. ``project_json`` below stays a
-        # local variable — it drives the per-dashboard files written further
-        # down — but the whole blob is no longer shipped in the bundle.
+        # viewer reads one shape in both modes. The whole blob stopped being
+        # shipped in the bundle a while back; `project_json` survives for ONE
+        # reason — it is the DEREFERENCED project, so a dashboard's
+        # `${ref(chart)}` is expanded into the inline chart the per-dashboard
+        # config below has to carry. Anything that doesn't need that expansion
+        # reads the model directly.
+        #
+        # Every field here comes off the MODEL, exactly as
+        # `data_views.projects_api` builds the same envelope. Nothing in it
+        # needs dereferencing, and reading it out of `project_json` cost us a
+        # crash: that dump is taken with `exclude_none=True`, so an optional
+        # field left unset is not null in the JSON — it is ABSENT.
+        # `project_json["name"]` therefore raised KeyError for any project
+        # without a `name:`, which the schema allows (`NamedModel.name` is
+        # Optional). The model always has the attribute.
         with open(f"{dist_dir}/data/project.json", "w") as f:
             f.write(
                 json.dumps(
                     {
                         "id": "id",
-                        "name": project_json["name"],
-                        "project_dir": project_json.get("project_dir") or "",
-                        "config": {"defaults": project_json.get("defaults", {})},
-                        "dashboard_count": len(project_json.get("dashboards") or []),
-                        "source_count": len(project_json.get("sources") or []),
+                        "name": project.name,
+                        "project_dir": project.project_dir or "",
+                        "config": {
+                            "defaults": (
+                                project.defaults.model_dump(exclude_none=True, mode="json")
+                                if project.defaults
+                                else {}
+                            )
+                        },
+                        "dashboard_count": len(project.dashboards or []),
+                        "source_count": len(project.sources or []),
                         "created_at": created_at,
                     }
                 )
@@ -83,34 +152,6 @@ def dist_phase(
             f.write(json.dumps({}))
         with open(f"{dist_dir}/data/project_history.json", "w") as f:
             f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
-
-        # Generate traces.json for dist mode
-
-        trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
-        traces_list = []
-        os.makedirs(f"{dist_dir}/data/traces", exist_ok=True)
-
-        for trace_dir in trace_dirs:
-            trace_name = os.path.basename(os.path.normpath(trace_dir))
-            if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
-                # Create hash-based filename for trace data
-                trace_name_hash = alpha_hash(trace_name)
-                shutil.copyfile(
-                    f"{output_dir}/traces/{trace_name}/data.json",
-                    f"{dist_dir}/data/traces/{trace_name_hash}.json",
-                )
-                # Add trace info for traces.json
-                traces_list.append(
-                    {
-                        "name": trace_name,
-                        "id": trace_name,
-                        "signed_data_file_url": f"{deployment_root}/data/traces/{trace_name_hash}.json",
-                    }
-                )
-
-        # Write traces.json
-        with open(f"{dist_dir}/data/traces.json", "w") as f:
-            json.dump(traces_list, f)
 
         # Copy parquet data files used by insights and inputs. The run writes
         # them into the directory named for what produced them (VIS-1128), but
@@ -131,10 +172,7 @@ def dist_phase(
         insights_list = []
         if os.path.isdir(insights_src):
             os.makedirs(f"{dist_dir}/data/insights", exist_ok=True)
-            for insight_file in glob(f"{insights_src}/*.json"):
-                with open(insight_file, "r") as f:
-                    insight_data = json.load(f)
-
+            for insight_file, insight_data in _current_artifacts(glob(f"{insights_src}/*.json")):
                 insight_data["id"] = insight_data["name"]
 
                 # Rewrite file URLs to dist paths
@@ -162,10 +200,7 @@ def dist_phase(
         inputs_list = []
         if os.path.isdir(inputs_src):
             os.makedirs(f"{dist_dir}/data/inputs", exist_ok=True)
-            for input_file in glob(f"{inputs_src}/*.json"):
-                with open(input_file, "r") as f:
-                    input_data = json.load(f)
-
+            for input_file, input_data in _current_artifacts(glob(f"{inputs_src}/*.json")):
                 input_data["id"] = input_data["name"]
 
                 # Rewrite file URLs to dist paths
