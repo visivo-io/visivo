@@ -391,3 +391,159 @@ class TestExpressionErrorSanitisation:
         for token, original in mapping.items():
             assert token in substituted
             assert original in ("${ref(a).x}", "${ref(b).y}")
+
+
+def _harness_fragments():
+    """Every tail of a harness token that a clipped echo could expose.
+
+    sqlglot echoes a WINDOW of the SQL, not the whole of it — ±50 characters in
+    the tokenizer, ±`error_message_context` in the parser — so a sentinel the
+    window cuts through arrives as a SUFFIX of itself: ``__visivo_ctx_0__``
+    surfaces as ``isivo_ctx_0__``, ``x_1__``, ``_0__``. Checking for the whole
+    sentinel is what let those through.
+    """
+    fragments = set()
+    stems = [f"__visivo_ctx_{i}__" for i in range(4)] + ["__placeholder__", "SELECT"]
+    for stem in stems:
+        for start in range(len(stem)):
+            tail = stem[start:]
+            if len(tail) >= 2:
+                fragments.add(tail)
+    return fragments
+
+
+HARNESS_FRAGMENTS = _harness_fragments()
+
+
+class TestSanitiserEchoesTheAuthorNotTheHarness:
+    """The echoed SQL is replaced, not repaired.
+
+    No pattern can strip a sentinel the echo window cut in half, and any pattern
+    loose enough to try is loose enough to eat the author's own text. Both
+    failures were real: `isivo_ctx_0__` reached the UI on a mid-typing
+    unterminated quote, and the literal `'SELECT foo'` inside a user's CASE
+    expression came back as `'foo'`.
+
+    So the sanitiser does not forward sqlglot's window at all — it quotes the
+    expression the author typed, which it already has.
+    """
+
+    @pytest.fixture
+    def app(self):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        flask_app = Mock()
+        register_expression_views(app, flask_app, "/tmp/output")
+        return app
+
+    @pytest.fixture
+    def client(self, app):
+        return app.test_client()
+
+    def _validate(self, client, expression, dialect="duckdb"):
+        response = client.post(
+            "/api/expressions/validate/",
+            json={
+                "expressions": [{"name": "expr", "expression": expression}],
+                "source_dialect": dialect,
+            },
+        )
+        assert response.status_code == 200
+        return response.get_json()["results"][0]
+
+    # Long enough to push the failure point past the tokenizer's 50-character
+    # look-back, which is what clips a sentinel in half. The short expressions
+    # in BROKEN_EXPRESSIONS never reach that window, which is why they passed
+    # while `isivo_ctx_0__` was reaching users.
+    CLIPPING_EXPRESSIONS = [
+        "1 + 2 + 3 + ${ref(m).c} + 'unterminated",
+        "${ref(orders).amount} + ${ref(orders).tax} + ${ref(orders).fee} + 'x",
+        "${ref(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).bbbbbbbbbbbbbbbbbbbbbbbbb} + 'oops",
+    ] + [
+        # Sweep the window across the sentinel: one of these puts the cut
+        # somewhere inside `__visivo_ctx_0__` whatever the exact window is.
+        "1 " + ("+ 1 " * n) + "+ ${ref(m).c} + 'q"
+        for n in range(0, 40, 3)
+    ]
+
+    @pytest.mark.parametrize("expression", CLIPPING_EXPRESSIONS)
+    def test_no_fragment_of_the_harness_survives_a_clipped_echo(self, client, expression):
+        result = self._validate(client, expression)
+        assert result["valid"] is False
+
+        error = result["error"]
+        # The author's own text is quoted back in full...
+        assert expression in error, error
+        # ...and once it is accounted for, nothing of the harness is left —
+        # not the whole sentinel and not any tail of one.
+        residue = error.replace(expression, "")
+        leaked = sorted(f for f in HARNESS_FRAGMENTS if f in residue)
+        assert leaked == [], f"leaked {leaked} in {error!r}"
+
+    def test_the_authors_own_select_literal_is_returned_unaltered(self, client):
+        """`'SELECT foo'` is the user's data, not our harness's head.
+
+        The strip used to be anchored to any quote, so it removed the `SELECT `
+        from inside the author's string literal — silently changing the one line
+        whose whole job is to quote their text back to them accurately.
+        """
+        expression = "case when ${ref(orders).status} = 'SELECT foo' then 1 end +"
+        result = self._validate(client, expression)
+        assert result["valid"] is False
+        assert "'SELECT foo'" in result["error"]
+        assert "'foo'" not in result["error"].replace("'SELECT foo'", "")
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "concat('SELECT ', ${ref(o).a}) +",
+            "case when ${ref(o).a} = 'SELECT' then 1 end +",
+            '${ref(o)."SELECT col"} +',
+        ],
+    )
+    def test_a_select_keyword_inside_the_expression_survives(self, client, expression):
+        result = self._validate(client, expression)
+        assert result["valid"] is False
+        assert expression in result["error"]
+
+    def test_a_long_expression_is_echoed_whole_not_as_sqlglots_window(self, client):
+        """The window truncates; the author's text does not."""
+        expression = "${ref(orders).amount} " + ("+ 1 " * 60) + "+"
+        result = self._validate(client, expression)
+        assert result["valid"] is False
+        assert expression in result["error"]
+
+    def test_the_translate_endpoint_echoes_the_author_too(self, client):
+        expression = "concat('SELECT x', 'y'" + (" || 'z'" * 20)
+        response = client.post(
+            "/api/expressions/translate/",
+            json={
+                "expressions": [{"name": "bad", "expression": expression}],
+                "source_dialect": "duckdb",
+            },
+        )
+        error = response.get_json()["errors"][0]["error"]
+        assert expression in error
+        residue = error.replace(expression, "")
+        assert sorted(f for f in HARNESS_FRAGMENTS if f in residue) == []
+
+    def test_the_message_still_says_what_is_wrong(self):
+        """Replacing the echo must not replace the diagnosis."""
+        from visivo.server.views.expression_views import sanitize_expression_error
+
+        message = sanitize_expression_error(
+            Exception(
+                "Expecting ). Line 1, Col: 32.\n  SELECT sum(__visivo_ctx_0__ FROM __placeholder__"
+            ),
+            {"__visivo_ctx_0__": "${ref(o).a}"},
+            expression="sum(${ref(o).a}",
+        )
+        assert message == "Expecting ).\n  sum(${ref(o).a}"
+
+    def test_without_an_expression_it_still_strips_what_it_can(self):
+        """The fallback path stays honest for any caller that has no source text."""
+        from visivo.server.views.expression_views import sanitize_expression_error
+
+        message = sanitize_expression_error(Exception("bad __visivo_ctx_7__ here"))
+        assert "__visivo_ctx" not in message
+        assert "bad" in message

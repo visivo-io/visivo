@@ -322,6 +322,87 @@ describe('InsightEditForm — interactions', () => {
     expect(config.interactions).toEqual([{ filter: '?{${ref(m).region} = "US"}' }]);
   });
 
+  test('editing the description leaves a multi-line stored filter byte-identical', async () => {
+    // The corruption this guards against: `?{a\nb}` failed to unwrap, was
+    // mistaken for a bare body, and got wrapped AGAIN — so opening an insight,
+    // changing its description and saving turned the stored value into
+    // `?{?{a\nb}}`, one layer deeper every time. The value is one the parser
+    // cannot read, so it is REPORTED rather than written — but under no
+    // circumstance is it rewritten into something else.
+    const stored = '?{case when ${ref(m).a} > 0\n  then 1 else 0 end}';
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({
+      insight: {
+        name: 'rev',
+        status: ObjectStatus.PUBLISHED,
+        config: { name: 'rev', props: { type: 'bar' }, interactions: [{ filter: stored }] },
+      },
+      isCreate: false,
+      onSave,
+    });
+
+    // The field shows the BODY — the braces do not leak into the editor.
+    const field = screen.getByLabelText('Filter');
+    expect(field).toHaveValue('case when ${ref(m).a} > 0\n  then 1 else 0 end');
+
+    fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'new words' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText(/single line/i);
+    expect(onSave).not.toHaveBeenCalled();
+    // Nothing was rewritten behind the author's back.
+    expect(screen.getByLabelText('Filter')).toHaveValue(
+      'case when ${ref(m).a} > 0\n  then 1 else 0 end'
+    );
+  });
+
+  test('an eval string in a sort field is refused at the field, not by the server', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('i1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
+    fireEvent.change(screen.getByLabelText('Filter'), {
+      target: { value: '>{ anyTestFailed() }' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(/eval/i);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('a malformed wrapper is reported, never nested into one that validates', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('i1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
+    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: '?{x}[a]' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(/parser/i);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('the complaint is retracted as soon as the author edits the field', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('i1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
+    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: '?{x}[a]' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(/parser/i);
+
+    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: '${ref(m).a}' } });
+    expect(screen.queryByText(/parser/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [, , config] = onSave.mock.calls[0];
+    expect(config.interactions).toEqual([{ filter: '?{${ref(m).a}}' }]);
+  });
+
   test('a whitespace-only value is dropped, never stored as `?{}`', async () => {
     const onSave = jest.fn(async () => ({ success: true }));
     await renderForm({ onSave });

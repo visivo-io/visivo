@@ -20,24 +20,28 @@
 
 import {
   QUERY_BRACKET_PATTERN,
+  PARSER_QUERY_STRING_PATTERN,
   QUERY_FUNCTION_PATTERN,
   QUERY_COLUMN_PATTERN,
   SLICE_PATTERN,
   decodeQueryString,
   encodeQueryString,
   canonicalizeQueryString,
+  isParserReadableQueryString,
   isQueryStringValue,
   parseQueryString,
 } from './expressionCodec';
 
 export {
   QUERY_BRACKET_PATTERN,
+  PARSER_QUERY_STRING_PATTERN,
   QUERY_FUNCTION_PATTERN,
   QUERY_COLUMN_PATTERN,
   SLICE_PATTERN,
   decodeQueryString,
   encodeQueryString,
   canonicalizeQueryString,
+  isParserReadableQueryString,
   isQueryStringValue,
   parseQueryString,
 };

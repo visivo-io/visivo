@@ -34,6 +34,13 @@
  * documents the file rather than the field.
  */
 
+import {
+  EXPRESSION_FORMS,
+  decodeQueryString,
+  encodeQueryString,
+  isParserReadableQueryString,
+} from '../utils/expressionCodec';
+
 export const INTERACTION_TYPES = ['filter', 'split', 'sort'];
 
 export const INTERACTION_HELP = Object.freeze({
@@ -103,6 +110,36 @@ export function interactionExampleHint(type) {
   const entry = INTERACTION_HELP[type];
   if (!entry) return '';
   return `e.g. ${entry.example}`;
+}
+
+/**
+ * Why this interaction body cannot be stored, or `null` when it can.
+ *
+ * `encodeQueryString` is total: it never mangles a value it does not
+ * understand, which means it can hand back something the `QueryString`
+ * validator will refuse — a `>{ }` eval string, a malformed wrapper, a body
+ * with an interior newline. Wrapping those anyway is not an option (that is how
+ * `?{?{ ... }}` gets manufactured), so the editor has to SAY so, at the field,
+ * while the author is looking at it. The alternative is a round trip to a
+ * server-side validation error, which is the M6 experience with extra steps.
+ *
+ * @param {string} body - the expression body as typed (no wrapper)
+ * @param {string|null} [slice] - the slice suffix held aside by the editor
+ * @returns {string|null} a message to show under the field, or null
+ */
+export function interactionValueProblem(body, slice = null) {
+  const stored = encodeQueryString({ body, slice });
+  // Empty is not a problem — an interaction with no expression is dropped.
+  if (!stored || isParserReadableQueryString(stored)) return null;
+
+  const { form } = decodeQueryString(body);
+  if (form === EXPRESSION_FORMS.EVAL) {
+    return 'Eval strings (>{ ... }) belong to tests and alerts. Use a ?{ } expression here.';
+  }
+  if (/[\r\n]/.test(String(body))) {
+    return 'An interaction expression must be a single line.';
+  }
+  return 'This is not an expression the parser can read. Check the ?{ } wrapper and any [slice] suffix.';
 }
 
 /**

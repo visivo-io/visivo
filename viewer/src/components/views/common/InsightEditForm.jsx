@@ -22,6 +22,7 @@ import {
   INTERACTION_TYPES,
   INTERACTION_TYPE_OPTIONS,
   interactionHelpText,
+  interactionValueProblem,
 } from '../../../schemas/interactionHelp';
 import {
   SectionContainer,
@@ -180,6 +181,20 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       newErrors.props = 'Fix the invalid trace properties before saving.';
     }
 
+    // The codec never mangles a value it cannot represent, so a body that will
+    // not survive as a `QueryString` reaches here intact — and must be reported
+    // HERE rather than written out for the server (or, worse, the next `visivo
+    // run`) to complain about. Keyed by index so the message lands under the
+    // field that caused it.
+    const interactionErrors = {};
+    interactions.forEach((interaction, index) => {
+      const problem = interactionValueProblem(interaction.value, interaction.slice);
+      if (problem) interactionErrors[index] = problem;
+    });
+    if (Object.keys(interactionErrors).length > 0) {
+      newErrors.interactions = interactionErrors;
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -264,6 +279,16 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     const updated = [...interactions];
     updated[index] = { ...updated[index], value: newValue };
     setInteractions(updated);
+    // Retract the complaint as soon as the author starts answering it; the
+    // next Save re-derives it from scratch.
+    setErrors(prev => {
+      if (!prev.interactions || !(index in prev.interactions)) return prev;
+      const { [index]: _dropped, ...rest } = prev.interactions;
+      const next = { ...prev };
+      if (Object.keys(rest).length > 0) next.interactions = rest;
+      else delete next.interactions;
+      return next;
+    });
   };
 
   return (
@@ -367,6 +392,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                       allowedTypes={refKindsFor('interaction', interactionType)}
                       rows={2}
                       helperText={interactionHelpText(interactionType, REF_INSERT_HINT)}
+                      error={errors.interactions?.[index]}
                     />
                   </div>
                 );

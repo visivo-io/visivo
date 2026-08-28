@@ -5,9 +5,15 @@ import {
   INTERACTION_TYPE_OPTIONS,
   interactionExampleHint,
   interactionHelpText,
+  interactionValueProblem,
 } from './interactionHelp';
 import projectSchema from './visivo_project_schema.json';
-import { canonicalizeQueryString } from '../utils/expressionCodec';
+import {
+  canonicalizeQueryString,
+  decodeQueryString,
+  encodeQueryString,
+  isParserReadableQueryString,
+} from '../utils/expressionCodec';
 
 const INTERACTION_DEF = projectSchema.$defs.InsightInteraction;
 
@@ -139,5 +145,113 @@ describe('INTERACTION_TYPE_OPTIONS', () => {
       { value: 'split', label: 'Split', helperText: interactionHelpText('split') },
       { value: 'sort', label: 'Sort', helperText: interactionHelpText('sort') },
     ]);
+  });
+});
+
+describe('interactionValueProblem — the editor refuses what the parser would', () => {
+  // The codec is total: rather than mangle a value it cannot represent, it
+  // hands it straight back. That is the right call for a codec and the wrong
+  // place to stop for a save path, because the value can then be written out
+  // for the server (or the next `visivo run`) to complain about. This function
+  // is the join: everything `encodeQueryString` emits is either something the
+  // parser reads, or something this reports.
+  const ACCEPTED = [
+    '${ref(orders).month} ASC',
+    '${ref(orders).region} = ${ref(region-input).value}',
+    'sum(${ref(orders).amount})',
+    '?{${ref(orders).month}}',
+    '?{ ${ref(orders).month} }',
+    '?{?{${ref(orders).month}}}',
+    'amount',
+  ];
+
+  it.each(ACCEPTED)('accepts %s', body => {
+    expect(interactionValueProblem(body)).toBeNull();
+  });
+
+  it.each(INTERACTION_TYPES)("accepts %s's own advertised example", type => {
+    // The hint has to be a value the field will take. It was `date DESC` once.
+    expect(interactionValueProblem(INTERACTION_HELP[type].example)).toBeNull();
+  });
+
+  it('accepts a body carrying a slice, with the slice held aside', () => {
+    expect(interactionValueProblem('${ref(daily).value}', '[0]')).toBeNull();
+  });
+
+  it.each(['', '   ', null, undefined])(
+    'treats %s as nothing to report — an empty interaction is dropped, not refused',
+    body => {
+      expect(interactionValueProblem(body)).toBeNull();
+    }
+  );
+
+  it('names the eval-string grammar rather than wrapping it into nonsense', () => {
+    const problem = interactionValueProblem('>{ anyTestFailed() }');
+    expect(problem).toMatch(/eval/i);
+    // …and the value really would be refused: this is the M6 shape, a UI
+    // writing YAML the tool then rejects.
+    expect(isParserReadableQueryString(encodeQueryString({ body: '>{ anyTestFailed() }' }))).toBe(
+      false
+    );
+  });
+
+  it.each([
+    'a = 1\nAND b = 2',
+    'case when ${ref(o).a} > 0\n  then 1 else 0 end',
+    'a = 1\r\nAND b = 2',
+  ])('says a multi-line body is the problem, for %j', body => {
+    expect(interactionValueProblem(body)).toMatch(/single line/i);
+  });
+
+  it.each(['?{x}[a]', '?{a}[0][1]', '?{unbalanced'])(
+    'reports the malformed wrapper %s instead of nesting it',
+    body => {
+      expect(interactionValueProblem(body)).toMatch(/parser/i);
+      // The corruption it is standing in for: without the refusal the natural
+      // move is to wrap, which turns a value the validator REJECTS into one it
+      // ACCEPTS with the braces as literal SQL.
+      expect(encodeQueryString({ body })).toBe(body);
+    }
+  );
+
+  // The invariant, as a property over the same shape table the codec is tested
+  // with: for every value the app can produce, the editor's answer and the
+  // parser's answer agree.
+  const SAVEABLE_BODIES = [
+    ...ACCEPTED,
+    '>{ anyTestFailed() }',
+    'a\nb',
+    '?{a\nb}',
+    '?{}',
+    '?{ }',
+    '?{x}[a]',
+    '?{a}[0][1]',
+    '?{unbalanced',
+    'query(select 1)',
+    'column(amount)',
+    '',
+    '   ',
+  ];
+
+  it.each(SAVEABLE_BODIES)(
+    'either the parser reads %j or the field reports it — never neither, never both',
+    body => {
+      const stored = encodeQueryString({ body, slice: decodeQueryString(body).slice });
+      const problem = interactionValueProblem(body);
+      // A value that is dropped entirely (`stored === ''`) is nothing to
+      // complain about, so it counts as settled alongside a readable one.
+      const settled = !stored || isParserReadableQueryString(stored);
+      expect({ body, settled }).toEqual({ body, settled: problem === null });
+    }
+  );
+
+  it('never lets a reported value through as a stored one', () => {
+    // The failure this guards: a body that yields a problem message AND a
+    // non-empty stored value that the save path would happily write.
+    const leaks = SAVEABLE_BODIES.filter(body => {
+      const stored = encodeQueryString({ body });
+      return stored && !isParserReadableQueryString(stored) && interactionValueProblem(body) === null;
+    });
+    expect(leaks).toEqual([]);
   });
 });
