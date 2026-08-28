@@ -1144,6 +1144,110 @@ describe('ExplorationPromoteModal', () => {
       ).toHaveValue('daily_orders');
     });
 
+    // M14 (Explorer Continuity dossier — "Stop the name-draft map clobbering
+    // in-flight edits"): committing row A's rename awaits a full checklist
+    // rebuild (a real ~1s network round-trip in production). Text the user
+    // has ALREADY typed into row B's field during that window is an
+    // in-flight draft; the post-rebuild re-sync must MERGE around it. The
+    // pre-fix wholesale `new Map(built…)` replacement reverted B to its
+    // store name mid-typing — and, because the inputs are controlled on
+    // this map, the caret stayed put and later keystrokes spliced into the
+    // reverted name (the corrupted `…_insighmy_insightt`-style refs).
+    test("committing row A's rename never clobbers text already typed into row B (in-flight draft survives the rebuild)", async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      let resolveRebuild;
+      buildPromoteChecklist
+        .mockResolvedValueOnce([
+          row(),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ])
+        .mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              resolveRebuild = resolve;
+            })
+        );
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const modelInput = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      const insightInput = screen.getByTestId('promote-row-insight-my_insight-name-input');
+
+      // Row A commits — its checklist rebuild is now in flight (held open by
+      // the controlled promise above).
+      fireEvent.change(modelInput, { target: { value: 'daily_orders' } });
+      fireEvent.blur(modelInput);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+
+      // The user is already renaming row B while A's rebuild is in flight.
+      fireEvent.change(insightInput, { target: { value: 'churn_by_cohort' } });
+      expect(insightInput).toHaveValue('churn_by_cohort');
+
+      // A's rebuild lands. B's typed-but-uncommitted draft must survive it.
+      await act(async () => {
+        resolveRebuild([
+          row({ name: 'daily_orders' }),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ]);
+      });
+      expect(screen.getByTestId('promote-row-insight-my_insight-name-input')).toHaveValue(
+        'churn_by_cohort'
+      );
+      // …while A's own field re-synced to its committed name, as before.
+      expect(screen.getByTestId('promote-row-model-daily_orders-name-input')).toHaveValue(
+        'daily_orders'
+      );
+    });
+
+    // The surviving draft is REAL, not just displayed: blurring row B after
+    // A's rebuild landed commits the preserved text through B's own rename
+    // action — the second half of the M14 loss (a clobbered draft also
+    // silently threw away the rename the user thought they had made).
+    test("row B's preserved in-flight draft still commits on its own blur after A's rebuild", async () => {
+      const renameModelTab = jest.fn();
+      const renameInsight = jest.fn();
+      useStore.setState({ renameModelTab, renameInsight });
+      let resolveRebuild;
+      buildPromoteChecklist
+        .mockResolvedValueOnce([
+          row(),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ])
+        .mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              resolveRebuild = resolve;
+            })
+        )
+        .mockResolvedValueOnce([
+          row({ name: 'daily_orders' }),
+          row({ tier: 'insight', type: 'insight', name: 'churn_by_cohort' }),
+        ]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const modelInput = await screen.findByTestId('promote-row-model-orders_q-name-input');
+
+      fireEvent.change(modelInput, { target: { value: 'daily_orders' } });
+      fireEvent.blur(modelInput);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+      fireEvent.change(screen.getByTestId('promote-row-insight-my_insight-name-input'), {
+        target: { value: 'churn_by_cohort' },
+      });
+      await act(async () => {
+        resolveRebuild([
+          row({ name: 'daily_orders' }),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ]);
+      });
+
+      fireEvent.blur(screen.getByTestId('promote-row-insight-my_insight-name-input'));
+
+      await waitFor(() =>
+        expect(renameInsight).toHaveBeenCalledWith('my_insight', 'churn_by_cohort')
+      );
+      expect(
+        await screen.findByTestId('promote-row-insight-churn_by_cohort-name-input')
+      ).toHaveValue('churn_by_cohort');
+    });
+
     test('committing a rename on an INSIGHT row calls renameInsight (not renameModelTab)', async () => {
       const renameInsight = jest.fn();
       useStore.setState({ renameInsight });

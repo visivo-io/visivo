@@ -26,6 +26,32 @@ const RENAMABLE_TIERS = new Set(['model', 'insight', 'chart']);
 const isRenamableRow = row => row.status === 'new' && RENAMABLE_TIERS.has(row.tier);
 
 /**
+ * Re-seed the name-draft map from a (re)built checklist WITHOUT clobbering
+ * in-flight edits (M14 — "Stop the name-draft map clobbering in-flight
+ * edits"). Committing row A's rename awaits a full checklist rebuild (a real
+ * network round-trip), and the user may already be typing into row B's field
+ * when it lands. A wholesale `new Map(built…)` replacement here reverted B's
+ * typed text to its store name mid-keystroke — and, because these inputs are
+ * controlled on this map, left the caret where it was, splicing subsequent
+ * keystrokes into the reverted name (the corrupted
+ * `${ref(…_insighmy_insightt)}`-style refs from the field test).
+ *
+ * So: MERGE. A still-present key keeps its existing draft (the user's text,
+ * committed on ITS OWN blur, never here); only rows appearing under a new
+ * key — the just-committed row under its new name, or a genuinely new row —
+ * take the rebuilt store name. Keys no longer in the checklist drop out.
+ */
+const mergeNameDrafts = (prev, built) => {
+  const next = new Map();
+  for (const r of built) {
+    if (!isRenamableRow(r)) continue;
+    const key = rowKey(r);
+    next.set(key, prev.has(key) ? prev.get(key) : r.name);
+  }
+  return next;
+};
+
+/**
  * Calls the ONE store action that can rename this row's kind of draft
  * object. Each of these throws `NameCollisionError` (`.code ===
  * 'NAME_COLLISION'`) on a real collision — callers catch and surface
@@ -191,7 +217,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
 
       if (cancelled) return;
       setRows(built);
-      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
+      setNameDrafts(prev => mergeNameDrafts(prev, built));
       setSelected(new Set(built.filter(r => r.valid).map(rowKey)));
       setLoading(false);
     })();
@@ -234,7 +260,12 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       // this rebuild only needs to re-read the now-current draft state.
       const built = await buildPromoteChecklist(useStore.getState);
       setRows(built);
-      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
+      // MERGE, never replace: another row's field may hold typed-but-not-yet-
+      // committed text right now (this rebuild is a real network wait) — see
+      // mergeNameDrafts. The just-committed row re-syncs naturally: its NEW
+      // key has no prior draft, so it takes the rebuilt store name, while its
+      // old key (and any stale draft under it) drops out of the checklist.
+      setNameDrafts(prev => mergeNameDrafts(prev, built));
       // Remap the selection: every OTHER row's key is unchanged, so a direct
       // `has` lookup carries its checked state forward; the renamed row's
       // prior checked state is looked up under its OLD key instead.
