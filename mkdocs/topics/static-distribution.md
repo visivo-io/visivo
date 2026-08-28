@@ -4,19 +4,55 @@
 HTML, JavaScript, JSON, and data files that renders your dashboards with no Visivo
 server behind it. You can host the folder anywhere static files can live: S3, GitHub
 Pages, Netlify, Cloudflare Pages, an nginx directory, or an internal file share.
+"Self-contained" means no server of yours has to run — not that the page never talks to
+the network; see [what the bundle fetches](#external-requests).
 
 ```bash
 visivo run    # execute the project's queries and materialize the data
 visivo dist   # package the viewer + that data into ./dist
 ```
 
-`visivo dist` packages the output of the **last `visivo run`** — run first, or `dist`
-fails with a message telling you to. Options:
+`visivo dist` packages the output of the **last `visivo run`** — always run first. It
+does not execute a single query of its own; it copies what the run left in `target/`.
+Options:
 
 | Option | Does |
 |--------|------|
 | `--dist-dir` | Where to write the bundle (default `dist`) |
 | `--deployment-root` | Path prefix when hosting under a sub-path, e.g. `--deployment-root /reports` for `example.com/reports` |
+
+!!! danger "`visivo dist` reports success even when there is nothing to package"
+
+    Run `visivo dist` before `visivo run` and the command prints an error **and then
+    reports success anyway**:
+
+    ```
+    Creating distribution for project in folder...
+    Error creating dist. Try running `visivo run` to ensure your project is up to date.
+    Message: No run output found at '<project>/target/main'. Run `visivo run` before `visivo dist`., set STACKTRACE=true to see full error
+    Created dist folder: <project>/dist
+    ```
+
+    It **exits `0`**. What it leaves behind is not a working bundle:
+
+    - **First time** — `dist/` holds an empty `data/` directory and nothing else: no
+      `index.html`, no viewer, no data.
+    - **Any later time** — a bundle from an earlier run is left **completely
+      untouched**, and the success line is printed over it. The command has no way to
+      tell you that you just "rebuilt" a stale bundle.
+
+    This bites hardest in [CI/CD](ci-cd.md), where a failed or skipped `visivo run`
+    will not stop the `dist` step from claiming success and the deploy step from
+    publishing yesterday's numbers. Until the command exits non-zero, gate it yourself:
+
+    ```bash
+    visivo run
+    visivo dist
+    test -s dist/index.html || { echo "dist bundle is empty — did visivo run succeed?"; exit 1; }
+    ```
+
+    (Known bug: the `dist` phase catches this error, logs it, and returns normally
+    instead of failing the command.)
 
 The result is a folder shaped like this:
 
@@ -34,6 +70,9 @@ dist/
     └── files/<name>.parquet  # the materialized query results
 ```
 
+(Plus a few small bookkeeping files the viewer reads: `error.json`,
+`project_history.json`, and an empty `traces.json` left over from 1.x.)
+
 ## What works
 
 A static bundle is not a screenshot — it is the real viewer running on pre-computed
@@ -44,8 +83,10 @@ data:
 - **Interactivity works.** [Inputs](inputs.md) and insight
   [interactions](interactivity.md) — filter, sort, split — execute **in the browser**,
   in DuckDB-WASM, against the parquet files in the bundle. Changing a dropdown re-runs
-  the insight's client-side query with no network request beyond the data files already
-  fetched.
+  the insight's client-side query and never touches your database. It does not touch
+  your host either, once the data files and the DuckDB parquet extension have loaded —
+  and that extension comes from the public internet, not the bundle
+  ([details](#external-requests)).
 - **Any static host.** No runtime, no database driver, no environment variables. The
   `--deployment-root` flag rewrites every asset and data URL so the bundle works from a
   sub-path.
@@ -66,6 +107,11 @@ data:
   the equivalent rewrite yourself (for nginx:
   `try_files $uri /index.html;`) — otherwise only the root URL loads and dashboard
   links 404 on refresh.
+- **"Self-contained" is about servers, not about the network.** The bundle needs no
+  server of yours, but the browser rendering it still reaches the public internet — for
+  the DuckDB parquet extension on every dashboard, and for basemap assets on geo
+  charts. See [what the bundle fetches](#external-requests) before planning an
+  air-gapped deployment.
 
 ## What is impossible
 
@@ -110,6 +156,31 @@ Bundle size follows the same rule: the folder grows with the rows your run
 materializes. Aggregating in your models — pushing `GROUP BY`s into the SQL instead of
 shipping raw rows — keeps bundles small *and* limits what a bundle can expose.
 
+## What the bundle fetches from the internet { #external-requests }
+
+A dist bundle is self-contained in the sense that matters for hosting: no server, no
+database driver, no runtime. It is **not** free of outbound requests. Load one with the
+browser's network panel open and three things come from outside your origin:
+
+| Fetched from | When | If it cannot be reached |
+|--------------|------|-------------------------|
+| `extensions.duckdb.org` — `<version>/wasm_eh/parquet.duckdb_extension.wasm` | **Every dashboard**, the first time DuckDB-WASM reads a parquet file | Charts draw their frame, axes, and title with **no data in them** |
+| `cdn.plot.ly` — TopoJSON (e.g. `un/world_110m.json`) | Dashboards with `scattergeo` or `choropleth` insights | No country/coastline outlines |
+| `basemaps.cartocdn.com` — style JSON, sprites, glyphs, vector tiles | Dashboards with `scattermap`, `densitymap`, or `choroplethmap` insights | Points plot over a blank background |
+
+The first row is the one to plan around, because it applies to **every** bundle, not
+just map-shaped ones: DuckDB-WASM ships in the bundle, but its parquet extension does
+not — it is downloaded on demand. Blocking that host and reloading a plain bar-chart
+dashboard renders an empty plot: the title and axes are there and every series is gone.
+There is no configuration today that points the viewer at a different extension
+repository, so an air-gapped or egress-filtered network needs `extensions.duckdb.org`
+reachable — through an allowlist entry, a caching proxy, or a mirror that answers for
+it — before a bundle will show data.
+
+Everything else is same-origin: the viewer JS/CSS, the DuckDB-WASM binaries and their
+workers, the JSON manifests, and the parquet files all come from the bundle. No webfont
+CDN is contacted; the UI uses fonts that ship with it or are already on the machine.
+
 ## Trying it locally
 
 Any static file server can preview a bundle:
@@ -129,4 +200,4 @@ which `http.server` does not provide — navigate from the root page.)
 | Local development with hot reload and editing | `visivo serve` |
 | Hosted dashboards with auth, stages, and sharing | [`visivo deploy`](deployments.md) → Visivo Cloud |
 | Dashboards inside your own infrastructure, no server to operate | `visivo dist` → any static host |
-| Dashboards in an air-gapped or locked-down environment | `visivo dist` — the bundle makes no external requests |
+| Dashboards in an air-gapped or locked-down environment | `visivo dist` — but the browser still fetches the DuckDB parquet extension, so read [what the bundle fetches](#external-requests) first |

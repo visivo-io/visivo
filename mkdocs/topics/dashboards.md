@@ -30,12 +30,13 @@ A [Source](../concepts/source.md) is where your data lives — a database or fil
 ```yaml
 sources:
   - name: my_db
-    type: sqlite
-    database: /path/to/file.db
+    type: duckdb
+    database: target/example.duckdb
 ```
 
-See [Source Types](source-types.md) for PostgreSQL, Snowflake, BigQuery, DuckDB, CSV,
-and the rest.
+This guide uses DuckDB from here to the end: it is a single file, so there is nothing to
+start and every step below runs as written. See [Source Types](source-types.md) for
+PostgreSQL, Snowflake, BigQuery, SQLite, CSV, and the rest.
 
 ## Step 2 — a Model
 
@@ -46,11 +47,24 @@ models:
   - name: monthly_revenue
     source: ${ref(my_db)}
     sql: |
-      SELECT date_trunc('month', order_date) AS month,
+      SELECT date_trunc('month', order_date::DATE) AS month,
              SUM(amount) AS revenue
       FROM orders
       GROUP BY 1
 ```
+
+!!! note "Write the SQL in the source's own dialect"
+
+    Visivo hands `sql` to the source unchanged — it does not translate between
+    databases. `date_trunc` and the `::DATE` cast above are DuckDB (and PostgreSQL)
+    syntax; against a `type: sqlite` source the same rollup is
+    `strftime('%Y-%m', order_date)`, and `date_trunc` fails outright with
+    `no such function: DATE_TRUNC`. Change a source's `type` and its models' SQL has to
+    move with it.
+
+    The `::DATE` cast is here because this walkthrough's `orders` table arrives as CSV
+    text (see the complete project at the end of Step 5). Drop it when `order_date` is
+    already a `DATE` column.
 
 ## Step 3 — an Insight
 
@@ -63,7 +77,7 @@ insights:
     props:
       type: bar
       x: ?{ ${ref(monthly_revenue).month} }
-      y: ?{ ${ref(monthly_revenue).revenue} }
+      y: ?{ sum(${ref(monthly_revenue).revenue}) }
 ```
 
 An insight knows what to draw and which data feeds it — but it does not know *where* it
@@ -130,9 +144,9 @@ dashboards:
             chart: ${ref(revenue_chart)}
 ```
 
-That is the whole path. Here it is end to end, as one runnable project — the source
-seeds its own data, so you can paste this into a `project.visivo.yml` and run
-`visivo serve`:
+That is the whole path. Here it is end to end, as one runnable project — every object is
+the one you just built, and the source seeds its own `orders` table, so you can paste
+this into a `project.visivo.yml` and run `visivo serve`:
 
 ```yaml
 name: revenue-example
@@ -146,15 +160,20 @@ sources:
         args:
           - echo
           - |-
-            month,revenue
-            2025-01-01,100
-            2025-02-01,150
-            2025-03-01,200
+            order_date,amount
+            2025-01-05,100
+            2025-01-20,50
+            2025-02-11,150
+            2025-03-02,200
 
 models:
   - name: monthly_revenue
     source: ${ref(my_db)}
-    sql: SELECT month, SUM(revenue) AS revenue FROM orders GROUP BY 1
+    sql: |
+      SELECT date_trunc('month', order_date::DATE) AS month,
+             SUM(amount) AS revenue
+      FROM orders
+      GROUP BY 1
 
 insights:
   - name: revenue_by_month
