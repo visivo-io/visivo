@@ -8,11 +8,13 @@ from visivo.models.sources.source import Source
 from visivo.jobs.job import (
     Job,
     JobResult,
+    diagnostic_object_ref,
     format_message_failure,
     format_message_success,
     format_message_warning,
     start_message,
 )
+from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
 from visivo.query.schema_aggregator import SchemaAggregator
 from time import time
 from typing import List, Optional
@@ -119,14 +121,27 @@ def action(
 
         # Check if schema building was successful
         if "error" in schema_data.get("metadata", {}):
-            error_msg = schema_data["metadata"]["error"]
+            error_msg = str(schema_data["metadata"]["error"])
             failure_message = format_message_failure(
                 details=f"Failed to build schema for source \033[4m{source_to_build.name}\033[0m",
                 start_time=start_time,
                 error_msg=f"Schema building error: {error_msg}",
                 full_path=None,
             )
-            return JobResult(item=source_to_build, success=False, message=failure_message)
+            first_line = error_msg.splitlines()[0] if error_msg.strip() else "Schema build failed"
+            return JobResult(
+                item=source_to_build,
+                success=False,
+                message=failure_message,
+                diagnostic=Diagnostic(
+                    phase=DiagnosticPhase.RUN,
+                    code="schema_build_failed",
+                    message=f"Could not read the schema for source '{source_to_build.name}': {first_line}",
+                    detail=error_msg if error_msg != first_line else None,
+                    object=diagnostic_object_ref(source_to_build),
+                    hint="Check the source's connection settings and that its account can read table metadata.",
+                ),
+            )
 
         SchemaAggregator.aggregate_source_schema(
             source_name=source_to_build.name,
@@ -196,6 +211,17 @@ def action(
                     ),
                     full_path=None,
                 ),
+                diagnostic=Diagnostic(
+                    phase=DiagnosticPhase.RUN,
+                    code="schema_build_failed",
+                    message=(
+                        f"Source '{source_to_build.name}' connected but resolved no tables — "
+                        f"downstream queries cannot run without a schema."
+                    ),
+                    detail="\n".join(str(warning) for warning in warnings),
+                    object=diagnostic_object_ref(source_to_build),
+                    hint="Check that the source's account can read table metadata (catalog grants).",
+                ),
             )
 
         if warnings:
@@ -233,7 +259,22 @@ def action(
             error_msg=f"Schema building error: {source_to_build.description()}. {str(repr(e))}",
             full_path=None,
         )
-        return JobResult(item=source_to_build, success=False, message=failure_message)
+        # A held DuckDB file announces itself with the [source_locked] tag (see
+        # DuckdbSource's lock classification) — lift it to the typed code so the
+        # viewer can branch; anything else here is the source refusing us.
+        code = "source_locked" if "source_locked" in str(e) else "source_connection_failed"
+        return JobResult(
+            item=source_to_build,
+            success=False,
+            message=failure_message,
+            diagnostic=Diagnostic.from_exception(
+                e,
+                phase=DiagnosticPhase.RUN,
+                code=code,
+                object=diagnostic_object_ref(source_to_build),
+                hint="Check the source's connection settings, then run again.",
+            ),
+        )
 
 
 def job(

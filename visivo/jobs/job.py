@@ -1,5 +1,7 @@
 from concurrent.futures import Future
+from typing import Optional
 from visivo.models.base.named_model import NamedModel
+from visivo.models.diagnostic import Diagnostic, DiagnosticObjectRef
 from visivo.models.sources.source import Source
 import os
 import re
@@ -16,6 +18,7 @@ class JobResult:
         message: str,
         warnings: list = None,
         error_details: dict = None,
+        diagnostic: Optional[Diagnostic] = None,
     ):
         self.item = item
         self.success = success
@@ -25,6 +28,34 @@ class JobResult:
         # (e.g. VIS-1007's missing-relation inline fix). None for ordinary
         # failures, which keep flowing through the human-readable ``message``.
         self.error_details = error_details
+        # The structured description of the failure (W3, Error Legibility).
+        # ``message`` stays the terminal renderer (ANSI dot-padding and all);
+        # ``diagnostic`` is what reaches the viewer via error_json, so every
+        # ``success=False`` construction site should populate it.
+        self.diagnostic = diagnostic
+
+
+def diagnostic_object_ref(item) -> DiagnosticObjectRef:
+    """Best-effort ``{type, name}`` ref for the project object a job is about."""
+    # Function-level imports: job.py is imported by every job module, and the
+    # concrete model classes pull in far more than this module needs at import
+    # time.
+    from visivo.models.insight import Insight
+    from visivo.models.inputs.input import Input
+    from visivo.models.models.model import Model
+
+    if isinstance(item, Insight):
+        object_type = "insight"
+    elif isinstance(item, Input):
+        object_type = "input"
+    elif isinstance(item, Model):
+        object_type = "model"
+    elif isinstance(item, Source):
+        object_type = "source"
+    else:
+        object_type = type(item).__name__.lower()
+    name = getattr(item, "name", None) or type(item).__name__
+    return DiagnosticObjectRef(type=object_type, name=name)
 
 
 class CachedFuture:
@@ -139,3 +170,10 @@ def format_message_warning(details, start_time, full_path, warning_msg):
     return _format_message(
         details=details, status=status, full_path=full_path, error_msg=warning_msg
     )
+
+
+def format_message_skipped(details, error_msg=None):
+    """A job that never ran because an upstream failed — not a failure of its
+    own, so no duration and a yellow SKIPPED status."""
+    status = colored("SKIPPED", "yellow")
+    return _format_message(details=details, status=status, full_path=None, error_msg=error_msg)

@@ -12,7 +12,8 @@ import queue
 import sys
 from visivo.models.sources.source import Source
 from visivo.models.inputs.input import Input
-from visivo.jobs.job import JobResult
+from visivo.jobs.job import JobResult, diagnostic_object_ref, format_message_skipped
+from visivo.models.diagnostic import Diagnostic, DiagnosticPhase, DiagnosticRelated
 
 from visivo.jobs.run_insight_job import job as insight_job
 from visivo.jobs.run_source_schema_job import job as source_schema_job
@@ -23,6 +24,12 @@ from visivo.query.source_schema_cache import SourceSchemaCache
 from threading import Lock
 
 warnings.filterwarnings("ignore")
+
+# The node types create_jobs_from_item turns into jobs. Only these get a
+# synthesized "skipped" JobResult — presentation nodes (charts, dashboards,
+# rows...) sit above failed dependencies too, but they are not jobs and
+# recording them would bury the real failure in derived noise.
+_RUNNABLE_TYPES = (Insight, Input, SqlModel, Source)
 
 
 class DagRunner:
@@ -75,10 +82,17 @@ class DagRunner:
                     job.future.add_done_callback(self.job_callback)
 
         if len(self.failed_job_results) > 0:
+            skipped_count = sum(
+                1
+                for result in self.failed_job_results
+                if result.diagnostic is not None and result.diagnostic.code == "dependency_failed"
+            )
+            error_count = len(self.failed_job_results) - skipped_count
+            skipped_suffix = f" ({skipped_count} dependent job(s) skipped)" if skipped_count else ""
             Logger.instance().info("")
             Logger.instance().info("")
             Logger.instance().error(
-                f"\n\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
+                f"\n\nRun failed in {round(time()-start_time, 2)}s with {error_count} query error(s){skipped_suffix}."
             )
             for result in self.failed_job_results:
                 Logger.instance().error(str(result.message))
@@ -121,6 +135,12 @@ class DagRunner:
                     Logger.instance().info(
                         f"Skipping job for '{terminal_node.name}' because it has a failed dependency"
                     )
+                    failed_upstreams = [
+                        descendant
+                        for descendant in descendants
+                        if job_tracker.is_job_name_failed(descendant.name)
+                    ]
+                    self.record_skipped_job(terminal_node, failed_upstreams)
                     self.job_tracking_dag.remove_node(terminal_node)
                     continue
 
@@ -132,6 +152,55 @@ class DagRunner:
                     job_tracker.track_job(job)
 
             return len(self.job_tracking_dag.nodes()) == 1
+
+    def record_skipped_job(self, item, failed_upstreams):
+        """Synthesize a failed JobResult for a runnable node skipped because an
+        upstream failed (M16). Before this, the skip was only a log line: no
+        JobResult, no failed_job_results entry — so the viewer saw an insight
+        silently produce nothing while only the upstream's failure surfaced.
+        """
+        if not isinstance(item, _RUNNABLE_TYPES):
+            return
+        object_ref = diagnostic_object_ref(item)
+        upstream_refs = [diagnostic_object_ref(upstream) for upstream in failed_upstreams]
+        upstream_names = ", ".join(f"'{ref.name}'" for ref in upstream_refs) or "a dependency"
+        message = (
+            f"Skipped {object_ref.type} '{object_ref.name}' because "
+            f"{'its dependency' if len(upstream_refs) == 1 else 'its dependencies'} "
+            f"{upstream_names} failed."
+        )
+        diagnostic = Diagnostic(
+            phase=DiagnosticPhase.RUN,
+            code="dependency_failed",
+            message=message,
+            object=object_ref,
+            hint="Fix the failed dependency and run again — this job never ran.",
+            related=[
+                DiagnosticRelated(
+                    message=f"{ref.type} '{ref.name}' failed",
+                    object=ref,
+                )
+                for ref in upstream_refs
+            ],
+        )
+        self.failed_job_results.append(
+            JobResult(
+                item=item,
+                success=False,
+                message=format_message_skipped(
+                    details=f"Skipped job for {object_ref.type} \033[4m{object_ref.name}\033[0m",
+                    error_msg=f"upstream {upstream_names} failed",
+                ),
+                diagnostic=diagnostic,
+            )
+        )
+
+    @property
+    def diagnostics(self):
+        """The structured failures of this run, in job-completion order."""
+        return [
+            result.diagnostic for result in self.failed_job_results if result.diagnostic is not None
+        ]
 
     def create_jobs_from_item(self, item: ParentModel):
         if isinstance(item, Insight):
