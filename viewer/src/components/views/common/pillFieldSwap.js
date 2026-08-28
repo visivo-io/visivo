@@ -1,4 +1,5 @@
 import * as pillGrammar from './pillGrammar';
+import { encodeQueryString } from '../../../utils/expressionCodec';
 
 /**
  * pillFieldSwap — Explore 2.0 Phase 4 (06-pill-aggregation-grammar.md §4/§8 +
@@ -140,7 +141,7 @@ export function findMatchingExpressionSlots(
 /** Serialize a swap target (`{kind: 'metricRef'|'dimensionRef', ref}`) into
  * the `?{...}` query-string form a prop/interaction value expects. */
 export function serializeSwapTarget(swapTo) {
-  return `?{${pillGrammar.serialize({ kind: swapTo.kind, ref: swapTo.ref })}}`;
+  return encodeQueryString({ body: pillGrammar.serialize({ kind: swapTo.kind, ref: swapTo.ref }) });
 }
 
 /**

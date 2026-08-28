@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- literal Visivo `${ref(...)}` strings are the data under test, not template-literal mistakes */
 /**
  * InsightEditForm tests — interaction-depth coverage of the real branches, wired
  * to the controlled <TracePropsEditor> (VIS-1020):
@@ -25,6 +26,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import selectEvent from 'react-select-event';
 import InsightEditForm from './InsightEditForm';
 import useStore, { ObjectStatus } from '../../../stores/store';
+import { INTERACTION_HELP, interactionHelpText } from '../../../schemas/interactionHelp';
 
 // TracePropsEditor stub: echo ownerName + props.type, and expose buttons that
 // drive onChange so we can assert the parent persists the edited props.
@@ -114,6 +116,10 @@ const renderForm = async (props = {}) => {
   return utils;
 };
 
+// Interaction values are STORED as `?{ }` query strings — `InsightInteraction`
+// types all three fields as `QueryString`, so anything else fails the parser.
+// The form edits the BODY and re-wraps on save (M6), which these fixtures are
+// shaped to prove: what goes in is what must come back out.
 const publishedInsight = {
   name: 'rev',
   status: ObjectStatus.PUBLISHED,
@@ -121,7 +127,12 @@ const publishedInsight = {
     name: 'rev',
     description: 'revenue insight',
     props: { type: 'bar', x: 'ref(m).x', y: 'ref(m).y' },
-    interactions: [{ filter: 'a > 1' }, { split: 'b' }, { sort: 'c DESC' }, {}],
+    interactions: [
+      { filter: '?{${ref(m).a} > 1}' },
+      { split: '?{${ref(m).b}}' },
+      { sort: '?{${ref(m).c} DESC}' },
+      {},
+    ],
   },
 };
 
@@ -267,14 +278,16 @@ describe('InsightEditForm — interactions', () => {
     expect(screen.queryByText(/No interactions defined/)).not.toBeInTheDocument();
     expect(screen.getByText('Interaction 1')).toBeInTheDocument();
     // New interactions default to filter.
-    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: 'region = "US"' } });
+    fireEvent.change(screen.getByLabelText('Filter'), {
+      target: { value: '${ref(m).region} = "US"' },
+    });
 
     // Second interaction, retyped to Split.
     fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
     await selectEvent.select(screen.getAllByLabelText('Type')[1], 'Split', {
       container: document.body,
     });
-    fireEvent.change(screen.getByLabelText('Split'), { target: { value: 'category' } });
+    fireEvent.change(screen.getByLabelText('Split'), { target: { value: '${ref(m).category}' } });
 
     // Third interaction left blank — must be dropped from the payload.
     fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
@@ -283,7 +296,74 @@ describe('InsightEditForm — interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const [, , config] = onSave.mock.calls[0];
-    expect(config.interactions).toEqual([{ filter: 'region = "US"' }, { split: 'category' }]);
+    // M6: the body the user typed is stored WRAPPED. Before this fix the form
+    // wrote the bare body and the Pydantic `QueryString` validator rejected the
+    // YAML the UI had just produced.
+    expect(config.interactions).toEqual([
+      { filter: '?{${ref(m).region} = "US"}' },
+      { split: '?{${ref(m).category}}' },
+    ]);
+  });
+
+  test('a body the user typed already wrapped is not wrapped twice (M24)', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('i1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
+    // The form the docs publish, pasted straight in.
+    fireEvent.change(screen.getByLabelText('Filter'), {
+      target: { value: '?{ ${ref(m).region} = "US" }' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [, , config] = onSave.mock.calls[0];
+    expect(config.interactions).toEqual([{ filter: '?{${ref(m).region} = "US"}' }]);
+  });
+
+  test('a whitespace-only value is dropped, never stored as `?{}`', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('i1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
+    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: '   ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [, , config] = onSave.mock.calls[0];
+    expect(config).not.toHaveProperty('interactions');
+  });
+
+  test('copying the sort field\'s advertised example produces valid stored YAML (C15)', async () => {
+    // The old helper text taught `date DESC` — rejected by the parser unwrapped,
+    // and an unresolvable bare identifier even once wrapped. The replacement is
+    // read out of InsightInteraction's own field descriptions, and a user who
+    // copies it must end up with a value the model accepts.
+    const help = interactionHelpText('sort');
+    expect(help).not.toMatch(/date\s+DESC/i);
+    expect(help).toContain('append ASC or DESC to control direction');
+
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+    setName('i1');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Interaction' }));
+    await selectEvent.select(screen.getAllByLabelText('Type')[0], 'Sort', {
+      container: document.body,
+    });
+    fireEvent.change(screen.getByLabelText('Sort'), {
+      target: { value: INTERACTION_HELP.sort.example },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [, , config] = onSave.mock.calls[0];
+    expect(config.interactions).toEqual([{ sort: '?{${ref(orders).month} ASC}' }]);
+    // …which is the model docstring's own example, modulo padding.
+    expect(config.interactions[0].sort.replace(/\s+/g, '')).toBe(
+      INTERACTION_HELP.sort.yamlExample.replace(/\s+/g, '')
+    );
   });
 
   test('removing an interaction drops it from the form and the payload', async () => {
@@ -298,14 +378,19 @@ describe('InsightEditForm — interactions', () => {
     );
     await screen.findByTestId('trace-props-editor');
 
-    // Remove the first (filter 'a > 1') interaction.
+    // Remove the first (filter) interaction.
     fireEvent.click(screen.getAllByTitle('Remove interaction')[0]);
     expect(screen.queryByText('Interaction 4')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    // The survivors come back byte-identical to how they were stored — the
+    // form decoded them for editing and re-encoded them untouched.
     const [, , config] = onSave.mock.calls[0];
-    expect(config.interactions).toEqual([{ split: 'b' }, { sort: 'c DESC' }]);
+    expect(config.interactions).toEqual([
+      { split: '?{${ref(m).b}}' },
+      { sort: '?{${ref(m).c} DESC}' },
+    ]);
   });
 });
 
@@ -330,9 +415,14 @@ describe('InsightEditForm — edit mode', () => {
     expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
     // Each stored interaction kind maps to its editor; the unknown `{}` entry
     // falls back to an empty filter.
-    expect(screen.getAllByLabelText('Filter').map(t => t.value)).toEqual(['a > 1', '']);
-    expect(screen.getByLabelText('Split')).toHaveValue('b');
-    expect(screen.getByLabelText('Sort')).toHaveValue('c DESC');
+    // …de-braced: the field edits the expression BODY, and `?{ }` is the
+    // storage form the save path re-applies.
+    expect(screen.getAllByLabelText('Filter').map(t => t.value)).toEqual([
+      '${ref(m).a} > 1',
+      '',
+    ]);
+    expect(screen.getByLabelText('Split')).toHaveValue('${ref(m).b}');
+    expect(screen.getByLabelText('Sort')).toHaveValue('${ref(m).c} DESC');
 
     // VIS-1133: Save is disabled until something changes. Editing the
     // description leaves props/interactions — what this test is really about —
@@ -346,8 +436,13 @@ describe('InsightEditForm — edit mode', () => {
       name: 'rev',
       description: 'edited description',
       props: { type: 'bar', x: 'ref(m).x', y: 'ref(m).y' },
-      // The empty fallback interaction is dropped; the rest round-trip.
-      interactions: [{ filter: 'a > 1' }, { split: 'b' }, { sort: 'c DESC' }],
+      // The empty fallback interaction is dropped; the rest round-trip
+      // BYTE-IDENTICAL to how they were stored.
+      interactions: [
+        { filter: '?{${ref(m).a} > 1}' },
+        { split: '?{${ref(m).b}}' },
+        { sort: '?{${ref(m).c} DESC}' },
+      ],
     });
   });
 
@@ -506,9 +601,9 @@ describe('InsightEditForm — live preview', () => {
     // Unlike save, the preview keeps the empty fallback filter (it is still a
     // keyed interaction) — asserting the exact mapping of all three kinds.
     expect(insightConfig.interactions).toEqual([
-      { filter: 'a > 1' },
-      { split: 'b' },
-      { sort: 'c DESC' },
+      { filter: '?{${ref(m).a} > 1}' },
+      { split: '?{${ref(m).b}}' },
+      { sort: '?{${ref(m).c} DESC}' },
       { filter: '' },
     ]);
   });

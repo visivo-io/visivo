@@ -1,96 +1,53 @@
 /**
- * Query string patterns used in Visivo schemas.
+ * Query string helpers.
+ *
+ * The `?{ }` grammar itself now lives in `./expressionCodec` — that module is
+ * the single owner of the wrapper, and this one is the compatibility surface
+ * plus the slice-presentation helpers (`isScalarSlice`, `describeSlice`) and
+ * the legacy `QueryString` class. New code should import from
+ * `expressionCodec` directly, and save paths should call
+ * `canonicalizeQueryString` rather than hand-rolling a wrap.
+ *
+ * `serializeQueryString` is re-exported from the codec, so it is IDEMPOTENT:
+ * handing it a body that already carries a wrapper no longer produces
+ * `?{?{ ... }}` (M24).
  *
  * Mirrors the canonical grammar in
  * `visivo/visivo/query/patterns.py:QUERY_STRING_VALUE_PATTERN` and the
  * vendored JSON-schema definition in
  * `visivo/visivo/schema/<trace>.schema.json#/$defs/query-string`.
- *
- * Supported forms (single source of truth — every consumer in the
- * viewer should route through `parseQueryString` rather than
- * hand-rolling a regex):
- *
- *     ?{ expr }                   whole array (existing)
- *     ?{ expr }[N]                single positive or negative index (scalar)
- *     ?{ expr }[a:b]              slice (sub-array)
- *     ?{ expr }[a:b:c]            strided slice
- *     ?{ expr }[a,b,c]            multi-index pick
- *     query( ... )                query() function form (no slice support)
- *     column( ... )               column reference
- *     column( ... )[n]            indexed column reference
- *
- * The slice suffix is captured by name so callers can split the body
- * from the slice without re-parsing.
  */
 
-// Bracket form `?{ expr }` plus optional indexing/slicing suffix. Body
-// uses non-greedy matching so a trailing [...] is left for the slice
-// group rather than absorbed.
-export const QUERY_BRACKET_PATTERN =
-  /^\?\{\s*(?<body>.+?)\s*\}(?<slice>\[(?:-?\d+|-?\d*:-?\d*(?::-?\d+)?|-?\d+(?:\s*,\s*-?\d+)+)\])?\s*$/;
+import {
+  QUERY_BRACKET_PATTERN,
+  QUERY_FUNCTION_PATTERN,
+  QUERY_COLUMN_PATTERN,
+  SLICE_PATTERN,
+  decodeQueryString,
+  encodeQueryString,
+  canonicalizeQueryString,
+  isQueryStringValue,
+  parseQueryString,
+} from './expressionCodec';
 
-// Pattern for query(...) function syntax - with capture group for content extraction
-export const QUERY_FUNCTION_PATTERN = /^query\((.*)\)$/;
-
-// Pattern for column(...) or column(...)[n] syntax
-export const QUERY_COLUMN_PATTERN = /^column\(.*\)(?:\[-?\d+\])?$/;
-
-// Slice-only pattern (no surrounding ?{...}). Useful for validating a
-// raw slice expression like "[0]" / "[1:5]" coming from the SliceMenu.
-export const SLICE_PATTERN =
-  /^\[(?:-?\d+|-?\d*:-?\d*(?::-?\d+)?|-?\d+(?:\s*,\s*-?\d+)+)\]$/;
-
-// All patterns for simple match testing (no capture groups needed)
-const QUERY_STRING_PATTERNS = [QUERY_BRACKET_PATTERN, QUERY_FUNCTION_PATTERN, QUERY_COLUMN_PATTERN];
-
-/**
- * Check if a value is a query-string value (any supported form).
- *
- * @param {any} val - The value to check
- * @returns {boolean} True if the value matches any query-string pattern
- */
-export function isQueryStringValue(val) {
-  if (typeof val !== 'string') return false;
-  return QUERY_STRING_PATTERNS.some(pattern => pattern.test(val));
-}
-
-/**
- * Split a `?{ body }[slice]` query-string value into its components.
- *
- * Returns null if `value` is not a `?{...}` query string. For values
- * with no slice suffix, `slice` is null. The body is returned without
- * surrounding whitespace and without `?{` / `}` markers.
- *
- * Use `serializeQueryString` for the inverse.
- *
- * @param {any} value
- * @returns {{ body: string, slice: string|null } | null}
- */
-export function parseQueryString(value) {
-  if (typeof value !== 'string') return null;
-  const match = value.match(QUERY_BRACKET_PATTERN);
-  if (!match) return null;
-  return {
-    body: match.groups.body,
-    slice: match.groups.slice ?? null,
-  };
-}
+export {
+  QUERY_BRACKET_PATTERN,
+  QUERY_FUNCTION_PATTERN,
+  QUERY_COLUMN_PATTERN,
+  SLICE_PATTERN,
+  decodeQueryString,
+  encodeQueryString,
+  canonicalizeQueryString,
+  isQueryStringValue,
+  parseQueryString,
+};
 
 /**
  * Serialize a `{body, slice}` shape back into the canonical
- * `?{body}[slice]` form. The slice (if any) is appended OUTSIDE the
- * `?{}` wrap so the server-side runtime sees the slice as separate
- * metadata rather than literal SQL text.
- *
- * @param {{ body?: string, slice?: string|null }} parts
- * @returns {string}
+ * `?{body}[slice]` form. Alias of the codec's `encodeQueryString`, kept
+ * because six call sites already import this name.
  */
-export function serializeQueryString({ body, slice } = {}) {
-  if (!body) return '';
-  const wrapped = `?{${body}}`;
-  if (!slice) return wrapped;
-  return `${wrapped}${slice}`;
-}
+export const serializeQueryString = encodeQueryString;
 
 /**
  * Check whether a slice expression (`"[0]"`, `"[1:5]"`, ...) yields a
