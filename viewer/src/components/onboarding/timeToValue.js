@@ -20,7 +20,12 @@
  *   ONCE PER JOURNEY, NOT ONCE PER SESSION. The journey spans reloads, tabs and
  *   a CLI process; a mark that re-fired on reload would inflate the funnel and
  *   destroy the median. Emitted marks are persisted in localStorage under
- *   `visivo.ttv.v1`, seeded from the steps the CLI already marked.
+ *   `visivo.ttv.v1`, seeded from the steps the CLI already marked — AND written
+ *   back to the server's ledger, because `localStorage` is scoped to one origin
+ *   (`http://localhost:8000` and `:8001` are different origins) while the
+ *   journey is not. Without the write-back a second browser, an incognito
+ *   window, a cleared site-data, or `visivo serve -p 8001` re-fires every mark
+ *   under the same journey_id — exactly the inflation this is meant to prevent.
  *
  *   ONE JOURNEY IDENTITY. `window.__VISIVO_FIRST_RUN` (injected by the local
  *   Flask server, see server/views/data_views.py) carries the journey_id,
@@ -42,6 +47,7 @@
 
 import { fireEvent } from './telemetry';
 import { isTelemetryDisabled } from './posthogClient';
+import { postFirstRunStep } from '../../api/firstRunSteps';
 
 const LEDGER_KEY = 'visivo.ttv.v1';
 
@@ -119,6 +125,14 @@ function newJourneyId() {
  * there is no injection there — but its first run is just as worth measuring).
  * A viewer-local journey has a null machine_id; there is no CLI to join to.
  *
+ * It also has a NULL `started_at_ms`, and that is load-bearing. There is no
+ * first run to measure from here, so the taxonomy specifies
+ * `ms_since_first_run: null` — "the journey start is unknown (cloud viewer, or
+ * a machine whose ledger predates this contract)". Minting `Date.now()` instead
+ * would report a ~0ms time-to-value for every cloud dashboard view, straight
+ * into the single number the 2.1 exit gate is read off, and the cloud
+ * population is far larger than the CLI one.
+ *
  * When the injected journey_id differs from the stored one the ledger is
  * replaced rather than merged: that is a genuinely new first run (the user
  * cleared ~/.visivo, or this browser profile is looking at a different
@@ -134,6 +148,7 @@ function resolveJourney() {
         // Refresh the CLI-side facts from the page — the server is authoritative
         // for them and may have marked a step since this ledger was written.
         started_at_ms: injected.started_at_ms ?? stored.started_at_ms ?? null,
+        install_age_ms: injected.install_age_ms ?? stored.install_age_ms ?? null,
         machine_id: injected.machine_id ?? stored.machine_id ?? null,
         steps: { ...(injected.steps || {}), ...stored.steps },
       };
@@ -141,6 +156,7 @@ function resolveJourney() {
     return {
       journey_id: injected.journey_id,
       started_at_ms: injected.started_at_ms ?? null,
+      install_age_ms: injected.install_age_ms ?? null,
       machine_id: injected.machine_id ?? null,
       steps: { ...(injected.steps || {}) },
     };
@@ -150,12 +166,22 @@ function resolveJourney() {
 
   const created = {
     journey_id: newJourneyId(),
-    started_at_ms: Date.now(),
+    started_at_ms: null,
+    install_age_ms: null,
     machine_id: null,
     steps: {},
   };
   writeLedger(created);
   return created;
+}
+
+/** The bundled sample dashboards the server named, or null when it named none
+ *  (the cloud/dist viewer, which has no Flask server to ask). Lets the terminal
+ *  mark decide `from_sample` from the dashboard being rendered. */
+export function getSampleDashboardNames() {
+  const injected = injectedJourney();
+  const names = injected && injected.sample_dashboards;
+  return Array.isArray(names) ? names : null;
 }
 
 /* Largest timestamp among the marks already recorded for this journey — the
@@ -198,6 +224,7 @@ export function markTimeToValueStep(stepId, props = {}) {
   const nextLedger = {
     journey_id: journey.journey_id,
     started_at_ms: startedAtMs,
+    install_age_ms: typeof journey.install_age_ms === 'number' ? journey.install_age_ms : null,
     machine_id: journey.machine_id ?? null,
     steps: { ...journey.steps, [stepId]: now },
   };
@@ -209,10 +236,18 @@ export function markTimeToValueStep(stepId, props = {}) {
     step_index: stepIndex,
     ms_since_first_run: startedAtMs === null ? null : Math.max(0, now - startedAtMs),
     ms_since_previous_step: previousMs === null ? null : Math.max(0, now - previousMs),
+    install_age_ms: nextLedger.install_age_ms,
     machine_id: journey.machine_id ?? null,
     out_of_order: previousMs !== null && now < previousMs,
     ...props,
   });
+
+  // Tell the server the mark fired, so "once per journey" survives this origin.
+  // Only when the CLI handed us the journey: there is nowhere to write back to
+  // in the cloud/dist viewer, and a POST there would 404 on every mark.
+  if (injectedJourney()) {
+    postFirstRunStep({ journeyId: journey.journey_id, stepId, atMs: now });
+  }
   return true;
 }
 

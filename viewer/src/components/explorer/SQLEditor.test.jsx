@@ -224,14 +224,21 @@ describe('SQLEditor', () => {
   });
 
   // Guided First Run W1: running a query is step 3 of the time-to-value
-  // ladder — the moment the user first asks their own data a question. Uses
-  // the REAL timeToValue module (not a mock) so this covers the thing that
-  // actually has to hold: two runs, one mark, and never the user's SQL.
+  // ladder — the moment the user first asks their own data a question AND
+  // GETS AN ANSWER. Uses the REAL timeToValue module (not a mock) so these
+  // cover the thing that actually has to hold: the mark waits for the return,
+  // two runs make one mark, and the user's SQL never rides along.
+  const queryMarks = () => getEventBuffer().filter(e => e.event === 'first_query_run');
+
   it('marks the time-to-value first_query_run step exactly once, with no SQL in the payload', async () => {
     clearTimeToValueLedger();
     clearEventBuffer();
 
-    render(<SQLEditor initialValue="SELECT customer_email FROM users" sourceName="test_source" />);
+    const props = {
+      initialValue: 'SELECT customer_email FROM users',
+      sourceName: 'test_source',
+    };
+    const { rerender } = render(<SQLEditor {...props} />);
 
     fireEvent.click(screen.getByRole('button', { name: /run/i }));
     fireEvent.click(screen.getByRole('button', { name: /run/i }));
@@ -240,11 +247,68 @@ describe('SQLEditor', () => {
       expect(mockExecuteQuery).toHaveBeenCalled();
     });
 
-    const runMarks = getEventBuffer().filter(e => e.event === 'first_query_run');
-    expect(runMarks).toHaveLength(1);
-    expect(runMarks[0].props.step_index).toBe(3);
-    expect(JSON.stringify(runMarks[0].props)).not.toContain('SELECT');
-    expect(JSON.stringify(runMarks[0].props)).not.toContain('test_source');
+    // Both queries return.
+    mockQueryJobState.result = { columns: ['a'], rows: [[1]] };
+    rerender(<SQLEditor {...props} />);
+    mockQueryJobState.result = { columns: ['a'], rows: [[2]] };
+    rerender(<SQLEditor {...props} />);
+
+    expect(queryMarks()).toHaveLength(1);
+    expect(queryMarks()[0].props.step_index).toBe(3);
+    expect(JSON.stringify(queryMarks()[0].props)).not.toContain('SELECT');
+    expect(JSON.stringify(queryMarks()[0].props)).not.toContain('test_source');
+  });
+
+  it('does not mark first_query_run on submit — the contract says the query must RETURN', async () => {
+    // A query that fails on a typo, times out, or is cancelled would otherwise
+    // permanently consume the once-per-journey step 3, and step 4's
+    // ms_since_previous_step would be measured from a submit that produced
+    // nothing. The ladder's four other viewer marks are all on the success
+    // path; this one is too.
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    render(<SQLEditor initialValue="SELECT 1" sourceName="test_source" />);
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+
+    await waitFor(() => {
+      expect(mockExecuteQuery).toHaveBeenCalled();
+    });
+
+    expect(queryMarks()).toHaveLength(0);
+  });
+
+  it('a query that errors marks nothing — the clock must not start on a failure', async () => {
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    const props = { initialValue: 'SELEKT 1', sourceName: 'test_source' };
+    const { rerender } = render(<SQLEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+
+    await waitFor(() => {
+      expect(mockExecuteQuery).toHaveBeenCalled();
+    });
+
+    mockQueryJobState.error = 'syntax error at or near "SELEKT"';
+    rerender(<SQLEditor {...props} />);
+
+    expect(queryMarks()).toHaveLength(0);
+  });
+
+  it('a result the user did not ask for here marks nothing', async () => {
+    // The editor is shared (the Workspace model-edit form mounts it too); the
+    // mark belongs to a query THIS editor sent.
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    const props = { initialValue: 'SELECT 1', sourceName: 'test_source' };
+    const { rerender } = render(<SQLEditor {...props} />);
+
+    mockQueryJobState.result = { columns: ['a'], rows: [[1]] };
+    rerender(<SQLEditor {...props} />);
+
+    expect(queryMarks()).toHaveLength(0);
   });
 
   it('shows Cancel button when query is running', () => {

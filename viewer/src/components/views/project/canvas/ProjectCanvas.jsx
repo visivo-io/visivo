@@ -12,6 +12,7 @@ import CanvasAddRow from './CanvasAddRow';
 import CanvasContextMenu from './CanvasContextMenu';
 import CanvasKeyboardLayer from './CanvasKeyboardLayer';
 import CanvasItemFlipLayer from './CanvasItemFlipLayer';
+import { useFirstDashboardRenderedMark } from '../../../onboarding/firstDashboardRendered';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
@@ -64,6 +65,13 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
     if (!entry) return null;
     return entry.config || entry;
   }, [dashboards, dashboardName]);
+
+  // Terminal mark of the time-to-value ladder (Guided First Run W1, step 6).
+  // The canvas wraps the SAME render-only <Dashboard> View mode does, and it is
+  // where onboarding's data path lands — the cohort the 2.1 exit gate measures
+  // builds and watches its first dashboard here, not on /project/:name. The
+  // mark is idempotent per journey, so mounting it on both surfaces counts once.
+  useFirstDashboardRenderedMark(dashboardName, dashboardConfig);
 
   const handleCreateNew = useCallback(
     typeKey => {

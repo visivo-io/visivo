@@ -42,6 +42,10 @@ const SQLEditor = ({
   // onQueryComplete so the caller can route results to the tab/model that
   // started the run even if the context changed while the job was in flight.
   const runContextRef = useRef(null);
+  // Set when the user actually pressed Run here, so the ladder's step 3 is
+  // claimed by a query THIS editor sent rather than by any result that happens
+  // to arrive.
+  const ranAQueryRef = useRef(false);
 
   const [sql, setSql] = useState(initialValue);
   const [showError, setShowError] = useState(true);
@@ -66,6 +70,20 @@ const SQLEditor = ({
     if (result) {
       setResultsPage(0);
     }
+  }, [result]);
+
+  // Step 3 of the time-to-value ladder (Guided First Run W1) — the moment the
+  // user first asks their own data a question AND GETS AN ANSWER. The taxonomy
+  // says "executes in the SQL editor and returns", and the distinction is not
+  // cosmetic: claiming the step on submit means a query that fails on a typo,
+  // times out, or is cancelled permanently consumes the once-per-journey mark,
+  // and step 4's `ms_since_previous_step` is then measured from a submit that
+  // produced nothing. The ladder's four other viewer marks are all on the
+  // success path; this one now is too. Metadata only: never the SQL text, the
+  // source name, or anything else the user typed.
+  useEffect(() => {
+    if (!result || !ranAQueryRef.current) return;
+    markTimeToValueStep(TTV_STEPS.FIRST_QUERY_RUN);
   }, [result]);
 
   // Notify parent when query completes
@@ -123,10 +141,9 @@ const SQLEditor = ({
     runContextRef.current = queryContext ?? null;
     executeQuery(sourceName, queryText.trim());
     recordOnboardingAction('query_run');
-    // Step 3 of the time-to-value ladder (Guided First Run W1) — the moment
-    // the user first asks their own data a question. Metadata only: never the
-    // SQL text, the source name, or anything else the user typed.
-    markTimeToValueStep(TTV_STEPS.FIRST_QUERY_RUN);
+    // Step 3 of the ladder is claimed on the RETURN, not here — see the effect
+    // below. This only records that the user asked.
+    ranAQueryRef.current = true;
   }, [sourceName, sql, executeQuery, queryContext]);
 
   // Handle cancel

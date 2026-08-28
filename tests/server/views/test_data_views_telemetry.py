@@ -20,6 +20,8 @@ from unittest.mock import patch
 
 import pytest
 
+from visivo.telemetry import first_run
+
 
 @pytest.fixture(autouse=True)
 def isolated_first_run(tmp_path, monkeypatch):
@@ -27,14 +29,22 @@ def isolated_first_run(tmp_path, monkeypatch):
 
     Without this, serving index.html in a test would write to the real
     ~/.visivo/first_run.json and send a real event.
+
+    A journey is only minted on an interactive run (the ``_is_interactive``
+    backstop that keeps containers/CI with a fresh $HOME from reporting a
+    brand-new first run on every cold start). pytest captures stdout, so these
+    tests have to say they are standing in for a human at a terminal.
     """
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("visivo.telemetry.first_run._is_interactive_run", lambda: True)
+    first_run.reset_journey_cache()
     monkeypatch.setattr(
         "visivo.telemetry.client.get_telemetry_client",
         lambda enabled=True: _RecordingClient.instance,
     )
     _RecordingClient.instance = _RecordingClient()
-    return _RecordingClient.instance
+    yield _RecordingClient.instance
+    first_run.reset_journey_cache()
 
 
 class _RecordingClient:
@@ -147,14 +157,55 @@ class TestFirstRunJourneyInjection:
         # And no ledger file is left behind on an opted-out machine at all.
         assert not (tmp_path / ".visivo" / "first_run.json").exists()
 
+    def test_the_injected_journey_carries_what_the_gate_metric_needs(
+        self, integration_client, monkeypatch
+    ):
+        """`install_age_ms` and `sample_dashboards` have to reach the browser.
+
+        Steps 2-6 are emitted by the viewer, so a property that only rides on
+        the CLI's step 1 cannot filter the terminal mark — which is the one the
+        exit gate is read off.
+        """
+        monkeypatch.delenv("VISIVO_TELEMETRY_DISABLED", raising=False)
+        journey = _injected_journey(_get_index_html(integration_client))
+
+        assert "install_age_ms" in journey
+        assert "College Football" in journey["sample_dashboards"]
+
     def test_injected_journey_cannot_break_out_of_the_script_tag(
         self, integration_client, monkeypatch
     ):
+        """Falsifiable version: a journey that actually contains `</script>`.
+
+        The real journey is UUIDs and integers, so asserting on it exercises
+        nothing — the escaping could be deleted outright and the test would
+        still pass. `sample_dashboards` made the journey carry strings for the
+        first time, so this now guards a live edge rather than a hypothetical.
+        """
         monkeypatch.delenv("VISIVO_TELEMETRY_DISABLED", raising=False)
+        monkeypatch.setattr(
+            "visivo.telemetry.first_run.viewer_journey_context",
+            lambda project_defaults=None: {
+                "journey_id": "j-1",
+                "started_at_ms": 1,
+                "install_age_ms": None,
+                "machine_id": "m-1",
+                "steps": {},
+                "sample_dashboards": ["</script><script>window.__pwned=1</script>"],
+            },
+        )
         html = _get_index_html(integration_client)
 
-        # The journey is JSON built from UUIDs and integers, but the escaping
-        # is what keeps it that way if a value ever changes shape.
-        script = re.search(r"<script>window\.__VISIVO_FIRST_RUN=.*?</script>", html)
-        assert script, "journey script tag missing"
-        assert script.group(0).count("</script>") == 1
+        # Read the assignment exactly the way a browser's tokenizer does: the
+        # <script> element ends at the FIRST literal `</script>`. Everything up
+        # to it must still be the complete journey. Without the escaping the
+        # element is cut mid-JSON and this raises.
+        marker = "window.__VISIVO_FIRST_RUN="
+        start = html.index(marker) + len(marker)
+        end = html.index("</script>", start)
+        raw = html[start:end]
+
+        assert "</script>" not in raw
+        assert json.loads(raw)["sample_dashboards"] == [
+            "</script><script>window.__pwned=1</script>"
+        ]

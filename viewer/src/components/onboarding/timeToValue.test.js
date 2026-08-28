@@ -20,6 +20,9 @@ import {
   TTV_STEP_INDEXES,
 } from './timeToValue';
 import { getEventBuffer, clearEventBuffer } from './telemetry';
+import { postFirstRunStep } from '../../api/firstRunSteps';
+
+jest.mock('../../api/firstRunSteps', () => ({ postFirstRunStep: jest.fn() }));
 
 const LEDGER_KEY = 'visivo.ttv.v1';
 
@@ -45,6 +48,7 @@ function marks() {
 beforeEach(() => {
   clearEventBuffer();
   clearTimeToValueLedger();
+  postFirstRunStep.mockClear();
   delete window.__VISIVO_FIRST_RUN;
   delete window.__VISIVO_TELEMETRY_DISABLED;
 });
@@ -213,7 +217,33 @@ describe('journey identity', () => {
     expect(typeof props.journey_id).toBe('string');
     expect(props.journey_id.length).toBeGreaterThan(0);
     expect(props.machine_id).toBeNull();
-    expect(props.ms_since_first_run).toBeGreaterThanOrEqual(0);
+  });
+
+  test('a viewer-minted journey reports ms_since_first_run as null, not zero', () => {
+    // The contract (taxonomy §4) says `null` "when the journey start is
+    // unknown (cloud viewer, or a machine whose ledger predates this
+    // contract)". Minting Date.now() as the start instead reports a ~0ms
+    // time-to-value into the exact number the 2.1 exit gate is read off —
+    // and the cloud population is far larger than the CLI one.
+    markTimeToValueStep(TTV_STEPS.FIRST_DASHBOARD_RENDERED, {
+      item_count: 1,
+      from_sample: false,
+    });
+
+    const props = marks()[0].props;
+    expect(props.ms_since_first_run).toBeNull();
+    expect(props.install_age_ms).toBeNull();
+  });
+
+  test('a later mark in a viewer-minted journey still measures the gap it does know', () => {
+    // ms_since_first_run stays null, but ms_since_previous_step is real: the
+    // journey start is unknown, the gap between two marks is not.
+    markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED);
+    markTimeToValueStep(TTV_STEPS.FIRST_MODEL_CREATED);
+
+    const second = marks()[1].props;
+    expect(second.ms_since_first_run).toBeNull();
+    expect(second.ms_since_previous_step).toBeGreaterThanOrEqual(0);
   });
 
   test('a locally-minted journey persists across marks', () => {
@@ -295,12 +325,19 @@ describe('privacy', () => {
 
     const ledger = JSON.parse(window.localStorage.getItem(LEDGER_KEY));
     expect(Object.keys(ledger).sort()).toEqual([
+      'install_age_ms',
       'journey_id',
       'machine_id',
       'started_at_ms',
       'steps',
     ]);
     expect(Object.values(ledger.steps).every(v => typeof v === 'number')).toBe(true);
+    // journey_id and machine_id are the only strings — nothing else may become
+    // somewhere a name or a path can hide.
+    expect(Object.entries(ledger)
+      .filter(([, value]) => typeof value === 'string')
+      .map(([key]) => key)
+      .sort()).toEqual(['journey_id', 'machine_id']);
   });
 });
 
@@ -321,5 +358,111 @@ describe('robustness', () => {
     // with no id.
     expect(marks()[0].props.machine_id).toBeNull();
     expect(marks()[0].props.journey_id).toBeTruthy();
+  });
+});
+
+describe('idempotence off this browser origin', () => {
+  /* `localStorage` is scoped to `http://localhost:<port>`. The journey is not:
+   * it lives in ~/.visivo/first_run.json and survives a port change, a second
+   * browser, an incognito window, and a site-data clear. Without the write-back
+   * every viewer mark re-fires under the SAME journey_id — precisely the funnel
+   * inflation the persisted ledger is supposed to prevent. */
+
+  test('a mark is written back to the server so the next origin can dedupe it', () => {
+    injectCliJourney({ journeyId: 'J-1' });
+
+    markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED);
+
+    expect(postFirstRunStep).toHaveBeenCalledTimes(1);
+    const call = postFirstRunStep.mock.calls[0][0];
+    expect(call.journeyId).toBe('J-1');
+    expect(call.stepId).toBe('source_connected');
+    expect(typeof call.atMs).toBe('number');
+  });
+
+  test('a step the server already knows about is NOT re-fired on a fresh origin', () => {
+    // The exact scenario: `visivo serve -p 8001` (a new localStorage origin),
+    // or a second browser. The viewer ledger is empty; the injected journey
+    // carries the mark because the server recorded it.
+    injectCliJourney({
+      journeyId: 'J-1',
+      steps: { first_run_launched: 1000, source_connected: 2000 },
+    });
+    expect(window.localStorage.getItem(LEDGER_KEY)).toBeNull();
+
+    expect(markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED)).toBe(false);
+    expect(marks()).toHaveLength(0);
+  });
+
+  test('a cleared site-data mid-journey does not re-fire what already fired', () => {
+    injectCliJourney({ journeyId: 'J-1', steps: { first_run_launched: 1000 } });
+    markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED);
+    const writtenBack = postFirstRunStep.mock.calls[0][0];
+
+    // The user clears site data. The server, which was told, hands the same
+    // journey back with the mark on it.
+    clearTimeToValueLedger();
+    injectCliJourney({
+      journeyId: 'J-1',
+      steps: { first_run_launched: 1000, [writtenBack.stepId]: writtenBack.atMs },
+    });
+
+    expect(markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED)).toBe(false);
+    expect(marks().filter(m => m.event === 'source_connected')).toHaveLength(1);
+  });
+
+  test('the cloud viewer writes nothing back — there is no server to write to', () => {
+    markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED);
+
+    expect(postFirstRunStep).not.toHaveBeenCalled();
+  });
+
+  test('an opted-out run writes nothing back either', () => {
+    window.__VISIVO_TELEMETRY_DISABLED = true;
+    injectCliJourney();
+
+    markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED);
+
+    expect(postFirstRunStep).not.toHaveBeenCalled();
+  });
+});
+
+describe('install age', () => {
+  /* The ledger's absence cannot mean "this is a first run" — no install has one
+   * until this ships, so on rollout day every established machine mints a
+   * journey and reaches first_dashboard_rendered seconds later. install_age_ms
+   * is how the gate metric tells that apart from a 2-second time-to-value. */
+
+  test('the CLI-reported install age rides on every viewer mark', () => {
+    window.__VISIVO_FIRST_RUN = {
+      journey_id: 'J-1',
+      started_at_ms: Date.now() - 1000,
+      install_age_ms: 400 * 86400 * 1000,
+      machine_id: 'machine-abc',
+      steps: {},
+    };
+
+    markTimeToValueStep(TTV_STEPS.FIRST_DASHBOARD_RENDERED, {
+      item_count: 1,
+      from_sample: false,
+    });
+
+    expect(marks()[0].props.install_age_ms).toBe(400 * 86400 * 1000);
+  });
+
+  test('it survives a reload, because the terminal mark is what needs it', () => {
+    window.__VISIVO_FIRST_RUN = {
+      journey_id: 'J-1',
+      started_at_ms: Date.now() - 1000,
+      install_age_ms: 12345,
+      machine_id: 'machine-abc',
+      steps: {},
+    };
+    markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED);
+
+    // A reload: the ledger is read back from localStorage, journey unchanged.
+    markTimeToValueStep(TTV_STEPS.FIRST_MODEL_CREATED);
+
+    expect(marks()[1].props.install_age_ms).toBe(12345);
   });
 });

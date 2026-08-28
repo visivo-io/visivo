@@ -12,10 +12,11 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
-import Project, { countDashboardItems } from './Project';
+import Project from './Project';
 import useStore from '../../stores/store';
 import { clearEventBuffer, getEventBuffer } from '../onboarding/telemetry';
 import { clearTimeToValueLedger } from '../onboarding/timeToValue';
+import { countDashboardItems } from '../onboarding/firstDashboardRendered';
 import { writeOnboardingState } from '../onboarding/onboardingState';
 
 jest.mock('../../stores/store');
@@ -140,6 +141,8 @@ describe('first_dashboard_rendered', () => {
     // Rendering the sample takes ~1s; rendering a dashboard from the user's
     // own data took field testers 26-108 minutes. Without this flag the exit
     // gate would read the wrong number and report success it has not earned.
+    // With no server to ask (the cloud/dist viewer) the onboarding path is the
+    // best signal there is; the local viewer uses the list below instead.
     writeOnboardingState({ completed_at: '2026-01-01', path: 'sample' });
     mockStore(buildState());
 
@@ -163,5 +166,70 @@ describe('first_dashboard_rendered', () => {
     render(<Project />);
 
     expect(getEventBuffer()).toHaveLength(0);
+  });
+});
+
+describe('from_sample is about the dashboard, not the onboarding branch', () => {
+  /* The onboarding `path` is written once at the end of the flow and never
+   * updated, so reading it is wrong in BOTH directions. The local server names
+   * the bundled sample dashboards on the injected journey; that is a fact about
+   * what is being rendered. */
+
+  const injectServerJourney = (sampleDashboards = ['College Football', 'EV Sales']) => {
+    window.__VISIVO_FIRST_RUN = {
+      journey_id: 'J-1',
+      started_at_ms: Date.now() - 60_000,
+      install_age_ms: 1000,
+      machine_id: 'machine-abc',
+      steps: {},
+      sample_dashboards: sampleDashboards,
+    };
+  };
+
+  test('a skipped-onboarding user opening the bundled sample still reports true', () => {
+    // The false NEGATIVE: a ~1s sample render landing in the bucket reserved
+    // for dashboards the user actually built.
+    writeOnboardingState({ completed_at: '2026-01-01', path: 'skipped' });
+    injectServerJourney();
+    useParams.mockReturnValue({ dashboardName: 'College Football' });
+    mockStore(
+      buildState({
+        dashboards: [
+          { name: 'College Football', config: { rows: [{ items: [{ chart: { name: 'c' } }] }] } },
+        ],
+      })
+    );
+
+    render(<Project />);
+
+    expect(renderedMarks()[0].props.from_sample).toBe(true);
+  });
+
+  test('a user with no onboarding state at all still reports true for the sample', () => {
+    injectServerJourney();
+    useParams.mockReturnValue({ dashboardName: 'EV Sales' });
+    mockStore(
+      buildState({
+        dashboards: [
+          { name: 'EV Sales', config: { rows: [{ items: [{ chart: { name: 'c' } }] }] } },
+        ],
+      })
+    );
+
+    render(<Project />);
+
+    expect(renderedMarks()[0].props.from_sample).toBe(true);
+  });
+
+  test('a sample-path user who then built their own dashboard reports false', () => {
+    // The false POSITIVE: their genuine 40-minute journey was being filtered
+    // OUT of the gate metric because `path` still said 'sample'.
+    writeOnboardingState({ completed_at: '2026-01-01', path: 'sample' });
+    injectServerJourney();
+    mockStore(buildState());
+
+    render(<Project />);
+
+    expect(renderedMarks()[0].props.from_sample).toBe(false);
   });
 });

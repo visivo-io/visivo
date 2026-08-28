@@ -12,6 +12,12 @@ JS bundle.
 
 The dist/cloud viewer has no Flask server; its `urls.js` entry for this
 endpoint is `null`, so the viewer-side sink is a no-op there.
+
+A second endpoint here, `/api/telemetry/first-run/step/`, does the opposite:
+it forwards nothing to PostHog and only records that a time-to-value mark
+already fired, so the server-side journey ledger stays the one authority on
+"once per journey" even when the browser's own ledger is not there to consult
+(Guided First Run W1 — see visivo/telemetry/first_run.py).
 """
 
 import json
@@ -19,6 +25,7 @@ import re
 
 from flask import jsonify, request
 
+from visivo.telemetry import first_run
 from visivo.telemetry.config import is_telemetry_enabled
 from visivo.telemetry.events import WorkspaceEvent
 
@@ -82,6 +89,51 @@ def register_telemetry_views(app, flask_app, output_dir):
         try:
             client = get_telemetry_client(enabled=True)
             client.track(WorkspaceEvent.create(name=name, properties=payload))
+        except Exception:
+            # Telemetry must never break the viewer — accept-and-drop.
+            pass
+
+        return "", 204
+
+    @app.route("/api/telemetry/first-run/step/", methods=["POST"])
+    def post_first_run_step():
+        """Write a time-to-value mark the VIEWER already emitted into the ledger.
+
+        This endpoint emits nothing. The browser has already sent the event; what
+        it cannot do is make "once per journey" survive leaving its own origin.
+        The viewer's idempotence lives in ``localStorage``, which is scoped to
+        ``http://localhost:<port>`` — so a second browser, an incognito window, a
+        cleared site-data, or simply ``visivo serve -p 8001`` re-fires every
+        viewer mark under the same ``journey_id`` and inflates the funnel. The
+        ledger file is not origin-scoped, and ``viewer_journey_context`` seeds
+        the next page load from it.
+        """
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "Expected a JSON object body"}), 400
+
+        step_id = body.get("step_id")
+        if not isinstance(step_id, str) or step_id not in first_run.STEP_INDEXES:
+            return jsonify({"error": "Unknown step id"}), 400
+
+        journey_id = body.get("journey_id")
+        if journey_id is not None and not isinstance(journey_id, str):
+            return jsonify({"error": "journey_id must be a string"}), 400
+
+        at_ms = body.get("at_ms")
+        if not isinstance(at_ms, int) or isinstance(at_ms, bool):
+            at_ms = None
+
+        project = getattr(flask_app, "project", None)
+        defaults = getattr(project, "defaults", None) if project is not None else None
+
+        try:
+            first_run.record_viewer_step(
+                step_id,
+                journey_id=journey_id,
+                at_ms=at_ms,
+                project_defaults=defaults,
+            )
         except Exception:
             # Telemetry must never break the viewer — accept-and-drop.
             pass

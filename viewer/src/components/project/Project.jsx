@@ -9,35 +9,7 @@ import { HiTemplate } from 'react-icons/hi';
 import DashboardSection from '../project/DashboardSection';
 import FilterBar from '../project/FilterBar';
 import useProjectChangeListener from '../views/workspace/useProjectChangeListener';
-import { markTimeToValueStep, TTV_STEPS } from '../onboarding/timeToValue';
-import { readOnboardingState } from '../onboarding/onboardingState';
-
-/**
- * Count the leaf items in a dashboard config, recursing into `Item.rows`
- * (the nested-row layout primitive). Used only to decide whether the
- * dashboard about to render is a real one and to report `item_count` on the
- * time-to-value terminal mark — never to read a name or any other content.
- *
- * Exported for the test that pins the terminal mark's payload.
- */
-export function countDashboardItems(dashboardConfig) {
-  const countRows = rows =>
-    (Array.isArray(rows) ? rows : []).reduce((total, row) => {
-      const items = Array.isArray(row?.items) ? row.items : [];
-      return (
-        total +
-        items.reduce((rowTotal, item) => {
-          // An item that is itself a stack of rows contributes its leaves, not
-          // itself — otherwise a row-first dashboard reports 1 for any depth.
-          if (Array.isArray(item?.rows) && item.rows.length > 0) {
-            return rowTotal + countRows(item.rows);
-          }
-          return rowTotal + 1;
-        }, 0)
-      );
-    }, 0);
-  return countRows(dashboardConfig?.rows);
-}
+import { useFirstDashboardRenderedMark } from '../onboarding/firstDashboardRendered';
 
 /**
  * Project - Container component for the new project view
@@ -113,23 +85,9 @@ function Project() {
   // Terminal mark of the time-to-value ladder (Guided First Run W1, step 6).
   // `/project/:dashboardName` is the consumer surface — a dashboard actually
   // mounting here is the end of the span the 2.1 exit gate is measured over.
-  // Gated on the dashboard having at least one item so an empty shell doesn't
-  // stop the clock early.
-  //
-  // `from_sample` is the point of finding TTV-5: rendering the bundled example
-  // takes ~1s while rendering a dashboard built from the user's own data took
-  // field testers 26-108 minutes. The gate metric is ms_since_first_run where
-  // from_sample is false; without this property the two are indistinguishable
-  // and "time to first dashboard" would report success it hasn't earned.
-  useEffect(() => {
-    if (!dashboardName || !activeDashboardConfig) return;
-    const itemCount = countDashboardItems(activeDashboardConfig);
-    if (itemCount === 0) return;
-    markTimeToValueStep(TTV_STEPS.FIRST_DASHBOARD_RENDERED, {
-      item_count: itemCount,
-      from_sample: (readOnboardingState() || {}).path === 'sample',
-    });
-  }, [dashboardName, activeDashboardConfig]);
+  // The Workspace canvas mounts the same mark (see firstDashboardRendered.js);
+  // whichever the user reaches first wins.
+  useFirstDashboardRenderedMark(dashboardName, activeDashboardConfig);
 
   // Both servers answer the whole-project read with the same envelope, so
   // there is one shape to read defaults out of.

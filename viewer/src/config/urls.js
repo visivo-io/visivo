@@ -167,6 +167,12 @@ const URL_PATTERNS = {
     // The local Flask server relays workspace events through the CLI's PostHog
     // client so the CLI telemetry opt-out + anonymization apply (VIS-822).
     workspaceTelemetry: '/api/telemetry/workspace-event/',
+    // Writes a time-to-value mark the viewer ALREADY emitted into
+    // ~/.visivo/first_run.json (Guided First Run W1). Sends no event — it is
+    // what makes "once per journey" survive a second browser or a different
+    // serve port, since localStorage is scoped to one origin and the ledger
+    // is not.
+    firstRunStep: '/api/telemetry/first-run/step/',
   },
 
   // A dist build is static files — there is no server, so almost nothing

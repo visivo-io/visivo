@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask
 
+from visivo.telemetry import first_run
 from visivo.server.views.telemetry_views import (
     MAX_PAYLOAD_BYTES,
     RESERVED_EVENT_NAMES,
@@ -145,3 +146,105 @@ class TestTelemetryViews:
         response = self.post_event(client, {"name": "cli_command"})
         assert response.status_code == 400
         get_client.assert_not_called()
+
+
+class TestFirstRunStepWriteBack:
+    """`/api/telemetry/first-run/step/` — the viewer's marks land in the ledger.
+
+    The viewer's own idempotence lives in `localStorage`, which is scoped to
+    `http://localhost:<port>`. A second browser, an incognito window, a cleared
+    site-data, or simply `visivo serve -p 8001` re-fires every viewer mark under
+    the SAME journey_id — precisely the funnel inflation the persisted ledger is
+    supposed to prevent. The file is not origin-scoped, so the write-back is what
+    makes "once per journey" true off the origin the mark was made in.
+    """
+
+    @pytest.fixture(autouse=True)
+    def isolated_home(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("VISIVO_TELEMETRY_DISABLED", raising=False)
+        monkeypatch.setattr("visivo.telemetry.first_run._is_interactive_run", lambda: True)
+        first_run.reset_journey_cache()
+        yield tmp_path
+        first_run.reset_journey_cache()
+
+    @pytest.fixture
+    def flask_app(self):
+        flask_app = Mock()
+        flask_app.project = Mock()
+        flask_app.project.defaults = None
+        return flask_app
+
+    @pytest.fixture
+    def client(self, flask_app):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        register_telemetry_views(app, flask_app, "/tmp/output")
+        return app.test_client()
+
+    def post_step(self, client, body):
+        return client.post(
+            "/api/telemetry/first-run/step/",
+            data=json.dumps(body),
+            content_type="application/json",
+        )
+
+    def test_a_recorded_mark_is_handed_back_to_the_next_page_load(self, client):
+        journey = first_run.get_or_create_journey()
+
+        response = self.post_step(
+            client,
+            {
+                "step_id": "source_connected",
+                "journey_id": journey["journey_id"],
+                "at_ms": 1_700_000_000_000,
+            },
+        )
+
+        assert response.status_code == 204
+        # This is the dedupe: a browser that never saw the original mark is
+        # seeded from here and refuses to fire it again.
+        context = first_run.viewer_journey_context()
+        assert context["steps"]["source_connected"] == 1_700_000_000_000
+
+    @patch("visivo.telemetry.client.get_telemetry_client")
+    def test_the_write_back_emits_nothing(self, get_client, client):
+        telemetry_client = Mock()
+        get_client.return_value = telemetry_client
+        journey = first_run.get_or_create_journey()
+
+        self.post_step(client, {"step_id": "source_connected", "journey_id": journey["journey_id"]})
+
+        # The browser already sent this event; re-emitting it server-side would
+        # double every viewer mark.
+        telemetry_client.track.assert_not_called()
+
+    def test_an_unknown_step_is_refused(self, client):
+        first_run.get_or_create_journey()
+
+        assert self.post_step(client, {"step_id": "definitely_not_a_step"}).status_code == 400
+        assert first_run.read_ledger()["steps"] == {}
+
+    def test_a_non_object_body_is_refused(self, client):
+        response = client.post(
+            "/api/telemetry/first-run/step/",
+            data=json.dumps(["source_connected"]),
+            content_type="application/json",
+        )
+        assert response.status_code == 400
+
+    def test_a_mark_for_a_different_journey_is_dropped(self, client):
+        first_run.get_or_create_journey()
+
+        response = self.post_step(
+            client, {"step_id": "source_connected", "journey_id": "some-other-journey"}
+        )
+
+        assert response.status_code == 204
+        assert "source_connected" not in first_run.read_ledger()["steps"]
+
+    def test_the_opt_out_covers_the_write_back(self, client, monkeypatch, isolated_home):
+        monkeypatch.setenv("VISIVO_TELEMETRY_DISABLED", "true")
+
+        assert self.post_step(client, {"step_id": "source_connected"}).status_code == 204
+        assert not (isolated_home / ".visivo" / "first_run.json").exists()
