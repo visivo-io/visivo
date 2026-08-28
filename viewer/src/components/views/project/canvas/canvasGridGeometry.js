@@ -27,13 +27,24 @@
  *      `minmax(0, 1fr)` tracks as `(rowWidth - (total - 1) * gap) / total`, and a
  *      `span N` slot then also swallows the N-1 gaps it straddles.
  *
+ *   3. THE SLOT MOVES, not just grows. Because every track shrinks when the
+ *      total grows, an item's LEFT edge slides left as it (or any sibling
+ *      before it) is widened. A preview that keeps the item's measured
+ *      `left` and only stretches its width is truthful about size and wrong
+ *      about position for every item that is not first in its row — which is
+ *      still a drop that does not land on the ghost. `previewItemLeftShiftPx`
+ *      is that missing half.
+ *
  * Everything here is pure arithmetic over MEASURED pixels: callers pass the
  * row's live `getBoundingClientRect().width` and its live computed column gap
  * (`readColumnGapPx`), so a zoomed/transformed canvas stays consistent — the
  * inputs and the outputs are in the same measured space.
  *
- * Verified against real CSS grid layout in headless Chromium across 10 row
- * shapes (worst |formula − rendered| = 0.0000px). See the PR body.
+ * The formulas are checked against real CSS grid layout by a COMMITTED harness:
+ * `viewer/e2e/tools/measure-canvas-grid.mjs` builds rows in headless Chromium
+ * from Dashboard.renderRow's exact styles, measures every slot, and diffs the
+ * numbers against this module (`node e2e/tools/measure-canvas-grid.mjs`). The
+ * pixel fixtures in the unit tests are that script's output.
  */
 
 /**
@@ -100,6 +111,67 @@ export const previewItemWidthPx = ({
   });
 
 /**
+ * The sum of the widths of the items BEFORE `index` in a row — i.e. how many
+ * grid columns a slot starts after. This is the row's own ordering, so it is
+ * the number CSS uses to place the item's implicit `grid-column-start`.
+ */
+export const precedingColsInRow = (items, index) =>
+  (Array.isArray(items) ? items : [])
+    .slice(0, Math.max(0, index))
+    .reduce((sum, it) => sum + (it?.width || 1), 0);
+
+/**
+ * The pixel distance from the row's content-box left edge to the left edge of a
+ * slot that starts after `precedingCols` columns: those tracks PLUS the one gap
+ * that follows each of them.
+ *
+ *   left = precedingCols · (track + gap)
+ */
+export const spanLeftOffsetPx = ({ rowWidth, totalCols, precedingCols = 0, gapPx = 0 }) => {
+  const preceding = Math.max(0, precedingCols || 0);
+  const gap = Number.isFinite(gapPx) ? gapPx : 0;
+  return preceding * (gridTrackPx({ rowWidth, totalCols, gapPx: gap }) + gap);
+};
+
+/**
+ * THE OTHER HALF OF THE TRUTHFUL PREVIEW: how far the dragged slot's LEFT edge
+ * MOVES when its span becomes `spanCols`.
+ *
+ * A right-edge drag rebalances the row, which shrinks every track — including
+ * the `precedingCols` tracks in front of this item — so the item slides LEFT as
+ * it grows. Pinning the ghost's `left` to the item's measured box is therefore
+ * only correct for the first item in a row (`precedingCols === 0`); everywhere
+ * else the ghost is the right size in the wrong place, and on the last item of a
+ * row it is painted hanging off the row's right edge entirely.
+ *
+ * Expressed as a SHIFT (not an absolute left) on purpose: the caller adds it to
+ * the item's own measured `left`, so zero travel is pixel-identical to the card
+ * underneath and any row padding / canvas transform cancels out.
+ *
+ * A left-edge TRANSFER (`rebalance: false`) leaves the total — and therefore the
+ * track size — alone, so this is 0 there; that gesture anchors the slot's RIGHT
+ * edge instead.
+ */
+export const previewItemLeftShiftPx = ({
+  rowWidth,
+  startTotal,
+  startCols,
+  spanCols,
+  precedingCols = 0,
+  gapPx = 0,
+  rebalance = true,
+}) => {
+  const preceding = Math.max(0, precedingCols || 0);
+  if (!preceding) return 0;
+  const gap = Number.isFinite(gapPx) ? gapPx : 0;
+  const nextTotal = rowTotalForSpan({ startTotal, startCols, spanCols, rebalance });
+  return (
+    spanLeftOffsetPx({ rowWidth, totalCols: nextTotal, precedingCols: preceding, gapPx: gap }) -
+    spanLeftOffsetPx({ rowWidth, totalCols: startTotal, precedingCols: preceding, gapPx: gap })
+  );
+};
+
+/**
  * The INVERSE of `previewItemWidthPx`: the integer span whose rendered width
  * lands nearest `targetWidthPx`.
  *
@@ -120,6 +192,11 @@ export const previewItemWidthPx = ({
  * geometry cannot respond to the drag at all. Every candidate ties, and biasing
  * to the start makes that gesture an honest no-op instead of silently rewriting
  * a `width: 12` row to `width: 1`.
+ *
+ * <CanvasResizeLayer> withholds the width handle on such a row outright — a
+ * handle that cannot move anything is a dead affordance — so this tie-break is
+ * the backstop, not the user-facing behaviour. It still matters: any other
+ * caller (a keyboard nudge, a future gesture) gets the same honest answer.
  */
 export const nearestSpanForWidth = ({
   rowWidth,

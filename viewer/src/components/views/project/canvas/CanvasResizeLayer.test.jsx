@@ -16,7 +16,13 @@ import React, { useRef } from 'react';
 import { render, screen, act } from '@testing-library/react';
 import CanvasResizeLayer from './CanvasResizeLayer';
 import useStore from '../../../../stores/store';
-import { itemSlotWidthPx, rowGridTotal } from './canvasGridGeometry';
+import {
+  itemSlotWidthPx,
+  precedingColsInRow,
+  rowGridTotal,
+  spanLeftOffsetPx,
+} from './canvasGridGeometry';
+import { EMPHASIZED_OUTLINE_SELECTOR } from './canvasEmphasis';
 
 // jsdom's PointerEvent drops clientX/clientY from its init dict, so the
 // component's window-level pointermove/up handlers would see `undefined`
@@ -477,10 +483,16 @@ describe('CanvasResizeLayer — truthful resize preview (M26 / W7)', () => {
     expect(mockCommit).not.toHaveBeenCalled(); // clamped back to its own width
   });
 
-  test('DIRECT MANIPULATION: exactly one emphasized outline during a gesture', () => {
+  // NOTE: this test only sees THIS layer. It proves the resize layer contributes
+  // exactly one outline and drops its own stale handles — it can say nothing
+  // about the sibling <CanvasSelectionOverlay>, which used to keep a
+  // full-strength ring at the pre-drag geometry throughout the gesture. The
+  // cross-overlay count (the property a user actually sees) is guarded in
+  // canvasOutlineEmphasis.test.jsx, where BOTH overlays are mounted.
+  test('DIRECT MANIPULATION: this layer contributes exactly one outline', () => {
     const { container } = render(<OddHost />);
     // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-    const outlinesNow = () => container.querySelectorAll('[data-canvas-outline="emphasized"]');
+    const outlinesNow = () => container.querySelectorAll(EMPHASIZED_OUTLINE_SELECTOR);
     expect(outlinesNow()).toHaveLength(0);
 
     const handle = screen.getByTestId('canvas-resize-width-row.0.item.0');
@@ -569,9 +581,11 @@ describe('CanvasResizeLayer — truthful resize preview (M26 / W7)', () => {
     expect(card.style.opacity).toBe('');
   });
 
-  test('a SOLO-item row never rewrites its width: the geometry cannot respond', () => {
-    // Σ widths is the item's own width, so every span renders full-bleed. The
-    // gesture must be an honest no-op, not a silent `width: 12` → `width: 1`.
+  test('a SOLO-item row gets NO width handle: the gesture provably cannot move a pixel', () => {
+    // Σ widths is the item's own width, so every span renders full-bleed and the
+    // drag can never change the geometry. A handle there would paint a ghost,
+    // print a frozen readout and do nothing — a dead affordance. The row keeps
+    // its HEIGHT handle, which does work.
     useStore.setState({
       dashboards: [
         { name: 'odd', config: { rows: [{ height: 'medium', items: [{ width: 12, chart: 'ref(a)' }] }] } },
@@ -579,11 +593,295 @@ describe('CanvasResizeLayer — truthful resize preview (M26 / W7)', () => {
       workspaceOutlineSelectedKey: 'row.0.item.0',
     });
     render(<OddHost />);
+    expect(screen.queryByTestId('canvas-resize-width-row.0.item.0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-resize-width-left-row.0.item.0')).not.toBeInTheDocument();
+    expect(screen.getByTestId('canvas-resize-height-row.0.item.0')).toBeInTheDocument();
+  });
+
+  test('a solo item that GAINS a sibling gets its width handle back', () => {
+    // The handle is withheld because of the ROW's shape, not the item's — the
+    // moment a sibling exists the gesture has real geometry to move again.
+    useStore.setState({
+      dashboards: [
+        {
+          name: 'odd',
+          config: {
+            rows: [
+              {
+                height: 'medium',
+                items: [{ width: 12, chart: 'ref(a)' }, { width: 4, table: 'ref(b)' }],
+              },
+            ],
+          },
+        },
+      ],
+      workspaceOutlineSelectedKey: 'row.0.item.0',
+    });
+    render(<OddHost />);
+    expect(screen.getByTestId('canvas-resize-width-row.0.item.0')).toBeInTheDocument();
+  });
+});
+
+// ── M26 second half: the ghost's LEFT edge ───────────────────────────────────
+//
+// The width fix alone still dropped the card somewhere other than the ghost.
+// Sum-normalization shrinks EVERY track when the row total grows, including the
+// ones in front of the dragged item, so the slot slides LEFT as it widens. A
+// ghost frozen at the item's measured `left` is therefore only correct for item
+// 0 — the single index every pre-existing truthful-preview guard happened to
+// use — and on the LAST item of a row it is painted hanging off the row's right
+// edge entirely.
+//
+// jsdom reports no column-gap, so these are the clean gapless numbers; the
+// gapped case is covered by canvasGridGeometry.test.js and by the browser
+// harness (e2e/tools/measure-canvas-grid.mjs).
+
+const ROW_PX = 800;
+
+// Build the measured boxes a real gapless `repeat(Σ widths, 1fr)` row would
+// produce, so the fixture and the layer's own formula start from the SAME
+// layout rather than hand-typed numbers that quietly disagree.
+const boxesForWidths = widths => {
+  const total = widths.reduce((sum, w) => sum + (w || 1), 0);
+  const track = ROW_PX / total;
+  const row = { top: 0, left: 0, width: ROW_PX, height: 200, bottom: 200, right: ROW_PX };
+  const boxes = { root: row, p0: row };
+  let preceding = 0;
+  widths.forEach((w, i) => {
+    const left = preceding * track;
+    const width = (w || 1) * track;
+    boxes[`p0i${i}`] = { top: 0, left, width, height: 200, bottom: 200, right: left + width };
+    preceding += w || 1;
+  });
+  return boxes;
+};
+
+const PAIR_BOXES = boxesForWidths([6, 6]);
+const QUAD_BOXES = boxesForWidths([1, 1, 1, 1]);
+
+const PairHost = () => {
+  const rootRef = useRef(null);
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      <div data-canvas-path="row.0" data-testid="p0">
+        <div data-canvas-path="row.0.item.0" data-testid="p0i0" />
+        <div data-canvas-path="row.0.item.1" data-testid="p0i1" />
+      </div>
+      <CanvasResizeLayer rootRef={rootRef} dashboardName="pair" />
+    </div>
+  );
+};
+
+const QuadHost = () => {
+  const rootRef = useRef(null);
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      <div data-canvas-path="row.0" data-testid="p0">
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} data-canvas-path={`row.0.item.${i}`} data-testid={`p0i${i}`} />
+        ))}
+      </div>
+      <CanvasResizeLayer rootRef={rootRef} dashboardName="pair" />
+    </div>
+  );
+};
+
+const useBoxes = boxes => {
+  Element.prototype.getBoundingClientRect = function () {
+    const tid = this.getAttribute && this.getAttribute('data-testid');
+    if (tid && boxes[tid]) return boxes[tid];
+    return boxes.root;
+  };
+};
+
+const dashboardWithWidths = widths => ({
+  name: 'pair',
+  config: {
+    rows: [{ height: 'medium', items: widths.map(width => ({ width, chart: 'ref(a)' })) }],
+  },
+});
+
+// Lay the COMMITTED row out from scratch — the independent side of the round
+// trip. Mirrors what <Dashboard> does with the config the drop produced.
+const laidOutSlot = (items, index, rowWidth) => ({
+  left: spanLeftOffsetPx({
+    rowWidth,
+    totalCols: rowGridTotal(items),
+    precedingCols: precedingColsInRow(items, index),
+    gapPx: 0,
+  }),
+  width: itemSlotWidthPx({
+    rowWidth,
+    totalCols: rowGridTotal(items),
+    spanCols: items[index].width || 1,
+    gapPx: 0,
+  }),
+});
+
+describe('CanvasResizeLayer — the ghost LANDS where it is painted (M26)', () => {
+  test('a NON-FIRST item: the ghost moves left as it grows, and the drop matches it', () => {
+    useStore.setState({
+      dashboards: [dashboardWithWidths([6, 6])],
+      workspaceOutlineSelectedKey: 'row.0.item.1',
+    });
+    useBoxes(PAIR_BOXES);
+    render(<PairHost />);
+
+    // Item 1 occupies 400–800 of an 800px row. Drag its RIGHT edge +57px: the
+    // row becomes 6 + 8 = 14 wide, so the slot renders 457.1px — starting at
+    // 6/14 · 800 = 342.9px, i.e. 57px to the LEFT of where it is now.
+    const handle = screen.getByTestId('canvas-resize-width-row.0.item.1');
+    firePointerDown(handle, { clientX: 797, clientY: 100, pointerId: 1 });
+    firePointer('pointermove', { clientX: 797 + 57, clientY: 100 });
+
+    const ghost = screen.getByTestId('canvas-resize-ghost');
+    const ghostLeft = px(ghost.style.left);
+    const ghostWidth = px(ghost.style.width);
+    expect(ghostWidth).toBeCloseTo(457.14, 1);
+    expect(ghostLeft).toBeCloseTo(342.86, 1);
+    // The pre-fix ghost froze `left` at the measured box (400) — 57px of lie,
+    // and its right edge landed at 857px on an 800px row.
+    expect(ghostLeft).not.toBeCloseTo(400, 0);
+    expect(ghostLeft + ghostWidth).toBeLessThanOrEqual(PAIR_BOXES.p0.width + 0.01);
+
+    firePointer('pointerup', { clientX: 797 + 57, clientY: 100 });
+
+    // GHOST == DROP, in BOTH axes, against the config the commit produced.
+    expect(mockCommit).toHaveBeenCalledTimes(1);
+    const [, nextConfig] = mockCommit.mock.calls[0];
+    const items = nextConfig.rows[0].items;
+    expect(items.map(i => i.width)).toEqual([6, 8]);
+    const laid = laidOutSlot(items, 1, PAIR_BOXES.p0.width);
+    expect(Math.abs(laid.width - ghostWidth)).toBeLessThan(2);
+    expect(Math.abs(laid.left - ghostLeft)).toBeLessThan(2);
+  });
+
+  test('the LAST item of a 4-up row: a 440px lie becomes a 0px one', () => {
+    useStore.setState({
+      dashboards: [dashboardWithWidths([1, 1, 1, 1])],
+      workspaceOutlineSelectedKey: 'row.0.item.3',
+    });
+    useBoxes(QUAD_BOXES);
+    render(<QuadHost />);
+
+    // Item 3 sits at 600–800. Dragging its right edge +440px asks for a 640px
+    // slot, which is width 12 on a row that becomes 3 + 12 = 15 wide — and that
+    // slot starts at 3/15 · 800 = 160px, 440px LEFT of where the item is now.
+    const handle = screen.getByTestId('canvas-resize-width-row.0.item.3');
+    firePointerDown(handle, { clientX: 797, clientY: 100, pointerId: 1 });
+    firePointer('pointermove', { clientX: 797 + 440, clientY: 100 });
+
+    const ghost = screen.getByTestId('canvas-resize-ghost');
+    const ghostLeft = px(ghost.style.left);
+    const ghostWidth = px(ghost.style.width);
+    expect(ghostWidth).toBeCloseTo(640, 1);
+    expect(ghostLeft).toBeCloseTo(160, 1);
+    // Pre-fix: left frozen at 600, so the ghost spanned 600→1240 on an 800px
+    // row — 440px of horizontal lie and 440px painted outside the canvas.
+    expect(Math.abs(ghostLeft - QUAD_BOXES.p0i3.left)).toBeGreaterThan(400);
+
+    firePointer('pointerup', { clientX: 797 + 440, clientY: 100 });
+
+    const [, nextConfig] = mockCommit.mock.calls[0];
+    const items = nextConfig.rows[0].items;
+    expect(items.map(i => i.width)).toEqual([1, 1, 1, 12]);
+    const laid = laidOutSlot(items, 3, QUAD_BOXES.p0.width);
+    expect(Math.abs(laid.width - ghostWidth)).toBeLessThan(2);
+    expect(Math.abs(laid.left - ghostLeft)).toBeLessThan(2);
+  });
+
+  test('SHRINKING a non-first item pushes the ghost RIGHT', () => {
+    // The tracks in FRONT of the item grow when the row total falls, so a
+    // shrink slides the slot the other way. Same formula, opposite sign — a
+    // preview that only ever grew leftward would fail this.
+    const boxes = boxesForWidths([1, 1, 4, 1]);
+    useStore.setState({
+      dashboards: [dashboardWithWidths([1, 1, 4, 1])],
+      workspaceOutlineSelectedKey: 'row.0.item.2',
+    });
+    useBoxes(boxes);
+    render(<QuadHost />);
+
+    // Row total 7; item 2 renders 4/7 · 800 = 457.1px starting at 2/7 · 800 =
+    // 228.6px. Shrinking it to 1 makes the row 4 wide: the slot becomes 200px
+    // and starts at 2/4 · 800 = 400px — 171px to the RIGHT.
+    const handle = screen.getByTestId('canvas-resize-width-row.0.item.2');
+    firePointerDown(handle, { clientX: 686, clientY: 100, pointerId: 1 });
+    firePointer('pointermove', { clientX: 686 - 258, clientY: 100 });
+
+    const ghost = screen.getByTestId('canvas-resize-ghost');
+    const ghostLeft = px(ghost.style.left);
+    const ghostWidth = px(ghost.style.width);
+    firePointer('pointerup', { clientX: 686 - 258, clientY: 100 });
+
+    const [, nextConfig] = mockCommit.mock.calls[0];
+    const items = nextConfig.rows[0].items;
+    expect(items.map(i => i.width)).toEqual([1, 1, 1, 1]);
+    const laid = laidOutSlot(items, 2, ROW_PX);
+    expect(laid.left).toBeCloseTo(400, 1);
+    expect(Math.abs(laid.left - ghostLeft)).toBeLessThan(2);
+    expect(Math.abs(laid.width - ghostWidth)).toBeLessThan(2);
+    // …and it moved the OPPOSITE way from a grow: right, not left.
+    expect(ghostLeft).toBeGreaterThan(boxes.p0i2.left);
+  });
+
+  test('the FIRST item still stays put — the fix is a shift, not an offset', () => {
+    useStore.setState({
+      dashboards: [dashboardWithWidths([6, 6])],
+      workspaceOutlineSelectedKey: 'row.0.item.0',
+    });
+    useBoxes(PAIR_BOXES);
+    render(<PairHost />);
     const handle = screen.getByTestId('canvas-resize-width-row.0.item.0');
-    firePointerDown(handle, { clientX: 900, clientY: 100, pointerId: 1 });
-    firePointer('pointermove', { clientX: 300, clientY: 100 });
-    expect(screen.getByTestId('canvas-resize-readout').textContent).toContain('12 / 12');
-    firePointer('pointerup', { clientX: 300, clientY: 100 });
+    firePointerDown(handle, { clientX: 397, clientY: 100, pointerId: 1 });
+    firePointer('pointermove', { clientX: 397 + 57, clientY: 100 });
+    expect(px(screen.getByTestId('canvas-resize-ghost').style.left)).toBeCloseTo(0, 6);
+    firePointer('pointerup', { clientX: 397 + 57, clientY: 100 });
+  });
+
+  test('zero travel leaves the ghost welded to the card it covers', () => {
+    useStore.setState({
+      dashboards: [dashboardWithWidths([6, 6])],
+      workspaceOutlineSelectedKey: 'row.0.item.1',
+    });
+    useBoxes(PAIR_BOXES);
+    render(<PairHost />);
+    const handle = screen.getByTestId('canvas-resize-width-row.0.item.1');
+    firePointerDown(handle, { clientX: 797, clientY: 100, pointerId: 1 });
+    firePointer('pointermove', { clientX: 798, clientY: 100 }); // <1 column
+
+    const ghost = screen.getByTestId('canvas-resize-ghost');
+    expect(px(ghost.style.left)).toBeCloseTo(PAIR_BOXES.p0i1.left, 6);
+    expect(px(ghost.style.width)).toBeCloseTo(PAIR_BOXES.p0i1.width, 6);
+    firePointer('pointerup', { clientX: 798, clientY: 100 });
     expect(mockCommit).not.toHaveBeenCalled();
+  });
+
+  test('a LEFT-edge transfer still anchors the RIGHT edge (the total holds still)', () => {
+    useStore.setState({
+      dashboards: [dashboardWithWidths([6, 6])],
+      workspaceOutlineSelectedKey: 'row.0.item.1',
+    });
+    useBoxes(PAIR_BOXES);
+    render(<PairHost />);
+    const handle = screen.getByTestId('canvas-resize-width-left-row.0.item.1');
+    // Columns only TRANSFER: the row stays 12 wide, so the track size — and the
+    // slot's right edge — never move. Drag the left edge 133px out (2 columns).
+    firePointerDown(handle, { clientX: 400, clientY: 100, pointerId: 1 });
+    firePointer('pointermove', { clientX: 400 - 133, clientY: 100 });
+
+    const ghost = screen.getByTestId('canvas-resize-ghost');
+    const left = px(ghost.style.left);
+    const width = px(ghost.style.width);
+    expect(width).toBeCloseTo(533.33, 1); // 8/12 of 800
+    expect(left + width).toBeCloseTo(PAIR_BOXES.p0i1.right, 6); // right edge pinned
+    firePointer('pointerup', { clientX: 400 - 133, clientY: 100 });
+
+    const [, nextConfig] = mockCommit.mock.calls[0];
+    const items = nextConfig.rows[0].items;
+    expect(items.map(i => i.width)).toEqual([4, 8]);
+    const laid = laidOutSlot(items, 1, PAIR_BOXES.p0.width);
+    expect(Math.abs(laid.left - left)).toBeLessThan(2);
+    expect(Math.abs(laid.width - width)).toBeLessThan(2);
   });
 });

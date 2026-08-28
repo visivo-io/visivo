@@ -14,24 +14,47 @@
  * recomputed from the config the drop ACTUALLY commits, via `setItemWidth` — the
  * two sides derived independently, so a drift in either is a failure.
  *
- * The pixel fixtures below were measured in headless Chromium against a real CSS
- * grid built with Dashboard.jsx's exact row styles; formula vs. browser agreed to
- * 0.0161px across ten row shapes.
+ * The pixel fixtures below are the OUTPUT of `viewer/e2e/tools/measure-canvas-grid.mjs`,
+ * a committed harness that builds these exact rows in headless Chromium from
+ * Dashboard.renderRow's styles and measures every slot. Re-run it with
+ * `node e2e/tools/measure-canvas-grid.mjs` from `viewer/`. Its last run:
+ *
+ *     worst |formula − rendered| (static)       = 0.021591px
+ *     worst |ghost − rendered| (width)          = 0.022500px
+ *     worst |ghost − rendered| (left)           = 0.017857px
+ *     worst |frozen box.left − rendered| (left) = 592.140625px  <- pre-fix
+ *
+ * That last line is the second half of the finding: the ghost's LEFT edge. See
+ * the `previewItemLeftShiftPx` block below.
+ *
+ * These fixtures pin the formula against regression; they cannot, on their own,
+ * prove it still matches the RENDERER. `dashboardGridContract.test.jsx` is the
+ * test that couples this module to <Dashboard>'s actual row markup.
  */
 import {
   MAX_ITEM_WIDTH,
   gridTrackPx,
   itemSlotWidthPx,
   nearestSpanForWidth,
+  precedingColsInRow,
+  previewItemLeftShiftPx,
   previewItemWidthPx,
   readColumnGapPx,
   rowGridTotal,
   rowTotalForSpan,
+  spanLeftOffsetPx,
 } from './canvasGridGeometry';
 import { setItemWidth } from './canvasReorder';
 
 // Dashboard.jsx renders rows with `gap: '0.7rem'` → 11.2px at a 16px root.
 const REAL_GAP = 11.2;
+
+// Chromium resolves `fr` tracks at LayoutUnit (1/64 = 0.015625px) precision and
+// that rounding accumulates across the tracks a slot straddles, so a browser
+// fixture can never match the float formula exactly. 0.05px is two LayoutUnits
+// wide and still three orders of magnitude below anything a user can see —
+// a genuinely different formula could not slip under it.
+const BROWSER_EPS = 0.05;
 
 describe('rowGridTotal', () => {
   test('sums the row item widths — that IS the grid, not a fixed 12', () => {
@@ -68,10 +91,10 @@ describe('gridTrackPx / itemSlotWidthPx — CSS `repeat(T, minmax(0,1fr))` + gap
       73.0666667,
       6
     );
-    // Browser-measured: 494.41px (formula 494.40px).
+    // Browser measured 494.4063px on the [6,6] @1000 row (formula 494.4px).
     expect(
-      itemSlotWidthPx({ rowWidth: 1000, totalCols: 12, spanCols: 6, gapPx: REAL_GAP })
-    ).toBeCloseTo(494.4, 2);
+      Math.abs(itemSlotWidthPx({ rowWidth: 1000, totalCols: 12, spanCols: 6, gapPx: REAL_GAP }) - 494.4063)
+    ).toBeLessThan(BROWSER_EPS);
   });
 
   test('a full-span single item gets the whole row back, gap or no gap', () => {
@@ -86,29 +109,28 @@ describe('gridTrackPx / itemSlotWidthPx — CSS `repeat(T, minmax(0,1fr))` + gap
   });
 
   test('browser-measured fixtures reproduce exactly (3 real row shapes)', () => {
-    // [1,2] on a 900px row → 292.53 / 596.28 measured.
-    expect(itemSlotWidthPx({ rowWidth: 900, totalCols: 3, spanCols: 1, gapPx: REAL_GAP })).toBeCloseTo(
-      292.53,
-      2
-    );
-    expect(itemSlotWidthPx({ rowWidth: 900, totalCols: 3, spanCols: 2, gapPx: REAL_GAP })).toBeCloseTo(
-      596.27,
-      2
-    );
-    // [3,5,1] on a 1200px row → 392.53 / 661.70 / 123.38 measured.
-    expect(itemSlotWidthPx({ rowWidth: 1200, totalCols: 9, spanCols: 3, gapPx: REAL_GAP })).toBeCloseTo(
-      392.53,
-      2
-    );
-    expect(itemSlotWidthPx({ rowWidth: 1200, totalCols: 9, spanCols: 5, gapPx: REAL_GAP })).toBeCloseTo(
-      661.69,
-      2
-    );
-    // [7,2,4,1] on a 1013px row → 500.91 measured for the first slot.
-    expect(itemSlotWidthPx({ rowWidth: 1013, totalCols: 14, spanCols: 7, gapPx: REAL_GAP })).toBeCloseTo(
-      500.9,
-      2
-    );
+    // VERBATIM `getBoundingClientRect().width` readings from
+    // e2e/tools/measure-canvas-grid.mjs — LayoutUnit rounding included, so they
+    // are the BROWSER's numbers and not the formula's own output rounded.
+    const w = (rowWidth, totalCols, spanCols) =>
+      itemSlotWidthPx({ rowWidth, totalCols, spanCols, gapPx: REAL_GAP });
+    const measured = [
+      // [1,2] @900 → 292.5313 / 596.2813
+      [w(900, 3, 1), 292.5313],
+      [w(900, 3, 2), 596.2813],
+      // [3,5,1] @1200 → 392.5313 / 661.7031 / 123.375
+      [w(1200, 9, 3), 392.5313],
+      [w(1200, 9, 5), 661.7031],
+      [w(1200, 9, 1), 123.375],
+      // [7,2,4,1] @1013 → 500.9063 / 135.125 / 281.4375 / 61.9688
+      [w(1013, 14, 7), 500.9063],
+      [w(1013, 14, 2), 135.125],
+      [w(1013, 14, 4), 281.4375],
+      [w(1013, 14, 1), 61.9688],
+    ];
+    for (const [formula, browser] of measured) {
+      expect(Math.abs(formula - browser)).toBeLessThan(BROWSER_EPS);
+    }
   });
 
   test('a non-finite gap degrades to 0 instead of poisoning the arithmetic', () => {
@@ -243,6 +265,191 @@ describe('previewItemWidthPx — M26: the ghost the drop can actually deliver', 
         }
       }
     }
+  });
+});
+
+describe('precedingColsInRow / spanLeftOffsetPx — where a slot STARTS', () => {
+  test('counts the columns in front of an item, unset widths as 1', () => {
+    const items = [{ width: 3 }, { width: 5 }, {}, { width: 1 }];
+    expect(precedingColsInRow(items, 0)).toBe(0);
+    expect(precedingColsInRow(items, 1)).toBe(3);
+    expect(precedingColsInRow(items, 2)).toBe(8);
+    expect(precedingColsInRow(items, 3)).toBe(9);
+  });
+
+  test('degrades safely on junk input', () => {
+    expect(precedingColsInRow(null, 2)).toBe(0);
+    expect(precedingColsInRow(undefined, 2)).toBe(0);
+    expect(precedingColsInRow([{ width: 4 }], -3)).toBe(0);
+  });
+
+  test('browser-measured left offsets reproduce exactly (4 real row shapes)', () => {
+    // Every number here is a `getBoundingClientRect().left − row.left` read out
+    // of headless Chromium by e2e/tools/measure-canvas-grid.mjs, VERBATIM —
+    // including the browser's LayoutUnit (1/64px) rounding, which is why the
+    // tolerance is BROWSER_EPS and not an arbitrary decimal precision.
+    const at = (rowWidth, totalCols, precedingCols) =>
+      spanLeftOffsetPx({ rowWidth, totalCols, precedingCols, gapPx: REAL_GAP });
+    const measured = [
+      // [6,6] @1000 → item 1
+      [at(1000, 12, 6), 505.5938],
+      // [3,5,1] @1200 → items 1 and 2
+      [at(1200, 9, 3), 403.7188],
+      [at(1200, 9, 8), 1076.6094],
+      // [7,2,4,1] @1013 → items 1 and 3
+      [at(1013, 14, 7), 512.0938],
+      [at(1013, 14, 13), 951.0313],
+      // [2,2,2,2] @1200 → item 3
+      [at(1200, 8, 6), 908.3906],
+    ];
+    for (const [formula, browser] of measured) {
+      expect(Math.abs(formula - browser)).toBeLessThan(BROWSER_EPS);
+    }
+  });
+
+  test('the first slot always starts at the row edge', () => {
+    expect(spanLeftOffsetPx({ rowWidth: 1000, totalCols: 12, precedingCols: 0, gapPx: REAL_GAP })).toBe(0);
+  });
+
+  test('a non-finite gap degrades to 0 instead of poisoning the arithmetic', () => {
+    expect(spanLeftOffsetPx({ rowWidth: 800, totalCols: 4, precedingCols: 2, gapPx: NaN })).toBe(400);
+  });
+});
+
+describe('previewItemLeftShiftPx — M26 second half: the slot MOVES as it grows', () => {
+  test('THE finding: a 6/6 row dragged to width 10 slides item 1 126px LEFT', () => {
+    // The whole row re-tracks: 12 columns of 73.07px become 16 of 52.00px, so
+    // the six columns in FRONT of item 1 shrink and drag it left with them. A
+    // ghost pinned at the item's measured `left` is 126px out — and, being the
+    // last item, is painted hanging 126px off the row's right edge.
+    const shift = previewItemLeftShiftPx({
+      rowWidth: 1000,
+      startTotal: 12,
+      startCols: 6,
+      spanCols: 10,
+      precedingCols: 6,
+      gapPx: REAL_GAP,
+    });
+    expect(shift).toBeCloseTo(-126.4, 1);
+    // Browser: item 1 sits at 505.59 before and 379.19 after.
+    expect(505.59 + shift).toBeCloseTo(379.19, 1);
+  });
+
+  test('the FIRST item in a row never moves — its left edge is the row edge', () => {
+    for (let span = 1; span <= MAX_ITEM_WIDTH; span += 1) {
+      expect(
+        previewItemLeftShiftPx({
+          rowWidth: 1000,
+          startTotal: 12,
+          startCols: 6,
+          spanCols: span,
+          precedingCols: 0,
+          gapPx: REAL_GAP,
+        })
+      ).toBe(0);
+    }
+  });
+
+  test('a left-edge TRANSFER holds the tracks still, so the shift is 0', () => {
+    // Columns only move ACROSS the shared boundary: the total — and therefore
+    // every track — is unchanged, and that gesture anchors the RIGHT edge.
+    expect(
+      previewItemLeftShiftPx({
+        rowWidth: 1200,
+        startTotal: 12,
+        startCols: 6,
+        spanCols: 9,
+        precedingCols: 3,
+        gapPx: REAL_GAP,
+        rebalance: false,
+      })
+    ).toBe(0);
+  });
+
+  test('zero travel is a zero shift — the ghost is welded to the card at rest', () => {
+    for (const gapPx of [0, REAL_GAP]) {
+      expect(
+        previewItemLeftShiftPx({
+          rowWidth: 900,
+          startTotal: 9,
+          startCols: 5,
+          spanCols: 5,
+          precedingCols: 3,
+          gapPx,
+        })
+      ).toBeCloseTo(0, 9);
+    }
+  });
+
+  test('shrinking pushes the slot RIGHT (the tracks in front of it grow)', () => {
+    const shift = previewItemLeftShiftPx({
+      rowWidth: 1000,
+      startTotal: 12,
+      startCols: 4,
+      spanCols: 2,
+      precedingCols: 4,
+      gapPx: REAL_GAP,
+    });
+    expect(shift).toBeGreaterThan(0);
+  });
+
+  test('GHOST LEFT == DROP LEFT: the preview matches the COMMITTED re-layout', () => {
+    // Independent derivation, same shape as the width round-trip: run the real
+    // mutation the gesture commits (`setItemWidth`), lay the resulting row out
+    // from scratch, and check the ghost's left edge against it. Also asserts the
+    // pre-fix ghost (frozen at the start left) really was wrong, so this test
+    // cannot pass by accident on a formula that ignores the shift.
+    const rowWidth = 1140;
+    const shapes = [
+      [6, 6],
+      [1, 2],
+      [3, 5, 1],
+      [2, 3],
+      [9, 2],
+      [12],
+      [3, 3, 3, 3],
+      [7, 2, 4, 1],
+    ];
+    let worstFrozenError = 0;
+    for (const widths of shapes) {
+      for (let index = 0; index < widths.length; index += 1) {
+        for (let span = 1; span <= MAX_ITEM_WIDTH; span += 1) {
+          const config = { rows: [{ items: widths.map(width => ({ width })) }] };
+          const items = config.rows[0].items;
+          const startTotal = rowGridTotal(items);
+          const precedingCols = precedingColsInRow(items, index);
+          const startLeft = spanLeftOffsetPx({
+            rowWidth,
+            totalCols: startTotal,
+            precedingCols,
+            gapPx: REAL_GAP,
+          });
+          const ghostLeft =
+            startLeft +
+            previewItemLeftShiftPx({
+              rowWidth,
+              startTotal,
+              startCols: widths[index],
+              spanCols: span,
+              precedingCols,
+              gapPx: REAL_GAP,
+            });
+
+          const committed = setItemWidth(config, `row.0.item.${index}`, span);
+          const after = committed.rows[0].items;
+          const droppedLeft = spanLeftOffsetPx({
+            rowWidth,
+            totalCols: rowGridTotal(after),
+            precedingCols: precedingColsInRow(after, index),
+            gapPx: REAL_GAP,
+          });
+          expect(ghostLeft).toBeCloseTo(droppedLeft, 9);
+          worstFrozenError = Math.max(worstFrozenError, Math.abs(startLeft - droppedLeft));
+        }
+      }
+    }
+    // The pre-fix ghost froze `left` at the start box: hundreds of pixels off.
+    expect(worstFrozenError).toBeGreaterThan(300);
   });
 });
 
