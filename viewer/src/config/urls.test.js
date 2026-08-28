@@ -60,6 +60,15 @@ describe('URLConfig.getUrl — dist environment', () => {
     );
   });
 
+  // `/api/project/` stopped carrying the dereferenced project ("resource lists
+  // come from their own endpoints"), but dist was never given an equivalent for
+  // the dashboards LIST — so `dashboardStore` threw "not available in 'dist'"
+  // and every static build rendered "No dashboards found".
+  test('serves the dashboards LIST, not just per-dashboard detail', () => {
+    expect(config.isAvailable('dashboardsList')).toBe(true);
+    expect(config.getUrl('dashboardsList')).toBe('/data/dashboards.json');
+  });
+
   test('throws for endpoints that are null in dist', () => {
     expect(() => config.getUrl('commit')).toThrow(
       "URL key 'commit' is not available in 'dist' environment"

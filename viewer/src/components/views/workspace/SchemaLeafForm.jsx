@@ -3,7 +3,8 @@ import useStore, { ObjectStatus } from '../../../stores/store';
 import useRecordSave from '../../../hooks/useRecordSave';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { FormInput, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
-import RefTextArea from '../common/RefTextArea';
+import ExpressionField from '../common/ExpressionField';
+import { REF_INSERT_HINT } from '../common/RefTextArea';
 import { validateName } from '../common/namedModel';
 import { isEmbeddedObject } from '../common/embeddedObjectUtils';
 import { getTypeByValue } from '../common/objectTypeConfigs';
@@ -13,6 +14,7 @@ import { SAVE_ACTION, DELETE_ACTION } from './collectionKeys';
 import { unwrapConfig } from './unwrapRecordConfig';
 import { getObjectSchemaSync } from '../../../schemas/projectSchema';
 import { useFieldParentModel } from './fields/useFieldParentModel';
+import { checkRefCounts } from './refCountPreflight';
 
 /**
  * SchemaLeafForm (VIS-996) — the generic schema-driven leaf edit form.
@@ -44,42 +46,43 @@ import { useFieldParentModel } from './fields/useFieldParentModel';
  */
 
 /**
- * Per-type declarative layer. `expressionField` names the schema field that
- * should render through RefTextArea instead of the generic engine widget;
- * `allowedTypes` scopes its + ref-insert menu; `helperText`/`embeddedHelperText`
- * carry the authoring guidance the schema description doesn't.
+ * Per-type declarative layer — PROSE AND LAYOUT ONLY. `expressionField` names
+ * the schema field that renders through `ExpressionField` instead of the
+ * generic engine widget; `helperText`/`embeddedHelperText`/`rows` carry
+ * guidance and sizing the schema description doesn't.
+ *
+ * The authoring RULES — which editor, which refs are legal, whether a bare ref
+ * or an index is allowed — deliberately do NOT live here any more. They're in
+ * `common/fieldTypes.js`, so the Explorer's computed-column popover and this
+ * form can't disagree about the same field. `allowedTypes` used to sit here and
+ * was one of seven such literals.
  */
 export const TYPE_CONFIG = {
   dimension: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    allowedTypes: ['model', 'dimension'],
-    helperText: 'SQL expression for this dimension. Use the + button to insert references.',
+    helperText: `SQL expression for this dimension. ${REF_INSERT_HINT}`,
     embeddedHelperText: 'Plain SQL expression referencing columns from the parent model.',
     rows: 4,
   },
   metric: {
     expressionField: 'expression',
     expressionLabel: 'Expression',
-    allowedTypes: ['model', 'metric', 'dimension'],
-    helperText: 'SQL aggregate expression for this metric. Use the + button to insert references.',
+    helperText: `SQL aggregate expression for this metric. ${REF_INSERT_HINT}`,
     embeddedHelperText: 'Plain SQL aggregate expression over the parent model.',
     rows: 4,
   },
   relation: {
     expressionField: 'condition',
     expressionLabel: 'Condition',
-    allowedTypes: ['model'],
     // eslint-disable-next-line no-template-curly-in-string
-    helperText: 'Join condition using ${ref(model).field} syntax. Must reference at least two models.',
+    helperText: `Join condition between two models — every reference needs a column. ${REF_INSERT_HINT}`,
     rows: 4,
   },
 };
 
 /** Fields the host renders as chrome — withheld from the generated groups. */
 const CHROME_FIELDS = ['name'];
-
-const REF_PATTERN = /\$\{\s*ref\s*\(/;
 
 /** Title-case a schema field name for messages ('join_type' → 'Join type'). */
 const fieldLabel = (schema, name) =>
@@ -91,6 +94,33 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   const checkCommitStatus = store.checkCommitStatus;
 
   const isEmbedded = isEmbeddedObject(record);
+  // MODEL-SCOPED is not the same thing as EMBEDDED, and conflating them was a
+  // bug. `isEmbedded` means "edited in place inside its parent's config" — it
+  // reads `record._embedded`. A metric/dimension defined UNDER a model is
+  // loaded from its OWN collection with `_embedded` unset, carrying the parent
+  // as a SIBLING of `config` rather than a field inside it: `Metric`/`Dimension`
+  // declare no `model` field and forbid extras, so nesting can only be
+  // expressed positionally in the YAML.
+  //
+  // Exactly two keys mean "scoped to a model", and both are load-bearing:
+  //   - `parentModel`, attached by the managers ONLY when walking
+  //     `model.dimensions` / `model.metrics` (i.e. genuinely nested), and
+  //   - `config.parentModel`, which `saveAsMetricFlow` and `promoteChecklist`
+  //     write to REQUEST nesting; `project_writer._new` then nests it.
+  //
+  // Deliberately NOT `config.model`: `Dimension`/`Metric` can never return one,
+  // so testing for it could only ever produce a false positive — a standalone
+  // field wrongly demoted to plain SQL, losing its ref editor.
+  //
+  // This one value drives two things, and each was a separate bug:
+  //   1. the GRAMMAR — `sql_model.py` rejects any ref() in a nested expression,
+  //      so a model-scoped field must get the plain editor, not the ref one;
+  //   2. the SAVE BODY — built as `{ ...config, name }`, it dropped every
+  //      sibling key, so the object validated as standalone and
+  //      `project_writer` wrote it to the top level, silently un-nesting a
+  //      field from its model on an ordinary save.
+  const parentModelName = record?.parentModel || record?.config?.parentModel || null;
+  const isModelScoped = isEmbedded || !!parentModelName;
   const parentName = record?._embedded?.parentName;
   const isEditMode = !!record && !isCreate && !isEmbedded;
   const isNewObject = record?.status === ObjectStatus.NEW;
@@ -184,12 +214,14 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
         errs[f] = `${fieldLabel(schemaForValidation, f)} is required`;
       }
     });
-    // Embedded (inline) expressions cannot contain ref() — plain SQL only.
-    const exprField = typeConfig.expressionField;
-    if (isEmbedded && exprField && REF_PATTERN.test(config[exprField] || '')) {
-      errs[exprField] =
-        `Inline ${type}s cannot use ref() expressions. Use plain SQL referencing fields from the parent model.`;
-    }
+    // Ref-count bounds from the field-type registry — BOTH directions from one
+    // rule: nested expressions may contain no ref (`sql_model.py` rejects them),
+    // project-level metric/dimension expressions must contain at least one (it
+    // is the only thing tying them to a source). Reported per-field so it
+    // renders under the input, like every other validation message.
+    checkRefCounts(type, config, { nested: isModelScoped || isEmbedded }).errors.forEach(e => {
+      if (!errs[e.path]) errs[e.path] = e.message;
+    });
     setLocalErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -199,7 +231,8 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     if (!validateForm()) return;
     setSaving(true);
     setSaveError(null);
-    const body = { ...config, name };
+    // Carry the scope through the round trip; see `parentModelName` above.
+    const body = { ...config, name, ...(parentModelName ? { parentModel: parentModelName } : {}) };
     try {
       if (isEmbedded) {
         // Embedded object — delegate; the parent applies it via its edit stack.
@@ -266,25 +299,30 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
 
   const mergedErrors = { ...fieldErrors, ...localErrors };
 
-  // ---- expression widget override (RefTextArea) ----
+  // ---- expression widget override ----
+  // Which editor this field gets, and which refs it may contain, come from the
+  // field-type registry rather than from `typeConfig` literals. `isEmbedded` is
+  // the nested case: a metric/dimension defined UNDER a model, where
+  // `sql_model.py` rejects any ref — so the registry resolves it to `plain-sql`
+  // and `ExpressionField` renders a bare textarea with no ref affordances.
   const overrides = useMemo(() => {
     const exprField = typeConfig.expressionField;
     if (!exprField) return {};
     return {
       [exprField]: ({ value, onChange, error }) => (
-        <RefTextArea
-          value={value ?? ''}
+        <ExpressionField
+          objectType={type}
+          field={exprField}
+          nested={isModelScoped}
+          scopedToModel={parentModelName}
+          value={value}
           onChange={onChange}
-          label={
-            typeConfig.expressionLabel || fieldLabel(getObjectSchemaSync(type), exprField)
-          }
-          required
           error={error}
-          allowedTypes={isEmbedded ? [] : typeConfig.allowedTypes || []}
-          hideAddButton={isEmbedded}
+          required
+          label={typeConfig.expressionLabel || fieldLabel(getObjectSchemaSync(type), exprField)}
           rows={typeConfig.rows || 4}
           helperText={
-            isEmbedded && typeConfig.embeddedHelperText
+            isModelScoped && typeConfig.embeddedHelperText
               ? typeConfig.embeddedHelperText
               : typeConfig.helperText
           }
@@ -293,7 +331,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     };
     // typeConfig is a stable module-level object per type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, isEmbedded]);
+  }, [type, isModelScoped]);
 
   const typeDef = getTypeByValue(type);
   const singular = typeDef?.singularLabel || type;

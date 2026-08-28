@@ -1,14 +1,14 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { PropertyRow } from './PropertyRow';
 import useStore from '../../../../stores/store';
 
 // Mock the RefTextArea component
 jest.mock('../RefTextArea', () => {
-  return function MockRefTextArea({ value, onChange, helperText, disabled }) {
+  return function MockRefTextArea({ value, onChange, helperText, disabled, acceptDrops }) {
     return (
-      <div data-testid="ref-text-area">
+      <div data-testid="ref-text-area" data-accept-drops={acceptDrops ? 'true' : 'false'}>
         <input
           value={value || ''}
           onChange={e => onChange(e.target.value)}
@@ -651,7 +651,106 @@ describe('PropertyRow', () => {
       expect(screen.getByTestId('property-pill-x')).not.toHaveAttribute('data-warning');
     });
 
-    test('the SAME recognized value falls back to RefTextArea when NOT droppable (fork is gated, not universal)', () => {
+    // ── VIS-1240: the three reasons the editor appeared to change at random ──
+
+    const queryRowProps = extra => ({
+      path: 'x',
+      value: '?{count(distinct ${ref(orders_q).id})}', // opaque -> raw editor
+      onChange: jest.fn(),
+      onRemove: jest.fn(),
+      schema: { oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] },
+      defs: queryStringDef,
+      droppable: true,
+      ...extra,
+    });
+
+    test('flip #1: typing does not swap the editor out from under the caret', () => {
+      const { rerender } = render(<PropertyRow {...queryRowProps()} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+      // The user clicks into the raw editor and starts typing.
+      fireEvent.focus(screen.getByTestId('ref-input'));
+      // Mid-keystroke the text momentarily parses as a clean ref. Before this
+      // fix the pill replaced the editor here and the caret was lost.
+      rerender(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+      expect(screen.queryByTestId('property-pill-x')).not.toBeInTheDocument();
+
+      // Once they leave the field, it settles into the pill.
+      fireEvent.blur(screen.getByTestId('property-x-raw-editor'));
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+    });
+
+    test('flip #1: focus moving WITHIN the raw editor does not end the edit', () => {
+      const { rerender } = render(<PropertyRow {...queryRowProps()} />);
+      const input = screen.getByTestId('ref-input');
+      fireEvent.focus(input);
+      // focusout fires when focus hops to a sibling control inside the editor
+      // (its "+ add ref" button); `relatedTarget` still inside means keep editing.
+      fireEvent.blur(screen.getByTestId('property-x-raw-editor'), { relatedTarget: input });
+      rerender(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+    });
+
+    test('flip #2: the representation is held while the field tables are loading', () => {
+      // A bare `${ref(name)}` only resolves once metrics/dimensions arrive; until
+      // then it parses as opaque. Re-deciding on data still in flight is what
+      // made a value paint as raw code and then jump to a pill.
+      const props = queryRowProps({ value: '?{${ref(revenue)}}' });
+      const { rerender } = render(<PropertyRow {...props} />);
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+      act(() => useStore.setState({ metricsLoading: true }));
+      rerender(<PropertyRow {...props} />);
+      // Still the raw editor — not re-decided mid-fetch.
+      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
+
+      act(() => useStore.setState({ metricsLoading: false }));
+    });
+
+    test('flip #3: the static toggle says why it cannot demote instead of snapping back', () => {
+      render(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+      const staticBtn = screen.getByLabelText('static value');
+      // It used to depress and immediately revert, because `currentMode` ORs in
+      // `isQueryMode`. A `?{...}` string cannot render in a static number input.
+      // Inert and marked inert — but REACHABLE (finding #4): a real `disabled`
+      // swallows the click, so a user who clicked got nothing at all unless
+      // they hovered and waited for the title.
+      expect(staticBtn).toHaveAttribute('aria-disabled', 'true');
+      expect(staticBtn).toHaveAttribute('title', 'Clear the expression to use a static value');
+    });
+
+    test('flip #3: clicking the inert static toggle explains itself', () => {
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({ showWorkspaceToast });
+      render(<PropertyRow {...queryRowProps({ value: '?{${ref(orders_q).amount}}' })} />);
+
+      fireEvent.click(screen.getByLabelText('static value'));
+
+      expect(showWorkspaceToast).toHaveBeenCalledWith(
+        'Clear the expression to use a static value.'
+      );
+    });
+
+    test('the toggle still demotes when there IS no expression to clear', () => {
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({ showWorkspaceToast });
+      render(<PropertyRow {...queryRowProps({ value: 42 })} />);
+
+      const staticBtn = screen.getByLabelText('static value');
+      expect(staticBtn).not.toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(staticBtn);
+      // Nothing to explain — it just works.
+      expect(showWorkspaceToast).not.toHaveBeenCalled();
+    });
+
+    // VIS-1240 (flip #3): this used to assert the opposite — the pill was gated
+    // on `droppable`, so the SAME stored value rendered as a pill in the Build
+    // rail and as raw text in the right rail. That surface-dependent split was
+    // one of the three reasons the editor appeared to change at random.
+    // DROPPING is still gated on `droppable`; how a value RENDERS is now a
+    // property of the value alone.
+    test('the SAME recognized value renders as a pill even when NOT droppable', () => {
       render(
         <PropertyRow
           {...defaultProps}
@@ -661,8 +760,10 @@ describe('PropertyRow', () => {
           value="?{${ref(orders_q).amount}}"
         />
       );
-      expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
-      expect(screen.queryByTestId('pill-menu-trigger')).not.toBeInTheDocument();
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-trigger')).toBeInTheDocument();
+      // …but the row is not a drop target.
+      expect(screen.queryByTestId('droppable-property-x')).not.toBeInTheDocument();
     });
 
     test('an opaque/unparseable expression always falls back to RefTextArea, even when droppable', () => {
@@ -694,7 +795,159 @@ describe('PropertyRow', () => {
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
       fireEvent.click(screen.getByTestId('pill-menu-preset-sum'));
+      // VIS-1241: one commit, on Apply — not one per click.
+      expect(onChange).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
+      expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith('?{sum(${ref(orders_q).amount})}');
+    });
+
+    // ── VIS-1241: the pill is a self-contained editor ────────────────────
+    test('the modifier lands INSIDE the braces, so an index can still follow', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount})}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.change(screen.getByTestId('pill-menu-modifier'), { target: { value: '/ 100' } });
+      fireEvent.change(screen.getByTestId('pill-menu-index'), { target: { value: '[0]' } });
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
+
+      // `?{ ... }[0]`, never `?{ ... }[0] / 100` — the slice must be last.
+      expect(onChange).toHaveBeenCalledWith('?{sum(${ref(orders_q).amount}) / 100}[0]');
+    });
+
+    test('a modified expression re-opens as a pill with its modifier intact', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount}) / 100}[0]"
+          droppable
+        />
+      );
+      // Before the grammar learned modifiers this whole value was opaque and
+      // the pill vanished the moment a modifier was applied.
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      expect(screen.getByTestId('pill-menu-modifier')).toHaveValue('/ 100');
+      expect(screen.getByTestId('pill-menu-index')).toHaveValue('[0]');
+    });
+
+    test('changing the property re-points the pill', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      // No schema cached in jsdom, so the picker falls back to a text input —
+      // the point is that the property is editable here at all.
+      fireEvent.change(screen.getByTestId('pill-menu-property'), { target: { value: 'region' } });
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
+      expect(onChange).toHaveBeenCalledWith('?{${ref(orders_q).region}}');
+    });
+
+    test('the index badge is hidden at its default and shown once set', () => {
+      const { rerender } = render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}"
+          droppable
+        />
+      );
+      // "All values" is the default; it used to be restated on every row.
+      expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{${ref(orders_q).amount}}[0]"
+          droppable
+        />
+      );
+      // The pill IS the expression, so it shows the index itself — and the
+      // badge beside it would be the same fact twice.
+      expect(screen.getByTestId('property-pill-x')).toHaveTextContent('[0]');
+      expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+    });
+
+    // "Manually edit field…" was a one-way trip outside the Build rail: the
+    // return affordance was gated on `droppable`, which only that rail sets.
+    test('the way back from "Manually edit field…" exists on a NON-droppable row', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{avg(${ref(orders_q).amount})}"
+        />
+      );
+      fireEvent.click(screen.getByTestId('pill-menu-trigger'));
+      fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
+      // The pill is gone (raw text now), and the escape hatch is present.
+      expect(screen.queryByTestId('property-pill-x')).not.toBeInTheDocument();
+      expect(screen.getByTestId('property-x-back-to-pill')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('property-x-back-to-pill'));
+      expect(screen.getByTestId('property-pill-x')).toBeInTheDocument();
+    });
+
+    test('a modifier and an index both show on the pill, in serialized order', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          value="?{sum(${ref(orders_q).amount}) / 100}[0]"
+          droppable
+        />
+      );
+      // Modifier inside the braces, index outside and last — the pill reads
+      // like the string it generates.
+      expect(screen.getByTestId('property-pill-x')).toHaveTextContent(
+        'SUM · orders_q ▸ amount / 100[0]'
+      );
+    });
+
+    test('a value with no pill keeps the badge as its only slice affordance', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          path="x"
+          schema={{ oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] }}
+          defs={queryStringDef}
+          // Two refs — deliberately opaque, so no pill renders.
+          value="?{${ref(orders_q).amount} + ${ref(orders_q).tax}}[0]"
+          droppable
+        />
+      );
+      expect(screen.queryByTestId('property-pill-x')).not.toBeInTheDocument();
+      expect(screen.getByTestId('slice-badge')).toBeInTheDocument();
     });
 
     test('onSaveAsMetric threads through to PillMenu, called with the parsed pill state (Explore 2.0 Phase 4)', () => {
@@ -718,7 +971,7 @@ describe('PropertyRow', () => {
       );
     });
 
-    test('without onSaveAsMetric, PillMenu renders the action disabled even on an aggregate pill', () => {
+    test('without onSaveAsMetric, PillMenu omits the action rather than showing it dead', () => {
       render(
         <PropertyRow
           {...defaultProps}
@@ -730,7 +983,10 @@ describe('PropertyRow', () => {
         />
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-      expect(screen.getByTestId('pill-menu-save-as-metric')).toBeDisabled();
+      // Finding #3: it used to render disabled, blaming the pill for not being
+      // an aggregate — on an aggregate pill. A flow this surface never offers
+      // is omitted instead.
+      expect(screen.queryByTestId('pill-menu-save-as-metric')).not.toBeInTheDocument();
     });
 
     test('PillMenu Remove clears the slot value (never the whole property)', () => {
@@ -751,7 +1007,7 @@ describe('PropertyRow', () => {
       expect(onChange).toHaveBeenCalledWith('');
     });
 
-    test('"Custom aggregation…" switches the slot back to RefTextArea, pre-filled with the current body', () => {
+    test('"Manually edit field…" switches the slot back to RefTextArea, pre-filled with the current body', () => {
       render(
         <PropertyRow
           {...defaultProps}
@@ -763,18 +1019,18 @@ describe('PropertyRow', () => {
         />
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-      fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+      fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
       expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
       expect(screen.getByTestId('ref-input')).toHaveValue('${ref(orders_q).amount}');
     });
 
-    // D3 (e2e-gap-review.md delta pass): the "Custom aggregation…" escape
+    // D3 (e2e-gap-review.md delta pass): the "Manually edit field…" escape
     // hatch used to be a one-way ratchet — no way back to pill rendering
     // short of an unrelated remount, even once the raw text re-parses as a
     // clean, recognized shape. These three tests lock in the "Back to pill"
     // affordance's exact contract.
     describe('"Back to pill" return path (D3)', () => {
-      test('the affordance is ABSENT immediately after "Custom aggregation…" while the raw text is still opaque/custom-shaped', () => {
+      test('the affordance is ABSENT immediately after "Manually edit field…" while the raw text is still opaque/custom-shaped', () => {
         render(
           <PropertyRow
             {...defaultProps}
@@ -809,7 +1065,7 @@ describe('PropertyRow', () => {
           />
         );
         fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
         // Still the exact original recognized shape — RefTextArea is showing
         // (forceRawEdit is true) but the affordance should already be visible
         // since the raw text re-parses as a clean 'dimension' pill.
@@ -860,7 +1116,7 @@ describe('PropertyRow', () => {
           />
         );
         fireEvent.click(screen.getByTestId('pill-menu-trigger'));
-        fireEvent.click(screen.getByTestId('pill-menu-custom-aggregation'));
+        fireEvent.click(screen.getByTestId('pill-menu-manual-edit'));
         expect(screen.getByTestId('ref-text-area')).toBeInTheDocument();
 
         fireEvent.click(screen.getByTestId('property-x-back-to-pill'));
@@ -1017,7 +1273,7 @@ describe('PropertyRow', () => {
       });
     });
 
-    test('handleSelectPreset("dimension"): switching an AGGREGATE pill back to a plain dimension via the menu', () => {
+    test('Apply after picking "Dimension": switching an AGGREGATE pill back to a plain dimension via the menu', () => {
       const onChange = jest.fn();
       render(
         <PropertyRow
@@ -1032,6 +1288,7 @@ describe('PropertyRow', () => {
       );
       fireEvent.click(screen.getByTestId('pill-menu-trigger'));
       fireEvent.click(screen.getByTestId('pill-menu-preset-dimension'));
+      fireEvent.click(screen.getByTestId('pill-menu-apply'));
       expect(onChange).toHaveBeenCalledWith('?{${ref(orders_q).amount}}');
     });
 
@@ -1269,4 +1526,35 @@ describe('PropertyRow', () => {
       expect(onChange).toHaveBeenCalledWith('new value');
     });
   });
+
+
+  // The raw editor's droppable nests INSIDE the row's `property-zone`, and
+  // dnd-kit's `pointerWithin` resolves to the innermost hit. Registering both
+  // let the inner one shadow the row, which broke COLUMN drops in the Build
+  // rail: `property-zone` builds `${ref(activeModel).col}` from the payload,
+  // while `ref-text` can only insert a ref by name — so a column fell outside
+  // its allowlist and the drop silently did nothing. A model passed the
+  // allowlist, so only columns broke.
+  describe('the raw editor does not shadow the row as a drop target', () => {
+    const defs = { 'query-string': { type: 'string', pattern: '^\\?\\{.*\\}$' } };
+    const rawProps = {
+      ...defaultProps,
+      path: 'x',
+      schema: { oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }] },
+      defs,
+      // Two refs — deliberately opaque, so the raw editor renders.
+      value: '?{${ref(orders_q).amount} + ${ref(orders_q).tax}}',
+    };
+
+    test('a droppable row keeps ownership of drops', () => {
+      render(<PropertyRow {...rawProps} droppable />);
+      expect(screen.getByTestId('ref-text-area')).toHaveAttribute('data-accept-drops', 'false');
+    });
+
+    test('a NON-droppable row lets the editor accept them — the only target there', () => {
+      render(<PropertyRow {...rawProps} />);
+      expect(screen.getByTestId('ref-text-area')).toHaveAttribute('data-accept-drops', 'true');
+    });
+  });
+
 });

@@ -62,6 +62,14 @@ export const DROPPABLE_TYPES = ['chart', 'table', 'markdown', 'input'];
 // source is orthogonal to it being a valid DASHBOARD canvas item.
 export const EXPLORATION_DRAG_TYPES = ['source', 'metric', 'dimension', 'insight'];
 
+// VIS-1242: types that can be dragged onto an insight PROPERTY slot. Kept
+// separate from EXPLORATION_DRAG_TYPES on purpose — that set also drives the
+// row's "Add to exploration" action, and a model is not an exploration input.
+// `model` was in neither list before, so `LibrarySubsection` rendered model
+// rows with `draggable={false}` and the drag could not even start. The
+// dashboard canvas still rejects models: that guard checks DROPPABLE_TYPES.
+export const PROPERTY_DRAG_TYPES = ['model'];
+
 // Explore 2.0 Phase 5 (VIS-1067): types a right-click "Explore this" can mint
 // a brand-new, pre-wired exploration from (`explorerStore.js`'s
 // `buildExplorationSeedState`) — broader than `EXPLORATION_DRAG_TYPES`
@@ -105,6 +113,7 @@ export const getTypeDef = type => {
     // Independent of `droppable` (canvas-item eligibility) — see
     // EXPLORATION_DRAG_TYPES's comment above.
     explorationDragSource: EXPLORATION_DRAG_TYPES.includes(type),
+    propertyDragSource: PROPERTY_DRAG_TYPES.includes(type),
   };
 };
 

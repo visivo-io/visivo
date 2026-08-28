@@ -176,7 +176,25 @@ export function useLibraryData() {
           }))
       );
 
+    // Model-scoped fields are shown UNDER their model (see LibraryModelRow),
+    // not as top-level entries. Listing them flat put a nested dimension
+    // side-by-side with a standalone one, identical in every respect, when the
+    // two obey different rules — a nested expression may not contain a ref at
+    // all. Grouping by owner makes the relationship structural instead of
+    // something the user has to infer.
+    const allDimensions = withParentModel(dimensions, 'dimension');
+    const allMetrics = withParentModel(metrics, 'metric');
+    const unscoped = list => list.filter(f => !f.parentModel);
+
+    const nestedFieldsByModel = {};
+    [...allDimensions, ...allMetrics].forEach(field => {
+      if (!field.parentModel) return;
+      const bucket = (nestedFieldsByModel[field.parentModel] ||= { dimension: [], metric: [] });
+      bucket[field.type].push(field);
+    });
+
     return {
+      nestedFieldsByModel,
       layoutItems: {
         chart: mapRows(charts, 'chart'),
         table: mapRows(tables, 'table'),
@@ -187,8 +205,8 @@ export function useLibraryData() {
       dataLayer: {
         source: sourceRows,
         model: modelRows,
-        dimension: withParentModel(dimensions, 'dimension'),
-        metric: withParentModel(metrics, 'metric'),
+        dimension: unscoped(allDimensions),
+        metric: unscoped(allMetrics),
         relation: mapRows(relations, 'relation'),
         insight: mapRows(insights, 'insight'),
       },

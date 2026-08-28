@@ -55,6 +55,14 @@ class Metric(NamedModel, ParentModel):
         self._parent_name = value
 
     # TODO: Need to find a way to make names globally unique without creating confusion maybe something like alias should be set in place on model scoped metrics and then name can be computed from the model and alias?
+    @field_validator("expression")
+    @classmethod
+    def validate_not_self_aliased(cls, v: str) -> str:
+        """A metric's name is its alias; `sum(x) as total` breaks the built query."""
+        from visivo.models.base.field_expression import reject_aliased_expression
+
+        return reject_aliased_expression(v, "metric")
+
     @field_validator("name")
     @classmethod
     def validate_sql_identifier(cls, v: Optional[str]) -> Optional[str]:

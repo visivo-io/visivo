@@ -17,6 +17,7 @@ import { DROPPABLE_TYPES } from './library/LibraryRow';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
 import { formatRefExpression } from '../../../utils/refString';
+import { generateUniqueName } from '../../../utils/uniqueName';
 import {
   reorderItemsInRow,
   moveItemBetweenRows,
@@ -206,6 +207,7 @@ export const routeWorkspaceDragEnd = (
     commitCanvasConfig,
     emit,
     exploration,
+    wrapInsight,
   }
 ) => {
   const { active, over } = event || {};
@@ -266,6 +268,38 @@ export const routeWorkspaceDragEnd = (
       dropData.onChange({ type: dragData.type, name: dragData.name });
     }
     return 'ref_accepted';
+  }
+
+  // ── Branch 2b: any compatible drag → a RefTextArea (VIS-1243) ───────────
+  // The only editor that holds free text AROUND its refs, so unlike every
+  // other zone this INSERTS at the caret rather than replacing the value —
+  // overwriting would discard whatever the user already wrote. Before this,
+  // a RefTextArea was not a drop target at all: dragging a model onto a
+  // dimension/metric expression, a relation condition, or a slot switched to
+  // "Manually edit field…" did nothing whatsoever, with no feedback.
+  if (dropData.kind === 'ref-text') {
+    const allowed = dropData.allowedTypes || [];
+    const isValid = allowed.includes(dragData.type);
+    emit &&
+      emit('ref_text_drop', {
+        type: dragData.type,
+        name: dragData.name,
+        accepted: isValid,
+      });
+    if (!isValid) {
+      // Tell the user, rather than leaving the drag to evaporate.
+      dropData.onReject?.(dragData.type);
+      return 'ref_text_rejected';
+    }
+    // A dimension/metric names its own parent model; everything else (a model,
+    // an input) is referenced by name alone and the user narrows it from there.
+    const refExpr =
+      (dragData.type === 'metric' || dragData.type === 'dimension') && dragData.parentModel
+        ? formatRefExpression(dragData.parentModel, dragData.name)
+        : formatRefExpression(dragData.name);
+    if (typeof dropData.onInsertRef !== 'function') return 'noop';
+    dropData.onInsertRef(refExpr);
+    return 'ref_text_accepted';
   }
 
   // ── Branch 2a: Library model → Relation ERD canvas (VIS-1006b) ───────────
@@ -498,7 +532,37 @@ export const routeWorkspaceDragEnd = (
       // targets below) would let a dashboard-canvas drop build a bogus item
       // like `{ metric: '${ref(churn_rate)}' }` — a shape the canvas schema
       // has no rendering for.
-      if (!DROPPABLE_TYPES.includes(dragData.type)) return 'noop';
+      if (!DROPPABLE_TYPES.includes(dragData.type)) {
+        // Insights are placeable via AUTO-WRAP (decision 27 Aug: items never
+        // take a bare insight — the Chart wrapper is the composition
+        // boundary, and the schema stays untouched). Dropping an insight
+        // mints a wrapper chart named `<insight>-chart` and places THAT.
+        // Ordering matters: validate the placement first, and only mint the
+        // chart once the item actually landed — a rejected drop must not
+        // leave an orphan draft chart behind. If the async chart save fails,
+        // the placed ref renders as a BrokenRefCard with its Fix… flow — a
+        // visible, recoverable state rather than a silent drop (B2).
+        if (dragData.type === 'insight' && wrapInsight) {
+          const chartName = wrapInsight.mintChartName(dragData.name);
+          if (!chartName) return 'noop';
+          const wrappedItem = buildLibraryItem('chart', chartName);
+          const next = insertItemAtTarget(config, target, wrappedItem);
+          if (next === config) return 'noop';
+          wrapInsight.createChart(chartName, dragData.name);
+          commitCanvasConfig(dashboardName, next, { kind: 'library_insert' });
+          emit &&
+            emit('canvas_action', {
+              kind: 'add_item',
+              source: 'library',
+              type: 'insight',
+              name: dragData.name,
+              wrapped_chart: chartName,
+              target: target.kind,
+            });
+          return 'canvas_library_insert';
+        }
+        return 'noop';
+      }
       const newItem = buildLibraryItem(dragData.type, dragData.name);
       const next = insertItemAtTarget(config, target, newItem);
       if (next === config) return 'noop';
@@ -897,6 +961,22 @@ const WorkspaceDndContext = ({ children }) => {
         moveLevel,
         commitCanvasConfig,
         emit: emitWorkspaceEvent,
+        // AUTO-WRAP (27 Aug decision): dropping an insight on the canvas mints
+        // a wrapper chart — same naming + save path as the Library's
+        // "Wrap in Chart…" (#632). Store reads are deliberately getState()
+        // (fresh at drop time), keeping the handler's dep list unchanged.
+        wrapInsight: {
+          mintChartName: insightName => {
+            const existingCharts = (useStore.getState().charts || []).map(chart => chart.name);
+            return generateUniqueName(`${insightName}-chart`, existingCharts, {
+              separator: '-',
+            });
+          },
+          createChart: (chartName, insightName) => {
+            const save = useStore.getState().saveChart;
+            if (save) save(chartName, { insights: [`ref(${insightName})`] });
+          },
+        },
         exploration: {
           activeModelName: explorerActiveModelName,
           updateInsightInteraction,

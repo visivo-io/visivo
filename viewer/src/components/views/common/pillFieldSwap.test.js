@@ -60,9 +60,10 @@ describe('pillFieldSwap', () => {
           interactions: [{ type: 'filter', value: '?{${ref(orders_q).region} = \'west\'}' }],
         },
       };
-      // Not a clean single-ref shape (has a trailing comparison) — this
-      // exercises the "doesn't match, no false positive" path along with a
-      // clean one below.
+      // Carries a MODIFIER (the trailing comparison). The grammar recognizes
+      // that shape since VIS-1241, but it is deliberately NOT swap-eligible:
+      // a swap rewrites the slot to a bare `?{${ref(name)}}`, which would
+      // silently discard the hand-written `= 'west'`.
       expect(findReclassifiedSlots('region', 'dimension', insightStates)).toHaveLength(0);
 
       const cleanInteraction = {
@@ -72,6 +73,33 @@ describe('pillFieldSwap', () => {
       expect(hits).toHaveLength(1);
       expect(hits[0].location).toBe('interaction');
       expect(hits[0].key).toBe(0);
+    });
+  });
+
+  describe('modified expressions are never swap-eligible (VIS-1241)', () => {
+    test('a modifier excludes a slot from BOTH detectors', () => {
+      const modified = {
+        a: {
+          props: { y: "?{sum(${ref(orders_q).amount}) / 100}" },
+          interactions: [],
+        },
+      };
+      // Reclassification (a global `amount` is promoted)…
+      expect(findReclassifiedSlots('amount', 'metric', modified)).toHaveLength(0);
+      // …and the dedup scan, which would otherwise offer to replace the
+      // expression with a bare metric ref and drop the `/ 100`.
+      expect(
+        findMatchingExpressionSlots(
+          {
+            promotedRef: 'orders_q',
+            promotedColumn: 'amount',
+            promotedAgg: 'sum',
+            promotedName: 'revenue',
+            promotedType: 'metric',
+          },
+          modified
+        )
+      ).toHaveLength(0);
     });
   });
 

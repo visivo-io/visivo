@@ -259,6 +259,41 @@ describe('InsightBuildSection', () => {
       expect(setInsightProp).toHaveBeenCalledWith('test_insight', 'x', '?{${ref(orders_q).region}}');
     });
 
+    // ── VIS-1242 ────────────────────────────────────────────────────────
+    it('a MODEL drop writes an unbound ref for the pill editor to configure', async () => {
+      const setInsightProp = jest.fn();
+      useStore.setState({ setInsightProp });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+
+      mockCaptured.onDropField('x', { source: 'library', type: 'model', name: 'orders_q' });
+
+      // Unbound on purpose — the property gets picked in the pill's editor.
+      expect(setInsightProp).toHaveBeenCalledWith('test_insight', 'x', '?{${ref(orders_q)}}');
+    });
+
+    it('a type that is not a field value is rejected with a message, not written', async () => {
+      const setInsightProp = jest.fn();
+      const showWorkspaceToast = jest.fn();
+      useStore.setState({ setInsightProp, showWorkspaceToast });
+      render(
+        <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      await screen.findByTestId('trace-props-editor-mock');
+
+      // These used to fall into the generic branch and silently write
+      // `?{${ref(<activeModel>).<objectName>}}` — a dangling ref, no message.
+      ['source', 'insight', 'chart'].forEach(type => {
+        mockCaptured.onDropField('x', { source: 'library', type, name: `some_${type}` });
+      });
+
+      expect(setInsightProp).not.toHaveBeenCalled();
+      expect(showWorkspaceToast).toHaveBeenCalledTimes(3);
+      expect(showWorkspaceToast).toHaveBeenCalledWith(expect.stringMatching(/can't use a source/i));
+    });
+
     it('a metric/dimension object drop resolves to its own ref, parentModel-scoped when present', async () => {
       const setInsightProp = jest.fn();
       useStore.setState({ setInsightProp });

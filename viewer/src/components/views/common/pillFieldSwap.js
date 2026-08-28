@@ -43,7 +43,14 @@ const parseQueryBody = value => {
   // slot's syntactic shape (bare column ref vs aggregate-wrapped), which is
   // what both detectors below need, independent of whatever the store's
   // CURRENT metrics/dimensions lists happen to contain right now.
-  return pillGrammar.parse(match[1], {});
+  const state = pillGrammar.parse(match[1], {});
+  // VIS-1241: a slot carrying a MODIFIER (`${ref(m).region} = 'west'`) is now
+  // recognized by the grammar, but it must not be swap-eligible: the swap
+  // rewrites a slot to a bare `?{${ref(name)}}`, which would silently discard
+  // the hand-written modifier. Treat it the way it was treated before the
+  // grammar learned modifiers — as a shape these detectors don't touch.
+  if (state && state.modifier) return null;
+  return state;
 };
 
 /** Every column-ref-shaped (dimension/aggregate) prop + interaction slot

@@ -796,17 +796,66 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         );
       }
 
-      const checklist = await buildPromoteChecklist(get);
+      // includeUnchanged: an already-saved byte-identical row must be
+      // classifiable — on a RETRY after a partial failure (or a double
+      // submit), the rows saved by the previous run come back 'unchanged',
+      // and treating them as vanished would report false failures forever,
+      // making the fully-succeeded state unreachable.
+      const checklist = await buildPromoteChecklist(get, { includeUnchanged: true });
       // Re-sort by tier defensively — dependency order is THE invariant this
       // gate exists to guarantee (02 §3), so it must not silently depend on
       // buildPromoteChecklist's own sort never regressing.
       const tierOrder = { model: 0, field: 1, insight: 2, chart: 3 };
       const toPromote = checklist
-        .filter(row => row.valid && selectedKeys.has(`${row.type}:${row.name}`))
+        .filter(
+          row =>
+            row.valid &&
+            row.status !== 'unchanged' &&
+            selectedKeys.has(`${row.type}:${row.name}`)
+        )
         .sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
 
       const results = [];
       const reclassificationOffers = [];
+
+      // Results must be TOTAL over the selection (M14): a selected row that is
+      // invalid or has vanished from the checklist used to produce NO results
+      // entry at all, and the `results.every(r => r.success)` success predicate
+      // below was then trivially true over the survivors — so a partial promote
+      // read as complete ("Save 3" → "Saved 2", no explanation). Every selected
+      // key that will not reach a save action gets an explicit entry up front:
+      // already-saved rows are successful no-ops (noop: true, excluded from
+      // telemetry counts), invalid rows carry their validation error, and only
+      // rows truly absent from the exploration read as failures.
+      const promotableKeys = new Set(toPromote.map(row => `${row.type}:${row.name}`));
+      const checklistByKey = new Map(checklist.map(row => [`${row.type}:${row.name}`, row]));
+      for (const key of selectedKeys) {
+        if (promotableKeys.has(key)) continue;
+        const separator = key.indexOf(':');
+        const type = key.slice(0, separator);
+        const name = key.slice(separator + 1);
+        const checklistRow = checklistByKey.get(key);
+        if (checklistRow?.status === 'unchanged') {
+          results.push({
+            type,
+            name,
+            tier: checklistRow.tier ?? null,
+            success: true,
+            noop: true,
+            error: null,
+          });
+          continue;
+        }
+        results.push({
+          type,
+          name,
+          tier: checklistRow?.tier ?? null,
+          success: false,
+          error: checklistRow
+            ? checklistRow.error || 'Failed validation and was not promoted'
+            : 'This object changed while the dialog was open and was not saved — reopen Save to project.',
+        });
+      }
 
       for (const row of toPromote) {
         const saveActionName = SAVE_ACTION[row.type];
@@ -864,14 +913,17 @@ const createWorkspaceExplorationsSlice = (set, get) => {
       const objectCounts = {};
       const updateVsNew = { updated: 0, new: 0 };
       results
-        .filter(r => r.success)
+        .filter(r => r.success && !r.noop)
         .forEach(r => {
           objectCounts[r.type] = (objectCounts[r.type] || 0) + 1;
           const row = rowByKey.get(`${r.type}:${r.name}`);
           if (row?.status === 'modified') updateVsNew.updated += 1;
           else updateVsNew.new += 1;
         });
-      if (results.length > 0) {
+      // Emit for every attempted promote, including a zero-save one (every
+      // selected row invalid or vanished) — that failure mode must be
+      // observable in telemetry, not silently absent.
+      if ((selection || []).length > 0) {
         emitWorkspaceEvent('exploration_promoted', {
           id,
           objectCounts,

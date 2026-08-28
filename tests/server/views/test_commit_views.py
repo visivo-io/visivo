@@ -447,3 +447,117 @@ class TestExplorationCommitExclusion:
         )
 
         integration_client.delete(f"/api/explorations/{created['id']}/")
+
+
+class TestPendingProjectValidation:
+    """The commit gate: a commit must not be able to write YAML that the very
+    next parse rejects.
+
+    Before this, creating a metric from the `+ New` template and committing
+    produced a project that no longer parsed — every metric and dimension
+    vanished from the editor, and the only clue was
+    `Metric 'new_metric' does not tie back to any source` in the server log,
+    after the bad YAML was already on disk.
+    """
+
+    def _flask_app(self, project, **cached):
+        """A minimal stand-in: `inject_cached_objects` reads `.cached_objects`
+        off each manager and skips any manager that is missing."""
+        from types import SimpleNamespace
+
+        managers = {
+            f"{kind}_manager": SimpleNamespace(cached_objects=objects)
+            for kind, objects in cached.items()
+        }
+        return SimpleNamespace(project=project, **managers)
+
+    def _project(self, **kwargs):
+        from tests.factories.model_factories import ProjectFactory, SqlModelFactory
+
+        return ProjectFactory(
+            models=[SqlModelFactory(name="orders")],
+            insights=[],
+            charts=[],
+            dashboards=[],
+            **kwargs,
+        )
+
+    def test_a_valid_pending_project_is_not_blocked(self):
+        from tests.factories.model_factories import MetricFactory
+        from visivo.server.views.commit_views import _validate_pending_project
+
+        draft = MetricFactory(name="good_metric", expression="sum(${ref(orders).amount})")
+        flask_app = self._flask_app(self._project(), metric={"good_metric": draft})
+
+        assert _validate_pending_project(flask_app) is None
+
+    def test_a_project_level_metric_with_no_ref_blocks_the_commit(self):
+        from tests.factories.model_factories import MetricFactory
+        from visivo.server.views.commit_views import _validate_pending_project
+
+        draft = MetricFactory(name="new_metric", expression="count(*)")
+        flask_app = self._flask_app(self._project(), metric={"new_metric": draft})
+
+        error = _validate_pending_project(flask_app)
+        assert error is not None
+        assert "must reference at least one model" in error
+
+    def test_a_MODEL_SCOPED_draft_is_re_nested_and_allowed(self):
+        """`inject_cached_objects` appends every cached object to the matching
+        TOP-LEVEL list, so a model-scoped draft arrives looking standalone. Left
+        that way it trips the project-level rule and refuses a good commit."""
+        from tests.factories.model_factories import MetricFactory
+        from visivo.server.views.commit_views import _validate_pending_project
+
+        draft = MetricFactory(name="nested_ok", expression="count(*)")
+        draft.set_parent_name("orders")
+        flask_app = self._flask_app(self._project(), metric={"nested_ok": draft})
+
+        assert _validate_pending_project(flask_app) is None
+
+    def test_re_nesting_moves_the_field_under_its_model(self):
+        from tests.factories.model_factories import DimensionFactory, MetricFactory
+        from visivo.server.views.commit_views import _renest_model_scoped_fields
+
+        metric = MetricFactory(name="nested_metric", expression="count(*)")
+        metric.set_parent_name("orders")
+        dimension = DimensionFactory(name="nested_dim", expression="region")
+        dimension.set_parent_name("orders")
+        standalone = MetricFactory(name="standalone", expression="sum(${ref(orders).amount})")
+
+        project = self._project(metrics=[standalone], dimensions=[])
+        project.metrics = [standalone, metric]
+        project.dimensions = [dimension]
+
+        _renest_model_scoped_fields(project)
+
+        (model,) = project.models
+        assert [m.name for m in project.metrics] == ["standalone"]
+        assert project.dimensions == []
+        assert [m.name for m in model.metrics] == ["nested_metric"]
+        assert [d.name for d in model.dimensions] == ["nested_dim"]
+
+    def test_a_field_scoped_to_a_model_that_does_not_exist_stays_top_level(self):
+        """Dropping it would hide the mistake; leaving it lets the normal
+        validators name it."""
+        from tests.factories.model_factories import MetricFactory
+        from visivo.server.views.commit_views import _renest_model_scoped_fields
+
+        orphan = MetricFactory(name="orphan", expression="count(*)")
+        orphan.set_parent_name("deleted_model")
+        project = self._project()
+        project.metrics = [orphan]
+
+        _renest_model_scoped_fields(project)
+
+        assert [m.name for m in project.metrics] == ["orphan"]
+
+    def test_the_gate_fails_OPEN_on_an_unexpected_error(self):
+        """It exists to catch a known-invalid project — it must never become a
+        new way for a commit to fail."""
+        from types import SimpleNamespace
+
+        from visivo.server.views.commit_views import _validate_pending_project
+
+        broken = SimpleNamespace(project=None)
+        assert _validate_pending_project(broken) is None

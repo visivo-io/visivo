@@ -18,6 +18,7 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
+import { refKindsFor } from '../common/fieldTypes';
 
 const INSIGHT_COLORS = getTypeColors('insight');
 const InsightTypeIcon = getTypeIcon('insight');
@@ -66,7 +67,7 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
           }}
           label=""
           rows={1}
-          allowedTypes={['model', 'dimension', 'metric', 'input']}
+          allowedTypes={refKindsFor('interaction', 'filter')}
         />
       </div>
       <button
@@ -216,8 +217,23 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
         showWorkspaceToast?.("Can't drop a whole table here — drag a column instead.");
         return;
       }
+      // VIS-1242: an explicit allowlist. Anything with a `name` used to fall
+      // into the generic branch below and silently write
+      // `?{${ref(<activeModel>).<objectName>}}` — so dropping a SOURCE or an
+      // INSIGHT produced a dangling ref with no message at all. The canvas has
+      // had a type guard since Phase 3a; property slots never did.
+      const DROPPABLE_ON_PROPERTY = ['metric', 'dimension', 'input', 'model', 'sourceColumn', 'column'];
+      if (dragData.type && !DROPPABLE_ON_PROPERTY.includes(dragData.type)) {
+        showWorkspaceToast?.(`Can't use a ${dragData.type} as a field value.`);
+        return;
+      }
       let body;
-      if (dragData.type === 'metric' || dragData.type === 'dimension') {
+      if (dragData.type === 'model') {
+        // Unbound on purpose: the pill opens its editor so the property (and
+        // aggregation, index, modifier) get picked there — the same editor a
+        // fully-configured pill uses.
+        body = formatRefExpression(dragData.name);
+      } else if (dragData.type === 'metric' || dragData.type === 'dimension') {
         body = dragData.parentModel
           ? formatRefExpression(dragData.parentModel, dragData.name)
           : formatRefExpression(dragData.name);

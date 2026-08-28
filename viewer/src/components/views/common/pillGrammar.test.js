@@ -18,6 +18,7 @@ describe('pillGrammar.parse', () => {
       kind: 'dimension',
       ref: 'orders_q',
       column: 'region',
+      propertyPath: 'region',
       raw: '${ref(orders_q).region}',
     });
   });
@@ -29,6 +30,7 @@ describe('pillGrammar.parse', () => {
       agg: 'sum',
       ref: 'orders_q',
       column: 'amount',
+      propertyPath: 'amount',
       raw: 'sum(${ref(orders_q).amount})',
     });
   });
@@ -221,5 +223,152 @@ describe('MEDIAN dialect gating', () => {
     expect(isMedianSupported(undefined)).toBe(true);
     expect(isMedianSupported(null)).toBe(true);
     expect(isMedianSupported('')).toBe(true);
+  });
+});
+
+// ── VIS-1241: manual modifiers ────────────────────────────────────────────────
+// A modifier is trailing SQL after the reference (`/ 100`). Before this, ANY
+// trailing fragment dropped the whole expression to `opaque` and the pill
+// disappeared — which is why "add a modifier" meant "leave the editor".
+describe('pillGrammar — modifiers', () => {
+  test('aggregate + modifier parses, and round-trips byte-for-byte', () => {
+    const raw = 'sum(${ref(orders_q).amount}) / 100';
+    const state = parse(raw, OPTS);
+    expect(state).toEqual({
+      kind: 'aggregate',
+      agg: 'sum',
+      ref: 'orders_q',
+      column: 'amount',
+      propertyPath: 'amount',
+      modifier: '/ 100',
+      raw,
+    });
+    expect(serialize(state)).toBe(raw);
+  });
+
+  test('dimension + modifier parses and round-trips', () => {
+    const raw = '${ref(orders_q).region} || \'!\'';
+    const state = parse(raw, OPTS);
+    expect(state).toMatchObject({
+      kind: 'dimension',
+      ref: 'orders_q',
+      column: 'region',
+      propertyPath: 'region',
+      modifier: "|| '!'",
+    });
+    expect(serialize(state)).toBe(raw);
+  });
+
+  test('a metric ref can carry a modifier too', () => {
+    const state = parse('${ref(churn_rate)} * 100', OPTS);
+    expect(state).toMatchObject({ kind: 'metricRef', ref: 'churn_rate', modifier: '* 100' });
+    expect(serialize(state)).toBe('${ref(churn_rate)} * 100');
+  });
+
+  test('the modifier serializes INSIDE the expression, so a slice can follow it', () => {
+    // `?{ sum(x) / 100 }[0]` is valid; `?{ sum(x) }[0] / 100` is not — the
+    // slice must be last. See mkdocs/topics/query-and-context-strings.md.
+    const body = serialize({
+      kind: 'aggregate',
+      agg: 'sum',
+      ref: 'orders_q',
+      column: 'amount',
+      propertyPath: 'amount',
+      modifier: '/ 100',
+    });
+    expect(`?{ ${body} }[0]`).toBe('?{ sum(${ref(orders_q).amount}) / 100 }[0]');
+  });
+
+  test('an unmodified expression is untouched by the modifier pass', () => {
+    const state = parse('sum(${ref(orders_q).amount})', OPTS);
+    expect(state.modifier).toBeUndefined();
+    expect(serialize(state)).toBe('sum(${ref(orders_q).amount})');
+  });
+
+  // The conservative half: a modifier means ONE reference plus trailing SQL.
+  // Anything else stays opaque rather than being misrepresented as a pill.
+  test.each([
+    ['a second reference is not a modifier', '${ref(a).x} + ${ref(b).y}'],
+    ['the canonical multi-call expression', 'count(distinct ${ref(orders_q).id}) / count(*)'],
+    ['arithmetic INSIDE the aggregate is different SQL', 'sum(${ref(orders_q).amount} / 100)'],
+    ['a non-preset function', 'date_trunc(\'week\', ${ref(orders_q).completed_at}) / 2'],
+  ])('%s -> opaque, raw verbatim', (_label, raw) => {
+    expect(parse(raw, OPTS)).toEqual({ kind: 'opaque', raw });
+  });
+});
+
+// ── VIS-1242: an unbound model ref (drop-then-configure) ────────────────────
+describe('pillGrammar — modelRef', () => {
+  const WITH_MODELS = { ...OPTS, modelNames: ['orders_q'] };
+
+  test('a bare ref naming a MODEL is an unbound pill, not opaque', () => {
+    // Without this the dropped model parsed as `opaque`, which suppresses the
+    // pill entirely — so there was nothing to configure.
+    expect(parse('${ref(orders_q)}', WITH_MODELS)).toEqual({
+      kind: 'modelRef',
+      ref: 'orders_q',
+      raw: '${ref(orders_q)}',
+    });
+    expect(serialize({ kind: 'modelRef', ref: 'orders_q' })).toBe('${ref(orders_q)}');
+  });
+
+  test('a metric/dimension name still wins over a model of the same name', () => {
+    // Global-name-first, matching the backend's resolve_ref order.
+    const opts = { ...OPTS, modelNames: ['churn_rate'] };
+    expect(parse('${ref(churn_rate)}', opts)).toMatchObject({ kind: 'metricRef' });
+  });
+
+  test('an unknown bare ref is still opaque', () => {
+    expect(parse('${ref(nope)}', WITH_MODELS)).toEqual({
+      kind: 'opaque',
+      raw: '${ref(nope)}',
+    });
+  });
+});
+
+
+// The backend's PROPERTY_PATH_PATTERN allows dots and brackets after a ref, but
+// `SINGLE_REF` captured all of it as one blob and reported it as the COLUMN
+// NAME. Downstream, `saveAsMetricFlow` built `${agg}(${column})` — producing
+// `sum(gdp[0])`, which is not valid SQL. There were zero tests for `[0]` or
+// dotted paths before this.
+describe('pillGrammar — property paths are parsed, not swallowed', () => {
+  const R = (name, prop) => '${ref(' + name + ')' + (prop ? '.' + prop : '') + '}';
+
+  test.each([
+    ['gdp', 'gdp', 'gdp'],
+    ['gdp[0]', 'gdp', 'gdp[0]'],
+    ['gdp[-1]', 'gdp', 'gdp[-1]'],
+    ['list[0].prop', 'list', 'list[0].prop'],
+    ['nested.deep', 'nested', 'nested.deep'],
+  ])('%s -> column %s, path %s', (path, column, propertyPath) => {
+    const state = parse(R('orders', path));
+    expect(state.kind).toBe('dimension');
+    expect(state.column).toBe(column);
+    expect(state.propertyPath).toBe(propertyPath);
+  });
+
+  test('an aggregate over an indexed property keeps a usable column name', () => {
+    const state = parse(`sum(${R('orders', 'gdp[0]')})`);
+    expect(state.kind).toBe('aggregate');
+    expect(state.agg).toBe('sum');
+    // This is the value saveAsMetricFlow interpolates; `gdp[0]` here was the bug.
+    expect(state.column).toBe('gdp');
+    expect(state.propertyPath).toBe('gdp[0]');
+  });
+
+  test('serialization round-trips the FULL path, not the bare column', () => {
+    [R('orders', 'gdp[0]'), R('orders', 'list[0].prop'), `sum(${R('orders', 'gdp[0]')})`].forEach(
+      raw => {
+        expect(serialize(parse(raw))).toBe(raw);
+      }
+    );
+  });
+
+  test('a plain column is unaffected — column and path agree', () => {
+    const state = parse(R('orders', 'amount'));
+    expect(state.column).toBe('amount');
+    expect(state.propertyPath).toBe('amount');
+    expect(serialize(state)).toBe(R('orders', 'amount'));
   });
 });

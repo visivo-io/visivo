@@ -50,7 +50,11 @@ const QUERY_STRING_PATTERN_MARKER = '\\?\\{';
 function humanizePatternError(error) {
   const pattern = error.params?.pattern || '';
   if (pattern.includes(QUERY_STRING_PATTERN_MARKER)) {
-    return 'Enter a query expression like ?{ref(model).column}, or drag a column here.';
+    // Deliberately does NOT tell the user to type `?{ }`: the editor wraps the
+    // body for them, so quoting the wrapped form describes a string they never
+    // author and can't produce by typing what the message shows.
+    // eslint-disable-next-line no-template-curly-in-string
+    return 'Drag a column here, or enter an expression like ${ref(model).column} — the ?{ } wrapper is added for you.';
   }
   return "This value doesn't match the format this field expects.";
 }

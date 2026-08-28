@@ -6,6 +6,10 @@
  * FieldGroupList); only the store, the save backbone, and RefTextArea are
  * mocked, exactly as the bespoke suites did.
  */
+/* eslint-disable no-template-curly-in-string */
+// Every valid expression and condition in this file carries a `${ref(...)}`,
+// because that is what the rules under test require — inline disables would
+// outnumber the assertions.
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SchemaLeafForm from './SchemaLeafForm';
@@ -82,9 +86,12 @@ beforeEach(() => {
 });
 
 describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, del }) => {
+  // A project-level metric/dimension reaches a source only by naming a model,
+  // so a valid expression always carries a ref.
+  const VALID_EXPRESSION = 'sum(${ref(orders).amount})';
   const fillValid = () => {
     fireEvent.change(screen.getByLabelText(nameLabel), { target: { value: 'x1' } });
-    fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'sum(amount)' } });
+    fireEvent.change(screen.getByLabelText('Expression'), { target: { value: VALID_EXPRESSION } });
   };
 
   it('renders the create form from the published schema', async () => {
@@ -113,7 +120,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
     await waitFor(() =>
       expect(save()).toHaveBeenCalledWith(
         'x1',
-        expect.objectContaining({ name: 'x1', expression: 'sum(amount)' })
+        expect.objectContaining({ name: 'x1', expression: VALID_EXPRESSION })
       )
     );
     await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -129,7 +136,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
 
   it('deletes in edit mode after confirmation', async () => {
     const onClose = jest.fn();
-    const record = { name: 'x1', status: 'PUBLISHED', config: { name: 'x1', expression: 'sum(a)' } };
+    const record = { name: 'x1', status: 'PUBLISHED', config: { name: 'x1', expression: 'sum(${ref(orders).a})' } };
     await renderAndSettle(
       <SchemaLeafForm type={type} record={record} onClose={onClose} onSave={jest.fn()} />
     );
@@ -152,7 +159,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
   });
 
   it('cancel dismisses the delete confirmation without deleting', async () => {
-    const record = { name: 'x1', status: 'PUBLISHED', config: { name: 'x1', expression: 'sum(a)' } };
+    const record = { name: 'x1', status: 'PUBLISHED', config: { name: 'x1', expression: 'sum(${ref(orders).a})' } };
     await renderAndSettle(
       <SchemaLeafForm type={type} record={record} onClose={jest.fn()} onSave={jest.fn()} />
     );
@@ -165,7 +172,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
   });
 
   it('shows the discard-unsaved-changes message when deleting a NEW object', async () => {
-    const record = { name: 'x1', status: 'NEW', config: { name: 'x1', expression: 'sum(a)' } };
+    const record = { name: 'x1', status: 'NEW', config: { name: 'x1', expression: 'sum(${ref(orders).a})' } };
     await renderAndSettle(
       <SchemaLeafForm type={type} record={record} onClose={jest.fn()} onSave={jest.fn()} />
     );
@@ -176,7 +183,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
   it('surfaces a delete failure and dismisses the confirm without closing', async () => {
     del().mockResolvedValueOnce({ success: false, error: 'still referenced' });
     const onClose = jest.fn();
-    const record = { name: 'x1', status: 'PUBLISHED', config: { name: 'x1', expression: 'sum(a)' } };
+    const record = { name: 'x1', status: 'PUBLISHED', config: { name: 'x1', expression: 'sum(${ref(orders).a})' } };
     await renderAndSettle(
       <SchemaLeafForm type={type} record={record} onClose={onClose} onSave={jest.fn()} />
     );
@@ -229,12 +236,11 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
         <SchemaLeafForm type={type} record={embeddedRecord} onClose={jest.fn()} onSave={onSave} />
       );
       fireEvent.change(screen.getByLabelText('Expression'), {
-        // eslint-disable-next-line no-template-curly-in-string
-        target: { value: 'sum(${ref(other_model)}.amount)' },
+          target: { value: 'sum(${ref(other_model)}.amount)' },
       });
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
       expect(
-        await screen.findByText(new RegExp(`Inline ${word}s cannot use ref\\(\\) expressions`))
+        await screen.findByText(new RegExp(`A ${word} defined inside a model cannot use`))
       ).toBeInTheDocument();
       expect(onSave).not.toHaveBeenCalled();
     });
@@ -257,7 +263,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
   });
 
   describe('edit mode — explicit Save through the gated backbone (VIS-993)', () => {
-    const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(x, 2)' } };
+    const record = { name: 'existing', config: { name: 'existing', expression: 'ROUND(${ref(orders).x}, 2)' } };
 
     test('renders the Delete · Discard · Save footer', async () => {
       await renderAndSettle(
@@ -275,7 +281,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
       // Untouched: Save disabled, nothing persists.
       expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
 
-      fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'ROUND(x, 3)' } });
+      fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'ROUND(${ref(orders).x}, 3)' } });
       expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled();
       // No auto-save — nothing persists on keystroke.
       expect(mockSaveNow).not.toHaveBeenCalled();
@@ -283,7 +289,7 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
       await waitFor(() =>
         expect(mockSaveNow).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'existing', expression: 'ROUND(x, 3)' })
+          expect.objectContaining({ name: 'existing', expression: 'ROUND(${ref(orders).x}, 3)' })
         )
       );
     });
@@ -293,11 +299,11 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
         <SchemaLeafForm type={type} record={record} onClose={jest.fn()} onSave={jest.fn()} />
       );
       const expr = screen.getByLabelText('Expression');
-      expect(expr).toHaveValue('ROUND(x, 2)');
+      expect(expr).toHaveValue('ROUND(${ref(orders).x}, 2)');
       fireEvent.change(expr, { target: { value: 'ROUND(x, 9)' } });
       expect(screen.getByLabelText('Expression')).toHaveValue('ROUND(x, 9)');
       fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
-      expect(screen.getByLabelText('Expression')).toHaveValue('ROUND(x, 2)');
+      expect(screen.getByLabelText('Expression')).toHaveValue('ROUND(${ref(orders).x}, 2)');
     });
 
     test('gate errors surface on the expression field', async () => {
@@ -337,7 +343,6 @@ describe('SchemaLeafForm Relation', () => {
     );
     fireEvent.change(screen.getByLabelText(/Relation Name/), { target: { value: 'orders_users' } });
     fireEvent.change(screen.getByLabelText('Condition'), {
-      // eslint-disable-next-line no-template-curly-in-string
       target: { value: '${ref(orders).user_id} = ${ref(users).id}' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -353,17 +358,17 @@ describe('SchemaLeafForm Relation', () => {
   it('edit mode — a Save flushes the condition edit through the gated backbone', async () => {
     const record = {
       name: 'rel1',
-      config: { name: 'rel1', condition: 'a = b', join_type: 'inner' },
+      config: { name: 'rel1', condition: '${ref(orders).id} = ${ref(users).order_id}', join_type: 'inner' },
     };
     await renderAndSettle(
       <SchemaLeafForm type="relation" record={record} onClose={jest.fn()} onSave={jest.fn()} />
     );
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Condition'), { target: { value: 'a = c' } });
+    fireEvent.change(screen.getByLabelText('Condition'), { target: { value: '${ref(orders).id} = ${ref(users).oid}' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(mockSaveNow).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'rel1', condition: 'a = c' })
+        expect.objectContaining({ name: 'rel1', condition: '${ref(orders).id} = ${ref(users).oid}' })
       )
     );
   });
@@ -375,7 +380,7 @@ describe('SchemaLeafForm Relation', () => {
       status: 'invalid',
       errors: [{ path: 'condition', message: 'Must reference at least two models.' }],
     };
-    const record = { name: 'rel1', config: { name: 'rel1', condition: 'a = b' } };
+    const record = { name: 'rel1', config: { name: 'rel1', condition: '${ref(orders).id} = ${ref(users).order_id}' } };
     await renderAndSettle(
       <SchemaLeafForm type="relation" record={record} onClose={jest.fn()} onSave={jest.fn()} />
     );
@@ -385,7 +390,7 @@ describe('SchemaLeafForm Relation', () => {
   it('renders join_type from the schema enum (engine widget, not bespoke JSX)', async () => {
     const record = {
       name: 'rel1',
-      config: { name: 'rel1', condition: 'a = b', join_type: 'left' },
+      config: { name: 'rel1', condition: '${ref(orders).id} = ${ref(users).order_id}', join_type: 'left' },
     };
     await renderAndSettle(
       <SchemaLeafForm type="relation" record={record} onClose={jest.fn()} onSave={jest.fn()} />
@@ -401,5 +406,40 @@ describe('SchemaLeafForm unknown-type resilience', () => {
     // An unknown type never resolves a schema slice → FormShell drops to its
     // empty state (no loading spinner lingers).
     expect(await screen.findByTestId('form-shell-empty')).toBeInTheDocument();
+  });
+});
+
+
+
+// `parentModel` is a SIBLING of `config`, not a field inside it — Metric and
+// Dimension declare no `model` field and forbid extras, so nesting is only
+// expressible positionally in the YAML. Building the save body as
+// `{ ...config, name }` dropped it, the object validated as standalone, and
+// `project_writer` wrote it at the top level: an ordinary save silently
+// un-nested a field from its model.
+describe('SchemaLeafForm — a model-scoped field keeps its parent on save', () => {
+  const edit = record =>
+    render(<SchemaLeafForm type="dimension" record={record} onClose={jest.fn()} onSave={jest.fn()} />);
+
+  test('the save body carries parentModel through', async () => {
+    edit({ name: 'gdp2', parentModel: 'new-model', config: { expression: 'gdp' } });
+    fireEvent.change(screen.getByLabelText('Expression'), { target: { value: 'gdp * 2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalled());
+    expect(mockSaveNow).toHaveBeenCalledWith(
+      expect.objectContaining({ parentModel: 'new-model' })
+    );
+  });
+
+  test('a standalone field sends no parentModel', async () => {
+    edit({ name: 'region', config: { expression: '${ref(orders).region}' } });
+    fireEvent.change(screen.getByLabelText('Expression'), {
+      target: { value: 'upper(${ref(orders).region})' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalled());
+    expect(mockSaveNow.mock.calls[0][0]).not.toHaveProperty('parentModel');
   });
 });

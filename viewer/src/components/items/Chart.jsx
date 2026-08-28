@@ -131,8 +131,15 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
 
   const plotLayout = useMemo(() => {
     const layout = { ...layoutRef };
-    if (height !== undefined) layout.height = height;
-    if (width !== undefined) layout.width = width;
+    // `autosize` means "fill the container": Plotly's resize handler measures
+    // the node and owns width/height, discarding any explicit values. Setting
+    // them anyway is not merely redundant — it hands Plotly two authorities, so
+    // a re-render can paint at the fixed size before autosize strips it back.
+    // Honour whichever the caller actually asked for rather than both.
+    if (!layout.autosize) {
+      if (height !== undefined) layout.height = height;
+      if (width !== undefined) layout.width = width;
+    }
     return layout;
   }, [layoutRef, height, width]);
 

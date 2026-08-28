@@ -274,4 +274,40 @@ describe('AddComputedColumnPopover', () => {
     expect(onValidate).toHaveBeenCalledTimes(1);
     expect(onValidate).toHaveBeenCalledWith('SUM');
   });
+
+  // A computed column is a MODEL-SCOPED (nested) metric/dimension, and
+  // `sql_model.py` rejects any ref() in a nested expression. The editor must
+  // therefore offer no ref affordances — and say so before Save, not after.
+  describe('refs are not available here (VIS-1253)', () => {
+    const openPopover = () => {
+      renderPopover();
+      fireEvent.click(screen.getByTestId('add-computed-column-btn'));
+    };
+
+    test('the expression field offers no ref-insert affordance', () => {
+      openPopover();
+      expect(screen.getByTestId('computed-col-expression')).toBeInTheDocument();
+      // No RefTextArea machinery: no + ref menu, no chips, no drop target.
+      expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-ref-button')).not.toBeInTheDocument();
+    });
+
+    test('a pasted ref is flagged inline while typing', () => {
+      openPopover();
+      fireEvent.change(screen.getByTestId('computed-col-expression'), {
+        // eslint-disable-next-line no-template-curly-in-string
+        target: { value: 'sum(${ref(orders).amount})' },
+      });
+      expect(screen.getByTestId('computed-col-ref-warning')).toBeInTheDocument();
+    });
+
+    test('a plain SQL expression is not flagged', () => {
+      openPopover();
+      fireEvent.change(screen.getByTestId('computed-col-expression'), {
+        target: { value: 'SUM(amount)' },
+      });
+      expect(screen.queryByTestId('computed-col-ref-warning')).not.toBeInTheDocument();
+    });
+  });
+
 });

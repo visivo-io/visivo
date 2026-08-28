@@ -138,13 +138,14 @@ const Workspace = () => {
     return () => registerWorkspaceUrlNavigate(null);
   }, [navigate, workspaceUrlBase, registerWorkspaceUrlNavigate, registerWorkspaceUrlBase]);
 
-  // #6: persist the OPEN-TAB SET (+ the active VIEW, Explore 2.0 Phase 0)
-  // across refresh — the active TAB is still restored from the URL. Keyed
-  // per project so projects don't share strips.
+  // #6: persist the OPEN-TAB SET, the active VIEW, and the active TAB across a
+  // refresh or a trip through the top nav. Keyed per project so projects don't
+  // share strips.
   const tabsStorageKey = project ? `visivo.workspace.tabs.${projectName}` : null;
   const tabsRestored = useRef(false);
   const activateWorkspaceView = useStore(s => s.activateWorkspaceView);
   const workspaceActiveView = useStore(s => s.workspaceActiveView);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   // Restore once, BEFORE the URL→store sync below, so the URL's target joins
   // the restored strip instead of replacing it.
   useEffect(() => {
@@ -153,17 +154,50 @@ const Workspace = () => {
     try {
       const saved = JSON.parse(localStorage.getItem(tabsStorageKey) || 'null');
       // Back-compat: a pre-Phase-0 session persisted a bare tab array; the
-      // current shape wraps it alongside the active view.
+      // current shape wraps it alongside the active view and tab.
       const savedTabs = Array.isArray(saved) ? saved : Array.isArray(saved?.tabs) ? saved.tabs : null;
       if (savedTabs && savedTabs.length) restoreWorkspaceTabs(savedTabs);
-      const savedView = Array.isArray(saved) ? null : saved?.activeView;
-      if (savedView && isWorkspaceView(savedView)) {
-        activateWorkspaceView(savedView);
+      if (Array.isArray(saved)) return;
+
+      // The URL is the source of the active selection WHEN IT NAMES ONE. Only
+      // the bare workspace root says nothing — which is exactly what the top
+      // nav's "Workspace" link is, so leaving for Runs/Dashboards and coming
+      // back used to land on Project no matter what had been open. Restore the
+      // selection here; a URL that names a target still wins (deep links, the
+      // back button, `?edit=` from anywhere else).
+      const urlTarget = workspaceTargetFromUrl(location.pathname, searchParams, workspaceUrlBase);
+      const urlIsBareRoot =
+        urlTarget.kind !== 'tab' &&
+        urlTarget.view === DEFAULT_WORKSPACE_VIEW &&
+        location.pathname === workspaceUrlBase;
+      if (!urlIsBareRoot) return;
+
+      // A tab beats a view: `activateWorkspaceTab` sets the owning view as a
+      // side effect, so restoring the tab restores both. `openWorkspaceTab`
+      // (not `activate…`) because the active tab is URL-addressable — the URL
+      // has to come back too, or a refresh from here would lose it again.
+      const savedTab = savedTabs?.find(t => t.id === saved?.activeTabId);
+      if (savedTab) {
+        openWorkspaceTab(savedTab);
+        return;
+      }
+      if (saved?.activeView && isWorkspaceView(saved.activeView)) {
+        activateWorkspaceView(saved.activeView);
       }
     } catch {
       /* ignore malformed / unavailable storage */
     }
-  }, [project, tabsStorageKey, restoreWorkspaceTabs, activateWorkspaceView]);
+    // location/searchParams are read for the ONE-TIME bare-root test above;
+    // re-running on every navigation is guarded by `tabsRestored`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    project,
+    tabsStorageKey,
+    restoreWorkspaceTabs,
+    activateWorkspaceView,
+    openWorkspaceTab,
+    workspaceUrlBase,
+  ]);
 
   const syncedTargetRef = useRef(null);
   const hydratedViewParamRef = useRef(null);
@@ -226,9 +260,9 @@ const Workspace = () => {
     setWorkspaceLens,
   ]);
 
-  // #6: persist the open-tab set (+ active view) on every change — but only
-  // AFTER the initial restore, so we never clobber the saved strip with the
-  // empty starting one.
+  // #6: persist the open-tab set, active view, and active tab on every change —
+  // but only AFTER the initial restore, so we never clobber the saved strip
+  // with the empty starting one.
   useEffect(() => {
     if (!tabsStorageKey || !tabsRestored.current) return;
     try {
@@ -237,12 +271,13 @@ const Workspace = () => {
         JSON.stringify({
           tabs: workspaceTabs.map(t => ({ id: t.id, type: t.type, name: t.name })),
           activeView: workspaceActiveView,
+          activeTabId: workspaceActiveTabId,
         })
       );
     } catch {
       /* ignore unavailable storage */
     }
-  }, [workspaceTabs, workspaceActiveView, tabsStorageKey]);
+  }, [workspaceTabs, workspaceActiveView, workspaceActiveTabId, tabsStorageKey]);
 
   // Push the selected tab into the document title so the browser tab is
   // informative (VIS thread: "the open tab in the browser will be more

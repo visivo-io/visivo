@@ -99,10 +99,79 @@ export function isMedianSupported(dialect) {
 
 // Reuses pivotDraft's exact anchored single-ref pattern.
 const SINGLE_REF = /^\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\.\s*([^}\s]+)\s*\}$/;
+
+/**
+ * Split a matched property path into its column and its full path.
+ *
+ * The backend's `PROPERTY_PATH_PATTERN` allows dots and brackets after the ref
+ * — `${ref(m).gdp}`, `${ref(m).gdp[0]}`, `${ref(m).list[0].prop}` are all
+ * valid. `SINGLE_REF`'s `([^}\s]+)` captures ALL of that as one blob, and it
+ * was being reported as the column NAME. So a pill on `gdp[0]` claimed its
+ * column was "gdp[0]", and `saveAsMetricFlow` built `sum(gdp[0])` — invalid
+ * SQL, which is the bug this fixes.
+ *
+ * `column` is the bare first segment (what a column picker and a generated
+ * aggregate need); `propertyPath` is the whole thing (what serialization needs
+ * to round-trip the value unchanged).
+ */
+const splitPropertyPath = path => ({
+  column: path.split(/[.[]/)[0],
+  propertyPath: path,
+});
 // New: a bare ref with no `.field` — only ever a metric/dimension-ref pill.
 const BARE_REF = /^\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\}$/;
 // Reuses pivotDraft's exact leading-function-call pattern.
 const AGG_WRAP = /^\s*(\w+)\s*\(([\s\S]*)\)\s*$/;
+
+// VIS-1241 — MODIFIER support. The same two shapes as above, but matching only
+// at the HEAD so a trailing fragment (`/ 100`) can be captured rather than
+// dropping the whole expression to `opaque`. A modifier is plain SQL appended
+// after the reference; it is what lets the pill express `sum(x) / 100` without
+// the user leaving the structured editor.
+const SINGLE_REF_HEAD = /^\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\.\s*([^}\s]+)\s*\}/;
+const BARE_REF_HEAD = /^\$\{\s*ref\(\s*([^)]+?)\s*\)\s*\}/;
+const REF_TOKEN = /\$\{\s*ref\(/;
+
+/**
+ * Split `fn( … )rest` at the paren that actually closes `fn(`, so a modifier
+ * after an aggregation is recoverable. A regex can't do this: `AGG_WRAP`'s
+ * `\)\s*$` anchor means `sum(${ref(m).x}) / 100` matches nothing at all, which
+ * is exactly why every modified expression collapsed to raw text.
+ * Returns null when there is no leading call or the parens don't balance.
+ */
+const splitAggHead = text => {
+  const head = text.match(/^\s*(\w+)\s*\(/);
+  if (!head) return null;
+  const open = head[0].length - 1;
+  let depth = 0;
+  for (let i = open; i < text.length; i += 1) {
+    if (text[i] === '(') depth += 1;
+    else if (text[i] === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        return {
+          fn: head[1].toLowerCase(),
+          inner: text.slice(open + 1, i),
+          rest: text.slice(i + 1),
+        };
+      }
+    }
+  }
+  return null;
+};
+
+/**
+ * A trailing fragment is only a modifier if it holds no SECOND reference — a
+ * pill represents ONE reference, and hiding another inside a text field would
+ * misrepresent the expression (`${ref(a).x} + ${ref(b).y}` is not "a.x with a
+ * modifier"). Those stay opaque, as they were.
+ */
+const toModifier = rest => {
+  const trimmed = (rest || '').trim();
+  if (!trimmed) return { ok: true, modifier: undefined };
+  if (REF_TOKEN.test(trimmed)) return { ok: false };
+  return { ok: true, modifier: trimmed };
+};
 
 const findGlobalField = (name, { metricFields, dimensionFields }) => {
   const metric = (metricFields || []).find(f => f.name === name);
@@ -126,7 +195,7 @@ const findGlobalField = (name, { metricFields, dimensionFields }) => {
  * @param {Array<{name: string, parentModel?: string}>} [opts.dimensionFields] -
  *   every known Dimension, same shape.
  * @returns {{
- *   kind: 'dimension'|'aggregate'|'metricRef'|'dimensionRef'|'custom'|'opaque',
+ *   kind: 'dimension'|'aggregate'|'metricRef'|'dimensionRef'|'modelRef'|'custom'|'opaque',
  *   ref?: string, column?: string, agg?: string, raw: string,
  *   statedModel?: string, resolvedParent?: string,
  * }}
@@ -140,6 +209,11 @@ export function parse(expr, opts = {}) {
     const name = bare[1].trim();
     const global = findGlobalField(name, opts);
     if (global) return { kind: global.kind, ref: name, raw };
+    // VIS-1242: a bare ref naming a MODEL is an unbound pill — a model was
+    // dropped and no property has been chosen yet. Without this it parsed as
+    // `opaque`, which suppresses the pill entirely, so a dropped model had
+    // nothing to configure.
+    if ((opts.modelNames || []).includes(name)) return { kind: 'modelRef', ref: name, raw };
     return { kind: 'opaque', raw };
   }
 
@@ -169,9 +243,9 @@ export function parse(expr, opts = {}) {
     }
     if (agg) {
       if (!PRESET_AGGREGATIONS.includes(agg)) return null;
-      return { kind: 'aggregate', agg, ref: statedModel, column: field, raw };
+      return { kind: 'aggregate', agg, ref: statedModel, ...splitPropertyPath(field), raw };
     }
-    return { kind: 'dimension', ref: statedModel, column: field, raw };
+    return { kind: 'dimension', ref: statedModel, ...splitPropertyPath(field), raw };
   };
 
   const direct = trySingleRef(raw);
@@ -190,7 +264,55 @@ export function parse(expr, opts = {}) {
     }
   }
 
+  // VIS-1241: nothing matched as a WHOLE expression — retry allowing a trailing
+  // modifier. Ordered after the exact matches so an unmodified expression takes
+  // the original path untouched.
+  const headed = parseWithModifier(raw, opts, buildResult);
+  if (headed) return headed;
+
   return { kind: 'opaque', raw };
+}
+
+/**
+ * Second pass: match the reference at the head and treat whatever follows as a
+ * modifier. Returns null (→ opaque) for anything that isn't exactly one
+ * reference plus trailing SQL.
+ */
+function parseWithModifier(raw, opts, buildResult) {
+  // `fn(<single ref>) <modifier>`
+  const agg = splitAggHead(raw);
+  if (agg) {
+    const inner = agg.inner.trim().match(SINGLE_REF);
+    if (inner) {
+      const { ok, modifier } = toModifier(agg.rest);
+      if (ok && modifier) {
+        const result = buildResult({ statedModel: inner[1].trim(), field: inner[2].trim() }, agg.fn);
+        if (result) return { ...result, modifier };
+      }
+    }
+  }
+
+  // `<single ref> <modifier>` and `<bare ref> <modifier>`
+  const single = raw.match(SINGLE_REF_HEAD);
+  if (single) {
+    const { ok, modifier } = toModifier(raw.slice(single[0].length));
+    if (ok && modifier) {
+      const result = buildResult({ statedModel: single[1].trim(), field: single[2].trim() }, null);
+      if (result) return { ...result, modifier };
+    }
+  }
+
+  const bare = raw.match(BARE_REF_HEAD);
+  if (bare) {
+    const { ok, modifier } = toModifier(raw.slice(bare[0].length));
+    if (ok && modifier) {
+      const name = bare[1].trim();
+      const global = findGlobalField(name, opts);
+      if (global) return { kind: global.kind, ref: name, raw, modifier };
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -202,14 +324,21 @@ export function parse(expr, opts = {}) {
  */
 export function serialize(state) {
   if (!state) return '';
+  // VIS-1241: the modifier is SQL, so it belongs INSIDE the `?{ }` the caller
+  // wraps this in — `?{ sum(x) / 100 }[0]`, never `?{ sum(x) }[0] / 100`
+  // (the slice must be last; see mkdocs/topics/query-and-context-strings.md).
+  const withModifier = core => (state.modifier ? `${core} ${state.modifier}` : core);
   switch (state.kind) {
     case 'dimension':
-      return formatRefExpression(state.ref, state.column);
+      return withModifier(formatRefExpression(state.ref, state.propertyPath ?? state.column));
     case 'aggregate':
-      return `${state.agg}(${formatRefExpression(state.ref, state.column)})`;
+      return withModifier(
+        `${state.agg}(${formatRefExpression(state.ref, state.propertyPath ?? state.column)})`
+      );
     case 'metricRef':
     case 'dimensionRef':
-      return formatRefExpression(state.ref);
+    case 'modelRef':
+      return withModifier(formatRefExpression(state.ref));
     case 'custom':
     case 'opaque':
     default:

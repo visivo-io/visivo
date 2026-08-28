@@ -46,20 +46,20 @@ def get_env_content_for_example_type(example_type: str) -> str:
 
 
 SCAFFOLD_TEMPLATE = """\
-# Visivo project file. Edit this directly or use `visivo serve` to author in the browser.
+## Visivo project file. Edit this directly or use `visivo serve` to author in the browser.
+## Prose guidance uses `##`; runnable examples use a single `#` — uncomment an
+## example (strip the leading `# `) and it parses as-is.
 name: {project_name}
 
 sources:
-  # A Source is where your data lives - a database or file.
-  # Uncomment and edit, or use the in-browser wizard.
-  #
+  ## A Source is where your data lives - a database or file.
+  ## Uncomment and edit, or use the in-browser wizard.
   # - name: my_db
   #   type: sqlite
   #   database: /path/to/file.db
 
 models:
-  # A Model is a SQL query saved against a Source.
-  #
+  ## A Model is a SQL query saved against a Source.
   # - name: monthly_revenue
   #   source: ${{ref(my_db)}}
   #   sql: |
@@ -69,23 +69,29 @@ models:
   #     GROUP BY 1
 
 insights:
-  # An Insight is a chart configured against a Model.
-  #
+  ## An Insight is a chart configured against a Model.
   # - name: revenue_by_month
   #   props:
   #     type: bar
   #     x: ?{{ ${{ref(monthly_revenue).month}} }}
   #     y: ?{{ ${{ref(monthly_revenue).revenue}} }}
 
+charts:
+  ## A Chart wraps one or more Insights so a dashboard can place them.
+  ## (A dashboard item takes a chart, table, markdown or input - never a
+  ## bare insight.)
+  # - name: revenue_chart
+  #   insights:
+  #     - ${{ref(revenue_by_month)}}
+
 dashboards:
-  # A Dashboard arranges Insights into a layout.
-  #
+  ## A Dashboard arranges Charts into rows of items.
   # - name: my_dashboard
   #   rows:
   #     - height: medium
   #       items:
   #         - width: 1
-  #           insight: ${{ref(revenue_by_month)}}
+  #           chart: ${{ref(revenue_chart)}}
 """
 
 GITIGNORE_CONTENT = """\
