@@ -1,5 +1,7 @@
 import pytest
+from visivo.models.models.sql_model import SqlModel
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+from tests.factories.model_factories import SqlModelFactory
 
 
 class ConcreteObjectManager(ObjectManager[dict]):
@@ -419,3 +421,63 @@ class TestSerializeObjectShape:
         assert "file_path" not in result["config"]
         assert "path" not in result["config"]
         assert result["config"]["description"] == "kept"
+
+
+class TestObjectsEqualIgnoresLocationFields:
+    """`objects_equal` must compare CONTENT, not where the object lives.
+
+    The parser stamps ``path`` (and, for objects that came from an include
+    file, ``file_path``) onto every published object. The API strips both
+    before handing a config to a client, so a config POSTed back can never
+    carry them. Comparing them made every client-saved object permanently
+    MODIFIED — ``get_status`` could not return PUBLISHED for a round trip
+    even when nothing changed.
+    """
+
+    def test_path_only_difference_is_equal(self):
+        """A published model and its round-tripped twin differ only in `path`."""
+        published = SqlModelFactory(name="orders", path="project.models[3]")
+        round_tripped = SqlModelFactory(name="orders")
+
+        assert published.path == "project.models[3]"
+        assert round_tripped.path is None
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)
+
+    def test_file_path_only_difference_is_equal(self):
+        """Objects defined in an include file carry `file_path`; configs don't."""
+        published = SqlModelFactory(name="orders", file_path="/repo/models.visivo.yml")
+        round_tripped = SqlModelFactory(name="orders")
+
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)
+
+    def test_real_content_difference_is_still_unequal(self):
+        """Excluding location fields must not blind the comparison to content."""
+        published = SqlModelFactory(name="orders", sql="select 1", path="project.models[3]")
+        edited = SqlModelFactory(name="orders", sql="select 2")
+
+        assert not ConcreteObjectManager().objects_equal(edited, published)
+
+    def test_get_status_is_published_after_a_no_op_round_trip(self):
+        """The end-to-end symptom: re-saving the config the API just returned."""
+        manager = ConcreteObjectManager()
+        published = SqlModelFactory(name="orders", path="project.models[3]")
+        manager._published_objects["orders"] = published
+
+        config = manager._serialize_object("orders", published, ObjectStatus.PUBLISHED)["config"]
+        manager.save("orders", SqlModel(**config))
+
+        assert manager.get_status("orders") == ObjectStatus.PUBLISHED
+        assert manager.has_unpublished_changes() is False
+
+    def test_get_status_is_modified_when_the_config_actually_changed(self):
+        """The complement: a real edit still reports MODIFIED."""
+        manager = ConcreteObjectManager()
+        published = SqlModelFactory(name="orders", sql="select 1", path="project.models[3]")
+        manager._published_objects["orders"] = published
+
+        config = manager._serialize_object("orders", published, ObjectStatus.PUBLISHED)["config"]
+        config["sql"] = "select 2"
+        manager.save("orders", SqlModel(**config))
+
+        assert manager.get_status("orders") == ObjectStatus.MODIFIED
+        assert manager.has_unpublished_changes() is True

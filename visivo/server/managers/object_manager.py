@@ -9,6 +9,13 @@ from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
 
 T = TypeVar("T")
 
+# Bookkeeping fields that record where an object lives, not what it is. The
+# parser stamps them on; every serializer that hands a config to a client
+# strips them off again (``ObjectManager._serialize_object``,
+# ``commit_views._build_child_info``), so they can never survive a round trip
+# and must not participate in "did this change?".
+LOCATION_FIELDS = {"path", "file_path"}
+
 
 class ObjectStatus(str, Enum):
     """Status of an object in the manager."""
@@ -172,6 +179,15 @@ class ObjectManager(ABC, Generic[T]):
 
         Uses model_dump() for Pydantic models, otherwise uses direct comparison.
 
+        ``path`` and ``file_path`` are excluded: they record where an object
+        LIVES, not what it IS. The parser stamps both onto every published
+        object, while a config that came back from a client never carries
+        them — ``_serialize_object`` and ``commit_views._build_child_info``
+        strip both on the way out, so the round trip cannot restore them.
+        Comparing them meant a client-saved object could never be PUBLISHED:
+        re-saving the exact config the API had just handed out reported
+        MODIFIED, permanently, for every object in the project.
+
         Args:
             obj1: First object
             obj2: Second object
@@ -186,7 +202,9 @@ class ObjectManager(ABC, Generic[T]):
 
         # For Pydantic models, compare serialized dictionaries
         if hasattr(obj1, "model_dump") and hasattr(obj2, "model_dump"):
-            return obj1.model_dump(exclude_none=True) == obj2.model_dump(exclude_none=True)
+            return obj1.model_dump(exclude_none=True, exclude=LOCATION_FIELDS) == obj2.model_dump(
+                exclude_none=True, exclude=LOCATION_FIELDS
+            )
 
         # Fallback to direct comparison
         return obj1 == obj2
@@ -333,5 +351,5 @@ class ObjectManager(ABC, Generic[T]):
             "name": name,
             "status": status.value if status else None,
             "child_item_names": child_names,
-            "config": obj.model_dump(mode="json", exclude_none=True, exclude={"file_path", "path"}),
+            "config": obj.model_dump(mode="json", exclude_none=True, exclude=LOCATION_FIELDS),
         }

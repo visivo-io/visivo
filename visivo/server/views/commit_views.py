@@ -3,7 +3,7 @@ import os
 from dotenv import dotenv_values
 from flask import jsonify
 from visivo.logger.logger import Logger
-from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.managers.object_manager import LOCATION_FIELDS, ObjectStatus
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.user_config import get_run_trigger
 
@@ -468,7 +468,7 @@ def register_commit_views(app, flask_app, output_dir):
 
             # Process defaults
             if flask_app._cached_defaults is not None:
-                exclude_fields = {"path", "file_path"}
+                exclude_fields = LOCATION_FIELDS
                 named_children["defaults"] = {
                     "status": "Modified",
                     "file_path": flask_app.project.project_file_path,
@@ -725,8 +725,10 @@ def _build_child_info(
     }
     writer_status = status_map.get(status, "Unchanged")
 
-    # Fields that should not be written to YAML files (internal tracking fields)
-    exclude_fields = {"path", "file_path"}
+    # Fields that should not be written to YAML files (internal tracking fields).
+    # The same set ``objects_equal`` ignores — what is not written cannot be
+    # what makes an object look changed.
+    exclude_fields = LOCATION_FIELDS
 
     # Detect a model-scoped metric/dimension via the PrivateAttr set in the
     # save endpoint. PrivateAttrs survive on the Pydantic instance.
