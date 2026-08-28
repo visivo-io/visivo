@@ -89,9 +89,18 @@ class TestStructureHelpers:
         assert input_obj.is_range_based() is True
         assert input_obj.is_list_based() is False
 
-    def test_serializer_marks_structure(self):
+    def test_serializer_marks_structure_when_metadata_is_requested(self):
         input_obj = MultiSelectInput(name="regions", options=["East", "West"])
-        dumped = input_obj.model_dump()
+        dumped = input_obj.model_dump(context={"include_input_metadata": True})
         assert dumped["structure"] == "options"
         assert dumped["options"] == ["East", "West"]
         assert "name_hash" in dumped
+
+    def test_serializer_omits_structure_by_default(self):
+        """A plain dump is a CONFIG: `structure` is derived from `range` vs
+        `options`, and the parser's ``extra='forbid'`` rejects it."""
+        input_obj = MultiSelectInput(name="regions", range={"start": 0, "end": 10, "step": 1})
+        dumped = input_obj.model_dump(exclude_none=True)
+        assert "structure" not in dumped
+        assert "name_hash" not in dumped
+        assert MultiSelectInput(**dumped).is_range_based() is True

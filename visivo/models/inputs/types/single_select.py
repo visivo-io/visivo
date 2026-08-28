@@ -175,16 +175,27 @@ class SingleSelectInput(Input):
         return children
 
     @model_serializer(mode="wrap")
-    def serialize_model(self, serializer, _info):
+    def serialize_model(self, serializer, info):
         """
         Custom serializer for single-select inputs.
 
-        Adds name_hash for client-side JSON file lookup.
+        ``name_hash`` is DERIVED metadata, not configuration — it is a pure
+        function of the name, and the data the viewer actually loads is keyed
+        by the hashes ``run_input_job`` writes into the input's job JSON. When
+        it was injected into every dump, the serialized form stopped being a
+        valid config: the parser's ``extra='forbid'`` rejects ``name_hash``,
+        so committing an input wrote YAML the very next parse refused, and an
+        input was permanently reported MODIFIED because a round-trip could
+        never reproduce the published object.
+
+        It is therefore opt-in, gated the same way ``ParentModel``'s
+        ``include_type`` is: pass ``context={"include_input_metadata": True}``
+        to ``model_dump``/``model_dump_json`` when a consumer wants it.
         """
         model = serializer(self)
 
-        # Add name_hash for viewer to construct JSON URL
-        model["name_hash"] = self.name_hash()
+        if info.context and info.context.get("include_input_metadata", False):
+            model["name_hash"] = self.name_hash()
 
         # Convert static list options to strings
         if isinstance(self.options, list):

@@ -41,8 +41,12 @@ class TestSingleSelectInput:
         assert "options" in dumped
         assert "${ref(products_model)}" in dumped["options"]
         assert "select distinct(category)" in dumped["options"]
-        assert "name_hash" in dumped
-        assert dumped["name_hash"] == input_obj.name_hash()
+        # Derived metadata is opt-in; a plain dump is a valid config.
+        assert "name_hash" not in dumped
+        assert (
+            input_obj.model_dump(context={"include_input_metadata": True})["name_hash"]
+            == input_obj.name_hash()
+        )
 
     def test_query_multiple_references_fails(self):
         with pytest.raises(ValueError) as exc_info:
@@ -88,7 +92,7 @@ class TestSingleSelectInput:
 
         assert len(children) == 0
 
-    def test_static_options_include_name_hash(self):
+    def test_static_options_include_name_hash_only_on_request(self):
         data = {
             "name": "category_filter",
             "options": ["Option A", "Option B", "Option C"],
@@ -97,8 +101,10 @@ class TestSingleSelectInput:
         dumped = input_obj.model_dump()
 
         assert dumped["options"] == ["Option A", "Option B", "Option C"]
-        assert "name_hash" in dumped
-        assert dumped["name_hash"] == input_obj.name_hash()
+        assert "name_hash" not in dumped
+
+        with_metadata = input_obj.model_dump(context={"include_input_metadata": True})
+        assert with_metadata["name_hash"] == input_obj.name_hash()
 
 
 class TestMultiSelectInput:
@@ -201,7 +207,7 @@ class TestMultiSelectInput:
 
         assert len(children) == 0
 
-    def test_serialize_with_name_hash(self):
+    def test_serialize_with_name_hash_only_on_request(self):
         data = {
             "name": "multi_input",
             "options": ["A", "B", "C"],
@@ -209,5 +215,9 @@ class TestMultiSelectInput:
         input_obj = MultiSelectInput(**data)
         dumped = input_obj.model_dump()
 
-        assert "name_hash" in dumped
-        assert dumped["name_hash"] == input_obj.name_hash()
+        assert "name_hash" not in dumped
+        assert "structure" not in dumped
+
+        with_metadata = input_obj.model_dump(context={"include_input_metadata": True})
+        assert with_metadata["name_hash"] == input_obj.name_hash()
+        assert with_metadata["structure"] == "options"

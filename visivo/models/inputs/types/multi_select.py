@@ -304,19 +304,29 @@ class MultiSelectInput(Input):
         return self.options is not None
 
     @model_serializer(mode="wrap")
-    def serialize_model(self, serializer, _info):
+    def serialize_model(self, serializer, info):
         """
         Custom serializer for multi-select inputs.
 
-        Adds name_hash and structure type for client-side handling.
+        ``name_hash`` and ``structure`` are DERIVED metadata, not
+        configuration — ``structure`` is a restatement of which of
+        ``options``/``range`` is set, and the viewer reads both off the job
+        JSON ``run_input_job`` writes, which computes them itself. Injecting
+        them into every dump made the serialized form an invalid config: the
+        parser's ``extra='forbid'`` rejects both, so committing an input wrote
+        YAML the very next parse refused, and an input was permanently
+        reported MODIFIED because a round-trip could never reproduce the
+        published object.
+
+        They are therefore opt-in, gated the same way ``ParentModel``'s
+        ``include_type`` is: pass ``context={"include_input_metadata": True}``
+        to ``model_dump``/``model_dump_json`` when a consumer wants them.
         """
         model = serializer(self)
 
-        # Add name_hash for viewer to construct JSON URL
-        model["name_hash"] = self.name_hash()
-
-        # Add structure type for frontend to know how to handle this input
-        model["structure"] = "range" if self.is_range_based() else "options"
+        if info.context and info.context.get("include_input_metadata", False):
+            model["name_hash"] = self.name_hash()
+            model["structure"] = "range" if self.is_range_based() else "options"
 
         # Convert static list options to strings
         if isinstance(self.options, list):
