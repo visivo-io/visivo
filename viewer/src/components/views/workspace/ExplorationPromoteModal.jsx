@@ -39,14 +39,28 @@ const isRenamableRow = row => row.status === 'new' && RENAMABLE_TIERS.has(row.ti
  * So: MERGE. A still-present key keeps its existing draft (the user's text,
  * committed on ITS OWN blur, never here); only rows appearing under a new
  * key — the just-committed row under its new name, or a genuinely new row —
- * take the rebuilt store name. Keys no longer in the checklist drop out.
+ * take the rebuilt store name. Keys no longer in the checklist drop out
+ * (a name the user renamed AWAY from must not leave a stale draft behind to
+ * resurface if they later rename back TO it).
+ *
+ * `committedKey` — the key `handleNameCommit` just committed — is the ONE
+ * key that always re-seeds from `built`, even when it survives the rebuild
+ * unchanged. Its draft is no longer "in-flight": the user already blurred
+ * it. Inferring that re-sync from key CHURN alone (the row reappearing under
+ * a new name) was wrong whenever the rename didn't move the key — the store
+ * rename actions (`renameModelTab`/`renameInsight`) silently `return` for a
+ * draft with `isNew === false`, while renamability here is decided by the
+ * BACKEND diff's `'new'`. Those two diverge for a working copy whose project
+ * object left the project mid-session (Library delete, external .visivo.yml
+ * edit), and the field then displayed a name the save would never use.
  */
-const mergeNameDrafts = (prev, built) => {
+const mergeNameDrafts = (prev, built, committedKey = null) => {
   const next = new Map();
   for (const r of built) {
     if (!isRenamableRow(r)) continue;
     const key = rowKey(r);
-    next.set(key, prev.has(key) ? prev.get(key) : r.name);
+    const keepInFlightDraft = prev.has(key) && key !== committedKey;
+    next.set(key, keepInFlightDraft ? prev.get(key) : r.name);
   }
   return next;
 };
@@ -262,10 +276,12 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       setRows(built);
       // MERGE, never replace: another row's field may hold typed-but-not-yet-
       // committed text right now (this rebuild is a real network wait) — see
-      // mergeNameDrafts. The just-committed row re-syncs naturally: its NEW
-      // key has no prior draft, so it takes the rebuilt store name, while its
-      // old key (and any stale draft under it) drops out of the checklist.
-      setNameDrafts(prev => mergeNameDrafts(prev, built));
+      // mergeNameDrafts. THIS row is the exception (`key` is passed as
+      // `committedKey`): it re-syncs to whatever the rebuilt checklist says
+      // its name actually is, so a rename the store refused snaps the field
+      // back to the truth rather than leaving it showing a name the save
+      // would never use.
+      setNameDrafts(prev => mergeNameDrafts(prev, built, key));
       // Remap the selection: every OTHER row's key is unchanged, so a direct
       // `has` lookup carries its checked state forward; the renamed row's
       // prior checked state is looked up under its OLD key instead.
@@ -278,9 +294,27 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         });
         return next;
       });
+      // The store rename actions are SILENT no-ops (a bare `return`, never a
+      // throw) for a draft with `isNew === false`, so a clean `renameRow`
+      // call is not proof the rename happened. Renamability here is decided
+      // by the backend diff instead (`status === 'new'`, which
+      // `explorer_views.py::_diff_object` reports for anything the manager
+      // can no longer `get`) — the two diverge for a loaded working copy
+      // whose project object left the project mid-session. Say so inline
+      // rather than letting the field quietly revert with no explanation:
+      // the object IS still going to be saved, just under its old name.
+      const renameTook = built.some(r => r.type === row.type && r.name === nextName);
+      const stillUnderOldName = built.some(r => r.type === row.type && r.name === row.name);
       setNameErrors(prev => {
         const nextErrors = new Map(prev);
-        nextErrors.delete(key);
+        if (!renameTook && stillUnderOldName) {
+          nextErrors.set(
+            key,
+            `Could not rename — "${row.name}" was loaded from an existing object, so it will be saved under that name.`
+          );
+        } else {
+          nextErrors.delete(key);
+        }
         return nextErrors;
       });
       setRenamingKey(null);
