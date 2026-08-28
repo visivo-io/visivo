@@ -157,7 +157,9 @@ const renderAt = (entry) => {
     ),
     { initialEntries: [entry], future: futureFlags }
   );
-  return render(<RouterProvider router={router} future={futureFlags} />);
+  // The router comes back alongside the render result so a test can assert on
+  // the URL the workspace navigated to, not just the resulting store state.
+  return { ...render(<RouterProvider router={router} future={futureFlags} />), router };
 };
 
 describe('VIS-775 Workspace shell', () => {
@@ -530,6 +532,68 @@ describe('VIS-775 Workspace shell', () => {
 
     // The chart tab is restored from storage.
     expect(await screen.findByTestId('workspace-tab-chart:revenue_chart')).toBeInTheDocument();
+  });
+
+  test('restores the ACTIVE tab, not just the strip, when arriving at the bare root', async () => {
+    // The top nav's "Workspace" link is a bare `/workspace`. Leaving for Runs
+    // or Dashboards and coming back used to land on Project no matter what had
+    // been open, because the active tab lived only in the URL and that link
+    // carries none.
+    const { unmount } = renderAt('/workspace');
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue_chart' });
+    });
+    await waitFor(() =>
+      expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue_chart')
+    );
+    unmount();
+
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        workspaceActiveView: 'project',
+        workspaceUrlNavigate: null,
+      });
+    });
+    const { router } = renderAt('/workspace');
+
+    await waitFor(() =>
+      expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue_chart')
+    );
+    // The URL comes back too — otherwise a refresh from here would lose it again.
+    await waitFor(() =>
+      expect(new URLSearchParams(router.state.location.search).get('edit')).toBe(
+        'chart:revenue_chart'
+      )
+    );
+  });
+
+  test('a URL that names a target still wins over the remembered one', async () => {
+    // Deep links, the back button, and `?edit=` from anywhere else must not be
+    // overridden by what happened to be open last time.
+    const { unmount } = renderAt('/workspace');
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'revenue_chart' });
+    });
+    await waitFor(() =>
+      expect(useStore.getState().workspaceActiveTabId).toBe('chart:revenue_chart')
+    );
+    unmount();
+
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        workspaceActiveView: 'project',
+        workspaceUrlNavigate: null,
+      });
+    });
+    renderAt('/workspace?edit=dashboard:simple-dashboard');
+
+    await waitFor(() =>
+      expect(useStore.getState().workspaceActiveTabId).toBe('dashboard:simple-dashboard')
+    );
   });
 
   test('persists the active VIEW alongside the tab set and restores it on a bare-root reload', async () => {
