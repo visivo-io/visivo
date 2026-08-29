@@ -28,7 +28,23 @@ def run_phase(
     server_url: str = None,
     no_deprecation_warnings: bool = False,
     run_id: str = DEFAULT_RUN_ID,
+    defer_exit: bool = False,
 ):
+    """
+    ``defer_exit`` hands failure reporting back to the caller instead of ending
+    the process inside the runner. Used by ``visivo run --json``, which has to
+    print its JSON envelope before the process ends; the returned runner's
+    ``failed_job_results`` then says whether the run actually succeeded, and the
+    caller picks the exit code.
+
+    It works by running soft: ``DagRunner`` calls ``sys.exit(1)`` on a failed job
+    unless ``soft_failure`` is set, and that exit unwinds ``FilteredRunner.run()``
+    before it can aggregate the per-job results the JSON envelope reports. Two
+    consequences worth knowing: every filtered DAG is attempted rather than
+    stopping at the first failing one (so ``--json`` reports every broken object
+    in one pass), and the ``SystemExit`` guard below is belt-and-braces for any
+    other code path that decides to exit mid-run.
+    """
     from visivo.logger.logger import Logger
     from visivo.jobs.filtered_runner import FilteredRunner
     from time import time
@@ -91,11 +107,17 @@ def run_phase(
         project=project,
         output_dir=output_dir,
         threads=threads,
-        soft_failure=soft_failure,
+        soft_failure=soft_failure or defer_exit,
         dag_filter=dag_filter,
         server_url=server_url,
         working_dir=working_dir,
         run_id=run_id,
     )
-    runner.run()
+    if defer_exit:
+        try:
+            runner.run()
+        except SystemExit:
+            pass
+    else:
+        runner.run()
     return runner
