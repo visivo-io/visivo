@@ -119,8 +119,14 @@ export const useModelTabPrefill = (modelName, hasResult, cacheScope = null) => {
       return;
     }
     servedFromCacheRef.current = modelName;
-    // `from_cache` marks the provenance for anything downstream that cares;
-    // the rows themselves are exactly what the run produced.
+    // `from_cache` is provenance on the payload. Nothing reads it today — and
+    // neither does anything read `from_last_run` below, which has been on the
+    // build path since before M27 — so it is not a signal the UI can be said
+    // to give the user yet. It is here for the first surface that wants to say
+    // where the rows came from, and it is deliberately NOT load-bearing:
+    // everything the cache must get right, it gets right by never storing or
+    // serving an entry it should not. The rows themselves are exactly what the
+    // run produced.
     setModelQueryResult(modelName, { ...cached, from_cache: true });
   }, [modelName, hasResult, setModelQueryResult, explorationId, scopeSourceName, scopeSql]);
 
