@@ -206,28 +206,38 @@ def _track_command_execution(
     telemetry_client.track(event)
 
 
-def _emit_json_error(command_name, exception) -> bool:
+def _report_error_for_agent(command_name, exception, message) -> bool:
     """
-    Last-resort JSON envelope for a `--json` invocation that failed before (or
+    Keep stdout clean for a machine-readable invocation that failed before (or
     outside of) the command body's own handler -- a bad option value, say, or an
-    error raised while click was still parsing. Returns True when it printed.
-    """
-    if not JSON_INVOCATION:
-        return False
-    try:
-        from visivo.commands.json_output import emit, envelope, errors_from_exception
+    error raised while click was still parsing.
 
-        emit(
-            envelope(
-                command=command_name or "visivo",
-                success=False,
-                errors=errors_from_exception(exception),
+    For `--json` that means the structured envelope on stdout; for
+    `visivo schema` it means the human message on stderr, so that
+    `visivo schema > core.json` leaves an empty file rather than one containing
+    an error message. Returns True when it printed.
+    """
+    if JSON_INVOCATION:
+        try:
+            from visivo.commands.json_output import emit, envelope, errors_from_exception
+
+            emit(
+                envelope(
+                    command=command_name or "visivo",
+                    success=False,
+                    errors=errors_from_exception(exception),
+                )
             )
-        )
+            return True
+        except Exception:
+            # Never let the JSON path swallow the original error.
+            return False
+
+    if SCHEMA_INVOCATION:
+        click.echo(message, err=True)
         return True
-    except Exception:
-        # Never let the JSON path swallow the original error.
-        return False
+
+    return False
 
 
 def safe_visivo():
@@ -256,7 +266,7 @@ def safe_visivo():
 
     except (ValidationError, LineValidationError) as e:
         error_type = type(e).__name__
-        if _emit_json_error(command_name, e):
+        if _report_error_for_agent(command_name, e, str(e)):
             sys.exit(1)
         Logger.instance().error(str(e))
         sys.exit(1)
@@ -268,7 +278,7 @@ def safe_visivo():
         # percent-encodes the ENTIRE stack trace into a giant OSC-8 terminal
         # hyperlink (smoke-test bug #14).
         error_type = type(e).__name__
-        if _emit_json_error(command_name, e):
+        if _report_error_for_agent(command_name, e, e.format_message()):
             sys.exit(1)
         Logger.instance().error(e.format_message())
         sys.exit(1)
@@ -276,7 +286,7 @@ def safe_visivo():
         error_type = type(e).__name__
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
-        if _emit_json_error(command_name, e):
+        if _report_error_for_agent(command_name, e, f"An unexpected error has occurred: {e}"):
             sys.exit(1)
         Logger.instance().error("An unexpected error has occurred")
         Logger.instance().error(str(e))

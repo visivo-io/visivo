@@ -2,6 +2,8 @@ import json
 import os
 import re
 import shlex
+import subprocess
+import sys
 
 from click.testing import CliRunner
 
@@ -126,3 +128,56 @@ def test_every_prop_type_is_emittable():
         response = runner.invoke(schema, ["--props", prop_type.value])
         assert response.exit_code == 0, f"--props {prop_type.value} failed"
         json.loads(response.stdout)
+
+
+# ---------------------------------------------------------------------------
+# End-to-end stdout purity.
+#
+# CliRunner invokes the subcommand directly, so it never exercises
+# command_line.py -- and that is where the "Starting Visivo..." banner, the
+# trailing execution-time line and the Halo spinner live, all of which write to
+# stdout and would corrupt the document. Only a real process proves the
+# contract, so these three shell out.
+# ---------------------------------------------------------------------------
+
+
+def _cli(*args):
+    return subprocess.run(
+        [sys.executable, "-m", "visivo.command_line", *args],
+        capture_output=True,
+        text=True,
+        cwd=temp_folder_created(),
+    )
+
+
+def temp_folder_created():
+    folder = temp_folder()
+    os.makedirs(folder, exist_ok=True)
+    return os.path.abspath(folder)
+
+
+def test_end_to_end_schema_stdout_is_only_the_document():
+    result = _cli("schema")
+
+    assert result.returncode == 0
+    document = json.loads(result.stdout)
+    assert document["x-visivo-schema"]["mode"] == "core"
+    assert "Starting Visivo" not in result.stdout
+    assert "execution time" not in result.stdout
+
+
+def test_end_to_end_schema_error_leaves_stdout_empty():
+    """`visivo schema > core.json` must not write an error message into the file."""
+    result = _cli("schema", "--core", "--full")
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "--core" in result.stderr
+
+
+def test_end_to_end_compile_json_stdout_is_only_the_envelope():
+    result = _cli("compile", "--json")
+
+    assert json.loads(result.stdout)["command"] == "compile"
+    assert "Starting Visivo" not in result.stdout
+    assert "execution time" not in result.stdout
