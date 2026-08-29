@@ -37,10 +37,25 @@ const SQLEditor = ({
   const handleRunRef = useRef(null);
   const handleCancelRef = useRef(null);
   const isRunningRef = useRef(false);
-  // Snapshot of queryContext at execute time — passed back through
+  // Snapshot of the RUN at execute time — passed back through
   // onQueryComplete so the caller can route results to the tab/model that
   // started the run even if the context changed while the job was in flight.
+  //
+  // `sql`/`sourceName` are part of that snapshot for the same reason `context`
+  // is, and M27's result cache depends on it: what was actually sent may be a
+  // SELECTION rather than the whole buffer, and the user can keep typing (or
+  // change source) while the job runs. A caller that keyed a cached result on
+  // whatever the editor holds when the rows land would file one query's rows
+  // under another query's identity.
   const runContextRef = useRef(null);
+  const runSqlRef = useRef(null);
+  const runSourceRef = useRef(null);
+
+  const completionPayload = () => ({
+    context: runContextRef.current,
+    executedSql: runSqlRef.current,
+    executedSourceName: runSourceRef.current,
+  });
 
   const [sql, setSql] = useState(initialValue);
   const [showError, setShowError] = useState(true);
@@ -70,13 +85,13 @@ const SQLEditor = ({
   // Notify parent when query completes
   useEffect(() => {
     if (onQueryComplete && result) {
-      onQueryComplete({ result, error: null, context: runContextRef.current });
+      onQueryComplete({ result, error: null, ...completionPayload() });
     }
   }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (onQueryComplete && error) {
-      onQueryComplete({ result: null, error, context: runContextRef.current });
+      onQueryComplete({ result: null, error, ...completionPayload() });
     }
   }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,8 +134,11 @@ const SQLEditor = ({
     }
 
     setShowError(true);
+    const executed = queryText.trim();
     runContextRef.current = queryContext ?? null;
-    executeQuery(sourceName, queryText.trim());
+    runSqlRef.current = executed;
+    runSourceRef.current = sourceName;
+    executeQuery(sourceName, executed);
     recordOnboardingAction('query_run');
   }, [sourceName, sql, executeQuery, queryContext]);
 

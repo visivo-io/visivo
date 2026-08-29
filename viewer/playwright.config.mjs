@@ -126,6 +126,10 @@ export default defineConfig({
         // edit, type switch): mints a real exploration + computed columns
         // against the shared `.visivo/explorations/` repository.
         '**/exploration-chart-build-updates.spec.mjs',
+        // M27 (results survive a tab switch): mints TWO real exploration
+        // records and runs a real query job against the shared
+        // `.visivo/explorations/` repository — same isolation need.
+        '**/exploration-result-continuity.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -296,6 +300,9 @@ export default defineConfig({
         // the draft compile/execute endpoints — same shared-repository
         // isolation need as its computed-column siblings above.
         '**/exploration-computed-metric-grouping.spec.mjs',
+        // M27 (results survive a tab switch) — see the 'parallel' project's
+        // testIgnore entry for the same file for why.
+        '**/exploration-result-continuity.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,
