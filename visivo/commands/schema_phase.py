@@ -211,7 +211,7 @@ def full_schema() -> Dict[str, Any]:
 
 
 def core_schema() -> Dict[str, Any]:
-    """The authoring subset, derived by the five steps in the module docstring."""
+    """The authoring subset, derived by the six steps in the module docstring."""
     from visivo.version import VISIVO_VERSION
 
     source = _pydantic_project_schema()
@@ -307,6 +307,7 @@ def _vendored_schema(file_name: str) -> Dict[str, Any]:
 
 
 def schema_phase(
+    core: bool = False,
     full: bool = False,
     prop_type: Optional[str] = None,
     layout: bool = False,
@@ -315,9 +316,12 @@ def schema_phase(
     """Return the requested schema as a JSON string.
 
     Exactly one selector may be given. With none, the core authoring subset is
-    returned, because that is the one an agent should be reading.
+    returned, because that is the one an agent should be reading; ``core=True``
+    asks for the same thing explicitly.
     """
-    selectors = [name for name, on in (("--full", full), ("--layout", layout)) if on]
+    selectors = [
+        name for name, on in (("--core", core), ("--full", full), ("--layout", layout)) if on
+    ]
     if prop_type:
         selectors.append("--props")
     if len(selectors) > 1:

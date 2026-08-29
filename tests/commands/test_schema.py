@@ -1,5 +1,7 @@
 import json
 import os
+import re
+import shlex
 
 from click.testing import CliRunner
 
@@ -91,6 +93,31 @@ def test_schema_indent_pretty_prints():
     assert response.exit_code == 0
     assert '\n  "' in response.stdout
     json.loads(response.stdout)
+
+
+def test_core_flag_matches_the_default():
+    assert json.loads(runner.invoke(schema, ["--core"]).stdout) == json.loads(
+        runner.invoke(schema, []).stdout
+    )
+
+
+def test_every_command_the_schema_advertises_actually_runs():
+    """The `x-visivo-schema` block tells an agent what to run next. It must work."""
+    document = json.loads(runner.invoke(schema, []).stdout)
+    metadata = document["x-visivo-schema"]
+
+    advertised = {metadata["generated_by"], metadata["full_schema_command"]}
+    for note in metadata["pruned_vocabularies"].values():
+        advertised.update(re.findall(r"`(visivo schema[^`]*)`", note))
+
+    assert advertised, "the schema advertises no commands at all"
+    for command in sorted(advertised):
+        args = shlex.split(command)
+        assert args[:2] == ["visivo", "schema"], command
+        # `--props <type>` is a template; substitute a real type to run it.
+        args = ["bar" if arg == "<type>" else arg for arg in args[2:]]
+        response = runner.invoke(schema, args)
+        assert response.exit_code == 0, f"`{command}` does not run: {response.output[:200]}"
 
 
 def test_every_prop_type_is_emittable():

@@ -3,6 +3,15 @@ import click
 
 @click.command()
 @click.option(
+    "--core",
+    is_flag=True,
+    default=False,
+    help=(
+        "Emit the core authoring subset (~90 KB). This is the default; the flag "
+        "exists so a script can say what it means."
+    ),
+)
+@click.option(
     "--full",
     is_flag=True,
     default=False,
@@ -41,7 +50,7 @@ import click
     type=int,
     help="Pretty-print with this many spaces of indentation. Default is compact.",
 )
-def schema(full, prop_type, layout, output, indent):
+def schema(core, full, prop_type, layout, output, indent):
     """
     Writes the Visivo project JSON Schema to stdout, for an agent (or an editor) to read.
 
@@ -58,7 +67,9 @@ def schema(full, prop_type, layout, output, indent):
     from visivo.commands.schema_phase import SchemaSelectionError, schema_phase
 
     try:
-        schema_string = schema_phase(full=full, prop_type=prop_type, layout=layout, indent=indent)
+        schema_string = schema_phase(
+            core=core, full=full, prop_type=prop_type, layout=layout, indent=indent
+        )
     except SchemaSelectionError as error:
         raise click.ClickException(str(error))
 
