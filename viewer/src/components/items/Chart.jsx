@@ -1,6 +1,6 @@
 import Loading from '../common/Loading';
 import Plot from 'react-plotly.js';
-import React, { useState, useMemo, useImperativeHandle } from 'react';
+import React, { useState, useMemo, useImperativeHandle, useEffect, useRef } from 'react';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
 import { chartDataFromInsightData } from '../../models/Insight';
@@ -136,7 +136,24 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     // them anyway is not merely redundant — it hands Plotly two authorities, so
     // a re-render can paint at the fixed size before autosize strips it back.
     // Honour whichever the caller actually asked for rather than both.
-    if (!layout.autosize) {
+    //
+    // The dimensions can arrive from EITHER side — the `height`/`width` props
+    // (the dashboard's slot) or the chart's own authored `layout` — and until
+    // this branch stripped the second source, only the prop side was guarded.
+    // A config that carries `width`/`height` (e.g. integration's `surface-chart`:
+    // `{autosize: false, width: 500, height: 500}`) therefore reached Plotly as
+    // `{autosize: true, width: 500, height: 500}` once `hideToolbar` above
+    // forced autosize on, and Plotly resolves that contradiction in favour of
+    // the explicit values, silently: `initialAutoSize = (!width || !height) &&
+    // autosize` is false (plots.js), `plotAutoSize` only moves a dimension when
+    // `!layout.width` / `!layout.height`, and `Plots.resize` early-returns
+    // outright when `layout.width && layout.height`. So the chart stayed at its
+    // authored 500x500 in a preview pane of any other size AND ignored every
+    // resize sent to it. Exactly one authority reaches Plotly.
+    if (layout.autosize) {
+      delete layout.width;
+      delete layout.height;
+    } else {
       if (height !== undefined) layout.height = height;
       if (width !== undefined) layout.width = width;
     }
@@ -148,12 +165,81 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     [plotlyConfig]
   );
 
+  // M28 — make a CONTAINER resize reach Plotly.
+  //
+  // Plotly only ever re-measures its node when something tells it to, and the
+  // only thing that ever does is a window `resize` event: react-plotly.js's
+  // `useResizeHandler` (below) installs a window listener, and plotly.js
+  // itself contains no ResizeObserver at all (upstream plotly.js#3984/#7059,
+  // react-plotly.js#41/#64). So a pane that changes size while the WINDOW does
+  // not — a rail drag, a collapsed editor, a banner appearing above the plot —
+  // leaves the figure drawn at its last measured size. Measured before this
+  // fix: dragging the workspace right rail took the chart pane from 454px to
+  // 354px wide while Plotly's own resolved width moved 452 → 442, i.e. 88px
+  // stale.
+  //
+  // Observing the container and re-firing that same window event adds a
+  // TRIGGER for the sizing authority that already exists; it never introduces
+  // a second one (#634 — "don't give Plotly two sizing authorities"). The
+  // corollary is the `plotlyOwnsSizing` gate: when the layout carries explicit
+  // width AND height, the CALLER owns the dimensions, and re-measuring the
+  // container would be exactly the second authority #634 removed — so we don't
+  // observe at all. (This is also why the dashboard is untouched: it passes
+  // both dimensions.)
+  //
+  // The gate is plotly's OWN predicate, not a paraphrase of it. plots.js
+  // decides whether it is sizing itself in three places and all three test the
+  // dimensions, never the `autosize` key alone:
+  //   supplyLayoutGlobalDefaults: `coerce('autosize', !(layoutIn.width && layoutIn.height))`
+  //   plotAutoSize:               `!layout.width` / `!layout.height`
+  //   Plots.resize:               early-returns when `layout.width && layout.height`
+  // Gating on `!!layout.autosize` instead got BOTH sides wrong. It said yes to
+  // a chart Plotly refuses to resize (a config carrying width+height, whose
+  // forced `autosize: true` plotly discards — an observer whose every dispatch
+  // is a no-op that still wakes every window-resize listener in the app), and
+  // it said no to charts Plotly autosizes IMPLICITLY, which is any layout
+  // missing either dimension — the `autosize` key need never appear.
+  //
+  // Cost of using the window event rather than reaching into react-plotly.js
+  // for the private per-plot handler: it wakes every other window-resize
+  // listener on the page. That is the same trade CenterPanel.jsx and
+  // ExplorerInputsToolbar.jsx already make for their own divider/toolbar
+  // reflows, it is bounded to autosize charts, it is coalesced to one dispatch
+  // per animation frame below, and it depends on no library internals.
+  const containerRef = useRef(null);
+  const plotlyOwnsSizing = !(plotLayout.width && plotLayout.height);
+  useEffect(() => {
+    if (!plotlyOwnsSizing || isDataLoading) return undefined;
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+
+    let frame = null;
+    const observer = new ResizeObserver(entries => {
+      // A zero box means the pane is hidden (display:none) or detached;
+      // Plotly rejects a resize on a non-displayed div, so skip it.
+      const rect = entries[0]?.contentRect;
+      if (rect && rect.width === 0 && rect.height === 0) return;
+      // A drag emits an entry per frame — coalesce them into one dispatch.
+      if (frame !== null) return;
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        window.dispatchEvent(new Event('resize'));
+      });
+    });
+    observer.observe(node);
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [plotlyOwnsSizing, isDataLoading]);
+
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
 
   return (
     <ItemContainer
+      ref={containerRef}
       className={hideToolbar ? 'h-full' : ''}
       id={itemNameToSlug(chart.name)}
     >
