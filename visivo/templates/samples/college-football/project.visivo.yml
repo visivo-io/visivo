@@ -87,7 +87,7 @@ charts:
         text: "Average attendance by home team"
 
 dashboards:
-  - name: College Football
+  - name: College Football Overview
     rows:
       - height: compact
         items:
