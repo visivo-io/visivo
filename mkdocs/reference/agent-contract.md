@@ -17,6 +17,7 @@ Both write to **stdout** and send every human-readable line to **stderr**, so
 
 ```bash
 visivo schema                  # the core authoring subset (default)
+visivo schema --core           # the same, said explicitly
 visivo schema -o core.json     # write it to a file
 visivo schema --indent 2       # pretty-print
 visivo schema --full           # the complete schema, Plotly vocabularies included
