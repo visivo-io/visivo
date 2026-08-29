@@ -165,6 +165,21 @@ def test_errors_from_a_click_exception():
     ]
 
 
+def test_errors_from_a_yaml_syntax_click_exception_carry_file_and_line():
+    """load_yaml_file already knows where the syntax error is -- keep that."""
+    errors = errors_from_exception(
+        click.ClickException(
+            "Invalid yaml in project\n"
+            "  Location: /work/my project/project.visivo.yml:4[4]\n"
+            "  Issue: expected <block end>"
+        )
+    )
+
+    assert errors[0]["code"] == "cli_error"
+    assert errors[0]["file"] == "/work/my project/project.visivo.yml"
+    assert errors[0]["line"] == 4
+
+
 def test_errors_from_an_arbitrary_exception():
     errors = errors_from_exception(RuntimeError("nope"))
 

@@ -148,10 +148,19 @@ def envelope(
 
 
 def _split_location(location: Optional[str]):
-    """``"project.visivo.yml:14"`` -> ``("project.visivo.yml", 14)``."""
+    """``"project.visivo.yml:14"`` -> ``("project.visivo.yml", 14)``.
+
+    Also accepts the ``file:line[column]`` form ``load_yaml_file`` raises for a
+    YAML syntax error; the column is dropped, since the envelope reports lines.
+    """
     if not location:
         return (None, None)
-    text = location.strip()
+    # First line only -- the YAML-syntax form continues with "\n  Issue: ..." --
+    # and never split on spaces, because a project path may contain one.
+    lines = location.strip().splitlines()
+    text = lines[0].strip() if lines else ""
+    if text.endswith("]") and "[" in text:
+        text = text[: text.rindex("[")]
     file_name, separator, line_text = text.rpartition(":")
     if separator and line_text.isdigit():
         return (file_name or None, int(line_text))
@@ -319,7 +328,12 @@ def errors_from_exception(exception: BaseException) -> List[dict]:
     import click
 
     if isinstance(exception, click.ClickException):
-        return [_error(code="cli_error", message=exception.format_message())]
+        message = exception.format_message()
+        # A YAML syntax error from load_yaml_file already knows where it is:
+        # "Invalid yaml in project\n  Location: <file>:<line>[<col>]\n  Issue: ..."
+        _, marker, tail = message.partition("Location:")
+        file_name, line = _split_location(tail) if marker else (None, None)
+        return [_error(code="cli_error", message=message, file=file_name, line=line)]
 
     return [_error(code=type(exception).__name__, message=str(exception))]
 
