@@ -11,12 +11,42 @@ from visivo.logger.logger import Logger, TypeEnum
 # --host on deploy/archive/authorize — so only the long forms are quiet.
 # A bare `visivo` prints usage, which is help-shaped output too.
 
+# Group-level options that consume the token after them. Everything else the
+# `visivo` group takes (-p/--profile, --verbose, --version, --help) is a flag,
+# so the first token that is neither an option nor one of these values is the
+# subcommand. `--env-file=x` and `-e.env` attach their value and need no entry.
+_GROUP_VALUE_OPTIONS = frozenset({"-e", "--env-file"})
+
+
+def _subcommand(argv):
+    """The subcommand name, however many group options precede it.
+
+    Keying off ``argv[1]`` is wrong: the group accepts options before the
+    subcommand, so `visivo -e .env schema` and `visivo --verbose schema` are
+    both still `schema` invocations. Missing them put the startup banner and
+    the trailing execution-time line on stdout, in front of and behind the JSON
+    document -- and routed the error message for a bad `schema` flag to stdout
+    as well, straight into the file the agent was redirecting into.
+    """
+    skip = False
+    for token in argv[1:]:
+        if skip:
+            skip = False
+            continue
+        if token.startswith("-"):
+            skip = token in _GROUP_VALUE_OPTIONS
+            continue
+        return token
+    return None
+
+
 # Machine-readable invocations put a JSON document on stdout and must not have
 # it prefixed by a banner or suffixed by a timing line: `--json` on
 # compile/run/test, and every `visivo schema` invocation. They also must not
 # start a Halo spinner, which writes to stdout directly.
+SUBCOMMAND = _subcommand(_sys.argv)
 JSON_INVOCATION = "--json" in _sys.argv[1:]
-SCHEMA_INVOCATION = len(_sys.argv) > 1 and _sys.argv[1] == "schema"
+SCHEMA_INVOCATION = SUBCOMMAND == "schema"
 AGENT_INVOCATION = JSON_INVOCATION or SCHEMA_INVOCATION
 
 QUIET_INVOCATION = (
@@ -78,13 +108,23 @@ def visivo(env_file, profile, verbose):
         import cProfile
         import atexit
 
-        Logger.instance().info("Profiling...")
+        # `-p` is a group option, so it can precede the subcommand: `visivo -p
+        # schema` is still a schema invocation, and Logger.info writes to
+        # stdout, which would put "Profiling..." in front of the document and
+        # "Profiling completed" behind it.
+        def note(message):
+            if AGENT_INVOCATION:
+                click.echo(message, err=True)
+            else:
+                Logger.instance().info(message)
+
+        note("Profiling...")
         pr = cProfile.Profile()
         pr.enable()
 
         def exit():
             pr.disable()
-            Logger.instance().info("Profiling completed")
+            note("Profiling completed")
             pr.dump_stats("visivo-profile.dmp")
 
         atexit.register(exit)
@@ -223,7 +263,11 @@ def _report_error_for_agent(command_name, exception, message) -> bool:
 
             emit(
                 envelope(
-                    command=command_name or "visivo",
+                    # SUBCOMMAND, not command_name: the telemetry sanitizer
+                    # reads argv[1] and reports "help" for anything starting
+                    # with a dash, so `visivo -e .env compile --json` would
+                    # otherwise label its envelope "help".
+                    command=SUBCOMMAND or command_name or "visivo",
                     success=False,
                     errors=errors_from_exception(exception),
                 )

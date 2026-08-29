@@ -95,6 +95,51 @@ _PROJECT_COLLECTIONS = (
     "tests",
 )
 
+#: Collections that can also be written *inside* another object rather than at
+#: the project root, as ``{parent collection: {nested collection: qualify?}}``.
+#: The semantic-layer docs lead with the model-scoped spelling of a metric, so
+#: reading only the root collections reports ``"metrics": []`` for a project
+#: whose metrics all compiled fine, and an agent following the documented loop
+#: concludes its edit was dropped and writes it again at the root.
+#:
+#: ``qualify`` says whether the nested name means anything on its own. A
+#: model-scoped metric is referenced as ``${ref(model).metric}``, so it is
+#: reported as ``model.metric`` -- which both confirms the pickup and spells the
+#: reference. An insight written inline in a chart keeps a project-wide name and
+#: is reported bare.
+#:
+#: A guard test derives the shape of this mapping from the models, so a model
+#: that grows another home for an authorable collection cannot slip through. It
+#: covers *list* nesting only, which is where the authoring surface is; a
+#: singular inline field (``item.chart``) is a different shape and not counted.
+_NESTED_COLLECTIONS = {
+    "models": {"metrics": True, "dimensions": True},
+    "charts": {"insights": False},
+}
+
+
+def json_output(function):
+    """The ``--json`` flag for compile/run/test.
+
+    Declared here rather than in ``visivo/commands/options.py`` on purpose: the
+    three commands that take it already import this module, so nothing is
+    gained by putting it in the shared options file and a cross-branch edit to
+    that file is avoided.
+    """
+    import click
+
+    return click.option(
+        "--json",
+        "json_output",
+        help=(
+            "Emit a single JSON object on stdout describing the result, and send every "
+            "human-readable line to stderr. The shape is documented in "
+            "visivo/commands/json_output.py. The exit code is unchanged."
+        ),
+        is_flag=True,
+        default=False,
+    )(function)
+
 
 def strip_ansi(text: Any) -> str:
     return _ANSI.sub("", str(text)) if text is not None else ""
@@ -349,16 +394,32 @@ def _names(collection) -> List[Optional[str]]:
     return [getattr(item, "name", None) for item in (collection or [])]
 
 
+def _nested_names(project, parent: str, nested: str, qualify: bool) -> List[Optional[str]]:
+    """Members of ``nested`` written inside a ``parent`` object, not at the root."""
+    names: List[Optional[str]] = []
+    for owner in getattr(project, parent, None) or []:
+        owner_name = getattr(owner, "name", None)
+        for item in getattr(owner, nested, None) or []:
+            name = getattr(item, "name", None)
+            names.append(f"{owner_name}.{name}" if qualify and owner_name and name else name)
+    return names
+
+
 def compile_result(project, working_dir: str, output_dir: str) -> Dict[str, Any]:
     """``compile``: what the CLI actually parsed out of the project files.
 
     ``objects`` maps each authorable project collection to the names it holds,
-    so an agent can confirm the object it just wrote was picked up.
+    so an agent can confirm the object it just wrote was picked up -- including
+    the ones written inside another object rather than at the root, per
+    ``_NESTED_COLLECTIONS``.
     """
     objects = {
         collection: _names(getattr(project, collection, None))
         for collection in _PROJECT_COLLECTIONS
     }
+    for parent, nested_collections in _NESTED_COLLECTIONS.items():
+        for nested, qualify in nested_collections.items():
+            objects[nested] = objects[nested] + _nested_names(project, parent, nested, qualify)
     return {
         "project_name": getattr(project, "name", None),
         "working_dir": working_dir,
@@ -374,9 +435,40 @@ def compile_result(project, working_dir: str, output_dir: str) -> Dict[str, Any]
 #: agent a log line full of alignment dots.
 _JOB_LINE = re.compile(r"^(?P<summary>.*?)\s*\.{3,}\s*\[(?P<status>[^\]]*)\]\s*$")
 
+#: Continuation-line prefixes that introduce a *path*. ``query:`` and
+#: ``database file:`` come from ``job.py``'s ``full_path`` branch;
+#: ``query saved to:`` is appended by ``run_insight_job`` when it dumps the SQL
+#: that failed. Longest first, so a prefix that starts with another still
+#: matches its own.
+_ARTIFACT_PREFIXES = ("query saved to:", "database file:", "query:")
+
+
+def _artifact_path(line: str) -> Optional[str]:
+    for prefix in _ARTIFACT_PREFIXES:
+        if line.startswith(prefix):
+            return line[len(prefix) :].strip()
+    return None
+
 
 def parse_job_message(message: Any) -> Dict[str, Optional[str]]:
-    """``(summary, status, error, artifact)`` out of one formatted job message."""
+    """``(summary, status, error, artifact)`` out of one formatted job message.
+
+    A failing insight produces a *block*, not a line::
+
+        Failed job for insight kpi .....[FAILURE 0.5s]
+            error: Conversion Error: could not convert 'West' to INTEGER
+            LINE 7: SUM(CAST("ev_sales"."region" AS INTEGER)) AS ...
+                        ^
+            at line 7
+            query saved to: target/logs/failed_queries/insight_kpi.sql
+
+    so ``error`` accumulates every line after ``error:`` until a path line ends
+    it, rather than keeping the first and dropping the rest. Without that, the
+    lines carrying the offending column and its position -- the ones an agent
+    needs in order to fix the query -- never reach the envelope, and
+    ``"query saved to: <path>"`` lands in ``artifact`` as a string that is not
+    a path.
+    """
     lines = [line.strip() for line in strip_ansi(message).split("\n")]
     lines = [line for line in lines if line]
     parsed: Dict[str, Optional[str]] = {
@@ -391,15 +483,22 @@ def parse_job_message(message: Any) -> Dict[str, Optional[str]]:
             parsed["summary"] = match.group("summary").strip()
             status = match.group("status").split()
             parsed["status"] = status[0] if status else None
+
+    error_lines: List[str] = []
     for line in lines[1:]:
-        if line.startswith("error:"):
-            parsed["error"] = line[len("error:") :].strip()
+        artifact = _artifact_path(line)
+        if artifact is not None:
+            parsed["artifact"] = artifact
+        elif line.startswith("error:"):
+            error_lines = [line[len("error:") :].strip()]
+        elif error_lines:
+            error_lines.append(line)
         else:
-            for prefix in ("query:", "database file:"):
-                if line.startswith(prefix):
-                    line = line[len(prefix) :].strip()
-                    break
+            # A bare path: the success branch of `_format_message` emits one
+            # with no prefix when the artifact is neither .sql nor .duckdb.
             parsed["artifact"] = line
+    if error_lines:
+        parsed["error"] = "\n".join(line for line in error_lines if line)
     return parsed
 
 
@@ -421,9 +520,15 @@ def run_result(runner, project, output_dir: str) -> Dict[str, Any]:
 
     Each entry is ``{name, type, success, summary, error, artifact}``: ``summary``
     is the runner's one-line description with its alignment padding removed,
-    ``error`` is the exception text for a failed job (``null`` otherwise), and
-    ``artifact`` is the file the job wrote or was reading (``null`` when the job
-    did not name one).
+    ``error`` is the exception text for a failed job (``null`` otherwise, and
+    often several lines), and ``artifact`` is the path the job wrote or was
+    reading (``null`` when the job did not name one).
+
+    ``job_counts.total`` is 0 when the filter matched nothing runnable. That is
+    not an error here, because it is not one for ``visivo run`` either -- the
+    runner logs "No jobs run" and still exits 0, and ``--json`` promises the
+    same exit code as the plain command. A consumer that needs to know work
+    happened reads ``job_counts.total``, not ``success``.
     """
     succeeded = [_job_entry(result) for result in getattr(runner, "successful_job_results", [])]
     failed = [_job_entry(result) for result in getattr(runner, "failed_job_results", [])]

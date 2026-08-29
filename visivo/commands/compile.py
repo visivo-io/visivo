@@ -1,4 +1,5 @@
 import click
+from visivo.commands.json_output import json_output
 from visivo.commands.options import (
     output_dir,
     working_dir,
@@ -6,7 +7,6 @@ from visivo.commands.options import (
     dbt_profile,
     dbt_target,
     no_deprecation_warnings,
-    json_output,
 )
 
 

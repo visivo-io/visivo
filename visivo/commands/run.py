@@ -1,4 +1,5 @@
 import click
+from visivo.commands.json_output import json_output
 from visivo.commands.options import (
     working_dir,
     output_dir,
@@ -10,7 +11,6 @@ from visivo.commands.options import (
     skip_compile,
     port,
     no_deprecation_warnings,
-    json_output,
 )
 
 

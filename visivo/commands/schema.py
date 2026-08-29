@@ -7,7 +7,7 @@ import click
     is_flag=True,
     default=False,
     help=(
-        "Emit the core authoring subset (~90 KB). This is the default; the flag "
+        "Emit the core authoring subset (~95 KB). This is the default; the flag "
         "exists so a script can say what it means."
     ),
 )
@@ -56,7 +56,7 @@ def schema(core, full, prop_type, layout, output, indent):
 
     With no options this emits the CORE subset: the objects you author by hand in
     project.visivo.yml -- sources, models, metrics, dimensions, relations, insights,
-    charts, tables, markdowns, inputs, dashboards and tests -- at roughly 90 KB
+    charts, tables, markdowns, inputs, dashboards and tests -- at roughly 95 KB
     instead of the full schema's 3.3 MB, which is far too large to put in a prompt.
 
     The subset is derived mechanically; the rule is documented in

@@ -5,6 +5,14 @@ import click
 import pytest
 from pydantic import BaseModel, ValidationError
 
+from tests.factories.model_factories import (
+    ChartFactory,
+    DimensionFactory,
+    InsightFactory,
+    MetricFactory,
+    ProjectFactory,
+    SqlModelFactory,
+)
 from visivo.commands.json_output import (
     ERROR_KEY_ORDER,
     VISIVO_JSON_VERSION,
@@ -32,6 +40,74 @@ def test_compile_result_covers_every_authorable_collection():
     # `includes` holds file references, not named objects -- an Include has a
     # path, not a name, so reporting it would be a column of nulls.
     assert set(_PROJECT_COLLECTIONS) == list_valued - {"includes"}
+
+
+def _item_class(annotation):
+    """The Pydantic model a `List[X]`-ish annotation holds, or None."""
+    from typing import get_args
+
+    from pydantic import BaseModel as PydanticBaseModel
+
+    for argument in get_args(annotation) or ():
+        if isinstance(argument, type) and issubclass(argument, PydanticBaseModel):
+            return argument
+        found = _item_class(argument)
+        if found is not None:
+            return found
+    return None
+
+
+def test_nested_collections_names_every_place_a_collection_can_be_written():
+    """A collection can have a second home inside another object.
+
+    `metrics` and `dimensions` can be written on a model -- the spelling the
+    semantic-layer docs lead with -- and `insights` inside a chart. Reading only
+    the root would report `"metrics": []` for a project whose metrics compiled
+    fine, and an agent following the documented loop ("write it, compile,
+    confirm it appears") would conclude its edit was dropped.
+
+    Derived from the models, so a model that grows another nested collection
+    fails here rather than going quietly missing from the envelope.
+    """
+    from visivo.commands.json_output import _NESTED_COLLECTIONS, _PROJECT_COLLECTIONS
+    from visivo.models.project import Project
+
+    nested = {}
+    for collection in _PROJECT_COLLECTIONS:
+        item = _item_class(Project.model_fields[collection].annotation)
+        if item is None:
+            continue
+        inner = {name for name in item.model_fields if name in _PROJECT_COLLECTIONS}
+        if inner:
+            nested[collection] = inner
+
+    assert nested == {parent: set(inner) for parent, inner in _NESTED_COLLECTIONS.items()}
+
+
+def test_compile_result_reports_objects_written_inside_another_object():
+    from visivo.commands.json_output import compile_result
+
+    project = ProjectFactory()
+    project.models = [
+        SqlModelFactory(
+            name="ev_sales",
+            metrics=[MetricFactory(name="total_units", expression="SUM(units_sold)")],
+            dimensions=[DimensionFactory(name="region_dim", expression="region")],
+        )
+    ]
+    project.metrics = [MetricFactory(name="global_metric", expression="SUM(1)")]
+    project.charts = [ChartFactory(name="inline_chart", insights=[InsightFactory(name="inline")])]
+    project.insights = []
+
+    result = compile_result(project=project, working_dir="/w", output_dir="/w/target")
+
+    # Model-scoped: qualified, because `${ref(model).metric}` is how it is read.
+    assert result["objects"]["metrics"] == ["global_metric", "ev_sales.total_units"]
+    assert result["objects"]["dimensions"] == ["ev_sales.region_dim"]
+    # Chart-scoped: bare, because an insight keeps a project-wide name.
+    assert result["objects"]["insights"] == ["inline"]
+    assert result["object_counts"]["metrics"] == 2
+    assert result["object_counts"]["insights"] == 1
 
 
 def test_envelope_always_carries_every_key():
@@ -89,6 +165,35 @@ def test_parse_job_message_pulls_out_the_error_and_the_query_path():
     assert "Column 'x' not found" in parsed["error"]
 
 
+def test_parse_job_message_reads_a_real_failed_insight_block():
+    """The shape `run_insight_job` actually produces, not a synthesised one.
+
+    `format_message_failure` puts the exception on an `error:` line and
+    `run_insight_job` appends `at <location>` and `query saved to: <path>`
+    after it. Treating every continuation line as the artifact put the literal
+    string "query saved to: <path>" in `artifact` -- a filename that is not a
+    filename -- and threw away every line of the error after the first, which
+    is exactly the part naming the offending column.
+    """
+    parsed = parse_job_message(
+        "Failed job for insight \033[4mtotal_units\033[0m ....[\033[31mFAILURE 0.06s\033[0m]"
+        "\n\t\033[2merror: Conversion Error: could not convert 'West' to INTEGER"
+        '\nLINE 7:   SUM(CAST("ev_sales"."region" AS INTEGER)) AS ...'
+        "\n        at line 7"
+        "\n        query saved to: target/logs/failed_queries/insight_total_units.sql\033[0m"
+    )
+
+    assert parsed["summary"] == "Failed job for insight total_units"
+    assert parsed["status"] == "FAILURE"
+    assert parsed["artifact"] == "target/logs/failed_queries/insight_total_units.sql"
+    assert "query saved to" not in parsed["artifact"]
+    assert parsed["artifact"].endswith(".sql")
+    # Every line of the error survives, including the one an agent needs.
+    assert parsed["error"].startswith("Conversion Error: could not convert 'West' to INTEGER")
+    assert 'CAST("ev_sales"."region" AS INTEGER)' in parsed["error"]
+    assert "at line 7" in parsed["error"]
+
+
 def test_parse_job_message_survives_an_unpadded_message():
     parsed = parse_job_message("something happened")
 
@@ -120,11 +225,8 @@ class _Runner:
         self.failed_job_results = failed
 
 
-class _Project:
-    name = "p"
-
-
 def test_run_result_and_run_errors_agree():
+    project = ProjectFactory()
     failed = _JobResult(
         item=_Item("kpi", "project.insights[0]"),
         success=False,
@@ -136,9 +238,10 @@ def test_run_result_and_run_errors_agree():
     )
     runner = _Runner(successful=[succeeded], failed=[failed])
 
-    result = run_result(runner=runner, project=_Project(), output_dir="target")
+    result = run_result(runner=runner, project=project, output_dir="target")
     errors = run_errors(runner)
 
+    assert result["project_name"] == project.name
     assert result["job_counts"] == {"succeeded": 1, "failed": 1, "total": 2}
     assert [job["name"] for job in result["jobs"]] == ["model", "kpi"]
     assert len(errors) == 1
@@ -147,6 +250,29 @@ def test_run_result_and_run_errors_agree():
     assert errors[0]["message"] == "boom"
     assert errors[0]["object_path"] == "project.insights[0]"
     assert errors[0]["details"] == {"kind": "missing_relation"}
+
+
+def test_run_errors_never_reports_a_prefix_line_as_the_file():
+    """`file` is opened by whoever reads the envelope; it must be a path."""
+    runner = _Runner(
+        successful=[],
+        failed=[
+            _JobResult(
+                item=_Item("kpi", "project.insights[0]"),
+                success=False,
+                message=(
+                    "Failed job for insight kpi ....[FAILURE 0.0s]"
+                    "\n\terror: Conversion Error"
+                    "\n        query saved to: target/logs/failed_queries/insight_kpi.sql"
+                ),
+            )
+        ],
+    )
+
+    error = run_errors(runner)[0]
+
+    assert error["file"] == "target/logs/failed_queries/insight_kpi.sql"
+    assert error["message"] == "Conversion Error"
 
 
 def test_errors_from_a_click_exception():

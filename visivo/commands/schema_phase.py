@@ -6,12 +6,12 @@ across 103 ``$defs``.  It is the right thing for the viewer (which validates
 every Plotly property client side) and the wrong thing for an LLM: nobody can
 put 3.3 MB in a prompt, so agents guess at Visivo's grammar instead of reading
 it.  ``visivo schema`` exists to hand an agent the part of that schema that
-describes *a Visivo project* -- roughly 90 KB, ~23k tokens, cacheable.
+describes *a Visivo project* -- roughly 95 KB, ~24k tokens, cacheable.
 
 THE CORE SELECTION RULE
 =======================
 
-The subset is *derived*, not hand-maintained.  Five mechanical steps, each of
+The subset is *derived*, not hand-maintained.  Seven mechanical steps, each of
 which can be re-run against a future version of the models without anyone
 curating a list of type names:
 
@@ -42,14 +42,32 @@ curating a list of type names:
    ``$def`` nothing reaches.
 
 4. **Delete the machine-set fields** (``MACHINE_SET_FIELDS``) from every
-   object.  The CLI fills these in; an agent that writes them is making a
-   mistake, and they cost ~9 KB across 45 defs.
+   object *that inherits them*.  The CLI fills these in; an agent that writes
+   them is making a mistake, and they cost ~9 KB across 45 defs.  A name alone
+   is not proof, though: a concrete model may redeclare one of those names as a
+   field an agent has to write.  ``Include.path`` is exactly that -- it is the
+   only way to write ``includes:`` at all -- so the rule asks *which class
+   declared the field*, and keeps it when the answer is not one of the models
+   that carry it for the CLI's benefit.
 
 5. **Delete Pydantic's auto-generated property titles.**  ``"title": "Source
    Name"`` above a property literally named ``source_name`` is ~4 KB of
    restatement.  Titles on the ``$defs`` themselves are kept.
 
-6. **Restore the Python-keyword aliases.**  ``Test.if_`` and ``Alert.if_`` carry
+6. **Repair the unsatisfiable ``oneOf``s.**  Pydantic renders a union with a
+   *callable* discriminator -- ``SecretStrOrEnvVar`` is
+   ``Union[EnvVarString, SecretStr]``, chosen at runtime by a regex on the
+   value -- as a JSON Schema ``oneOf``.  The discriminator is Python and does
+   not survive the dump, so both branches come out as ``{"type": "string"}``
+   (one of them wearing ``format: password``), and ``oneOf`` requires *exactly*
+   one match.  Every string matches both, so the schema rejects every
+   ``password:`` on every source type.  Where two branches of a ``oneOf`` are
+   identical once the annotation-only keywords are set aside, they accept
+   exactly the same values, the ``oneOf`` is unsatisfiable, and the keyword is
+   rewritten to ``anyOf``.  Unions that really do discriminate -- the source
+   type union, whose branches are distinct ``$ref``s -- are untouched.
+
+7. **Restore the Python-keyword aliases.**  ``Test.if_`` and ``Alert.if_`` carry
    a trailing underscore because ``if`` is a reserved word in Python; the key
    people actually write in YAML -- and that every doc example shows -- is
    ``if``.  The schema is dumped with ``by_alias=False``, so any property named
@@ -65,6 +83,15 @@ rejects a document that carries them -- notably the ``project.json`` the CLI
 writes at compile time, and any object round-tripped out of the server API.
 Validate hand-written YAML with ``--core``; validate compiler output with
 ``--full``.
+
+The same ``extra="forbid"`` is why step 2 does not simply *drop* the omitted
+root fields.  Five of the eight are machine-set and stay out for the reason
+above, but ``alerts``, ``destinations`` and ``dbt`` are hand-authored and legal;
+omitting them from a root that forbids unknown keys would turn "not described
+here" into "not allowed here", so a real project that uses them would fail to
+validate and an agent would be told the user's ``alerts:`` block is an illegal
+key.  Each of the three is therefore emitted as a permissive stub carrying its
+reason -- described nowhere, accepted everywhere.
 """
 
 import json
@@ -109,7 +136,9 @@ OMITTED_PROJECT_PROPERTIES: Dict[str, str] = {
     "destinations": "Notification targets for alerts; orthogonal to building a dashboard.",
 }
 
-#: Step 4: fields the CLI fills in, removed from every object in the subset.
+#: Step 4: fields the CLI fills in, removed from every object that *inherits*
+#: them. See ``_authored_machine_set_fields`` for why inheritance, and not the
+#: bare name, is the test.
 MACHINE_SET_FIELDS: Set[str] = {
     "path",
     "file_path",
@@ -164,8 +193,78 @@ def _reachable_defs(roots: Iterable[str], defs: Dict[str, Any]) -> Set[str]:
     return seen
 
 
+def _machine_set_owners() -> tuple:
+    """The models that declare a ``MACHINE_SET_FIELDS`` name for the CLI's use.
+
+    ``BaseModel`` declares ``path``, ``NamedModel`` declares ``file_path``, and
+    ``Project`` declares ``project_file_path``/``project_dir``/``cli_version``.
+    A field inherited from one of these is bookkeeping; a field declared
+    anywhere else happens to share the name and is the agent's to write.
+    """
+    from visivo.models.base.base_model import BaseModel
+    from visivo.models.base.named_model import NamedModel
+    from visivo.models.project import Project
+
+    return (BaseModel, NamedModel, Project)
+
+
+def _model_classes() -> Dict[str, Any]:
+    """``{class name: class}`` for every model reachable from ``BaseModel``.
+
+    A name shared by two classes maps to ``None``: a ``$defs`` key cannot be
+    traced back to one class, so the caller declines to strip anything for it.
+    """
+    from visivo.models.base.base_model import BaseModel
+
+    _machine_set_owners()  # imports Project, and with it the whole model tree.
+
+    found: Dict[str, Any] = {}
+    seen: Set[Any] = set()
+    stack: List[Any] = [BaseModel]
+    while stack:
+        for subclass in stack.pop().__subclasses__():
+            if subclass in seen:
+                continue
+            seen.add(subclass)
+            stack.append(subclass)
+            found[subclass.__name__] = subclass if subclass.__name__ not in found else None
+    return found
+
+
+def _authored_machine_set_fields(model_name: str, classes: Dict[str, Any]) -> Set[str]:
+    """The ``MACHINE_SET_FIELDS`` ``model_name`` declares itself, and so keeps.
+
+    ``MACHINE_SET_FIELDS`` is a list of *names*, and a name is not proof.
+    ``Include`` redeclares ``path`` as "the path or git reference to external
+    yml files to include" -- the only key an include has -- so stripping it by
+    name leaves a definition that, being ``additionalProperties: false``,
+    rejects the very example printed in ``Include``'s own description, and with
+    it every project in the repo that splits itself across files.
+
+    So the question asked here is *which class declared this field*: one of the
+    models in ``_machine_set_owners`` (bookkeeping, strip it) or the concrete
+    model itself (authoring surface, keep it).
+    """
+    model = classes.get(model_name)
+    if model is None:
+        # Nothing to ask. Keeping a machine-set field costs a few bytes;
+        # deleting an authored one costs the agent a valid document, so keep.
+        return set(MACHINE_SET_FIELDS)
+
+    owners = _machine_set_owners()
+    authored = set()
+    for field in MACHINE_SET_FIELDS:
+        declaring = next(
+            (base for base in model.__mro__ if field in vars(base).get("__annotations__", {})),
+            None,
+        )
+        if declaring is not None and declaring not in owners:
+            authored.add(field)
+    return authored
+
+
 def _restore_keyword_aliases(definition: Dict[str, Any]) -> None:
-    """Step 6: ``if_`` also accepted (and preferred) as ``if``."""
+    """Step 7: ``if_`` also accepted (and preferred) as ``if``."""
     import keyword
 
     properties = definition.get("properties")
@@ -183,6 +282,58 @@ def _restore_keyword_aliases(definition: Dict[str, Any]) -> None:
             f"Deprecated spelling of `{alias}`; write `{alias}` instead. "
             + str(properties[name].get("description") or "")
         ).strip()
+
+
+#: JSON Schema keywords that annotate rather than constrain: two branches that
+#: differ only in these accept exactly the same set of values.
+_ANNOTATION_KEYWORDS = frozenset(
+    {
+        "$comment",
+        "default",
+        "deprecated",
+        "description",
+        "examples",
+        "format",
+        "readOnly",
+        "title",
+        "writeOnly",
+    }
+)
+
+
+def _validation_shape(branch: Any) -> str:
+    """``branch`` reduced to the part that decides whether a value validates."""
+    if not isinstance(branch, dict):
+        return json.dumps(branch, sort_keys=True)
+    return json.dumps(
+        {key: value for key, value in branch.items() if key not in _ANNOTATION_KEYWORDS},
+        sort_keys=True,
+    )
+
+
+def _repair_unsatisfiable_one_ofs(node: Any) -> None:
+    """Step 6: ``oneOf`` -> ``anyOf`` where the branches cannot discriminate.
+
+    ``oneOf`` demands that *exactly* one branch match. Two branches that are
+    identical apart from annotations match together or not at all, so nothing
+    can satisfy the keyword -- which is how the core schema came to reject
+    every ``password:`` on every source type.
+    """
+    if isinstance(node, dict):
+        branches = node.get("oneOf")
+        if isinstance(branches, list) and "anyOf" not in node:
+            # A sibling `anyOf` would have to be intersected rather than
+            # replaced; no such node exists in the dump, and the guard test
+            # asserts no unsatisfiable `oneOf` survives, so one appearing shows
+            # up as a failure rather than as a silent no-op.
+            shapes = [_validation_shape(branch) for branch in branches]
+            if len(set(shapes)) < len(shapes):
+                node["anyOf"] = node.pop("oneOf")
+        for value in node.values():
+            _repair_unsatisfiable_one_ofs(value)
+    elif isinstance(node, list):
+        for value in node:
+            _repair_unsatisfiable_one_ofs(value)
 
 
 def _strip_property_titles(node: Any) -> None:
@@ -211,7 +362,7 @@ def full_schema() -> Dict[str, Any]:
 
 
 def core_schema() -> Dict[str, Any]:
-    """The authoring subset, derived by the six steps in the module docstring."""
+    """The authoring subset, derived by the seven steps in the module docstring."""
     from visivo.version import VISIVO_VERSION
 
     source = _pydantic_project_schema()
@@ -238,19 +389,42 @@ def core_schema() -> Dict[str, Any]:
         if name in source_properties
     }
 
+    # The root forbids unknown keys, so "omitted" would otherwise read as
+    # "prohibited". That is right for the machine-set fields -- a document
+    # carrying them is compiler output, not something an agent wrote -- and
+    # wrong for the rest, which a human writes by hand and which a project may
+    # legitimately already contain. Describe those nowhere; accept them
+    # everywhere.
+    permissive_properties = {
+        name: {
+            "description": (
+                f"{reason} Not described in the core subset -- run "
+                "`visivo schema --full` for its schema. Accepted here so that a "
+                "project already using it still validates."
+            )
+        }
+        for name, reason in OMITTED_PROJECT_PROPERTIES.items()
+        if name not in MACHINE_SET_FIELDS and name in source_properties
+    }
+
     roots: Set[str] = set()
     _ref_names(kept_properties, roots)
     reachable = _reachable_defs(roots, defs)
 
     kept_defs = {name: deepcopy(defs[name]) for name in sorted(reachable)}
-    for definition in kept_defs.values():
+    classes = _model_classes()
+    for name, definition in kept_defs.items():
         properties = definition.get("properties")
         if isinstance(properties, dict):
-            for field in MACHINE_SET_FIELDS:
+            strip = MACHINE_SET_FIELDS - _authored_machine_set_fields(name, classes)
+            for field in strip:
                 properties.pop(field, None)
             required = definition.get("required")
             if isinstance(required, list):
-                definition["required"] = [f for f in required if f not in MACHINE_SET_FIELDS]
+                definition["required"] = [f for f in required if f not in strip]
+
+    _repair_unsatisfiable_one_ofs(kept_defs)
+    _repair_unsatisfiable_one_ofs(kept_properties)
 
     for definition in kept_defs.values():
         _restore_keyword_aliases(definition)
@@ -276,7 +450,7 @@ def core_schema() -> Dict[str, Any]:
             "pruned_vocabularies": PRUNED_VOCABULARY_NOTE,
             "full_schema_command": "visivo schema --full",
         },
-        "properties": kept_properties,
+        "properties": {**kept_properties, **permissive_properties},
         "$defs": kept_defs,
     }
     return schema

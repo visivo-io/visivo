@@ -248,6 +248,52 @@ def test_run_json_failure_reports_the_failing_job():
     assert all(error["name"] for error in document["errors"])
     assert all(error["message"] for error in document["errors"])
 
+    # `error` is the whole point of the envelope over the exit code, and it is
+    # recovered by parsing the runner's log text -- so assert it against a real
+    # run, not only against hand-typed strings. `run_errors` falls back to the
+    # generic "Failed job for <name>" summary when parsing comes up empty, so a
+    # parser that stops extracting the exception degrades silently unless this
+    # says otherwise.
+    failed = [job for job in document["result"]["jobs"] if not job["success"]]
+    assert failed, "the run reported no failing job"
+    for job in failed:
+        assert job["error"], f"failing job {job['name']} carries no error text"
+        assert job["error"] != job["summary"]
+        assert not job["error"].startswith("Failed job for")
+        assert len(job["error"]) > len(job["summary"])
+    by_name = {job["name"]: job for job in failed}
+    for error in document["errors"]:
+        assert not error["message"].startswith("Failed job for")
+        assert error["message"] == by_name[error["name"]]["error"]
+        # `file` is a path a consumer opens, or null -- never a log-line prefix.
+        assert error["file"] is None or not error["file"].startswith(("query", "database"))
+
+
+def test_run_without_json_still_exits_non_zero_on_failure():
+    """`run --json` runs the DAG soft so it can report every failure; the plain
+    path must keep exiting 1, or a broken pipeline goes green in CI."""
+    output_dir = temp_folder()
+    project = runnable_project()
+    project.models[0].sql = "select * from a_table_that_is_not_there"
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
+    working_dir = write_project(project)
+
+    response = runner.invoke(
+        run,
+        [
+            "-w",
+            working_dir,
+            "-o",
+            output_dir,
+            "-s",
+            "source",
+            "-p",
+            str(HotReloadServer.find_available_port()),
+        ],
+    )
+
+    assert response.exit_code == 1
+
 
 def test_run_json_and_compile_json_share_the_envelope():
     output_dir = temp_folder()

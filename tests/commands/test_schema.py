@@ -5,6 +5,7 @@ import shlex
 import subprocess
 import sys
 
+import pytest
 from click.testing import CliRunner
 
 from visivo.commands.schema import schema
@@ -181,3 +182,64 @@ def test_end_to_end_compile_json_stdout_is_only_the_envelope():
     assert json.loads(result.stdout)["command"] == "compile"
     assert "Starting Visivo" not in result.stdout
     assert "execution time" not in result.stdout
+
+
+# The `visivo` group takes options *before* the subcommand, so `argv[1]` is not
+# the command name. Detecting `schema` positionally missed every one of these
+# and put the banner and the timing line back on stdout, around the document.
+GROUP_OPTIONS_BEFORE_THE_SUBCOMMAND = [
+    ("-e", ".env"),
+    ("--env-file=.env",),
+    ("--verbose",),
+    ("-p",),
+    ("--verbose", "-e", ".env"),
+]
+
+
+@pytest.mark.parametrize("options", GROUP_OPTIONS_BEFORE_THE_SUBCOMMAND, ids=lambda o: " ".join(o))
+def test_end_to_end_schema_stdout_stays_clean_behind_group_options(options):
+    result = _cli(*options, "schema")
+
+    assert result.returncode == 0, result.stderr[:400]
+    assert "Starting Visivo" not in result.stdout
+    assert "execution time" not in result.stdout
+    assert "Profiling" not in result.stdout
+    # The real assertion: an agent redirects this into a file and parses it.
+    assert json.loads(result.stdout)["x-visivo-schema"]["mode"] == "core"
+
+
+@pytest.mark.parametrize("options", GROUP_OPTIONS_BEFORE_THE_SUBCOMMAND, ids=lambda o: " ".join(o))
+def test_end_to_end_schema_error_stays_off_stdout_behind_group_options(options):
+    """`visivo -e .env schema > core.json` must leave an empty file on failure."""
+    result = _cli(*options, "schema", "--core", "--full")
+
+    assert result.returncode == 1
+    assert result.stdout == "", f"error text landed on stdout: {result.stdout[:200]!r}"
+    assert "--core" in result.stderr
+
+
+@pytest.mark.parametrize("options", GROUP_OPTIONS_BEFORE_THE_SUBCOMMAND, ids=lambda o: " ".join(o))
+def test_end_to_end_compile_json_stays_clean_behind_group_options(options):
+    result = _cli(*options, "compile", "--json")
+
+    document = json.loads(result.stdout)
+    assert document["command"] == "compile"
+    assert "Starting Visivo" not in result.stdout
+    assert "execution time" not in result.stdout
+
+
+def test_subcommand_is_found_past_the_group_options():
+    """The unit behind the end-to-end tests above, including the cases that
+    must *not* be read as a subcommand."""
+    from visivo.command_line import _subcommand
+
+    assert _subcommand(["visivo", "schema"]) == "schema"
+    assert _subcommand(["visivo", "-e", ".env", "schema"]) == "schema"
+    assert _subcommand(["visivo", "--env-file=.env", "schema"]) == "schema"
+    assert _subcommand(["visivo", "-e.env", "schema"]) == "schema"
+    assert _subcommand(["visivo", "--verbose", "-p", "schema", "--core"]) == "schema"
+    assert _subcommand(["visivo", "compile", "--json"]) == "compile"
+    # `schema` here is the value of --env-file, not the command.
+    assert _subcommand(["visivo", "-e", "schema"]) is None
+    assert _subcommand(["visivo"]) is None
+    assert _subcommand(["visivo", "--version"]) is None

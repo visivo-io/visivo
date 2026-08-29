@@ -222,18 +222,3 @@ def no_deprecation_warnings(function):
         default=False,
     )(function)
     return function
-
-
-def json_output(function):
-    click.option(
-        "--json",
-        "json_output",
-        help=(
-            "Emit a single JSON object on stdout describing the result, and send every "
-            "human-readable line to stderr. The shape is documented in "
-            "visivo/commands/json_output.py. The exit code is unchanged."
-        ),
-        is_flag=True,
-        default=False,
-    )(function)
-    return function
