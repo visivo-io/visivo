@@ -17,7 +17,7 @@ The combination of Python expressions and direct access to every insight's resol
         tests:
           - name: revenue-date-grains-match
             assertions:
-              - >{ numpy.sum( ${ref(revenue-per-week).props.y} ) == numpy.sum( ${ref(revenue-per-month).props.y} ) }
+              - ">{ numpy.sum( ${ref(revenue-per-week).props.y} ) == numpy.sum( ${ref(revenue-per-month).props.y} ) }"
         ```
 
     === "Standard Deviation"
@@ -26,7 +26,7 @@ The combination of Python expressions and direct access to every insight's resol
         tests:
           - name: recent-std-less-double-normal
             assertions:
-              - >{ numpy.std( ${ref(revenue-per-week).props.y} ) * 2 > numpy.std( ${ref(revenue-per-month).props.y[:-10]} ) }
+              - ">{ numpy.std( ${ref(revenue-per-week).props.y} ) * 2 > numpy.std( ${ref(revenue-per-month).props.y[:-10]} ) }"
         ```
 
     === "Assert Specific Value"
@@ -35,7 +35,7 @@ The combination of Python expressions and direct access to every insight's resol
         tests:
           - name: oct-week-revenue
             assertions:
-              - >{ round( ${ref(revenue-per-week).props.y[10]} ) == 2901384 }
+              - ">{ round( ${ref(revenue-per-week).props.y[10]} ) == 2901384 }"
         ```
 
 ## Conditional execution
@@ -45,9 +45,9 @@ Use the optional `if:` field to skip a test unless a condition holds. Useful for
 ``` yaml
 tests:
   - name: scatter-only-check
-    if: ${ ref(my-insight).props.type } == "scatter"
+    if: '>{ ${ ref(my-insight).props.type } == "scatter" }'
     assertions:
-      - >{ len( ${ref(my-insight).props.x} ) == len( ${ref(my-insight).props.y} ) }
+      - ">{ len( ${ref(my-insight).props.x} ) == len( ${ref(my-insight).props.y} ) }"
 ```
 
 ## Available helpers

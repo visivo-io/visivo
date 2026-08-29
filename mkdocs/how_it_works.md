@@ -50,6 +50,8 @@ You can declare an [insight](reference/configuration/Insight/index.md) in any `*
 
 === "dbt"
 
+    <!-- visivo-example: skip - a dbt schema.yml: the models: block here is dbt's model catalog (description/columns), validated by dbt, not Visivo's models: -->
+
     ``` yaml title="project_dir/models/schema.yml"
     insights:
       - name: weekly_widget_sales

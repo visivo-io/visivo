@@ -67,6 +67,8 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
 {% raw %}
 === "Direct Target Connection"
 
+    <!-- visivo-example: skip - a CI workflow file (GitHub Actions / RWX Mint), not Visivo project config -->
+
     ``` yaml title=".mint/manage_ci.yml"
     on:
       github:
@@ -128,6 +130,8 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
     !!! note 
 
         The example below is for a project that runs Visivo against google cloud SQL. You will likely need to pass additional secrets and alter authentication steps to connect to your targets.
+
+    <!-- visivo-example: skip - a CI workflow file (GitHub Actions / RWX Mint), not Visivo project config -->
 
     ``` yaml title=".mint/manage_ci_gcp_cloud_sql_target.yml"
     on:
@@ -218,6 +222,8 @@ This following can be adapted easily with the `env` variables.
 {% raw %}
 === "Deploy & Archive"
 
+    <!-- visivo-example: skip - a CI workflow file (GitHub Actions / RWX Mint), not Visivo project config -->
+
     ``` yaml title=".github/workflows/visivo_deploy_archive.yml"
     name: Deploy & Archive CI Dashboard
 
@@ -269,6 +275,8 @@ This following can be adapted easily with the `env` variables.
     3. This step captures the stdout print of the url of the deployment that was created so that it can later be referenced to generate a github comment on the PR. Both of these steps are totally optional!
 
 === "Deploy + Comment on PR & Archive"
+
+    <!-- visivo-example: skip - a CI workflow file (GitHub Actions / RWX Mint), not Visivo project config -->
 
     ``` yaml title=".github/workflows/visivo_deploy_archive.yml"
     name: Deploy & Archive CI Dashboard
@@ -344,6 +352,8 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
 {% raw %}
 === "Direct Target Connection"
 
+    <!-- visivo-example: skip - a CI workflow file (GitHub Actions / RWX Mint), not Visivo project config -->
+
     ``` yaml title=".mint/production_refresh.yml"
     on:
       cron:
@@ -390,6 +400,8 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
     4. This assumes that you have a target set up in your project that depends on these env variables for connection. 
 
 === "Google Cloud SQL"
+
+    <!-- visivo-example: skip - a CI workflow file (GitHub Actions / RWX Mint), not Visivo project config -->
 
     ``` yaml title=".mint/gcp_production_refresh.yml"
     on:
@@ -454,6 +466,8 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
 ### :simple-githubactions: Github Actions
 #### Configuration
 {% raw %}
+<!-- visivo-example: skip - a CI workflow file (GitHub Actions / RWX Mint), not Visivo project config -->
+
 ``` yaml title=".github/workflows/production_refresh.yml"
 name: Production Deployment
 

@@ -22,10 +22,17 @@ class Alert(NamedModel):
     ``` yaml
     alerts:
         - name: Example Alert
-          if: >{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }
+          if: '>{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }'
           destinations:
-            - ${ ref(Production Slack) }
-            - ${ ref(Production Email) }
+            - name: Production Slack
+              type: slack
+              webhook_url: ${env.SLACK_WEBHOOK}
+            - name: Production Email
+              type: email
+              to: data-team@your_company.com
+              host: your_company_email_server.com
+              username: alerts
+              password: ${env.EMAIL_PASSWORD}
     ```
     """
 

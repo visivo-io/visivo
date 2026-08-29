@@ -44,7 +44,7 @@ Shapes and annotations are defined in your [chart.layout](../reference/configura
 
     ```yaml
     shapes:
-     - type: rectangle
+      - type: rect
         x0: 10
         x1: 20
         y0: 5
@@ -56,6 +56,8 @@ Shapes and annotations are defined in your [chart.layout](../reference/configura
     ```
 
 !!! info "Configuration"
+
+    <!-- visivo-example: skip - a Plotly property listing, not config: every value is a type description rather than a value -->
 
     ``` yaml
     shapes:
@@ -129,6 +131,8 @@ The configuration options for annotations are quite extensive; however, they are
     ```
 
 !!! info "Configuration"
+
+    <!-- visivo-example: skip - a Plotly property listing, not config: every value is a type description rather than a value -->
 
     ``` yaml 
     annotations:
@@ -251,18 +255,27 @@ Highlighting regions in your charts helps draw attention to important areas or p
     !!! example "Code"
 
         ``` yaml
+        sources:
+          - name: scatter_data-source
+            type: duckdb
+            database: target/seeds/scatter_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,2
+                    2,3
+                    3,4
+                    4,5
+                    5,6
+
         models:
           - name: scatter_data
-            args:
-              - echo
-              - |
-                x,y
-                1,2
-                2,3
-                3,4
-                4,5
-                5,6
-    
+            source: ${ref(scatter_data-source)}
+            sql: select * from model
+
         insights:
           - name: scatter_insight
             props:
@@ -278,7 +291,8 @@ Highlighting regions in your charts helps draw attention to important areas or p
             insights:
               - ${ref(scatter_insight)}
             layout:
-              title: Highlighted Region in Scatter Plot
+              title:
+                text: Highlighted Region in Scatter Plot
               shapes:
                 - type: rect
                   x0: 2
@@ -299,18 +313,27 @@ Highlighting regions in your charts helps draw attention to important areas or p
     !!! example "Code"
 
         ``` yaml
+        sources:
+          - name: scatter_data-source
+            type: duckdb
+            database: target/seeds/scatter_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,2
+                    2,3
+                    3,4
+                    4,5
+                    5,6
+
         models:
           - name: scatter_data
-            args:
-              - echo
-              - |
-                x,y
-                1,2
-                2,3
-                3,4
-                4,5
-                5,6
-    
+            source: ${ref(scatter_data-source)}
+            sql: select * from model
+
         insights:
           - name: scatter_insight
             props:
@@ -326,7 +349,8 @@ Highlighting regions in your charts helps draw attention to important areas or p
             insights:
               - ${ref(scatter_insight)}
             layout:
-              title: Multiple Highlighted Regions
+              title:
+                text: Multiple Highlighted Regions
               shapes:
                 - type: rect
                   x0: 1
@@ -356,17 +380,26 @@ Highlighting regions in your charts helps draw attention to important areas or p
     !!! example "Code"
 
         ``` yaml
+        sources:
+          - name: scatter_data-source
+            type: duckdb
+            database: target/seeds/scatter_data.duckdb
+            seeds:
+              - table_name: model
+                args:
+                  - echo
+                  - |
+                    x,y
+                    1,2
+                    2,3
+                    3,4
+                    4,5
+                    5,6
+
         models:
           - name: scatter_data
-            args:
-              - echo
-              - |
-                x,y
-                1,2
-                2,3
-                3,4
-                4,5
-                5,6
+            source: ${ref(scatter_data-source)}
+            sql: select * from model
 
         insights:
           - name: scatter_insight
@@ -383,7 +416,8 @@ Highlighting regions in your charts helps draw attention to important areas or p
             insights:
               - ${ref(scatter_insight)}
             layout:
-              title: Highlighted Region with Annotation
+              title:
+                text: Highlighted Region with Annotation
               shapes:
                 - type: rect
                   x0: 3
@@ -455,7 +489,8 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
             insights:
               - ${ref(line_insight)}
             layout:
-              title: Threshold Line Example
+              title:
+                text: Threshold Line Example
               shapes:
                 - type: line
                   x0: 1
@@ -511,7 +546,8 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
             insights:
               - ${ref(vertical_line_insight)}
             layout:
-              title: Vertical Threshold Line Example
+              title:
+                text: Vertical Threshold Line Example
               shapes:
                 - type: line
                   x0: 3
@@ -567,7 +603,8 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
             insights:
               - ${ref(threshold_annotation_insight)}
             layout:
-              title: Threshold with Annotation
+              title:
+                text: Threshold with Annotation
               shapes:
                 - type: line
                   x0: 1
@@ -639,7 +676,8 @@ Key points are data points that are particularly important or noteworthy. Annota
             insights:
               - ${ref(multiple_points_insight)}
             layout:
-              title: Multiple Points Annotation
+              title:
+                text: Multiple Points Annotation
               annotations:
                 - x: 2
                   y: 8
@@ -704,7 +742,8 @@ Key points are data points that are particularly important or noteworthy. Annota
             insights:
               - ${ref(point_region_insight)}
             layout:
-              title: Point with Region
+              title:
+                text: Point with Region
               shapes:
                 - type: rect
                   x0: 2
@@ -784,7 +823,8 @@ Below are three examples showcasing the use of emoji annotations.
             insights:
               - ${ref(emoji_insight)}
             layout:
-              title: Emoji Annotations for Data Points
+              title:
+                text: Emoji Annotations for Data Points
               annotations:
                 - x: 3
                   y: 8
@@ -851,7 +891,8 @@ Below are three examples showcasing the use of emoji annotations.
             insights:
               - ${ref(threshold_emoji_insight)}
             layout:
-              title: Threshold Line with Emojis
+              title:
+                text: Threshold Line with Emojis
               shapes:
                 - type: line
                   x0: 1
@@ -915,7 +956,8 @@ Below are three examples showcasing the use of emoji annotations.
             insights:
               - ${ref(region_emoji_insight)}
             layout:
-              title: Region Highlighted with Emojis
+              title:
+                text: Region Highlighted with Emojis
               shapes:
                 - type: rect
                   x0: 2
