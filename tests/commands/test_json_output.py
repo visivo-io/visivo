@@ -19,6 +19,21 @@ from visivo.commands.json_output import (
 )
 
 
+def test_compile_result_covers_every_authorable_collection():
+    """`compile --json` must not silently omit a collection the schema advertises."""
+    from visivo.commands.json_output import _PROJECT_COLLECTIONS
+    from visivo.commands.schema_phase import CORE_PROJECT_PROPERTIES
+    from visivo.models.project import Project
+
+    properties = Project.model_json_schema(by_alias=False)["properties"]
+    list_valued = {
+        name for name in CORE_PROJECT_PROPERTIES if properties.get(name, {}).get("type") == "array"
+    }
+    # `includes` holds file references, not named objects -- an Include has a
+    # path, not a name, so reporting it would be a column of nulls.
+    assert set(_PROJECT_COLLECTIONS) == list_valued - {"includes"}
+
+
 def test_envelope_always_carries_every_key():
     payload = envelope(command="compile", success=True)
 

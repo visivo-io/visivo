@@ -76,7 +76,10 @@ ENVELOPE_KEY_ORDER = (
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
-#: Project fields whose members get reported back in ``compile``'s result.
+#: Project fields whose members get reported back in ``compile``'s result: the
+#: list-valued half of ``schema_phase.CORE_PROJECT_PROPERTIES``, minus
+#: ``includes`` (Include objects carry a path, not a name). A guard test in
+#: ``tests/commands/test_json_output.py`` fails if the two drift apart.
 _PROJECT_COLLECTIONS = (
     "sources",
     "models",
@@ -326,8 +329,10 @@ def errors_from_exception(exception: BaseException) -> List[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _names(collection) -> List[str]:
-    return [getattr(item, "name", None) or str(item) for item in (collection or [])]
+def _names(collection) -> List[Optional[str]]:
+    # Never fall back to str(item): a Pydantic repr of a whole dashboard would
+    # bloat the envelope. A null entry is the honest answer for a nameless one.
+    return [getattr(item, "name", None) for item in (collection or [])]
 
 
 def compile_result(project, working_dir: str, output_dir: str) -> Dict[str, Any]:
