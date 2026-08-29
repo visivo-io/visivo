@@ -50,6 +50,31 @@ import { getCachedExplorationResult } from '../stores/explorationResultCache';
  * cloud as well as locally. A model that has no built data just leaves the grid
  * empty.
  *
+ * ── WHY TWO EFFECTS AND NOT ONE ───────────────────────────────────────────
+ *
+ * The two sources have genuinely different triggers, and collapsing them into
+ * one effect broke the older one.
+ *
+ * The cache read must re-fire whenever the SCOPE changes: `sourceName` is
+ * rebound after `defaults` land (VIS-1082's `applyResolvedDefaultSource`), and
+ * `sql` is the live editor buffer, which `SQLEditor`'s `onSave` updates on
+ * every keystroke.
+ *
+ * The build fetch must NOT. It is asynchronous, and its cleanup cancels the
+ * in-flight request — while `attemptedRef` refuses to start a second one for
+ * the same name. Put the scope in that effect's dependency array and a single
+ * keystroke (or the VIS-1082 source rebind) during the fetch cancels it
+ * permanently: the resolved response is discarded, the re-run returns early on
+ * `attemptedRef`, and the grid stays empty for the rest of the mount beside a
+ * parquet that exists. That regression is what the two-effect split exists to
+ * prevent, and `useModelTabPrefill.test.js` proves it with a deferred fetch.
+ *
+ * `servedFromCacheRef` is the handoff between them. Effects run in declaration
+ * order, so on the commit where the cache hits, the build effect sees the ref
+ * already set and skips — without it the build effect would still be looking
+ * at the stale `hasResult === false` from that same render and would race the
+ * cached rows it just replaced.
+ *
  * @param {string|null} modelName - the active model tab, or null
  * @param {boolean} hasResult - whether that tab already has rows
  * @param {{explorationId?: string|null, sourceName?: string|null, sql?: string}} [cacheScope]
@@ -65,32 +90,47 @@ export const useModelTabPrefill = (modelName, hasResult, cacheScope = null) => {
   // Names already attempted this mount — keyed so switching tabs back and forth
   // doesn't re-fetch, and a model with no parquet is asked for exactly once.
   const attemptedRef = useRef(new Set());
+  // The model whose rows the cache effect just served, so the build effect —
+  // which runs on the same commit, still holding that render's stale
+  // `hasResult === false` — doesn't fetch a parquet to overwrite them with.
+  const servedFromCacheRef = useRef(null);
 
   const explorationId = cacheScope?.explorationId || null;
   const scopeSourceName = cacheScope?.sourceName || null;
   const scopeSql = cacheScope?.sql || '';
 
+  // (1) THIS SESSION'S OWN RESULT for exactly this query. It outranks the last
+  // build: it needs no DuckDB handle and no network, and it is what the user
+  // was looking at a moment ago. Keyed on the live scope, so it re-fires when
+  // the source is rebound or the buffer changes — see the two-effect note.
   useEffect(() => {
-    if (!modelName || hasResult) return undefined;
+    if (!modelName || hasResult) return;
 
-    // (1) This session's own result for exactly this query. Checked BEFORE the
-    // last-build fetch and before `attemptedRef` is touched: it needs no
-    // DuckDB handle, no network, and it is what the user was looking at a
-    // moment ago, so it outranks whatever the project last built.
     const cached = getCachedExplorationResult({
       explorationId,
       modelName,
       sourceName: scopeSourceName,
       sql: scopeSql,
     });
-    if (cached) {
-      // `from_cache` marks the provenance for anything downstream that cares;
-      // the rows themselves are exactly what the run produced.
-      setModelQueryResult(modelName, { ...cached, from_cache: true });
-      return undefined;
+    if (!cached) {
+      // A miss releases the build effect again: the entry may have been
+      // invalidated (a failed re-run, a promote) since it last hit.
+      servedFromCacheRef.current = null;
+      return;
     }
+    servedFromCacheRef.current = modelName;
+    // `from_cache` marks the provenance for anything downstream that cares;
+    // the rows themselves are exactly what the run produced.
+    setModelQueryResult(modelName, { ...cached, from_cache: true });
+  }, [modelName, hasResult, setModelQueryResult, explorationId, scopeSourceName, scopeSql]);
 
-    // (2) The last build's parquet.
+  // (2) THE LAST BUILD'S PARQUET. Deliberately NOT scope-dependent — see the
+  // two-effect note above; this dependency list is the pre-M27 one.
+  useEffect(() => {
+    if (!modelName || hasResult) return undefined;
+    // The cache already answered for this tab on this commit.
+    if (servedFromCacheRef.current === modelName) return undefined;
+
     if (!db) return undefined;
     if (attemptedRef.current.has(modelName)) return undefined;
     attemptedRef.current.add(modelName);
@@ -127,16 +167,7 @@ export const useModelTabPrefill = (modelName, hasResult, cacheScope = null) => {
     return () => {
       cancelled = true;
     };
-  }, [
-    db,
-    modelName,
-    hasResult,
-    setModelQueryResult,
-    projectId,
-    explorationId,
-    scopeSourceName,
-    scopeSql,
-  ]);
+  }, [db, modelName, hasResult, setModelQueryResult, projectId]);
 };
 
 export default useModelTabPrefill;

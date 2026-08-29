@@ -14,6 +14,7 @@ import {
   getCachedExplorationResult,
   putCachedExplorationResult,
   invalidateExplorationResults,
+  invalidateResultsForSource,
   explorationResultCacheStats,
   _resetExplorationResultCacheForTests,
   _setExplorationResultCacheBoundsForTests,
@@ -182,6 +183,56 @@ describe('invalidation', () => {
   });
 });
 
+/**
+ * The key names a source; a name is not a connection.
+ *
+ * Repoint `local` from `a.duckdb` to `b.duckdb`, or change its schema or
+ * credentials, and every parked key still matches while the rows behind them
+ * came out of a database the user has stopped pointing at. Nothing on screen
+ * would say so — `from_cache` is provenance for the module's own tests, not a
+ * banner. This is the one stale serve the key alone cannot prevent, and the
+ * app itself makes the change, so it can be invalidated exactly.
+ */
+describe('a source whose definition changes', () => {
+  it('drops every result it produced, across explorations', () => {
+    putCachedExplorationResult(SCOPE, resultOf('from warehouse'));
+    putCachedExplorationResult(
+      { ...SCOPE, explorationId: 'exp-b', modelName: 'other' },
+      resultOf('also from warehouse')
+    );
+    putCachedExplorationResult(
+      { ...SCOPE, modelName: 'untouched', sourceName: 'other_db' },
+      resultOf('from other_db')
+    );
+
+    expect(invalidateResultsForSource('warehouse')).toBe(2);
+
+    expect(getCachedExplorationResult(SCOPE)).toBeNull();
+    expect(
+      getCachedExplorationResult({ ...SCOPE, explorationId: 'exp-b', modelName: 'other' })
+    ).toBeNull();
+    // A different source is untouched: this invalidates by source, not by
+    // panic.
+    expect(
+      getCachedExplorationResult({ ...SCOPE, modelName: 'untouched', sourceName: 'other_db' })?.label
+    ).toBe('from other_db');
+  });
+
+  it('gives the freed budget back', () => {
+    putCachedExplorationResult(SCOPE, resultOf('rows', 10, 3));
+    expect(explorationResultCacheStats().cells).toBe(30);
+    invalidateResultsForSource('warehouse');
+    expect(explorationResultCacheStats().cells).toBe(0);
+  });
+
+  it('is a no-op without a source name', () => {
+    putCachedExplorationResult(SCOPE, resultOf('rows'));
+    expect(invalidateResultsForSource(undefined)).toBe(0);
+    expect(invalidateResultsForSource('')).toBe(0);
+    expect(getCachedExplorationResult(SCOPE)?.label).toBe('rows');
+  });
+});
+
 describe('bounds', () => {
   it('evicts the least recently used entry at the shipped entry cap', () => {
     // No test seam here on purpose: this asserts the DEFAULT the product
@@ -253,5 +304,84 @@ describe('bounds', () => {
     putCachedExplorationResult(SCOPE, resultOf('big', 50, 2)); // 100
     putCachedExplorationResult(SCOPE, resultOf('small', 2, 2)); // 4
     expect(explorationResultCacheStats().cells).toBe(4);
+  });
+
+  /**
+   * The cell bound tests above all run against an INJECTED `maxCells`, which
+   * would let a mis-sized shipped constant ship green. These exercise the
+   * number the product actually carries.
+   *
+   * A holey `new Array(n)` is what makes that affordable: `cellsIn` only reads
+   * `.length`, and V8 allocates nothing for the elements, so a result can
+   * claim a quarter of a million cells without a quarter of a million objects
+   * existing.
+   */
+  describe('at the SHIPPED cell budget', () => {
+    const sized = (label, cells) => ({
+      label,
+      columns: ['c0'],
+      rows: new Array(cells),
+      row_count: cells,
+    });
+
+    it('accepts a result that exactly fills it', () => {
+      const { maxCells } = explorationResultCacheStats();
+      expect(putCachedExplorationResult(SCOPE, sized('exact', maxCells))).toBe(true);
+      expect(explorationResultCacheStats().cells).toBe(maxCells);
+    });
+
+    it('refuses one cell more, rather than emptying itself for it', () => {
+      const { maxCells } = explorationResultCacheStats();
+      putCachedExplorationResult({ ...SCOPE, modelName: 'live' }, resultOf('live'));
+
+      expect(
+        putCachedExplorationResult({ ...SCOPE, modelName: 'huge' }, sized('huge', maxCells + 1))
+      ).toBe(false);
+
+      expect(getCachedExplorationResult({ ...SCOPE, modelName: 'huge' })).toBeNull();
+      expect(getCachedExplorationResult({ ...SCOPE, modelName: 'live' })?.label).toBe('live');
+    });
+
+    it('evicts on the shipped budget, not just the injected one', () => {
+      const { maxCells } = explorationResultCacheStats();
+      putCachedExplorationResult({ ...SCOPE, modelName: 'a' }, sized('a', maxCells - 10));
+      putCachedExplorationResult({ ...SCOPE, modelName: 'b' }, sized('b', 20));
+
+      expect(explorationResultCacheStats().cells).toBeLessThanOrEqual(maxCells);
+      expect(getCachedExplorationResult({ ...SCOPE, modelName: 'a' })).toBeNull();
+      expect(getCachedExplorationResult({ ...SCOPE, modelName: 'b' })?.label).toBe('b');
+    });
+  });
+
+  /**
+   * Renaming a chip leaves the entry under the old name unreachable but still
+   * counted. It is left to the LRU on purpose (see the module docstring), and
+   * this is the property that makes that safe: an orphan is never read, so it
+   * never moves to the recently-used end, so it goes first — a live result the
+   * user is still tabbing between is never evicted to make room while an
+   * orphan is sitting there.
+   */
+  it('evicts a renamed chip’s orphaned entry ahead of a live one', () => {
+    _setExplorationResultCacheBoundsForTests({ maxEntries: 2 });
+
+    // One real session, in order:
+    //   1. run `orders` — parked, and the user keeps coming back to it.
+    putCachedExplorationResult({ ...SCOPE, modelName: 'orders' }, resultOf('live'));
+    //   2. add a second chip, run it as `query_1`, then rename it. The entry
+    //      under `query_1` is now stranded: no key will ever reach it again.
+    //      Note it was inserted AFTER `orders`, so insertion order alone would
+    //      throw `orders` away first.
+    putCachedExplorationResult({ ...SCOPE, modelName: 'query_1' }, resultOf('orphan'));
+    //   3. the user tabs back to `orders`.
+    expect(getCachedExplorationResult({ ...SCOPE, modelName: 'orders' })?.label).toBe('live');
+    //   4. the renamed chip runs, and parks under its new name.
+    putCachedExplorationResult({ ...SCOPE, modelName: 'revenue' }, resultOf('newest'));
+
+    // The orphan is the one that goes, because it is the only entry nothing
+    // has used. Recency — not arrival order — is what protects the result the
+    // user is actually working with.
+    expect(getCachedExplorationResult({ ...SCOPE, modelName: 'query_1' })).toBeNull();
+    expect(getCachedExplorationResult({ ...SCOPE, modelName: 'orders' })?.label).toBe('live');
+    expect(getCachedExplorationResult({ ...SCOPE, modelName: 'revenue' })?.label).toBe('newest');
   });
 });

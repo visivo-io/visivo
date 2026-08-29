@@ -63,7 +63,18 @@
  *
  *   - Editing the SQL, or picking a different source: the key changes, so the
  *     read misses. Nothing to do.
- *   - Renaming the query chip: the key changes, so the read misses.
+ *   - Renaming the query chip: the key changes, so the read misses. The entry
+ *     under the old name is then an ORPHAN — unreachable, but still counted
+ *     against both bounds. It is left to the LRU rather than invalidated
+ *     explicitly, and that is a considered choice, not an oversight: an
+ *     orphan is by definition never read again, so it never moves to the
+ *     recently-used end and is always evicted ahead of a live entry. It
+ *     serves nothing wrong; it costs a slot until pressure arrives. Doing
+ *     better would mean teaching `explorerStore.renameModelTab` — the legacy
+ *     singleton, which knows nothing about which exploration is on screen —
+ *     an exploration identity, and that coupling is a larger correctness risk
+ *     than the slot is worth. `explorationResultCache.test.js` pins the LRU
+ *     ordering that makes this safe.
  *   - Re-running: `put` drops EVERY other entry for that (exploration, model)
  *     before inserting. One live result per query chip, always the newest. So
  *     re-running a second query and then typing the first one's text back in
@@ -71,6 +82,16 @@
  *   - A run that FAILS: `CenterPanel` calls `invalidateExplorationResults` for
  *     that chip. If the same SQL that succeeded a minute ago now errors, the
  *     rows it produced are exactly the rows that must not come back.
+ *   - EDITING OR DELETING THE SOURCE ITSELF: `sourceStore.saveSource` /
+ *     `deleteSource` call `invalidateResultsForSource`. This one is not
+ *     optional. The key identifies a source by NAME, and a name is not a
+ *     connection: repoint `local` from `a.duckdb` to `b.duckdb`, or change its
+ *     schema or credentials, and every key still matches while the rows behind
+ *     them came out of a database the user has stopped pointing at. Nothing
+ *     downstream reads `from_cache`, so there is no visible signal either —
+ *     the grid would simply be wrong. Folding a config hash into the key would
+ *     also work, but invalidating is honest about the fact that the app itself
+ *     made the change and therefore knows exactly when to forget.
  *   - Promoting a model: `promoteExploration` invalidates that chip. Once a
  *     model is a project object, its rows belong to the project's own build
  *     (which `useModelTabPrefill`'s last-build path serves), and a session
@@ -91,12 +112,37 @@
  * A single result too big to fit the whole budget is not cached at all, rather
  * than evicting everything else to make room for something that still would
  * not fit.
+ *
+ * The bounds are the ONLY thing that limits this cache — it is not cleared on
+ * leaving the Explorer, and deliberately so: the navigation it must survive
+ * (park an exploration, read another, come back) is indistinguishable at the
+ * component level from the navigation that would clear it, and a clear-on-exit
+ * hook that fired on the wrong one would delete the feature. So the numbers
+ * below have to be defensible on their own, for the life of the page.
  */
 
-// Defaults are deliberately small: this exists so a user who tabs away gets
-// their screen back, not so a session accumulates every result it ever saw.
 const DEFAULT_MAX_ENTRIES = 8;
-const DEFAULT_MAX_CELLS = 1_000_000;
+
+/**
+ * The cell budget, shared across every parked result.
+ *
+ * Sized, not guessed. An entry retains the run's own row objects (the cache
+ * stores the SAME array the store was handed, so a parked result costs one
+ * copy, not two) — call it 100–200 bytes per cell for JS objects with string
+ * keys. 250k cells is therefore roughly 25–50 MB at full budget, held for the
+ * page's lifetime. That comfortably covers what a person actually tabs between
+ * — 8 chips of a few thousand rows each, or one 25k × 10 result — while
+ * staying an order of magnitude below the point where the tab itself is in
+ * trouble.
+ *
+ * There is no server-side row cap on `/api/model-query-jobs/`
+ * (`model_query_jobs_views.py` applies no LIMIT), so `SELECT * FROM big_table`
+ * really can return more than this. That result is simply not cached: the
+ * `cells > maxCells` refusal above declines it rather than evicting eight live
+ * results for one that would still not fit, and the Run button remains the way
+ * back to it. Erring toward "not cached" is the right side for a convenience.
+ */
+const DEFAULT_MAX_CELLS = 250_000;
 
 let maxEntries = DEFAULT_MAX_ENTRIES;
 let maxCells = DEFAULT_MAX_CELLS;
@@ -235,6 +281,26 @@ export const invalidateExplorationResults = (explorationId, modelName) => {
       entry.explorationId === explorationId &&
       (modelName === undefined || entry.modelName === modelName)
   );
+};
+
+/**
+ * Forget every parked result that was produced by one SOURCE, across every
+ * exploration.
+ *
+ * Called when the source's own definition changes or goes away
+ * (`sourceStore.saveSource` / `deleteSource`). The key carries the source's
+ * NAME, and editing a source in place keeps the name while changing what it
+ * connects to — so without this, every entry still matches a source that no
+ * longer produces those rows. Scoped by source rather than by exploration
+ * because a source is shared: one edit can invalidate results in several
+ * explorations at once.
+ *
+ * @param {string} sourceName
+ * @returns {number} entries dropped.
+ */
+export const invalidateResultsForSource = sourceName => {
+  if (!sourceName) return 0;
+  return dropWhere(entry => entry.sourceName === sourceName);
 };
 
 /** Observability (and what the bound tests assert against). */

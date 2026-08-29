@@ -23,7 +23,11 @@
  *      to remove.
  *   2. Edit the SQL first, and coming back shows the run-your-query state
  *      rather than rows that answer a question the user has stopped asking.
- *   3. A sibling exploration never sees them.
+ *   3. A sibling exploration never sees them — asserted with the SAME SQL
+ *      typed into the sibling's chip, so every part of the cache key matches
+ *      except the exploration. Left with the sibling's default empty buffer
+ *      the assertion is vacuous: an empty query switches caching off outright,
+ *      so the grid would be empty whether or not the key isolates.
  *
  * Tier 2 (surviving a hard RELOAD, via a parquet twin under `target/`) is
  * deliberately out of scope and unasserted here — see the cache module's
@@ -175,15 +179,28 @@ test.describe('Exploration results survive a tab switch (M27)', () => {
     await gotoExplorerHome(page);
     await newExploration(page);
 
-    await typeSql(page, `SELECT * FROM ${TABLE}`);
+    const sql = `SELECT * FROM ${TABLE}`;
+    await typeSql(page, sql);
     await runQuery(page);
     await expect(resultsGrid(page)).toBeVisible({ timeout: 20000 });
 
     await backToHome(page);
     await newExploration(page);
 
-    // A brand-new exploration whose chip may well carry the same generic
-    // name: its grid is empty until IT runs something.
+    // TYPE THE SAME SQL, and do not run it. This is what makes the test an
+    // isolation test rather than a coincidence: a brand-new exploration's
+    // auto-created chip starts with an EMPTY buffer, and
+    // `explorationResultCacheKey` returns null for empty sql — so caching is
+    // off for that tab no matter what the key is made of, and an empty grid
+    // would prove nothing. With the same SQL in the buffer, the sibling's
+    // chip carries the same generic name against the same source running the
+    // same text, and every component of the key MATCHES except
+    // `explorationId`. `useModelTabPrefill` reads on the keystroke, so if the
+    // exploration were ever dropped from the key this grid would fill with
+    // the other document's rows — which is the failure that must be
+    // impossible.
+    await typeSql(page, sql);
+
     await expect(emptyResults(page)).toBeVisible({ timeout: 20000 });
     await expect(resultsGrid(page)).toHaveCount(0);
   });

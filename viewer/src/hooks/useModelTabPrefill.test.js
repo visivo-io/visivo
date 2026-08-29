@@ -17,6 +17,7 @@ import { fetchModelJobs } from '../api/modelJobs';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import {
   putCachedExplorationResult,
+  invalidateExplorationResults,
   _resetExplorationResultCacheForTests,
 } from '../stores/explorationResultCache';
 
@@ -262,6 +263,142 @@ describe('session result cache', () => {
 
     await Promise.resolve();
     expect(setModelQueryResult).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The regression the two-effect split exists to prevent.
+   *
+   * These are NOT about the cache. They are about what threading the cache
+   * scope through this hook must not cost the OLDER of its two jobs — the
+   * last-build parquet prefill, which predates M27. `CenterPanel` feeds
+   * `sql` straight from `selectActiveModelSql`, and `SQLEditor`'s `onSave`
+   * updates that on every keystroke; `sourceName` moves too, when VIS-1082's
+   * `applyResolvedDefaultSource` rebinds an auto-created tab once `defaults`
+   * land. Both fire routinely while the parquet fetch is in the air.
+   *
+   * Put the scope in the build effect's dependency array and either one is
+   * fatal: the cleanup sets `cancelled = true`, the resolved response is
+   * dropped, and `attemptedRef` — which already holds the name — refuses to
+   * start another fetch. The grid then stays empty for the whole mount beside
+   * a parquet that exists.
+   *
+   * A deferred `fetchModelJobs` is what makes that window real in a test:
+   * without it the fetch resolves before the rerender and nothing is proven.
+   */
+  describe('a scope change mid-fetch does not cancel the last-build prefill', () => {
+    const deferredJobs = () => {
+      let resolve;
+      const promise = new Promise(r => {
+        resolve = r;
+      });
+      fetchModelJobs.mockReturnValue(promise);
+      return () => resolve([jobFor('orders')]);
+    };
+
+    it('survives a keystroke in the SQL editor while the parquet is loading', async () => {
+      const settle = deferredJobs();
+      processModel.mockResolvedValue({ orders: { name: 'orders', data: ROWS } });
+
+      const { rerender } = renderHook(({ sql }) => useModelTabPrefill('orders', false, { ...SCOPE, sql }), {
+        initialProps: { sql: 'SELECT * FROM orders' },
+      });
+      await waitFor(() => expect(fetchModelJobs).toHaveBeenCalledTimes(1));
+
+      // One character, mid-flight.
+      rerender({ sql: 'SELECT * FROM orders w' });
+      settle();
+
+      await waitFor(() => expect(setModelQueryResult).toHaveBeenCalled());
+      expect(setModelQueryResult.mock.calls[0][1].from_last_run).toBe(true);
+      // And it did not paper over the cancellation by re-fetching, which would
+      // be a 404 per keystroke for a model that has never been built.
+      expect(fetchModelJobs).toHaveBeenCalledTimes(1);
+    });
+
+    it('survives the source being rebound while the parquet is loading', async () => {
+      const settle = deferredJobs();
+      processModel.mockResolvedValue({ orders: { name: 'orders', data: ROWS } });
+
+      const { rerender } = renderHook(
+        ({ sourceName }) => useModelTabPrefill('orders', false, { ...SCOPE, sourceName }),
+        { initialProps: { sourceName: 'pending_fallback' } }
+      );
+      await waitFor(() => expect(fetchModelJobs).toHaveBeenCalledTimes(1));
+
+      rerender({ sourceName: 'warehouse' });
+      settle();
+
+      await waitFor(() => expect(setModelQueryResult).toHaveBeenCalled());
+      expect(setModelQueryResult.mock.calls[0][1].from_last_run).toBe(true);
+    });
+
+    it('a cache HIT still suppresses the build fetch entirely', async () => {
+      // The other half of the split: the two effects run on the same commit,
+      // and the build effect is still holding that render's stale
+      // `hasResult === false`. Without the handoff ref it would fetch a
+      // parquet and overwrite the rows the cache effect just restored.
+      park();
+
+      renderHook(() => useModelTabPrefill('orders', false, SCOPE));
+
+      await waitFor(() => expect(setModelQueryResult).toHaveBeenCalled());
+      expect(setModelQueryResult).toHaveBeenCalledTimes(1);
+      expect(setModelQueryResult.mock.calls[0][1].from_cache).toBe(true);
+      expect(fetchModelJobs).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the build after a hit is invalidated', async () => {
+      // The handoff ref must not latch: once the entry is gone, the tab is
+      // owed the last build again rather than nothing.
+      park();
+      processModel.mockResolvedValue({ orders: { name: 'orders', data: ROWS } });
+
+      const { rerender } = renderHook(({ has }) => useModelTabPrefill('orders', has, SCOPE), {
+        initialProps: { has: false },
+      });
+      await waitFor(() => expect(setModelQueryResult).toHaveBeenCalledTimes(1));
+      expect(setModelQueryResult.mock.calls[0][1].from_cache).toBe(true);
+
+      // The chip's run fails, so `CenterPanel` retires its parked rows; the
+      // tab is emptied and re-asked.
+      invalidateExplorationResults('exp-a', 'orders');
+      rerender({ has: true });
+      rerender({ has: false });
+
+      await waitFor(() => expect(setModelQueryResult).toHaveBeenCalledTimes(2));
+      expect(setModelQueryResult.mock.calls[1][1].from_last_run).toBe(true);
+    });
+  });
+
+  /**
+   * A deliberate affordance, pinned here so it stays deliberate.
+   *
+   * The read is keyed on the LIVE editor buffer and re-fires while a tab has
+   * no result, so typing a query's text back in can fill the grid without a
+   * Run press. That is not a stale serve: `put` keeps at most ONE entry per
+   * (exploration, chip), always the newest run's, so a key match means these
+   * really are the rows that chip last produced for exactly this source and
+   * exactly this text — the same rows a tab switch would have restored. It is
+   * still surprising enough to be worth a test that says so out loud.
+   */
+  it('fills the grid mid-typing when the buffer returns to a parked query', async () => {
+    park();
+    // Nothing built for this model, so the cache is the only thing that can
+    // put rows on screen here.
+    fetchModelJobs.mockResolvedValue([]);
+
+    const { rerender } = renderHook(({ sql }) => useModelTabPrefill('orders', false, { ...SCOPE, sql }), {
+      initialProps: { sql: 'SELECT * FROM ord' },
+    });
+    // Half-typed: a miss, and an empty grid.
+    await waitFor(() => expect(fetchModelJobs).toHaveBeenCalled());
+    expect(setModelQueryResult).not.toHaveBeenCalled();
+
+    // The last character lands and the key matches — no Run press involved.
+    rerender({ sql: 'SELECT * FROM orders' });
+
+    await waitFor(() => expect(setModelQueryResult).toHaveBeenCalled());
+    expect(setModelQueryResult.mock.calls[0][1].from_cache).toBe(true);
   });
 
   it('still restores on a SECOND return, unlike the once-per-mount build fetch', async () => {
