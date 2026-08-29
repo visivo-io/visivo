@@ -44,7 +44,7 @@ class Alert(NamedModel):
     )
     destinations: List[DestinationField] = Field(
         [],
-        description="Destination objects defined inline or `${ ref() }`s to destinations that the alert notifies when it fires.",
+        description="Destination objects, defined inline on the alert, that it notifies when it fires. Only concrete destinations are accepted here: a reference to a top-level `destinations:` entry is not resolved on this field.",
     )
 
     _parent_test: str = PrivateAttr(default=None)

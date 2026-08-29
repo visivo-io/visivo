@@ -50,7 +50,7 @@ You can declare an [insight](reference/configuration/Insight/index.md) in any `*
 
 === "dbt"
 
-    <!-- visivo-example: skip - a dbt schema.yml: the models: block here is dbt's model catalog (description/columns), validated by dbt, not Visivo's models: -->
+    <!-- visivo-example: skip-keys(models) - a dbt schema.yml: only the models: block is dbt's model catalog (description/columns), validated by dbt, not Visivo's models:; the insights:/charts: beside it are real Visivo config and stay checked -->
 
     ``` yaml title="project_dir/models/schema.yml"
     insights:
