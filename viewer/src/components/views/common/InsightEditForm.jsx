@@ -6,7 +6,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import RefTextArea from './RefTextArea';
+import ExpressionField from './ExpressionField';
 import Select from '../../common/Select';
 import InsightEditFormFields from './InsightEditFormFields';
 import { validateName } from './namedModel';
@@ -14,7 +14,6 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { refKindsFor } from './fieldTypes';
 import { REF_INSERT_HINT } from './RefTextArea';
 import {
   SectionContainer,
@@ -328,11 +327,12 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                     </div>
 
                     {/* Interaction Value */}
-                    <RefTextArea
+                    <ExpressionField
+                      objectType="interaction"
+                      field="filter"
                       value={interaction.value}
                       onChange={value => updateInteractionValue(index, value)}
                       label={typeConfig.label}
-                      allowedTypes={refKindsFor('interaction', 'filter')}
                       rows={2}
                       helperText={`${typeConfig.helperText} ${REF_INSERT_HINT}`}
                     />

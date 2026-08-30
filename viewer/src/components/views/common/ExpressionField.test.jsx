@@ -6,12 +6,20 @@ import ExpressionField from './ExpressionField';
 // RefTextArea is a contentEditable pill editor; these tests care only about
 // WHICH editor is chosen and what it is told, not how it renders internally.
 jest.mock('./RefTextArea', () => {
-  return function MockRefTextArea({ value, onChange, allowedTypes, acceptDrops, label }) {
+  return function MockRefTextArea({
+    value,
+    onChange,
+    allowedTypes,
+    acceptDrops,
+    configurableChips,
+    label,
+  }) {
     return (
       <div
         data-testid="ref-text-area"
         data-allowed-types={(allowedTypes || []).join(',')}
         data-accept-drops={acceptDrops ? 'true' : 'false'}
+        data-configurable-chips={configurableChips ? 'true' : 'false'}
       >
         <span>{label}</span>
         <input value={value || ''} onChange={e => onChange(e.target.value)} data-testid="ref-input" />
@@ -107,11 +115,63 @@ describe('ExpressionField — the editor comes from the declared field type', ()
     spy.mockRestore();
   });
 
-  test('a query-string field names the component that still owns it', () => {
+  // VIS-1327: a query-string field used to throw here, which is why
+  // `input.options` and the interaction filters were left rendering a bare
+  // RefTextArea with no drop target and no chip menu. The two editors differ in
+  // GRAMMAR, not in affordances.
+  test('a query-string field renders the same ref-capable editor as context-sql', () => {
+    render(<ExpressionField objectType="insight" field="x" value="" onChange={jest.fn()} />);
+
+    const editor = screen.getByTestId('ref-text-area');
+    // The affordances follow the DECLARED TYPE, not the call site. This is the
+    // whole bug: `input.options` declared `refKinds: ['model']` and still had
+    // no drop target, so a model could not be dragged into it.
+    expect(editor).toHaveAttribute('data-accept-drops', 'true');
+    expect(editor).toHaveAttribute('data-configurable-chips', 'true');
+  });
+
+  // The registry is the single rule; every ref-capable field inherits both
+  // affordances from it, so a new surface cannot quietly ship without them.
+  test.each([
+    ['relation', 'condition'],
+    ['metric', 'expression'],
+    ['dimension', 'expression'],
+    ['table', 'columns'],
+    ['input', 'options'],
+    ['interaction', 'filter'],
+    ['interaction', 'split'],
+    ['interaction', 'sort'],
+    ['insight', 'props'],
+  ])('%s.%s accepts drops and configurable chips', (objectType, field) => {
+    render(<ExpressionField objectType={objectType} field={field} value="" onChange={jest.fn()} />);
+
+    const editor = screen.getByTestId('ref-text-area');
+    expect(editor).toHaveAttribute('data-accept-drops', 'true');
+    expect(editor).toHaveAttribute('data-configurable-chips', 'true');
+    // And each is scoped to its own vocabulary rather than a shared default.
+    expect(editor.getAttribute('data-allowed-types')).not.toBe('');
+  });
+
+  test('a ref-free field gets neither affordance', () => {
+    render(
+      <ExpressionField
+        objectType="metric"
+        field="expression"
+        nested
+        value=""
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+    expect(screen.getByTestId('plain-sql-input')).toBeInTheDocument();
+  });
+
+  test('object-ref still names the component that owns it', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     expect(() =>
-      render(<ExpressionField objectType="insight" field="x" value="" onChange={jest.fn()} />)
-    ).toThrow(/PropertyRow/);
+      render(<ExpressionField objectType="model" field="source" value="" onChange={jest.fn()} />)
+    ).toThrow(/RefDropZone/);
     spy.mockRestore();
   });
 

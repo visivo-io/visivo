@@ -10,9 +10,8 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
-import RefTextArea from './RefTextArea';
+import ExpressionField from './ExpressionField';
 import Select from '../../common/Select';
-import { refKindsFor } from './fieldTypes';
 import { REF_INSERT_HINT } from './RefTextArea';
 
 /**
@@ -516,10 +515,11 @@ const RefListField = ({ label, items, onChange, helperText, error }) => {
       {items.map((item, index) => (
         <div key={index} className="flex items-start gap-1.5">
           <div className="flex-1">
-            <RefTextArea
+            <ExpressionField
+              objectType="table"
+              field="columns"
               value={item}
               onChange={value => handleChange(index, value)}
-              allowedTypes={refKindsFor('table', 'columns')}
               rows={1}
             />
           </div>

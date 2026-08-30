@@ -10,7 +10,7 @@ import {
 } from '../../../stores/explorerStore';
 import InsightEditFormFields from '../common/InsightEditFormFields';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
-import RefTextArea from '../common/RefTextArea';
+import ExpressionField from '../common/ExpressionField';
 import Select from '../../common/Select';
 import { checkRefTargets } from './refPreflight';
 import { formatRefExpression } from '../../../utils/refString';
@@ -18,7 +18,6 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
-import { refKindsFor } from '../common/fieldTypes';
 
 const INSIGHT_COLORS = getTypeColors('insight');
 const InsightTypeIcon = getTypeIcon('insight');
@@ -58,7 +57,9 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         className={`flex-1 ${isOver ? 'ring-2 ring-primary-400 rounded' : ''}`}
         data-testid={`interaction-value-field-${index}`}
       >
-        <RefTextArea
+        <ExpressionField
+          objectType="interaction"
+          field="filter"
           value={innerValue}
           onChange={newVal => {
             updateInsightInteraction(insightName, index, {
@@ -67,7 +68,6 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
           }}
           label=""
           rows={1}
-          allowedTypes={refKindsFor('interaction', 'filter')}
         />
       </div>
       <button
