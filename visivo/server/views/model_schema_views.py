@@ -62,12 +62,8 @@ def _columns_payload(column_map: dict) -> list:
 
 
 def _from_manager(flask_app, manager_name: str, name: str):
-    """Look a name up in an object manager (draft cache first, then published).
-
-    The managers are the same source of truth ``/api/models/`` and
-    ``/api/sources/`` serve, so anything the viewer can SEE resolves here —
-    including objects that exist only as uncommitted drafts.
-    """
+    """Look a name up in an object manager — the draft cache, checked before
+    the committed project, so an uncommitted object still resolves."""
     manager = getattr(flask_app, manager_name, None)
     getter = getattr(manager, "get", None)
     if not callable(getter):
@@ -75,20 +71,11 @@ def _from_manager(flask_app, manager_name: str, name: str):
     try:
         return getter(name)
     except Exception:
-        # A manager that cannot answer is not a reason to fail the request —
-        # the committed-project scan below is still a valid answer.
         return None
 
 
 def _find_model(flask_app, project, model_name: str):
-    """Find a model by name — DRAFT CACHE FIRST, then the committed project.
-
-    A model created in the editor lives in the draft cache until Commit writes
-    it to YAML, and ``flask_app.project`` is compiled from YAML. Scanning only
-    the project meant every uncommitted model 404'd here while being perfectly
-    visible in the Library and the semantic layer, which is exactly what the
-    ERD's column hydration asks about.
-    """
+    """Find a model by name — draft cache first, then the committed project."""
     model = _from_manager(flask_app, "model_manager", model_name)
     if model is not None:
         return model
@@ -110,14 +97,9 @@ def _find_source(flask_app, project, source_name: str):
 
 
 def _referenced_source_name(model) -> str:
-    """The source NAME a model points at, read off the model itself.
-
-    Source resolution normally walks the DAG, but a draft model is not IN the
-    DAG — it has never been compiled — so that walk returns nothing and the
-    request 400s with "No source resolved". The model's own ``source`` field
-    still names its source, in either of the two forms the field round-trips
-    as (``ref(wh)`` and ``${ref(wh)}``). Returns None for an embedded Source
-    object (which needs no lookup) or an unparseable value.
+    """The source name a model's `source` field points at — for a draft model,
+    which isn't in the DAG yet, so the normal DAG-walk resolution can't see
+    it. None for an embedded Source (no lookup needed) or an unparseable value.
     """
     source = getattr(model, "source", None)
     if source is None:
@@ -196,13 +178,8 @@ def register_model_schema_views(app, flask_app, output_dir):
                 try:
                     source = get_source_for_model(model, project.dag(), output_dir)
                 except Exception:
-                    # The DAG walk assumes the model is IN the DAG; an
-                    # uncommitted one never is.
-                    source = None
+                    source = None  # uncommitted model isn't in the DAG
                 if source is None:
-                    # Fall back to the name the model itself carries, resolved
-                    # through the managers — the only path that works for a
-                    # draft model whose source is a ref string.
                     referenced = _referenced_source_name(model)
                     if referenced:
                         source = _find_source(flask_app, project, referenced)

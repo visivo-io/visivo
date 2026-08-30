@@ -665,10 +665,7 @@ describe('Library', () => {
     }
   });
 
-  // VIS-1237: Relation used to be special-cased into opening the Semantic
-  // Layer, which read as "+ New does nothing". It now drafts like every other
-  // type and opens in the edit panel.
-  test('"+ New" → Relation drafts a relation and opens it', async () => {
+  test('"+ New" → Relation drafts a relation and opens it (VIS-1237)', async () => {
     const createWorkspaceObject = jest.fn(async () => ({
       success: true,
       name: 'new_relation',

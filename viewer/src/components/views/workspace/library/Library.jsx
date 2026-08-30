@@ -429,9 +429,6 @@ const Library = () => {
           });
           return;
         }
-        // A create that cannot happen has to SAY so. This used to fall through
-        // silently, which is what made "+ New" read as a dead button (VIS-1237)
-        // rather than an action with a precondition.
         if (result?.error && showWorkspaceToast) {
           showWorkspaceToast(result.error);
         }
@@ -446,12 +443,8 @@ const Library = () => {
     ]
   );
 
-  // "+ New" menu pick — every type, relation included, drafts through the one
-  // shared inline-create flow and opens in the edit panel. Relations used to be
-  // special-cased into opening the Semantic Layer instead, which read as "+ New
-  // does nothing" (VIS-1237): a relation IS templatable, seeded with the
-  // project's first two models, and the ERD stays the way to author one
-  // visually rather than the only way.
+  // Every type, relation included, drafts through the shared inline-create flow
+  // (VIS-1237) — the ERD/Semantic Layer remains an alternate way to author one.
   const handleNewPick = useCallback(
     typeKey => {
       setNewMenuOpen(false);

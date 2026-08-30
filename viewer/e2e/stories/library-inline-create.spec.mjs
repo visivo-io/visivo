@@ -54,9 +54,7 @@ test.describe('Library inline create', () => {
     await page.getByTestId('library-new-object-button').hover();
     await page.getByTestId('library-new-object-button').click();
     await expect(page.getByTestId('library-new-object-menu')).toBeVisible();
-    // Every creatable type is listed — relation included (VIS-1237): it used
-    // to be listed but wired to open the Semantic Layer instead of creating
-    // anything, which read as a dead menu item.
+    // Every creatable type is listed, relation included (VIS-1237).
     for (const t of ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight', 'relation']) {
       await expect(page.getByTestId(`library-new-object-${t}`)).toBeVisible();
     }
@@ -99,8 +97,7 @@ test.describe('Library inline create', () => {
     expect(name).toMatch(/^new-insight/);
   });
 
-  // VIS-1237: the reported bug — picking Relation created nothing.
-  test('the header "+ New" menu drafts a relation joining two real models', async () => {
+  test('the header "+ New" menu drafts a relation joining two real models (VIS-1237)', async () => {
     await page.getByTestId('library-new-object-button').click();
     await expect(page.getByTestId('library-new-object-menu')).toBeVisible();
     await page.getByTestId('library-new-object-relation').click();
@@ -113,8 +110,6 @@ test.describe('Library inline create', () => {
     const name = await readStore(page, 's.workspaceActiveObject.name');
     expect(name).toMatch(/^new_relation/);
 
-    // It really landed in the draft cache, with a condition referencing two
-    // real models (what the backend validator requires).
     await expect
       .poll(() => readStore(page, `(s.relations || []).some(r => r.name === '${name}')`), {
         timeout: WAIT,
