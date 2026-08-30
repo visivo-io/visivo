@@ -115,23 +115,16 @@ describe('ExpressionField — the editor comes from the declared field type', ()
     spy.mockRestore();
   });
 
-  // VIS-1327: a query-string field used to throw here, which is why
-  // `input.options` and the interaction filters were left rendering a bare
-  // RefTextArea with no drop target and no chip menu. The two editors differ in
-  // GRAMMAR, not in affordances.
+  // VIS-1327 regression: query-string used to throw here instead of matching
+  // context-sql's affordances.
   test('a query-string field renders the same ref-capable editor as context-sql', () => {
     render(<ExpressionField objectType="insight" field="x" value="" onChange={jest.fn()} />);
 
     const editor = screen.getByTestId('ref-text-area');
-    // The affordances follow the DECLARED TYPE, not the call site. This is the
-    // whole bug: `input.options` declared `refKinds: ['model']` and still had
-    // no drop target, so a model could not be dragged into it.
     expect(editor).toHaveAttribute('data-accept-drops', 'true');
     expect(editor).toHaveAttribute('data-configurable-chips', 'true');
   });
 
-  // The registry is the single rule; every ref-capable field inherits both
-  // affordances from it, so a new surface cannot quietly ship without them.
   test.each([
     ['relation', 'condition'],
     ['metric', 'expression'],
@@ -148,7 +141,6 @@ describe('ExpressionField — the editor comes from the declared field type', ()
     const editor = screen.getByTestId('ref-text-area');
     expect(editor).toHaveAttribute('data-accept-drops', 'true');
     expect(editor).toHaveAttribute('data-configurable-chips', 'true');
-    // And each is scoped to its own vocabulary rather than a shared default.
     expect(editor.getAttribute('data-allowed-types')).not.toBe('');
   });
 

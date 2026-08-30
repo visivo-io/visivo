@@ -3,25 +3,12 @@ import RefTextArea from './RefTextArea';
 import { fieldTypeFor, EDITORS } from './fieldTypes';
 
 /**
- * ExpressionField — renders the right editor for a field, from its declared type.
+ * Renders the right editor for a field from its declared type (`fieldTypes.js`),
+ * so ref/drop rules live in one registry instead of per call site.
  *
- * Every surface used to decide for itself which control an expression got, and
- * which refs it could contain. They disagreed: seven different `allowedTypes`
- * literals, a hand-maintained `TYPE_CONFIG`, and a plain textarea in the
- * Explorer that happened to be right for reasons nobody had written down. This
- * takes `{objectType, field, nested}`, asks `fieldTypes` what the rules are, and
- * renders accordingly — so a rule changes in one place.
- *
- * Covers every editor that is a TEXT FIELD: `context-sql`, `query-string`, and
- * `plain-sql`. `object-ref` is a whole-object pointer rather than an
- * expression and stays with `RefDropZone`; this throws on it rather than
- * guessing, so a mis-wired call site fails loudly at the call rather than
- * rendering a subtly wrong editor.
- *
- * `PropertyRow` also renders `query-string` fields and does NOT come through
- * here — it builds a full pill from the JSON schema and the slot shape, which
- * is a richer surface for the same declared type, not a competing one. Every
- * OTHER query-string field is a plain ref-capable textarea and belongs here.
+ * Covers the text-field editors (`context-sql`, `query-string`, `plain-sql`).
+ * `object-ref` stays with `RefDropZone`; `query-string` inside `PropertyRow`
+ * builds a richer pill for the same type and also doesn't come through here.
  */
 export function ExpressionField({
   objectType,
@@ -35,9 +22,6 @@ export function ExpressionField({
   disabled = false,
   rows = 4,
   helperText,
-  // The model this field is scoped to, when it is. Named in the copy so a user
-  // can tell at a glance WHY refs are unavailable — and can catch us being
-  // wrong about it.
   scopedToModel = null,
   'data-testid': dataTestId,
 }) {
@@ -46,8 +30,7 @@ export function ExpressionField({
     [objectType, field, nested]
   );
 
-  // A ref pasted into a ref-free field is rejected by Pydantic at save time
-  // (`sql_model.py`'s nested prohibition). Say so while they're typing instead.
+  // A ref in a ref-free field is rejected server-side at save; warn while typing.
   const strayRef = useMemo(() => {
     if (!spec || spec.refKinds.length > 0) return null;
     return /\$\{\s*ref\s*\(/.test(value || '') ? true : null;
@@ -60,11 +43,7 @@ export function ExpressionField({
     );
   }
 
-  // CONTEXT_SQL and QUERY_STRING differ in GRAMMAR (`?{ }` marks a value as SQL
-  // rather than a literal) but not in affordances: both hold `${ref()}`s, so
-  // both accept drops of their declared kinds and both let a chip be
-  // re-pointed. Splitting them here was how `input.options` ended up with a
-  // ref-capable field you could not drop a model onto (VIS-1327).
+  // Differ in grammar, not in ref affordances (VIS-1327).
   if (spec.editor === EDITORS.CONTEXT_SQL || spec.editor === EDITORS.QUERY_STRING) {
     return (
       <RefTextArea
@@ -77,12 +56,7 @@ export function ExpressionField({
         rows={rows}
         helperText={helperText}
         allowedTypes={spec.refKinds}
-        // Driven by the registry, not by the call site: a field that declares
-        // which types it accepts should be able to accept one. Empty refKinds
-        // falls to the PLAIN_SQL branch below, which has neither affordance.
         acceptDrops
-        // A ref here is editable in place: click the chip to re-point it
-        // instead of deleting and retyping the whole `${ref(model).column}`.
         configurableChips
       />
     );
@@ -97,10 +71,8 @@ export function ExpressionField({
             {required && <span className="ml-0.5 text-red-500">*</span>}
           </label>
         )}
-        {/* Deliberately a bare textarea: no ref-insert menu, no @ mention, no
-            drop target. This field's refKinds are empty, so every one of those
-            affordances would offer an insertion the backend rejects on save.
-            Do not "upgrade" this to RefTextArea — see VIS-1253. */}
+        {/* Bare textarea, deliberately — refKinds is empty here. Don't
+            "upgrade" to RefTextArea (VIS-1253). */}
         <textarea
           value={value ?? ''}
           onChange={e => onChange(e.target.value)}
