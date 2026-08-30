@@ -1,5 +1,6 @@
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
+import os
 from visivo.constants import DEFAULT_RUN_ID
 
 
@@ -98,4 +99,32 @@ def run_phase(
         run_id=run_id,
     )
     runner.run()
+
+    # Housekeeping, after the work and only when the work went cleanly: drop
+    # artifacts that name no object in the project. A run has only ever ADDED
+    # files, so a rename, a delete, or the VIS-1128 naming-scheme change left
+    # residue behind forever — invisible until something globbed the directory,
+    # which is how `visivo dist` came to ship every object twice and 404 on its
+    # own data.
+    #
+    # Gated on a clean run because a failed job can leave a half-written
+    # artifact, and the sweep should not be the thing that decides its fate.
+    # NOT gated on `dag_filter`: the test is membership in the project, which is
+    # fully parsed either way — "this run didn't build it" is a different
+    # question, and not the one being asked.
+    if not runner.failed_job_results:
+        from visivo.commands.sweep_artifacts import sweep_orphaned_artifacts
+
+        try:
+            removed = sweep_orphaned_artifacts(project, os.path.join(output_dir, run_id))
+            for artifact in removed:
+                Logger.instance().debug(f"Removed orphaned artifact: {artifact}")
+            if removed:
+                Logger.instance().info(
+                    f"Removed {len(removed)} artifact(s) no longer in the project"
+                )
+        except Exception as error:
+            # Never let housekeeping fail a run that otherwise succeeded.
+            Logger.instance().debug(f"Artifact sweep skipped: {error}")
+
     return runner
