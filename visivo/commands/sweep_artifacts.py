@@ -36,21 +36,48 @@ WHAT THIS DELIBERATELY DOES NOT TOUCH
 import os
 from glob import glob
 
-# Each entry: the directory under the run dir, the project attribute holding the
-# objects that may legitimately own a file there, and whether a file's stem can
-# carry a `_suffix` after the object name (inputs write
-# `<name>_<key>.parquet` beside `<name>.json`).
-_ARTIFACT_DIRS = (
-    ("insights", "insights", False),
-    ("models", "models", False),
-    ("inputs", "inputs", True),
-)
+
+def _artifact_dirs():
+    """The per-object directories, and the type that may own a file in each.
+
+    Imported lazily — this module is pulled in at the end of a run and the model
+    package is heavy.
+
+    The third element says whether a file's stem may carry a `_suffix` after the
+    object name: inputs write `<name>_<key>.parquet` beside `<name>.json`.
+    """
+    from visivo.models.inputs.input import Input
+    from visivo.models.insight import Insight
+    from visivo.models.models.model import Model
+
+    return (
+        ("insights", Insight, False),
+        ("models", Model, False),
+        ("inputs", Input, True),
+    )
 
 
-def _object_names(project, attribute):
-    return {
-        obj.name for obj in (getattr(project, attribute, None) or []) if getattr(obj, "name", None)
-    }
+def _object_names(project, node_type):
+    """Every name of `node_type` in the project, wherever it is declared.
+
+    From the DAG, NOT from `project.<collection>`. An object does not have to be
+    top-level: the integration project defines `double-simple-line` inline
+    inside a chart, inside a dashboard item, and it is a real insight with a
+    real artifact. Reading the top-level list called it residue and deleted it
+    — caught by CI, which was the only place a project shaped like that existed.
+
+    The DAG is the same flattening `child_items()` feeds, so this asks exactly
+    the question the rest of the system means by "in the project".
+
+    :returns: the set of names, or None when the DAG cannot answer.
+    """
+    try:
+        nodes = project.dag().get_nodes_by_types([node_type], True)
+    except Exception:
+        # A project whose DAG will not build cannot answer the question, and
+        # guessing would delete real artifacts.
+        return None
+    return {node.name for node in nodes if getattr(node, "name", None)}
 
 
 def _owner_of(stem, names, allow_suffix):
@@ -89,14 +116,15 @@ def find_orphaned_artifacts(project, run_dir):
         return []
 
     orphans = []
-    for directory, attribute, allow_suffix in _ARTIFACT_DIRS:
+    for directory, node_type, allow_suffix in _artifact_dirs():
         path = os.path.join(run_dir, directory)
         if not os.path.isdir(path):
             continue
-        names = _object_names(project, attribute)
-        # No objects of this type at all is ambiguous: a project that never had
-        # any looks identical to one whose parse dropped them. Leave the
-        # directory alone rather than delete everything in it.
+        names = _object_names(project, node_type)
+        # None means the DAG could not answer. Empty means the project genuinely
+        # has none of this type — indistinguishable from a parse that dropped
+        # them, and deleting the directory's contents on that basis would turn a
+        # parse problem into data loss. Neither one sweeps.
         if not names:
             continue
         for artifact in glob(os.path.join(path, "*")):

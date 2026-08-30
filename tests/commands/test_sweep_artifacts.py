@@ -70,6 +70,56 @@ class TestFindOrphanedArtifacts:
         assert find_orphaned_artifacts(project, run_dir) == []
 
 
+class TestObjectsDefinedInline:
+    """An object does not have to be top-level.
+
+    The integration project defines `double-simple-line` inline inside a chart,
+    inside a dashboard item. It is a real insight with a real artifact — and
+    reading `project.insights` (the TOP-LEVEL list) called it residue and
+    deleted it. CI caught that; no unit fixture here had a project shaped that
+    way, because they all declared their objects at the top level.
+
+    Membership comes from the DAG, which is the same flattening `child_items()`
+    feeds and the same thing the rest of the system means by "in the project".
+    """
+
+    def _project_with_a_chart_nested_insight(self):
+        from tests.factories.model_factories import (
+            ChartFactory,
+            DashboardFactory,
+            ItemFactory,
+            RowFactory,
+        )
+
+        model = SqlModelFactory(name="model")
+        nested = InsightFactory(name="double-simple-line", model=model)
+        chart = ChartFactory(name="fibonacci-times-2", insights=[nested])
+        dashboard = DashboardFactory(
+            name="dash", rows=[RowFactory(items=[ItemFactory(chart=chart)])]
+        )
+        # Deliberately NOT passed as `insights=[...]` — that is the whole point.
+        return ProjectFactory(models=[model], charts=[], insights=[], dashboards=[dashboard])
+
+    def test_an_insight_declared_inside_a_chart_is_not_residue(self):
+        project = self._project_with_a_chart_nested_insight()
+        run_dir = _run_dir(insights=["double-simple-line.json"])
+
+        assert find_orphaned_artifacts(project, run_dir) == []
+
+    def test_residue_beside_an_inline_insight_still_goes(self):
+        project = self._project_with_a_chart_nested_insight()
+        run_dir = _run_dir(
+            insights=[
+                "double-simple-line.json",
+                f"{alpha_hash('double-simple-line')}.json",
+            ]
+        )
+
+        assert [os.path.basename(o) for o in find_orphaned_artifacts(project, run_dir)] == [
+            f"{alpha_hash('double-simple-line')}.json"
+        ]
+
+
 class TestInputSuffixes:
     """An input writes `<name>.json` beside `<name>_<key>.parquet`, so a stem
     does not always equal the object's name."""
