@@ -32,12 +32,8 @@ def _project(**kwargs):
 
 
 class TestFindOrphanedArtifacts:
-    """The residue that made `visivo dist` ship every object twice.
-
-    Before VIS-1128 artifacts were named `alpha_hash(name)`; now they are
-    `<name>`. A run only ever adds, so both generations sit in the directory and
-    anything that globs it sees each object once per naming scheme.
-    """
+    """Before VIS-1128 artifacts were named `alpha_hash(name)`; now `<name>`.
+    Both generations can sit in the directory at once."""
 
     def test_the_pre_vis_1128_hashed_artifact_is_residue(self):
         project = _project(insights=[InsightFactory(name="station-bubbles")])
@@ -71,17 +67,9 @@ class TestFindOrphanedArtifacts:
 
 
 class TestObjectsDefinedInline:
-    """An object does not have to be top-level.
-
-    The integration project defines `double-simple-line` inline inside a chart,
-    inside a dashboard item. It is a real insight with a real artifact — and
-    reading `project.insights` (the TOP-LEVEL list) called it residue and
-    deleted it. CI caught that; no unit fixture here had a project shaped that
-    way, because they all declared their objects at the top level.
-
-    Membership comes from the DAG, which is the same flattening `child_items()`
-    feeds and the same thing the rest of the system means by "in the project".
-    """
+    """An object need not be top-level (e.g. an insight nested inside a chart
+    inside a dashboard item) — membership comes from the DAG, not
+    `project.insights`."""
 
     def _project_with_a_chart_nested_insight(self):
         from tests.factories.model_factories import (
@@ -146,20 +134,14 @@ class TestInputSuffixes:
         ]
 
     def test_an_ambiguous_suffix_keeps_the_file(self):
-        """`region_totals_options.parquet` could be a deleted `region_totals`
-        input's options, OR a live `region` input's `totals_options` key. The
-        `<name>_<key>` shape cannot tell them apart.
-
-        So it is KEPT. When the rule is ambiguous the safe error is leaving a
-        stale file behind; the unsafe one is deleting data on a guess.
-        """
+        # region_totals_options.parquet could be a deleted region_totals
+        # input's options, or a live region input's totals_options key.
         project = _project(inputs=[SingleSelectInputFactory(name="region")])
         run_dir = _run_dir(inputs=["region.json", "region_totals_options.parquet"])
 
         assert find_orphaned_artifacts(project, run_dir) == []
 
     def test_a_suffixed_file_matching_no_input_at_all_is_residue(self):
-        """No such ambiguity here — nothing in the project is a prefix of it."""
         project = _project(inputs=[SingleSelectInputFactory(name="region")])
         run_dir = _run_dir(inputs=["region.json", "cuisine_options.parquet"])
 
@@ -170,17 +152,13 @@ class TestInputSuffixes:
 
 class TestSafety:
     def test_an_empty_collection_sweeps_nothing(self):
-        """A project that never had insights looks identical to one whose parse
-        dropped them. Deleting the directory's contents on that basis would
-        turn a parse problem into data loss."""
+        # Indistinguishable from a parse that dropped every insight.
         project = _project(insights=[])
         run_dir = _run_dir(insights=["something.json", "another.json"])
 
         assert find_orphaned_artifacts(project, run_dir) == []
 
     def test_untracked_directories_are_left_alone(self):
-        """`files/` (pre-VIS-1128 parquet) and the schema caches are not
-        per-object artifacts; sweeping them is a separate judgement."""
         project = _project(insights=[InsightFactory(name="a")])
         run_dir = _run_dir(
             insights=["a.json"],
