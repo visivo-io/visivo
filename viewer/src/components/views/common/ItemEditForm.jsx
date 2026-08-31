@@ -1,5 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import RefDropZone from './RefDropZone';
+import ReferencePicker from '../project/canvas/ReferencePicker';
+import useStore from '../../../stores/store';
+import { emitWorkspaceEvent } from '../workspace/telemetry';
+import { isReadOnly } from '../../../stores/branchingStore';
+import { mintWrapperChartName, buildWrapperChartConfig } from '../../../utils/insightWrap';
 import { parseRefValue } from '../../../utils/refString';
 import {
   LEAF_REF_FIELDS,
@@ -53,6 +58,28 @@ export const getItemLeafRef = item => {
 export const isContainerItem = item => Array.isArray(item?.rows);
 
 /**
+ * Place `name` into the item's `type` leaf and PROVE the slot now points at
+ * exactly that name.
+ *
+ * The truthiness check this replaced (`!next[type]`) could not fail for any
+ * name the picker emits, so the "#637 rejected placement → mint nothing"
+ * ordering had no teeth on this path. `setItemLeaf` NORMALISES the name — it
+ * trims it, and drops it entirely when the trim leaves nothing — so what the
+ * slot ends up referencing is not always the name the caller holds. Reading
+ * the placed ref back is the postcondition that actually enforces the
+ * invariant: the insight branch must never `saveChart` under a name the slot
+ * does not point at, which is precisely an orphan draft chart plus a broken
+ * ref in the slot.
+ *
+ * @returns the next item when the slot references `name` exactly, else null.
+ */
+const placeLeafRef = (item, type, name) => {
+  const next = applyLeafRef(item, { type, name });
+  if (!next || parseRefValue(next[type]) !== name) return null;
+  return next;
+};
+
+/**
  * ItemEditForm — VIS-787 / Track F F-2.
  *
  * Standalone, presentational editor for a single dashboard item. Extracted out
@@ -92,6 +119,112 @@ export const isContainerItem = item => Array.isArray(item?.rows);
  *                                `row-<rowId>-item-<idx>` id so existing
  *                                bundled behavior stays byte-identical.
  */
+/**
+ * LeafChooseControl — the W5 click-to-pick affordance for an EMPTY leaf slot:
+ * a "Choose…" button that opens the same <ReferencePicker> the canvas
+ * empty-slot click uses (charts + insights), so drag-and-drop is never the
+ * only way to fill a slot from the right rail.
+ *
+ * A separate component (mounted only for empty leaves) so <ItemEditForm>
+ * itself stays hook-free — its picker state lives here.
+ *
+ * A pick lands the SAME way a canvas pick does. A chart pick sets the item's
+ * `chart` leaf. An insight pick AUTO-WRAPS (#637 pattern): mint the unique
+ * `<insight>-chart` name (pure), validate the placement transform FIRST, and
+ * only then save the wrapper chart — a rejected placement must never leave an
+ * orphan draft chart. The item change flows through `onChange` into the
+ * dashboard working copy (#617 — the explicit Save footer persists it).
+ *
+ * READ-ONLY (VIS-1025): `saveChart` is the ONE external side effect this form
+ * fires outside `onChange`, so it is the one write the rail's `persistConfig`
+ * hold cannot cover — on a read-only stage `persistConfig` discards the
+ * placement AFTER the wrapper chart has already been POSTed, which is exactly
+ * the orphan draft chart #637 forbids. The affordance is therefore disabled
+ * (and the select handler held) whenever the stage is read-only.
+ */
+const LeafChooseControl = ({ item, itemId, onChange }) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const readOnly = useStore(isReadOnly);
+
+  const handlePickerSelect = (pickedName, pickedType) => {
+    setPickerOpen(false);
+    if (!pickedName || !pickedType) return;
+    // Belt-and-braces for a stage that flips read-only while the picker is
+    // open: the trigger disables on the next render, but the mounted picker's
+    // rows are still live, and a pick here would mint against a held write.
+    if (readOnly) return;
+
+    if (pickedType === 'insight') {
+      const state = useStore.getState();
+      const existingCharts = (state.charts || []).map(chart => chart.name);
+      const chartName = mintWrapperChartName(pickedName, existingCharts);
+      const next = placeLeafRef(item, 'chart', chartName);
+      if (!next) return; // rejected placement → mint nothing
+      if (typeof state.saveChart === 'function') {
+        state.saveChart(chartName, buildWrapperChartConfig(pickedName));
+      }
+      onChange(next);
+      emitWorkspaceEvent('canvas_action', {
+        kind: 'add_item',
+        source: 'picker',
+        type: 'insight',
+        name: pickedName,
+        wrapped_chart: chartName,
+        itemId,
+      });
+      return;
+    }
+
+    const next = placeLeafRef(item, pickedType, pickedName);
+    if (!next) return;
+    onChange(next);
+    emitWorkspaceEvent('canvas_action', {
+      kind: 'add_item',
+      source: 'picker',
+      type: pickedType,
+      name: pickedName,
+      itemId,
+    });
+  };
+
+  // Create-new from the picker's empty state / footer. Without it a project
+  // with no charts AND no insights opens a dead-end modal whose own copy
+  // ("Create a chart to fill this slot") promises an action it cannot perform
+  // — the canvas path passes one, so the two "same picker" surfaces must too.
+  const handleCreateNew = typeKey => {
+    setPickerOpen(false);
+    if (readOnly) return;
+    emitWorkspaceEvent('inline_create_used', { source: 'picker', kind: typeKey });
+    const openCreateChartModal = useStore.getState().openCreateChartModal;
+    if (typeKey === 'chart' && typeof openCreateChartModal === 'function') {
+      openCreateChartModal();
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        data-testid={`item-${itemId}-choose`}
+        onClick={() => setPickerOpen(true)}
+        disabled={readOnly}
+        title={readOnly ? 'Read-only — create a draft to edit' : undefined}
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 transition-colors hover:text-primary-700 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:text-gray-400"
+      >
+        Choose…
+      </button>
+      {pickerOpen && (
+        <ReferencePicker
+          types={['chart', 'insight']}
+          onSelect={handlePickerSelect}
+          onClose={() => setPickerOpen(false)}
+          onCreateNew={handleCreateNew}
+        />
+      )}
+    </>
+  );
+};
+
 const ItemEditForm = ({
   item,
   itemId,
@@ -287,15 +420,20 @@ const ItemEditForm = ({
           </button>
         </div>
       ) : (
-        <RefDropZone
-          id={resolvedLeafDropZoneId}
-          allowedTypes={ALLOWED_LEAF_TYPES}
-          value={leafRef}
-          onClear={() => handleLeafRefChange(null)}
-          onChange={ref => handleLeafRefChange(ref)}
-          onSelectRef={onSelectRef}
-          hint="Drop a chart, table, markdown, or input"
-        />
+        <div className="space-y-1.5">
+          <RefDropZone
+            id={resolvedLeafDropZoneId}
+            allowedTypes={ALLOWED_LEAF_TYPES}
+            value={leafRef}
+            onClear={() => handleLeafRefChange(null)}
+            onChange={ref => handleLeafRefChange(ref)}
+            onSelectRef={onSelectRef}
+            hint="Drop a chart, table, markdown, or input"
+          />
+          {/* W5 click-to-pick: click alternative to the drop zone, empty leaf
+              only (a filled slot shows its pill; clear it first to re-pick). */}
+          {!leafRef && <LeafChooseControl item={item} itemId={itemId} onChange={onChange} />}
+        </div>
       )}
     </div>
   );

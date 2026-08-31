@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { futureFlags } from '../../router-config';
-import Dashboard from './Dashboard';
+import Dashboard, { EMPTY_SLOT_LABEL, describeSlotPath } from './Dashboard';
 import useStore from '../../stores/store';
 import { useModelsData } from '../../hooks/useModelsData';
 import { useInsightsData } from '../../hooks/useInsightsData';
@@ -297,6 +297,99 @@ describe('Dashboard', () => {
     it('renders nothing for an empty slot in View mode (parity preserved)', () => {
       renderEmptySlot();
       expect(screen.queryByTestId('canvas-empty-slot')).not.toBeInTheDocument();
+    });
+
+    // ---------- W5 click-to-pick: the empty slot becomes clickable ----------
+    it('renders the empty slot as a real button when onEmptySlotClick is provided', () => {
+      const onEmptySlotClick = jest.fn();
+      renderEmptySlot({ canvasMode: true, onEmptySlotClick });
+      const slot = screen.getByTestId('canvas-empty-slot');
+      // A BUTTON — focusable, so the picker path is keyboard-completable.
+      expect(slot.tagName).toBe('BUTTON');
+      fireEvent.click(slot);
+      expect(onEmptySlotClick).toHaveBeenCalledTimes(1);
+      expect(onEmptySlotClick).toHaveBeenCalledWith({ itemPath: 'row.0.item.0' });
+    });
+
+    it('keeps the inert placeholder div when onEmptySlotClick is absent', () => {
+      renderEmptySlot({ canvasMode: true });
+      expect(screen.getByTestId('canvas-empty-slot').tagName).toBe('DIV');
+    });
+
+    // WCAG 2.5.3 (Label in Name): speaking the visible label must activate the
+    // control, so the accessible name has to CONTAIN the visible string — an
+    // aria-label that replaces it ("Empty slot — choose content") breaks voice
+    // control. The location suffix is what keeps several identical slots
+    // distinguishable.
+    it('gives the slot an accessible name containing its visible label', () => {
+      renderEmptySlot({ canvasMode: true, onEmptySlotClick: jest.fn() });
+      const slot = screen.getByTestId('canvas-empty-slot');
+      expect(slot).toHaveTextContent(EMPTY_SLOT_LABEL);
+      expect(slot).toHaveAccessibleName(expect.stringContaining(EMPTY_SLOT_LABEL));
+      expect(slot).toHaveAccessibleName('Empty slot — click to choose (row 1, item 1)');
+    });
+  });
+
+  // ---------- W5: several empty slots must not all announce identically -----
+  describe('empty-slot accessible names disambiguate (W5)', () => {
+    const kpiRowDashboard = {
+      name: 'kpi-row',
+      rows: [{ height: 'medium', items: [{ width: 1 }, { width: 1 }, { width: 1 }] }],
+    };
+
+    it('names each slot by its own location', () => {
+      useStore.mockImplementation(selector =>
+        selector({
+          project: mockProject,
+          dashboards: [kpiRowDashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
+          getChartByName: jest.fn(() => null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        })
+      );
+      render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard
+            project={mockProject}
+            dashboardName="kpi-row"
+            canvasMode
+            onEmptySlotClick={jest.fn()}
+          />
+        </BrowserRouter>
+      );
+      const names = screen
+        .getAllByTestId('canvas-empty-slot')
+        .map(el => el.getAttribute('aria-label'));
+      expect(names).toEqual([
+        'Empty slot — click to choose (row 1, item 1)',
+        'Empty slot — click to choose (row 1, item 2)',
+        'Empty slot — click to choose (row 1, item 3)',
+      ]);
+      expect(new Set(names).size).toBe(names.length);
+    });
+  });
+
+  describe('describeSlotPath', () => {
+    it('reads a composite canvas path as a 1-indexed human location', () => {
+      expect(describeSlotPath('row.0.item.2')).toBe('row 1, item 3');
+      expect(describeSlotPath('row.1.item.0.row.0.item.1')).toBe(
+        'row 2, item 1, row 1, item 2'
+      );
+    });
+
+    it('returns empty string for an absent or unparseable path', () => {
+      expect(describeSlotPath('')).toBe('');
+      expect(describeSlotPath(undefined)).toBe('');
+      expect(describeSlotPath('row.x.item.0')).toBe('');
+      expect(describeSlotPath('column.0')).toBe('');
     });
   });
 

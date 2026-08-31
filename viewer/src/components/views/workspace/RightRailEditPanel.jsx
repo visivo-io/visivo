@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import isEqual from 'lodash/isEqual';
 import { PiArrowCounterClockwise, PiPencil, PiPlus, PiTrash } from 'react-icons/pi';
 import useStore, { ObjectStatus } from '../../../stores/store';
+import { isReadOnly } from '../../../stores/branchingStore';
 import useWorkspaceScope from './useWorkspaceScope';
 import { FormFooter, FormAlert } from '../../styled/FormComponents';
 import SelectionChip from './SelectionChip';
@@ -185,9 +186,11 @@ const RightRailEditPanel = () => {
   const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   // VIS-1025: null = local serve (always editable); a cloud capability object
-  // with can_edit:false makes every rail write a no-op.
+  // with can_edit:false makes every rail write a no-op. The predicate lives in
+  // branchingStore so every write path (this panel, useRecordSave, and the
+  // item form's click-to-pick) reads read-only the same way.
   const capabilities = useStore(s => s.capabilities);
-  const readOnly = !!(capabilities && capabilities.can_edit === false);
+  const readOnly = useStore(isReadOnly);
   const { dashboardName } = useWorkspaceScope();
 
   const type = activeObject?.type || null;
@@ -725,7 +728,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   // behind the Read-only notice. The write path is independently held by
   // useRecordSave's short-circuit; this is the UX affordance layer.
   const capabilities = useStore(s => s.capabilities);
-  const readOnly = !!(capabilities && capabilities.can_edit === false);
+  const readOnly = useStore(isReadOnly);
   const record = useMemo(
     () => (Array.isArray(collection) ? collection.find(o => o.name === name) || null : null),
     [collection, name]

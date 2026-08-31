@@ -28,9 +28,13 @@ const renderWithRouter = ui =>
 // prop with these args — exactly what the real renderer does for a leaf whose
 // ref doesn't resolve (VIS-792 / L-1).
 let mockBrokenRefArgs = null;
+// When set, the Dashboard mock renders a stand-in empty slot whose click calls
+// the canvas's `onEmptySlotClick` with this itemPath — exactly what the real
+// renderer's empty-slot button does (W5 click-to-pick).
+let mockEmptySlotPath = null;
 
 jest.mock('../../../project/Dashboard', () => {
-  const Mock = ({ projectId, dashboardName, renderBrokenRef }) => (
+  const Mock = ({ projectId, dashboardName, renderBrokenRef, onEmptySlotClick }) => (
     <div
       data-testid="dashboard-new-mock"
       data-project-id={projectId}
@@ -39,6 +43,12 @@ jest.mock('../../../project/Dashboard', () => {
       {mockBrokenRefArgs && typeof renderBrokenRef === 'function'
         ? renderBrokenRef(mockBrokenRefArgs)
         : null}
+      {mockEmptySlotPath && typeof onEmptySlotClick === 'function' ? (
+        <button
+          data-testid="mock-empty-slot"
+          onClick={() => onEmptySlotClick({ itemPath: mockEmptySlotPath })}
+        />
+      ) : null}
     </div>
   );
   Mock.displayName = 'MockDashboard';
@@ -250,5 +260,178 @@ describe('ProjectCanvas — broken-ref repair wiring (VIS-792 / L-1)', () => {
     fireEvent.click(screen.getByTestId('mock-create-chart'));
     // No crash; the intent is still recorded.
     expect(events.find(e => e.eventName === 'inline_create_used')).toBeTruthy();
+  });
+});
+
+describe('ProjectCanvas — empty-slot click-to-pick (W5 / Track L)', () => {
+  // A dashboard whose row.0 carries a genuinely EMPTY third slot.
+  const SALES_WITH_EMPTY = {
+    name: 'sales',
+    config: {
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            { width: 6, chart: 'ref(existing-chart)' },
+            { width: 5, table: 'ref(t)' },
+            { width: 1 }, // empty slot
+          ],
+        },
+      ],
+    },
+  };
+
+  let commit;
+  let events;
+
+  const renderCanvas = (dashboardName = 'sales') =>
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <WorkspaceCommitProvider value={commit}>
+          <ProjectCanvas projectId="proj-1" dashboardName={dashboardName} />
+        </WorkspaceCommitProvider>
+      </MemoryRouter>
+    );
+
+  const openPicker = () => {
+    fireEvent.click(screen.getByTestId('mock-empty-slot'));
+    return screen.getByTestId('reference-picker');
+  };
+
+  beforeEach(() => {
+    commit = jest.fn();
+    events = [];
+    setWorkspaceTelemetryListener(e => events.push(e));
+    mockEmptySlotPath = 'row.0.item.2';
+    useStore.setState({
+      dashboards: [SALES_WITH_EMPTY],
+      charts: [{ name: 'existing-chart' }],
+      tables: [],
+      markdowns: [],
+      inputs: [],
+      insights: [{ name: 'rev-insight' }],
+      saveChart: jest.fn().mockResolvedValue({ success: true }),
+      openCreateChartModal: jest.fn(),
+    });
+  });
+
+  afterEach(() => {
+    mockEmptySlotPath = null;
+    setWorkspaceTelemetryListener(null);
+  });
+
+  test('clicking an empty slot opens the ReferencePicker listing charts AND insights', () => {
+    renderCanvas();
+    expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
+    openPicker();
+    expect(screen.getByTestId('reference-picker-title')).toHaveTextContent(
+      'Pick a chart or insight'
+    );
+    expect(screen.getByTestId('reference-picker-section-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('reference-picker-section-insight')).toBeInTheDocument();
+    expect(screen.getByTestId('reference-picker-row-existing-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('reference-picker-row-rev-insight')).toBeInTheDocument();
+  });
+
+  test('picking a CHART places chart: ref(name) into the slot via the working copy', () => {
+    renderCanvas();
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-row-existing-chart'));
+
+    expect(commit).toHaveBeenCalledTimes(1);
+    const [name, nextConfig, meta] = commit.mock.calls[0];
+    expect(name).toBe('sales');
+    expect(meta).toEqual({ kind: 'picker_insert' });
+    expect(nextConfig.rows[0].items[2]).toEqual({ width: 1, chart: 'ref(existing-chart)' });
+    // Sibling slots untouched; no chart was minted for a plain chart pick.
+    expect(nextConfig.rows[0].items[0]).toEqual({ width: 6, chart: 'ref(existing-chart)' });
+    expect(useStore.getState().saveChart).not.toHaveBeenCalled();
+    // The picker closed on pick.
+    expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
+
+    const evt = events.find(e => e.eventName === 'canvas_action');
+    expect(evt.payload).toMatchObject({
+      kind: 'add_item',
+      source: 'picker',
+      type: 'chart',
+      name: 'existing-chart',
+      dashboardName: 'sales',
+      path: 'row.0.item.2',
+    });
+    expect(evt.payload.wrapped_chart).toBeUndefined();
+  });
+
+  test('picking an INSIGHT auto-wraps: mints <insight>-chart, saves it, places the wrapper (#637)', () => {
+    renderCanvas();
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-row-rev-insight'));
+
+    expect(commit).toHaveBeenCalledTimes(1);
+    const [, nextConfig, meta] = commit.mock.calls[0];
+    expect(meta).toEqual({ kind: 'picker_insert' });
+    expect(nextConfig.rows[0].items[2]).toEqual({ width: 1, chart: 'ref(rev-insight-chart)' });
+    expect(nextConfig.rows[0].items[2].insight).toBeUndefined();
+    expect(useStore.getState().saveChart).toHaveBeenCalledWith('rev-insight-chart', {
+      insights: ['ref(rev-insight)'],
+    });
+
+    const evt = events.find(e => e.eventName === 'canvas_action');
+    expect(evt.payload).toMatchObject({
+      kind: 'add_item',
+      source: 'picker',
+      type: 'insight',
+      name: 'rev-insight',
+      wrapped_chart: 'rev-insight-chart',
+      dashboardName: 'sales',
+      path: 'row.0.item.2',
+    });
+  });
+
+  test('the minted wrapper name disambiguates with -2 against existing charts', () => {
+    useStore.setState({
+      charts: [{ name: 'existing-chart' }, { name: 'rev-insight-chart' }],
+    });
+    renderCanvas();
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-row-rev-insight'));
+
+    const [, nextConfig] = commit.mock.calls[0];
+    expect(nextConfig.rows[0].items[2].chart).toBe('ref(rev-insight-chart-2)');
+    expect(useStore.getState().saveChart).toHaveBeenCalledWith('rev-insight-chart-2', {
+      insights: ['ref(rev-insight)'],
+    });
+  });
+
+  test('a REJECTED placement (invalid slot path) mints NOTHING — no commit, no orphan chart', () => {
+    mockEmptySlotPath = 'row.9.item.9';
+    renderCanvas();
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-row-rev-insight'));
+
+    expect(commit).not.toHaveBeenCalled();
+    expect(useStore.getState().saveChart).not.toHaveBeenCalled();
+    expect(events.find(e => e.eventName === 'canvas_action')).toBeUndefined();
+  });
+
+  test('closing the picker commits nothing', () => {
+    renderCanvas();
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-close'));
+    expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
+    expect(commit).not.toHaveBeenCalled();
+    expect(useStore.getState().saveChart).not.toHaveBeenCalled();
+  });
+
+  test('Create-new from the picker routes to the chart create modal with source picker', () => {
+    renderCanvas();
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-create'));
+    expect(useStore.getState().openCreateChartModal).toHaveBeenCalledTimes(1);
+    expect(events.find(e => e.eventName === 'inline_create_used')?.payload).toEqual({
+      source: 'picker',
+      kind: 'chart',
+    });
+    // The picker closed so the create modal isn't stacked under it.
+    expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
   });
 });
