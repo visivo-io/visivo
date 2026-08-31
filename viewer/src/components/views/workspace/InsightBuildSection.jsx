@@ -34,12 +34,6 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
     data: { type: 'interaction-zone', insightName, index },
   });
 
-  const innerValue = (() => {
-    const v = interaction.value || '';
-    const m = v.match(/^\?\{([\s\S]*)\}$/);
-    return m ? m[1] : v;
-  })();
-
   return (
     <div data-testid={`insight-interaction-${index}`} className="flex items-center gap-2">
       <Select
@@ -60,11 +54,9 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         <ExpressionField
           objectType="interaction"
           field="filter"
-          value={innerValue}
+          value={interaction.value || ''}
           onChange={newVal => {
-            updateInsightInteraction(insightName, index, {
-              value: newVal ? `?{${newVal}}` : '',
-            });
+            updateInsightInteraction(insightName, index, { value: newVal });
           }}
           label=""
           rows={1}

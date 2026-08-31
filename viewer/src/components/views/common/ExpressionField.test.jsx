@@ -125,6 +125,77 @@ describe('ExpressionField — the editor comes from the declared field type', ()
     expect(editor).toHaveAttribute('data-configurable-chips', 'true');
   });
 
+  // VIS-1327 regression: the merged branch handed RefTextArea the raw `?{ }`
+  // value and passed its edits straight to onChange, so a drop/edit saved as
+  // a bare string the backend's QueryString type rejects.
+  describe('a query-string field wraps/unwraps at its `?{ }` boundary', () => {
+    test('shows the unwrapped body, not the raw ?{ } value', () => {
+      render(
+        <ExpressionField
+          objectType="interaction"
+          field="filter"
+          value="?{status = 'open'}"
+          onChange={jest.fn()}
+        />
+      );
+      expect(screen.getByTestId('ref-input')).toHaveValue("status = 'open'");
+    });
+
+    test('wraps an edit back into ?{ } before calling onChange', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField
+          objectType="interaction"
+          field="filter"
+          value="?{status = 'open'}"
+          onChange={onChange}
+        />
+      );
+      fireEvent.change(screen.getByTestId('ref-input'), {
+        target: { value: "status = 'closed'" },
+      });
+      expect(onChange).toHaveBeenCalledWith("?{status = 'closed'}");
+    });
+
+    test('a dropped ref on an empty field still saves ?{ }-wrapped', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField objectType="interaction" field="filter" value="" onChange={onChange} />
+      );
+      fireEvent.change(screen.getByTestId('ref-input'), {
+        target: { value: '${ref(orders).status}' },
+      });
+      expect(onChange).toHaveBeenCalledWith('?{${ref(orders).status}}');
+    });
+
+    test('preserves an existing slice suffix across a body edit', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField objectType="insight" field="x" value="?{amount}[0]" onChange={onChange} />
+      );
+      expect(screen.getByTestId('ref-input')).toHaveValue('amount');
+      fireEvent.change(screen.getByTestId('ref-input'), { target: { value: 'total' } });
+      expect(onChange).toHaveBeenCalledWith('?{total}[0]');
+    });
+
+    test('a context-sql field is passed through unwrapped (no ?{ })', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField
+          objectType="relation"
+          field="condition"
+          value="${ref(orders).id} = ${ref(users).id}"
+          onChange={onChange}
+        />
+      );
+      expect(screen.getByTestId('ref-input')).toHaveValue('${ref(orders).id} = ${ref(users).id}');
+      fireEvent.change(screen.getByTestId('ref-input'), {
+        target: { value: '${ref(orders).id} = ${ref(users).uid}' },
+      });
+      expect(onChange).toHaveBeenCalledWith('${ref(orders).id} = ${ref(users).uid}');
+    });
+  });
+
   test.each([
     ['relation', 'condition'],
     ['metric', 'expression'],

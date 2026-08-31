@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import RefTextArea from './RefTextArea';
 import { fieldTypeFor, EDITORS } from './fieldTypes';
+import { parseQueryString, serializeQueryString } from '../../../utils/queryString';
 
 /**
  * Renders the right editor for a field from its declared type (`fieldTypes.js`),
@@ -36,6 +37,30 @@ export function ExpressionField({
     return /\$\{\s*ref\s*\(/.test(value || '') ? true : null;
   }, [spec, value]);
 
+  // query-string's `?{ }` wrapper is invisible to RefTextArea (context-sql has
+  // none), so wrap/unwrap here — same split PropertyRow uses for this type.
+  const isQueryString = spec?.editor === EDITORS.QUERY_STRING;
+  const parsedIncoming = useMemo(
+    () => (isQueryString ? parseQueryString(value) : null),
+    [isQueryString, value]
+  );
+  const displayValue = isQueryString
+    ? parsedIncoming
+      ? parsedIncoming.body
+      : value ?? ''
+    : value ?? '';
+  const incomingSlice = parsedIncoming ? parsedIncoming.slice : null;
+  const handleChange = useCallback(
+    raw => {
+      if (!isQueryString) {
+        onChange(raw);
+        return;
+      }
+      onChange(serializeQueryString({ body: raw, slice: incomingSlice }));
+    },
+    [isQueryString, incomingSlice, onChange]
+  );
+
   if (!spec) {
     throw new Error(
       `ExpressionField: no declared field type for '${objectType}.${field}'. ` +
@@ -43,12 +68,11 @@ export function ExpressionField({
     );
   }
 
-  // Differ in grammar, not in ref affordances (VIS-1327).
   if (spec.editor === EDITORS.CONTEXT_SQL || spec.editor === EDITORS.QUERY_STRING) {
     return (
       <RefTextArea
-        value={value ?? ''}
-        onChange={onChange}
+        value={displayValue}
+        onChange={handleChange}
         label={label}
         required={required}
         error={error}
