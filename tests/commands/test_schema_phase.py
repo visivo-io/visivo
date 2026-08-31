@@ -52,11 +52,9 @@ def test_core_schema_is_valid_json_schema():
 def test_core_schema_fits_in_a_prompt():
     """The whole point: the full schema cannot go in a prompt, the core one can.
 
-    The ceiling is a prompt budget, not a size target -- roughly 30k tokens,
-    with room for the models to grow. What actually keeps the schema small is
-    the selection rule, guarded structurally below (no trace-prop defs, a
-    `Layout` under 500 bytes); a ceiling with no headroom would just turn red
-    for an ordinary model addition and say nothing about the rule.
+    The ceiling is a prompt budget with headroom, not a size target. What keeps
+    the schema small is the selection rule, guarded structurally below (no
+    trace-prop defs, a `Layout` under 500 bytes).
     """
     core_bytes = len(json.dumps(core_schema()))
     full_bytes = len(json.dumps(full_schema()))
@@ -147,7 +145,7 @@ def test_core_schema_root_describes_only_the_authoring_surface():
     schema = core_schema()
     assert list(schema["properties"])[: len(CORE_PROJECT_PROPERTIES)] == CORE_PROJECT_PROPERTIES
     # Alerts and destinations are not *described*, so their defs are unreachable
-    # and dropped -- which is the whole size win.
+    # and dropped.
     for name in ("Alert", "SlackDestination", "EmailDestination", "ConsoleDestination", "Dbt"):
         assert name not in schema["$defs"]
 
@@ -277,17 +275,12 @@ def test_core_schema_accepts_a_password_on_every_source_type():
 def test_core_schema_never_rejects_a_project_file_that_lives_in_this_repo():
     """Every hand-written project YAML in the repo must satisfy the contract.
 
-    This is the test that catches a false negative the sample projects do not
-    cover: the repo's projects use `includes:`, `alerts:`, `dbt:` and database
-    passwords, and a subset that rejects any of those sends an agent to delete
-    working configuration.
+    These projects use `includes:`, `alerts:`, `dbt:` and database passwords; a
+    subset that rejects any of those sends an agent to delete working config.
 
-    The documented exception is the machine-set root keys. Two checked-in
-    projects carry `path: project`, which is compiler bookkeeping, and the core
-    schema rejects it on purpose -- "validate hand-written YAML with `--core`,
-    compiler output with `--full`". Dropping them here keeps that decision
-    explicit rather than hiding it; `test_core_schema_accepts_the_omitted_but
-    _authorable_root_fields` asserts they are still rejected.
+    The exception is the machine-set root keys: two checked-in projects carry
+    `path: project`, which is compiler bookkeeping the core schema rejects on
+    purpose, so they are dropped here rather than validated.
     """
     validator = jsonschema_rs.validator_for(core_schema())
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

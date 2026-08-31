@@ -35,8 +35,7 @@ curating a list of type names:
    below lists the ``Project`` fields a human or an agent writes by hand in
    ``project.visivo.yml``.  ``OMITTED_PROJECT_PROPERTIES`` lists the rest with
    the reason each one is out.  Every ``Project`` field must appear in exactly
-   one of the two -- ``test_schema_phase.py`` fails if the model grows a field
-   that neither list mentions, so this stays honest as the model evolves.
+   one of the two.
 
 3. **Transitively close over ``$ref`` from those roots** and drop every
    ``$def`` nothing reaches.
@@ -76,13 +75,12 @@ curating a list of type names:
    is ``name[:-1] in keyword.kwlist``, which is why this does *not* drag in the
    1.0-era ``targets``/``target`` aliases that ``by_alias=True`` would.
 
-Caveat, stated plainly because step 4 has a real edge: the core schema is an
-*authoring* contract.  Because ``Project`` and its objects are
-``extra="forbid"``, stripping the machine-set fields means the core schema
-rejects a document that carries them -- notably the ``project.json`` the CLI
-writes at compile time, and any object round-tripped out of the server API.
-Validate hand-written YAML with ``--core``; validate compiler output with
-``--full``.
+Caveat: the core schema is an *authoring* contract.  Because ``Project`` and
+its objects are ``extra="forbid"``, stripping the machine-set fields means the
+core schema rejects a document that carries them -- notably the
+``project.json`` the CLI writes at compile time, and any object round-tripped
+out of the server API.  Validate hand-written YAML with ``--core``; validate
+compiler output with ``--full``.
 
 The same ``extra="forbid"`` is why step 2 does not simply *drop* the omitted
 root fields.  Five of the eight are machine-set and stay out for the reason
@@ -122,9 +120,9 @@ CORE_PROJECT_PROPERTIES: List[str] = [
     "tests",
 ]
 
-#: ``Project`` fields deliberately left out of the core subset, each with the
-#: reason.  Kept as data (not a comment) so the guard test can assert that
-#: CORE + OMITTED covers every field ``Project`` actually has.
+#: ``Project`` fields deliberately left out of the core subset, each with its
+#: reason.  Data, not a comment, so a guard test can assert CORE + OMITTED is
+#: every field ``Project`` has.
 OMITTED_PROJECT_PROPERTIES: Dict[str, str] = {
     "path": "Machine-set: the CLI assigns it while parsing.",
     "file_path": "Machine-set: the CLI records which file the object came from.",
@@ -234,14 +232,10 @@ def _model_classes() -> Dict[str, Any]:
 def _authored_machine_set_fields(model_name: str, classes: Dict[str, Any]) -> Set[str]:
     """The ``MACHINE_SET_FIELDS`` ``model_name`` declares itself, and so keeps.
 
-    ``MACHINE_SET_FIELDS`` is a list of *names*, and a name is not proof.
-    ``Include`` redeclares ``path`` as "the path or git reference to external
-    yml files to include" -- the only key an include has -- so stripping it by
-    name leaves a definition that, being ``additionalProperties: false``,
-    rejects the very example printed in ``Include``'s own description, and with
-    it every project in the repo that splits itself across files.
-
-    So the question asked here is *which class declared this field*: one of the
+    ``MACHINE_SET_FIELDS`` is a list of *names*, and a name is not proof:
+    ``Include`` redeclares ``path`` as the only key an include has, so stripping
+    it by name leaves a definition that rejects every ``includes:`` in the repo.
+    The question asked here is *which class declared this field* -- one of the
     models in ``_machine_set_owners`` (bookkeeping, strip it) or the concrete
     model itself (authoring surface, keep it).
     """
@@ -316,16 +310,13 @@ def _repair_unsatisfiable_one_ofs(node: Any) -> None:
 
     ``oneOf`` demands that *exactly* one branch match. Two branches that are
     identical apart from annotations match together or not at all, so nothing
-    can satisfy the keyword -- which is how the core schema came to reject
-    every ``password:`` on every source type.
+    can satisfy the keyword.
     """
     if isinstance(node, dict):
         branches = node.get("oneOf")
         if isinstance(branches, list) and "anyOf" not in node:
-            # A sibling `anyOf` would have to be intersected rather than
-            # replaced; no such node exists in the dump, and the guard test
-            # asserts no unsatisfiable `oneOf` survives, so one appearing shows
-            # up as a failure rather than as a silent no-op.
+            # A sibling `anyOf` would have to be intersected, not replaced; no
+            # such node exists in the dump.
             shapes = [_validation_shape(branch) for branch in branches]
             if len(set(shapes)) < len(shapes):
                 node["anyOf"] = node.pop("oneOf")
@@ -389,12 +380,8 @@ def core_schema() -> Dict[str, Any]:
         if name in source_properties
     }
 
-    # The root forbids unknown keys, so "omitted" would otherwise read as
-    # "prohibited". That is right for the machine-set fields -- a document
-    # carrying them is compiler output, not something an agent wrote -- and
-    # wrong for the rest, which a human writes by hand and which a project may
-    # legitimately already contain. Describe those nowhere; accept them
-    # everywhere.
+    # The root forbids unknown keys, so omitting a hand-authored field would
+    # read as prohibiting it. Describe it nowhere; accept it everywhere.
     permissive_properties = {
         name: {
             "description": (

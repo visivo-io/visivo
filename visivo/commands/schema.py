@@ -76,11 +76,7 @@ def schema(core, full, prop_type, layout, output, indent):
     if output:
         with open(output, "w") as file:
             file.write(schema_string)
-        # stderr, so that stdout carries the schema and nothing else no matter
-        # which flags were passed.
         click.echo(f"Schema written to {output} ({len(schema_string)} bytes)", err=True)
     else:
-        # Straight to stdout, unbuffered by click's styling, so that
-        # `visivo schema | jq` and `visivo schema > core.json` both work.
         sys.stdout.write(schema_string)
         sys.stdout.write("\n")

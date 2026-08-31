@@ -41,11 +41,6 @@ with this stable shape:
 Any of ``name``, ``file``, ``line``, ``object_path`` and ``details`` may be
 ``null`` when the CLI genuinely does not know the value; the key is still
 there, so a consumer can index without guarding.
-
-NOTE FOR THE DIAGNOSTIC WORK (PR #650): this module deliberately defines its
-own flat error shape rather than importing ``visivo.models.diagnostic``, which
-that PR owns. Once #650 lands, ``_error`` should be replaced by the Diagnostic
-contract and ``visivo_json_version`` bumped to 2.
 """
 
 import json
@@ -76,10 +71,8 @@ ENVELOPE_KEY_ORDER = (
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
-#: Project fields whose members get reported back in ``compile``'s result: the
-#: list-valued half of ``schema_phase.CORE_PROJECT_PROPERTIES``, minus
-#: ``includes`` (Include objects carry a path, not a name). A guard test in
-#: ``tests/commands/test_json_output.py`` fails if the two drift apart.
+#: The list-valued half of ``schema_phase.CORE_PROJECT_PROPERTIES``, minus
+#: ``includes`` (Include objects carry a path, not a name).
 _PROJECT_COLLECTIONS = (
     "sources",
     "models",
@@ -96,22 +89,11 @@ _PROJECT_COLLECTIONS = (
 )
 
 #: Collections that can also be written *inside* another object rather than at
-#: the project root, as ``{parent collection: {nested collection: qualify?}}``.
-#: The semantic-layer docs lead with the model-scoped spelling of a metric, so
-#: reading only the root collections reports ``"metrics": []`` for a project
-#: whose metrics all compiled fine, and an agent following the documented loop
-#: concludes its edit was dropped and writes it again at the root.
-#:
-#: ``qualify`` says whether the nested name means anything on its own. A
-#: model-scoped metric is referenced as ``${ref(model).metric}``, so it is
-#: reported as ``model.metric`` -- which both confirms the pickup and spells the
-#: reference. An insight written inline in a chart keeps a project-wide name and
-#: is reported bare.
-#:
-#: A guard test derives the shape of this mapping from the models, so a model
-#: that grows another home for an authorable collection cannot slip through. It
-#: covers *list* nesting only, which is where the authoring surface is; a
-#: singular inline field (``item.chart``) is a different shape and not counted.
+#: the project root, as ``{parent: {nested: qualify?}}``. Reading only the root
+#: reports ``"metrics": []`` for a project whose model-scoped metrics compiled
+#: fine, and an agent concludes its edit was dropped. ``qualify`` prefixes the
+#: owner's name, spelling the reference a model-scoped metric is used by
+#: (``model.metric``); an inline insight keeps a project-wide name and stays bare.
 _NESTED_COLLECTIONS = {
     "models": {"metrics": True, "dimensions": True},
     "charts": {"insights": False},
@@ -119,13 +101,7 @@ _NESTED_COLLECTIONS = {
 
 
 def json_output(function):
-    """The ``--json`` flag for compile/run/test.
-
-    Declared here rather than in ``visivo/commands/options.py`` on purpose: the
-    three commands that take it already import this module, so nothing is
-    gained by putting it in the shared options file and a cross-branch edit to
-    that file is avoided.
-    """
+    """The ``--json`` flag for compile/run/test."""
     import click
 
     return click.option(
@@ -429,16 +405,13 @@ def compile_result(project, working_dir: str, output_dir: str) -> Dict[str, Any]
     }
 
 
-#: The DAG runner formats each job as
-#: ``"<summary> ......[STATUS 0.3s]"`` followed by optional ``error:`` and
-#: artifact-path continuation lines. Undo that padding rather than handing an
-#: agent a log line full of alignment dots.
+#: The DAG runner formats each job as ``"<summary> ......[STATUS 0.3s]"``,
+#: followed by optional ``error:`` and artifact-path continuation lines.
 _JOB_LINE = re.compile(r"^(?P<summary>.*?)\s*\.{3,}\s*\[(?P<status>[^\]]*)\]\s*$")
 
-#: Continuation-line prefixes that introduce a *path*. ``query:`` and
-#: ``database file:`` come from ``job.py``'s ``full_path`` branch;
-#: ``query saved to:`` is appended by ``run_insight_job`` when it dumps the SQL
-#: that failed. Longest first, so a prefix that starts with another still
+#: Continuation-line prefixes that introduce a *path*: ``query:`` and
+#: ``database file:`` from ``job.py``, ``query saved to:`` from
+#: ``run_insight_job``. Longest first, so a prefix that extends another still
 #: matches its own.
 _ARTIFACT_PREFIXES = ("query saved to:", "database file:", "query:")
 
@@ -462,12 +435,7 @@ def parse_job_message(message: Any) -> Dict[str, Optional[str]]:
             at line 7
             query saved to: target/logs/failed_queries/insight_kpi.sql
 
-    so ``error`` accumulates every line after ``error:`` until a path line ends
-    it, rather than keeping the first and dropping the rest. Without that, the
-    lines carrying the offending column and its position -- the ones an agent
-    needs in order to fix the query -- never reach the envelope, and
-    ``"query saved to: <path>"`` lands in ``artifact`` as a string that is not
-    a path.
+    so ``error`` accumulates every line after ``error:`` until a path line ends it.
     """
     lines = [line.strip() for line in strip_ansi(message).split("\n")]
     lines = [line for line in lines if line]
@@ -524,11 +492,10 @@ def run_result(runner, project, output_dir: str) -> Dict[str, Any]:
     often several lines), and ``artifact`` is the path the job wrote or was
     reading (``null`` when the job did not name one).
 
-    ``job_counts.total`` is 0 when the filter matched nothing runnable. That is
-    not an error here, because it is not one for ``visivo run`` either -- the
-    runner logs "No jobs run" and still exits 0, and ``--json`` promises the
-    same exit code as the plain command. A consumer that needs to know work
-    happened reads ``job_counts.total``, not ``success``.
+    ``job_counts.total`` is 0 when the filter matched nothing runnable, and that
+    is not a failure: ``visivo run`` exits 0 there too, and ``--json`` promises
+    the same exit code. A consumer that needs to know work happened reads
+    ``job_counts.total``, not ``success``.
     """
     succeeded = [_job_entry(result) for result in getattr(runner, "successful_job_results", [])]
     failed = [_job_entry(result) for result in getattr(runner, "failed_job_results", [])]
@@ -671,9 +638,8 @@ def json_command(command: str):
         with redirect_stdout(sys.stderr):
             yield state
     except SystemExit as exit_request:
-        # Something deep in the call stack called sys.exit(). Honour the exit
-        # code, but never leave stdout empty -- an agent that got no JSON
-        # cannot tell a crash from a clean run.
+        # Honour the exit code, but never leave stdout empty: an agent that got
+        # no JSON cannot tell a crash from a clean run.
         code = exit_request.code
         if code in (0, None):
             raise

@@ -248,12 +248,8 @@ def test_run_json_failure_reports_the_failing_job():
     assert all(error["name"] for error in document["errors"])
     assert all(error["message"] for error in document["errors"])
 
-    # `error` is the whole point of the envelope over the exit code, and it is
-    # recovered by parsing the runner's log text -- so assert it against a real
-    # run, not only against hand-typed strings. `run_errors` falls back to the
-    # generic "Failed job for <name>" summary when parsing comes up empty, so a
-    # parser that stops extracting the exception degrades silently unless this
-    # says otherwise.
+    # `error` is recovered by parsing the runner's log text, and `run_errors`
+    # falls back to the "Failed job for <name>" summary when that comes up empty.
     failed = [job for job in document["result"]["jobs"] if not job["success"]]
     assert failed, "the run reported no failing job"
     for job in failed:
@@ -293,6 +289,40 @@ def test_run_without_json_still_exits_non_zero_on_failure():
     )
 
     assert response.exit_code == 1
+
+
+def test_run_json_keeps_the_artifact_sweep_off_stdout():
+    """The end-of-run artifact sweep logs through Logger, which writes to
+    stdout. Under --json its line has to reach stderr like every other one, and
+    the sweep still has to happen."""
+    output_dir = temp_folder()
+    project = runnable_project()
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
+    arguments = [
+        "-o",
+        output_dir,
+        "-s",
+        "source",
+        "-p",
+        str(HotReloadServer.find_available_port()),
+    ]
+
+    first = runner.invoke(run, ["-w", write_project(project)] + arguments)
+    assert first.exit_code == 0
+    orphaned = os.path.join(output_dir, "main", "insights", "insight.json")
+    assert os.path.exists(orphaned)
+
+    document = json.loads(project.model_dump_json())
+    document["dashboards"][0]["rows"][0]["items"][0]["chart"]["insights"][0][
+        "name"
+    ] = "insight_renamed"
+    response = runner.invoke(run, ["-w", write_yaml(document)] + arguments + ["--json"])
+
+    parsed(response)
+    assert response.exit_code == 0
+    assert not os.path.exists(orphaned), "the sweep did not run"
+    assert "no longer in the project" in response.stderr
+    assert "no longer in the project" not in response.stdout
 
 
 def test_run_json_and_compile_json_share_the_envelope():

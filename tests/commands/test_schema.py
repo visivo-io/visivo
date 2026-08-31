@@ -134,11 +134,9 @@ def test_every_prop_type_is_emittable():
 # ---------------------------------------------------------------------------
 # End-to-end stdout purity.
 #
-# CliRunner invokes the subcommand directly, so it never exercises
-# command_line.py -- and that is where the "Starting Visivo..." banner, the
-# trailing execution-time line and the Halo spinner live, all of which write to
-# stdout and would corrupt the document. Only a real process proves the
-# contract, so these three shell out.
+# CliRunner invokes the subcommand directly, never command_line.py -- which is
+# where the banner, the timing line and the Halo spinner live. Only a real
+# process proves the contract, so these shell out.
 # ---------------------------------------------------------------------------
 
 
@@ -185,8 +183,7 @@ def test_end_to_end_compile_json_stdout_is_only_the_envelope():
 
 
 # The `visivo` group takes options *before* the subcommand, so `argv[1]` is not
-# the command name. Detecting `schema` positionally missed every one of these
-# and put the banner and the timing line back on stdout, around the document.
+# the command name.
 GROUP_OPTIONS_BEFORE_THE_SUBCOMMAND = [
     ("-e", ".env"),
     ("--env-file=.env",),
@@ -204,7 +201,6 @@ def test_end_to_end_schema_stdout_stays_clean_behind_group_options(options):
     assert "Starting Visivo" not in result.stdout
     assert "execution time" not in result.stdout
     assert "Profiling" not in result.stdout
-    # The real assertion: an agent redirects this into a file and parses it.
     assert json.loads(result.stdout)["x-visivo-schema"]["mode"] == "core"
 
 

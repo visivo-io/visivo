@@ -48,7 +48,6 @@ def run(
     Logger.instance().debug("Running")
 
     def _run(defer_exit):
-        # Parse project first
         project = parse_project_phase(
             working_dir=working_dir,
             output_dir=output_dir,

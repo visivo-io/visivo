@@ -13,10 +13,9 @@ def test_phase(
     defer_exit: bool = False,
 ):
     """
-    ``defer_exit`` suppresses the ``sys.exit(1)`` on a failing assertion so the
-    caller can report the failures itself and choose the exit code. Used by
-    ``visivo test --json``, which has to print its JSON envelope before the
-    process ends. Returns the ``TestRun`` either way.
+    ``defer_exit`` skips the ``sys.exit(1)`` on a failing assertion so the caller
+    can report the failures and pick the exit code, which ``visivo test --json``
+    needs in order to print its envelope first. Returns ``(project, test_run)``.
     """
     project = compile_phase(
         default_source=default_source,

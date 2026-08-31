@@ -37,8 +37,7 @@ def test_compile_result_covers_every_authorable_collection():
     list_valued = {
         name for name in CORE_PROJECT_PROPERTIES if properties.get(name, {}).get("type") == "array"
     }
-    # `includes` holds file references, not named objects -- an Include has a
-    # path, not a name, so reporting it would be a column of nulls.
+    # An Include carries a path, not a name, so it is not reported.
     assert set(_PROJECT_COLLECTIONS) == list_valued - {"includes"}
 
 
@@ -60,14 +59,9 @@ def _item_class(annotation):
 def test_nested_collections_names_every_place_a_collection_can_be_written():
     """A collection can have a second home inside another object.
 
-    `metrics` and `dimensions` can be written on a model -- the spelling the
-    semantic-layer docs lead with -- and `insights` inside a chart. Reading only
-    the root would report `"metrics": []` for a project whose metrics compiled
-    fine, and an agent following the documented loop ("write it, compile,
-    confirm it appears") would conclude its edit was dropped.
-
-    Derived from the models, so a model that grows another nested collection
-    fails here rather than going quietly missing from the envelope.
+    `metrics` and `dimensions` can be written on a model, `insights` inside a
+    chart. Derived from the models, so a model that grows another nested
+    collection fails here rather than going quietly missing from the envelope.
     """
     from visivo.commands.json_output import _NESTED_COLLECTIONS, _PROJECT_COLLECTIONS
     from visivo.models.project import Project
@@ -170,10 +164,8 @@ def test_parse_job_message_reads_a_real_failed_insight_block():
 
     `format_message_failure` puts the exception on an `error:` line and
     `run_insight_job` appends `at <location>` and `query saved to: <path>`
-    after it. Treating every continuation line as the artifact put the literal
-    string "query saved to: <path>" in `artifact` -- a filename that is not a
-    filename -- and threw away every line of the error after the first, which
-    is exactly the part naming the offending column.
+    after it, so `artifact` must take only the path and `error` must keep every
+    line before it.
     """
     parsed = parse_job_message(
         "Failed job for insight \033[4mtotal_units\033[0m ....[\033[31mFAILURE 0.06s\033[0m]"
@@ -188,7 +180,6 @@ def test_parse_job_message_reads_a_real_failed_insight_block():
     assert parsed["artifact"] == "target/logs/failed_queries/insight_total_units.sql"
     assert "query saved to" not in parsed["artifact"]
     assert parsed["artifact"].endswith(".sql")
-    # Every line of the error survives, including the one an agent needs.
     assert parsed["error"].startswith("Conversion Error: could not convert 'West' to INTEGER")
     assert 'CAST("ev_sales"."region" AS INTEGER)' in parsed["error"]
     assert "at line 7" in parsed["error"]
