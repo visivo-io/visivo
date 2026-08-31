@@ -61,7 +61,10 @@ class FlaskApp:
         # Initialize object managers with DAG for efficient loading
         dag = project.dag()
 
-        self.source_manager = SourceManager()
+        # The manager writes externalized credentials to <working_dir>/.env —
+        # the same file the commit view reads (see commit_views.py) and the
+        # CLI loads at startup.
+        self.source_manager = SourceManager(project_dir=working_dir)
         self.source_manager.load(dag)
 
         self.model_manager = ModelManager()

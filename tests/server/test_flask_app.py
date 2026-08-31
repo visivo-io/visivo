@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 import pytest
 import json
 import os
+from dotenv import dotenv_values
 from visivo.server.flask_app import FlaskApp
 from tests.factories.model_factories import ProjectFactory, SourceFactory
 from tests.support.utils import temp_folder
@@ -121,10 +122,11 @@ def test_create_postgres_source_externalizes_credentials(client):
             assert "hunter2" not in res.data.decode()
             assert "postgres" != source["password"]
 
-            # .env holds the real values
-            env_text = (Path(tmpdir) / ".env").read_text()
-            assert "WAREHOUSE_PASSWORD=hunter2" in env_text
-            assert "WAREHOUSE_USERNAME=admin" in env_text
+            # .env holds the real values — read back through dotenv, which is
+            # what actually loads them on the next run.
+            env_values = dotenv_values(str(Path(tmpdir) / ".env"))
+            assert env_values["WAREHOUSE_PASSWORD"] == "hunter2"
+            assert env_values["WAREHOUSE_USERNAME"] == "admin"
 
             # loaded into os.environ so ${env.*} resolves in this same process
             assert os.environ["WAREHOUSE_PASSWORD"] == "hunter2"

@@ -2,14 +2,35 @@ import click
 import os
 import re
 
+from dotenv import load_dotenv
+
 from visivo.models.base.named_model import NAME_REGEX
+
+
+def load_working_dir_env(resolved_working_dir):
+    """Load the project's own ``.env``, not just the one next to the shell.
+
+    The ``visivo`` group loads ``--env-file`` (default ``.env``) relative to the
+    process cwd, before any subcommand option is parsed. With ``-w ./analytics``
+    that is the wrong directory: the project's credentials live in
+    ``analytics/.env`` — that is where the Workspace writes externalized source
+    secrets and where the commit view reads the available names from — so
+    without this the ``${env.*}`` references in the committed YAML resolve to
+    nothing on the next run. ``override=False`` keeps the cwd/``--env-file``
+    values winning, so this only ever fills in names that are otherwise unset.
+    """
+    env_path = os.path.join(resolved_working_dir, ".env")
+    if os.path.isfile(env_path):
+        load_dotenv(env_path)
 
 
 def working_dir(function):
     def callback(ctx, param, value):
         ctx.ensure_object(dict)
         ctx.obj["is_default_working_dir"] = value is None
-        return value if value is not None else os.getcwd()
+        resolved = value if value is not None else os.getcwd()
+        load_working_dir_env(resolved)
+        return resolved
 
     function = click.option(
         "-w", "--working-dir", help="Directory to run the command", default=None, callback=callback
