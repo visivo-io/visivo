@@ -6,6 +6,18 @@
  */
 import useStore from './store';
 import { CREATE_TEMPLATES } from './inlineCreateStore';
+import { fetchModelColumnNames } from '../api/modelSchema';
+
+// The metric/dimension/relation scaffolds ask the server which columns a model
+// actually has, rather than hardcoding `id` (which most models don't have).
+jest.mock('../api/modelSchema', () => ({
+  fetchModelColumnNames: jest.fn(async () => ['order_id', 'amount']),
+}));
+
+beforeEach(() => {
+  fetchModelColumnNames.mockClear();
+  fetchModelColumnNames.mockResolvedValue(['order_id', 'amount']);
+});
 
 describe('createWorkspaceObject', () => {
   test.each(Object.keys(CREATE_TEMPLATES))('drafts a %s through its save action', async type => {
@@ -18,7 +30,7 @@ describe('createWorkspaceObject', () => {
       [template.collectionKey]: [],
       [template.saveKey]: save,
     });
-    const expectedConfig = template.config(useStore.getState());
+    const expectedConfig = await template.config(useStore.getState());
 
     const result = await useStore.getState().createWorkspaceObject(type);
 
@@ -114,10 +126,11 @@ describe('createWorkspaceObject', () => {
       expect(result).toMatchObject({ success: true, type: 'relation' });
       const [, config] = save.mock.calls[0];
       expect(config.join_type).toBe('inner');
-      // Real model refs — what the backend's validator requires. The join keys
-      // are a starting point the user re-points in the edit panel.
+      // Real model refs — what the backend's validator requires — joined on
+      // REAL columns. Which columns is a starting point the user re-points in
+      // the edit panel; that they exist is not negotiable.
       // eslint-disable-next-line no-template-curly-in-string
-      expect(config.condition).toBe('${ref(orders).id} = ${ref(users).id}');
+      expect(config.condition).toBe('${ref(orders).order_id} = ${ref(users).order_id}');
     });
 
     test('says WHY it cannot draft one when the project has fewer than two models', async () => {
@@ -155,15 +168,43 @@ describe('createWorkspaceObject', () => {
       return save.mock.calls[0][1];
     };
 
-    test('a metric counts a column of the first model', async () => {
+    test('a metric counts a REAL column of the first model', async () => {
       // eslint-disable-next-line no-template-curly-in-string
-      expect((await draftConfig('metric')).expression).toBe('count(${ref(orders).id})');
+      expect((await draftConfig('metric')).expression).toBe('count(${ref(orders).order_id})');
+      expect(fetchModelColumnNames).toHaveBeenCalledWith('orders', expect.anything());
     });
 
-    test('a dimension selects a column of the first model', async () => {
+    test('a dimension selects a REAL column of the first model', async () => {
       // eslint-disable-next-line no-template-curly-in-string
-      expect((await draftConfig('dimension')).expression).toBe('${ref(orders).id}');
+      expect((await draftConfig('dimension')).expression).toBe('${ref(orders).order_id}');
     });
+
+    // The scaffolds used to hardcode `id`. Most models don't have one, so the
+    // draft saved and then broke at run time against a column that was never
+    // there — with nothing pointing at the column as the cause.
+    test.each(['metric', 'dimension'])('a %s never invents a column name', async type => {
+      const config = await draftConfig(type);
+      expect(config.expression).not.toContain('.id}');
+    });
+
+    test.each(['metric', 'dimension'])(
+      'a %s refuses to draft when the columns cannot be read',
+      async type => {
+        fetchModelColumnNames.mockResolvedValue([]);
+        const save = jest.fn(async () => ({ success: true }));
+        useStore.setState({
+          models: [{ name: 'orders' }],
+          [CREATE_TEMPLATES[type].collectionKey]: [],
+          [CREATE_TEMPLATES[type].saveKey]: save,
+        });
+
+        const result = await useStore.getState().createWorkspaceObject(type);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toMatch(/columns/i);
+        expect(save).not.toHaveBeenCalled();
+      }
+    );
 
     test.each(['metric', 'dimension'])(
       'a %s says WHY it cannot draft one with no models, rather than posting a doomed config',

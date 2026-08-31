@@ -55,9 +55,7 @@ def env():
     flask_app.project.project_file_path = "/tmp/project.yaml"
     flask_app.hot_reload_server = None
     flask_app._cached_defaults = None
-    # A real published value and the REAL comparison, not a Mock that is always
-    # truthy: "is a defaults object cached?" is exactly the question these
-    # endpoints stopped asking, so the mock must not answer it.
+    # The REAL comparison, not a Mock that is always truthy.
     flask_app.project.defaults = None
     flask_app.defaults_changed.side_effect = lambda: FlaskApp.defaults_changed(flask_app)
     # A real path, not a Mock: /capabilities/ joins it to find the project's

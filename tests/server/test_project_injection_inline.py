@@ -1,16 +1,10 @@
 """A draft of an INLINE-defined object replaces it, rather than duplicating it.
 
 A chart (or table, or markdown) written directly inside a dashboard item is a
-real named object — every manager publishes it — but it is not in the project's
-top-level ``charts:`` list. ``inject_cached_objects`` overlaid every draft by
-appending to the matching top-level list, which put the same name in the
-project twice while the inline copy stayed where it was.
-
-``Project.traverse_names`` rejects a duplicate name, so #640's commit gate
-refused with ``Chart name '...' is not unique in the project`` — naming a chart
-the user very likely had not touched. Every dashboard-inline chart was
-unpublishable, and merely opening one (which loads it into the draft cache)
-blocked unrelated commits.
+real named object every manager publishes, but it is not in the project's
+top-level ``charts:`` list. Appending its draft there leaves the same name in
+the project twice, which ``Project.traverse_names`` — and so #640's commit
+gate — rejects.
 """
 
 from types import SimpleNamespace

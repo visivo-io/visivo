@@ -29,7 +29,7 @@ def dist_dir():
     return temp_folder()
 
 
-def _make_runnable_project():
+def _make_runnable_project(**overrides):
     """Create a project with an insight that references a model, suitable for running."""
     model = SqlModelFactory(name="model", source="ref(source)")
     insight = InsightFactory(name="insight", model=model)
@@ -43,18 +43,37 @@ def _make_runnable_project():
     return ProjectFactory(
         models=[model],
         dashboards=[dashboard],
+        **overrides,
     )
+
+
+def _write_project(project, output_dir):
+    """Put `project` on disk as a working dir `dist` can be pointed at."""
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json(exclude_none=True)), name=PROJECT_FILE_NAME
+    )
+    return os.path.dirname(tmp)
 
 
 @pytest.fixture
 def setup_project(output_dir):
     project = _make_runnable_project()
+    return project, _write_project(project, output_dir)
 
-    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
-    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
-    working_dir = os.path.dirname(tmp)
-    return project, working_dir
+@pytest.fixture
+def setup_unnamed_project(output_dir):
+    """A project with no `name:` — which the schema allows.
+
+    `ProjectFactory` supplies `name = "project"`, so every fixture in this file
+    had one and the optional case was never represented. That is why a
+    KeyError on `project_json["name"]` shipped: the assertion covering it
+    (`data["name"] == project.name`) was real, the fixture just never varied.
+    """
+    project = _make_runnable_project(name=None)
+    assert project.name is None
+    return project, _write_project(project, output_dir)
 
 
 def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
@@ -77,6 +96,12 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "project.json"))
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "dashboards"))
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "insights"))
+    # Traces are gone from the product — there is no Trace model, `Project` has
+    # no `traces` field, and nothing writes `target/traces/`. dist kept a block
+    # that globbed for them anyway, so every bundle shipped an empty
+    # `data/traces/` and a `data/traces.json` of `[]`.
+    assert not os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "traces"))
+    assert not os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "traces.json"))
 
     with open(os.path.join(dist_dir, "data", "project.json")) as project_json:
         data = json.load(project_json)
@@ -87,8 +112,145 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
         assert "project_json" not in data
         assert data["name"] == project.name
         assert "defaults" in data["config"]
-        assert "dashboard_count" in data
-        assert "source_count" in data
+        # COUNTS, not just presence. These were read out of the dereferenced
+        # dump, and `Serializer.dereference` deliberately empties the
+        # top-level collections once everything is inlined into the dashboards
+        # (`project.sources = []`, and the same for charts/models/insights/…).
+        # So `source_count` was structurally guaranteed to be 0 in every bundle
+        # ever built, for every project, no matter how many sources it had.
+        assert data["dashboard_count"] == len(project.dashboards)
+        assert data["source_count"] == len(project.sources)
+        assert data["source_count"] > 0
+
+
+def test_dist_works_for_a_project_with_no_name(setup_unnamed_project, output_dir, dist_dir):
+    """`visivo dist` used to die with `KeyError: 'name'` on any project that
+    didn't declare one.
+
+    The envelope is dumped with `exclude_none=True`, so an optional field left
+    unset is not `null` in the JSON — it is ABSENT. `project_json["name"]` was
+    the one field here read without a default, so the whole command failed for
+    a perfectly valid project. Reading it off the model, the way the server's
+    `/api/project/` does, gives `None` instead: the viewer already falls back
+    to "project" for display.
+    """
+    project, working_dir = setup_unnamed_project
+
+    from visivo.commands.run import run
+
+    run_result = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
+    assert run_result.exit_code == 0
+
+    result = runner.invoke(
+        dist,
+        ["-w", working_dir, "-s", "source", "--output-dir", output_dir, "--dist-dir", dist_dir],
+    )
+
+    assert result.exit_code == 0, result.output
+    with open(os.path.join(dist_dir, "data", "project.json")) as project_json:
+        data = json.load(project_json)
+    # Present and null, matching the server envelope — not missing, which would
+    # move the same failure into the viewer.
+    assert "name" in data
+    assert data["name"] is None
+    # The rest of the bundle is unaffected.
+    assert data["dashboard_count"] == 1
+    assert data["source_count"] == 1
+    assert "defaults" in data["config"]
+
+
+class TestCurrentArtifacts:
+    """`visivo run` only ever ADDS artifacts — it never removes the ones a
+    rename or a naming-scheme change orphaned.
+
+    Before VIS-1128 each artifact was written as `alpha_hash(name).json`; now it
+    is `<name>.json`. A project that predates the change has both on disk,
+    carrying the same `"name"`. dist globbed the directory, so every object
+    shipped TWICE in `insights.json` / `inputs.json` — and the stale copy's
+    parquet URL used the old hashed filename, which nothing copies any more. A
+    hosted bundle 404'd on its own data and DuckDB reported
+    `Table with name m… does not exist`.
+    """
+
+    def _write(self, directory, filename, payload):
+        # `temp_folder()` only names a path; nothing has created it yet.
+        os.makedirs(directory, exist_ok=True)
+        path = os.path.join(directory, filename)
+        with open(path, "w") as f:
+            json.dump(payload, f)
+        return path
+
+    def test_the_current_artifact_wins_over_the_hashed_one(self):
+        from visivo.commands.dist_phase import _current_artifacts
+        from visivo.models.base.named_model import alpha_hash
+
+        directory = temp_folder()
+        stale = self._write(
+            directory,
+            f"{alpha_hash('station-bubbles')}.json",
+            {"name": "station-bubbles", "files": [{"signed_data_file_url": "/old.parquet"}]},
+        )
+        current = self._write(
+            directory,
+            "station-bubbles.json",
+            {"name": "station-bubbles", "files": [{"signed_data_file_url": "/new.parquet"}]},
+        )
+
+        resolved = _current_artifacts([stale, current])
+
+        assert len(resolved) == 1
+        path, data = resolved[0]
+        assert path == current
+        assert data["files"][0]["signed_data_file_url"] == "/new.parquet"
+
+    def test_order_on_disk_does_not_decide_it(self):
+        """The glob's order is arbitrary; the answer must not be."""
+        from visivo.commands.dist_phase import _current_artifacts
+        from visivo.models.base.named_model import alpha_hash
+
+        directory = temp_folder()
+        stale = self._write(directory, f"{alpha_hash('x')}.json", {"name": "x"})
+        current = self._write(directory, "x.json", {"name": "x"})
+
+        for order in ([stale, current], [current, stale]):
+            ((path, _),) = _current_artifacts(order)
+            assert path == current
+
+    def test_distinct_objects_are_all_kept(self):
+        from visivo.commands.dist_phase import _current_artifacts
+
+        directory = temp_folder()
+        paths = [
+            self._write(directory, "a.json", {"name": "a"}),
+            self._write(directory, "b.json", {"name": "b"}),
+        ]
+
+        assert sorted(d["name"] for _p, d in _current_artifacts(paths)) == ["a", "b"]
+
+    def test_an_object_with_only_a_stale_artifact_still_ships(self):
+        """Dropping it would turn a cosmetic staleness into a missing insight."""
+        from visivo.commands.dist_phase import _current_artifacts
+        from visivo.models.base.named_model import alpha_hash
+
+        directory = temp_folder()
+        stale = self._write(directory, f"{alpha_hash('only')}.json", {"name": "only"})
+
+        ((path, data),) = _current_artifacts([stale])
+        assert path == stale
+        assert data["name"] == "only"
+
+    def test_unreadable_or_nameless_files_are_skipped_not_fatal(self):
+        from visivo.commands.dist_phase import _current_artifacts
+
+        directory = temp_folder()
+        nameless = self._write(directory, "nameless.json", {"files": []})
+        broken = os.path.join(directory, "broken.json")
+        os.makedirs(directory, exist_ok=True)
+        with open(broken, "w") as f:
+            f.write("{not json")
+        good = self._write(directory, "good.json", {"name": "good"})
+
+        assert [d["name"] for _p, d in _current_artifacts([nameless, broken, good])] == ["good"]
 
 
 def test_dist_writes_a_dashboards_list_with_layout(setup_project, output_dir, dist_dir):

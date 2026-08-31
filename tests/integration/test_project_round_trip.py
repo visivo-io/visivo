@@ -1,40 +1,19 @@
 """Regression guard for honest object status (M12 / M25).
 
-The editor's whole model of "what changed" rests on one property that nothing
-tested: **loading a project, handing its config to a client, and taking that
-exact config back must be a no-op.** It was not.
+The editor's whole model of "what changed" rests on one property nothing tested:
+**loading a project, handing its config to a client, and taking that exact
+config back must be a no-op** — no status moves, no YAML byte changes, and the
+config handed out re-validates.
 
-Three independent leaks broke it, and they are asserted here against the REAL
-``test-projects/integration`` fixture rather than a synthetic model, because
-each only shows up on object types a hand-built fixture is unlikely to include
-(inputs, dashboard-inline charts) or on fields only the parser populates
-(``path`` on every nested row/item/chart):
+Asserted against the REAL ``test-projects/integration`` fixture rather than a
+synthetic model, because the ways it broke only show up on object types a
+hand-built fixture is unlikely to include (inputs, dashboard-inline charts) or
+on fields only the parser populates (``path`` on every nested row/item/chart).
 
-1. ``objects_equal`` compared ``path``/``file_path`` — location bookkeeping the
-   parser stamps on and every API serializer strips off. A round trip could
-   never restore them, so every object in the project reported MODIFIED
-   forever, and a Commit rewrote all of them.
-2. The strip was applied only to the TOP level of the dump, so for a composite
-   (a dashboard, whose rows / items / inline charts each carry their own
-   ``path``) all three symptoms survived one level down: bookkeeping in the
-   config the API hands out, a genuinely clean config still reported changed,
-   and a commit writing ``path:`` / absolute ``file_path:`` lines into tracked
-   YAML.
-3. ``SingleSelectInput``/``MultiSelectInput`` injected ``name_hash`` (and
-   ``structure``) into every ``model_dump``. The parser's ``extra='forbid'``
-   rejects both, so the serialized form was not a config at all: committing an
-   input wrote YAML the very next parse refused.
-
-Together they are the mechanism behind the field report of a test run leaving
-``test-projects/integration/project.visivo.yml`` dirty with ~190 lines of
-injected ``name_hash``. The write tests at the bottom are the direct guard: a
-no-op round trip leaves every YAML byte-identical, AND a real edit writes only
-the edit.
-
-The round trip runs over real HTTP (``GET`` then ``POST`` the same endpoints
-the viewer calls) rather than by reaching into the managers, so #640's save
-gates and the sibling keys the GET responses attach — ``parentModel``, which
-carries a metric's model scope — are exercised as the client exercises them.
+The round trip runs over real HTTP (``GET`` then ``POST`` the same endpoints the
+viewer calls) rather than by reaching into the managers, so #640's save gates
+and the sibling keys the GET responses attach — ``parentModel``, which carries a
+metric's model scope — are exercised as the client exercises them.
 """
 
 import json
@@ -83,11 +62,9 @@ def _location_bookkeeping(value, trail=""):
     """Every location-bookkeeping key in ``value``, at any depth, as (trail, value).
 
     Deliberately NOT "every key named path": ``layout.shapes[].path`` is a real
-    Plotly property (the SVG path of a drawn shape) and stripping it would be a
-    worse bug than the one under test. Bookkeeping ``path`` values are the
-    parser's dotted object addresses (``project.dashboards[3].rows[0]``), so
-    they are recognised by shape and a user's SVG path can never be mistaken
-    for one.
+    Plotly property (the SVG path of a drawn shape). Bookkeeping ``path`` values
+    are the parser's dotted addresses (``project.dashboards[3].rows[0]``), so
+    matching on that shape can never catch a user's SVG path.
     """
     found = []
     if isinstance(value, dict):
@@ -187,8 +164,8 @@ def _round_trip_everything(app):
         body = json.loads(response.data)
         config = dict(body["config"])
         # The GET hands a metric/dimension's model scope back as a SIBLING of
-        # config, and the viewer posts it alongside. Dropping it here would
-        # make the "round trip" silently un-scope every model-local field.
+        # config, and the viewer posts it alongside; dropping it would make the
+        # round trip silently un-scope every model-local field.
         if body.get("parentModel"):
             config["parentModel"] = body["parentModel"]
         saved = client.post(url, json=config)
@@ -236,9 +213,8 @@ def test_the_fixture_actually_covers_the_interesting_types(flask_app):
 def test_every_published_config_is_a_valid_config(flask_app):
     """The config the API hands out must be one the project can parse back.
 
-    This is the ``extra='forbid'`` half: an input whose dump carried
-    ``name_hash``/``structure`` failed here, which is why committing an input
-    produced YAML the next parse refused.
+    The parser sets ``extra='forbid'``, so any non-field a serializer injects
+    makes the config unparseable and the YAML a commit writes from it invalid.
     """
     rejected = []
     for manager, _, name, obj in _published_objects(flask_app):
@@ -254,10 +230,8 @@ def test_every_published_config_is_a_valid_config(flask_app):
 def test_no_config_the_api_hands_out_carries_location_bookkeeping(flask_app):
     """At EVERY depth, not just the top level.
 
-    ``exclude={"path", "file_path"}`` reaches only the outermost fields, so a
-    dashboard still handed the client ``path`` on every row, item and inline
-    chart — and a commit then wrote those, plus an absolute machine-local
-    ``file_path``, into the team's YAML.
+    ``model_dump(exclude=...)`` reaches only the outermost fields, while a
+    dashboard carries ``path`` on every row, item and inline chart.
     """
     leaked = []
     client = flask_app.app.test_client()
@@ -276,10 +250,9 @@ def test_a_plotly_shape_path_is_not_mistaken_for_bookkeeping(flask_app):
     """The false positive the recursive strip must never produce.
 
     ``layout.shapes[].path`` and ``layout.selections[].path`` are real,
-    user-authored Plotly properties — the SVG path of a drawn shape. They live
-    in free-form prop space, so a strip that went by key name would silently
-    delete them from the chart it commits: a valid config quietly corrupted,
-    which is strictly worse than the bookkeeping leak being fixed.
+    user-authored Plotly properties — the SVG path of a drawn shape — living in
+    free-form prop space, so a strip that went by key name would delete them
+    from the chart it commits.
     """
     manager = flask_app.chart_manager
     chart = manager.validate_object(
@@ -300,12 +273,7 @@ def test_a_plotly_shape_path_is_not_mistaken_for_bookkeeping(flask_app):
 
 
 def test_round_trip_reports_no_modifications(round_tripped_app):
-    """GET → POST the identical config → the object is still PUBLISHED.
-
-    This is the ``objects_equal`` half. Before the fix every object here
-    reported MODIFIED, so the editor showed the whole project as dirty on a
-    freshly loaded project nobody had touched.
-    """
+    """GET → POST the identical config → the object is still PUBLISHED."""
     wrong = []
     for manager in round_tripped_app._all_object_managers():
         for name in list(manager.cached_objects.keys()):
@@ -330,13 +298,8 @@ def test_round_trip_leaves_the_changes_endpoint_empty(round_tripped_app):
 
 
 def test_saving_defaults_unchanged_is_not_a_pending_change(fresh_app):
-    """Defaults is the one object no ObjectManager owns, and it kept the bug.
-
-    Every commit surface asked ``_cached_defaults is not None`` — "has the
-    panel been saved this session?", not "did anything change?" — so opening
-    the Defaults panel and pressing Save left a phantom pending change with no
-    way back to clean short of committing or restarting.
-    """
+    """Defaults is the one object no ObjectManager owns, so every commit surface
+    answers this question itself: saving the panel unedited is not a change."""
     client = fresh_app.app.test_client()
     published = json.loads(client.get("/api/defaults/").data)
 
@@ -353,10 +316,7 @@ def test_saving_defaults_unchanged_is_not_a_pending_change(fresh_app):
 def test_re_parenting_a_metric_is_a_pending_change(fresh_app):
     """A model-scoped field's scope is content, and no ``model_dump`` can see it.
 
-    ``_parent_name`` is a PrivateAttr, so comparing dumps alone made a save
-    that ONLY moves a metric to another model compare equal: reported
-    PUBLISHED, never in the pending set, silently dropped when the draft cache
-    was cleared — while ``_build_child_info`` reads exactly that attribute to
+    ``_parent_name`` is a PrivateAttr, yet ``_build_child_info`` reads it to
     decide which YAML file the metric is written into.
     """
     client = fresh_app.app.test_client()
@@ -384,13 +344,8 @@ def test_re_parenting_a_metric_is_a_pending_change(fresh_app):
 
 
 def test_round_trip_does_not_dirty_the_yaml(round_tripped_app, project_copy):
-    """The field symptom, asserted directly.
-
-    With every object round-tripped into the draft cache, a commit must find
-    nothing to write and every YAML file must come out byte-identical. Before
-    the fix this pass rewrote the entire project — including ``name_hash:``
-    lines under every input, which the next parse then rejected.
-    """
+    """With every object round-tripped into the draft cache, a commit must find
+    nothing to write and every YAML file must come out byte-identical."""
     tracked = _yaml_files(project_copy)
     assert tracked, "no YAML files found to compare"
     before = {path: open(os.path.join(project_copy, path), "rb").read() for path in tracked}
@@ -414,11 +369,9 @@ def test_a_real_edit_writes_the_edit_and_no_bookkeeping(fresh_app, fresh_project
     """The write path the zero-change guard above can never reach.
 
     ``No changes to commit`` short-circuits before ``ProjectWriter`` is even
-    constructed, so byte-identity there is entailed by the short-circuit rather
-    than by anything about serialization. Commit ONE real edit instead: the
-    edit must land, and the YAML must gain no ``path:`` / ``file_path:``
-    bookkeeping. Before the recursive strip this added 20 nested ``path:``
-    lines for a single row-height change on ``simple-dashboard``.
+    constructed, so byte-identity there proves nothing about serialization.
+    Commit ONE real edit instead: the edit must land, and the YAML must gain no
+    ``path:`` / ``file_path:`` bookkeeping.
     """
     client = fresh_app.app.test_client()
     project_yaml = os.path.join(fresh_project, "project.visivo.yml")
@@ -448,10 +401,8 @@ def test_a_defaults_edit_is_actually_written(fresh_app, fresh_project):
     """A commit that reports publishing defaults must publish defaults.
 
     ``ProjectWriter._update`` finds a child by ``value["name"] == child_name``,
-    and the YAML ``defaults:`` mapping has no ``name``. The recursion returned
-    False, the write was a silent no-op, and the endpoint still answered 200
-    with ``published_count: 1`` and cleared the draft cache — the user's edit
-    reported as a successful publish and gone.
+    and the YAML ``defaults:`` mapping has no ``name`` — so a silent no-op write
+    still answers 200 with ``published_count: 1``.
     """
     client = fresh_app.app.test_client()
     project_yaml = os.path.join(fresh_project, "project.visivo.yml")
@@ -473,12 +424,9 @@ def test_a_defaults_edit_is_actually_written(fresh_app, fresh_project):
 def test_editing_a_dashboard_inline_chart_can_be_committed(fresh_app, fresh_project):
     """A chart written inside a dashboard is publishable.
 
-    ``inject_cached_objects`` appended every draft to the matching TOP-LEVEL
-    list, so a draft of an inline-defined chart put the same name in the
-    project twice and #640's commit gate refused with
-    ``Chart name '...' is not unique in the project`` — about a chart the user
-    may never have touched. Every dashboard-inline chart was unpublishable,
-    and merely opening one blocked unrelated commits.
+    Its draft has to replace the inline definition: appended to the top-level
+    ``charts:`` list instead, the same name appears twice and #640's commit gate
+    refuses the whole project as non-unique.
     """
     client = fresh_app.app.test_client()
     top_level = {chart.name for chart in (fresh_app.project.charts or [])}

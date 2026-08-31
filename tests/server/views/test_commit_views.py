@@ -61,9 +61,7 @@ class TestCommitViews:
         flask_app.input_manager.has_unpublished_changes.return_value = False
         flask_app.input_manager.cached_objects = {}
         flask_app._cached_defaults = None
-        # A real published value and the REAL comparison, not a Mock that is
-        # always truthy: "is a defaults object cached?" is exactly the question
-        # these endpoints stopped asking, so the mock must not answer it.
+        # The REAL comparison, not a Mock that is always truthy.
         flask_app.project.defaults = None
         flask_app.defaults_changed.side_effect = lambda: FlaskApp.defaults_changed(flask_app)
 
@@ -507,6 +505,19 @@ class TestPendingProjectValidation:
         error = _validate_pending_project(flask_app)
         assert error is not None
         assert "must reference at least one model" in error
+
+    def test_a_draft_single_select_input_is_not_blocked(self):
+        """The old serializer injected name_hash into every dump ("for the
+        viewer to construct JSON URL") — nothing actually read it, and
+        reconstructing a Project from that dump tripped extra_forbidden on
+        every commit touching a single or multi-select input (VIS-1327)."""
+        from tests.factories.model_factories import SingleSelectInputFactory
+        from visivo.server.views.commit_views import _validate_pending_project
+
+        draft = SingleSelectInputFactory(name="new_input", options=["a", "b"])
+        flask_app = self._flask_app(self._project(), input={"new_input": draft})
+
+        assert _validate_pending_project(flask_app) is None
 
     def test_a_MODEL_SCOPED_draft_is_re_nested_and_allowed(self):
         """`inject_cached_objects` appends every cached object to the matching

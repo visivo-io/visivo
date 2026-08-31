@@ -178,7 +178,6 @@ def register_commit_views(app, flask_app, output_dir):
                     }
                     pending.append(input_info)
 
-            # Get defaults changes
             if flask_app.defaults_changed():
                 pending.append(
                     {
@@ -466,16 +465,14 @@ def register_commit_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
-            # Process defaults
             if flask_app.defaults_changed():
                 named_children["defaults"] = {
                     "status": "Modified",
                     "file_path": flask_app.project.project_file_path,
                     "new_file_path": flask_app.project.project_file_path,
                     "type_key": "defaults",
-                    # ``mode="json"`` like every other config in this function.
-                    # Without it ``levels`` arrives as a list of ``Level``
-                    # enums, which ruamel cannot represent.
+                    # ``mode="json"``: ruamel cannot represent the ``Level``
+                    # enums a Python-mode dump puts in ``levels``.
                     "config": location_free_dump(
                         flask_app._cached_defaults, mode="json", exclude_none=True
                     ),

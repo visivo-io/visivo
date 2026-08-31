@@ -6,6 +6,7 @@ import LibrarySubsection from './LibrarySubsection';
 import useLibraryData from './useLibraryData';
 import useLibraryFilter from './useLibraryFilter';
 import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './LibraryRow';
+import { createBlockedReason } from '../../../../stores/inlineCreateStore';
 import useStore from '../../../../stores/store';
 import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsStore';
 import { useWorkspaceScope } from '../useWorkspaceScope';
@@ -193,6 +194,28 @@ const Library = () => {
   // Data Layer first, then Layout Items (VIS thread: data elements before
   // layout items).
   const allTypes = useMemo(() => [...DATA_TYPES, ...LAYOUT_TYPES], []);
+
+  // Which "+ New" items can't be drafted yet, and why. A metric or dimension
+  // needs a model to reference (at project level that reference IS its tie to a
+  // source); a relation needs two to join. Asking the same predicate
+  // `createWorkspaceObject` enforces means the menu can never disagree with
+  // what the click would do.
+  //
+  // Keyed on the model list because that is what every predicate reads today;
+  // `createBlockedReason` takes the whole state, so a future predicate reading
+  // something else needs that value added here too.
+  const models = useStore(s => s.models);
+  const blockedCreateReasons = useMemo(() => {
+    const state = useStore.getState();
+    return allTypes.reduce((acc, type) => {
+      const reason = createBlockedReason(state, type);
+      if (reason) acc[type] = reason;
+      return acc;
+    }, {});
+    // `models` is not read directly (createBlockedReason takes the whole
+    // state) but it IS what the predicates look at — recompute when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTypes, models]);
   const allRows = useMemo(
     () => allTypes.flatMap(t => rowsByType[t] || []),
     [allTypes, rowsByType]
@@ -470,11 +493,18 @@ const Library = () => {
   // project's first two models, and the ERD stays the way to author one
   // visually rather than the only way.
   const handleNewPick = useCallback(
-    typeKey => {
+    (typeKey, blockedReason) => {
       setNewMenuOpen(false);
+      // Clicking a blocked item is a natural "why not?" gesture — answer it
+      // with the same sentence the tooltip carries, in case the pointer never
+      // rested long enough for the tooltip to appear (or there is no pointer).
+      if (blockedReason) {
+        if (showWorkspaceToast) showWorkspaceToast(blockedReason);
+        return;
+      }
       handleCreate(typeKey, 'library-menu');
     },
-    [handleCreate]
+    [handleCreate, showWorkspaceToast]
   );
 
   return (
@@ -528,13 +558,26 @@ const Library = () => {
                     {group.types.map(typeKey => {
                       const def = getTypeDef(typeKey);
                       const Icon = def.icon;
+                      const blockedReason = blockedCreateReasons[typeKey] || null;
                       return (
                         <button
                           key={typeKey}
                           type="button"
                           data-testid={`library-new-object-${typeKey}`}
-                          onClick={() => handleNewPick(typeKey)}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
+                          // NOT the `disabled` attribute: a disabled button
+                          // fires no mouse events, so the browser never shows
+                          // its `title` — the hover explanation would be
+                          // exactly what you couldn't read. `aria-disabled`
+                          // tells assistive tech the same thing while leaving
+                          // the element hoverable and focusable.
+                          aria-disabled={blockedReason ? true : undefined}
+                          title={blockedReason || undefined}
+                          onClick={() => handleNewPick(typeKey, blockedReason)}
+                          className={
+                            blockedReason
+                              ? 'flex w-full cursor-not-allowed items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-400'
+                              : 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50'
+                          }
                         >
                           {Icon && <Icon style={{ fontSize: 14 }} className="shrink-0" />}
                           {def.label}

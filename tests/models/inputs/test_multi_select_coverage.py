@@ -89,18 +89,22 @@ class TestStructureHelpers:
         assert input_obj.is_range_based() is True
         assert input_obj.is_list_based() is False
 
-    def test_serializer_marks_structure_when_metadata_is_requested(self):
+    def test_serializer_stringifies_static_options(self):
         input_obj = MultiSelectInput(name="regions", options=["East", "West"])
-        dumped = input_obj.model_dump(context={"include_input_metadata": True})
-        assert dumped["structure"] == "options"
+        dumped = input_obj.model_dump()
         assert dumped["options"] == ["East", "West"]
-        assert "name_hash" in dumped
 
-    def test_serializer_omits_structure_by_default(self):
-        """A plain dump is a CONFIG: `structure` is derived from `range` vs
-        `options`, and the parser's ``extra='forbid'`` rejects it."""
-        input_obj = MultiSelectInput(name="regions", range={"start": 0, "end": 10, "step": 1})
-        dumped = input_obj.model_dump(exclude_none=True)
-        assert "structure" not in dumped
+    # name_hash/structure used to be injected into every dump ("for the
+    # viewer to construct JSON URL"/"for frontend to know how to handle this
+    # input"), but nothing ever read them off this dump — the run artifact
+    # JSON is hand-built in run_input_job.py, and the viewer reads structure
+    # from THAT, not from the CRUD config. Left in, they round-trip back
+    # through Project(**dump) reconstruction (the commit-validation gate,
+    # VIS-1327) and fail: neither is a declared field, so `extra="forbid"`
+    # rejects the input outright — no single or multi-select input could
+    # ever be committed.
+    def test_serializer_does_not_leak_non_fields(self):
+        input_obj = MultiSelectInput(name="regions", options=["East", "West"])
+        dumped = input_obj.model_dump()
         assert "name_hash" not in dumped
-        assert MultiSelectInput(**dumped).is_range_based() is True
+        assert "structure" not in dumped

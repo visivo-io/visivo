@@ -1,11 +1,9 @@
 """A top-level singleton block (``defaults:``) must actually be written.
 
-``ProjectWriter._update`` locates the child to change by recursing for a dict
-whose ``name`` equals the child's name. The YAML ``defaults:`` mapping has no
-``name`` key, so the recursion never matched: it returned False, nothing was
-written, and the commit endpoint still answered 200 with
-``published_count: 1`` and cleared the draft cache. The user's edit was
-reported as a successful publish and lost.
+``ProjectWriter._update`` locates a child by recursing for a dict whose ``name``
+equals the child's name, and the YAML ``defaults:`` mapping has no ``name`` key.
+A write that matches nothing is silent — the commit endpoint reports success
+either way — so these assert the file, not the return value.
 """
 
 import os

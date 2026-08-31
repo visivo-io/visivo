@@ -11,34 +11,20 @@ from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
 
 T = TypeVar("T")
 
-# Bookkeeping fields that record where an object lives, not what it is. The
-# parser stamps them on; every serializer that hands a config to a client
-# strips them off again (``ObjectManager._serialize_object``,
-# ``InputManager._serialize_object``, ``commit_views._build_child_info``,
-# ``run_views._resource_fingerprint``), so they can never survive a round trip
-# and must not participate in "did this change?".
+# Bookkeeping fields recording where an object lives, not what it is. The parser
+# stamps them on and every serializer strips them off, so a config a client sends
+# back can never carry them and they must not participate in "did this change?".
 LOCATION_FIELDS = {"path", "file_path"}
 
 
 def strip_location_fields(instance: Any, dump: Any) -> Any:
     """``dump`` with location bookkeeping removed at EVERY depth — and nowhere else.
 
-    ``model_dump(exclude={"path", "file_path"})`` only reaches the TOP level,
-    and a composite carries bookkeeping on every nested node: a dashboard's
-    dump arrives with ``path`` on each row, each item and each inline chart.
-    Excluding only the outermost pair therefore left the leak fully in place
-    one level down — client configs still carried it, a client that sent a
-    genuinely clean config was still reported MODIFIED, and a commit still
-    wrote ``path:``/absolute ``file_path:`` lines into tracked YAML.
-
-    The walk is guided by the MODEL INSTANCE, not by key name, and that is the
-    whole point: ``path`` is also a real, user-authored Plotly property
-    (``layout.shapes[].path``, ``layout.selections[].path`` — the SVG path of a
-    drawn shape). Those live in free-form prop space, where they are extras on
-    a ``JsonSchemaBase``, never a declared field. A name-only strip would
-    silently delete a valid chart's shapes from the YAML it commits, which is
-    a far worse bug than the one being fixed. So a key is dropped only where it
-    is a DECLARED field of the visivo model at that node.
+    The walk is guided by the MODEL INSTANCE rather than by key name because
+    ``path`` is also a real Plotly property (``layout.shapes[].path`` — the SVG
+    path of a drawn shape), living in free-form prop space as an extra on a
+    ``JsonSchemaBase``. A key is therefore dropped only where it is a DECLARED
+    field of the visivo model at that node.
 
     Fails safe: where the dump's shape cannot be matched back to the instance
     (a custom serializer that renames keys, ``by_alias=True``), the subtree is
@@ -233,23 +219,10 @@ class ObjectManager(ABC, Generic[T]):
 
         Uses model_dump() for Pydantic models, otherwise uses direct comparison.
 
-        ``path`` and ``file_path`` are excluded AT EVERY DEPTH: they record
-        where an object LIVES, not what it IS. The parser stamps them onto
-        every published object and every nested node of it, while a config that
-        came back from a client never carries them — the serializers strip them
-        on the way out, so the round trip cannot restore them. Comparing them
-        meant a client-saved object could never be PUBLISHED: re-saving the
-        exact config the API had just handed out reported MODIFIED,
-        permanently, for every object in the project.
-
-        ``_parent_name`` IS compared, even though it is a ``PrivateAttr`` that
-        no ``model_dump`` can see. For a metric or dimension it is the model it
-        is scoped to — real content, not location: ``commit_views``
-        ``_build_child_info`` reads it to choose which YAML file the field is
-        written to and whether it nests under ``model.metrics``. Left out, a
-        save that ONLY re-parents a field (drag it to another model, same
-        expression) compared equal, was reported PUBLISHED, never entered the
-        pending set, and was silently dropped when the draft cache was cleared.
+        ``_parent_name`` is compared even though it is a ``PrivateAttr`` no
+        ``model_dump`` can see: for a metric or dimension it names the model the
+        field is scoped to, which ``commit_views._build_child_info`` reads to
+        pick the YAML file to write it into — so it is content, not location.
 
         Args:
             obj1: First object

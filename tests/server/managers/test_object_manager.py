@@ -428,12 +428,9 @@ class TestSerializeObjectShape:
 class TestObjectsEqualIgnoresLocationFields:
     """`objects_equal` must compare CONTENT, not where the object lives.
 
-    The parser stamps ``path`` (and, for objects that came from an include
-    file, ``file_path``) onto every published object. The API strips both
-    before handing a config to a client, so a config POSTed back can never
-    carry them. Comparing them made every client-saved object permanently
-    MODIFIED — ``get_status`` could not return PUBLISHED for a round trip
-    even when nothing changed.
+    The parser stamps ``path`` (and ``file_path``, for objects from an include
+    file) onto every published object, and the API strips both before handing a
+    config to a client — so a config POSTed back can never carry them.
     """
 
     def test_path_only_difference_is_equal(self):
@@ -486,15 +483,11 @@ class TestObjectsEqualIgnoresLocationFields:
 
 
 class TestLocationStripReachesEveryDepth:
-    """``exclude=`` reaches only the TOP level of a dump.
+    """``model_dump(exclude=...)`` reaches only the TOP level of a dump.
 
     A composite carries location bookkeeping on every nested node — a
     dashboard's rows, its items, and any chart written inline inside one all
-    have their own ``path``. Excluding just the outermost pair left the leak
-    fully in place one level down: the API kept handing the client the
-    bookkeeping the constant claims it strips, a client that sent a genuinely
-    clean config was still reported MODIFIED, and a commit still wrote
-    ``path:`` and absolute ``file_path:`` lines into tracked YAML.
+    have their own ``path``.
     """
 
     @staticmethod
@@ -520,12 +513,9 @@ class TestLocationStripReachesEveryDepth:
         assert "path" not in config["rows"][0]["items"][0]["chart"]
 
     def test_a_clean_composite_config_is_equal_to_its_published_twin(self):
-        """The status symptom for composites.
-
-        A schema-driven client sends a config with no bookkeeping at ANY depth
-        — the only kind the API's own docstring says it can send. That config
-        was still reported MODIFIED for every dashboard in the project.
-        """
+        """A config carrying no bookkeeping at ANY depth — the only kind a
+        schema-driven client can send — must compare equal to its published
+        twin."""
         manager = ConcreteObjectManager()
         published = self._dashboard_with_nested_bookkeeping()
         manager._published_objects["sales"] = published
@@ -552,9 +542,8 @@ class TestLocationStripReachesEveryDepth:
 
         ``layout.shapes[].path`` is a real Plotly property — the SVG path of a
         drawn shape — living in free-form prop space where it is never a
-        declared model field. Deleting it would silently corrupt a valid chart
-        on commit, which is worse than the leak being fixed. The strip is
-        guided by the model instance precisely so this survives.
+        declared model field. The strip is guided by the model instance
+        precisely so this survives.
         """
         chart = Chart(
             name="shaped",
@@ -574,13 +563,11 @@ class TestLocationStripReachesEveryDepth:
 class TestObjectsEqualComparesModelScope:
     """``_parent_name`` is content, and no ``model_dump`` can see it.
 
-    For a metric or dimension it names the model the field is scoped to.
+    For a metric or dimension it names the model the field is scoped to, and
     ``commit_views._build_child_info`` reads it to choose which YAML file the
     field is written into and whether it nests under ``model.metrics`` — so a
-    save that ONLY re-parents a field is a real change. Because it is a
-    ``PrivateAttr``, a dump-only comparison called it equal: the save reported
-    PUBLISHED, never entered the pending set, and was dropped when the draft
-    cache was cleared.
+    save that ONLY re-parents a field is a real change, invisible to a
+    dump-only comparison.
     """
 
     def test_re_parenting_alone_is_not_equal(self):

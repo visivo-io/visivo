@@ -919,14 +919,14 @@ const RefTextArea = ({
       if (!chip) return;
       const nextProperty = (draft?.column || '').trim();
       if (!nextProperty) return;
-      chip.setAttribute('data-ref-property', nextProperty);
-      const propSpan = chip.querySelector('span:last-child');
-      if (propSpan && propSpan.textContent.startsWith('.')) {
-        propSpan.textContent = `.${nextProperty}`;
-      }
+      const nextName = (draft?.ref || '').trim() || chip.getAttribute('data-ref-name');
+      // REBUILT, not patched: the menu can now re-point the reference itself,
+      // and a different object may be a different type — so the icon and
+      // colours have to be re-derived, not just the trailing `.property`.
+      chip.replaceWith(createRefNode(nextName, nextProperty));
       serializeAndUpdate();
     },
-    [chipMenu, serializeAndUpdate]
+    [chipMenu, createRefNode, serializeAndUpdate]
   );
 
   const handleChipRemove = useCallback(() => {

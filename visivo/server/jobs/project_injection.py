@@ -38,14 +38,9 @@ def replace_inline_definitions(container, replacements, _seen=None):
     """Substitute drafts for objects DEFINED INLINE under ``container``.
 
     A chart, table, markdown or insight written directly inside a dashboard
-    item is a real named object — every manager publishes it — but it is not in
-    the project's top-level list. Appending its draft there instead of
-    replacing it in place put the SAME name in the project twice, and
-    ``Project.traverse_names`` rejects that: a commit answered
-    ``400 Chart name 'x' is not unique in the project``, naming an object the
-    user had very likely not touched. It made every dashboard-inline chart
-    unpublishable, and made ANY commit fail once one had merely been opened
-    (opening loads it into the draft cache).
+    item is a real named object that is not in the project's top-level list, and
+    ``Project.traverse_names`` rejects the same name appearing twice — so the
+    draft must replace the inline definition rather than be appended.
 
     Walks declared Pydantic fields only, so it never descends into free-form
     Plotly prop space. Returns the set of names it actually replaced; the

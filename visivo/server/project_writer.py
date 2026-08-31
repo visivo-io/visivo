@@ -7,10 +7,8 @@ from copy import deepcopy
 DELETE = object()
 
 # Type keys that are a SINGLETON top-level mapping in the YAML rather than an
-# entry in a named list. They carry no ``name``, so the name-matching recursion
-# `_update` uses can never find them: it returned False, the write was a silent
-# no-op, and the commit still reported success — the user's edit vanished.
-# Address these by their key instead.
+# entry in a named list. They carry no ``name``, so `_update`'s name-matching
+# recursion cannot find them; they are addressed by their key instead.
 SINGLETON_TYPE_KEYS = {"defaults"}
 
 
@@ -115,10 +113,6 @@ class ProjectWriter:
         new_object = self._get_named_child_config(child_name)
         file_path = self.named_children[child_name]["file_path"]
 
-        # A singleton block (``defaults:``) is a top-level mapping with no
-        # ``name`` key. `recurse` below matches on ``name``, so it never found
-        # it and returned False — the commit answered 200 with
-        # ``published_count: 1``, cleared the draft cache, and wrote nothing.
         if self.named_children[child_name].get("type_key") in SINGLETON_TYPE_KEYS:
             self._update_singleton(child_name, file_path, new_object)
             return
@@ -150,9 +144,8 @@ class ProjectWriter:
     def _update_singleton(self, child_name: str, file_path: str, new_object: dict):
         """Write a top-level singleton mapping (``defaults:``) by its key.
 
-        Diffed in place when the block already exists so ruamel keeps the
-        file's comments and ordering, exactly as `_update` does for a named
-        child; created outright when the project has no such block yet.
+        Diffed in place when the block already exists so ruamel keeps the file's
+        comments and ordering; created outright when there is no block yet.
         """
         type_key = self.named_children[child_name]["type_key"]
         contents = self.files_to_write[file_path]

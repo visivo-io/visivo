@@ -157,10 +157,6 @@ class InputManager(ObjectManager[Input]):
         """
         return {
             "name": name,
-            # The same location strip the base class does. This override used
-            # to drop only ``path``, so an input defined in an include file
-            # (``file_path`` non-None) handed its absolute machine-local path
-            # out over the API and back into the config a client re-saves.
             "config": location_free_dump(input_obj, mode="json", exclude_none=True),
             "status": status.value,
         }

@@ -126,6 +126,12 @@ export default defineConfig({
         // edit, type switch): mints a real exploration + computed columns
         // against the shared `.visivo/explorations/` repository.
         '**/exploration-chart-build-updates.spec.mjs',
+        // M28 geometry guard: mints a real exploration to get a live draft
+        // chart on screen, then measures pane-vs-plot rects. Same shared
+        // `.visivo/explorations/` isolation need as its siblings above; it
+        // also drags the workspace right rail, so a concurrent worker's
+        // layout must not be sharing the page.
+        '**/explorer-chart-fills-pane.spec.mjs',
         // Docs specs run against the docs sandbox (:8003) via
         // playwright.docs.config.mjs — never against the viewer sandbox.
         '**/e2e/docs/**',
@@ -291,6 +297,9 @@ export default defineConfig({
         // edit, type switch): mints a real exploration + computed columns
         // against the shared `.visivo/explorations/` repository.
         '**/exploration-chart-build-updates.spec.mjs',
+        // M28 geometry guard — see the 'parallel' project's testIgnore entry
+        // for the same file for why.
+        '**/explorer-chart-fills-pane.spec.mjs',
         // Smoke-test bug #1 regression (computed metric grouped by a
         // dimension): mints a real exploration + a computed column and hits
         // the draft compile/execute endpoints — same shared-repository

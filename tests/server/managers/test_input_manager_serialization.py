@@ -1,11 +1,9 @@
-"""``InputManager`` is the one override of the base serializer, and it drifted.
+"""``InputManager`` overrides the base serializer, and must strip the same
+location fields.
 
-The base ``ObjectManager._serialize_object`` strips both location fields;
-``InputManager`` stripped only ``path``. So an input DEFINED IN AN INCLUDE FILE
-— the only case where ``file_path`` is non-None — handed its absolute,
-machine-local YAML path out over the API, and back into the config a client
-re-saves. The integration fixture keeps every input in the root project file,
-so nothing there can see it: this is the case that makes the leak visible.
+An input DEFINED IN AN INCLUDE FILE is the only case where ``file_path`` is
+non-None. The integration fixture keeps every input in the root project file,
+so the round-trip guard cannot reach this; these build the case directly.
 """
 
 from tests.factories.model_factories import MultiSelectInputFactory, SingleSelectInputFactory
@@ -52,11 +50,8 @@ def test_nothing_downstream_would_have_caught_the_leak():
     """Why the serializer is the only place this can be stopped.
 
     ``file_path`` is a DECLARED field of every named model, so a leaked one
-    re-validates cleanly — the parser's ``extra='forbid'`` never fires, and
-    ``objects_equal`` now ignores location fields, so no status goes wrong
-    either. Nothing downstream would have reported it; it would simply have
-    travelled out to the client and back. Pinned so a future reader does not
-    assume some later gate is covering this.
+    re-validates cleanly: ``extra='forbid'`` never fires, and ``objects_equal``
+    ignores location fields. No later gate is covering this.
     """
     manager = InputManager()
     leaky = dict(_config(SingleSelectInputFactory(name="region")))
