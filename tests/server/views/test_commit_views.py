@@ -502,6 +502,19 @@ class TestPendingProjectValidation:
         assert error is not None
         assert "must reference at least one model" in error
 
+    def test_a_draft_single_select_input_is_not_blocked(self):
+        """The old serializer injected name_hash into every dump ("for the
+        viewer to construct JSON URL") — nothing actually read it, and
+        reconstructing a Project from that dump tripped extra_forbidden on
+        every commit touching a single or multi-select input (VIS-1327)."""
+        from tests.factories.model_factories import SingleSelectInputFactory
+        from visivo.server.views.commit_views import _validate_pending_project
+
+        draft = SingleSelectInputFactory(name="new_input", options=["a", "b"])
+        flask_app = self._flask_app(self._project(), input={"new_input": draft})
+
+        assert _validate_pending_project(flask_app) is None
+
     def test_a_MODEL_SCOPED_draft_is_re_nested_and_allowed(self):
         """`inject_cached_objects` appends every cached object to the matching
         TOP-LEVEL list, so a model-scoped draft arrives looking standalone. Left
