@@ -20,6 +20,10 @@ const row = (overrides = {}) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // `clearAllMocks` clears call records but drains neither the
+  // `mockResolvedValueOnce` queue nor a lingering `mockResolvedValue`, so an
+  // unconsumed `once` value would leak into the next test's mount.
+  buildPromoteChecklist.mockReset();
   useStore.setState({
     promoteExploration: jest.fn().mockResolvedValue({ success: true, results: [], reclassificationOffers: [] }),
     setInsightProp: jest.fn(),
@@ -1142,6 +1146,155 @@ describe('ExplorationPromoteModal', () => {
       expect(
         await screen.findByTestId('promote-row-model-daily_orders-name-input')
       ).toHaveValue('daily_orders');
+    });
+
+    test("committing row A's rename never clobbers text already typed into row B (in-flight draft survives the rebuild)", async () => {
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      let resolveRebuild;
+      buildPromoteChecklist
+        .mockResolvedValueOnce([
+          row(),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ])
+        .mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              resolveRebuild = resolve;
+            })
+        );
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const modelInput = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      const insightInput = screen.getByTestId('promote-row-insight-my_insight-name-input');
+
+      fireEvent.change(modelInput, { target: { value: 'daily_orders' } });
+      fireEvent.blur(modelInput);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+
+      fireEvent.change(insightInput, { target: { value: 'churn_by_cohort' } });
+      expect(insightInput).toHaveValue('churn_by_cohort');
+
+      await act(async () => {
+        resolveRebuild([
+          row({ name: 'daily_orders' }),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ]);
+      });
+      expect(screen.getByTestId('promote-row-insight-my_insight-name-input')).toHaveValue(
+        'churn_by_cohort'
+      );
+      expect(screen.getByTestId('promote-row-model-daily_orders-name-input')).toHaveValue(
+        'daily_orders'
+      );
+    });
+
+    test("row B's preserved in-flight draft still commits on its own blur after A's rebuild", async () => {
+      const renameModelTab = jest.fn();
+      const renameInsight = jest.fn();
+      useStore.setState({ renameModelTab, renameInsight });
+      let resolveRebuild;
+      buildPromoteChecklist
+        .mockResolvedValueOnce([
+          row(),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ])
+        .mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              resolveRebuild = resolve;
+            })
+        )
+        .mockResolvedValueOnce([
+          row({ name: 'daily_orders' }),
+          row({ tier: 'insight', type: 'insight', name: 'churn_by_cohort' }),
+        ]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const modelInput = await screen.findByTestId('promote-row-model-orders_q-name-input');
+
+      fireEvent.change(modelInput, { target: { value: 'daily_orders' } });
+      fireEvent.blur(modelInput);
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+      fireEvent.change(screen.getByTestId('promote-row-insight-my_insight-name-input'), {
+        target: { value: 'churn_by_cohort' },
+      });
+      await act(async () => {
+        resolveRebuild([
+          row({ name: 'daily_orders' }),
+          row({ tier: 'insight', type: 'insight', name: 'my_insight' }),
+        ]);
+      });
+
+      fireEvent.blur(screen.getByTestId('promote-row-insight-my_insight-name-input'));
+
+      await waitFor(() =>
+        expect(renameInsight).toHaveBeenCalledWith('my_insight', 'churn_by_cohort')
+      );
+      expect(
+        await screen.findByTestId('promote-row-insight-churn_by_cohort-name-input')
+      ).toHaveValue('churn_by_cohort');
+    });
+
+    test("a rename the store silently REFUSES snaps the field back — it never keeps displaying a name the save won't use", async () => {
+      // A rename the store refuses: the action is a no-op (mirroring its own
+      // `if (!isNew) return`) and the rebuild reads back the unchanged row.
+      const renameModelTab = jest.fn();
+      useStore.setState({ renameModelTab });
+      buildPromoteChecklist.mockResolvedValueOnce([row()]).mockResolvedValueOnce([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'daily_orders' } });
+      expect(input).toHaveValue('daily_orders');
+      fireEvent.blur(input);
+
+      await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
+      // The rebuild has landed once the field is re-enabled — `renamingKey`
+      // is cleared last.
+      await waitFor(() =>
+        expect(screen.getByTestId('promote-row-model-orders_q-name-input')).toBeEnabled()
+      );
+      expect(screen.getByTestId('promote-row-model-orders_q-name-input')).toHaveValue('orders_q');
+      expect(screen.getByTestId('promote-row-model-orders_q-checkbox')).toBeInTheDocument();
+    });
+
+    test('a silently-refused rename explains itself inline instead of reverting with no reason', async () => {
+      useStore.setState({ renameModelTab: jest.fn() });
+      buildPromoteChecklist.mockResolvedValueOnce([row()]).mockResolvedValueOnce([row()]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'daily_orders' } });
+      fireEvent.blur(input);
+
+      expect(
+        await screen.findByTestId('promote-row-model-orders_q-name-error')
+      ).toHaveTextContent('it will be saved under that name');
+    });
+
+    test('renaming a row back to a name it previously had does not resurrect that name\'s stale draft', async () => {
+      const renameInsight = jest.fn();
+      useStore.setState({ renameInsight });
+      const insightRow = name => row({ tier: 'insight', type: 'insight', name });
+      buildPromoteChecklist
+        .mockResolvedValueOnce([insightRow('my_insight')])
+        .mockResolvedValueOnce([insightRow('temp_name')])
+        .mockResolvedValueOnce([insightRow('my_insight')]);
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+
+      const first = await screen.findByTestId('promote-row-insight-my_insight-name-input');
+      fireEvent.change(first, { target: { value: 'temp_name' } });
+      fireEvent.blur(first);
+      await waitFor(() => expect(renameInsight).toHaveBeenCalledWith('my_insight', 'temp_name'));
+      const second = await screen.findByTestId('promote-row-insight-temp_name-name-input');
+      expect(second).toHaveValue('temp_name');
+
+      fireEvent.change(second, { target: { value: 'my_insight' } });
+      fireEvent.blur(second);
+      await waitFor(() => expect(renameInsight).toHaveBeenCalledWith('temp_name', 'my_insight'));
+
+      const back = await screen.findByTestId('promote-row-insight-my_insight-name-input');
+      expect(back).toHaveValue('my_insight');
+      // A resurrected draft would fire a third, unasked-for rename here.
+      fireEvent.blur(back);
+      await waitFor(() => expect(renameInsight).toHaveBeenCalledTimes(2));
     });
 
     test('committing a rename on an INSIGHT row calls renameInsight (not renameModelTab)', async () => {
