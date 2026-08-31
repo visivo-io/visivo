@@ -15,6 +15,17 @@ attach_function_lock = Lock()
 DuckdbType = Literal["duckdb"]
 
 
+def _is_lock_conflict(err: BaseException) -> bool:
+    """A connect failure caused by the file being held elsewhere, not by a bad
+    path or config. DuckDB raises ConnectionException for the same-process
+    different-configuration case and IOException with a lock message for the
+    cross-process case; match both without over-claiming."""
+    if isinstance(err, duckdb.ConnectionException):
+        return True
+    text = str(err).lower()
+    return "different configuration" in text or ("lock" in text and "held" in text)
+
+
 class DuckdbAttachment(BaseModel):
     """
     A DuckdbAttachment makes an additional DuckDB database available in the parent
@@ -104,6 +115,19 @@ class DuckdbSource(ServerSource, BaseDuckdbSource):
 
             return connection
         except Exception as err:
+            if _is_lock_conflict(err):
+                # M11: "Can't open a connection to same database file with a
+                # different configuration" — the file is held by another
+                # connection (this serve process, another visivo, DBeaver, the
+                # duckdb CLI). "Ensure the database exists" is unfollowable
+                # advice for that failure; name the real problem and the way
+                # out instead.
+                raise click.ClickException(
+                    f"Source '{self.name}' is locked: another connection is holding "
+                    f"'{os.path.abspath(database_path)}'. Close other connections to this "
+                    f"database (including other visivo processes or database GUIs), or "
+                    f"restart `visivo serve`, then retry. [source_locked] Full error: {str(err)}"
+                )
             raise click.ClickException(
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
