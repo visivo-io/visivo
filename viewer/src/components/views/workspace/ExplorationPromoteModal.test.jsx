@@ -20,15 +20,9 @@ const row = (overrides = {}) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // `clearAllMocks` only clears CALL records — it drains neither the
-  // `mockResolvedValueOnce` queue nor a lingering `mockResolvedValue`
-  // implementation. Several tests here queue N `once` values whose
-  // consumption is CONTINGENT on the behavior under test (a rename that
-  // doesn't commit consumes one fewer rebuild), so an unconsumed leftover
-  // used to be served to the NEXT test's mount — turning one real regression
-  // into a spray of ~1s timeouts in four unrelated tests that pointed at the
-  // wrong features entirely. `mockReset` drains both, so each test's failure
-  // is its own.
+  // `clearAllMocks` clears call records but drains neither the
+  // `mockResolvedValueOnce` queue nor a lingering `mockResolvedValue`, so an
+  // unconsumed `once` value would leak into the next test's mount.
   buildPromoteChecklist.mockReset();
   useStore.setState({
     promoteExploration: jest.fn().mockResolvedValue({ success: true, results: [], reclassificationOffers: [] }),
@@ -1154,15 +1148,6 @@ describe('ExplorationPromoteModal', () => {
       ).toHaveValue('daily_orders');
     });
 
-    // M14 (Explorer Continuity dossier — "Stop the name-draft map clobbering
-    // in-flight edits"): committing row A's rename awaits a full checklist
-    // rebuild (a real ~1s network round-trip in production). Text the user
-    // has ALREADY typed into row B's field during that window is an
-    // in-flight draft; the post-rebuild re-sync must MERGE around it. The
-    // pre-fix wholesale `new Map(built…)` replacement reverted B to its
-    // store name mid-typing — and, because the inputs are controlled on
-    // this map, the caret stayed put and later keystrokes spliced into the
-    // reverted name (the corrupted `…_insighmy_insightt`-style refs).
     test("committing row A's rename never clobbers text already typed into row B (in-flight draft survives the rebuild)", async () => {
       const renameModelTab = jest.fn();
       useStore.setState({ renameModelTab });
@@ -1182,17 +1167,13 @@ describe('ExplorationPromoteModal', () => {
       const modelInput = await screen.findByTestId('promote-row-model-orders_q-name-input');
       const insightInput = screen.getByTestId('promote-row-insight-my_insight-name-input');
 
-      // Row A commits — its checklist rebuild is now in flight (held open by
-      // the controlled promise above).
       fireEvent.change(modelInput, { target: { value: 'daily_orders' } });
       fireEvent.blur(modelInput);
       await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
 
-      // The user is already renaming row B while A's rebuild is in flight.
       fireEvent.change(insightInput, { target: { value: 'churn_by_cohort' } });
       expect(insightInput).toHaveValue('churn_by_cohort');
 
-      // A's rebuild lands. B's typed-but-uncommitted draft must survive it.
       await act(async () => {
         resolveRebuild([
           row({ name: 'daily_orders' }),
@@ -1202,16 +1183,11 @@ describe('ExplorationPromoteModal', () => {
       expect(screen.getByTestId('promote-row-insight-my_insight-name-input')).toHaveValue(
         'churn_by_cohort'
       );
-      // …while A's own field re-synced to its committed name, as before.
       expect(screen.getByTestId('promote-row-model-daily_orders-name-input')).toHaveValue(
         'daily_orders'
       );
     });
 
-    // The surviving draft is REAL, not just displayed: blurring row B after
-    // A's rebuild landed commits the preserved text through B's own rename
-    // action — the second half of the M14 loss (a clobbered draft also
-    // silently threw away the rename the user thought they had made).
     test("row B's preserved in-flight draft still commits on its own blur after A's rebuild", async () => {
       const renameModelTab = jest.fn();
       const renameInsight = jest.fn();
@@ -1258,25 +1234,12 @@ describe('ExplorationPromoteModal', () => {
       ).toHaveValue('churn_by_cohort');
     });
 
-    // M14 review follow-up — the OTHER half of "only rows under a NEW key take
-    // the rebuilt store name". Preserving a draft is right for a row the user
-    // is still typing into; it is WRONG for the row they just committed, and
-    // key churn alone can't tell those apart: `renameModelTab`/`renameInsight`
-    // silently `return` (no throw) for a draft with `isNew === false`, while
-    // renamability here is decided by the BACKEND diff — `_diff_object`
-    // reports 'new' for anything the manager can no longer `get`, which is
-    // exactly a loaded working copy whose project object was deleted out of
-    // band. The rename then no-ops, the key never moves, and the field would
-    // keep displaying a name that the save will never use.
     test("a rename the store silently REFUSES snaps the field back — it never keeps displaying a name the save won't use", async () => {
-      // A no-op rename action, mirroring the store's own `if (!isNew) return`.
+      // A rename the store refuses: the action is a no-op (mirroring its own
+      // `if (!isNew) return`) and the rebuild reads back the unchanged row.
       const renameModelTab = jest.fn();
       useStore.setState({ renameModelTab });
-      buildPromoteChecklist
-        .mockResolvedValueOnce([row()])
-        // The rebuild reads the store back: the row is STILL `orders_q`,
-        // because the rename was refused.
-        .mockResolvedValueOnce([row()]);
+      buildPromoteChecklist.mockResolvedValueOnce([row()]).mockResolvedValueOnce([row()]);
       render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
       const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
       fireEvent.change(input, { target: { value: 'daily_orders' } });
@@ -1284,19 +1247,15 @@ describe('ExplorationPromoteModal', () => {
       fireEvent.blur(input);
 
       await waitFor(() => expect(renameModelTab).toHaveBeenCalledWith('orders_q', 'daily_orders'));
-      // The rebuild has landed once the field is re-enabled (`renamingKey`
-      // is cleared last).
+      // The rebuild has landed once the field is re-enabled — `renamingKey`
+      // is cleared last.
       await waitFor(() =>
         expect(screen.getByTestId('promote-row-model-orders_q-name-input')).toBeEnabled()
       );
-      // The row — its checkbox, its verdict, and whatever "Save 1 to project"
-      // writes — is still `orders_q`, so the FIELD must say `orders_q` too.
       expect(screen.getByTestId('promote-row-model-orders_q-name-input')).toHaveValue('orders_q');
       expect(screen.getByTestId('promote-row-model-orders_q-checkbox')).toBeInTheDocument();
     });
 
-    // …and it says WHY, rather than mutely reverting the user's typing: the
-    // object still gets saved, just under the name it was loaded with.
     test('a silently-refused rename explains itself inline instead of reverting with no reason', async () => {
       useStore.setState({ renameModelTab: jest.fn() });
       buildPromoteChecklist.mockResolvedValueOnce([row()]).mockResolvedValueOnce([row()]);
@@ -1310,12 +1269,6 @@ describe('ExplorationPromoteModal', () => {
       ).toHaveTextContent('it will be saved under that name');
     });
 
-    // The other half of `mergeNameDrafts` — building `next` FRESH so keys
-    // absent from the rebuilt checklist drop out. Renaming away from a name
-    // and then back to it is the shortest path that proves it: without the
-    // drop, the stale draft parked under the original key resurfaces and the
-    // field shows the OLD name for an object that no longer has it (and the
-    // next blur would fire a rename the user never asked for).
     test('renaming a row back to a name it previously had does not resurrect that name\'s stale draft', async () => {
       const renameInsight = jest.fn();
       useStore.setState({ renameInsight });
@@ -1326,7 +1279,6 @@ describe('ExplorationPromoteModal', () => {
         .mockResolvedValueOnce([insightRow('my_insight')]);
       render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
 
-      // my_insight -> temp_name (leaves a draft parked under insight:my_insight)
       const first = await screen.findByTestId('promote-row-insight-my_insight-name-input');
       fireEvent.change(first, { target: { value: 'temp_name' } });
       fireEvent.blur(first);
@@ -1334,14 +1286,13 @@ describe('ExplorationPromoteModal', () => {
       const second = await screen.findByTestId('promote-row-insight-temp_name-name-input');
       expect(second).toHaveValue('temp_name');
 
-      // …and straight back to my_insight.
       fireEvent.change(second, { target: { value: 'my_insight' } });
       fireEvent.blur(second);
       await waitFor(() => expect(renameInsight).toHaveBeenCalledWith('temp_name', 'my_insight'));
 
       const back = await screen.findByTestId('promote-row-insight-my_insight-name-input');
       expect(back).toHaveValue('my_insight');
-      // …and no phantom third rename fires from the resurrected draft.
+      // A resurrected draft would fire a third, unasked-for rename here.
       fireEvent.blur(back);
       await waitFor(() => expect(renameInsight).toHaveBeenCalledTimes(2));
     });

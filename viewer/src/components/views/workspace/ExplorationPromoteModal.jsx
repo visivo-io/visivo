@@ -26,33 +26,11 @@ const RENAMABLE_TIERS = new Set(['model', 'insight', 'chart']);
 const isRenamableRow = row => row.status === 'new' && RENAMABLE_TIERS.has(row.tier);
 
 /**
- * Re-seed the name-draft map from a (re)built checklist WITHOUT clobbering
- * in-flight edits (M14 — "Stop the name-draft map clobbering in-flight
- * edits"). Committing row A's rename awaits a full checklist rebuild (a real
- * network round-trip), and the user may already be typing into row B's field
- * when it lands. A wholesale `new Map(built…)` replacement here reverted B's
- * typed text to its store name mid-keystroke — and, because these inputs are
- * controlled on this map, left the caret where it was, splicing subsequent
- * keystrokes into the reverted name (the corrupted
- * `${ref(…_insighmy_insightt)}`-style refs from the field test).
- *
- * So: MERGE. A still-present key keeps its existing draft (the user's text,
- * committed on ITS OWN blur, never here); only rows appearing under a new
- * key — the just-committed row under its new name, or a genuinely new row —
- * take the rebuilt store name. Keys no longer in the checklist drop out
- * (a name the user renamed AWAY from must not leave a stale draft behind to
- * resurface if they later rename back TO it).
- *
- * `committedKey` — the key `handleNameCommit` just committed — is the ONE
- * key that always re-seeds from `built`, even when it survives the rebuild
- * unchanged. Its draft is no longer "in-flight": the user already blurred
- * it. Inferring that re-sync from key CHURN alone (the row reappearing under
- * a new name) was wrong whenever the rename didn't move the key — the store
- * rename actions (`renameModelTab`/`renameInsight`) silently `return` for a
- * draft with `isNew === false`, while renamability here is decided by the
- * BACKEND diff's `'new'`. Those two diverge for a working copy whose project
- * object left the project mid-session (Library delete, external .visivo.yml
- * edit), and the field then displayed a name the save would never use.
+ * Merges a rebuilt checklist into the name-draft map rather than replacing it:
+ * these name inputs are controlled on this map and the rebuild is an async
+ * round-trip, so a replace reverts text the user is typing into another row.
+ * `committedKey` alone always re-seeds from `built` — its edit is already
+ * blurred, and a rename the store silently refused leaves its key unmoved.
  */
 const mergeNameDrafts = (prev, built, committedKey = null) => {
   const next = new Map();
@@ -269,22 +247,12 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         return;
       }
       // Rebuild so downstream rows (a chart referencing the just-renamed
-      // insight, etc.) reflect the rewritten refs — `renameModelTab`/
-      // `renameInsight` already rewrote every sibling ref synchronously, so
-      // this rebuild only needs to re-read the now-current draft state.
+      // insight) pick up the refs the store rename already rewrote.
       const built = await buildPromoteChecklist(useStore.getState);
       setRows(built);
-      // MERGE, never replace: another row's field may hold typed-but-not-yet-
-      // committed text right now (this rebuild is a real network wait) — see
-      // mergeNameDrafts. THIS row is the exception (`key` is passed as
-      // `committedKey`): it re-syncs to whatever the rebuilt checklist says
-      // its name actually is, so a rename the store refused snaps the field
-      // back to the truth rather than leaving it showing a name the save
-      // would never use.
       setNameDrafts(prev => mergeNameDrafts(prev, built, key));
-      // Remap the selection: every OTHER row's key is unchanged, so a direct
-      // `has` lookup carries its checked state forward; the renamed row's
-      // prior checked state is looked up under its OLD key instead.
+      // The renamed row's prior checked state lives under its OLD key; every
+      // other row's key is unchanged.
       setSelected(prevSelected => {
         const next = new Set();
         built.forEach(r => {
@@ -294,15 +262,10 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         });
         return next;
       });
-      // The store rename actions are SILENT no-ops (a bare `return`, never a
-      // throw) for a draft with `isNew === false`, so a clean `renameRow`
-      // call is not proof the rename happened. Renamability here is decided
-      // by the backend diff instead (`status === 'new'`, which
-      // `explorer_views.py::_diff_object` reports for anything the manager
-      // can no longer `get`) — the two diverge for a loaded working copy
-      // whose project object left the project mid-session. Say so inline
-      // rather than letting the field quietly revert with no explanation:
-      // the object IS still going to be saved, just under its old name.
+      // `renameModelTab`/`renameInsight` bail out silently (a bare `return`,
+      // never a throw) for a draft with `isNew === false`, while renamability
+      // here comes from the backend diff's `status === 'new'` — so a clean
+      // `renameRow` call is no proof the rename happened.
       const renameTook = built.some(r => r.type === row.type && r.name === nextName);
       const stillUnderOldName = built.some(r => r.type === row.type && r.name === row.name);
       setNameErrors(prev => {
