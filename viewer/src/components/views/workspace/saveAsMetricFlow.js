@@ -1,7 +1,7 @@
 import { translateExpressions } from '../../../api/expressions';
 import * as pillGrammar from '../common/pillGrammar';
 import { findMatchingExpressionSlots } from '../common/pillFieldSwap';
-import { serializeQueryString } from '../../../utils/queryString';
+import { encodeQueryString } from '../../../utils/expressionCodec';
 import { emitWorkspaceEvent } from './telemetry';
 
 /**
@@ -106,7 +106,7 @@ export const saveAsMetric = async ({
   getState().setInsightProp?.(
     insightName,
     path,
-    serializeQueryString({ body: pillGrammar.serialize({ kind: 'metricRef', ref: trimmed }) })
+    encodeQueryString({ body: pillGrammar.serialize({ kind: 'metricRef', ref: trimmed }) })
   );
 
   // Match-and-replace dedup (06 §8, Lightdash-adopted): offer, never apply silently.

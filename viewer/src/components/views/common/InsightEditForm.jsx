@@ -16,6 +16,14 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { refKindsFor } from './fieldTypes';
 import { REF_INSERT_HINT } from './RefTextArea';
+import { decodeQueryString, encodeQueryString } from '../../../utils/expressionCodec';
+import {
+  INTERACTION_HELP,
+  INTERACTION_TYPES,
+  INTERACTION_TYPE_OPTIONS,
+  interactionHelpText,
+  interactionValueProblem,
+} from '../../../schemas/interactionHelp';
 import {
   SectionContainer,
   EmptyState,
@@ -80,12 +88,17 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
         insightConfig: {
           name: name || insight?.name || '__preview__',
           props: debouncedProps,
-          interactions: debouncedInteractions.map(i => {
-            if (i.type === 'filter') return { filter: i.value };
-            if (i.type === 'split') return { split: i.value };
-            if (i.type === 'sort') return { sort: i.value };
-            return {};
-          }).filter(i => Object.keys(i).length > 0),
+          // Wrapped the same way the save path wraps them: the preview runs
+          // the real `InsightInteraction` model, so a bare body here made the
+          // preview disagree with the saved insight for every interaction the
+          // user typed rather than opened.
+          interactions: debouncedInteractions
+            .map(i =>
+              INTERACTION_TYPES.includes(i.type)
+                ? { [i.type]: encodeQueryString({ body: i.value, slice: i.slice }) }
+                : {}
+            )
+            .filter(i => Object.keys(i).length > 0),
         },
         projectId: useStore.getState().project?.id,
       });
@@ -115,12 +128,21 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
         description: configToUse?.description || '',
         // The full Plotly props object (carries `.type`).
         props: configToUse?.props || { type: 'scatter' },
-        // Each interaction carries exactly one of filter / split / sort.
+        // Each interaction carries exactly one of filter / split / sort. The
+        // field edits the expression BODY — the `?{ }` wrapper is the storage
+        // form and is re-applied on save, so it is decoded away here rather
+        // than shown as literal braces in the ref editor. The slice suffix is
+        // held aside (it lives OUTSIDE the wrapper) so editing the body never
+        // drops it, and `decodeQueryString` additionally unwraps a value an
+        // earlier double-wrapping write corrupted.
         interactions: insightInteractions.map(i => {
-          if (i.filter) return { type: 'filter', value: i.filter };
-          if (i.split) return { type: 'split', value: i.split };
-          if (i.sort) return { type: 'sort', value: i.sort };
-          return { type: 'filter', value: '' }; // Default
+          for (const type of INTERACTION_TYPES) {
+            if (i[type]) {
+              const { body, slice } = decodeQueryString(i[type]);
+              return { type, value: body, slice };
+            }
+          }
+          return { type: 'filter', value: '', slice: null }; // Default
         }),
       });
     } else if (isCreate) {
@@ -159,6 +181,20 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       newErrors.props = 'Fix the invalid trace properties before saving.';
     }
 
+    // The codec never mangles a value it cannot represent, so a body that will
+    // not survive as a `QueryString` reaches here intact — and must be reported
+    // HERE rather than written out for the server (or, worse, the next `visivo
+    // run`) to complain about. Keyed by index so the message lands under the
+    // field that caused it.
+    const interactionErrors = {};
+    interactions.forEach((interaction, index) => {
+      const problem = interactionValueProblem(interaction.value, interaction.slice);
+      if (problem) interactionErrors[index] = problem;
+    });
+    if (Object.keys(interactionErrors).length > 0) {
+      newErrors.interactions = interactionErrors;
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -179,9 +215,19 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       config.description = description;
     }
 
-    // Only include interactions if non-empty
+    // Only include interactions if non-empty.
+    //
+    // M6: the value edited here (typed, or dropped in by the @ picker) is an
+    // expression BODY — `${ref(orders).month} DESC`. `InsightInteraction`
+    // fields are `QueryString`s, so the stored value must carry the `?{ }`
+    // wrapper or the parser rejects the YAML this form just wrote. Every other
+    // wrapper site in the viewer goes through the codec; this one didn't, which
+    // is exactly why the two editors disagreed. `encodeQueryString` is
+    // idempotent, so a body that ALREADY carries a wrapper (pasted from the
+    // docs, say) round-trips once-wrapped instead of becoming `?{?{ ... }}`.
     const nonEmptyInteractions = interactions
-      .filter(i => i.value && i.value.trim())
+      .map(i => ({ type: i.type, value: encodeQueryString({ body: i.value, slice: i.slice }) }))
+      .filter(i => i.value && INTERACTION_TYPES.includes(i.type))
       .map(i => ({ [i.type]: i.value }));
 
     if (nonEmptyInteractions.length > 0) {
@@ -216,7 +262,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   // Interaction management
   const addInteraction = () => {
-    setInteractions([...interactions, { type: 'filter', value: '' }]);
+    setInteractions([...interactions, { type: 'filter', value: '', slice: null }]);
   };
 
   const removeInteraction = index => {
@@ -233,14 +279,17 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     const updated = [...interactions];
     updated[index] = { ...updated[index], value: newValue };
     setInteractions(updated);
+    // Retract the complaint as soon as the author starts answering it; the
+    // next Save re-derives it from scratch.
+    setErrors(prev => {
+      if (!prev.interactions || !(index in prev.interactions)) return prev;
+      const { [index]: _dropped, ...rest } = prev.interactions;
+      const next = { ...prev };
+      if (Object.keys(rest).length > 0) next.interactions = rest;
+      else delete next.interactions;
+      return next;
+    });
   };
-
-  // Interaction type options
-  const INTERACTION_TYPES = [
-    { value: 'filter', label: 'Filter', helperText: 'Client-side filter condition (WHERE clause logic).' },
-    { value: 'split', label: 'Split', helperText: 'Column to split data into multiple traces.' },
-    { value: 'sort', label: 'Sort', helperText: 'Column and direction to sort by (e.g., "date DESC").' },
-  ];
 
   return (
     <>
@@ -299,7 +348,15 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
               </EmptyState>
             ) : (
               interactions.map((interaction, index) => {
-                const typeConfig = INTERACTION_TYPES.find(t => t.value === interaction.type) || INTERACTION_TYPES[0];
+                // Label + hint come from `InsightInteraction`'s own field
+                // descriptions (viewer/src/schemas/interactionHelp.js) so the
+                // guidance cannot drift from the grammar the parser enforces —
+                // this field used to advertise `date DESC`, which the parser
+                // rejects and the binder could not resolve either (C15).
+                const interactionType = INTERACTION_HELP[interaction.type]
+                  ? interaction.type
+                  : 'filter';
+                const typeConfig = INTERACTION_HELP[interactionType];
                 return (
                   <div key={index} className="p-3 border border-gray-200 rounded-lg space-y-3 bg-gray-50">
                     <div className="flex items-center justify-between">
@@ -319,7 +376,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                       <Select
                         aria-label="Type"
                         value={interaction.type}
-                        options={INTERACTION_TYPES}
+                        options={INTERACTION_TYPE_OPTIONS}
                         onChange={value => updateInteractionType(index, value)}
                       />
                       <label className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500">
@@ -332,9 +389,10 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                       value={interaction.value}
                       onChange={value => updateInteractionValue(index, value)}
                       label={typeConfig.label}
-                      allowedTypes={refKindsFor('interaction', 'filter')}
+                      allowedTypes={refKindsFor('interaction', interactionType)}
                       rows={2}
-                      helperText={`${typeConfig.helperText} ${REF_INSERT_HINT}`}
+                      helperText={interactionHelpText(interactionType, REF_INSERT_HINT)}
+                      error={errors.interactions?.[index]}
                     />
                   </div>
                 );

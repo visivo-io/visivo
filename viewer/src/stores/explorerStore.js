@@ -2,6 +2,7 @@
 import { generateUniqueName } from '../utils/uniqueName';
 import { legacyStateForSeed } from '../components/views/workspace/explorationLegacyBridge';
 import { formatRefExpression } from '../utils/refString';
+import { encodeQueryString } from '../utils/expressionCodec';
 
 /**
  * Thrown by create/rename actions when the proposed name collides with any
@@ -1619,7 +1620,7 @@ const createExplorerSlice = (set, get) => ({
         // Prefer the first unfilled Essential slot (x, then y) — the same
         // pair drag-and-drop fills first for a fresh scatter/line insight.
         const slot = !props.x ? 'x' : 'y';
-        get().setInsightProp(targetInsightName, slot, `?{${refExpr}}`);
+        get().setInsightProp(targetInsightName, slot, encodeQueryString({ body: refExpr }));
       }
 
       // ux-audit.md's companion complaint: "the warning banner grew to

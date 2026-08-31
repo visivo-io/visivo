@@ -19,15 +19,15 @@ import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
 import { refKindsFor } from '../common/fieldTypes';
+import { decodeQueryString, encodeQueryString } from '../../../utils/expressionCodec';
+import {
+  INTERACTION_HELP,
+  INTERACTION_TYPE_OPTIONS,
+  interactionExampleHint,
+} from '../../../schemas/interactionHelp';
 
 const INSIGHT_COLORS = getTypeColors('insight');
 const InsightTypeIcon = getTypeIcon('insight');
-
-const INTERACTION_TYPES = [
-  { value: 'filter', label: 'Filter' },
-  { value: 'split', label: 'Split' },
-  { value: 'sort', label: 'Sort' },
-];
 
 const InteractionRow = ({ interaction, index, insightName, updateInsightInteraction, handleRemoveInteraction }) => {
   const { isOver, setNodeRef } = useDroppable({
@@ -35,11 +35,13 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
     data: { type: 'interaction-zone', insightName, index },
   });
 
-  const innerValue = (() => {
-    const v = interaction.value || '';
-    const m = v.match(/^\?\{([\s\S]*)\}$/);
-    return m ? m[1] : v;
-  })();
+  // The row edits the expression BODY; `?{ }` is the storage form. Decoding
+  // through the codec rather than a local regex fixes two things the greedy
+  // `/^\?\{([\s\S]*)\}$/` got wrong: a sliced value (`?{x}[0]`) didn't match at
+  // all, so the braces leaked into the field and the next keystroke stored
+  // `?{?{x}[0]}`; and a value already corrupted that way stayed corrupted.
+  const { body: innerValue, slice } = decodeQueryString(interaction.value);
+  const interactionType = INTERACTION_HELP[interaction.type] ? interaction.type : 'filter';
 
   return (
     <div data-testid={`insight-interaction-${index}`} className="flex items-center gap-2">
@@ -48,7 +50,7 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         size="sm"
         className="min-w-[110px]"
         value={interaction.type || 'filter'}
-        options={INTERACTION_TYPES}
+        options={INTERACTION_TYPE_OPTIONS}
         onChange={type => {
           updateInsightInteraction(insightName, index, { type });
         }}
@@ -62,12 +64,13 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
           value={innerValue}
           onChange={newVal => {
             updateInsightInteraction(insightName, index, {
-              value: newVal ? `?{${newVal}}` : '',
+              value: encodeQueryString({ body: newVal, slice }),
             });
           }}
           label=""
           rows={1}
-          allowedTypes={refKindsFor('interaction', 'filter')}
+          allowedTypes={refKindsFor('interaction', interactionType)}
+          helperText={interactionExampleHint(interactionType)}
         />
       </div>
       <button
@@ -209,7 +212,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
       if (dragData.source === 'pill') {
         if (!dragData.sourcePath || !dragData.raw) return;
         if (dragData.sourcePath === path) return; // dropped back on itself — no-op, nothing to warn about
-        setInsightProp(insightName, path, `?{${dragData.raw}}`);
+        setInsightProp(insightName, path, encodeQueryString({ body: dragData.raw }));
         removeInsightProp(insightName, dragData.sourcePath);
         return;
       }
@@ -251,7 +254,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
         showWorkspaceToast?.("Can't drop that here.");
         return;
       }
-      setInsightProp(insightName, path, `?{${body}}`);
+      setInsightProp(insightName, path, encodeQueryString({ body }));
     },
     [activeModelName, insightName, setInsightProp, removeInsightProp, showWorkspaceToast]
   );

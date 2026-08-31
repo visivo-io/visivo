@@ -1,4 +1,5 @@
 import * as pillGrammar from './pillGrammar';
+import { encodeQueryString, parseQueryString } from '../../../utils/expressionCodec';
 
 /**
  * pillFieldSwap — Explore 2.0 Phase 4 (06-pill-aggregation-grammar.md §4/§8 +
@@ -33,17 +34,21 @@ import * as pillGrammar from './pillGrammar';
  * both triggers.
  */
 
-const QUERY_STRING_RE = /^\?\{([\s\S]*)\}$/;
-
 const parseQueryBody = value => {
-  if (typeof value !== 'string') return null;
-  const match = value.match(QUERY_STRING_RE);
-  if (!match) return null;
+  // The `?{ }` grammar belongs to `expressionCodec`, including on the READ
+  // side: this used to carry its own `/^\?\{([\s\S]*)\}$/`, which is one more
+  // place deciding for itself what the wrapper is.
+  const parsed = parseQueryString(value);
+  if (!parsed) return null;
+  // A SLICED slot stays out of scope, exactly as the old regex left it out (it
+  // could not match a `}[0]` tail at all). The swap rewrites a slot to a bare
+  // `?{${ref(name)}}`, so admitting one here would silently drop its slice.
+  if (parsed.slice) return null;
   // Parse WITHOUT the global metric/dimension lookup tables — this is the
   // slot's syntactic shape (bare column ref vs aggregate-wrapped), which is
   // what both detectors below need, independent of whatever the store's
   // CURRENT metrics/dimensions lists happen to contain right now.
-  const state = pillGrammar.parse(match[1], {});
+  const state = pillGrammar.parse(parsed.body, {});
   // VIS-1241: a slot carrying a MODIFIER (`${ref(m).region} = 'west'`) is now
   // recognized by the grammar, but it must not be swap-eligible: the swap
   // rewrites a slot to a bare `?{${ref(name)}}`, which would silently discard
@@ -140,7 +145,7 @@ export function findMatchingExpressionSlots(
 /** Serialize a swap target (`{kind: 'metricRef'|'dimensionRef', ref}`) into
  * the `?{...}` query-string form a prop/interaction value expects. */
 export function serializeSwapTarget(swapTo) {
-  return `?{${pillGrammar.serialize({ kind: swapTo.kind, ref: swapTo.ref })}}`;
+  return encodeQueryString({ body: pillGrammar.serialize({ kind: swapTo.kind, ref: swapTo.ref }) });
 }
 
 /**
