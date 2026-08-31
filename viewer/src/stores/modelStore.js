@@ -61,10 +61,8 @@ const createModelSlice = (set, get) => ({
       }
       // Tap for the onboarding "Build a Model" checklist row.
       recordOnboardingAction('model_saved');
-      // Step 4 of the time-to-value ladder (Guided First Run W1). Distinct
-      // from the tap above, which no-ops until onboarding is complete — the
-      // ladder has to measure users who skipped onboarding too. No name in
-      // the payload.
+      // Step 4 of the time-to-value ladder — separate from the tap above, which
+      // no-ops until onboarding is complete, and users who skipped it count too.
       markTimeToValueStep(TTV_STEPS.FIRST_MODEL_CREATED);
       return { success: true, result };
     } catch (error) {

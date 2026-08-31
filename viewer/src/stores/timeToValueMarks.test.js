@@ -1,12 +1,10 @@
 /* Time-to-value ladder call sites in the per-type stores (Guided First Run W1).
  *
- * timeToValue.test.js proves the ladder itself. This proves the three store
- * writes that feed it are actually wired, fire once, fire only on SUCCESS, and
- * never put a user-authored name into a payload — which is the failure mode
- * that would quietly poison the metric or leak a name.
- *
- * Uses the real timeToValue module and asserts against the event buffer rather
- * than a mock, so a call site that passes the wrong step id fails here.
+ * timeToValue.test.js pins the ladder itself; this pins that the three store
+ * writes feeding it are wired, fire once, fire only on success, and never put a
+ * user-authored name into a payload. Uses the real timeToValue module and
+ * asserts against the event buffer, so a call site passing the wrong step id
+ * fails here.
  */
 
 import createSourceSlice from './sourceStore';

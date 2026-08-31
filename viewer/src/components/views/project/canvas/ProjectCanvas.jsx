@@ -66,11 +66,9 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
     return entry.config || entry;
   }, [dashboards, dashboardName]);
 
-  // Terminal mark of the time-to-value ladder (Guided First Run W1, step 6).
-  // The canvas wraps the SAME render-only <Dashboard> View mode does, and it is
-  // where onboarding's data path lands — the cohort the 2.1 exit gate measures
-  // builds and watches its first dashboard here, not on /project/:name. The
-  // mark is idempotent per journey, so mounting it on both surfaces counts once.
+  // Terminal mark of the time-to-value ladder. Onboarding's connect-your-own-
+  // data path lands here rather than on /project/:name; Project.jsx mounts the
+  // same hook, and it is idempotent per journey.
   useFirstDashboardRenderedMark(dashboardName, dashboardConfig);
 
   const handleCreateNew = useCallback(

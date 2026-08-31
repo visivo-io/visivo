@@ -1,15 +1,10 @@
 /* Tests for the time-to-value step marks (Guided First Run W1).
  *
- * The 2.1 exit gate ("8 of 8 new users build a dashboard in under 20 minutes")
- * is read off this ladder, so these are tests of the metric, not of a shim:
- *
- *   - a mark fires EXACTLY ONCE per journey, including across a reload — a
- *     mark that re-fired would inflate the funnel and destroy the median;
- *   - marks come out in ladder order with monotonic timestamps;
- *   - every mark carries the required properties from
- *     specs/marketing-relaunch/event-taxonomy.md §4;
- *   - the opt-out suppresses all of them and writes nothing;
- *   - no payload contains a user-authored string.
+ * What they pin: a mark fires exactly once per journey, including across a
+ * reload; marks come out in ladder order with monotonic timestamps; every mark
+ * carries the properties required by specs/marketing-relaunch/event-taxonomy.md
+ * §4; the opt-out suppresses all of them and writes nothing; and no payload
+ * contains a user-authored string.
  */
 
 import {
@@ -220,11 +215,8 @@ describe('journey identity', () => {
   });
 
   test('a viewer-minted journey reports ms_since_first_run as null, not zero', () => {
-    // The contract (taxonomy §4) says `null` "when the journey start is
-    // unknown (cloud viewer, or a machine whose ledger predates this
-    // contract)". Minting Date.now() as the start instead reports a ~0ms
-    // time-to-value into the exact number the 2.1 exit gate is read off —
-    // and the cloud population is far larger than the CLI one.
+    // Taxonomy §4: null when the journey start is unknown. Minting Date.now()
+    // instead would report a ~0ms time-to-value for every cloud dashboard view.
     markTimeToValueStep(TTV_STEPS.FIRST_DASHBOARD_RENDERED, {
       item_count: 1,
       from_sample: false,
@@ -362,11 +354,9 @@ describe('robustness', () => {
 });
 
 describe('idempotence off this browser origin', () => {
-  /* `localStorage` is scoped to `http://localhost:<port>`. The journey is not:
-   * it lives in ~/.visivo/first_run.json and survives a port change, a second
-   * browser, an incognito window, and a site-data clear. Without the write-back
-   * every viewer mark re-fires under the SAME journey_id — precisely the funnel
-   * inflation the persisted ledger is supposed to prevent. */
+  /* `localStorage` is scoped to `http://localhost:<port>`; the journey in
+   * ~/.visivo/first_run.json is not, and survives a port change, a second
+   * browser, and a site-data clear. */
 
   test('a mark is written back to the server so the next origin can dedupe it', () => {
     injectCliJourney({ journeyId: 'J-1' });
@@ -428,10 +418,9 @@ describe('idempotence off this browser origin', () => {
 });
 
 describe('install age', () => {
-  /* The ledger's absence cannot mean "this is a first run" — no install has one
-   * until this ships, so on rollout day every established machine mints a
-   * journey and reaches first_dashboard_rendered seconds later. install_age_ms
-   * is how the gate metric tells that apart from a 2-second time-to-value. */
+  /* The ledger's absence cannot mean "first run" — no install has one until
+   * this ships, so on rollout day every established machine mints a journey.
+   * install_age_ms is what tells those apart. */
 
   test('the CLI-reported install age rides on every viewer mark', () => {
     window.__VISIVO_FIRST_RUN = {

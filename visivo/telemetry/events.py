@@ -162,15 +162,10 @@ class FirstRunStepEvent(BaseEvent):
     """
     Event for one step mark on the time-to-value ladder (Guided First Run W1).
 
-    The ladder and every required property are specified in
-    ``specs/marketing-relaunch/event-taxonomy.md`` §4. The event NAME is the
-    step id itself (``first_run_launched``, ...) so a funnel reads the ladder
-    step-by-step; ``step_id``/``step_index`` ride along as properties so a
-    single insight can read it generically too.
-
-    ``surface: "cli"`` is set explicitly here — the taxonomy requires a
-    ``surface`` on every event, and the viewer's half of the same ladder
-    carries ``surface: "viewer"`` from its PostHog super properties.
+    ``specs/marketing-relaunch/event-taxonomy.md`` §4 specifies the ladder and
+    every required property. The event name is the step id itself
+    (``first_run_launched``, ...) so a funnel reads the ladder step-by-step;
+    ``step_id`` / ``step_index`` ride along as properties too.
     """
 
     @classmethod
@@ -181,10 +176,9 @@ class FirstRunStepEvent(BaseEvent):
         project_hash: Optional[str] = None,
     ) -> "FirstRunStepEvent":
         """Create a first-run step event carrying the ladder payload plus system properties."""
-        # machine_id is the distinct_id already, but the taxonomy requires it as
-        # a PROPERTY on every step mark: the viewer's half of the ladder ships
-        # under a browser distinct_id, so `machine_id` is the only column the
-        # two halves can be joined on.
+        # machine_id is the distinct_id already, but it is repeated as a property
+        # because the viewer's half of the ladder ships under a browser
+        # distinct_id — this is the only column the two halves join on.
         merged_properties = {
             **(properties or {}),
             "machine_id": _get_machine_id(),

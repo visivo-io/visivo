@@ -1,9 +1,7 @@
 """
 Time-to-value journey ledger (Guided First Run W1).
 
-The 2.1 exit gate is "8 of 8 new users build a dashboard in under 20 minutes
-with zero hand-written YAML". Nothing in the product could measure that, so
-this module owns the *start* of the ladder that makes it measurable:
+Owns the CLI half of an ordered ladder of first-run step marks:
 
   1. first_run_launched      (here — the local server serving the viewer)
   2. source_connected        (viewer)
@@ -12,50 +10,17 @@ this module owns the *start* of the ladder that makes it measurable:
   5. first_insight_created   (viewer)
   6. first_dashboard_rendered(viewer, terminal)
 
-The contract for every one of those marks — required properties, the frozen
-``step_index``, the ``from_sample`` filter the gate metric MUST be read with —
-lives in ``specs/marketing-relaunch/event-taxonomy.md`` §4 and is the source of
-record. This module implements steps that live on the CLI side of it.
+``specs/marketing-relaunch/event-taxonomy.md`` §4 is the source of record for
+each mark's required properties, its frozen ``step_index``, and the
+``from_sample`` filter the gate metric must be read with.
 
-Why a file rather than in-memory state: the journey spans processes (a CLI that
-starts the server) and page reloads (a viewer the user navigates around for
-half an hour). ``~/.visivo/first_run.json`` sits beside ``machine_id``, holds a
-random ``journey_id`` plus the timestamps of the marks already emitted, and is
-what makes "exactly once per journey" true rather than "once per page load".
+The journey lives in ``~/.visivo/first_run.json`` rather than in memory because
+it spans a CLI process, a browser, and every reload in between — the file is
+what makes "once per journey" true rather than "once per page load".
 
-Three things the ledger has to get right, each of which is a way the gate
-metric silently reads zero if it doesn't:
-
-  ONE IDENTITY PER PROCESS. Every caller resolves the journey through
-  ``get_or_create_journey``, and the resolved journey is cached per ledger path.
-  Without the cache an unwritable ``$HOME`` (a read-only container, a user with
-  no writable home) mints a FRESH journey on every call — so ``first_run_launched``
-  re-fires on every page load AND the ``journey_id`` handed to the browser never
-  matches the one the CLI emitted, leaving the two halves of the span unjoinable.
-
-  A FIRST RUN, NOT AN UPGRADE. A journey is only *minted* on an interactive run
-  (the same backstop ``machine_id._is_interactive`` gives ``new_installation``),
-  and every mark carries ``install_age_ms`` — how long ``~/.visivo/machine_id``
-  had existed when the journey started. A machine that has had visivo installed
-  for weeks reaching ``first_dashboard_rendered`` two seconds after ``visivo
-  serve`` is an upgrade opening an existing dashboard, not a 2-second
-  time-to-value, and the gate metric has to be able to exclude it.
-
-  THE VIEWER'S MARKS COUNT TOO. ``record_viewer_step`` writes a mark the browser
-  already emitted back into this ledger. The viewer's own idempotence lives in
-  ``localStorage``, which is scoped to one origin — a different serve port, a
-  second browser, or a cleared site-data would otherwise re-fire every viewer
-  mark under the same ``journey_id``. The file is not origin-scoped.
-
-Privacy posture, matching the rest of visivo.telemetry:
-
-  - ``journey_id`` is a random UUID. It identifies a *first run*, not a person,
-    and is derived from nothing about the user or their machine.
-  - No user-authored string ever enters a payload here — no project name, no
-    path, no source name. Counts and booleans only.
-  - When telemetry is disabled the ledger is never even created. An opted-out
-    user leaves no new file behind, which is a stronger guarantee than "we
-    write it but don't send it".
+The ledger and every payload hold random UUIDs, timestamps, counts, and
+booleans: no project / source / dashboard name, no SQL, no path. With telemetry
+disabled no ledger is created at all.
 """
 
 import json
@@ -65,16 +30,13 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .config import is_telemetry_enabled
 
-# Frozen step identities. See the taxonomy doc: these integers are assigned
-# once and never reassigned — a step added later takes the next unused integer
-# even when it falls mid-journey chronologically, because renumbering silently
-# redefines every historical funnel. Steps 2-6 are emitted by the viewer
-# (viewer/src/components/onboarding/timeToValue.js); they are listed here so
-# there is one place to read the ladder, and so the two sides cannot drift.
+# Frozen identities: a step added later takes the next unused integer even when
+# it falls mid-journey, because renumbering redefines every historical funnel.
+# Steps 2-6 are emitted by viewer/src/components/onboarding/timeToValue.js.
 STEP_INDEXES: Dict[str, int] = {
     "first_run_launched": 1,
     "source_connected": 2,
@@ -84,25 +46,17 @@ STEP_INDEXES: Dict[str, int] = {
     "first_dashboard_rendered": 6,
 }
 
-# The only step this module *emits*. The rest happen in the browser (and are
-# written back here by `record_viewer_step` so the file stays the one authority
-# on what has already fired).
 STEP_FIRST_RUN_LAUNCHED = "first_run_launched"
 
 LEDGER_FILENAME = "first_run.json"
 
-# One lock for the whole read-modify-write. `visivo serve` is threaded, so two
-# simultaneous index.html requests (two tabs opened at once, a reload racing a
-# hot-reload navigation) would otherwise both find a step unclaimed and both
-# emit it — exactly the double-count the once-per-journey contract forbids.
+# `visivo serve` is threaded, so the whole read-modify-write is held: two
+# simultaneous index.html requests would otherwise both find a step unclaimed
+# and both emit it.
 _LEDGER_LOCK = threading.RLock()
 
-# (ledger path, journey) — see "ONE IDENTITY PER PROCESS" above. Keyed by path
-# so a test (or anything else) that repoints $HOME cannot pick up a stale
-# journey from a previous home.
-_JOURNEY_CACHE: Optional[Any] = None
+_JOURNEY_CACHE: Optional[Tuple[str, Dict[str, Any]]] = None
 
-# Dashboard names shipped in visivo/templates/samples. Read once per process.
 _SAMPLE_DASHBOARDS_CACHE: Optional[List[str]] = None
 
 
@@ -167,13 +121,10 @@ def read_ledger() -> Optional[Dict[str, Any]]:
 
 
 def _write_ledger(data: Dict[str, Any]) -> bool:
-    """Best-effort ATOMIC ledger write. Returns True on success.
+    """Best-effort atomic ledger write. Returns True on success.
 
-    Written to a sibling temp file and ``os.replace``d into position: a crash,
-    a full disk, or a kill mid-write would otherwise leave a truncated file,
-    which ``read_ledger`` reports as absent — and an absent ledger mints a
-    SECOND journey whose ``ms_since_first_run`` restarts from zero, splitting
-    one first run across two ids.
+    Temp file plus ``os.replace``: a truncated file reads as absent, and an
+    absent ledger mints a second journey that restarts ``ms_since_first_run``.
     """
     tmp_path = None
     try:
@@ -187,8 +138,6 @@ def _write_ledger(data: Dict[str, Any]) -> bool:
         os.replace(tmp_path, path)
         return True
     except Exception:
-        # An unwritable home directory means we lose the journey, not that the
-        # server fails to serve a page.
         if tmp_path:
             try:
                 os.unlink(tmp_path)
@@ -201,16 +150,13 @@ def _install_age_ms(now_ms: int) -> Optional[int]:
     """How long ``~/.visivo/machine_id`` had existed when the journey started.
 
     ``None`` when there is no persisted machine id (CI, an unwritable home).
-    This is the property that separates a genuine first run from an established
-    install that merely upgraded into this telemetry: the ledger's absence
-    cannot tell them apart, because NO install has a ledger until this ships.
-    See the gate-metric note in the taxonomy §4.
-
-    Resolves the machine id first so a genuinely new install — where `visivo
-    serve` is the very first command and the file is created in this same
-    request — reports ~0 rather than the "unknown" a missing file would mean.
+    The ledger's absence cannot separate a genuine first run from an
+    established install, because no install has a ledger until this ships; this
+    is the property that can.
     """
     try:
+        # Resolve the machine id first: on a genuinely new install the file is
+        # created by this very request, and should read ~0 rather than unknown.
         _stable_machine_id()
         path = machine_id_path()
         if not path.exists():
@@ -223,11 +169,9 @@ def _install_age_ms(now_ms: int) -> Optional[int]:
 def _is_interactive_run() -> bool:
     """True when a human is plausibly at a terminal.
 
-    Reuses ``machine_id._is_interactive`` — the same universal backstop that
-    stops containers/serverless with a fresh ``$HOME`` per cold start from
-    reporting a spurious ``new_installation`` on every run. A journey is only
-    *minted* behind it; an existing journey keeps marking regardless, so a user
-    who started interactively is still measured from a detached follow-up run.
+    Reuses ``machine_id._is_interactive``, the same backstop that stops a
+    container with a fresh ``$HOME`` per cold start from reporting a
+    ``new_installation`` on every run. Only *minting* is gated behind it.
     """
     try:
         from .machine_id import _is_interactive
@@ -238,14 +182,11 @@ def _is_interactive_run() -> bool:
 
 
 def _stable_machine_id() -> Optional[str]:
-    """The SAME machine id the emitted events ship under.
+    """The same machine id the emitted events ship under.
 
     ``machine_id.get_machine_id()`` is not idempotent in CI/container contexts —
-    it returns a fresh ``ci-<uuid>`` on every call and persists nothing — so
-    calling it directly here would hand the browser a machine id that differs
-    from the one on ``first_run_launched`` and rotates on every page load,
-    silently breaking the CLI↔viewer join this whole ladder is built on.
-    ``events._get_machine_id`` is the process-wide memo every CLI event uses.
+    it returns a fresh ``ci-<uuid>`` per call and persists nothing — so the join
+    goes through ``events._get_machine_id``, the process-wide memo CLI events use.
     """
     try:
         from .events import _get_machine_id
@@ -259,16 +200,9 @@ def bundled_sample_dashboard_names() -> List[str]:
     """Dashboard names shipped in ``visivo/templates/samples``.
 
     Handed to the viewer so the terminal mark's ``from_sample`` is decided by
-    the dashboard actually being rendered rather than by which onboarding
-    branch the user happened to take. The onboarding path is written once and
-    never updated, so it is wrong in both directions: a user who skipped
-    onboarding and opened the bundled example reported ``from_sample: false``
-    (the TTV-5 trap, a ~1s render landing in the gate metric), and a user who
-    took the sample tour and then built a real dashboard 40 minutes later
-    reported ``from_sample: true`` and was filtered OUT of it.
-
-    These are visivo's own names, not user-authored strings, and they never
-    enter an event payload — only the boolean derived from them does.
+    the dashboard being rendered rather than by the onboarding branch taken.
+    These are visivo's own names and never enter a payload — only the boolean
+    derived from them does.
     """
     global _SAMPLE_DASHBOARDS_CACHE
     if _SAMPLE_DASHBOARDS_CACHE is not None:
@@ -300,11 +234,8 @@ def bundled_sample_dashboard_names() -> List[str]:
 def get_or_create_journey(project_defaults: Optional[object] = None) -> Optional[Dict[str, Any]]:
     """Return this machine's first-run journey, creating it on first call.
 
-    Returns None when telemetry is disabled — and, critically, writes nothing
-    in that case, so an opted-out user never gets a ledger file at all. Also
-    returns None when there is no journey yet and the run is not interactive:
-    a container or CI runner with a fresh ``$HOME`` per cold start would
-    otherwise mint a brand-new "first run" on every start.
+    Returns None when telemetry is disabled, writing nothing at all in that
+    case, and None when there is no journey yet and the run is not interactive.
     """
     if not is_telemetry_enabled(project_defaults):
         return None
@@ -315,9 +246,9 @@ def get_or_create_journey(project_defaults: Optional[object] = None) -> Optional
             _remember_journey(existing)
             return existing
 
-        # The ledger is gone or unwritable. If this process already resolved a
-        # journey, keep it: minting a second one here is what re-fires step 1
-        # on every page load and splits the CLI's id from the viewer's.
+        # The ledger is gone or unwritable. Reuse this process's journey rather
+        # than minting a second one, which would re-fire step 1 on every page
+        # load and split the CLI's journey id from the viewer's.
         cached = _cached_journey()
         if cached is not None:
             return cached
@@ -364,18 +295,17 @@ def mark_step(
 ) -> bool:
     """Emit a time-to-value step mark, at most once per journey.
 
-    Returns True only when an event was actually tracked, so callers (and
-    tests) can distinguish "fired" from "already fired" and from "opted out".
-    Every failure mode — disabled telemetry, unknown step, unwritable ledger,
-    a PostHog client that raises — is swallowed into a False.
+    Returns True only when an event was actually tracked; every failure mode —
+    disabled telemetry, unknown step, unwritable ledger, a client that raises —
+    is swallowed into a False.
     """
     if step_id not in STEP_INDEXES:
         return False
     if not is_telemetry_enabled(project_defaults):
         return False
 
-    # The claim is the whole once-per-journey guarantee, so it happens under the
-    # lock; the network call does not, so a slow PostHog cannot stall a request.
+    # The claim is the once-per-journey guarantee, so it happens under the lock;
+    # the network call does not, so a slow PostHog cannot stall a request.
     with _LEDGER_LOCK:
         journey = get_or_create_journey(project_defaults)
         if journey is None:
@@ -388,9 +318,8 @@ def mark_step(
         now_ms = _now_ms()
         previous_ms = max(steps.values()) if steps else None
 
-        # Claim the step BEFORE tracking. If the PostHog call throws we still do
-        # not want a retry storm re-firing the same mark on every page load; the
-        # ledger is the once-per-journey guarantee, not the network call.
+        # Claim before tracking: a throwing PostHog call must not leave the step
+        # unclaimed and re-firing on every page load.
         steps[step_id] = now_ms
         journey["steps"] = steps
         _write_ledger(journey)
@@ -415,17 +344,15 @@ def record_viewer_step(
     at_ms: Optional[int] = None,
     project_defaults: Optional[object] = None,
 ) -> bool:
-    """Record a mark the VIEWER already emitted into the server-side ledger.
+    """Record a mark the viewer already emitted into the server-side ledger.
 
-    Emits nothing — the browser has already sent the event. This exists so
-    "once per journey" survives leaving the browser origin the mark was made
-    in: ``localStorage`` is scoped to ``http://localhost:<port>``, so a second
-    browser, an incognito window, a cleared site-data, or simply ``visivo serve
-    -p 8001`` would otherwise re-fire every viewer mark under the same
-    ``journey_id`` and inflate the funnel. The file is not origin-scoped, and
-    the next page load seeds the viewer from it.
+    Emits nothing; the browser already sent the event. The viewer's own
+    idempotence lives in ``localStorage``, which is scoped to
+    ``http://localhost:<port>`` — a second browser or a different serve port
+    would re-fire every viewer mark under the same ``journey_id``. This file is
+    not origin-scoped, and the next page load seeds the viewer from it.
 
-    Never CREATES a journey: a mark can only be recorded against the journey
+    Never creates a journey: a mark can only be recorded against the journey
     the server already handed the page.
     """
     if step_id not in STEP_INDEXES:
@@ -438,8 +365,6 @@ def record_viewer_step(
         if journey is None:
             return False
         if journey_id and journey.get("journey_id") != journey_id:
-            # A mark from a different journey (a stale tab pointed at a home
-            # that has since been cleared) is not this journey's business.
             return False
 
         steps = journey.get("steps") or {}
@@ -458,15 +383,11 @@ def viewer_journey_context(project_defaults: Optional[object] = None) -> Optiona
     """The journey handed to the browser so viewer marks join the CLI's.
 
     Returns None when telemetry is disabled, so the served page carries no
-    journey and the viewer has nothing to mark — the opt-out needs no second
-    implementation on the JS side.
+    journey and the viewer has nothing to mark.
 
-    ``machine_id`` is the existing anonymous CLI identifier (a random UUID in
-    ``~/.visivo/machine_id``); including it is what lets a viewer-side mark be
-    joined to ``new_installation`` / ``cli_command`` in PostHog. It is already
-    the distinct_id every CLI event ships under, and the page is served over
-    loopback to the person who owns the machine. It is read through the same
-    process-wide memo the events use — see ``_stable_machine_id``.
+    ``machine_id`` is the anonymous random UUID CLI events already ship under;
+    carrying it is what joins a viewer-side mark to ``new_installation`` /
+    ``cli_command`` in PostHog.
     """
     journey = get_or_create_journey(project_defaults)
     if journey is None:
@@ -479,15 +400,9 @@ def viewer_journey_context(project_defaults: Optional[object] = None) -> Optiona
         "started_at_ms": journey.get("started_at_ms"),
         "install_age_ms": install_age_ms if isinstance(install_age_ms, int) else None,
         "machine_id": _stable_machine_id(),
-        # Steps the CLI has already marked, with their timestamps: the viewer
-        # never re-fires a step the server owns, and it can compute
-        # `ms_since_previous_step` for its FIRST mark against the real previous
-        # mark instead of guessing. A future CLI-side step is honoured without
-        # another round of JS changes. Viewer marks written back through
-        # `record_viewer_step` come back down this same channel, which is what
-        # dedupes them across browser origins.
+        # Every mark already claimed, CLI-side or written back through
+        # `record_viewer_step`: the viewer skips these, and dates
+        # `ms_since_previous_step` for its first mark off the newest of them.
         "steps": dict(journey.get("steps") or {}),
-        # Lets the terminal mark decide `from_sample` from the dashboard being
-        # rendered rather than from the onboarding branch the user took.
         "sample_dashboards": bundled_sample_dashboard_names(),
     }

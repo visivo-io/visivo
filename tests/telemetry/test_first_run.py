@@ -1,16 +1,11 @@
 """Tests for the time-to-value journey ledger (Guided First Run W1).
 
-The 2.1 exit gate ("8 of 8 new users build a dashboard in under 20 minutes")
-is read off this ladder, so the properties these tests pin are the metric:
-
-  - a mark fires EXACTLY ONCE per journey, not once per session — a mark that
-    re-fired on reload would inflate the funnel and destroy the median;
-  - every mark carries the required properties from
-    specs/marketing-relaunch/event-taxonomy.md §4;
-  - the opt-out suppresses everything AND leaves no ledger file behind;
-  - no payload and no ledger contains PII or any user-authored string.
-
-Every test isolates HOME so the real ~/.visivo is never touched.
+What they pin: a mark fires exactly once per journey rather than once per
+session; every mark carries the properties required by
+specs/marketing-relaunch/event-taxonomy.md §4; the opt-out suppresses
+everything and leaves no ledger file behind; and no payload or ledger holds a
+user-authored string. Every test isolates HOME so the real ~/.visivo is
+never touched.
 """
 
 import json
@@ -236,12 +231,11 @@ class TestViewerJourneyContext:
     def test_injected_machine_id_is_the_one_the_event_shipped_under(
         self, recording_client, monkeypatch
     ):
-        """Truthy is not enough — it has to be the SAME id, or nothing joins.
+        """Truthy is not enough — it has to be the same id, or nothing joins.
 
-        In any CI / container / serverless context ``get_machine_id()`` returns
-        a fresh ``ci-<uuid>`` on every call and persists nothing, so reading it
-        again here hands the browser an id that matches no event and rotates on
-        every page load. That is the join the whole ladder is built on.
+        In CI / container contexts ``get_machine_id()`` returns a fresh
+        ``ci-<uuid>`` per call, so reading it again would hand the browser an id
+        that matches no event and rotates on every page load.
         """
         monkeypatch.setenv("CI", "true")
         monkeypatch.setattr("visivo.telemetry.events.MACHINE_ID", None)
@@ -258,8 +252,7 @@ class TestViewerJourneyContext:
     def test_sample_dashboards_are_handed_over_so_from_sample_is_about_the_dashboard(self):
         context = first_run.viewer_journey_context()
 
-        # The bundled samples, read off visivo/templates/samples — NOT which
-        # onboarding branch the user happened to take.
+        # Read off visivo/templates/samples, not off the onboarding branch taken.
         assert "College Football" in context["sample_dashboards"]
         assert "EV Sales" in context["sample_dashboards"]
         assert "GitHub Releases" in context["sample_dashboards"]

@@ -150,11 +150,8 @@ describe('OnboardingFlow', () => {
     expect(events).toContain('onboarding_data_connect_succeeded');
   });
 
-  // Guided First Run W1: connecting a source is step 2 of the time-to-value
-  // ladder. It is a mark of its own rather than a rename of the onboarding
-  // event above, because `source_connected` also has to fire for a source
-  // created outside this flow — the ladder measures the journey whichever
-  // door the user came in.
+  // Step 2 of the time-to-value ladder — its own mark rather than a rename of
+  // the onboarding event, because sourceStore marks the other doors in.
   test('connect-data path marks the time-to-value source_connected step', async () => {
     clearTimeToValueLedger();
     renderFlow();

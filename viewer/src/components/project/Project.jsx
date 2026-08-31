@@ -82,11 +82,8 @@ function Project() {
     return entry.config || entry;
   }, [dashboards, dashboardName]);
 
-  // Terminal mark of the time-to-value ladder (Guided First Run W1, step 6).
-  // `/project/:dashboardName` is the consumer surface — a dashboard actually
-  // mounting here is the end of the span the 2.1 exit gate is measured over.
-  // The Workspace canvas mounts the same mark (see firstDashboardRendered.js);
-  // whichever the user reaches first wins.
+  // Terminal mark of the time-to-value ladder. The Workspace canvas mounts the
+  // same hook; it is idempotent per journey, so whichever is reached first wins.
   useFirstDashboardRenderedMark(dashboardName, activeDashboardConfig);
 
   // Both servers answer the whole-project read with the same envelope, so

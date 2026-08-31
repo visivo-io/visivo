@@ -13,11 +13,8 @@ JS bundle.
 The dist/cloud viewer has no Flask server; its `urls.js` entry for this
 endpoint is `null`, so the viewer-side sink is a no-op there.
 
-A second endpoint here, `/api/telemetry/first-run/step/`, does the opposite:
-it forwards nothing to PostHog and only records that a time-to-value mark
-already fired, so the server-side journey ledger stays the one authority on
-"once per journey" even when the browser's own ledger is not there to consult
-(Guided First Run W1 — see visivo/telemetry/first_run.py).
+`/api/telemetry/first-run/step/` is the inverse: it forwards nothing and only
+records that a time-to-value mark already fired (see visivo/telemetry/first_run.py).
 """
 
 import json
@@ -97,16 +94,11 @@ def register_telemetry_views(app, flask_app, output_dir):
 
     @app.route("/api/telemetry/first-run/step/", methods=["POST"])
     def post_first_run_step():
-        """Write a time-to-value mark the VIEWER already emitted into the ledger.
+        """Write a time-to-value mark the viewer already emitted into the ledger.
 
-        This endpoint emits nothing. The browser has already sent the event; what
-        it cannot do is make "once per journey" survive leaving its own origin.
-        The viewer's idempotence lives in ``localStorage``, which is scoped to
-        ``http://localhost:<port>`` — so a second browser, an incognito window, a
-        cleared site-data, or simply ``visivo serve -p 8001`` re-fires every
-        viewer mark under the same ``journey_id`` and inflates the funnel. The
-        ledger file is not origin-scoped, and ``viewer_journey_context`` seeds
-        the next page load from it.
+        Emits nothing. See ``first_run.record_viewer_step`` for why the ledger,
+        not ``localStorage``, is what makes "once per journey" survive a change
+        of browser origin.
         """
         body = request.get_json(silent=True)
         if not isinstance(body, dict):

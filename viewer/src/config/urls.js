@@ -167,12 +167,15 @@ const URL_PATTERNS = {
     // The local Flask server relays workspace events through the CLI's PostHog
     // client so the CLI telemetry opt-out + anonymization apply (VIS-822).
     workspaceTelemetry: '/api/telemetry/workspace-event/',
-    // Writes a time-to-value mark the viewer ALREADY emitted into
-    // ~/.visivo/first_run.json (Guided First Run W1). Sends no event — it is
-    // what makes "once per journey" survive a second browser or a different
-    // serve port, since localStorage is scoped to one origin and the ledger
-    // is not.
+    // Persists a mark the viewer already emitted; sends no event. localStorage is per-origin,
+    // so only a server-side ledger holds "once per journey" across browsers and serve ports.
     firstRunStep: '/api/telemetry/first-run/step/',
+
+    // ---- Realtime ---------------------------------------------------------
+    // Not a REST call — useProjectChangeListener gates its socket.io connect
+    // on this key (VIS-1326). A dist build is static files with nothing to
+    // hot-reload, so the connection can never succeed there.
+    socketIo: '/socket.io/',
   },
 
   // A dist build is static files — there is no server, so almost nothing

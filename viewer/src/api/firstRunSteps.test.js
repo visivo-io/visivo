@@ -30,8 +30,7 @@ describe('buildFirstRunStepRequest', () => {
 
     expect(request.url).toBe('/api/telemetry/first-run/step/');
     expect(request.options.method).toBe('POST');
-    // The terminal mark fires as a dashboard mounts, often right before a
-    // navigation; without keepalive that mark is the one most likely to be lost.
+    // Without keepalive, the terminal mark is the one a navigation cancels.
     expect(request.options.keepalive).toBe(true);
     expect(JSON.parse(request.options.body)).toEqual({
       step_id: 'source_connected',

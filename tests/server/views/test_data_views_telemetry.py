@@ -2,16 +2,13 @@
 
 Two things ride on serving index.html:
 
-  VIS-843 — `visivo serve` must honor the CLI/local telemetry opt-out: when
-  telemetry is disabled, the served page sets
+  VIS-843 — with telemetry disabled the page sets
   `window.__VISIVO_TELEMETRY_DISABLED=true` so the viewer's PostHog client
-  never initializes, and when enabled that flag must be absent.
+  never initializes, and with it enabled that flag must be absent.
 
-  Guided First Run W1 — serving the page is the first moment the product is
-  in front of the user, so it is where the time-to-value ladder's step 1
-  (`first_run_launched`) fires, once per machine. The journey is then injected
-  as `window.__VISIVO_FIRST_RUN` so the viewer's marks (steps 2-6) carry the
-  same journey_id and machine_id and the whole span is one subtraction.
+  Guided First Run W1 — the time-to-value ladder's step 1 (`first_run_launched`)
+  fires here, once per machine, and the journey is injected as
+  `window.__VISIVO_FIRST_RUN` so the viewer's marks join the CLI's.
 """
 
 import json
@@ -30,10 +27,8 @@ def isolated_first_run(tmp_path, monkeypatch):
     Without this, serving index.html in a test would write to the real
     ~/.visivo/first_run.json and send a real event.
 
-    A journey is only minted on an interactive run (the ``_is_interactive``
-    backstop that keeps containers/CI with a fresh $HOME from reporting a
-    brand-new first run on every cold start). pytest captures stdout, so these
-    tests have to say they are standing in for a human at a terminal.
+    A journey is only minted on an interactive run, and pytest captures stdout,
+    so these tests have to stand in for a human at a terminal.
     """
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr("visivo.telemetry.first_run._is_interactive_run", lambda: True)
@@ -175,12 +170,10 @@ class TestFirstRunJourneyInjection:
     def test_injected_journey_cannot_break_out_of_the_script_tag(
         self, integration_client, monkeypatch
     ):
-        """Falsifiable version: a journey that actually contains `</script>`.
+        """A journey whose `sample_dashboards` string actually contains `</script>`.
 
-        The real journey is UUIDs and integers, so asserting on it exercises
-        nothing — the escaping could be deleted outright and the test would
-        still pass. `sample_dashboards` made the journey carry strings for the
-        first time, so this now guards a live edge rather than a hypothetical.
+        The real journey is UUIDs and integers, so only a planted string
+        exercises the escaping at all.
         """
         monkeypatch.delenv("VISIVO_TELEMETRY_DISABLED", raising=False)
         monkeypatch.setattr(
@@ -196,10 +189,8 @@ class TestFirstRunJourneyInjection:
         )
         html = _get_index_html(integration_client)
 
-        # Read the assignment exactly the way a browser's tokenizer does: the
-        # <script> element ends at the FIRST literal `</script>`. Everything up
-        # to it must still be the complete journey. Without the escaping the
-        # element is cut mid-JSON and this raises.
+        # A browser's tokenizer ends the <script> element at the first literal
+        # `</script>`; everything before it must still parse as the whole journey.
         marker = "window.__VISIVO_FIRST_RUN="
         start = html.index(marker) + len(marker)
         end = html.index("</script>", start)

@@ -1,48 +1,22 @@
-/* Time-to-value step marks (Guided First Run W1).
+/* Time-to-value step marks (Guided First Run W1) — the viewer's half of the
+ * ladder whose step 1, `first_run_launched`, is emitted by
+ * visivo/telemetry/first_run.py. Steps 2-6 (source_connected, first_query_run,
+ * first_model_created, first_insight_created, and the terminal
+ * first_dashboard_rendered) are emitted here.
  *
- * The 2.1 exit gate is "8 of 8 new users build a dashboard in under 20 minutes
- * with zero hand-written YAML". Nothing in the product could measure that.
- * This module emits the viewer's half of the one canonical ladder that can:
+ * specs/marketing-relaunch/event-taxonomy.md §4 is the source of record for
+ * each mark's required properties, its frozen step_index, and the `from_sample`
+ * filter the gate metric must be read with.
  *
- *   1. first_run_launched       — CLI (visivo/telemetry/first_run.py)
- *   2. source_connected         — here
- *   3. first_query_run          — here
- *   4. first_model_created      — here
- *   5. first_insight_created    — here
- *   6. first_dashboard_rendered — here (terminal — the metric's end)
+ * `window.__VISIVO_FIRST_RUN`, injected by the local Flask server, carries the
+ * journey id, its start, the anonymous machine_id that joins these marks to
+ * `new_installation` / `cli_command`, and every mark already claimed. Emitted
+ * marks are persisted under `visivo.ttv.v1` AND written back to the server's
+ * ledger: localStorage is scoped to one origin (`:8000` and `:8001` are
+ * different origins) while the journey is not.
  *
- * The contract — required properties, the FROZEN step_index, and the
- * `from_sample` filter the gate metric must be read with — is specified in
- * specs/marketing-relaunch/event-taxonomy.md §4, which is the source of record.
- *
- * Three things this module exists to guarantee:
- *
- *   ONCE PER JOURNEY, NOT ONCE PER SESSION. The journey spans reloads, tabs and
- *   a CLI process; a mark that re-fired on reload would inflate the funnel and
- *   destroy the median. Emitted marks are persisted in localStorage under
- *   `visivo.ttv.v1`, seeded from the steps the CLI already marked — AND written
- *   back to the server's ledger, because `localStorage` is scoped to one origin
- *   (`http://localhost:8000` and `:8001` are different origins) while the
- *   journey is not. Without the write-back a second browser, an incognito
- *   window, a cleared site-data, or `visivo serve -p 8001` re-fires every mark
- *   under the same journey_id — exactly the inflation this is meant to prevent.
- *
- *   ONE JOURNEY IDENTITY. `window.__VISIVO_FIRST_RUN` (injected by the local
- *   Flask server, see server/views/data_views.py) carries the journey_id,
- *   its start, the anonymous machine_id, and the CLI-side marks. Carrying the
- *   machine_id is what lets these join to `new_installation` / `cli_command`,
- *   which ship under it as their distinct_id.
- *
- *   THE OPT-OUT, WITHOUT A SECOND IMPLEMENTATION. When telemetry is disabled
- *   the server injects `__VISIVO_TELEMETRY_DISABLED` and NO journey at all, so
- *   there is nothing to mark. We also check the flag directly and return before
- *   touching the event buffer, localStorage, or PostHog — a disabled run emits
- *   nothing and leaves nothing behind.
- *
- * PRIVACY: counts and booleans only. No source / model / insight / dashboard /
- * column / file / project name and no path ever enters a payload here.
- * `journey_id` and `machine_id` are random UUIDs identifying a first run, not a
- * person. Callers pass metadata, never user-authored strings.
+ * Payloads are counts, booleans, and random ids — never a user-authored string
+ * or a path.
  */
 
 import { fireEvent } from './telemetry';
@@ -51,12 +25,9 @@ import { postFirstRunStep } from '../../api/firstRunSteps';
 
 const LEDGER_KEY = 'visivo.ttv.v1';
 
-/* FROZEN step identities. Assigned once, never reassigned — a step added later
- * (W3's `table_profiled` / `scaffold_shown` / `scaffold_applied`) takes the
- * NEXT UNUSED integer even though it falls mid-journey chronologically,
- * because renumbering silently redefines every historical funnel. Funnels
- * order by timestamp; step_index is identity, not sort order. Mirrors
- * STEP_INDEXES in visivo/telemetry/first_run.py. */
+/* Frozen identities, mirroring STEP_INDEXES in visivo/telemetry/first_run.py.
+ * A step added later takes the next unused integer even when it falls
+ * mid-journey, because renumbering redefines every historical funnel. */
 export const TTV_STEP_INDEXES = Object.freeze({
   first_run_launched: 1,
   source_connected: 2,
@@ -93,8 +64,7 @@ function readLedger() {
     if (!parsed.steps || typeof parsed.steps !== 'object') parsed.steps = {};
     return parsed;
   } catch {
-    // Unreadable / quota / disabled storage: treat as no journey recorded yet.
-    // Losing idempotence is better than throwing into a store action.
+    // Losing idempotence beats throwing into the store action that called us.
     return null;
   }
 }
@@ -115,28 +85,17 @@ function newJourneyId() {
   } catch {
     /* fall through to the Math.random id below */
   }
-  // Not cryptographically strong, and it does not need to be: this is a
-  // throwaway grouping key for one first run, never an identifier of a person.
+  // Not cryptographically strong and does not need to be: a grouping key for
+  // one first run, never an identifier of a person.
   return `ttv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/* Resolve the journey this page belongs to, creating a viewer-local one when
- * the CLI did not supply one (the cloud/dist viewer has no Flask server, so
- * there is no injection there — but its first run is just as worth measuring).
- * A viewer-local journey has a null machine_id; there is no CLI to join to.
+/* Resolve the journey this page belongs to, minting a viewer-local one when the
+ * CLI supplied none (the cloud/dist viewer has no Flask server to inject one).
  *
- * It also has a NULL `started_at_ms`, and that is load-bearing. There is no
- * first run to measure from here, so the taxonomy specifies
- * `ms_since_first_run: null` — "the journey start is unknown (cloud viewer, or
- * a machine whose ledger predates this contract)". Minting `Date.now()` instead
- * would report a ~0ms time-to-value for every cloud dashboard view, straight
- * into the single number the 2.1 exit gate is read off, and the cloud
- * population is far larger than the CLI one.
- *
- * When the injected journey_id differs from the stored one the ledger is
- * replaced rather than merged: that is a genuinely new first run (the user
- * cleared ~/.visivo, or this browser profile is looking at a different
- * machine's server) and merging would silently suppress its marks. */
+ * A viewer-local journey keeps `started_at_ms` null so `ms_since_first_run` is
+ * null, per the taxonomy: minting Date.now() here would report a ~0ms
+ * time-to-value for every cloud dashboard view, into the gate metric itself. */
 function resolveJourney() {
   const injected = injectedJourney();
   const stored = readLedger();
@@ -145,8 +104,8 @@ function resolveJourney() {
     if (stored && stored.journey_id === injected.journey_id) {
       return {
         ...stored,
-        // Refresh the CLI-side facts from the page — the server is authoritative
-        // for them and may have marked a step since this ledger was written.
+        // The server is authoritative for the CLI-side facts and may have marked
+        // a step since this ledger was written.
         started_at_ms: injected.started_at_ms ?? stored.started_at_ms ?? null,
         install_age_ms: injected.install_age_ms ?? stored.install_age_ms ?? null,
         machine_id: injected.machine_id ?? stored.machine_id ?? null,
@@ -176,18 +135,17 @@ function resolveJourney() {
 }
 
 /** The bundled sample dashboards the server named, or null when it named none
- *  (the cloud/dist viewer, which has no Flask server to ask). Lets the terminal
- *  mark decide `from_sample` from the dashboard being rendered. */
+ *  (the cloud/dist viewer). Lets the terminal mark decide `from_sample` from
+ *  the dashboard being rendered. */
 export function getSampleDashboardNames() {
   const injected = injectedJourney();
   const names = injected && injected.sample_dashboards;
   return Array.isArray(names) ? names : null;
 }
 
-/* Largest timestamp among the marks already recorded for this journey — the
- * "previous step" `ms_since_previous_step` is measured from. Uses max rather
- * than the highest step_index so a clock that jumps cannot produce a negative
- * gap; a genuinely out-of-order mark is reported via `out_of_order` instead. */
+/* The mark `ms_since_previous_step` is measured from. Newest timestamp rather
+ * than highest step_index, so a clock jump cannot produce a negative gap — an
+ * out-of-order mark is reported through `out_of_order` instead. */
 function previousStepMs(steps) {
   const values = Object.values(steps || {}).filter(v => typeof v === 'number' && isFinite(v));
   if (values.length === 0) return null;
@@ -199,15 +157,13 @@ function previousStepMs(steps) {
  *
  * @param {string} stepId  — a key of TTV_STEP_INDEXES.
  * @param {object} [props] — extra event properties. Metadata only: counts and
- *                           booleans, NEVER a user-authored string or path.
- * @returns {boolean} true only when a mark was actually emitted, so callers
- *                    and tests can tell "fired" from "already fired" and from
- *                    "telemetry off".
+ *                           booleans, never a user-authored string or path.
+ * @returns {boolean} true only when a mark was actually emitted.
  */
 export function markTimeToValueStep(stepId, props = {}) {
   if (typeof window === 'undefined') return false;
-  // Opt-out first: before the event buffer, before localStorage, before
-  // PostHog. A disabled run emits nothing and writes nothing.
+  // Before the event buffer, localStorage, and PostHog: a disabled run must
+  // emit nothing and write nothing.
   if (isTelemetryDisabled()) return false;
   const stepIndex = TTV_STEP_INDEXES[stepId];
   if (!stepIndex) return false;
@@ -219,8 +175,8 @@ export function markTimeToValueStep(stepId, props = {}) {
   const previousMs = previousStepMs(journey.steps);
   const startedAtMs = typeof journey.started_at_ms === 'number' ? journey.started_at_ms : null;
 
-  // Claim the step before firing, so a throwing sink cannot turn into a mark
-  // that re-fires on every subsequent call.
+  // Claim before firing: a throwing sink must not leave the step unclaimed and
+  // re-firing on every subsequent call.
   const nextLedger = {
     journey_id: journey.journey_id,
     started_at_ms: startedAtMs,
@@ -242,9 +198,8 @@ export function markTimeToValueStep(stepId, props = {}) {
     ...props,
   });
 
-  // Tell the server the mark fired, so "once per journey" survives this origin.
-  // Only when the CLI handed us the journey: there is nowhere to write back to
-  // in the cloud/dist viewer, and a POST there would 404 on every mark.
+  // Write back so "once per journey" survives this origin — but only when the
+  // CLI handed us the journey; the cloud/dist viewer would 404 on every mark.
   if (injectedJourney()) {
     postFirstRunStep({ journeyId: journey.journey_id, stepId, atMs: now });
   }

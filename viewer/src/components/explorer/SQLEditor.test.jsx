@@ -223,11 +223,9 @@ describe('SQLEditor', () => {
     });
   });
 
-  // Guided First Run W1: running a query is step 3 of the time-to-value
-  // ladder — the moment the user first asks their own data a question AND
-  // GETS AN ANSWER. Uses the REAL timeToValue module (not a mock) so these
-  // cover the thing that actually has to hold: the mark waits for the return,
-  // two runs make one mark, and the user's SQL never rides along.
+  // Step 3 of the time-to-value ladder, against the real timeToValue module
+  // rather than a mock: the mark waits for the return, two runs make one mark,
+  // and the user's SQL never rides along.
   const queryMarks = () => getEventBuffer().filter(e => e.event === 'first_query_run');
 
   it('marks the time-to-value first_query_run step exactly once, with no SQL in the payload', async () => {
@@ -260,11 +258,8 @@ describe('SQLEditor', () => {
   });
 
   it('does not mark first_query_run on submit — the contract says the query must RETURN', async () => {
-    // A query that fails on a typo, times out, or is cancelled would otherwise
-    // permanently consume the once-per-journey step 3, and step 4's
-    // ms_since_previous_step would be measured from a submit that produced
-    // nothing. The ladder's four other viewer marks are all on the success
-    // path; this one is too.
+    // A query that fails on a typo or is cancelled would otherwise permanently
+    // consume the journey's one step-3 mark.
     clearTimeToValueLedger();
     clearEventBuffer();
 
@@ -297,8 +292,7 @@ describe('SQLEditor', () => {
   });
 
   it('a result the user did not ask for here marks nothing', async () => {
-    // The editor is shared (the Workspace model-edit form mounts it too); the
-    // mark belongs to a query THIS editor sent.
+    // The editor is shared — the Workspace model-edit form mounts it too.
     clearTimeToValueLedger();
     clearEventBuffer();
 

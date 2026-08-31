@@ -1,12 +1,9 @@
-/* The terminal mark of the time-to-value ladder on the WORKSPACE canvas
+/* The terminal mark of the time-to-value ladder on the workspace canvas
  * (Guided First Run W1, step 6).
  *
  * `/workspace/dashboard/:dashboardName` renders <Workspace> → <ProjectCanvas>,
- * never <Project>. Wiring the mark only to `/project/:dashboardName` left the
- * exact cohort the 2.1 exit gate measures contributing NO data point at all:
- * `OnboardingFlow.completeAndNavigate` sends a user who connected their own
- * source — the non-sample path — into the workspace, and the build-and-view
- * loop for a new dashboard is this canvas.
+ * never <Project>, and it is where onboarding sends a user who connected their
+ * own source — the non-sample cohort the gate metric is about.
  *
  * Kept out of ProjectCanvas.test.jsx: that suite mocks Dashboard and drives the
  * broken-ref wiring; these need the real timeToValue module and a clean ledger

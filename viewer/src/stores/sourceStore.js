@@ -47,11 +47,8 @@ const createSourceSlice = (set, get) => ({
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();
       }
-      // Step 2 of the time-to-value ladder (Guided First Run W1). The
-      // onboarding flow has its own call site; this covers every other door
-      // into a first source — Library "New", the Explorer, an import. The
-      // mark is idempotent per journey, so whichever fires first wins and the
-      // other is a no-op. Type only, never the source name.
+      // Step 2 of the time-to-value ladder, covering every door into a first
+      // source that is not the onboarding flow (which has its own call site).
       markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED, {
         source_type: config?.type ?? null,
         via: 'source_store',

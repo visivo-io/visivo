@@ -151,12 +151,9 @@ class TestTelemetryViews:
 class TestFirstRunStepWriteBack:
     """`/api/telemetry/first-run/step/` — the viewer's marks land in the ledger.
 
-    The viewer's own idempotence lives in `localStorage`, which is scoped to
-    `http://localhost:<port>`. A second browser, an incognito window, a cleared
-    site-data, or simply `visivo serve -p 8001` re-fires every viewer mark under
-    the SAME journey_id — precisely the funnel inflation the persisted ledger is
-    supposed to prevent. The file is not origin-scoped, so the write-back is what
-    makes "once per journey" true off the origin the mark was made in.
+    `localStorage` is scoped to `http://localhost:<port>`; the ledger is not, so
+    the write-back is what makes "once per journey" true off the origin the mark
+    was made in.
     """
 
     @pytest.fixture(autouse=True)

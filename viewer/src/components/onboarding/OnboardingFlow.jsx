@@ -200,10 +200,8 @@ export default function OnboardingFlow() {
   const handleConnected = useCallback(
     sourceType => {
       fire('onboarding_data_connect_succeeded', { source_type: sourceType });
-      // Step 2 of the time-to-value ladder. Deliberately a separate mark from
-      // the onboarding-specific event above: `source_connected` also fires for
-      // a source created outside this flow (sourceStore.saveSource), and the
-      // ladder has to measure the journey whichever door the user came in.
+      // Step 2 of the time-to-value ladder, separate from the onboarding event
+      // above because sourceStore.saveSource marks it for the other doors in.
       markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED, {
         source_type: sourceType,
         via: 'onboarding',

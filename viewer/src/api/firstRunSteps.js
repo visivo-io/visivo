@@ -1,28 +1,17 @@
 import { isAvailable, getUrl } from '../contexts/URLContext';
 
 /**
- * Time-to-value mark write-back (Guided First Run W1).
+ * Time-to-value mark write-back (Guided First Run W1). Sends no event —
+ * `markTimeToValueStep` has already emitted it.
  *
- * This sends NO event. `markTimeToValueStep` has already emitted to PostHog;
- * what it cannot do on its own is make "once per journey" survive leaving the
- * browser origin the mark was made in.
+ * The viewer's idempotence ledger lives in `localStorage`, scoped to
+ * `http://localhost:<port>`; posting the mark to the server records it in
+ * `~/.visivo/first_run.json`, which is not origin-scoped, so the next page load
+ * on any origin is seeded with what already fired.
  *
- * The viewer's idempotence ledger lives in `localStorage`, which is scoped to
- * `http://localhost:<port>` — so `visivo serve -p 8001`, a second browser, an
- * incognito window, or a cleared site-data all present as "no marks yet" while
- * `~/.visivo/first_run.json` still holds the SAME journey_id. Every viewer mark
- * would then fire a second time under that id, inflating the funnel and
- * destroying the median the 2.1 exit gate is read off.
- *
- * Posting the mark to `/api/telemetry/first-run/step/` records it in the
- * server-side ledger, and the next page load is seeded from there
- * (`viewer_journey_context().steps`), whichever origin it happens on.
- *
- * Guarantees, matching the workspace telemetry sink next door:
- *   - NEVER throws into the render path (every failure is swallowed).
- *   - No-op under jest (`JEST_WORKER_ID`), so unit tests fire no network calls.
- *   - No-op in the dist/cloud viewer (the URL key is `null` there) and before
- *     the URLConfig is initialized.
+ * Like the workspace telemetry sink next door: never throws into the render
+ * path, no-ops under jest, and no-ops in the dist/cloud viewer where the URL
+ * key is null.
  */
 
 const isJest = () =>
@@ -49,8 +38,8 @@ export function buildFirstRunStepRequest(mark) {
         journey_id: mark.journeyId ?? null,
         at_ms: mark.atMs ?? null,
       }),
-      // The terminal mark fires as a dashboard mounts, which is often followed
-      // immediately by navigation; keepalive is what lets it land anyway.
+      // The terminal mark fires on mount, often just before a navigation that
+      // would otherwise cancel the request.
       keepalive: true,
     },
   };
@@ -68,6 +57,6 @@ export function postFirstRunStep(mark) {
     if (!request || typeof fetch !== 'function') return;
     fetch(request.url, request.options).catch(() => {});
   } catch {
-    // Swallow — telemetry must never throw into the render path.
+    /* never throw into the render path */
   }
 }

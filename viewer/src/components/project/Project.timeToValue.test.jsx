@@ -1,12 +1,8 @@
-/* The terminal mark of the time-to-value ladder (Guided First Run W1, step 6).
+/* The terminal mark of the time-to-value ladder on `/project/:dashboardName`
+ * (Guided First Run W1, step 6).
  *
- * `/project/:dashboardName` is the consumer surface — a dashboard mounting
- * here is the end of the span the 2.1 exit gate is measured over, so this is
- * the mark the whole metric terminates on.
- *
- * Kept in its own file rather than folded into Project.test.jsx: that suite
- * mocks the store per-test for branching coverage, and these need the real
- * timeToValue module plus a clean ledger per test.
+ * Kept out of Project.test.jsx: that suite mocks the store per-test, and these
+ * need the real timeToValue module plus a clean ledger per test.
  */
 
 import React from 'react';
@@ -138,11 +134,8 @@ describe('first_dashboard_rendered', () => {
   });
 
   test('from_sample is true for the bundled example — the TTV-5 trap', () => {
-    // Rendering the sample takes ~1s; rendering a dashboard from the user's
-    // own data took field testers 26-108 minutes. Without this flag the exit
-    // gate would read the wrong number and report success it has not earned.
-    // With no server to ask (the cloud/dist viewer) the onboarding path is the
-    // best signal there is; the local viewer uses the list below instead.
+    // The cloud/dist viewer has no server to name the samples, so it falls
+    // back to the onboarding path.
     writeOnboardingState({ completed_at: '2026-01-01', path: 'sample' });
     mockStore(buildState());
 
@@ -171,9 +164,8 @@ describe('first_dashboard_rendered', () => {
 
 describe('from_sample is about the dashboard, not the onboarding branch', () => {
   /* The onboarding `path` is written once at the end of the flow and never
-   * updated, so reading it is wrong in BOTH directions. The local server names
-   * the bundled sample dashboards on the injected journey; that is a fact about
-   * what is being rendered. */
+   * updated, so it is wrong in both directions; the server-named samples on
+   * the injected journey are a fact about what is being rendered. */
 
   const injectServerJourney = (sampleDashboards = ['College Football', 'EV Sales']) => {
     window.__VISIVO_FIRST_RUN = {
@@ -187,8 +179,6 @@ describe('from_sample is about the dashboard, not the onboarding branch', () => 
   };
 
   test('a skipped-onboarding user opening the bundled sample still reports true', () => {
-    // The false NEGATIVE: a ~1s sample render landing in the bucket reserved
-    // for dashboards the user actually built.
     writeOnboardingState({ completed_at: '2026-01-01', path: 'skipped' });
     injectServerJourney();
     useParams.mockReturnValue({ dashboardName: 'College Football' });
@@ -222,8 +212,6 @@ describe('from_sample is about the dashboard, not the onboarding branch', () => 
   });
 
   test('a sample-path user who then built their own dashboard reports false', () => {
-    // The false POSITIVE: their genuine 40-minute journey was being filtered
-    // OUT of the gate metric because `path` still said 'sample'.
     writeOnboardingState({ completed_at: '2026-01-01', path: 'sample' });
     injectServerJourney();
     mockStore(buildState());
