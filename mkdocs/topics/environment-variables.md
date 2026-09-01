@@ -41,6 +41,7 @@ sources:
   - name: warehouse
     type: snowflake
     account: ${env.SNOWFLAKE_REGION}.${env.SNOWFLAKE_ACCOUNT_ID}
+    database: ${env.SNOWFLAKE_DATABASE}
     username: ${env.SNOWFLAKE_USER}
     password: ${env.SNOWFLAKE_PASSWORD}
 ```
