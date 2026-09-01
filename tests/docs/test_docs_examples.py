@@ -92,19 +92,8 @@ PACKAGE_DIR = REPO_ROOT / "visivo"
 # the handoff exists to leave alone. The fingerprint follows the fence around the
 # page and stops matching only when the fence's *content* changes, which is
 # exactly when the handoff genuinely needs re-examining.
-#
-#   mkdocs/index.md (line 67 at the time of writing) — `layout: {title: "Monthly
-#   Revenue"}`. Plotly's layout schema requires `title` to be an object, so
-#   Visivo rejects the string form (see the same fix applied across
-#   topics/annotations.md in this PR). PR #658 is rewriting mkdocs/index.md; the
-#   fix belongs there.
 # ---------------------------------------------------------------------------
-HANDOFFS = {
-    (
-        "mkdocs/index.md",
-        "fcb7e485a014",
-    ): "PR #658 owns mkdocs/index.md — layout.title must be `title: {text: ...}`",
-}
+HANDOFFS = {}
 
 
 # ===========================================================================
