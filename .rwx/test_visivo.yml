@@ -4,10 +4,23 @@ on:
       actions: [opened, reopened, synchronize]
       init:
         commit-sha: ${{ event.git.sha }}
+        pr-num: ${{ event.github.pull_request.pull_request.number }}
     push:
       if: ${{ event.git.branch == 'main' || event.git.ref =~ '^refs/tags/v.+$' }}
       init:
         commit-sha: ${{ event.git.sha }}
+        pr-num: ""
+
+# A stale run for a PR commit that's already been superseded by a newer push
+# is wasted compute — its result is thrown away either way once the newer one
+# lands, so cancel it outright instead of letting it finish. main/tag pushes
+# are excluded: a landed commit on main deserves its own completed test
+# record, not one a later merge can cancel out from under it.
+concurrency-pools:
+  - id: visivo-io/visivo:test-pr-${{ init.pr-num }}
+    if: ${{ init.pr-num != "" }}
+    capacity: 1
+    on-overflow: cancel-running
 
 base:
   image: ubuntu:22.04
