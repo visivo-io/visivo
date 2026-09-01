@@ -1,7 +1,7 @@
 from typing import Optional
 import re
 from pydantic import Field, ConfigDict, field_validator, PrivateAttr
-from visivo.models.base.named_model import NamedModel
+from visivo.models.base.named_model import NamedModel, SQL_IDENTIFIER_NAME_PATTERN
 from visivo.models.base.parent_model import ParentModel
 
 
@@ -35,6 +35,12 @@ class Metric(NamedModel, ParentModel):
     """
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    name: Optional[str] = Field(
+        None,
+        description="The unique name of the object across the entire project.",
+        json_schema_extra={"pattern": SQL_IDENTIFIER_NAME_PATTERN},
+    )
 
     expression: str = Field(
         ...,
@@ -70,8 +76,7 @@ class Metric(NamedModel, ParentModel):
         if v is None:
             return v
 
-        # Use regex to validate: alphanumeric and underscores only, no whitespace or dots
-        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
+        if not re.match(SQL_IDENTIFIER_NAME_PATTERN, v):
             raise ValueError(
                 f"Metric name '{v}' must contain only letters, numbers, and underscores, "
                 "and cannot start with a number."
