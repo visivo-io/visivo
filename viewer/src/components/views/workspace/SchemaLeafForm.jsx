@@ -204,7 +204,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     const schemaForValidation = getObjectSchemaSync(type);
     const errs = {};
     if (!isEmbedded) {
-      const nameError = validateName(name);
+      const nameError = validateName(name, type);
       if (nameError) errs.name = nameError;
     }
     const required = schemaForValidation?.required || [];
