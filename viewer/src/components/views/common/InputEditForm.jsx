@@ -7,12 +7,12 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import TuneIcon from '@mui/icons-material/Tune';
 import CodeIcon from '@mui/icons-material/Code';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import RefTextArea from './RefTextArea';
+import ExpressionField from './ExpressionField';
+import { REF_INSERT_HINT } from './RefTextArea';
 import Select from '../../common/Select';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { validateName } from './namedModel';
 import { validateInputDraft, buildInputConfig } from './inputConfigValidation';
-import { refKindsFor } from './fieldTypes';
 
 const INPUT_TYPES = [
   { value: 'single-select', label: 'Single Select' },
@@ -405,14 +405,14 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
           ) : optionsMode === 'query' ? (
             <div className="space-y-2">
               {errors.optionsQuery && <p className="text-xs text-red-600">{errors.optionsQuery}</p>}
-              <RefTextArea
+              <ExpressionField
+                objectType="input"
+                field="options"
                 value={optionsQuery}
                 onChange={val => setOptionsQuery(val)}
-                allowedTypes={refKindsFor('input', 'options')}
                 label=""
                 rows={3}
-                // eslint-disable-next-line no-template-curly-in-string
-                helperText={'Use ${ref(model_name)} to reference a model'}
+                helperText={`The option list is a query against a model. ${REF_INSERT_HINT}`}
               />
             </div>
           ) : (

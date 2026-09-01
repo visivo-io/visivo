@@ -283,7 +283,12 @@ describe('InsightEditForm — interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const [, , config] = onSave.mock.calls[0];
-    expect(config.interactions).toEqual([{ filter: 'region = "US"' }, { split: 'category' }]);
+    // VIS-1327: ExpressionField wraps a query-string field's edited body back
+    // into `?{ }` — the backend's QueryString type rejects an unwrapped value.
+    expect(config.interactions).toEqual([
+      { filter: '?{region = "US"}' },
+      { split: '?{category}' },
+    ]);
   });
 
   test('removing an interaction drops it from the form and the payload', async () => {

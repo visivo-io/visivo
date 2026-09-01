@@ -10,7 +10,7 @@ import {
 } from '../../../stores/explorerStore';
 import InsightEditFormFields from '../common/InsightEditFormFields';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
-import RefTextArea from '../common/RefTextArea';
+import ExpressionField from '../common/ExpressionField';
 import Select from '../../common/Select';
 import { checkRefTargets } from './refPreflight';
 import { formatRefExpression } from '../../../utils/refString';
@@ -18,7 +18,6 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
-import { refKindsFor } from '../common/fieldTypes';
 
 const INSIGHT_COLORS = getTypeColors('insight');
 const InsightTypeIcon = getTypeIcon('insight');
@@ -34,12 +33,6 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
     id: `interaction-zone-${insightName}-${index}`,
     data: { type: 'interaction-zone', insightName, index },
   });
-
-  const innerValue = (() => {
-    const v = interaction.value || '';
-    const m = v.match(/^\?\{([\s\S]*)\}$/);
-    return m ? m[1] : v;
-  })();
 
   return (
     <div data-testid={`insight-interaction-${index}`} className="flex items-center gap-2">
@@ -58,16 +51,15 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         className={`flex-1 ${isOver ? 'ring-2 ring-primary-400 rounded' : ''}`}
         data-testid={`interaction-value-field-${index}`}
       >
-        <RefTextArea
-          value={innerValue}
+        <ExpressionField
+          objectType="interaction"
+          field="filter"
+          value={interaction.value || ''}
           onChange={newVal => {
-            updateInsightInteraction(insightName, index, {
-              value: newVal ? `?{${newVal}}` : '',
-            });
+            updateInsightInteraction(insightName, index, { value: newVal });
           }}
           label=""
           rows={1}
-          allowedTypes={refKindsFor('interaction', 'filter')}
         />
       </div>
       <button

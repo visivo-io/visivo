@@ -1,22 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import RefTextArea from './RefTextArea';
 import { fieldTypeFor, EDITORS } from './fieldTypes';
+import { parseQueryString, serializeQueryString } from '../../../utils/queryString';
 
 /**
- * ExpressionField — renders the right editor for a field, from its declared type.
+ * Renders the right editor for a field from its declared type (`fieldTypes.js`),
+ * so ref/drop rules live in one registry instead of per call site.
  *
- * Every surface used to decide for itself which control an expression got, and
- * which refs it could contain. They disagreed: seven different `allowedTypes`
- * literals, a hand-maintained `TYPE_CONFIG`, and a plain textarea in the
- * Explorer that happened to be right for reasons nobody had written down. This
- * takes `{objectType, field, nested}`, asks `fieldTypes` what the rules are, and
- * renders accordingly — so a rule changes in one place.
- *
- * Covers the two raw-SQL editors today. `query-string` slots are still rendered
- * by `PropertyRow` (they need the JSON schema and slot shape to build the pill),
- * and `object-ref` by `RefDropZone`; folding those in is VIS-1243. This throws
- * on those rather than guessing, so a mis-wired call site fails loudly at the
- * call rather than rendering a subtly wrong editor.
+ * Covers the text-field editors (`context-sql`, `query-string`, `plain-sql`).
+ * `object-ref` stays with `RefDropZone`; `query-string` inside `PropertyRow`
+ * builds a richer pill for the same type and also doesn't come through here.
  */
 export function ExpressionField({
   objectType,
@@ -30,9 +23,6 @@ export function ExpressionField({
   disabled = false,
   rows = 4,
   helperText,
-  // The model this field is scoped to, when it is. Named in the copy so a user
-  // can tell at a glance WHY refs are unavailable — and can catch us being
-  // wrong about it.
   scopedToModel = null,
   'data-testid': dataTestId,
 }) {
@@ -41,12 +31,35 @@ export function ExpressionField({
     [objectType, field, nested]
   );
 
-  // A ref pasted into a ref-free field is rejected by Pydantic at save time
-  // (`sql_model.py`'s nested prohibition). Say so while they're typing instead.
+  // A ref in a ref-free field is rejected server-side at save; warn while typing.
   const strayRef = useMemo(() => {
     if (!spec || spec.refKinds.length > 0) return null;
     return /\$\{\s*ref\s*\(/.test(value || '') ? true : null;
   }, [spec, value]);
+
+  // query-string's `?{ }` wrapper is invisible to RefTextArea (context-sql has
+  // none), so wrap/unwrap here — same split PropertyRow uses for this type.
+  const isQueryString = spec?.editor === EDITORS.QUERY_STRING;
+  const parsedIncoming = useMemo(
+    () => (isQueryString ? parseQueryString(value) : null),
+    [isQueryString, value]
+  );
+  const displayValue = isQueryString
+    ? parsedIncoming
+      ? parsedIncoming.body
+      : value ?? ''
+    : value ?? '';
+  const incomingSlice = parsedIncoming ? parsedIncoming.slice : null;
+  const handleChange = useCallback(
+    raw => {
+      if (!isQueryString) {
+        onChange(raw);
+        return;
+      }
+      onChange(serializeQueryString({ body: raw, slice: incomingSlice }));
+    },
+    [isQueryString, incomingSlice, onChange]
+  );
 
   if (!spec) {
     throw new Error(
@@ -55,11 +68,11 @@ export function ExpressionField({
     );
   }
 
-  if (spec.editor === EDITORS.CONTEXT_SQL) {
+  if (spec.editor === EDITORS.CONTEXT_SQL || spec.editor === EDITORS.QUERY_STRING) {
     return (
       <RefTextArea
-        value={value ?? ''}
-        onChange={onChange}
+        value={displayValue}
+        onChange={handleChange}
         label={label}
         required={required}
         error={error}
@@ -68,8 +81,6 @@ export function ExpressionField({
         helperText={helperText}
         allowedTypes={spec.refKinds}
         acceptDrops
-        // A ref here is editable in place: click the chip to re-point it
-        // instead of deleting and retyping the whole `${ref(model).column}`.
         configurableChips
       />
     );
@@ -84,10 +95,8 @@ export function ExpressionField({
             {required && <span className="ml-0.5 text-red-500">*</span>}
           </label>
         )}
-        {/* Deliberately a bare textarea: no ref-insert menu, no @ mention, no
-            drop target. This field's refKinds are empty, so every one of those
-            affordances would offer an insertion the backend rejects on save.
-            Do not "upgrade" this to RefTextArea — see VIS-1253. */}
+        {/* Bare textarea, deliberately — refKinds is empty here. Don't
+            "upgrade" to RefTextArea (VIS-1253). */}
         <textarea
           value={value ?? ''}
           onChange={e => onChange(e.target.value)}
@@ -122,7 +131,7 @@ export function ExpressionField({
 
   throw new Error(
     `ExpressionField: '${spec.editor}' is still rendered by its own component ` +
-      `(${spec.editor === EDITORS.QUERY_STRING ? 'PropertyRow' : 'RefDropZone'}). ` +
+      `(RefDropZone). ` +
       `Folding it in is VIS-1243.`
   );
 }
