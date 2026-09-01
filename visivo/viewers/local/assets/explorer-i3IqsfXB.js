@@ -1,0 +1,1 @@
+import{w as r,g as s,a}from"./index-j0imn-0L.js";const c=async(e,n=null)=>{const o=r(s("explorerDiff"),n),t=await a(o,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(e)});return t.status===200?await t.json():null};export{c as fetchDiff};
