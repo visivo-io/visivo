@@ -54,6 +54,7 @@ class Project(NamedModel, ParentModel):
 
     models:
       - name: orders
+        source: ${ref(local-duckdb)}
         sql: SELECT * FROM orders
 
     insights:

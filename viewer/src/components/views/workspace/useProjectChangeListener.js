@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import useStore from '../../../stores/store';
 import { emitWorkspaceEvent } from './telemetry';
+import { isAvailable } from '../../../contexts/URLContext';
 
 /**
  * useProjectChangeListener — VIS-808 (Track H H-2).
@@ -21,9 +22,14 @@ import { emitWorkspaceEvent } from './telemetry';
  *
  * The socket connects to the page origin; the vite dev server proxies
  * `/socket.io` to the Flask backend (see vite.config.mjs).
+ *
+ * No-ops on a dist build (VIS-1326): static files have no Socket.IO server
+ * to connect to, so it polled `/socket.io/` 404s forever otherwise.
  */
 export default function useProjectChangeListener() {
   useEffect(() => {
+    if (!isAvailable('socketIo')) return;
+
     window.__VISIVO_SOFT_RELOAD__ = true;
     const socket = io({
       // The Flask-SocketIO server runs in threading mode — polling is its

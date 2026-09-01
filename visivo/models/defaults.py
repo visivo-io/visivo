@@ -28,12 +28,9 @@ class Defaults(BaseModel):
       - name: notify-slack-on-failure
         if: ">{ anyTestFailed() }"
         destinations:
-          - ${ref(visivo-slack)}
-
-    destinations:
-      - name: visivo-slack
-        type: slack
-        webhook_url: https://hooks.slack.com/services/ap8ub98ssoijbloisojbo8ys8
+          - name: visivo-slack
+            type: slack
+            webhook_url: https://hooks.slack.com/services/ap8ub98ssoijbloisojbo8ys8
 
     sources:
       - name: local-sqlite

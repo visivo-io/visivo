@@ -1,5 +1,6 @@
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
+import os
 from visivo.constants import DEFAULT_RUN_ID
 
 
@@ -98,4 +99,21 @@ def run_phase(
         run_id=run_id,
     )
     runner.run()
+
+    # See sweep_artifacts.py for what this removes and why. Gated on a clean
+    # run: a failed job can leave a half-written artifact.
+    if not runner.failed_job_results:
+        from visivo.commands.sweep_artifacts import sweep_orphaned_artifacts
+
+        try:
+            removed = sweep_orphaned_artifacts(project, os.path.join(output_dir, run_id))
+            for artifact in removed:
+                Logger.instance().debug(f"Removed orphaned artifact: {artifact}")
+            if removed:
+                Logger.instance().info(
+                    f"Removed {len(removed)} artifact(s) no longer in the project"
+                )
+        except Exception as error:
+            Logger.instance().debug(f"Artifact sweep skipped: {error}")
+
     return runner
