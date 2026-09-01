@@ -1,4 +1,5 @@
 name: "Release"
+run-name: "Release v${{ inputs.version }}${{ inputs.dryrun && ' (dry run)' || '' }}"
 
 on:
   workflow_dispatch:
