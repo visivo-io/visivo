@@ -67,6 +67,10 @@ def env():
         manager.cached_objects = {}
         manager.published_objects = {}
         manager.has_unpublished_changes.return_value = False
+        # A real None, not a Mock: commit asks every child whether it was
+        # renamed, and a Mock's truthy return would send the published lookup
+        # after a name that doesn't exist.
+        manager.renamed_from.return_value = None
         manager.get_status.return_value = ObjectStatus.PUBLISHED
         setattr(flask_app, attr, manager)
 
