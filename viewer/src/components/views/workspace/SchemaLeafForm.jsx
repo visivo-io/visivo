@@ -10,7 +10,9 @@ import { isEmbeddedObject } from '../common/embeddedObjectUtils';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { FormShell } from './FormShell';
-import { SAVE_ACTION, DELETE_ACTION } from './collectionKeys';
+import { SAVE_ACTION, DELETE_ACTION, FETCH_ACTION, COLLECTION_KEY } from './collectionKeys';
+import RenameImpactDialog from './RenameImpactDialog';
+import { fetchRenameImpact, renameResource, renameSupported } from '../../../api/rename';
 import { unwrapConfig } from './unwrapRecordConfig';
 import { getObjectSchemaSync } from '../../../schemas/projectSchema';
 import { useFieldParentModel } from './fields/useFieldParentModel';
@@ -81,6 +83,11 @@ export const TYPE_CONFIG = {
   },
 };
 
+/** Plural type key (what the rename API speaks) back to the viewer's singular. */
+const SINGULAR_TYPE = Object.fromEntries(
+  Object.entries(COLLECTION_KEY).map(([singular, plural]) => [plural, singular])
+);
+
 /** Fields the host renders as chrome — withheld from the generated groups. */
 const CHROME_FIELDS = ['name'];
 
@@ -92,6 +99,8 @@ const fieldLabel = (schema, name) =>
 const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoBack, onDirtyChange }) => {
   const store = useStore();
   const checkCommitStatus = store.checkCommitStatus;
+  const openWorkspaceTab = store.openWorkspaceTab;
+  const closeWorkspaceTab = store.closeWorkspaceTab;
 
   const isEmbedded = isEmbeddedObject(record);
   // MODEL-SCOPED is not the same thing as EMBEDDED, and conflating them was a
@@ -134,6 +143,12 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   const [saveError, setSaveError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Rename runs its own confirm cycle: a name change rewrites `${ref()}` across
+  // other objects, so the user sees the list before it happens.
+  const [renameImpact, setRenameImpact] = useState(null);
+  const [renameError, setRenameError] = useState(null);
+  const [renameLoading, setRenameLoading] = useState(false);
+  const [renamePending, setRenamePending] = useState(null);
 
   const recordName = record?.config?.name || record?.name || '';
 
@@ -226,9 +241,67 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
     return Object.keys(errs).length === 0;
   };
 
+  // ---- rename ----
+  // The name is the identity key: collections, the workspace tab, the URL and
+  // every `${ref()}` are all keyed by it. So a name change is not part of the
+  // save — it is its own server operation, confirmed first.
+  const openRenameDialog = useCallback(async () => {
+    setRenamePending({ oldName: recordName, newName: name });
+    setRenameImpact(null);
+    setRenameError(null);
+    setRenameLoading(true);
+    try {
+      const impact = await fetchRenameImpact(COLLECTION_KEY[type], recordName, name);
+      setRenameImpact(impact);
+    } catch (error) {
+      setRenameError(error.message || 'Could not check what this rename affects');
+    } finally {
+      setRenameLoading(false);
+    }
+  }, [recordName, name, type]);
+
+  const closeRenameDialog = useCallback(() => {
+    setRenamePending(null);
+    setRenameImpact(null);
+    setRenameError(null);
+  }, []);
+
+  const confirmRename = useCallback(async () => {
+    if (!renamePending) return;
+    const { oldName, newName } = renamePending;
+    setRenameLoading(true);
+    try {
+      const applied = await renameResource(COLLECTION_KEY[type], oldName, newName);
+      // The server rewrote refs in other objects' configs; the client cannot
+      // know which without redoing that traversal, so refetch what it named.
+      const touched = new Set([type, ...(applied.references || []).map(r => SINGULAR_TYPE[r.type])]);
+      await Promise.all(
+        [...touched]
+          .map(t => FETCH_ACTION[t])
+          .filter(action => typeof store[action] === 'function')
+          .map(action => store[action]())
+      );
+      // The open tab and the URL are keyed `type:name`; both must follow.
+      if (closeWorkspaceTab) closeWorkspaceTab(`${type}:${oldName}`);
+      if (openWorkspaceTab) {
+        openWorkspaceTab({ id: `${type}:${newName}`, type, name: newName });
+      }
+      if (checkCommitStatus) await checkCommitStatus();
+      closeRenameDialog();
+    } catch (error) {
+      setRenameError(error.message || `Failed to rename ${type}`);
+      setRenameLoading(false);
+    }
+  }, [renamePending, type, store, closeWorkspaceTab, openWorkspaceTab, checkCommitStatus, closeRenameDialog]);
+
   // ---- save / delete ----
   const handleSave = async () => {
     if (!validateForm()) return;
+    // A changed name in edit mode is a rename, not a field edit.
+    if (isEditMode && name !== recordName) {
+      openRenameDialog();
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     // Carry the scope through the round trip; see `parentModelName` above.
@@ -354,9 +427,17 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
             label={`${singular.charAt(0).toUpperCase() + singular.slice(1)} Name`}
             value={name}
             onChange={e => applyChange({ ...config, name: e.target.value })}
-            disabled={isEditMode}
+            // Editable in edit mode only where the server can carry the
+            // rename through: changing it here without the `${ref()}` rewrite
+            // would orphan every reference to this object.
+            disabled={isEditMode && !renameSupported()}
             required
             error={mergedErrors.name}
+            helperText={
+              isEditMode && renameSupported() && name !== recordName
+                ? 'Saving will rename this object and update everything that references it.'
+                : undefined
+            }
           />
         )}
 
@@ -376,6 +457,16 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
           </FormAlert>
         )}
       </FormLayout>
+
+      {renamePending && (
+        <RenameImpactDialog
+          impact={renameImpact}
+          error={renameError}
+          loading={renameLoading}
+          onConfirm={confirmRename}
+          onCancel={closeRenameDialog}
+        />
+      )}
 
       <FormFooter
         onCancel={isEditMode ? discard : onClose}

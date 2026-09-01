@@ -132,6 +132,8 @@ const URL_PATTERNS = {
     commitPending: '/api/commit/pending/',
     commit: '/api/commit/',
     commitDiscard: '/api/commit/discard/',
+    rename: '/api/rename/',
+    renameImpact: '/api/rename/impact/',
 
     // ---- Stateless compute ----------------------------------------------
     // No stored resource behind any of these: request in, answer out. That is
