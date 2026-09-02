@@ -11,6 +11,8 @@ import { getTypeByValue } from '../common/objectTypeConfigs';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { FormShell } from './FormShell';
 import { SAVE_ACTION, DELETE_ACTION } from './collectionKeys';
+import RenameImpactDialog from './RenameImpactDialog';
+import useRenameFlow from '../../../hooks/useRenameFlow';
 import { unwrapConfig } from './unwrapRecordConfig';
 import { getObjectSchemaSync } from '../../../schemas/projectSchema';
 import { useFieldParentModel } from './fields/useFieldParentModel';
@@ -186,6 +188,7 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   }, [record, isCreate, type]);
 
   const name = config.name || '';
+  const rename = useRenameFlow({ type, recordName, name });
 
   // Edits update the working config; nothing persists until an explicit Save.
   const applyChange = useCallback(nextConfig => setConfig(nextConfig), []);
@@ -229,6 +232,11 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   // ---- save / delete ----
   const handleSave = async () => {
     if (!validateForm()) return;
+    // A changed name in edit mode is a rename, not a field edit.
+    if (isEditMode && rename.nameChanged) {
+      rename.start();
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     // Carry the scope through the round trip; see `parentModelName` above.
@@ -354,9 +362,17 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
             label={`${singular.charAt(0).toUpperCase() + singular.slice(1)} Name`}
             value={name}
             onChange={e => applyChange({ ...config, name: e.target.value })}
-            disabled={isEditMode}
+            // Editable in edit mode only where the server can carry the
+            // rename through: changing it here without the `${ref()}` rewrite
+            // would orphan every reference to this object.
+            disabled={isEditMode && !rename.supported}
             required
             error={mergedErrors.name}
+            helperText={
+              isEditMode && rename.supported && rename.nameChanged
+                ? 'Saving will rename this object and update everything that references it.'
+                : undefined
+            }
           />
         )}
 
@@ -376,6 +392,8 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
           </FormAlert>
         )}
       </FormLayout>
+
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
 
       <FormFooter
         onCancel={isEditMode ? discard : onClose}

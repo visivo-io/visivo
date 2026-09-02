@@ -150,7 +150,9 @@ describe('ModelEditForm — edit mode initialization and save', () => {
   it('initializes fields from the model and locks the name', () => {
     render(<ModelEditForm model={editModel()} onSave={jest.fn()} onCancel={jest.fn()} />);
     expect(screen.getByLabelText(/Model Name/)).toHaveValue('orders');
-    expect(screen.getByLabelText(/Model Name/)).toBeDisabled();
+    // Editable in edit mode now that a rename carries the `${ref()}` rewrite
+    // with it (VIS-1209); a server without the endpoint keeps it locked.
+    expect(screen.getByLabelText(/Model Name/)).toBeEnabled();
     expect(screen.getByLabelText('code')).toHaveValue('select * from orders');
     expect(screen.getByTestId('ref-selector')).toHaveValue('ref(warehouse)');
     expect(screen.getByRole('button', { name: /region/ })).toBeInTheDocument();

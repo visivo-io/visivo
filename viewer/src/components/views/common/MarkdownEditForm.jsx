@@ -7,6 +7,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { validateName } from './namedModel';
 import Select from '../../common/Select';
 import useRecordSave from '../../../hooks/useRecordSave';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 /**
  * MarkdownEditForm - Form component for editing/creating markdowns
@@ -45,6 +47,10 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
   const [deleting, setDeleting] = useState(false);
 
   const isEditMode = !!markdown && !isCreate;
+
+  const recordName = markdown?.name || '';
+
+  const rename = useRenameFlow({ type: 'markdown', recordName, name });
   const isNewObject = markdown?.status === ObjectStatus.NEW;
 
   // Unified optimistic save backbone (VIS-1018 step 2) — `saveNow` shares the
@@ -108,6 +114,12 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
   const handleSave = async () => {
     if (!validateForm()) return;
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (isEditMode && rename.nameChanged) {
+      rename.start();
+      return;
+    }
 
     setSaving(true);
     setSaveError(null);
@@ -167,6 +179,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
   return (
     <>
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
@@ -183,7 +196,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
                 id="markdownName"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                disabled={isEditMode}
+                disabled={isEditMode && !rename.supported}
                 placeholder=" "
                 className={`
                   block w-full px-3 py-2.5 text-sm text-gray-900

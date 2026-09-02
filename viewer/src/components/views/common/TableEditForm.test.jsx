@@ -324,7 +324,9 @@ describe('TableEditForm — save payloads', () => {
     });
 
     expect(screen.getByLabelText(/Table Name/)).toHaveValue('t1');
-    expect(screen.getByLabelText(/Table Name/)).toBeDisabled();
+    // Editable in edit mode now that a rename carries the `${ref()}` rewrite
+    // with it (VIS-1209); a server without the endpoint keeps it locked.
+    expect(screen.getByLabelText(/Table Name/)).toBeEnabled();
     // A data-ref table hides the pivot section entirely.
     expect(screen.getByText('Data Source')).toBeInTheDocument();
     expect(screen.queryByText('Pivot Configuration')).not.toBeInTheDocument();

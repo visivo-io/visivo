@@ -329,7 +329,7 @@ describe('InsightEditForm — edit mode', () => {
 
     const nameInput = screen.getByLabelText(/Insight Name/);
     expect(nameInput).toHaveValue('rev');
-    expect(nameInput).toBeDisabled();
+    expect(nameInput).toBeEnabled();
     expect(screen.getByLabelText('Description')).toHaveValue('revenue insight');
     // The stored props (with their type) seed the controlled editor.
     expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');
