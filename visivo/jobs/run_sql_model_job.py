@@ -7,9 +7,11 @@ from sqlglot import exp
 from visivo.jobs.job import (
     Job,
     JobResult,
+    diagnostic_object_ref,
     format_message_failure,
     format_message_success,
 )
+from visivo.models.diagnostic import Diagnostic, DiagnosticLocation, DiagnosticPhase
 from visivo.jobs.run_model_data_job import write_query_to_parquet
 from visivo.jobs.utils import get_source_for_model
 from visivo.models.base.project_dag import ProjectDag
@@ -157,6 +159,10 @@ def _get_error_message(e: Exception) -> str:
     return repr(e)
 
 
+def _model_location(sql_model: SqlModel):
+    return DiagnosticLocation(file=sql_model.file_path) if sql_model.file_path else None
+
+
 def model_query_and_schema_action(
     sql_model: SqlModel,
     dag: ProjectDag,
@@ -205,7 +211,18 @@ def model_query_and_schema_action(
             full_path=sql_model.file_path,
             error_msg=_get_error_message(e),
         )
-        return JobResult(item=sql_model, success=False, message=failure_message)
+        return JobResult(
+            item=sql_model,
+            success=False,
+            message=failure_message,
+            diagnostic=Diagnostic.from_exception(
+                e,
+                phase=DiagnosticPhase.RUN,
+                code="query_execution_failed",
+                object=diagnostic_object_ref(sql_model),
+                location=_model_location(sql_model),
+            ),
+        )
 
 
 def schema_only_action(
@@ -252,7 +269,18 @@ def schema_only_action(
             full_path=sql_model.file_path,
             error_msg=_get_error_message(e),
         )
-        return JobResult(item=sql_model, success=False, message=failure_message)
+        return JobResult(
+            item=sql_model,
+            success=False,
+            message=failure_message,
+            diagnostic=Diagnostic.from_exception(
+                e,
+                phase=DiagnosticPhase.RUN,
+                code="schema_build_failed",
+                object=diagnostic_object_ref(sql_model),
+                location=_model_location(sql_model),
+            ),
+        )
 
 
 def job(

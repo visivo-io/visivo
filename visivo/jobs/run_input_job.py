@@ -20,7 +20,14 @@ import polars as pl
 from sqlglot import parse_one
 from sqlglot.optimizer import qualify
 
-from visivo.jobs.job import Job, JobResult, format_message_failure, format_message_success
+from visivo.jobs.job import (
+    Job,
+    JobResult,
+    diagnostic_object_ref,
+    format_message_failure,
+    format_message_success,
+)
+from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
 from visivo.jobs.utils import get_source_for_model
 from visivo.models.base.query_string import QueryString
 from visivo.models.inputs.types.single_select import SingleSelectInput
@@ -576,7 +583,20 @@ def action(
             full_path=None,
             error_msg=message,
         )
-        return JobResult(item=input_obj, success=False, message=failure_msg)
+        # ValueError is this module's own vocabulary for a misconfigured input
+        # (wrong ref count, empty result, too many options); anything else is
+        # the source refusing the options query.
+        return JobResult(
+            item=input_obj,
+            success=False,
+            message=failure_msg,
+            diagnostic=Diagnostic.from_exception(
+                e,
+                phase=DiagnosticPhase.RUN,
+                code="invalid_value" if isinstance(e, ValueError) else "query_execution_failed",
+                object=diagnostic_object_ref(input_obj),
+            ),
+        )
 
 
 def job(
