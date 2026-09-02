@@ -21,10 +21,19 @@ jest.mock('../../../schemas/schemas', () => ({
 // SchemaEditor from './SchemaEditor/SchemaEditor' — mock THAT path.
 jest.mock('./SchemaEditor/SchemaEditor', () => ({
   __esModule: true,
-  SchemaEditor: ({ onChange }) => (
-    <button type="button" data-testid="mock-schema-clear" onClick={() => onChange(undefined)}>
-      clear layout
-    </button>
+  SchemaEditor: ({ value, onChange }) => (
+    <>
+      <button type="button" data-testid="mock-schema-clear" onClick={() => onChange(undefined)}>
+        clear layout
+      </button>
+      <button
+        type="button"
+        data-testid="mock-schema-touch"
+        onClick={() => onChange({ ...(value || {}), showlegend: true })}
+      >
+        touch layout
+      </button>
+    </>
   ),
 }));
 
@@ -160,16 +169,20 @@ describe('ChartEditForm — insight fetch guard', () => {
 });
 
 // VIS-1133: Save is disabled on an untouched edit-mode form, so tests that
-// exercise the SAVE PATH must first make a real edit. The name field is
-// orthogonal to `config.insights` / `config.layout` (it travels as its own
-// argument to onSave), so touching it leaves every config assertion intact.
-const makeDirty = () =>
-  fireEvent.change(screen.getByLabelText(/Chart Name/), { target: { value: 'edited_name' } });
+// exercise the SAVE PATH must first make a real edit. It cannot be the name — a
+// changed name in edit mode is a rename, which intercepts the save. The layout
+// editor is the one config field the save-path assertions below don't pin, so
+// it is what these tests touch; it only renders once a schema has resolved.
+const withLayoutSchema = () =>
+  jest.requireMock('../../../schemas/schemas').getSchema.mockResolvedValueOnce({ type: 'object' });
+
+const makeDirty = async () => fireEvent.click(await screen.findByTestId('mock-schema-touch'));
 
 describe('ChartEditForm — embedded insights on save', () => {
   const embeddedInsight = { name: 'inline_insight', props: { type: 'scatter' } };
 
   test('a chart whose insights are ALL embedded objects can still be saved', async () => {
+    withLayoutSchema();
     const onSave = jest.fn(async () => ({ success: true }));
     render(
       <ChartEditForm
@@ -182,7 +195,7 @@ describe('ChartEditForm — embedded insights on save', () => {
     );
     await screen.findByText('Embedded Insights');
 
-    makeDirty();
+    await makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -192,6 +205,7 @@ describe('ChartEditForm — embedded insights on save', () => {
   });
 
   test('saving preserves the original ref/embedded insight order', async () => {
+    withLayoutSchema();
     const onSave = jest.fn(async () => ({ success: true }));
     render(
       <ChartEditForm
@@ -208,7 +222,7 @@ describe('ChartEditForm — embedded insights on save', () => {
     );
     await screen.findByTestId('ref-insight-row-0');
 
-    makeDirty();
+    await makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -255,6 +269,7 @@ describe('ChartEditForm — validation & save paths', () => {
   });
 
   test('non-empty layout values are carried into the saved config', async () => {
+    withLayoutSchema();
     const onSave = jest.fn(async () => ({ success: true }));
     render(
       <ChartEditForm
@@ -271,18 +286,23 @@ describe('ChartEditForm — validation & save paths', () => {
     );
     await screen.findByTestId('ref-insight-row-0');
 
-    makeDirty();
+    await makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave.mock.calls[0][2].layout).toEqual({ title: { text: 'Revenue' } });
+    // The pre-existing title survives alongside the edit that dirtied the form.
+    expect(onSave.mock.calls[0][2].layout).toEqual({
+      title: { text: 'Revenue' },
+      showlegend: true,
+    });
   });
 
   test('a failed save surfaces the backend error and keeps the form open', async () => {
+    withLayoutSchema();
     const onSave = jest.fn(async () => ({ success: false, error: 'chart save exploded' }));
     await renderForm({ onSave });
 
-    makeDirty();
+    await makeDirty();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('chart save exploded')).toBeInTheDocument();
