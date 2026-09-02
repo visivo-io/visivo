@@ -446,6 +446,30 @@ def _describe_available(schema: dict) -> str:
     return f"Available tables: {shown}{suffix}"
 
 
+def unaliased_projections(sql: str, sqlglot_dialect: str) -> list:
+    """The SELECT columns a run could never address, as ``[(position, sql)]``.
+
+    SQLGlot names an unaliased expression ``_col_N``, while the database returns
+    something else entirely — DuckDB answers ``count_star()`` for ``count(*)``.
+    A schema built from the first is unusable against the second: every
+    ``${ref(model).column}`` resolves against names no engine will ever return.
+    An aliased projection, a bare column and a star all carry a name the
+    database agrees with; nothing else does.
+
+    Positions are 1-based, because the message they end up in is read against
+    the SELECT list.
+    """
+    expr = sqlglot.parse_one(sql, read=sqlglot_dialect)
+    select = expr.find(exp.Select)
+    if select is None:
+        return []
+    return [
+        (position, projection.sql(dialect=sqlglot_dialect))
+        for position, projection in enumerate(select.expressions, start=1)
+        if not isinstance(projection, (exp.Alias, exp.Column, exp.Star))
+    ]
+
+
 def schema_from_sql(
     sqlglot_dialect: str,
     sql: str,
