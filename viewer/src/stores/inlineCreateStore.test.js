@@ -6,17 +6,23 @@
  */
 import useStore from './store';
 import { CREATE_TEMPLATES } from './inlineCreateStore';
-import { fetchModelColumnNames } from '../api/modelSchema';
+import { fetchModelSchema } from '../api/modelSchema';
 
 // The metric/dimension/relation scaffolds ask the server which columns a model
 // actually has, rather than hardcoding `id` (which most models don't have).
 jest.mock('../api/modelSchema', () => ({
-  fetchModelColumnNames: jest.fn(async () => ['order_id', 'amount']),
+  fetchModelSchema: jest.fn(async () => ({
+    available: true,
+    columns: [{ name: 'order_id' }, { name: 'amount' }],
+  })),
 }));
 
 beforeEach(() => {
-  fetchModelColumnNames.mockClear();
-  fetchModelColumnNames.mockResolvedValue(['order_id', 'amount']);
+  fetchModelSchema.mockClear();
+  fetchModelSchema.mockResolvedValue({
+    available: true,
+    columns: [{ name: 'order_id' }, { name: 'amount' }],
+  });
 });
 
 describe('createWorkspaceObject', () => {
@@ -171,7 +177,7 @@ describe('createWorkspaceObject', () => {
     test('a metric counts a REAL column of the first model', async () => {
       // eslint-disable-next-line no-template-curly-in-string
       expect((await draftConfig('metric')).expression).toBe('count(${ref(orders).order_id})');
-      expect(fetchModelColumnNames).toHaveBeenCalledWith('orders', expect.anything());
+      expect(fetchModelSchema).toHaveBeenCalledWith('orders', expect.anything());
     });
 
     test('a dimension selects a REAL column of the first model', async () => {
@@ -187,24 +193,45 @@ describe('createWorkspaceObject', () => {
       expect(config.expression).not.toContain('.id}');
     });
 
-    test.each(['metric', 'dimension'])(
-      'a %s refuses to draft when the columns cannot be read',
-      async type => {
-        fetchModelColumnNames.mockResolvedValue([]);
-        const save = jest.fn(async () => ({ success: true }));
-        useStore.setState({
-          models: [{ name: 'orders' }],
-          [CREATE_TEMPLATES[type].collectionKey]: [],
-          [CREATE_TEMPLATES[type].saveKey]: save,
-        });
+    // Inference is BEST-EFFORT. In cloud it resolves against the source's
+    // cached schema, so a source nobody has introspected answers 200 with no
+    // columns — which is not "this model is broken" and must not block the
+    // create. It used to, blaming the user's SQL and source connection.
+    /* eslint-disable no-template-curly-in-string */
+    test.each([
+      ['metric', 'count(${ref(orders)})'],
+      ['dimension', '${ref(orders)}'],
+    ])('a %s still drafts when no columns come back', async (type, expected) => {
+      fetchModelSchema.mockResolvedValue({ available: true, columns: [] });
+      const save = jest.fn(async () => ({ success: true }));
+      useStore.setState({
+        models: [{ name: 'orders' }],
+        [CREATE_TEMPLATES[type].collectionKey]: [],
+        [CREATE_TEMPLATES[type].saveKey]: save,
+      });
 
-        const result = await useStore.getState().createWorkspaceObject(type);
+      const result = await useStore.getState().createWorkspaceObject(type);
 
-        expect(result.success).toBe(false);
-        expect(result.error).toMatch(/columns/i);
-        expect(save).not.toHaveBeenCalled();
-      }
-    );
+      expect(result.success).toBe(true);
+      // A real model ref, so it still satisfies the project-level minRefs rule
+      // — just without a column nobody could confirm exists.
+      expect(save.mock.calls[0][1].expression).toBe(expected);
+    });
+    /* eslint-enable no-template-curly-in-string */
+
+    test('a create survives the schema endpoint throwing outright', async () => {
+      fetchModelSchema.mockRejectedValue(new Error('network'));
+      const save = jest.fn(async () => ({ success: true }));
+      useStore.setState({
+        models: [{ name: 'orders' }],
+        metrics: [],
+        saveMetric: save,
+      });
+
+      const result = await useStore.getState().createWorkspaceObject('metric');
+
+      expect(result.success).toBe(true);
+    });
 
     test.each(['metric', 'dimension'])(
       'a %s says WHY it cannot draft one with no models, rather than posting a doomed config',
