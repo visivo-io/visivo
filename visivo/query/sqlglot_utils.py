@@ -470,6 +470,21 @@ def unaliased_projections(sql: str, sqlglot_dialect: str) -> list:
     ]
 
 
+def unaliased_projection_message(model_name: str, unaliased: list) -> str:
+    """The one wording for "these columns have no alias".
+
+    Shared by the save-time check and the run's backstop so the two cannot
+    drift into describing the same problem differently.
+    """
+    listed = "\n".join(f"  column {position}: {text}" for position, text in unaliased)
+    return (
+        f"Model '{model_name}' has SELECT columns with no alias, so nothing "
+        f"can reference them:\n{listed}\n"
+        f"Give each one an alias (e.g. `count(*) as row_count`) so "
+        f"${{ref({model_name}).<name>}} can resolve it."
+    )
+
+
 def schema_from_sql(
     sqlglot_dialect: str,
     sql: str,

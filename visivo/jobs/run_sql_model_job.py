@@ -25,7 +25,11 @@ from visivo.query.sql_table_extractor import (
     extract_table_references,
     extract_schema_references,
 )
-from visivo.query.sqlglot_utils import schema_from_sql, unaliased_projections
+from visivo.query.sqlglot_utils import (
+    schema_from_sql,
+    unaliased_projection_message,
+    unaliased_projections,
+)
 from visivo.query.model_schema_inference import infer_model_columns
 from visivo.constants import DEFAULT_RUN_ID
 
@@ -62,13 +66,7 @@ def _build_and_write_schema(
     # "Column 'x' not found" inside an insight, listing `_col_0` as the choice.
     unaliased = unaliased_projections(sql, sqlglot_dialect)
     if unaliased:
-        listed = "\n".join(f"  column {position}: {text}" for position, text in unaliased)
-        raise click.ClickException(
-            f"Model '{sql_model.name}' has SELECT columns with no alias, so nothing "
-            f"can reference them:\n{listed}\n"
-            f"Give each one an alias (e.g. `count(*) as row_count`) so "
-            f"${{ref({sql_model.name}).<name>}} can resolve it."
-        )
+        raise click.ClickException(unaliased_projection_message(sql_model.name, unaliased))
 
     # Use cached provider if available (performance optimization)
     if schema_cache is not None:
