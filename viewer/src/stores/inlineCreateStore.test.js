@@ -197,6 +197,7 @@ describe('createWorkspaceObject', () => {
     // cached schema, so a source nobody has introspected answers 200 with no
     // columns — which is not "this model is broken" and must not block the
     // create. It used to, blaming the user's SQL and source connection.
+    /* eslint-disable no-template-curly-in-string */
     test.each([
       ['metric', 'count(${ref(orders)})'],
       ['dimension', '${ref(orders)}'],
@@ -216,6 +217,7 @@ describe('createWorkspaceObject', () => {
       // — just without a column nobody could confirm exists.
       expect(save.mock.calls[0][1].expression).toBe(expected);
     });
+    /* eslint-enable no-template-curly-in-string */
 
     test('a create survives the schema endpoint throwing outright', async () => {
       fetchModelSchema.mockRejectedValue(new Error('network'));
