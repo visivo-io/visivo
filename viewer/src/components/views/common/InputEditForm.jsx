@@ -13,6 +13,8 @@ import Select from '../../common/Select';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { validateName } from './namedModel';
 import { validateInputDraft, buildInputConfig } from './inputConfigValidation';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 const INPUT_TYPES = [
   { value: 'single-select', label: 'Single Select' },
@@ -125,6 +127,10 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
   const hydratedRef = useRef(false);
 
   const isEditMode = !!input && !isCreate;
+
+  const recordName = input?.name || '';
+
+  const rename = useRenameFlow({ type: 'input', recordName, name });
   const isNewObject = input?.status === ObjectStatus.NEW;
 
   // VIS-1133: snapshot the last-saved values so the form can report dirtiness
@@ -257,6 +263,12 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
   };
 
   const handleSave = async () => {
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (isEditMode && rename.nameChanged) {
+      rename.start();
+      return;
+    }
     const draft = {
       name,
       inputType,
@@ -319,7 +331,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
             label="Name"
             value={name}
             onChange={e => setName(e.target.value)}
-            disabled={isEditMode}
+            disabled={isEditMode && !rename.supported}
             error={errors.name}
             helperText={isEditMode ? 'Input names cannot be changed after creation.' : undefined}
           />
@@ -493,6 +505,9 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
           />
         </div>
       </div>
+
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
+
 
       <FormFooter
         onCancel={isEditMode ? discard : onClose}

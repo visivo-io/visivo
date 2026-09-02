@@ -13,6 +13,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SchemaLeafForm from './SchemaLeafForm';
+import * as renameApi from '../../../api/rename';
 
 const mockActions = {
   saveDimension: jest.fn(),
@@ -22,6 +23,10 @@ const mockActions = {
   saveRelation: jest.fn(),
   deleteRelation: jest.fn(),
   checkCommitStatus: jest.fn(),
+  openWorkspaceTab: jest.fn(),
+  closeWorkspaceTab: jest.fn(),
+  fetchMetrics: jest.fn(),
+  fetchCharts: jest.fn(),
 };
 const mockSaveNow = jest.fn();
 const mockScheduleSave = jest.fn();
@@ -35,6 +40,11 @@ jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
   default: () => mockActions,
+}));
+jest.mock('../../../api/rename', () => ({
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+  renameSupported: jest.fn(() => true),
 }));
 jest.mock('../common/RefTextArea', () => ({
   __esModule: true,
@@ -74,6 +84,9 @@ const CASES = [
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // `mockReturnValue` survives `clearAllMocks`, so a test that turns rename
+  // off would otherwise leak into every later describe.
+  renameApi.renameSupported.mockReturnValue(true);
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
   mockSaveNow.mockResolvedValue({ success: true });
   mockScheduleSave.mockClear();
@@ -83,6 +96,125 @@ beforeEach(() => {
     status: 'idle',
     errors: null,
   };
+});
+
+// VIS-1209: a name change in edit mode is a RENAME, not a field edit — the
+// name is the identity key for the store collection, the workspace tab, the
+// URL and every `${ref()}`, so the server has to carry it and the user has to
+// see what it touches first.
+describe('renaming through the edit form', () => {
+  const record = {
+    name: 'orders',
+    status: 'PUBLISHED',
+    config: { name: 'orders', expression: 'sum(${ref(x).a})' },
+  };
+
+  const renderEdit = async () => {
+    mockRecordSave = {
+      scheduleSave: mockScheduleSave,
+      saveNow: mockSaveNow,
+      status: 'idle',
+      errors: null,
+    };
+    return renderAndSettle(
+      <SchemaLeafForm type="metric" record={record} onClose={jest.fn()} onSave={jest.fn()} />
+    );
+  };
+
+  beforeEach(() => {
+    renameApi.renameSupported.mockReturnValue(true);
+    renameApi.fetchRenameImpact.mockResolvedValue({
+      supported: true,
+      target: { type: 'metrics', name: 'orders', new_name: 'purchases', status: 'published' },
+      references: [{ type: 'charts', name: 'c1', status: 'published' }],
+    });
+    renameApi.renameResource.mockResolvedValue({
+      renamed: true,
+      target: { type: 'metrics', name: 'orders', new_name: 'purchases' },
+      references: [{ type: 'charts', name: 'c1', status: 'published' }],
+    });
+  });
+
+  test('a changed name opens the impact dialog instead of saving', async () => {
+    await renderEdit();
+
+    fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByTestId('rename-impact-dialog')).toBeInTheDocument();
+    expect(renameApi.fetchRenameImpact).toHaveBeenCalledWith('metrics', 'orders', 'purchases');
+    // The ordinary save path must not also fire.
+    expect(mockSaveNow).not.toHaveBeenCalled();
+  });
+
+  test('an unchanged name saves normally', async () => {
+    await renderEdit();
+
+    fireEvent.change(screen.getByLabelText('Expression'), {
+      target: { value: 'sum(${ref(x).b})' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalled());
+    expect(renameApi.fetchRenameImpact).not.toHaveBeenCalled();
+  });
+
+  test('cancelling leaves the object alone', async () => {
+    await renderEdit();
+    fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByTestId('rename-impact-dialog');
+
+    fireEvent.click(screen.getByTestId('rename-impact-cancel'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('rename-impact-dialog')).not.toBeInTheDocument()
+    );
+    expect(renameApi.renameResource).not.toHaveBeenCalled();
+  });
+
+  test('confirming renames and re-points the open tab', async () => {
+    await renderEdit();
+    fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByTestId('rename-impact-dialog');
+
+    fireEvent.click(screen.getByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameApi.renameResource).toHaveBeenCalledWith('metrics', 'orders', 'purchases')
+    );
+    // The tab and URL are keyed `type:name`, so both have to follow the rename.
+    await waitFor(() =>
+      expect(mockActions.closeWorkspaceTab).toHaveBeenCalledWith('metric:orders')
+    );
+    expect(mockActions.openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'metric:purchases',
+      type: 'metric',
+      name: 'purchases',
+    });
+  });
+
+  test('a collision is shown in the dialog and nothing is renamed', async () => {
+    renameApi.fetchRenameImpact.mockRejectedValue(
+      Object.assign(new Error("A resource named 'purchases' already exists."), { status: 409 })
+    );
+    await renderEdit();
+
+    fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByTestId('rename-impact-error')).toHaveTextContent('already exists');
+    expect(screen.getByTestId('rename-impact-confirm')).toBeDisabled();
+    expect(renameApi.renameResource).not.toHaveBeenCalled();
+  });
+
+  test('a server without rename keeps the name field locked', async () => {
+    renameApi.renameSupported.mockReturnValue(false);
+    await renderEdit();
+
+    expect(screen.getByLabelText(/Metric Name/)).toBeDisabled();
+  });
 });
 
 describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, del }) => {
@@ -140,7 +272,9 @@ describe.each(CASES)('SchemaLeafForm $label', ({ type, word, nameLabel, save, de
     await renderAndSettle(
       <SchemaLeafForm type={type} record={record} onClose={onClose} onSave={jest.fn()} />
     );
-    expect(screen.getByLabelText(nameLabel)).toBeDisabled();
+    // The name is editable in edit mode now that a rename can carry the
+    // `${ref()}` rewrite with it (VIS-1209); deleting is unaffected.
+    expect(screen.getByLabelText(nameLabel)).toBeEnabled();
     fireEvent.click(screen.getByTitle('Delete'));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
     await waitFor(() => expect(del()).toHaveBeenCalledWith('x1'));

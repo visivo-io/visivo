@@ -307,7 +307,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=source,
                         status=status,
-                        published_obj=flask_app.source_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.source_manager, name),
                         type_key="sources",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -322,7 +322,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=model,
                         status=status,
-                        published_obj=flask_app.model_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.model_manager, name),
                         type_key="models",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -337,7 +337,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=dimension,
                         status=status,
-                        published_obj=flask_app.dimension_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.dimension_manager, name),
                         type_key="dimensions",
                         project_file_path=flask_app.project.project_file_path,
                         flask_app=flask_app,
@@ -353,7 +353,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=metric,
                         status=status,
-                        published_obj=flask_app.metric_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.metric_manager, name),
                         type_key="metrics",
                         project_file_path=flask_app.project.project_file_path,
                         flask_app=flask_app,
@@ -369,7 +369,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=relation,
                         status=status,
-                        published_obj=flask_app.relation_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.relation_manager, name),
                         type_key="relations",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -384,7 +384,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=insight,
                         status=status,
-                        published_obj=flask_app.insight_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.insight_manager, name),
                         type_key="insights",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -399,7 +399,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=markdown,
                         status=status,
-                        published_obj=flask_app.markdown_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.markdown_manager, name),
                         type_key="markdowns",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -414,7 +414,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=chart,
                         status=status,
-                        published_obj=flask_app.chart_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.chart_manager, name),
                         type_key="charts",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -429,7 +429,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=table,
                         status=status,
-                        published_obj=flask_app.table_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.table_manager, name),
                         type_key="tables",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -444,7 +444,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=dashboard,
                         status=status,
-                        published_obj=flask_app.dashboard_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.dashboard_manager, name),
                         type_key="dashboards",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -459,7 +459,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=input_obj,
                         status=status,
-                        published_obj=flask_app.input_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.input_manager, name),
                         type_key="inputs",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -696,6 +696,20 @@ def _validate_pending_project(flask_app):
     return None
 
 
+def _renamed_child_args(manager, name):
+    """`published_obj` and `old_name` for a child, honouring a draft rename.
+
+    A renamed object is cached under its NEW name, so looking `published_obj`
+    up by that name finds nothing and the writer would treat it as new. The
+    published record — and the file it lives in — are under the OLD name.
+    """
+    old_name = manager.renamed_from(name)
+    return {
+        "published_obj": manager.published_objects.get(old_name or name),
+        "old_name": old_name,
+    }
+
+
 def _build_child_info(
     name,
     obj,
@@ -704,6 +718,7 @@ def _build_child_info(
     type_key,
     project_file_path,
     flask_app=None,
+    old_name=None,
 ):
     """Build the child info dict for ProjectWriter.
 
@@ -722,6 +737,7 @@ def _build_child_info(
         ObjectStatus.NEW: "New",
         ObjectStatus.MODIFIED: "Modified",
         ObjectStatus.DELETED: "Deleted",
+        ObjectStatus.RENAMED: "Renamed",
     }
     writer_status = status_map.get(status, "Unchanged")
 
@@ -759,7 +775,8 @@ def _build_child_info(
         new_file_path = file_path
         config = {}  # No config needed for deletion
     else:
-        # Modified objects use path from published version
+        # Modified and renamed objects use the path from the published version,
+        # which for a rename was resolved under the OLD name.
         file_path = _get_file_path(published_obj, project_file_path)
         new_file_path = file_path
         config = (
@@ -773,6 +790,10 @@ def _build_child_info(
         "type_key": type_key,
         "config": config,
     }
+    if status == ObjectStatus.RENAMED and old_name:
+        # The writer finds the object in YAML under this, and writes `config`
+        # (which carries the new name) over it.
+        info["old_name"] = old_name
     if parent_model_name:
         info["parent_model"] = parent_model_name
     return info

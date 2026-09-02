@@ -15,6 +15,8 @@ import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { REF_INSERT_HINT } from './RefTextArea';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 import {
   SectionContainer,
   EmptyState,
@@ -42,6 +44,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   // Form state - Basic fields
   const [name, setName] = useState('');
+  const rename = useRenameFlow({ type: 'insight', recordName: insight?.name || '', name });
   const [description, setDescription] = useState('');
 
   // Props state - the insight's Plotly props object (carries `.type`). Fully
@@ -163,6 +166,18 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   };
 
   const handleSave = async () => {
+
+    // A changed name in edit mode is a RENAME — its own server operation,
+
+    // confirmed first, because every `${ref()}` to this object moves with it.
+
+    if (isEditMode && rename.nameChanged) {
+
+      rename.start();
+
+      return;
+
+    }
     if (!validateForm()) return;
 
     setSaving(true);
@@ -243,6 +258,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   return (
     <>
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
@@ -265,7 +281,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
             nameId="insightName"
             nameValue={name}
             onNameChange={e => setName(e.target.value)}
-            nameDisabled={isEditMode}
+            nameDisabled={isEditMode && !rename.supported}
             nameError={errors.name}
             showDescription
             description={description}
