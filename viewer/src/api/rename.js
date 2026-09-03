@@ -1,4 +1,5 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
+import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
 
 /**
@@ -15,11 +16,14 @@ const NOT_SUPPORTED = {
   references: [],
 };
 
-async function post(urlName, { type, oldName, newName }) {
+async function post(urlName, { type, oldName, newName, projectId }) {
   if (!isAvailable(urlName)) {
     return NOT_SUPPORTED;
   }
-  const response = await apiFetch(getUrl(urlName), {
+  // Studio serves one project and ignores the param; cloud serves many and
+  // cannot resolve the draft without it. Omitting it 404'd every rename in
+  // cloud, for every object type.
+  const response = await apiFetch(withProjectId(getUrl(urlName), projectId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, old_name: oldName, new_name: newName }),
@@ -41,12 +45,12 @@ async function post(urlName, { type, oldName, newName }) {
  *
  * @returns {Promise<{supported: boolean, target: object, references: Array}>}
  */
-export const fetchRenameImpact = (type, oldName, newName) =>
-  post('renameImpact', { type, oldName, newName });
+export const fetchRenameImpact = (type, oldName, newName, { projectId } = {}) =>
+  post('renameImpact', { type, oldName, newName, projectId });
 
 /** Apply the rename. Answers the same shape, describing what changed. */
-export const renameResource = (type, oldName, newName) =>
-  post('rename', { type, oldName, newName });
+export const renameResource = (type, oldName, newName, { projectId } = {}) =>
+  post('rename', { type, oldName, newName, projectId });
 
 /** Whether this server offers rename at all. */
 export const renameSupported = () => isAvailable('rename');

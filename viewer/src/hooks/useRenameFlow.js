@@ -38,6 +38,7 @@ export default function useRenameFlow({ type, recordName, name }) {
   const [loading, setLoading] = useState(false);
 
   const typeKey = COLLECTION_KEY[type];
+  const projectId = store.project?.id;
   const nameChanged = Boolean(recordName && name && name !== recordName);
 
   const start = useCallback(async () => {
@@ -46,13 +47,13 @@ export default function useRenameFlow({ type, recordName, name }) {
     setError(null);
     setLoading(true);
     try {
-      setImpact(await fetchRenameImpact(typeKey, recordName, name));
+      setImpact(await fetchRenameImpact(typeKey, recordName, name, { projectId }));
     } catch (caught) {
       setError(caught.message || 'Could not check what this rename affects');
     } finally {
       setLoading(false);
     }
-  }, [typeKey, recordName, name]);
+  }, [typeKey, recordName, name, projectId]);
 
   const cancel = useCallback(() => {
     setPending(null);
@@ -65,7 +66,7 @@ export default function useRenameFlow({ type, recordName, name }) {
     const { oldName, newName } = pending;
     setLoading(true);
     try {
-      const applied = await renameResource(typeKey, oldName, newName);
+      const applied = await renameResource(typeKey, oldName, newName, { projectId });
       // The server rewrote refs inside other objects' configs. The client
       // cannot know which without redoing that traversal, so it refetches
       // exactly the collections the server named.
@@ -92,7 +93,7 @@ export default function useRenameFlow({ type, recordName, name }) {
       setError(caught.message || `Failed to rename ${type}`);
       setLoading(false);
     }
-  }, [pending, typeKey, type, store, cancel]);
+  }, [pending, typeKey, type, store, cancel, projectId]);
 
   return {
     supported: renameSupported(),

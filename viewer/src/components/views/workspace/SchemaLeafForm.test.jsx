@@ -39,7 +39,9 @@ jest.mock('../../../hooks/useRecordSave', () => ({
 jest.mock('../../../stores/store', () => ({
   __esModule: true,
   ObjectStatus: { NEW: 'NEW', MODIFIED: 'MODIFIED', PUBLISHED: 'PUBLISHED', DELETED: 'DELETED' },
-  default: () => mockActions,
+  // `project` is spread in here rather than living on mockActions, whose values
+  // are all reset as jest fns in beforeEach. Cloud scopes every rename by it.
+  default: () => ({ ...mockActions, project: { id: 'proj-1' } }),
 }));
 jest.mock('../../../api/rename', () => ({
   fetchRenameImpact: jest.fn(),
@@ -142,7 +144,9 @@ describe('renaming through the edit form', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByTestId('rename-impact-dialog')).toBeInTheDocument();
-    expect(renameApi.fetchRenameImpact).toHaveBeenCalledWith('metrics', 'orders', 'purchases');
+    expect(renameApi.fetchRenameImpact).toHaveBeenCalledWith('metrics', 'orders', 'purchases', {
+      projectId: 'proj-1',
+    });
     // The ordinary save path must not also fire.
     expect(mockSaveNow).not.toHaveBeenCalled();
   });
@@ -182,7 +186,9 @@ describe('renaming through the edit form', () => {
     fireEvent.click(screen.getByTestId('rename-impact-confirm'));
 
     await waitFor(() =>
-      expect(renameApi.renameResource).toHaveBeenCalledWith('metrics', 'orders', 'purchases')
+      expect(renameApi.renameResource).toHaveBeenCalledWith('metrics', 'orders', 'purchases', {
+        projectId: 'proj-1',
+      })
     );
     // The tab and URL are keyed `type:name`, so both have to follow the rename.
     await waitFor(() =>
