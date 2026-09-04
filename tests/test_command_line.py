@@ -86,3 +86,15 @@ def test_generic_exception_still_reports_the_issue_url():
 
     assert "An unexpected error has occurred" in output
     assert "Click here to report this issue" in output
+
+
+def test_format_is_registered_on_the_cli():
+    """VIS-1196: a command that exists but isn't wired up is invisible.
+
+    Registration lives in two places (the import and `add_command`), so it is
+    easy to half-do — and the failure looks like "no such command", which reads
+    as a stale install rather than a missing line.
+    """
+    from visivo.command_line import visivo
+
+    assert "format" in visivo.commands
