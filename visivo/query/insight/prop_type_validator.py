@@ -1,17 +1,34 @@
-"""Lightweight type compatibility check for sliced ``?{...}`` query strings.
+"""Compile-time type checks on the SQL a prop's ``?{...}`` resolves to.
 
-Goal: when a user writes ``value: ?{MAX(x)}[0]`` on an indicator (which
-expects a numeric scalar) but the underlying column resolves to a string
-type, fail at compile time with a clean message rather than rendering a
-broken or empty value.
+Two independent checks live here:
 
-Scope: BROAD type class only (numeric vs string). We deliberately do NOT
-validate value content (e.g. "is this a valid hex color?") because the
-prop schema doesn't expose the necessary granularity and Plotly will
-either parse or warn at render time. The check fires only when the
-authored value is a slice form ``?{expr}[N]`` (single index → scalar)
-*and* the prop's allowed primitive types in the trace JSON schema make
-the class evident.
+1. **Sliced-scalar class check** (the original): when a user writes
+   ``value: ?{MAX(x)}[0]`` on an indicator (which expects a numeric scalar)
+   but the underlying column resolves to a string type, fail at compile
+   time with a clean message rather than rendering a broken or empty value.
+
+   Scope: BROAD type class only (numeric vs string). We deliberately do NOT
+   validate value content (e.g. "is this a valid hex color?") because the
+   prop schema doesn't expose the necessary granularity and Plotly will
+   either parse or warn at render time. The check fires only when the
+   authored value is a slice form ``?{expr}[N]`` (single index → scalar)
+   *and* the prop's allowed primitive types in the trace JSON schema make
+   the class evident.
+
+2. **Positional-axis plottability gate** (WB9 / S5-14): a prop bound to a
+   coordinate of the chart (``x``, ``y``, ``lat``, ``r``, ...) whose SQL
+   resolves to a *record-shaped* type — a STRUCT, MAP, UNION or NESTED —
+   cannot be drawn on an axis. Today that combination builds
+   "successfully" and renders a blank chart: the worst failure mode there
+   is, because the run reports SUCCESS. The gate turns it into a build
+   error carrying a :class:`~visivo.models.diagnostic.Diagnostic`.
+
+   The concrete production case is a doubled query string. ``?{?{site}}``
+   leaves a residual ``?{...}`` in the resolved SQL, and
+   ``sqlglot.parse_one("?{site}")`` silently parses that as a DuckDB
+   STRUCT literal ``{'_0': site}``. Nothing downstream complains; the
+   parquet column comes back as ``STRUCT(VARCHAR)`` and Plotly draws
+   nothing.
 """
 
 from __future__ import annotations
@@ -19,9 +36,17 @@ from __future__ import annotations
 import json
 import re
 from importlib.resources import files
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
+import sqlglot
 from sqlglot import exp
+
+from visivo.models.diagnostic import (
+    Diagnostic,
+    DiagnosticObjectRef,
+    DiagnosticPhase,
+    DiagnosticSeverity,
+)
 
 # Minimum mapping from sqlglot DataType.this names to broad classes.
 # Anything not in this set defaults to "unknown" (no validation fires).
@@ -241,3 +266,370 @@ def check_slice_type_compatibility(
         f"({sqlglot_dtype.sql() if sqlglot_dtype else 'unknown'} in SQL). "
         f"Either change the source column type or remove the slice suffix."
     )
+
+
+# ---------------------------------------------------------------------------
+# WB9 / S5-14: positional-axis plottability gate
+# ---------------------------------------------------------------------------
+
+# The props whose value IS a coordinate of the rendered chart — the ones a
+# record-shaped value silently blanks. Derived by reading every trace schema
+# in ``visivo/schema/*.schema.json`` and keeping the props that place a datum
+# on an axis:
+#
+#   x, y, z            cartesian / 3-D (scatter, bar, box, heatmap, surface, ...)
+#   lat, lon           geographic (scattergeo, scattermap*, densitymap*)
+#   r, theta           polar (scatterpolar, barpolar, area)
+#   a, b, c            ternary / carpet (scatterternary, scattercarpet, carpet)
+#   real, imag         smith chart (scattersmith)
+#   open, high, low, close   price axes (candlestick, ohlc)
+#   values, labels     magnitude + category axes (pie, funnelarea, sunburst,
+#                      treemap, icicle)
+#   parents            the hierarchy edge that places a node (sunburst,
+#                      treemap, icicle) — a record here blanks the chart the
+#                      same way ``labels`` does
+#   value              the datum itself — the number an ``indicator`` displays,
+#                      and the 4th dimension of ``isosurface``/``volume``. It is
+#                      the only top-level ``value`` prop in ``visivo/schema``,
+#                      it is numeric in all three, and it is this module's
+#                      motivating example (see the header docstring), so a
+#                      record there is the same silent blank.
+#
+# Deliberately EXCLUDED, with reasons:
+#   * ``ids`` — present on every trace type but it is a key for animation
+#     frames / selection, not a coordinate. A weird value there does not
+#     blank the plot.
+#   * ``customdata``, ``text``, ``hovertext``, ``meta`` — Plotly explicitly
+#     allows arbitrary nested values in these; rejecting a STRUCT there
+#     would be a false positive.
+#   * ``props.domain.x`` / ``props.error_x.array`` / ``props.marker.*`` —
+#     leaves that happen to share a name with an axis. Matching is on the
+#     EXACT top-level path ``props.<name>`` for exactly this reason.
+#   * ``parcoords`` / ``parcats`` / ``splom`` ``dimensions[i].values`` and
+#     ``sankey``'s ``node``/``link`` — genuinely positional but nested inside
+#     array-of-object props with their own binding rules. Out of scope here
+#     rather than guessed at.
+#   * ``area``'s legacy ``t`` — a single-letter prop on a deprecated trace
+#     type; too generic a name to claim on the strength of one schema.
+POSITIONAL_AXIS_PROP_NAMES = frozenset(
+    {
+        "x",
+        "y",
+        "z",
+        "lat",
+        "lon",
+        "r",
+        "theta",
+        "a",
+        "b",
+        "c",
+        "real",
+        "imag",
+        "open",
+        "high",
+        "low",
+        "close",
+        "values",
+        "labels",
+        "parents",
+        "value",
+    }
+)
+
+
+# Types a Plotly axis CAN render. Enumerated deliberately (the positive half
+# of the classification) so that "did we just start rejecting something that
+# used to work?" is answerable by reading one list. Everything here reaches
+# the browser as a number, a string or a date after the parquet round-trip,
+# and Plotly plots all three on an axis:
+#   * numerics of every width/sign/precision, including the unsigned and
+#     wide integer types ClickHouse/DuckDB emit;
+#   * strings of every flavour (categorical axes), plus the string-backed
+#     scalars (UUID, INET, IP*, ENUM*, MONEY, XML, and the semi-structured
+#     JSON/JSONB/VARIANT/SUPER/OBJECT — see the note on OBJECT below);
+#   * temporals (date/time axes) and INTERVAL;
+#   * BOOLEAN, which plots as a two-value categorical axis.
+#
+# Names are sqlglot ``exp.DataType.Type`` MEMBERS (what ``annotate_types``
+# puts in ``DataType.this``), not SQL spellings — so "INT" and not "INTEGER",
+# "DOUBLE" and not "REAL". A test asserts every name here is a real member,
+# so a typo cannot quietly become a dead entry.
+PLOTTABLE_AXIS_TYPES = frozenset(
+    {
+        # --- numeric ---------------------------------------------------
+        "TINYINT",
+        "SMALLINT",
+        "MEDIUMINT",
+        "INT",
+        "BIGINT",
+        "INT128",
+        "INT256",
+        "UTINYINT",
+        "USMALLINT",
+        "UMEDIUMINT",
+        "UINT",
+        "UBIGINT",
+        "UINT128",
+        "UINT256",
+        "FLOAT",
+        "DOUBLE",
+        "UDOUBLE",
+        "DECIMAL",
+        "UDECIMAL",
+        "BIGDECIMAL",
+        "DECIMAL32",
+        "DECIMAL64",
+        "DECIMAL128",
+        "DECIMAL256",
+        "MONEY",
+        "SMALLMONEY",
+        "SERIAL",
+        "SMALLSERIAL",
+        "BIGSERIAL",
+        "YEAR",
+        # --- string / string-backed scalars -----------------------------
+        "CHAR",
+        "NCHAR",
+        "VARCHAR",
+        "NVARCHAR",
+        "BPCHAR",
+        "TEXT",
+        "TINYTEXT",
+        "MEDIUMTEXT",
+        "LONGTEXT",
+        "FIXEDSTRING",
+        "NAME",
+        "ENUM",
+        "ENUM8",
+        "ENUM16",
+        "LOWCARDINALITY",
+        "UUID",
+        "INET",
+        "IPADDRESS",
+        "IPPREFIX",
+        "IPV4",
+        "IPV6",
+        "XML",
+        "JSON",
+        "JSONB",
+        "VARIANT",
+        "SUPER",
+        # OBJECT is sqlglot's name for Snowflake's ``OBJECT`` — a VARIANT
+        # constrained to objects, and the ONLY dialect Visivo supports whose
+        # information_schema reports a bare ``OBJECT`` data_type. It has the
+        # same wire shape as VARIANT (the connector hands both back as JSON
+        # text) and the same parquet column, so it plots as a category exactly
+        # like VARIANT does. Denylisting it while allowlisting VARIANT would
+        # hard-fail a project that builds and renders today — a false positive,
+        # which this gate treats as strictly worse than a missed blank chart.
+        # sqlglot files OBJECT under ``DataType.STRUCT_TYPES``; that grouping is
+        # about SQL-level shape, not about what reaches the browser.
+        "OBJECT",
+        # --- temporal ---------------------------------------------------
+        "DATE",
+        "DATE32",
+        "DATETIME",
+        "DATETIME2",
+        "DATETIME64",
+        "SMALLDATETIME",
+        "TIME",
+        "TIMETZ",
+        "TIMESTAMP",
+        "TIMESTAMPTZ",
+        "TIMESTAMPNTZ",
+        "TIMESTAMPLTZ",
+        "TIMESTAMP_S",
+        "TIMESTAMP_MS",
+        "TIMESTAMP_NS",
+        "INTERVAL",
+        # --- boolean ----------------------------------------------------
+        "BOOLEAN",
+    }
+)
+
+
+# Types an axis CANNOT render: record-shaped values. After the parquet
+# round-trip each row's value is an object/dict, and Plotly draws nothing for
+# an axis of objects — the exact silent-blank failure WB9 exists to stop.
+#
+# This is sqlglot's own ``exp.DataType.STRUCT_TYPES`` (STRUCT / OBJECT /
+# NESTED / UNION) plus MAP, MINUS OBJECT, spelled out here rather than imported
+# so the rejected set is pinned by THIS file and cannot widen under us when
+# sqlglot reclassifies a type. Every name left here is record-shaped ON THE
+# WIRE for the dialects Visivo supports: DuckDB/BigQuery STRUCT, DuckDB/
+# ClickHouse/Trino MAP, ClickHouse Nested, DuckDB UNION. OBJECT is the one
+# STRUCT_TYPES member that is not (Snowflake hands it back as JSON text) — see
+# its entry in PLOTTABLE_AXIS_TYPES.
+#
+# ARRAY and LIST are deliberately NOT here, for a reason narrower than the
+# denylist and broader than a single authoring form:
+#   * With a scalar slice (``x: ?{...}[0]``) the prop binds a SINGLE row's
+#     value, so an array-valued column becomes a plottable array of scalars.
+#     Rejecting that would be a plain false positive.
+#   * WITHOUT a slice the prop binds an array-of-arrays, which a linear axis
+#     does render as nothing — but ARRAY is exactly as ambiguous as OBJECT is.
+#     sqlglot spells DuckDB's genuinely-nested LIST and Snowflake's ARRAY (a
+#     VARIANT constrained to arrays, delivered as JSON *text*, categorical and
+#     perfectly plottable) with the SAME ``DataType.Type.ARRAY``, and nothing
+#     in ``DataType.this`` tells them apart. Rejecting the unsliced case would
+#     therefore hard-fail every Snowflake ARRAY column bound to an axis.
+# So ARRAY/LIST classify "unknown" and the gate stays silent on them —
+# deliberately fail-open, not an oversight. Splitting the sliced from the
+# unsliced case would not help: the Snowflake half is a false positive in both.
+NON_PLOTTABLE_AXIS_TYPES = frozenset({"STRUCT", "NESTED", "UNION", "MAP"})
+
+
+def axis_plottability(sqlglot_dtype: Optional[exp.DataType]) -> str:
+    """Classify a resolved SQL type for use on a positional axis.
+
+    Returns ``"plottable"``, ``"non_plottable"``, or ``"unknown"``.
+
+    The classification is deliberately THREE-way, not a bare allowlist test.
+    sqlglot knows ~120 type names and dialects keep adding more; a type in
+    neither list is reported ``"unknown"`` and the gate does nothing. The
+    cost of a missed silent-blank chart is one bad render; the cost of a
+    false positive is a build that used to work now refusing to run, so the
+    gate only ever fails on a type we are certain about.
+    """
+    if sqlglot_dtype is None:
+        return "unknown"
+    this = getattr(sqlglot_dtype, "this", None)
+    name = this.value if hasattr(this, "value") else str(this)
+    if name in NON_PLOTTABLE_AXIS_TYPES:
+        return "non_plottable"
+    if name in PLOTTABLE_AXIS_TYPES:
+        return "plottable"
+    return "unknown"
+
+
+def _article_for(type_name: str) -> str:
+    """``"an"`` before a type name that reads as vowel-initial, else ``"a"``.
+
+    Type names are ASCII SQL keywords, so first-letter is enough — there is no
+    "a UNION"-style consonant-sounding vowel among them. Kept as a helper (not
+    hardcoded to the current denylist) so a later addition — OBJECT, ARRAY,
+    INTERVAL — cannot silently reintroduce "a OBJECT".
+    """
+    return "an" if type_name[:1].upper() in "AEIOU" else "a"
+
+
+def is_positional_axis_prop(prop_path: str) -> bool:
+    """True when ``prop_path`` is a TOP-LEVEL positional axis prop.
+
+    Matches ``props.x`` but not ``props.domain.x``, ``props.error_x.array``
+    or ``props.marker.color`` — see ``POSITIONAL_AXIS_PROP_NAMES`` for why
+    the match is anchored to the top level.
+    """
+    if not prop_path:
+        return False
+    parts = prop_path.split(".")
+    if len(parts) != 2 or parts[0] != "props":
+        return False
+    return parts[1] in POSITIONAL_AXIS_PROP_NAMES
+
+
+def _column_names_in(sql: Optional[str], dialect: Optional[str] = None) -> List[str]:
+    """Column identifiers referenced by ``sql``, in order, deduped.
+
+    Parsed with SQLGlot (never a regex). Returns ``[]`` when the fragment
+    does not parse — the caller then names the expression instead.
+    """
+    if not sql:
+        return []
+    try:
+        parsed = sqlglot.parse_one(sql, dialect=dialect) if dialect else sqlglot.parse_one(sql)
+    except Exception:
+        return []
+    if parsed is None:
+        return []
+    names: List[str] = []
+    for column in parsed.find_all(exp.Column):
+        name = column.name
+        if name and name not in names:
+            names.append(name)
+    return names
+
+
+def check_positional_axis_plottability(
+    *,
+    insight_name: str,
+    prop_path: str,
+    sqlglot_dtype: Optional[exp.DataType],
+    resolved_sql: Optional[str] = None,
+    dialect: Optional[str] = None,
+) -> Optional[Diagnostic]:
+    """Gate a positional-axis prop on the type its SQL resolves to.
+
+    Returns ``None`` when the prop is fine (not positional, type unknown, or
+    a type an axis can render) and a :class:`Diagnostic` describing the
+    failure otherwise. Never raises — a caller inside a build should be able
+    to trust it.
+    """
+    if not is_positional_axis_prop(prop_path):
+        return None
+    if axis_plottability(sqlglot_dtype) != "non_plottable":
+        return None
+
+    this = getattr(sqlglot_dtype, "this", None)
+    type_name = this.value if hasattr(this, "value") else str(this)
+    try:
+        full_type = sqlglot_dtype.sql()
+    except Exception:
+        full_type = type_name
+
+    columns = _column_names_in(resolved_sql, dialect)
+    if columns:
+        column_clause = f" built from column{'s' if len(columns) > 1 else ''} " + ", ".join(
+            f"'{c}'" for c in columns
+        )
+    else:
+        column_clause = ""
+
+    article = _article_for(type_name)
+    message = (
+        f"Insight '{insight_name}': positional axis prop '{prop_path}' resolves to "
+        f"{article} {type_name}{column_clause}. A chart axis cannot plot {article} "
+        f"{type_name}, so this insight would build successfully and then render an "
+        f"empty chart."
+    )
+
+    hint = f"Bind '{prop_path}' to a single scalar column or expression."
+    if type_name == "STRUCT":
+        hint += (
+            " A STRUCT here is almost always a doubled query string — check the prop's "
+            "value for a nested '?{?{ ... }}', which SQLGlot parses as a struct literal."
+        )
+
+    detail_lines = [f"Resolved SQL type: {full_type}"]
+    if resolved_sql:
+        detail_lines.append(f"Resolved expression: {resolved_sql}")
+
+    return Diagnostic(
+        id=f"compile:non_plottable_axis_type:{insight_name}:{prop_path}",
+        severity=DiagnosticSeverity.ERROR,
+        phase=DiagnosticPhase.COMPILE,
+        code="non_plottable_axis_type",
+        message=message,
+        object=DiagnosticObjectRef(type="insight", name=insight_name),
+        field=prop_path,
+        detail="\n".join(detail_lines),
+        hint=hint,
+    )
+
+
+class PositionalAxisTypeError(ValueError):
+    """A positional-axis prop resolved to a type no axis can render.
+
+    Subclasses ``ValueError`` so every existing ``except Exception`` /
+    ``except ValueError`` build handler keeps behaving exactly as it does
+    for the other compile-time prop failures, while carrying the structured
+    :attr:`diagnostic` for callers that can render it (the same pattern
+    ``JoinPathError`` uses for its structured join fields).
+    """
+
+    def __init__(self, diagnostic: Diagnostic):
+        self.diagnostic = diagnostic
+        message = diagnostic.message
+        if diagnostic.hint:
+            message = f"{message} {diagnostic.hint}"
+        super().__init__(message)

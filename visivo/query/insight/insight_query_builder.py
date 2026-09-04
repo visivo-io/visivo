@@ -6,7 +6,10 @@ from visivo.query.insight.default_ordering import (
     post_query_order_clause,
 )
 from visivo.query.insight.prop_type_validator import (
+    PositionalAxisTypeError,
+    check_positional_axis_plottability,
     check_slice_type_compatibility,
+    is_positional_axis_prop,
     is_scalar_slice,
 )
 from visivo.models.base.project_dag import ProjectDag
@@ -264,6 +267,9 @@ def restore_input_placeholders(sql: str) -> str:
     return re.sub(pattern, replace_marker, sql)
 
 
+_UNSET = object()
+
+
 class InsightQueryBuilder:
     """
     1. If the insight is NOT dynamic
@@ -455,12 +461,10 @@ class InsightQueryBuilder:
         self._default_sort_applied = False
         if not has_sort and renders_as_line(self.insight.props):
             resolved_x = next((s for k, s in resolved_query_statements if k == "props.x"), None)
-            bare_x = (
-                re.sub(r"\s+AS\s+\"[^\"]+\"\s*$", "", resolved_x, flags=re.IGNORECASE)
-                if resolved_x
-                else None
-            )
-            x_type = self._infer_expression_type(bare_x) if bare_x else None
+            # No alias strip needed: `_infer_expression_type` unwraps a trailing
+            # `AS "<hash>"` from the parsed AST, so the aliased fragment goes in
+            # as-is (regex-over-SQL removed, per SQLGLOT.md).
+            x_type = self._infer_expression_type(resolved_x) if resolved_x else None
             if is_deterministically_orderable(x_type):
                 for expression in default_sort_expressions(self.unresolved_query_statements):
                     resolved_query_statements.append(
@@ -1228,6 +1232,19 @@ class InsightQueryBuilder:
 
         return order_by_expressions
 
+    def _resolved_props_sql(self) -> Dict[str, str]:
+        """Map prop path -> the resolved SQL for that prop, alias included.
+
+        ``resolved_query_statements`` is ``[(key, sql_with_alias)]``; the
+        alias is left ON the fragment and unwrapped by SQLGlot downstream
+        (``_infer_expression_type``) rather than stripped with a regex.
+        """
+        return {
+            key: sql
+            for key, sql in (self.resolved_query_statements or [])
+            if key and "props." in key
+        }
+
     def _validate_prop_slice_types(self, props_slices: Dict[str, str]) -> None:
         """Type-check each sliced ``?{...}[N|a:b]`` prop against the broad
         type class the Plotly schema expects at that path.
@@ -1247,15 +1264,7 @@ class InsightQueryBuilder:
         if not trace_type:
             return
 
-        # Map prop path -> resolved SQL expression (no alias suffix).
-        # `resolved_query_statements` is `[(key, sql_with_alias)]`. We
-        # strip a trailing `AS "<hash>"` to get a usable bare expression.
-        resolved_by_path: Dict[str, str] = {}
-        for key, sql in self.resolved_query_statements or []:
-            if not key or "props." not in key:
-                continue
-            bare = re.sub(r"\s+AS\s+\"[^\"]+\"\s*$", "", sql, flags=re.IGNORECASE)
-            resolved_by_path[key] = bare
+        resolved_by_path = self._resolved_props_sql()
 
         for prop_path, slice_expr in props_slices.items():
             if not is_scalar_slice(slice_expr):
@@ -1276,6 +1285,125 @@ class InsightQueryBuilder:
             if not ok:
                 raise ValueError(message)
 
+    def _validate_positional_axis_types(self) -> None:
+        """WB9 / S5-14: hard-fail the build when a prop bound to a
+        POSITIONAL AXIS (``x``, ``y``, ``lat``, ``r``, ...) resolves to a
+        record-shaped SQL type (STRUCT/MAP/UNION/NESTED).
+
+        Such an insight builds "successfully" today and renders a blank
+        chart with a SUCCESS job — the silent failure S5-14 reports. The
+        canonical producer is a doubled query string ``?{?{col}}``, which
+        SQLGlot parses as a DuckDB struct literal.
+
+        Raises ``PositionalAxisTypeError`` (a ``ValueError``) carrying the
+        structured ``Diagnostic``. Types the gate does not recognise, and
+        every type an axis can render, pass through untouched — see
+        ``prop_type_validator.axis_plottability``.
+        """
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
+        sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
+        for prop_path, resolved_sql in self._resolved_props_sql().items():
+            if not is_positional_axis_prop(prop_path):
+                continue
+            if not resolved_sql:
+                continue
+            dtype = self._infer_expression_type(resolved_sql)
+            if dtype is None:
+                # A prop that references an input keeps its ``${input.accessor}``
+                # placeholder in the resolved SQL (the viewer substitutes it at
+                # render time), and SQLGlot cannot parse that — so inference
+                # returns None and the gate would fall open on exactly the
+                # dynamic path where the blank chart is actually SEEN. Retry
+                # against the same sample-value substitution the GROUP BY
+                # analysis already uses. A doubled query string then infers
+                # STRUCT (MAP on ClickHouse) and is caught; an ordinary column
+                # picker infers the sample's own scalar type and still builds.
+                parseable_sql = self._sql_with_input_samples(resolved_sql)
+                if parseable_sql is not None:
+                    dtype = self._infer_expression_type(parseable_sql)
+            diagnostic = check_positional_axis_plottability(
+                insight_name=self.insight_name,
+                prop_path=prop_path,
+                sqlglot_dtype=dtype,
+                # Always the AUTHORED-shape SQL, never the sample-substituted
+                # one: the message must name the user's own expression.
+                resolved_sql=resolved_sql,
+                dialect=sqlglot_dialect,
+            )
+            if diagnostic is not None:
+                raise PositionalAxisTypeError(diagnostic)
+
+    def _sql_with_input_samples(self, resolved_sql: str) -> Optional[str]:
+        """``resolved_sql`` with every ``${input.accessor}`` replaced by a
+        parseable sample value, or ``None`` when it carries no placeholder or
+        the substitution cannot be made.
+
+        Substitution is applied ONLY here, never inside
+        ``_infer_expression_type`` itself: a sample value has the sample's
+        type, not the runtime column's, so letting it leak into the slice-class
+        check or the default-ordering decision would change two unrelated
+        behaviours on a guess. The plottability gate is insensitive to that —
+        every sample value is a plottable scalar — so it can safely use it.
+        """
+        try:
+            substituted, replacements = replace_input_placeholders_for_parsing(
+                resolved_sql, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+            )
+        except Exception:
+            # Undefined input / bad accessor: a different validator's error to
+            # raise. Fail open here rather than mask it.
+            return None
+        if not replacements or substituted == resolved_sql:
+            return None
+        return substituted
+
+    def _type_inference_schema(self):
+        """``(mapping, MappingSchema)`` over every dependent model's columns,
+        built at most ONCE per builder.
+
+        Both inputs — ``self.models`` and ``self.native_dialect`` — are fixed
+        for the builder's lifetime, so the schema is invariant. Before WB9 the
+        only caller of ``_infer_expression_type`` was the slice check, which
+        returns early when no prop carries a slice (the overwhelming majority
+        of insights), so rebuilding per call cost nothing. The positional-axis
+        gate now calls it once per bound coordinate on EVERY build, and
+        ``MappingSchema`` construction is measurable on a wide model — so
+        memoize it rather than pay it per prop.
+
+        Returns ``None`` when no dependent model has a loadable schema.
+        """
+        cached = getattr(self, "_type_inference_schema_cache", _UNSET)
+        if cached is not _UNSET:
+            return cached
+
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+        from sqlglot.schema import MappingSchema
+
+        sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
+
+        # Aggregate the schemas of every model the insight depends on
+        # into a single MappingSchema keyed by model_hash.
+        mapping = {}
+        for model in self.models:
+            schema = self.field_resolver._load_model_schema(model.name)
+            if not schema:
+                continue
+            model_hash = model.name_hash()
+            # On Snowflake the resolver uppercases the table-ref key;
+            # mirror that here so qualify can find the columns.
+            if sqlglot_dialect == "snowflake":
+                table_ref = model_hash.upper()
+                mapping[table_ref] = {
+                    col: dtype for col, dtype in schema.get(model_hash, {}).items()
+                }
+            else:
+                mapping[model_hash] = schema.get(model_hash, {})
+
+        result = None if not mapping else (mapping, MappingSchema(schema=mapping))
+        self._type_inference_schema_cache = result
+        return result
+
     def _infer_expression_type(self, expression_sql: str) -> Optional[exp.DataType]:
         """Best-effort sqlglot type inference for a resolved expression.
 
@@ -1283,40 +1411,27 @@ class InsightQueryBuilder:
         ``annotate_types`` against the union of all referenced models'
         schemas. Returns None if any step fails — callers treat that as
         ``unknown`` and skip validation.
+
+        ``expression_sql`` may carry its own trailing ``AS "<alias>"`` (the
+        form ``resolved_query_statements`` holds); the alias is unwrapped
+        from the parsed AST rather than stripped from the text, so no
+        caller has to regex SQL apart.
         """
         try:
             from visivo.query.sqlglot_utils import get_sqlglot_dialect
             from sqlglot.optimizer.annotate_types import annotate_types
-            from sqlglot.schema import MappingSchema
 
             sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
 
-            # Aggregate the schemas of every model the insight depends on
-            # into a single MappingSchema keyed by model_hash.
-            mapping = {}
-            for model in self.models:
-                schema = self.field_resolver._load_model_schema(model.name)
-                if not schema:
-                    continue
-                model_hash = model.name_hash()
-                # On Snowflake the resolver uppercases the table-ref key;
-                # mirror that here so qualify can find the columns.
-                if sqlglot_dialect == "snowflake":
-                    table_ref = model_hash.upper()
-                    mapping[table_ref] = {
-                        col: dtype for col, dtype in schema.get(model_hash, {}).items()
-                    }
-                else:
-                    mapping[model_hash] = schema.get(model_hash, {})
-
-            if not mapping:
+            built = self._type_inference_schema()
+            if built is None:
                 return None
+            mapping, mapping_schema = built
 
-            mapping_schema = MappingSchema(schema=mapping)
             # Wrap the expression in a tiny SELECT so annotate_types has
             # somewhere to attach its inferences.
             from_table = next(iter(mapping.keys()))
-            wrapped = f'SELECT {expression_sql} AS _vtype FROM "{from_table}"'
+            wrapped = f'SELECT {expression_sql} FROM "{from_table}"'
             parsed = sqlglot.parse_one(wrapped, dialect=sqlglot_dialect)
             annotated = annotate_types(parsed, schema=mapping_schema)
             select = annotated.find(exp.Select)
@@ -1405,6 +1520,11 @@ class InsightQueryBuilder:
         # unknown SQL type) pass through.
         if props_slices:
             self._validate_prop_slice_types(props_slices)
+
+        # WB9 / S5-14: a positional axis bound to a record-shaped column
+        # (STRUCT/MAP/...) builds fine and renders nothing. Fail here, with
+        # a Diagnostic, instead of shipping a SUCCESS job and a blank chart.
+        self._validate_positional_axis_types()
 
         data = {
             "pre_query": pre_query,
