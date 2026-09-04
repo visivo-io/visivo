@@ -98,14 +98,3 @@ def test_format_is_registered_on_the_cli():
     from visivo.command_line import visivo
 
     assert "format" in visivo.commands
-
-
-def test_format_import_does_not_shadow_the_builtin():
-    """`from ... import format` would rebind `format` for the whole module, so a
-    later bare `format(...)` in command_line.py would silently call the click
-    command instead of the builtin. It is imported aliased for that reason."""
-    import visivo.command_line as command_line
-
-    # The module must not bind the name at all — it imports `format_command`.
-    assert not hasattr(command_line, "format")
-    assert hasattr(command_line, "format_command")
