@@ -25,6 +25,10 @@ import { inferColumnTypes } from '../../utils/inferColumnTypes';
 import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import { usePanelResize } from '../../hooks/usePanelResize';
 import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
+import {
+  putCachedExplorationResult,
+  invalidateExplorationResults,
+} from '../../stores/explorationResultCache';
 
 const NARROW_THRESHOLD = 600;
 
@@ -50,6 +54,14 @@ const CenterPanel = ({
   // Explore 2.0 Phase 3a (D9): opts the SQL editor into being a Library
   // column/table drop target. Default false.
   enableLibraryDrop = false,
+  // M27: the exploration this panel belongs to, threaded down from
+  // `ExplorationPane`. It is the isolation half of the result-cache key — two
+  // explorations with an identically-named chip running identical SQL are
+  // still two different documents, and neither may ever be shown the other's
+  // rows. Omitted (the default) means "not inside an exploration", which
+  // switches the session result cache off entirely rather than guessing at a
+  // scope; see `explorationResultCache.js`.
+  explorationId = null,
 }) => {
   const activeModelName = useStore((s) => s.explorerActiveModelName);
   const sourceName = useStore(selectActiveModelSourceName);
@@ -59,10 +71,16 @@ const CenterPanel = ({
   const setSql = useStore((s) => s.setActiveModelSql);
   const queryResult = useStore(selectActiveModelQueryResult);
 
-  // Show the last run's rows when a model tab opens with none, instead of an
-  // empty grid beside a parquet that already exists. Never overwrites a query
+  // Fill a tab that opened with no rows: first from THIS session's own result
+  // for exactly this query (M27 — parking an exploration tab drops results
+  // from the draft on purpose, so coming back used to mean re-running
+  // everything), then from the last build's parquet. Never overwrites a query
   // the user just ran (see the hook).
-  useModelTabPrefill(activeModelName, Boolean(queryResult));
+  useModelTabPrefill(activeModelName, Boolean(queryResult), {
+    explorationId,
+    sourceName,
+    sql,
+  });
   const queryError = useStore(selectActiveModelQueryError);
   const setModelQueryResult = useStore((s) => s.setModelQueryResult);
   const setModelQueryError = useStore((s) => s.setModelQueryError);
@@ -170,18 +188,37 @@ const CenterPanel = ({
   }, [queryResult]);
 
   const handleQueryComplete = useCallback(
-    ({ result, error, context }) => {
+    ({ result, error, context, executedSql, executedSourceName }) => {
       // Deliver to the model tab that started the run (captured by SQLEditor
       // at execute time) — the user may have switched tabs mid-flight.
       const targetModel = context || activeModelName;
       if (result) {
         setModelQueryResult(targetModel, result);
+        // Park the rows so parking this exploration tab doesn't throw them
+        // away (M27). Keyed on what was EXECUTED — `executedSql` may be a
+        // selection rather than the whole buffer, and the user may have typed
+        // on while the job ran; the live editor text would file these rows
+        // under a query that never produced them.
+        putCachedExplorationResult(
+          {
+            explorationId,
+            modelName: targetModel,
+            sourceName: executedSourceName,
+            sql: executedSql,
+          },
+          result
+        );
       }
       if (error) {
         setModelQueryError(targetModel, error);
+        // A run that failed retires whatever that chip had parked. When the
+        // same query that succeeded a minute ago now errors — a source went
+        // away, a table was dropped — its old rows are exactly the rows that
+        // must not come back on the next tab switch.
+        invalidateExplorationResults(explorationId, targetModel);
       }
     },
-    [setModelQueryResult, setModelQueryError, activeModelName]
+    [setModelQueryResult, setModelQueryError, activeModelName, explorationId]
   );
 
 

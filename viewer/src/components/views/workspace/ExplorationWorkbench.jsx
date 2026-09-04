@@ -58,7 +58,7 @@ import ExplorationQueryChips from './ExplorationQueryChips';
  * mount on the per-exploration state restore having already landed — see
  * `useExplorerWorkbenchInit`'s docstring.
  */
-const ExplorationWorkbench = () => {
+const ExplorationWorkbench = ({ explorationId = null }) => {
   useExplorerWorkbenchInit();
 
   return (
@@ -66,7 +66,16 @@ const ExplorationWorkbench = () => {
       className="flex min-h-0 flex-1 overflow-hidden bg-gray-50"
       data-testid="exploration-workbench"
     >
-      <CenterPanel modelTabBar={<ExplorationQueryChips />} enableLibraryDrop />
+      {/* `explorationId` is passed for ONE reason: it scopes M27's session
+          result cache, so parking this tab and coming back restores the rows
+          you were looking at — and so a sibling exploration with an
+          identically-named chip can never be handed them. Everything else
+          here still reads the shared `explorerStore` singleton. */}
+      <CenterPanel
+        modelTabBar={<ExplorationQueryChips />}
+        enableLibraryDrop
+        explorationId={explorationId}
+      />
     </div>
   );
 };
