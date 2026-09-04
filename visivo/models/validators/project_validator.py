@@ -14,6 +14,7 @@ from visivo.models.validators.single_source_validator import SingleSourceValidat
 from visivo.models.validators.standalone_field_refs_validator import (
     StandaloneFieldRefsValidator,
 )
+from visivo.models.validators.cross_source_validator import CrossSourceValidator
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
@@ -47,6 +48,11 @@ class ProjectValidator:
             # mistake it is rather than as a whole-project failure.
             StandaloneFieldRefsValidator(),
             SingleSourceValidator(),
+            # Last: a relation or insight that spans sources is a structural
+            # failure of the whole join, so every more local mistake that could
+            # explain it (a broken ref, a metric already spanning sources) gets
+            # to be reported first.
+            CrossSourceValidator(),
         ]
 
     def validate(self, project: "Project") -> "Project":

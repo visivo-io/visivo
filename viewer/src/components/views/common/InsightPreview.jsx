@@ -110,7 +110,14 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
         data-testid="preview-error"
       >
         <h3 className="text-lg font-medium text-red-600 mb-2">Preview Failed</h3>
-        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">
+        {/* whitespace-pre-line, because several backend errors are deliberately
+            multi-line — the cross-source refusal is a headline, one indented
+            line per model, then the closing sentence. HTML collapses those
+            newlines, so without this the whole thing renders as one run-on
+            sentence, strictly less readable than the shape the server sent.
+            text-left for the same reason: centring a per-model list scatters
+            it. Matches how ChartPreview renders its technical details. */}
+        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded whitespace-pre-line break-words text-left">
           {errorMessage}
         </p>
       </div>
