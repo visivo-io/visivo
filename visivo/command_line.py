@@ -30,7 +30,9 @@ from visivo.commands.serve import serve
 from visivo.commands.run import run
 from visivo.commands.dist import dist
 from visivo.commands.compile import compile
-from visivo.commands.format import format
+
+# Aliased: a bare `format` here would shadow the builtin for the whole module.
+from visivo.commands.format import format as format_command
 from visivo.commands.init import init
 from visivo.commands.create import create
 from visivo.commands.test import test
@@ -80,7 +82,7 @@ def visivo(env_file, profile, verbose):
 visivo.add_command(init)
 visivo.add_command(dbt)
 visivo.add_command(compile)
-visivo.add_command(format)
+visivo.add_command(format_command)
 visivo.add_command(run)
 visivo.add_command(serve)
 visivo.add_command(deploy)
