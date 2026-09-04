@@ -1,5 +1,6 @@
 import os
 import json
+import click
 from time import time
 from typing import Optional
 from sqlglot import exp
@@ -24,7 +25,11 @@ from visivo.query.sql_table_extractor import (
     extract_table_references,
     extract_schema_references,
 )
-from visivo.query.sqlglot_utils import schema_from_sql
+from visivo.query.sqlglot_utils import (
+    schema_from_sql,
+    unaliased_projection_message,
+    unaliased_projections,
+)
 from visivo.query.model_schema_inference import infer_model_columns
 from visivo.constants import DEFAULT_RUN_ID
 
@@ -55,6 +60,13 @@ def _build_and_write_schema(
     sql = sql_model.sql
 
     Logger.instance().debug(f"Building schema for model {sql_model.name}")
+
+    # Refuse to write a schema naming columns the database will not return. The
+    # run is where the author can still act; three steps later this surfaces as
+    # "Column 'x' not found" inside an insight, listing `_col_0` as the choice.
+    unaliased = unaliased_projections(sql, sqlglot_dialect)
+    if unaliased:
+        raise click.ClickException(unaliased_projection_message(sql_model.name, unaliased))
 
     # Use cached provider if available (performance optimization)
     if schema_cache is not None:
