@@ -1,5 +1,6 @@
 import * as modelsApi from '../api/models';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
+import { markTimeToValueStep, TTV_STEPS } from '../components/onboarding/timeToValue';
 
 /**
  * Model Store Slice
@@ -60,6 +61,9 @@ const createModelSlice = (set, get) => ({
       }
       // Tap for the onboarding "Build a Model" checklist row.
       recordOnboardingAction('model_saved');
+      // Step 4 of the time-to-value ladder — separate from the tap above, which
+      // no-ops until onboarding is complete, and users who skipped it count too.
+      markTimeToValueStep(TTV_STEPS.FIRST_MODEL_CREATED);
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

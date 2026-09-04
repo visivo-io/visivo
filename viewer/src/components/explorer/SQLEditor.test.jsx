@@ -2,6 +2,8 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useDroppable } from '@dnd-kit/core';
 import SQLEditor from './SQLEditor';
+import { clearEventBuffer, getEventBuffer } from '../onboarding/telemetry';
+import { clearTimeToValueLedger } from '../onboarding/timeToValue';
 
 // Mock Monaco editor — selection state is configurable per-test
 let mockSelectionIsEmpty = true;
@@ -219,6 +221,88 @@ describe('SQLEditor', () => {
     await waitFor(() => {
       expect(mockExecuteQuery).toHaveBeenCalledWith('test_source', 'SELECT 1');
     });
+  });
+
+  // Step 3 of the time-to-value ladder, against the real timeToValue module
+  // rather than a mock: the mark waits for the return, two runs make one mark,
+  // and the user's SQL never rides along.
+  const queryMarks = () => getEventBuffer().filter(e => e.event === 'first_query_run');
+
+  it('marks the time-to-value first_query_run step exactly once, with no SQL in the payload', async () => {
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    const props = {
+      initialValue: 'SELECT customer_email FROM users',
+      sourceName: 'test_source',
+    };
+    const { rerender } = render(<SQLEditor {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+
+    await waitFor(() => {
+      expect(mockExecuteQuery).toHaveBeenCalled();
+    });
+
+    // Both queries return.
+    mockQueryJobState.result = { columns: ['a'], rows: [[1]] };
+    rerender(<SQLEditor {...props} />);
+    mockQueryJobState.result = { columns: ['a'], rows: [[2]] };
+    rerender(<SQLEditor {...props} />);
+
+    expect(queryMarks()).toHaveLength(1);
+    expect(queryMarks()[0].props.step_index).toBe(3);
+    expect(JSON.stringify(queryMarks()[0].props)).not.toContain('SELECT');
+    expect(JSON.stringify(queryMarks()[0].props)).not.toContain('test_source');
+  });
+
+  it('does not mark first_query_run on submit — the contract says the query must RETURN', async () => {
+    // A query that fails on a typo or is cancelled would otherwise permanently
+    // consume the journey's one step-3 mark.
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    render(<SQLEditor initialValue="SELECT 1" sourceName="test_source" />);
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+
+    await waitFor(() => {
+      expect(mockExecuteQuery).toHaveBeenCalled();
+    });
+
+    expect(queryMarks()).toHaveLength(0);
+  });
+
+  it('a query that errors marks nothing — the clock must not start on a failure', async () => {
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    const props = { initialValue: 'SELEKT 1', sourceName: 'test_source' };
+    const { rerender } = render(<SQLEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /run/i }));
+
+    await waitFor(() => {
+      expect(mockExecuteQuery).toHaveBeenCalled();
+    });
+
+    mockQueryJobState.error = 'syntax error at or near "SELEKT"';
+    rerender(<SQLEditor {...props} />);
+
+    expect(queryMarks()).toHaveLength(0);
+  });
+
+  it('a result the user did not ask for here marks nothing', async () => {
+    // The editor is shared — the Workspace model-edit form mounts it too.
+    clearTimeToValueLedger();
+    clearEventBuffer();
+
+    const props = { initialValue: 'SELECT 1', sourceName: 'test_source' };
+    const { rerender } = render(<SQLEditor {...props} />);
+
+    mockQueryJobState.result = { columns: ['a'], rows: [[1]] };
+    rerender(<SQLEditor {...props} />);
+
+    expect(queryMarks()).toHaveLength(0);
   });
 
   it('shows Cancel button when query is running', () => {

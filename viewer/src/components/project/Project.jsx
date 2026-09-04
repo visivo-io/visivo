@@ -9,6 +9,7 @@ import { HiTemplate } from 'react-icons/hi';
 import DashboardSection from '../project/DashboardSection';
 import FilterBar from '../project/FilterBar';
 import useProjectChangeListener from '../views/workspace/useProjectChangeListener';
+import { useFirstDashboardRenderedMark } from '../onboarding/firstDashboardRendered';
 
 /**
  * Project - Container component for the new project view
@@ -80,6 +81,10 @@ function Project() {
     if (!entry) return null;
     return entry.config || entry;
   }, [dashboards, dashboardName]);
+
+  // Terminal mark of the time-to-value ladder. The Workspace canvas mounts the
+  // same hook; it is idempotent per journey, so whichever is reached first wins.
+  useFirstDashboardRenderedMark(dashboardName, activeDashboardConfig);
 
   // Both servers answer the whole-project read with the same envelope, so
   // there is one shape to read defaults out of.

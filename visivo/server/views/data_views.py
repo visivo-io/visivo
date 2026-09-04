@@ -4,6 +4,7 @@ import os
 import re
 from flask import jsonify, request, send_file, send_from_directory
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
+from visivo.telemetry import first_run
 from visivo.telemetry.config import is_telemetry_enabled
 
 
@@ -86,6 +87,18 @@ def register_data_views(app, flask_app, output_dir):
         project_defaults = getattr(flask_app._project, "defaults", None)
         if not is_telemetry_enabled(project_defaults):
             scripts = "<script>window.__VISIVO_TELEMETRY_DISABLED=true</script>" + scripts
+        else:
+            # Step 1 of the time-to-value ladder: serving this HTML is the first
+            # moment the product is in front of the user. Fires once per machine —
+            # the ledger in ~/.visivo/first_run.json is the guard, not this request.
+            first_run.mark_step(
+                first_run.STEP_FIRST_RUN_LAUNCHED, project_defaults=project_defaults
+            )
+            journey = first_run.viewer_journey_context(project_defaults=project_defaults)
+            if journey:
+                # `</` is split so no value can terminate the <script> element early.
+                journey_json = json.dumps(journey).replace("</", "<\\/")
+                scripts = f"<script>window.__VISIVO_FIRST_RUN={journey_json}</script>" + scripts
 
         html = html.replace("</head>", f"{scripts}</head>")
 

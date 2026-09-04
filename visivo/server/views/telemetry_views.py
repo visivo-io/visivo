@@ -12,6 +12,9 @@ JS bundle.
 
 The dist/cloud viewer has no Flask server; its `urls.js` entry for this
 endpoint is `null`, so the viewer-side sink is a no-op there.
+
+`/api/telemetry/first-run/step/` is the inverse: it forwards nothing and only
+records that a time-to-value mark already fired (see visivo/telemetry/first_run.py).
 """
 
 import json
@@ -19,6 +22,7 @@ import re
 
 from flask import jsonify, request
 
+from visivo.telemetry import first_run
 from visivo.telemetry.config import is_telemetry_enabled
 from visivo.telemetry.events import WorkspaceEvent
 
@@ -82,6 +86,46 @@ def register_telemetry_views(app, flask_app, output_dir):
         try:
             client = get_telemetry_client(enabled=True)
             client.track(WorkspaceEvent.create(name=name, properties=payload))
+        except Exception:
+            # Telemetry must never break the viewer — accept-and-drop.
+            pass
+
+        return "", 204
+
+    @app.route("/api/telemetry/first-run/step/", methods=["POST"])
+    def post_first_run_step():
+        """Write a time-to-value mark the viewer already emitted into the ledger.
+
+        Emits nothing. See ``first_run.record_viewer_step`` for why the ledger,
+        not ``localStorage``, is what makes "once per journey" survive a change
+        of browser origin.
+        """
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "Expected a JSON object body"}), 400
+
+        step_id = body.get("step_id")
+        if not isinstance(step_id, str) or step_id not in first_run.STEP_INDEXES:
+            return jsonify({"error": "Unknown step id"}), 400
+
+        journey_id = body.get("journey_id")
+        if journey_id is not None and not isinstance(journey_id, str):
+            return jsonify({"error": "journey_id must be a string"}), 400
+
+        at_ms = body.get("at_ms")
+        if not isinstance(at_ms, int) or isinstance(at_ms, bool):
+            at_ms = None
+
+        project = getattr(flask_app, "project", None)
+        defaults = getattr(project, "defaults", None) if project is not None else None
+
+        try:
+            first_run.record_viewer_step(
+                step_id,
+                journey_id=journey_id,
+                at_ms=at_ms,
+                project_defaults=defaults,
+            )
         except Exception:
             # Telemetry must never break the viewer — accept-and-drop.
             pass
