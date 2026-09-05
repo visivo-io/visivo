@@ -183,6 +183,33 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     assert "/api/charts/" in posted_paths
 
 
+def test_deploy_requires_a_project_name():
+    """`Project.name` is Optional (like every NamedModel) and `exclude_none=True`
+    drops it from project_json entirely when unset, so a project file with no
+    top-level `name:` parses and runs fine but crashed deploy with a bare
+    KeyError on project_json["name"] — hit in practice on a hand-authored
+    project file that never went through `visivo init` (whose template does
+    set `name:`). Fail loudly with an actionable message instead."""
+    project = ProjectFactory()
+    project_dict = json.loads(project.model_dump_json())
+    project_dict.pop("name", None)
+
+    tmp = temp_yml_file(dict=project_dict, name=PROJECT_FILE_NAME)
+    working_dir = os.path.dirname(tmp)
+    temp_file(PROFILE_FILE_NAME, "token: value", working_dir + "/.visivo")
+
+    with pytest.raises(click.ClickException) as exc:
+        deploy_phase(
+            stage="stage",
+            working_dir=working_dir,
+            user_dir=working_dir,
+            output_dir=temp_folder(),
+            host="http://host",
+        )
+
+    assert "name" in str(exc.value)
+
+
 def test_start_files_declares_purpose_and_identity(httpx_mock):
     """Core builds an artifact's object path when it signs the upload URL —
     before it has seen a byte — so anything the deploy fails to declare here is

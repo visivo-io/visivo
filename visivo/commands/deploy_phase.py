@@ -1124,6 +1124,18 @@ def deploy_phase(
     project_json = json.loads(serializer.dereference().model_dump_json(exclude_none=True))
     send_progress(f"Project Compiled in {time() - deploy_start_time:.2f} seconds", "success")
 
+    # `name` is Optional on every NamedModel (Project included), so a project
+    # file with no top-level `name:` parses fine and runs fine — but the cloud
+    # uses the name to identify which project a deploy belongs to, and
+    # `exclude_none=True` above drops the key entirely rather than sending
+    # null. Catch it here with an actionable message instead of a bare
+    # KeyError on project_json["name"] below.
+    if not project_json.get("name"):
+        raise click.ClickException(
+            "Project has no `name`. Add a top-level `name:` to your project file "
+            "before deploying — the cloud uses it to identify the project."
+        )
+
     # Prepare request payloads and headers. The monolithic ``project_json``
     # blob is no longer sent — each object is posted to its own endpoint below
     # (decomposed deploy). ``project_json`` is still computed for the project
