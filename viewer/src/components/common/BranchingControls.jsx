@@ -22,12 +22,26 @@ const btnStyle = (bg, disabled) => ({
   whiteSpace: 'nowrap',
 });
 
+const reasonStyle = {
+  color: 'rgba(255,255,255,.6)',
+  fontSize: 12,
+  maxWidth: 340,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
 /**
  * Branching entry (core/Django only). Renders an Edit and/or Branch button
  * based on the user's capabilities for the active project's stage:
  *   - can_edit   → Edit  (resolve-or-create a draft on the same stage)
  *   - can_branch → Branch (branch onto a new stage)
  * An editor on the default stage gets Branch only (edit_action === 'branch_required').
+ *
+ * `edit_reason` says why editing is closed — the role, or a linked repo whose
+ * default branch takes changes through pull requests. Shown rather than left to
+ * be inferred from a missing button; a maintainer who has always been able to
+ * edit would otherwise have nothing to read.
  *
  * Backend-agnostic: rendered purely from the `capabilities` endpoint. Both
  * servers answer it (Flask local reports can_edit + no branch; Django cloud
@@ -41,7 +55,12 @@ const BranchingControls = () => {
   const [busy, setBusy] = useState(false);
 
   if (!capabilities) return null;
-  const { can_edit: canEdit, can_branch: canBranch, is_draft: isDraft } = capabilities;
+  const {
+    can_edit: canEdit,
+    can_branch: canBranch,
+    is_draft: isDraft,
+    edit_reason: editReason,
+  } = capabilities;
   // Already on an editable draft → you're editing; publishing is the Commit
   // button, so no Edit/Branch entry here. Entry only appears on a published
   // (non-draft) view.
@@ -72,6 +91,11 @@ const BranchingControls = () => {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {!canEdit && editReason && (
+        <span title={editReason} style={reasonStyle}>
+          {editReason}
+        </span>
+      )}
       {canEdit && (
         <button onClick={onEdit} disabled={busy} title="Edit — create a draft" style={btnStyle(PRIMARY, busy)}>
           <PiPencil size={15} /> Edit

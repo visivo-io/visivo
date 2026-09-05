@@ -50,6 +50,25 @@ describe('BranchingControls', () => {
     expect(screen.getByText('Branch')).toBeInTheDocument();
   });
 
+  it('says why editing is closed instead of leaving a missing button to be read', () => {
+    mockStore({
+      capabilities: {
+        can_edit: false,
+        can_branch: true,
+        edit_action: 'branch_required',
+        edit_reason: "This project's default stage tracks 'main', which takes changes through pull requests.",
+      },
+    });
+    render(<BranchingControls />);
+    expect(screen.getByText(/tracks 'main'/)).toBeInTheDocument();
+  });
+
+  it('says nothing extra when editing is allowed', () => {
+    mockStore({ capabilities: { can_edit: true, can_branch: true, edit_reason: 'ignored' } });
+    render(<BranchingControls />);
+    expect(screen.queryByText('ignored')).not.toBeInTheDocument();
+  });
+
   it('shows both Edit and Branch for a maintainer', () => {
     mockStore();
     render(<BranchingControls />);
