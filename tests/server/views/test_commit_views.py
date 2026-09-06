@@ -384,7 +384,7 @@ class TestExplorationCommitExclusion:
         # A dirty exploration (create + draft edit + rename) sits alongside a
         # genuinely dirty model, so /changes/'s response is non-trivial and
         # this isn't just "the endpoint returns an empty list either way".
-        integration_client.post("/api/models/exploration_gap_model/", json={"sql": "select 1"})
+        integration_client.post("/api/models/exploration_gap_model/", json={"sql": "select 1 as x"})
 
         created = integration_client.post("/api/explorations/", json={"name": "Scratch"}).get_json()
         integration_client.post(

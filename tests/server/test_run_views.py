@@ -329,17 +329,17 @@ class TestDataAffectingGate:
 
     def test_model_config_change_runs(self, integration_client):
         with patch("visivo.server.views.run_views.request_run") as req:
-            integration_client.post("/api/models/m/", json={"sql": "select 1"})
+            integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
             req.reset_mock()
-            integration_client.post("/api/models/m/", json={"sql": "select 2"})
+            integration_client.post("/api/models/m/", json={"sql": "select 2 as x"})
             req.assert_called_once()
             assert req.call_args[0][1] == ["m"]
 
     def test_idempotent_save_skips_run(self, integration_client):
         with patch("visivo.server.views.run_views.request_run") as req:
-            integration_client.post("/api/models/m/", json={"sql": "select 1"})
+            integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
             req.reset_mock()
-            integration_client.post("/api/models/m/", json={"sql": "select 1"})
+            integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
             req.assert_not_called()
 
     def test_deleting_a_data_producing_resource_runs(self, integration_client):
