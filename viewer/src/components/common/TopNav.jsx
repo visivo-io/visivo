@@ -478,6 +478,11 @@ const TopNav = ({
   // cloud-only: Edit/Branch entry node, rendered in the action cluster at
   // project depth. Absent locally ⇒ nothing extra renders.
   branchControls = null,
+  // cloud-only: replaces the built-in Commit/Deploy button outright. Core folds
+  // Commit together with Discard into one split control, which it can only do
+  // if it owns the whole node — the dirty-state choice below cannot express
+  // "one button with a menu hanging off it".
+  renderAction,
   // Deploy is only meaningful where deploy exists (local CLI). Cloud has no
   // deploy yet, so it passes showDeploy=false to hide the button entirely.
   showDeploy = true,
@@ -528,11 +533,16 @@ const TopNav = ({
   // Commit and Deploy are mutually exclusive by dirty state: a dirty project
   // shows Commit (changes must be committed before they can ship), and a clean
   // project shows Deploy where deploy exists (nothing to commit, ready to ship).
-  const action = hasUncommittedChanges ? (
-    <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
-  ) : showDeploy ? (
-    <DeployButton onClick={onDeployClick} compact={narrow} />
-  ) : null;
+  // `renderAction` overrides the pair; `null` is a deliberate "no action at
+  // all", which is why the check is against undefined rather than falsiness.
+  const action =
+    renderAction !== undefined ? (
+      renderAction
+    ) : hasUncommittedChanges ? (
+      <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
+    ) : showDeploy ? (
+      <DeployButton onClick={onDeployClick} compact={narrow} />
+    ) : null;
 
   const banner = inHistory && (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f6ddda', borderBottom: '1px solid #edbcb5', color: '#7e352a', padding: '0 16px', height: 38, flexShrink: 0, fontSize: 13 }}>
