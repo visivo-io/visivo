@@ -111,6 +111,31 @@ describe('TopNav', () => {
     expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
   });
 
+  it('renderAction replaces the built-in Commit/Deploy pair', () => {
+    // Core folds Commit together with Discard into one split control, which it
+    // can only do by owning the whole node.
+    renderNav({
+      hasUncommittedChanges: true,
+      renderAction: <button>Commit and more</button>,
+    });
+    expect(screen.getByRole('button', { name: 'Commit and more' })).toBeInTheDocument();
+    expect(screen.queryByTitle('Commit changes')).not.toBeInTheDocument();
+  });
+
+  it('renderAction also replaces Deploy on a clean project', () => {
+    renderNav({ hasUncommittedChanges: false, renderAction: <button>Mine</button> });
+    expect(screen.getByRole('button', { name: 'Mine' })).toBeInTheDocument();
+    expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
+  });
+
+  it('renderAction={null} means no action at all, not "fall back"', () => {
+    // Hence the undefined check: null is a deliberate choice, and treating it
+    // as absent would put Commit back on a host that asked for nothing.
+    renderNav({ hasUncommittedChanges: true, renderAction: null });
+    expect(screen.queryByTitle('Commit changes')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
+  });
+
   it('badges the Commit button with the pending-change count', () => {
     renderNav({ hasUncommittedChanges: true, commitCount: 3 });
     expect(screen.getByTitle('Commit changes')).toHaveTextContent(/Commit\s*3/);
