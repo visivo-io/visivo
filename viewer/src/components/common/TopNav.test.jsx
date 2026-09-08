@@ -214,6 +214,72 @@ describe('TopNav', () => {
     expect(def.compareDocumentPosition(starred) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  describe('stages holding the same project', () => {
+    // These were reachable only by typing into the search box, so the one
+    // switch someone actually wants — "show me this project over there" — was
+    // the one the menu did not offer.
+    const stages = [
+      { id: 'local', name: 'Local', isDefault: true },
+      { id: 'new-stage', name: 'new-stage', hasProject: true },
+      { id: 'other', name: 'other' },
+    ];
+    const openStageMenu = () => {
+      renderNav({
+        stages,
+        currentStage: stages[0],
+        projects: [{ id: 'p', name: 'p' }],
+        currentProject: { id: 'p', name: 'p' },
+      });
+      fireEvent.click(screen.getByText('Local'));
+    };
+
+    it('lists them under their own heading', () => {
+      openStageMenu();
+
+      expect(screen.getByText('THIS PROJECT')).toBeInTheDocument();
+      expect(screen.getByText('new-stage')).toBeInTheDocument();
+    });
+
+    it('leaves stages without the project to the search box', () => {
+      openStageMenu();
+
+      expect(screen.queryByText('other')).not.toBeInTheDocument();
+    });
+
+    it('comes after DEFAULT, which is still where you are', () => {
+      openStageMenu();
+
+      const def = screen.getByText('DEFAULT');
+      const section = screen.getByText('THIS PROJECT');
+      // eslint-disable-next-line no-bitwise
+      expect(def.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('does not repeat a stage already shown as default or starred', () => {
+      renderNav({
+        stages: [{ id: 'local', name: 'Local', isDefault: true, hasProject: true }],
+        currentStage: { id: 'local', name: 'Local' },
+        projects: [{ id: 'p', name: 'p' }],
+        currentProject: { id: 'p', name: 'p' },
+      });
+      fireEvent.click(screen.getByText('Local'));
+
+      expect(screen.queryByText('THIS PROJECT')).not.toBeInTheDocument();
+    });
+
+    it('renders nothing extra when the host sets no flag', () => {
+      renderNav({
+        stages: [{ id: 'local', name: 'Local', isDefault: true }, { id: 'other', name: 'other' }],
+        currentStage: { id: 'local', name: 'Local' },
+        projects: [{ id: 'p', name: 'p' }],
+        currentProject: { id: 'p', name: 'p' },
+      });
+      fireEvent.click(screen.getByText('Local'));
+
+      expect(screen.queryByText('THIS PROJECT')).not.toBeInTheDocument();
+    });
+  });
+
   describe('user menu (cloud)', () => {
     // The avatar trigger shows the user's initial; click it to open the menu.
     const openMenu = props => {
