@@ -109,6 +109,12 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
   const [q, setQ] = React.useState('');
   const starred = stages.filter(s => s.starred);
   const def = stages.filter(s => s.isDefault);
+  // Stages the project you are looking at also lives on. Without a section of
+  // their own they were reachable only by typing into the search box, so the
+  // one switch someone actually wants — "show me this project over there" —
+  // was the one the menu did not offer. The host sets `hasProject`; absent it,
+  // nothing extra renders.
+  const withProject = stages.filter(s => s.hasProject && !s.isDefault && !s.starred);
   const results = q
     ? stages.filter(s => `${s.name} ${s.kind || ''} ${s.desc || ''}`.toLowerCase().includes(q.toLowerCase()))
     : null;
@@ -128,6 +134,8 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
           {def.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
           {starred.length > 0 && <MenuLabel>STARRED</MenuLabel>}
           {starred.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
+          {withProject.length > 0 && <MenuLabel>THIS PROJECT</MenuLabel>}
+          {withProject.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
         </div>
       )}
       <div style={{ padding: q ? '10px 12px 6px' : '8px 12px 10px', borderTop: q ? 'none' : '1px solid #f3f4f6' }}>
