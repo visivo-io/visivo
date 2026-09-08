@@ -183,9 +183,7 @@ def test_a_rename_the_file_never_heard_of_changes_nothing():
     have moved on. Writing the object in anyway would append a duplicate; doing
     nothing leaves the file exactly as the author has it."""
     path = _project_file()
-    writer = ProjectWriter(
-        _renamed(path, old_name="never_written", config={"name": "sales"})
-    )
+    writer = ProjectWriter(_renamed(path, old_name="never_written", config={"name": "sales"}))
 
     writer.update_file_contents()
 
@@ -199,9 +197,7 @@ def test_every_status_the_map_can_carry_is_handled(status):
     silently skipped. This is the guard on that: core's vocabulary and the
     writer's have to stay the same set."""
     path = _project_file()
-    children = _renamed(
-        path, old_name="orders", config={"name": "sales", "sql": "select 1"}
-    )
+    children = _renamed(path, old_name="orders", config={"name": "sales", "sql": "select 1"})
     children["sales"]["status"] = status
 
     ProjectWriter(children).update_file_contents()  # must not raise
