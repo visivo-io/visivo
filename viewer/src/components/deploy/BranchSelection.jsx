@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Loading from '../common/Loading';
 import Select from '../common/Select';
 import DeployLoader from './DeployLoader';
-import AddStageForm from './AddStageForm';
+import AddBranchForm from './AddBranchForm';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCircleInfo,
@@ -15,9 +15,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { readOnboardingState, writeOnboardingState } from '../onboarding/onboardingState';
 
-const StageSelection = ({ status }) => {
-  const [stages, setStages] = useState([]);
-  const [selectedStage, setSelectedStage] = useState('');
+const BranchSelection = ({ status }) => {
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [loading, setLoading] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [deployingMsg, setDeployingMsg] = useState('Deploying...');
@@ -27,22 +27,22 @@ const StageSelection = ({ status }) => {
   const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
-    if (status !== 'stage') return;
+    if (status !== 'branch') return;
 
-    const fetchStages = async () => {
+    const fetchBranches = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/cloud/stages/');
+        const res = await fetch('/api/cloud/branches/');
         const data = await res.json();
-        setStages(data.stages || []);
+        setBranches(data.branches || []);
       } catch (err) {
-        setStages([]);
+        setBranches([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStages();
+    fetchBranches();
   }, [status]);
 
   const resetDeploymentState = () => {
@@ -96,14 +96,14 @@ const StageSelection = ({ status }) => {
 
   const handleDeploy = async () => {
     resetDeploymentState();
-    if (!selectedStage) return;
+    if (!selectedBranch) return;
 
     setDeploying(true);
     try {
       const res = await fetch('/api/cloud/deploy/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: selectedStage }),
+        body: JSON.stringify({ name: selectedBranch }),
       });
 
       const data = await res.json();
@@ -119,7 +119,7 @@ const StageSelection = ({ status }) => {
     }
   };
 
-  if (loading) return <DeployLoader message="Loading Stages..." />;
+  if (loading) return <DeployLoader message="Loading Branches..." />;
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -136,11 +136,11 @@ const StageSelection = ({ status }) => {
           />
         </div>
         <h3 className="text-xl font-semibold text-gray-900">
-          {deploymentSuccess ? 'Deployment Successful!' : 'Select Deployment Stage'}
+          {deploymentSuccess ? 'Deployment Successful!' : 'Select Deployment Branch'}
         </h3>
         <p className="text-gray-600">
           {deploymentSuccess
-            ? `Your project has been successfully deployed to ${selectedStage}`
+            ? `Your project has been successfully deployed to ${selectedBranch}`
             : 'Choose the environment where you want to deploy your project'}
         </p>
       </div>
@@ -157,7 +157,7 @@ const StageSelection = ({ status }) => {
               <div className="text-sm flex-1">
                 <p className="font-medium text-green-800">Deployment Complete</p>
                 <p className="text-green-600 mt-1">
-                  Your application is now live on {selectedStage} environment.
+                  Your application is now live on {selectedBranch} environment.
                 </p>
               </div>
             </div>
@@ -186,23 +186,23 @@ const StageSelection = ({ status }) => {
       ) : (
         // Deployment Form
         <div className="space-y-4">
-          {/* Stage Selector */}
+          {/* Branch Selector */}
           <div>
-            <label htmlFor="stage-select" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="branch-select" className="block text-sm font-medium text-gray-700 mb-2">
               Deployment Environment
             </label>
             <Select
-              id="stage-select"
-              data-testid="stage-select"
-              placeholder="Select a stage..."
-              value={selectedStage}
-              options={stages.map(stage => ({ value: stage.name, label: stage.name }))}
-              onChange={value => setSelectedStage(value || '')}
+              id="branch-select"
+              data-testid="branch-select"
+              placeholder="Select a branch..."
+              value={selectedBranch}
+              options={branches.map(branch => ({ value: branch.name, label: branch.name }))}
+              onChange={value => setSelectedBranch(value || '')}
               disabled={deploying}
             />
           </div>
 
-          {/* Add Stage Button */}
+          {/* Add Branch Button */}
           {!showAddForm && (
             <button
               disabled={deploying}
@@ -210,21 +210,21 @@ const StageSelection = ({ status }) => {
               className="cursor-pointer w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-md text-gray-600 hover:border-[#713B57] hover:text-[#713B57] transition-colors flex items-center justify-center"
             >
               <FontAwesomeIcon icon={faPlus} className="w-4 h-4 mr-2" />
-              Add New Stage
+              Add New Branch
             </button>
           )}
 
           {showAddForm && (
-            <AddStageForm
-              stages={stages}
-              setStages={setStages}
-              setSelectedStage={setSelectedStage}
+            <AddBranchForm
+              branches={branches}
+              setBranches={setBranches}
+              setSelectedBranch={setSelectedBranch}
               onClose={() => setShowAddForm(false)}
             />
           )}
 
           {/* Info Box */}
-          {selectedStage && !deploying && (
+          {selectedBranch && !deploying && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <div className="flex items-start">
                 <FontAwesomeIcon
@@ -232,9 +232,9 @@ const StageSelection = ({ status }) => {
                   className="w-5 h-5 text-blue-400 mt-0.5 mr-2"
                 />
                 <div className="text-sm">
-                  <p className="font-medium text-blue-800">Ready to deploy to {selectedStage}</p>
+                  <p className="font-medium text-blue-800">Ready to deploy to {selectedBranch}</p>
                   <p className="text-blue-600 mt-1">
-                    Make sure your code is ready for the {selectedStage} environment.
+                    Make sure your code is ready for the {selectedBranch} environment.
                   </p>
                 </div>
               </div>
@@ -260,9 +260,9 @@ const StageSelection = ({ status }) => {
           {/* Deploy Button */}
           <button
             onClick={handleDeploy}
-            disabled={!selectedStage || deploying}
+            disabled={!selectedBranch || deploying}
             className={`w-full py-3 px-4 rounded-md font-medium transition-colors ${
-              !selectedStage || deploying
+              !selectedBranch || deploying
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-[#713B57] hover:bg-[#5A2F46] hover:scale-101 text-white shadow-lg cursor-pointer'
             }`}
@@ -275,25 +275,25 @@ const StageSelection = ({ status }) => {
             ) : (
               <div className="flex items-center justify-center">
                 <FontAwesomeIcon icon={faCloudArrowUp} className="w-5 h-5 mr-2" />
-                Deploy to {selectedStage || 'Stage'}
+                Deploy to {selectedBranch || 'Branch'}
               </div>
             )}
           </button>
         </div>
       )}
 
-      {/* No Stages Warning */}
-      {stages.length === 0 && !loading && !deploymentSuccess && (
+      {/* No Branches Warning */}
+      {branches.length === 0 && !loading && !deploymentSuccess && (
         <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           <FontAwesomeIcon
             icon={faTriangleExclamation}
             className="w-8 h-8 text-yellow-400 mx-auto mb-2"
           />
-          <p className="text-sm font-medium text-yellow-800">No stages available</p>
+          <p className="text-sm font-medium text-yellow-800">No branches available</p>
         </div>
       )}
     </div>
   );
 };
 
-export default StageSelection;
+export default BranchSelection;

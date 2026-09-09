@@ -39,7 +39,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   const [insights, setInsights] = useState([]);
   const [layoutValues, setLayoutValues] = useState({});
 
-  // VIS-1224: "New blank insight" (the Add Insight menu) stages a blank
+  // VIS-1224: "New blank insight" (the Add Insight menu) branches a blank
   // EMBEDDED insight on the chart; staged entries merge into the save and count
   // toward dirty. (The chart no longer edits insight props inline — that's the
   // insight's own edit panel.)
@@ -248,7 +248,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   };
 
   // Insight management (VIS-1224: add via the AddInsightMenu dropdown — pick an
-  // existing project insight, or stage a New blank embedded insight).
+  // existing project insight, or branch a New blank embedded insight).
   const addExistingInsight = insightName => {
     if (!insightName || insights.includes(insightName)) return;
     setInsights([...insights, insightName]);

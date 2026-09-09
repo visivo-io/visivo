@@ -127,7 +127,7 @@ describe('ChartEditForm — ref insight pills', () => {
     expect(screen.getByTestId('ref-insight-row-1')).toBeInTheDocument();
   });
 
-  test('the Add Insight menu "New blank insight" stages a blank embedded insight', async () => {
+  test('the Add Insight menu "New blank insight" branches a blank embedded insight', async () => {
     await renderForm();
     expect(screen.queryByTestId('staged-insight-row-0')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('chart-add-insight'));

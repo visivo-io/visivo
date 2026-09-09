@@ -19,7 +19,7 @@ const HAIR = 'rgba(255,255,255,.14)';
 const SUCCESS = '#16a34a';
 const PRIMARY = '#713B57';
 
-// visivo serve has no real stages — it is always the single "Local" stage.
+// visivo serve has no real branches — it is always the single "Local" branch.
 const LOCAL_STAGE = {
   id: 'local',
   name: 'Local',
@@ -73,7 +73,7 @@ function Row({ children, active, onClick, style }) {
   );
 }
 
-const StageDot = ({ color, size = 9 }) => (
+const BranchDot = ({ color, size = 9 }) => (
   <span style={{ width: size, height: size, borderRadius: 99, background: color, flexShrink: 0, display: 'inline-block' }} />
 );
 
@@ -84,10 +84,10 @@ const MenuLabel = ({ children }) => (
 );
 
 /* -------------------------------------------------- STAGE dropdown (cloud) */
-function StageRow({ s, active, onPick }) {
+function BranchRow({ s, active, onPick }) {
   return (
     <Row active={active} onClick={onPick} style={{ borderRadius: 6 }}>
-      <StageDot color={s.color} />
+      <BranchDot color={s.color} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontWeight: 600 }}>{s.name}</span>
@@ -105,18 +105,18 @@ function StageRow({ s, active, onPick }) {
   );
 }
 
-function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
+function BranchMenu({ branches, currentBranch, onPick, onAllBranches, close }) {
   const [q, setQ] = React.useState('');
-  const starred = stages.filter(s => s.starred);
-  const def = stages.filter(s => s.isDefault);
-  // Stages the project you are looking at also lives on. Without a section of
+  const starred = branches.filter(s => s.starred);
+  const def = branches.filter(s => s.isDefault);
+  // Branches the project you are looking at also lives on. Without a section of
   // their own they were reachable only by typing into the search box, so the
   // one switch someone actually wants — "show me this project over there" —
   // was the one the menu did not offer. The host sets `hasProject`; absent it,
   // nothing extra renders.
-  const withProject = stages.filter(s => s.hasProject && !s.isDefault && !s.starred);
+  const withProject = branches.filter(s => s.hasProject && !s.isDefault && !s.starred);
   const results = q
-    ? stages.filter(s => `${s.name} ${s.kind || ''} ${s.desc || ''}`.toLowerCase().includes(q.toLowerCase()))
+    ? branches.filter(s => `${s.name} ${s.kind || ''} ${s.desc || ''}`.toLowerCase().includes(q.toLowerCase()))
     : null;
   const pick = s => () => {
     onPick(s);
@@ -125,17 +125,17 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
   return (
     <div>
       <div style={{ padding: '11px 13px 9px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6' }}>
-        <span style={{ fontSize: 13.5, fontWeight: 600, color: '#111827' }}>Switch stage</span>
-        <span style={{ fontSize: 11.5, color: '#9ca3af' }}>{stages.length} stage{stages.length === 1 ? '' : 's'}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: '#111827' }}>Switch branch</span>
+        <span style={{ fontSize: 11.5, color: '#9ca3af' }}>{branches.length} branch{branches.length === 1 ? '' : 'es'}</span>
       </div>
       {!q && (
         <div style={{ padding: '4px 6px 2px' }}>
           {def.length > 0 && <MenuLabel>DEFAULT</MenuLabel>}
-          {def.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
+          {def.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)}
           {starred.length > 0 && <MenuLabel>STARRED</MenuLabel>}
-          {starred.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
+          {starred.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)}
           {withProject.length > 0 && <MenuLabel>THIS PROJECT</MenuLabel>}
-          {withProject.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
+          {withProject.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)}
         </div>
       )}
       <div style={{ padding: q ? '10px 12px 6px' : '8px 12px 10px', borderTop: q ? 'none' : '1px solid #f3f4f6' }}>
@@ -145,7 +145,7 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
             autoFocus
             value={q}
             onChange={e => setQ(e.target.value)}
-            placeholder="Find a stage…"
+            placeholder="Find a branch…"
             style={{ border: 'none', outline: 'none', fontSize: 13, width: '100%', color: '#111827', background: 'transparent' }}
           />
           {q && <FiX size={14} color="#9ca3af" style={{ cursor: 'pointer' }} onClick={() => setQ('')} />}
@@ -154,19 +154,19 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
       {q && (
         <div style={{ maxHeight: 232, overflowY: 'auto', padding: '0 6px 6px' }}>
           {results.length
-            ? results.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)
-            : <div style={{ padding: 12, fontSize: 12.5, color: '#9ca3af' }}>No stage matches “{q}”.</div>}
+            ? results.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)
+            : <div style={{ padding: 12, fontSize: 12.5, color: '#9ca3af' }}>No branch matches “{q}”.</div>}
         </div>
       )}
-      {onAllStages && (
+      {onAllBranches && (
         <div
           onClick={() => {
-            onAllStages();
+            onAllBranches();
             close();
           }}
           style={{ borderTop: '1px solid #f3f4f6', padding: '10px 13px', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', fontSize: 12.5, color: '#5a2f45', fontWeight: 500 }}
         >
-          <FiLayers size={15} /> View all stages
+          <FiLayers size={15} /> View all branches
           <FiArrowRight size={13} style={{ marginLeft: 'auto' }} />
         </div>
       )}
@@ -219,33 +219,33 @@ function VersionMenu({ versions, currentVersion, onPick, close }) {
   );
 }
 
-/* --------------------------------- the capsule: stage + project segments */
-function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, currentProject, onProjectChange, narrow, showProject }) {
-  // Defensive: the bar only mounts the capsule when a stage exists, but never
+/* --------------------------------- the capsule: branch + project segments */
+function Capsule({ branches, currentBranch, onBranchChange, onAllBranches, projects, currentProject, onProjectChange, narrow, showProject }) {
+  // Defensive: the bar only mounts the capsule when a branch exists, but never
   // crash if rendered without one (account bar / a stale vendored copy).
-  if (!currentStage) return null;
-  // The stage segment opens a menu to switch stages or jump to "All stages";
-  // with a single stage and no onAllStages (local) it's a plain label.
-  const stageOpens = stages.length > 1 || Boolean(onAllStages);
+  if (!currentBranch) return null;
+  // The branch segment opens a menu to switch branches or jump to "All branches";
+  // with a single branch and no onAllBranches (local) it's a plain label.
+  const branchOpens = branches.length > 1 || Boolean(onAllBranches);
   const multiProject = projects.length > 1;
-  const stageBtn = (
+  const branchBtn = (
     <button
       // ux-audit.md "Top-left 'Project' pill appears to do nothing" (the
-      // same finding covers this Stage segment — clicking either non-
+      // same finding covers this Branch segment — clicking either non-
       // interactive pill gave no feedback at all): a plain-label pill (no
       // dropdown to open) now explains itself on hover instead of looking
       // like a dead button.
-      title={stageOpens ? undefined : `${currentStage.name} — the only environment available here`}
+      title={branchOpens ? undefined : `${currentBranch.name} — the only environment available here`}
       style={{
-        display: 'flex', alignItems: 'center', gap: 7, background: currentStage.color, color: '#fff',
-        border: 'none', cursor: stageOpens ? 'pointer' : 'default', padding: '7px 12px', fontSize: 12.5,
+        display: 'flex', alignItems: 'center', gap: 7, background: currentBranch.color, color: '#fff',
+        border: 'none', cursor: branchOpens ? 'pointer' : 'default', padding: '7px 12px', fontSize: 12.5,
         fontWeight: 700, whiteSpace: 'nowrap', borderTopLeftRadius: 99, borderBottomLeftRadius: 99,
         ...(showProject ? {} : { borderTopRightRadius: 99, borderBottomRightRadius: 99 }),
       }}
     >
       <span style={{ width: 7, height: 7, borderRadius: 99, background: 'rgba(255,255,255,.92)' }} />
-      {currentStage.name}
-      {stageOpens && <FiChevronDown size={13} />}
+      {currentBranch.name}
+      {branchOpens && <FiChevronDown size={13} />}
     </button>
   );
   const projectBtn = (
@@ -269,11 +269,11 @@ function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, c
   );
   return (
     <div style={{ display: 'inline-flex', alignItems: 'stretch', borderRadius: 99, border: `1px solid ${HAIR}`, maxWidth: narrow ? 210 : 'none' }}>
-      {stageOpens ? (
-        <Dropdown align="left" width={314} panelStyle={{ marginTop: 2 }} trigger={stageBtn}>
-          {close => <StageMenu stages={stages} currentStage={currentStage} onPick={onStageChange} onAllStages={onAllStages} close={close} />}
+      {branchOpens ? (
+        <Dropdown align="left" width={314} panelStyle={{ marginTop: 2 }} trigger={branchBtn}>
+          {close => <BranchMenu branches={branches} currentBranch={currentBranch} onPick={onBranchChange} onAllBranches={onAllBranches} close={close} />}
         </Dropdown>
-      ) : stageBtn}
+      ) : branchBtn}
       {showProject &&
         (multiProject ? (
           <Dropdown align="left" width={272} panelStyle={{ marginTop: 2 }} trigger={projectBtn}>
@@ -465,10 +465,10 @@ const TopNav = ({
   // intra-project tools (default = local viewer's four)
   tools = DEFAULT_TOOLS,
   activeTool,
-  // location switchers (cloud passes real lists; local gets a single Local stage)
-  stages = [LOCAL_STAGE],
-  currentStage,
-  onStageChange = () => {},
+  // location switchers (cloud passes real lists; local gets a single Local branch)
+  branches = [LOCAL_STAGE],
+  currentBranch,
+  onBranchChange = () => {},
   projects,
   currentProject,
   onProjectChange = () => {},
@@ -500,16 +500,16 @@ const TopNav = ({
   // cloud: items shown above "Sign out" in the user menu ({label, icon, onClick}).
   // The host app (core) supplies these so the shared viewer carries no app routes.
   userMenuItems,
-  // cloud unifiers: a custom logo node (the account menu) and an "All stages"
-  // link in the stage dropdown. Absent locally → plain logo, no all-stages.
+  // cloud unifiers: a custom logo node (the account menu) and an "All branches"
+  // link in the branch dropdown. Absent locally → plain logo, no all-branches.
   renderLogo,
-  onAllStages,
+  onAllBranches,
 }) => {
   const location = useLocation();
   const theme = useTheme();
   const narrow = useMediaQuery(theme.breakpoints.down('md'));
 
-  const resolvedStage = currentStage || stages[0];
+  const resolvedBranch = currentBranch || branches[0];
   const resolvedProjects = projects && projects.length ? projects : currentProject ? [currentProject] : [{ id: 'project', name: 'Project' }];
   const resolvedProject = currentProject || resolvedProjects[0];
   // Active tool: explicit prop wins; otherwise match the current route's tail
@@ -527,13 +527,13 @@ const TopNav = ({
     ) || {}).id;
 
   // Bar variant by depth — one component, three shapes. Project depth is
-  // signalled by having tools (account/stage bars pass tools=[]; local + cloud
-  // project bars have the four). A stage is present at stage + project depth.
-  //   account (no stage, no tools) → logo + user
-  //   stage   (stage, no tools)    → + stage pill
-  //   project (stage + tools)      → + project segment, tools, version, commit/deploy
+  // signalled by having tools (account/branch bars pass tools=[]; local + cloud
+  // project bars have the four). A branch is present at branch + project depth.
+  //   account (no branch, no tools) → logo + user
+  //   branch   (branch, no tools)    → + branch pill
+  //   project (branch + tools)      → + project segment, tools, version, commit/deploy
   const showProject = tools.length > 0;
-  const showCapsule = Boolean(resolvedStage);
+  const showCapsule = Boolean(resolvedBranch);
 
   const showVersions = showProject && Array.isArray(versions) && versions.length > 0 && currentVersion;
   const inHistory = showVersions && !currentVersion.live;
@@ -567,10 +567,10 @@ const TopNav = ({
 
   const capsule = (
     <Capsule
-      stages={stages}
-      currentStage={resolvedStage}
-      onStageChange={onStageChange}
-      onAllStages={onAllStages}
+      branches={branches}
+      currentBranch={resolvedBranch}
+      onBranchChange={onBranchChange}
+      onAllBranches={onAllBranches}
       projects={resolvedProjects}
       currentProject={resolvedProject}
       onProjectChange={onProjectChange}

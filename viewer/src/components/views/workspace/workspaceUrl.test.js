@@ -5,7 +5,7 @@
  * `higherLevelViews.js`) or a document TAB.
  *
  * Pins both the default root mount (`/workspace`, Studio) and a host prefix
- * mount (`/:account/:stage/:project/workspace`, the cloud app) so tab
+ * mount (`/:account/:branch/:project/workspace`, the cloud app) so tab
  * navigation stays inside whatever prefix the viewer is mounted under.
  */
 import {

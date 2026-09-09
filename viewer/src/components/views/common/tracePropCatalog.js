@@ -105,7 +105,7 @@ export const tracePropCatalog = {
   ],
 
   funnel: [
-    { path: 'y', label: 'Y Values', tier: 'A', description: 'Sets the y coordinates (stage labels)', keywords: ['y', 'labels', 'stages'], enumValues: null, example: ['Step 1', 'Step 2', 'Step 3'] },
+    { path: 'y', label: 'Y Values', tier: 'A', description: 'Sets the y coordinates (branch labels)', keywords: ['y', 'labels', 'branches'], enumValues: null, example: ['Step 1', 'Step 2', 'Step 3'] },
     { path: 'x', label: 'X Values', tier: 'A', description: 'Sets the x coordinates (quantity values)', keywords: ['x', 'values', 'quantity'], enumValues: null, example: [100, 80, 60] },
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name', keywords: ['name', 'legend'], enumValues: null, example: 'Funnel' },
     { path: 'marker.color', label: 'Bar Color', tier: 'B', description: 'Sets the funnel bar color', keywords: ['color', 'bar', 'fill'], enumValues: null, example: '#636efa' },
