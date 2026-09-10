@@ -17,3 +17,19 @@ def test_DuckdbSource_missing_data():
 
     assert error["msg"] == "Field required"
     assert error["type"] == "missing"
+
+
+def test_DuckdbSource_memory_database_ignores_read_only():
+    """DuckDB rejects read_only=True on ':memory:' outright ("Cannot launch
+    in-memory database in read-only mode!"), but every schema/query path
+    defaults to read_only=True — so a ':memory:' primary (the shape used to
+    host an `attach:`ed source) could never connect at all."""
+    source = DuckdbSource(name="source", database=":memory:", type="duckdb")
+
+    connection = source.get_connection(read_only=True)
+    try:
+        # An in-memory database has nothing on disk for "read-only" to
+        # protect — prove the connection is actually writable.
+        connection.execute("CREATE TABLE t (x INTEGER)")
+    finally:
+        connection.close()

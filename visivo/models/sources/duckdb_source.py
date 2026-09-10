@@ -83,6 +83,15 @@ class DuckdbSource(ServerSource, BaseDuckdbSource):
             if working_dir:
                 database_path = str(working_dir / Path(self.database))
 
+            # An in-memory database is never persisted, so read-only has
+            # nothing to protect — and DuckDB rejects read_only=True on
+            # ":memory:" outright ("Cannot launch in-memory database in
+            # read-only mode!"). Every introspection/query path defaults to
+            # read_only=True, so a ":memory:" primary (e.g. one that exists
+            # only to host `attach:`ed sources) would otherwise never connect.
+            if database_path == ":memory:":
+                read_only = False
+
             # Ensure database file exists for write operations
             if not read_only and not os.path.exists(database_path):
                 Logger.instance().debug(
