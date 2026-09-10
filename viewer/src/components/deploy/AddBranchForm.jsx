@@ -3,28 +3,28 @@ import Loading from '../common/Loading';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 
-const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
-  const [newStageName, setNewStageName] = useState('');
+const AddBranchForm = ({ branches, setBranches, setSelectedBranch, onClose }) => {
+  const [newBranchName, setNewBranchName] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
-    setNewStageName('');
+    setNewBranchName('');
     setError('');
   };
 
-  const handleAddStage = async e => {
+  const handleAddBranch = async e => {
     e.preventDefault();
-    const trimmedName = newStageName.trim();
+    const trimmedName = newBranchName.trim();
 
     if (!trimmedName) return;
 
-    const stageExists = stages.some(
-      stage => stage.name.toLowerCase() === trimmedName.toLowerCase()
+    const branchExists = branches.some(
+      branch => branch.name.toLowerCase() === trimmedName.toLowerCase()
     );
 
-    if (stageExists) {
-      setError('A stage with this name already exists');
+    if (branchExists) {
+      setError('A branch with this name already exists');
       return;
     }
 
@@ -32,7 +32,7 @@ const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
     setError('');
 
     try {
-      const response = await fetch('/api/cloud/stages/', {
+      const response = await fetch('/api/cloud/branches/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmedName }),
@@ -40,12 +40,12 @@ const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
 
       if (!response.ok) throw new Error();
 
-      const { stage } = await response.json();
-      setStages(prev => [...prev, stage]);
-      setSelectedStage(stage.name);
+      const { branch } = await response.json();
+      setBranches(prev => [...prev, branch]);
+      setSelectedBranch(branch.name);
       resetForm();
     } catch {
-      setError('Failed to create stage. Please try again.');
+      setError('Failed to create branch. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -54,23 +54,23 @@ const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
   return (
     <div className="p-4 border border-gray-200 rounded-md bg-gray-50 space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-900">Add New Stage</h4>
+        <h4 className="text-sm font-medium text-gray-900">Add New Branch</h4>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
           <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
         </button>
       </div>
 
-      <form onSubmit={handleAddStage} className="space-y-3">
+      <form onSubmit={handleAddBranch} className="space-y-3">
         <div>
-          <label htmlFor="new-stage-name" className="block text-sm font-medium text-gray-700 mb-1">
-            Stage Name
+          <label htmlFor="new-branch-name" className="block text-sm font-medium text-gray-700 mb-1">
+            Branch Name
           </label>
           <input
-            id="new-stage-name"
+            id="new-branch-name"
             type="text"
-            value={newStageName}
+            value={newBranchName}
             onChange={e => {
-              setNewStageName(e.target.value);
+              setNewBranchName(e.target.value);
               setError('');
             }}
             placeholder="e.g., production, staging, development"
@@ -84,9 +84,9 @@ const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
         <div className="flex space-x-2">
           <button
             type="submit"
-            disabled={!newStageName.trim() || isSubmitting}
+            disabled={!newBranchName.trim() || isSubmitting}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              !newStageName.trim() || isSubmitting
+              !newBranchName.trim() || isSubmitting
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-[#713B57] hover:bg-[#5A2F46] text-white cursor-pointer'
             }`}
@@ -97,7 +97,7 @@ const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
                 <span>Creating...</span>
               </div>
             ) : (
-              'Create Stage'
+              'Create Branch'
             )}
           </button>
 
@@ -115,4 +115,4 @@ const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
   );
 };
 
-export default AddStageForm;
+export default AddBranchForm;

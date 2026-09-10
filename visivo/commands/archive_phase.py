@@ -5,7 +5,7 @@ import json
 from visivo.commands.utils import get_profile_file, get_profile_token
 
 
-def archive_phase(stage, host, user_dir):
+def archive_phase(branch, host, user_dir):
     profile_token = get_profile_token(get_profile_file(home_dir=user_dir))
 
     json_headers = {
@@ -13,7 +13,7 @@ def archive_phase(stage, host, user_dir):
         "Authorization": f"Api-Key {profile_token}",
     }
 
-    url = f"{host}/api/stages/?name={stage}"
+    url = f"{host}/api/stages/?name={branch}"
     response = requests.get(url, headers=json_headers)
     if response.status_code == 401:
         raise click.ClickException(f"Token not authorized for host: {host}")
@@ -21,7 +21,7 @@ def archive_phase(stage, host, user_dir):
         raise click.ClickException(f"404 error raised. Does your user have an account?")
 
     if len(response.json()) == 0:
-        Logger.instance().debug(f"No stages with name {stage} found")
+        Logger.instance().debug(f"No stages with name {branch} found")
         return
 
     id = response.json()[0]["id"]

@@ -1,24 +1,24 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import selectEvent from 'react-select-event';
-import StageSelection from './StageSelection';
+import BranchSelection from './BranchSelection';
 import { readOnboardingState, clearOnboardingState } from '../onboarding/onboardingState';
 
 jest.mock('../common/Loading', () => () => <div data-testid="loading-spinner" />);
 jest.mock('./DeployLoader', () => ({ message }) => (
   <div data-testid="deploy-loader">{message}</div>
 ));
-jest.mock('./AddStageForm', () => ({ onClose }) => (
-  <div data-testid="add-stage-form">
-    <button onClick={onClose}>close-add-stage</button>
+jest.mock('./AddBranchForm', () => ({ onClose }) => (
+  <div data-testid="add-branch-form">
+    <button onClick={onClose}>close-add-branch</button>
   </div>
 ));
 
 // Mock fetch
 global.fetch = jest.fn();
 
-const mockStages = {
-  stages: [
+const mockBranches = {
+  branches: [
     { id: 1, name: 'staging' },
     { id: 2, name: 'production' },
   ],
@@ -37,41 +37,41 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-it('renders loader while fetching stages', async () => {
+it('renders loader while fetching branches', async () => {
   fetch.mockImplementation(
     () => new Promise(() => {}) // keep loading
   );
 
-  render(<StageSelection status="stage" />);
-  expect(await screen.findByTestId('deploy-loader')).toHaveTextContent('Loading Stages...');
+  render(<BranchSelection status="branch" />);
+  expect(await screen.findByTestId('deploy-loader')).toHaveTextContent('Loading Branches...');
 });
 
-it('displays fetched stages in select dropdown', async () => {
+it('displays fetched branches in select dropdown', async () => {
   fetch.mockResolvedValueOnce({
-    json: async () => mockStages,
+    json: async () => mockBranches,
   });
 
-  render(<StageSelection status="stage" />);
+  render(<BranchSelection status="branch" />);
 
-  const select = await screen.findByTestId('stage-select');
+  const select = await screen.findByTestId('branch-select');
   // Options render as real DOM when the brand <Select> menu opens.
   fireEvent.mouseDown(within(select).getByRole('combobox'));
   const optionText = screen.getAllByRole('option').map(o => o.textContent);
-  mockStages.stages.forEach(stage => {
-    expect(optionText).toContain(stage.name);
+  mockBranches.branches.forEach(branch => {
+    expect(optionText).toContain(branch.name);
   });
 });
 
-it('handles stage selection and enables deploy button', async () => {
+it('handles branch selection and enables deploy button', async () => {
   fetch.mockResolvedValueOnce({
-    json: async () => mockStages,
+    json: async () => mockBranches,
   });
 
-  render(<StageSelection status="stage" />);
+  render(<BranchSelection status="branch" />);
 
-  await screen.findByTestId('stage-select');
+  await screen.findByTestId('branch-select');
   await selectEvent.select(
-    within(screen.getByTestId('stage-select')).getByRole('combobox'),
+    within(screen.getByTestId('branch-select')).getByRole('combobox'),
     'staging',
     { container: document.body }
   );
@@ -80,39 +80,39 @@ it('handles stage selection and enables deploy button', async () => {
   expect(button).not.toBeDisabled();
 });
 
-it('disables deploy button if no stage selected', async () => {
+it('disables deploy button if no branch selected', async () => {
   fetch.mockResolvedValueOnce({
-    json: async () => mockStages,
+    json: async () => mockBranches,
   });
 
-  render(<StageSelection status="stage" />);
-  const button = await screen.findByRole('button', { name: /deploy to stage/i });
+  render(<BranchSelection status="branch" />);
+  const button = await screen.findByRole('button', { name: /deploy to branch/i });
   expect(button).toBeDisabled();
 });
 
-it('shows "no stages" message if stages are empty', async () => {
+it('shows "no branches" message if branches are empty', async () => {
   fetch.mockResolvedValueOnce({
-    json: async () => ({ stages: [] }),
+    json: async () => ({ branches: [] }),
   });
 
-  render(<StageSelection status="stage" />);
-  expect(await screen.findByText(/no stages available/i)).toBeInTheDocument();
+  render(<BranchSelection status="branch" />);
+  expect(await screen.findByText(/no branches available/i)).toBeInTheDocument();
 });
 
 it('triggers deployment when clicking Deploy', async () => {
   fetch
-    .mockResolvedValueOnce({ json: async () => mockStages }) // for /stages
+    .mockResolvedValueOnce({ json: async () => mockBranches }) // for /branches
     .mockResolvedValueOnce({
       // for /deploy
       ok: true,
       json: async () => ({ deploy_id: 'abc123' }),
     });
 
-  render(<StageSelection status="stage" />);
-  await screen.findByTestId('stage-select');
-  // Pick the stage via the brand <Select> (open the portaled menu + click) before
+  render(<BranchSelection status="branch" />);
+  await screen.findByTestId('branch-select');
+  // Pick the branch via the brand <Select> (open the portaled menu + click) before
   // switching to fake timers — react-select-event's async helpers need real timers.
-  const combo = within(screen.getByTestId('stage-select')).getByRole('combobox');
+  const combo = within(screen.getByTestId('branch-select')).getByRole('combobox');
   fireEvent.mouseDown(combo);
   fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'staging'));
 
@@ -132,39 +132,39 @@ it('shows error state on fetch failure', async () => {
   const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
   fetch.mockRejectedValueOnce(new Error('API failure'));
 
-  render(<StageSelection status="stage" />);
-  expect(await screen.findByText(/no stages available/i)).toBeInTheDocument();
+  render(<BranchSelection status="branch" />);
+  expect(await screen.findByText(/no branches available/i)).toBeInTheDocument();
 
   consoleSpy.mockRestore();
 });
 
-it('does not fetch stages unless the flow is on the stage step', () => {
-  render(<StageSelection status="auth" />);
+it('does not fetch branches unless the flow is on the branch step', () => {
+  render(<BranchSelection status="auth" />);
   expect(fetch).not.toHaveBeenCalled();
 });
 
-it('toggles the Add New Stage form open and closed', async () => {
-  fetch.mockResolvedValueOnce({ json: async () => mockStages });
+it('toggles the Add New Branch form open and closed', async () => {
+  fetch.mockResolvedValueOnce({ json: async () => mockBranches });
 
-  render(<StageSelection status="stage" />);
-  await screen.findByTestId('stage-select');
+  render(<BranchSelection status="branch" />);
+  await screen.findByTestId('branch-select');
 
-  fireEvent.click(screen.getByRole('button', { name: /add new stage/i }));
-  expect(screen.getByTestId('add-stage-form')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /add new stage/i })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /add new branch/i }));
+  expect(screen.getByTestId('add-branch-form')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /add new branch/i })).not.toBeInTheDocument();
 
-  fireEvent.click(screen.getByText('close-add-stage'));
-  expect(screen.queryByTestId('add-stage-form')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /add new stage/i })).toBeInTheDocument();
+  fireEvent.click(screen.getByText('close-add-branch'));
+  expect(screen.queryByTestId('add-branch-form')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /add new branch/i })).toBeInTheDocument();
 });
 
-it('shows the readiness info box once a stage is selected', async () => {
-  fetch.mockResolvedValueOnce({ json: async () => mockStages });
+it('shows the readiness info box once a branch is selected', async () => {
+  fetch.mockResolvedValueOnce({ json: async () => mockBranches });
 
-  render(<StageSelection status="stage" />);
-  await screen.findByTestId('stage-select');
+  render(<BranchSelection status="branch" />);
+  await screen.findByTestId('branch-select');
   await selectEvent.select(
-    within(screen.getByTestId('stage-select')).getByRole('combobox'),
+    within(screen.getByTestId('branch-select')).getByRole('combobox'),
     'production',
     { container: document.body }
   );
@@ -174,12 +174,12 @@ it('shows the readiness info box once a stage is selected', async () => {
 
 // ---------------------------------------------------------------- deployment
 
-// Routes fetch by URL: stage list + deploy POST succeed; the job-status poll is
+// Routes fetch by URL: branch list + deploy POST succeed; the job-status poll is
 // delegated to the given responder so each test drives a different outcome.
 const routeFetch = statusResponder => {
   fetch.mockImplementation(url => {
-    if (url === '/api/cloud/stages/') {
-      return Promise.resolve({ json: async () => mockStages });
+    if (url === '/api/cloud/branches/') {
+      return Promise.resolve({ json: async () => mockBranches });
     }
     if (url === '/api/cloud/deploy/') {
       return Promise.resolve({ ok: true, json: async () => ({ deploy_id: 'deploy-1' }) });
@@ -194,12 +194,12 @@ const routeFetch = statusResponder => {
 const statusCallCount = () =>
   fetch.mock.calls.filter(([url]) => String(url).startsWith('/api/cloud/job/status/')).length;
 
-// Renders, waits for stages, and picks "staging" (real timers required for the
+// Renders, waits for branches, and picks "staging" (real timers required for the
 // menu interaction; individual tests switch to fake timers before deploying).
 const renderAndPickStaging = async () => {
-  render(<StageSelection status="stage" />);
-  await screen.findByTestId('stage-select');
-  const combo = within(screen.getByTestId('stage-select')).getByRole('combobox');
+  render(<BranchSelection status="branch" />);
+  await screen.findByTestId('branch-select');
+  const combo = within(screen.getByTestId('branch-select')).getByRole('combobox');
   fireEvent.mouseDown(combo);
   fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'staging'));
 };
@@ -256,7 +256,7 @@ describe('deployment polling', () => {
     expect(screen.queryByRole('link', { name: /view live preview/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /deploy again/i }));
-    expect(screen.getByText('Select Deployment Stage')).toBeInTheDocument();
+    expect(screen.getByText('Select Deployment Branch')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /deploy to staging/i })).not.toBeDisabled();
   });
 
@@ -310,8 +310,8 @@ describe('deployment polling', () => {
 
   it('recovers without polling when the deploy POST itself fails', async () => {
     fetch.mockImplementation(url => {
-      if (url === '/api/cloud/stages/') {
-        return Promise.resolve({ json: async () => mockStages });
+      if (url === '/api/cloud/branches/') {
+        return Promise.resolve({ json: async () => mockBranches });
       }
       if (url === '/api/cloud/deploy/') {
         return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
@@ -335,8 +335,8 @@ describe('deployment polling', () => {
     // returned the form to idle with no feedback.
     let failDeploy = true;
     fetch.mockImplementation(url => {
-      if (url === '/api/cloud/stages/') {
-        return Promise.resolve({ json: async () => mockStages });
+      if (url === '/api/cloud/branches/') {
+        return Promise.resolve({ json: async () => mockBranches });
       }
       if (url === '/api/cloud/deploy/') {
         return failDeploy

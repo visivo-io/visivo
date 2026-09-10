@@ -24,14 +24,14 @@ const btnStyle = (bg, disabled) => ({
 
 /**
  * Branching entry (core/Django only). Renders an Edit and/or Branch button
- * based on the user's capabilities for the active project's stage:
- *   - can_edit   → Edit  (resolve-or-create a draft on the same stage)
- *   - can_branch → Branch (branch onto a new stage)
- * An editor on the default stage gets Branch only (edit_action === 'branch_required').
+ * based on the user's capabilities for the active project's branch:
+ *   - can_edit   → Edit  (resolve-or-create a draft on the same branch)
+ *   - can_branch → Branch (branch onto a new branch)
+ * An editor on the default branch gets Branch only (edit_action === 'branch_required').
  *
  * Backend-agnostic: rendered purely from the `capabilities` endpoint. Both
  * servers answer it (Flask local reports can_edit + no branch; Django cloud
- * reports the user's stage role). Renders null until capabilities load / when
+ * reports the user's branch role). Renders null until capabilities load / when
  * the user can neither edit nor branch.
  */
 const BranchingControls = () => {
@@ -58,13 +58,13 @@ const BranchingControls = () => {
   };
 
   const onBranch = async () => {
-    // First-pass UX: prompt for the new stage name. A dedicated dialog is a
+    // First-pass UX: prompt for the new branch name. A dedicated dialog is a
     // follow-up. The project to branch is the active one (startBranch reads it).
-    const newStageName = window.prompt('Name the new branch stage:');
-    if (!newStageName) return;
+    const newBranchName = window.prompt('Name the new branch branch:');
+    if (!newBranchName) return;
     setBusy(true);
     try {
-      await startBranch({ newStageName });
+      await startBranch({ newBranchName });
     } finally {
       setBusy(false);
     }
@@ -78,7 +78,7 @@ const BranchingControls = () => {
         </button>
       )}
       {canBranch && (
-        <button onClick={onBranch} disabled={busy} title="Branch — new stage" style={btnStyle('transparent', busy)}>
+        <button onClick={onBranch} disabled={busy} title="Branch — new branch" style={btnStyle('transparent', busy)}>
           <FiGitBranch size={15} /> Branch
         </button>
       )}

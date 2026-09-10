@@ -6,8 +6,8 @@ import DeployModal from './DeployModal';
 jest.mock('./Authentication', () => ({ setStatus }) => (
   <div data-testid="authentication">Authentication Component</div>
 ));
-jest.mock('./StageSelection', () => ({ status }) => (
-  <div data-testid="stage-selection">StageSelection Component</div>
+jest.mock('./BranchSelection', () => ({ status }) => (
+  <div data-testid="branch-selection">BranchSelection Component</div>
 ));
 jest.mock('./DeployLoader', () => () => <div data-testid="deploy-loader">Loading...</div>);
 
@@ -51,7 +51,7 @@ it('renders Authentication when token is missing', async () => {
   });
 });
 
-it('renders StageSelection when token is present', async () => {
+it('renders BranchSelection when token is present', async () => {
   global.fetch = jest.fn(() =>
     Promise.resolve({
       ok: true,
@@ -64,7 +64,7 @@ it('renders StageSelection when token is present', async () => {
   expect(screen.getByTestId('deploy-loader')).toBeInTheDocument();
 
   await waitFor(() => {
-    expect(screen.getByTestId('stage-selection')).toBeInTheDocument();
+    expect(screen.getByTestId('branch-selection')).toBeInTheDocument();
   });
 });
 

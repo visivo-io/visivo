@@ -212,7 +212,7 @@ export const CHECKLIST_ITEMS = [
     route: '/editor',
     target: 'top-nav-deploy',
     weight: 60,
-    // StageSelection.jsx writes persisted.deployed_at on a successful
+    // BranchSelection.jsx writes persisted.deployed_at on a successful
     // /api/cloud/deploy/ poll response.
     predicate: ({ persisted }) => !!persisted.deployed_at,
   },

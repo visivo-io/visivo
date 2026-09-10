@@ -62,15 +62,15 @@ describe('TopNav', () => {
     expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
-  it('defaults to the single Local stage (the viewer has no real stages)', () => {
+  it('defaults to the single Local branch (the viewer has no real branches)', () => {
     renderNav();
     expect(screen.getByText('Local')).toBeInTheDocument();
   });
 
   // ux-audit.md "Top-left 'Project' pill appears to do nothing" (the same
-  // finding covers the adjacent Stage segment) — a non-opening stage pill
+  // finding covers the adjacent Branch segment) — a non-opening branch pill
   // now explains itself via a title tooltip.
-  it('a non-opening (single, no onAllStages) stage pill explains itself via a title tooltip', () => {
+  it('a non-opening (single, no onAllBranches) branch pill explains itself via a title tooltip', () => {
     renderNav();
     expect(screen.getByRole('button', { name: 'Local' })).toHaveAttribute(
       'title',
@@ -78,12 +78,12 @@ describe('TopNav', () => {
     );
   });
 
-  it('a stage pill that DOES open (multiple stages) carries no such tooltip', () => {
-    const stages = [
+  it('a branch pill that DOES open (multiple branches) carries no such tooltip', () => {
+    const branches = [
       { id: 'local', name: 'Local', color: '#6b7280', desc: 'serve', isDefault: true, flag: 'Default' },
       { id: 'prod', name: 'Prod', color: '#16a34a', desc: 'production' },
     ];
-    renderNav({ tools: [], stages, currentStage: stages[0] });
+    renderNav({ tools: [], branches, currentBranch: branches[0] });
     expect(screen.getByRole('button', { name: 'Local' })).not.toHaveAttribute('title');
   });
 
@@ -178,35 +178,35 @@ describe('TopNav', () => {
     expect(screen.getByText(/PROJECT HISTORY/i)).toBeInTheDocument();
   });
 
-  it('account variant (no tools, no stages) shows neither tools nor a capsule', () => {
-    renderNav({ tools: [], stages: [] });
+  it('account variant (no tools, no branches) shows neither tools nor a capsule', () => {
+    renderNav({ tools: [], branches: [] });
     expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
     expect(screen.queryByText('Local')).not.toBeInTheDocument();
   });
 
-  it('stage variant (a stage, no tools) shows the stage pill but no tools', () => {
-    const stages = [{ id: 'prod', name: 'Production', color: '#16a34a', isDefault: true }];
-    renderNav({ tools: [], stages, currentStage: stages[0], onAllStages: () => {} });
+  it('branch variant (a branch, no tools) shows the branch pill but no tools', () => {
+    const branches = [{ id: 'prod', name: 'Production', color: '#16a34a', isDefault: true }];
+    renderNav({ tools: [], branches, currentBranch: branches[0], onAllBranches: () => {} });
     expect(screen.getByText('Production')).toBeInTheDocument();
     expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
   });
 
-  it('stage dropdown always shows the search and lists DEFAULT before STARRED', () => {
-    const stages = [
+  it('branch dropdown always shows the search and lists DEFAULT before STARRED', () => {
+    const branches = [
       { id: 'prod', name: 'Production', color: '#16a34a', desc: 'live', starred: true },
       { id: 'local', name: 'Local', color: '#6b7280', desc: 'serve', isDefault: true, flag: 'Default' },
     ];
     renderNav({
-      stages,
-      currentStage: stages[1],
+      branches,
+      currentBranch: branches[1],
       projects: [{ id: 'p', name: 'p' }],
       currentProject: { id: 'p', name: 'p' },
     });
 
-    // Open the stage segment (shows the current stage "Local").
+    // Open the branch segment (shows the current branch "Local").
     fireEvent.click(screen.getByText('Local'));
 
-    expect(screen.getByPlaceholderText('Find a stage…')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Find a branch…')).toBeInTheDocument();
     const def = screen.getByText('DEFAULT');
     const starred = screen.getByText('STARRED');
     // DEFAULT must come before STARRED in the DOM.
@@ -214,19 +214,19 @@ describe('TopNav', () => {
     expect(def.compareDocumentPosition(starred) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  describe('stages holding the same project', () => {
+  describe('branches holding the same project', () => {
     // These were reachable only by typing into the search box, so the one
     // switch someone actually wants — "show me this project over there" — was
     // the one the menu did not offer.
-    const stages = [
+    const branches = [
       { id: 'local', name: 'Local', isDefault: true },
-      { id: 'new-stage', name: 'new-stage', hasProject: true },
+      { id: 'new-branch', name: 'new-branch', hasProject: true },
       { id: 'other', name: 'other' },
     ];
-    const openStageMenu = () => {
+    const openBranchMenu = () => {
       renderNav({
-        stages,
-        currentStage: stages[0],
+        branches,
+        currentBranch: branches[0],
         projects: [{ id: 'p', name: 'p' }],
         currentProject: { id: 'p', name: 'p' },
       });
@@ -234,20 +234,20 @@ describe('TopNav', () => {
     };
 
     it('lists them under their own heading', () => {
-      openStageMenu();
+      openBranchMenu();
 
       expect(screen.getByText('THIS PROJECT')).toBeInTheDocument();
-      expect(screen.getByText('new-stage')).toBeInTheDocument();
+      expect(screen.getByText('new-branch')).toBeInTheDocument();
     });
 
-    it('leaves stages without the project to the search box', () => {
-      openStageMenu();
+    it('leaves branches without the project to the search box', () => {
+      openBranchMenu();
 
       expect(screen.queryByText('other')).not.toBeInTheDocument();
     });
 
     it('comes after DEFAULT, which is still where you are', () => {
-      openStageMenu();
+      openBranchMenu();
 
       const def = screen.getByText('DEFAULT');
       const section = screen.getByText('THIS PROJECT');
@@ -255,10 +255,10 @@ describe('TopNav', () => {
       expect(def.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('does not repeat a stage already shown as default or starred', () => {
+    it('does not repeat a branch already shown as default or starred', () => {
       renderNav({
-        stages: [{ id: 'local', name: 'Local', isDefault: true, hasProject: true }],
-        currentStage: { id: 'local', name: 'Local' },
+        branches: [{ id: 'local', name: 'Local', isDefault: true, hasProject: true }],
+        currentBranch: { id: 'local', name: 'Local' },
         projects: [{ id: 'p', name: 'p' }],
         currentProject: { id: 'p', name: 'p' },
       });
@@ -269,8 +269,8 @@ describe('TopNav', () => {
 
     it('renders nothing extra when the host sets no flag', () => {
       renderNav({
-        stages: [{ id: 'local', name: 'Local', isDefault: true }, { id: 'other', name: 'other' }],
-        currentStage: { id: 'local', name: 'Local' },
+        branches: [{ id: 'local', name: 'Local', isDefault: true }, { id: 'other', name: 'other' }],
+        currentBranch: { id: 'local', name: 'Local' },
         projects: [{ id: 'p', name: 'p' }],
         currentProject: { id: 'p', name: 'p' },
       });
@@ -283,7 +283,7 @@ describe('TopNav', () => {
   describe('user menu (cloud)', () => {
     // The avatar trigger shows the user's initial; click it to open the menu.
     const openMenu = props => {
-      renderNav({ tools: [], stages: [], user: { name: 'Zoe', email: 'zoe@x.io' }, ...props });
+      renderNav({ tools: [], branches: [], user: { name: 'Zoe', email: 'zoe@x.io' }, ...props });
       fireEvent.click(screen.getByText('Z'));
     };
 
@@ -347,15 +347,15 @@ describe('TopNav', () => {
     });
   });
 
-  describe('stage menu interactions', () => {
-    const stages = [
+  describe('branch menu interactions', () => {
+    const branches = [
       { id: 'prod', name: 'Production', color: '#16a34a', desc: 'live', kind: 'Cloud', starred: true },
       { id: 'local', name: 'Local', color: '#6b7280', desc: 'serve', isDefault: true, flag: 'Default' },
     ];
-    const openStageMenu = (props = {}) => {
+    const openBranchMenu = (props = {}) => {
       renderNav({
-        stages,
-        currentStage: stages[1],
+        branches,
+        currentBranch: branches[1],
         projects: [{ id: 'p', name: 'p' }],
         currentProject: { id: 'p', name: 'p' },
         ...props,
@@ -363,17 +363,17 @@ describe('TopNav', () => {
       fireEvent.click(screen.getByText('Local'));
     };
 
-    it('picks a stage: fires onStageChange and closes the menu', () => {
-      const onStageChange = jest.fn();
-      openStageMenu({ onStageChange });
+    it('picks a branch: fires onBranchChange and closes the menu', () => {
+      const onBranchChange = jest.fn();
+      openBranchMenu({ onBranchChange });
       fireEvent.click(screen.getByText('Production'));
-      expect(onStageChange).toHaveBeenCalledWith(stages[0]);
-      expect(screen.queryByText('Switch stage')).not.toBeInTheDocument();
+      expect(onBranchChange).toHaveBeenCalledWith(branches[0]);
+      expect(screen.queryByText('Switch branch')).not.toBeInTheDocument();
     });
 
-    it('filters stages by search text (name, kind, and desc all match)', () => {
-      openStageMenu();
-      const input = screen.getByPlaceholderText('Find a stage…');
+    it('filters branches by search text (name, kind, and desc all match)', () => {
+      openBranchMenu();
+      const input = screen.getByPlaceholderText('Find a branch…');
       fireEvent.change(input, { target: { value: 'cloud' } });
       // Sections collapse into results while searching.
       expect(screen.queryByText('DEFAULT')).not.toBeInTheDocument();
@@ -381,17 +381,17 @@ describe('TopNav', () => {
       expect(screen.queryByText('serve')).not.toBeInTheDocument();
     });
 
-    it('shows a friendly empty state when no stage matches', () => {
-      openStageMenu();
-      fireEvent.change(screen.getByPlaceholderText('Find a stage…'), {
+    it('shows a friendly empty state when no branch matches', () => {
+      openBranchMenu();
+      fireEvent.change(screen.getByPlaceholderText('Find a branch…'), {
         target: { value: 'zzz-nope' },
       });
-      expect(screen.getByText(/No stage matches/)).toBeInTheDocument();
+      expect(screen.getByText(/No branch matches/)).toBeInTheDocument();
     });
 
     it('clears the search via the inline ✕ affordance', () => {
-      openStageMenu();
-      const input = screen.getByPlaceholderText('Find a stage…');
+      openBranchMenu();
+      const input = screen.getByPlaceholderText('Find a branch…');
       fireEvent.change(input, { target: { value: 'prod' } });
       // The clear icon is the second svg inside the search box (after the loupe).
       // eslint-disable-next-line testing-library/no-node-access
@@ -401,17 +401,17 @@ describe('TopNav', () => {
       expect(screen.getByText('DEFAULT')).toBeInTheDocument();
     });
 
-    it('offers "View all stages" when onAllStages is provided and invokes it', () => {
-      const onAllStages = jest.fn();
-      openStageMenu({ onAllStages });
-      fireEvent.click(screen.getByText('View all stages'));
-      expect(onAllStages).toHaveBeenCalledTimes(1);
-      expect(screen.queryByText('Switch stage')).not.toBeInTheDocument();
+    it('offers "View all branches" when onAllBranches is provided and invokes it', () => {
+      const onAllBranches = jest.fn();
+      openBranchMenu({ onAllBranches });
+      fireEvent.click(screen.getByText('View all branches'));
+      expect(onAllBranches).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Switch branch')).not.toBeInTheDocument();
     });
 
-    it('counts the stages in the menu header', () => {
-      openStageMenu();
-      expect(screen.getByText('2 stages')).toBeInTheDocument();
+    it('counts the branches in the menu header', () => {
+      openBranchMenu();
+      expect(screen.getByText('2 branches')).toBeInTheDocument();
     });
   });
 

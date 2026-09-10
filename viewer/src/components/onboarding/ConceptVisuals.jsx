@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
-function Stage({ children }) {
-  return <div className="onb-concept-stage">{children}</div>;
+function Branch({ children }) {
+  return <div className="onb-concept-branch">{children}</div>;
 }
 
 // Drives a 0 → 1 timer that resets each time `deps` change. Used by
@@ -595,9 +595,9 @@ export default function ConceptVisual({ conceptId }) {
   const Visual = VISUAL_BY_ID[conceptId];
   if (!Visual) return null;
   return (
-    <Stage>
+    <Branch>
       <Visual />
-    </Stage>
+    </Branch>
   );
 }
 

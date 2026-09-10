@@ -53,7 +53,7 @@ const Authentication = ({ setStatus }) => {
         if (data.status === 200) {
           clearInterval(interval);
           setIsLoading(false);
-          setStatus('stage');
+          setStatus('branch');
         } else if ([400, 401, 500].includes(data.status)) {
           clearInterval(interval);
           setIsLoading(false);
