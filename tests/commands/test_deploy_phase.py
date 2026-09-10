@@ -156,7 +156,7 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     )
 
     url = deploy_phase(
-        stage="stage",
+        branch="stage",
         working_dir=working_dir,
         user_dir=working_dir,
         output_dir=output_dir,
@@ -200,7 +200,7 @@ def test_deploy_requires_a_project_name():
 
     with pytest.raises(click.ClickException) as exc:
         deploy_phase(
-            stage="stage",
+            branch="stage",
             working_dir=working_dir,
             user_dir=working_dir,
             output_dir=temp_folder(),

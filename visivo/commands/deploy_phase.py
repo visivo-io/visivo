@@ -1069,7 +1069,7 @@ def upload_resources(resources_by_segment, project_id, json_headers, host):
 
 
 def deploy_phase(
-    working_dir, user_dir, output_dir, stage, host, deploy_id=None, run_id=DEFAULT_RUN_ID
+    working_dir, user_dir, output_dir, branch, host, deploy_id=None, run_id=DEFAULT_RUN_ID
 ):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
@@ -1078,7 +1078,7 @@ def deploy_phase(
         working_dir: Working directory path
         user_dir: User directory path
         output_dir: Output directory path
-        stage: Deployment stage
+        branch: Deployment branch
         host: Deployment host
         deploy_id: Optional deployment ID for tracking
         run_id: Run ID for file organization (default: "main")
@@ -1143,7 +1143,7 @@ def deploy_phase(
     body = {
         "name": project_json["name"],
         "cli_version": project_json["cli_version"],
-        "stage": stage,
+        "stage": branch,
     }
     json_headers = {
         "content-type": "application/json",
