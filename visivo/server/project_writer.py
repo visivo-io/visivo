@@ -6,6 +6,11 @@ from copy import deepcopy
 
 DELETE = object()
 
+# Type keys that are a SINGLETON top-level mapping in the YAML rather than an
+# entry in a named list. They carry no ``name``, so `_update`'s name-matching
+# recursion cannot find them; they are addressed by their key instead.
+SINGLETON_TYPE_KEYS = {"defaults"}
+
 
 def _preserve_multiline(value):
     """Emit multi-line strings as a YAML ``|`` block scalar instead of ruamel's
@@ -106,6 +111,11 @@ class ProjectWriter:
 
     def _update(self, child_name: str):
         new_object = self._get_named_child_config(child_name)
+        file_path = self.named_children[child_name]["file_path"]
+
+        if self.named_children[child_name].get("type_key") in SINGLETON_TYPE_KEYS:
+            self._update_singleton(child_name, file_path, new_object)
+            return
 
         def recurse(current):
             if isinstance(current, dict):
@@ -128,9 +138,22 @@ class ProjectWriter:
                             return True
             return False
 
-        file_path = self.named_children[child_name]["file_path"]
         # Modify the file contents in place to reflect the changes for the named child
         recurse(self.files_to_write[file_path])
+
+    def _update_singleton(self, child_name: str, file_path: str, new_object: dict):
+        """Write a top-level singleton mapping (``defaults:``) by its key.
+
+        Diffed in place when the block already exists so ruamel keeps the file's
+        comments and ordering; created outright when there is no block yet.
+        """
+        type_key = self.named_children[child_name]["type_key"]
+        contents = self.files_to_write[file_path]
+        existing = contents.get(type_key)
+        if isinstance(existing, dict):
+            apply_diff(existing, diff(existing, new_object))
+        else:
+            contents[type_key] = new_object
 
     def _new(self, child_name: str):
         child_dict = self._get_named_child_config(child_name)

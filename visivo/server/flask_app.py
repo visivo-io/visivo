@@ -117,11 +117,28 @@ class FlaskApp:
             self.dashboard_manager,
         ]
 
+    def defaults_changed(self) -> bool:
+        """True when the cached ``defaults`` block DIFFERS from the published one.
+
+        Reads ``self._cached_defaults`` (what ``POST /api/defaults/`` writes),
+        NOT the separate ``self.project_manager._cached_defaults``, which only
+        the project-scoped endpoint ever populates.
+        """
+        cached = self._cached_defaults
+        if cached is None:
+            return False
+        published = self.project.defaults
+        if published is None:
+            return True
+        return cached.model_dump(mode="json", exclude_none=True) != published.model_dump(
+            mode="json", exclude_none=True
+        )
+
     def has_draft_changes(self) -> bool:
-        """True when any manager holds an unpublished draft (or defaults are cached)."""
+        """True when any manager holds an unpublished draft (or defaults changed)."""
         return (
             any(m.has_unpublished_changes() for m in self._all_object_managers())
-            or self._cached_defaults is not None
+            or self.defaults_changed()
         )
 
     def clear_draft_caches(self) -> None:
