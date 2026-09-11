@@ -5,12 +5,42 @@ start_time = time()
 from visivo.commands.options import verbose
 from visivo.logger.logger import Logger, TypeEnum
 
-# `visivo --version` / `--help` must emit only what was asked for — no startup
-# banner, no execution-time line (2.1 field test, CLI-help project).
-# Note: "-h" is NOT a help alias in this CLI — it is the short flag for
-# --host on deploy/archive/authorize — so only the long forms are quiet.
-# A bare `visivo` prints usage, which is help-shaped output too.
-QUIET_INVOCATION = len(_sys.argv) <= 1 or bool({"--version", "--help"} & set(_sys.argv[1:]))
+# Group options that consume the next token; every other `visivo` group option
+# is a flag. The attached forms (`--env-file=x`, `-e.env`) need no entry.
+_GROUP_VALUE_OPTIONS = frozenset({"-e", "--env-file"})
+
+
+def _subcommand(argv):
+    """The subcommand name, however many group options precede it.
+
+    ``argv[1]`` is not enough: the group accepts options first, so
+    `visivo -e .env schema` and `visivo --verbose schema` are both `schema`.
+    """
+    skip = False
+    for token in argv[1:]:
+        if skip:
+            skip = False
+            continue
+        if token.startswith("-"):
+            skip = token in _GROUP_VALUE_OPTIONS
+            continue
+        return token
+    return None
+
+
+# An agent-facing invocation puts a JSON document on stdout: no banner, no
+# trailing timing line, and no Halo spinner (Halo writes straight to stdout).
+SUBCOMMAND = _subcommand(_sys.argv)
+JSON_INVOCATION = "--json" in _sys.argv[1:]
+SCHEMA_INVOCATION = SUBCOMMAND == "schema"
+AGENT_INVOCATION = JSON_INVOCATION or SCHEMA_INVOCATION
+
+# "-h" is NOT a help alias in this CLI — it is the short flag for --host on
+# deploy/archive/authorize — so only the long forms are quiet. A bare `visivo`
+# prints usage, which is help-shaped output too.
+QUIET_INVOCATION = (
+    len(_sys.argv) <= 1 or bool({"--version", "--help"} & set(_sys.argv[1:])) or AGENT_INVOCATION
+)
 
 if not QUIET_INVOCATION:
     Logger.instance().info("Starting Visivo...")
@@ -38,6 +68,7 @@ from visivo.commands.archive import archive
 from visivo.commands.authorize import authorize
 from visivo.commands.list import list
 from visivo.commands.migrate import migrate
+from visivo.commands.schema import schema
 from visivo.version import VISIVO_VERSION
 
 
@@ -52,7 +83,7 @@ from visivo.version import VISIVO_VERSION
 @click.version_option(version=VISIVO_VERSION)
 @verbose
 def visivo(env_file, profile, verbose):
-    Logger.instance().set_type(TypeEnum.spinner)
+    Logger.instance().set_type(TypeEnum.console if AGENT_INVOCATION else TypeEnum.spinner)
     load_env(env_file)
 
     # Profiling can be done with https://github.com/nschloe/tuna
@@ -64,13 +95,19 @@ def visivo(env_file, profile, verbose):
         import cProfile
         import atexit
 
-        Logger.instance().info("Profiling...")
+        def log_off_stdout(message):
+            if AGENT_INVOCATION:
+                click.echo(message, err=True)
+            else:
+                Logger.instance().info(message)
+
+        log_off_stdout("Profiling...")
         pr = cProfile.Profile()
         pr.enable()
 
         def exit():
             pr.disable()
-            Logger.instance().info("Profiling completed")
+            log_off_stdout("Profiling completed")
             pr.dump_stats("visivo-profile.dmp")
 
         atexit.register(exit)
@@ -90,6 +127,7 @@ visivo.add_command(authorize)
 visivo.add_command(create)
 visivo.add_command(list)
 visivo.add_command(migrate)
+visivo.add_command(schema)
 
 
 def load_env(env_file):
@@ -191,6 +229,38 @@ def _track_command_execution(
     telemetry_client.track(event)
 
 
+def _report_error_for_agent(command_name, exception, message) -> bool:
+    """
+    Report a failure that escaped the command body -- a bad option value, an
+    error raised while click was still parsing -- without putting it on stdout.
+    `--json` gets the structured envelope there instead; `visivo schema` gets the
+    human message on stderr, so `visivo schema > core.json` leaves an empty file.
+    Returns True when it printed.
+    """
+    if JSON_INVOCATION:
+        try:
+            from visivo.commands.json_output import emit, envelope, errors_from_exception
+
+            emit(
+                envelope(
+                    # Not command_name: the telemetry sanitizer reads argv[1] and
+                    # reports "help" for anything starting with a dash.
+                    command=SUBCOMMAND or command_name or "visivo",
+                    success=False,
+                    errors=errors_from_exception(exception),
+                )
+            )
+            return True
+        except Exception:
+            return False
+
+    if SCHEMA_INVOCATION:
+        click.echo(message, err=True)
+        return True
+
+    return False
+
+
 def safe_visivo():
     # Clear telemetry context for fresh start
     get_telemetry_context().clear()
@@ -217,6 +287,8 @@ def safe_visivo():
 
     except (ValidationError, LineValidationError) as e:
         error_type = type(e).__name__
+        if _report_error_for_agent(command_name, e, str(e)):
+            sys.exit(1)
         Logger.instance().error(str(e))
         sys.exit(1)
     except click.ClickException as e:
@@ -227,12 +299,16 @@ def safe_visivo():
         # percent-encodes the ENTIRE stack trace into a giant OSC-8 terminal
         # hyperlink (smoke-test bug #14).
         error_type = type(e).__name__
+        if _report_error_for_agent(command_name, e, e.format_message()):
+            sys.exit(1)
         Logger.instance().error(e.format_message())
         sys.exit(1)
     except Exception as e:
         error_type = type(e).__name__
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
+        if _report_error_for_agent(command_name, e, f"An unexpected error has occurred: {e}"):
+            sys.exit(1)
         Logger.instance().error("An unexpected error has occurred")
         Logger.instance().error(str(e))
         Logger.instance().error(

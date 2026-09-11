@@ -146,6 +146,7 @@ nav:
       - Authentication: cloud/authentication.md
   - Reference:
       - CLI: reference/cli.md
+      - Agent Contract: reference/agent-contract.md
       - Configuration:
           - Alert:
               - reference/configuration/Alert/index.md
