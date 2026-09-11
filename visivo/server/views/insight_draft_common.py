@@ -93,3 +93,27 @@ def extract_model_not_run_name(message):
         if match:
             return match.group(1).strip()
     return None
+
+
+def diagnostic_fields(exc):
+    """Structured ``{"diagnostics": [ {...} ]}`` for a build failure that
+    carries a :class:`~visivo.models.diagnostic.Diagnostic`, ``{}`` for one
+    that doesn't.
+
+    The key is PLURAL and the value is a LIST because that is the wire shape
+    the contract already specifies: ``visivo/models/diagnostic.py`` documents
+    payloads as growing "a ``diagnostics`` key", and the viewer's single
+    universal reader — ``diagnosticsFrom`` in ``viewer/src/types/diagnostic.js``
+    — returns ``[]`` for anything that is not ``Array.isArray(payload
+    .diagnostics)``. This is the FIRST producer on the wire, so it sets the
+    precedent for every later one; a singular ``diagnostic`` object would have
+    forced a second, incompatible reader for the same contract.
+
+    Additive by design: the 400 body keeps its ``error`` string exactly as it
+    was, and a client that doesn't know about diagnostics never sees a
+    difference. Producers today: ``PositionalAxisTypeError`` (WB9 / S5-14).
+    """
+    diagnostic = getattr(exc, "diagnostic", None)
+    if diagnostic is None or not hasattr(diagnostic, "model_dump"):
+        return {}
+    return {"diagnostics": [diagnostic.model_dump(mode="json", exclude_none=True)]}
