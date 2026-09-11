@@ -129,3 +129,30 @@ def test_from_exception_never_raises_on_an_unregistered_code():
     assert diagnostic.code == "unexpected_error"
     assert diagnostic.message == "the real failure"
     assert "typo_code" in diagnostic.detail
+
+
+def test_the_viewer_mirror_lists_exactly_the_same_codes():
+    """This module's docstring calls ``viewer/src/types/diagnostic.js`` the
+    mirror and says "keep the two in sync — the shape is the contract", and the
+    JS file repeats the claim. Nothing enforced it, so a code added on one side
+    only silently broke the contract: a viewer that later branches on membership
+    would drop every diagnostic carrying the missing code, with no failing test
+    anywhere to say why. Enforce the parity that both files already promise.
+    """
+    import re
+    from pathlib import Path
+
+    mirror = Path(__file__).resolve().parents[2] / "viewer" / "src" / "types" / "diagnostic.js"
+    assert mirror.exists(), f"the declared mirror is missing: {mirror}"
+
+    source = mirror.read_text()
+    match = re.search(r"export const DIAGNOSTIC_CODES = \[(.*?)\];", source, re.DOTALL)
+    assert match, "DIAGNOSTIC_CODES array not found in the viewer mirror"
+    js_codes = set(re.findall(r"'([^']+)'", match.group(1)))
+
+    assert js_codes, "the viewer mirror parsed to an empty set — the parse, not the file, is wrong"
+    assert js_codes == set(DIAGNOSTIC_CODES), (
+        "DIAGNOSTIC_CODES has drifted. "
+        f"Python only: {sorted(set(DIAGNOSTIC_CODES) - js_codes)}; "
+        f"viewer only: {sorted(js_codes - set(DIAGNOSTIC_CODES))}"
+    )

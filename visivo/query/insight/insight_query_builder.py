@@ -23,6 +23,7 @@ from visivo.query.sqlglot_utils import (
     normalize_identifier_for_dialect,
 )
 from visivo.query.schema_aggregator import SchemaAggregator
+from visivo.query.source_scope import resolve_insight_source
 from visivo.query.patterns import (
     INPUT_ACCESSOR_PATTERN,
     extract_input_accessors,
@@ -306,9 +307,30 @@ class InsightQueryBuilder:
         # DuckDB/post_query-only build path regardless of is_dynamic()".
         self.is_dynamic = force_dynamic or insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
-        source = insight.get_dependent_source(dag, output_dir)
-        self.default_schema = source.db_schema
-        self.default_database = source.database
+        # One call, two jobs, and both of them depend on the lane:
+        #
+        # * NOT dynamic — the CTEs are compiled into one `pre_query` that runs
+        #   against one `source.read_sql`, so models on two sources have no
+        #   correct query at all. Refuse in the same sentence the compile-time
+        #   validator uses rather than let an arbitrary winner be picked and
+        #   hand the user the other source's "table does not exist".
+        # * dynamic (or `force_dynamic`) — `pre_query` is None. Each model was
+        #   already materialised against ITS OWN source and the DuckDB
+        #   `post_query` joins the parquet files, so two sources is the
+        #   documented feature, not a failure. The source is still resolved
+        #   because `get_sqlglot_dialect` is read below, but nothing is executed
+        #   against it; `resolve_insight_source` walks models in NAME order so
+        #   the pick (and any "no source found" message) is stable run to run,
+        #   which `insight.get_dependent_source`'s `list(a_set)[0]` was not.
+        source = resolve_insight_source(
+            self.insight_name, self.models, dag, output_dir, is_dynamic=self.is_dynamic
+        )
+        # getattr, not attribute access: a CSVFileSource/ExcelFileSource is a
+        # DuckDB source over a file and carries neither field, so the plain
+        # reads raised AttributeError on the way to a query that never needed
+        # either value (both are only consumed by the non-dynamic CTE qualify).
+        self.default_schema = getattr(source, "db_schema", None)
+        self.default_database = getattr(source, "database", None)
         self.source_dialect = source.get_sqlglot_dialect()
         self.native_dialect = "duckdb" if self.is_dynamic else self.source_dialect
         field_resolver = FieldResolver(
