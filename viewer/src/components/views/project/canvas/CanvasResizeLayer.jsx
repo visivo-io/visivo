@@ -11,6 +11,16 @@ import {
   heightEnumToPixels,
   pixelsToNearestHeightEnum,
 } from './canvasReorder';
+import { EMPHASIZED_OUTLINE_PROPS } from './canvasEmphasis';
+import {
+  MAX_ITEM_WIDTH,
+  nearestSpanForWidth,
+  precedingColsInRow,
+  previewItemLeftShiftPx,
+  previewItemWidthPx,
+  readColumnGapPx,
+  rowGridTotal,
+} from './canvasGridGeometry';
 
 /**
  * CanvasResizeLayer — VIS-777 / Track D D-4 (design D-3 "Resize handles").
@@ -23,9 +33,21 @@ import {
  * mutation persisted through the shell's shared `commitCanvasConfig`
  * (optimistic → validate → save).
  *
+ * WIDTHS ARE RELATIVE, NOT A 12-COLUMN GRID (M26). <Dashboard> lays a row out as
+ * `repeat(Σ item.width, minmax(0, 1fr))` with a `0.7rem` gap, so growing one
+ * item grows the DENOMINATOR too: a 6/6 row whose first item goes to 8 renders
+ * at 8/14, not 8/12. This layer used to preview against a hardcoded `COLS = 12`
+ * and scale the start box by `live / start`, which promised a size the commit
+ * could not deliver (a 1000px 6/6 row previewed 667px and committed 571px) and
+ * printed an `N / 12` readout on rows that were never 12 wide. Every pixel here
+ * now comes from `canvasGridGeometry` — the single owner of that sum-normalized
+ * formula, verified against real CSS grid layout — so the ghost is exactly the
+ * geometry the drop produces.
+ *
  * Handle types (D-3 contract):
- *   - Item RIGHT-EDGE (↔ width): drag changes the item's integer col-span
- *     (1–12). Widths are relative within the row, so siblings rebalance live. A
+ *   - Item RIGHT-EDGE (↔ width): drag changes the item's integer relative width
+ *     (1–12). Siblings rebalance live, so the row total moves with the drag; the
+ *     span committed is the one whose RENDERED edge lands nearest the pointer. A
  *     `N / total` readout pill rides the handle.
  *   - Item LEFT-EDGE (↔ width): drag moves the boundary shared with the PREVIOUS
  *     sibling, transferring grid columns between this item and its left neighbour
@@ -39,10 +61,25 @@ import {
  *   - Container CORNER (⤡ both axes): on a container item (Item.rows non-empty)
  *     a se-resize corner resizes width + height in one gesture.
  *
+ * The ghost is truthful in BOTH axes. Width comes from `previewItemWidthPx`;
+ * the LEFT edge comes from `previewItemLeftShiftPx`, because sum-normalization
+ * shrinks the tracks in FRONT of the item too, sliding the slot left as it
+ * grows. A ghost pinned at the item's measured `left` is only right for the
+ * first item in a row — on a `[2,2,2,2]` row the last item's slot lands ~390px
+ * left of a frozen ghost, and the ghost is painted hanging off the row's right
+ * edge (measured: 592px worst case, `e2e/tools/measure-canvas-grid.mjs`).
+ *
  * The chart inside the slot stays STATIC during the drag: we never re-layout the
- * Dashboard mid-gesture. The overlay paints a mulberry ghost at the live target
- * geometry and only commits the new config on pointer-UP, so the expensive
- * chart re-render happens once, at drag-end.
+ * Dashboard mid-gesture. The overlay paints ONE emphasized mulberry ghost at the
+ * live target geometry and FADES the card being resized (a direct imperative
+ * opacity on the measured node, restored on release / Esc / pointercancel /
+ * unmount). The gesture also publishes `workspaceCanvasResizeKey`, which parks
+ * <CanvasSelectionOverlay>'s persistent mulberry ring for the duration — that
+ * ring lives in a SIBLING layer, so the card fade cannot dim it, and leaving it
+ * up would put a full-strength 2px ring at the pre-drag geometry next to an
+ * identical one at the target. One gesture, one emphasized outline. The new
+ * config commits on pointer-UP, so the expensive chart re-render happens once,
+ * at drag-end.
  *
  * Pointer handling is RAW (not dnd-kit): the handle calls `setPointerCapture` on
  * pointer-down so a canvas reflow mid-drag (charts finishing load, the optimistic
@@ -55,7 +92,9 @@ import {
  */
 
 const MULBERRY = 'var(--color-primary-500)';
-const COLS = 12;
+
+// How far the card being resized fades while its ghost is on screen.
+const DRAG_FADE_OPACITY = '0.35';
 
 // Classify a composite selection key as item / row / chrome (mirrors the
 // selection overlay's kindForKey).
@@ -124,6 +163,11 @@ const resolveSelection = (config, key) => {
 const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
   const dashboards = useStore(s => s.dashboards);
+  // Published to the store for the LIFE OF A GESTURE so the sibling
+  // <CanvasSelectionOverlay> can park its persistent selection ring — the one
+  // competing emphasized outline the card fade cannot reach (it is not inside
+  // the faded node).
+  const setCanvasResizeKey = useStore(s => s.setWorkspaceCanvasResizeKey);
   const commitCanvasConfig = useCommitCanvasConfig();
 
   const dashboardConfig = useMemo(() => {
@@ -140,10 +184,18 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
   // sits at the row's bottom edge even when only a single item is selected.
   const [heightBox, setHeightBox] = useState(null);
   // Live drag state — null at rest; otherwise the in-flight gesture descriptor:
-  //   { kind: 'width'|'height'|'corner', startX, startY, colPx, startCols,
-  //     liveCols, startPx, livePx, fluid, label, box }
+  //   { kind: 'width'|'width-left'|'height'|'corner', startX, startY,
+  //     rowWidth, gapPx, startTotal, rebalance, maxCols, startSlotPx,
+  //     startCols, liveCols, liveTotal, startPx, livePx, fluid, label, box }
+  // The rowWidth/gapPx/startTotal trio is the row's MEASURED grid context,
+  // frozen at pointer-down so every frame can re-derive the truthful preview
+  // (canvasGridGeometry) without another DOM read.
   const [drag, setDrag] = useState(null);
   const dragRef = useRef(null);
+  // The canvas node currently faded under its ghost, plus the inline styles to
+  // put back. Held in a ref (not state) because it is imperative DOM the layer
+  // borrows from the render-only <Dashboard> for the length of one gesture.
+  const fadedRef = useRef(null);
 
   const selectedKind = kindForKey(selectedKey);
 
@@ -230,6 +282,69 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
   }, [selection]);
   const hasLeftNeighbor = itemIndexInRow > 0;
 
+  // How many grid columns sit in FRONT of this item in its row. This is what
+  // makes the ghost's left edge truthful: those tracks shrink when a right-edge
+  // drag grows the row total, so the slot slides left as it grows.
+  const precedingCols = useMemo(() => {
+    if (!selection?.isItem || itemIndexInRow < 0) return 0;
+    return precedingColsInRow(selection.itemsInRow, itemIndexInRow);
+  }, [selection, itemIndexInRow]);
+
+  // Is this item the ONLY item in its row? Then Σ widths IS its own width, so
+  // every span renders full-bleed and the width gesture cannot move a single
+  // pixel (see `nearestSpanForWidth`'s tie-break). Painting a width handle there
+  // is a dead affordance — the ghost, the readout and the drag would all sit
+  // still — so the handle is withheld and the row keeps only its height handle.
+  // The item's stored weight stays editable in the right-rail Edit form, where
+  // it is a number, not a promise about geometry.
+  const isSoloInRow = !!(
+    selection?.isItem && rowGridTotal(selection.itemsInRow) === (selection.item?.width || 1)
+  );
+
+  // ── Faded card ────────────────────────────────────────────────────────────
+  // The gesture paints ONE emphasized outline (the ghost). To keep the target
+  // unambiguous, the card being resized fades underneath it rather than getting
+  // a second competing frame. We set the opacity directly on the measured
+  // <Dashboard> node — React never wrote an `opacity` style key on it, so a
+  // re-render leaves ours alone — and always restore what was there before.
+  const restoreFadedNode = useCallback(() => {
+    const faded = fadedRef.current;
+    fadedRef.current = null;
+    if (!faded || !faded.el) return;
+    faded.el.style.opacity = faded.prevOpacity || '';
+    faded.el.style.transition = faded.prevTransition || '';
+  }, []);
+
+  const fadeNodeAtPath = useCallback(
+    path => {
+      restoreFadedNode();
+      const root = rootRef.current;
+      const el = root && path ? root.querySelector(`[data-canvas-path="${path}"]`) : null;
+      if (!el) return;
+      fadedRef.current = {
+        el,
+        prevOpacity: el.style.opacity,
+        prevTransition: el.style.transition,
+      };
+      el.style.transition = 'opacity 120ms ease-out';
+      el.style.opacity = DRAG_FADE_OPACITY;
+    },
+    [rootRef, restoreFadedNode]
+  );
+
+  // End-of-gesture chrome teardown: un-fade the card AND hand the selection
+  // ring back to <CanvasSelectionOverlay>. Every exit path (release, Esc,
+  // pointercancel, unmount) goes through here — a gesture that ends without
+  // clearing the key would leave the canvas with no selection ring at all.
+  const clearGestureChrome = useCallback(() => {
+    restoreFadedNode();
+    if (setCanvasResizeKey) setCanvasResizeKey(null);
+  }, [restoreFadedNode, setCanvasResizeKey]);
+
+  // An unmount mid-gesture (route change, canvas teardown) must not leave a card
+  // stranded at 35% opacity — or the selection ring parked forever.
+  useEffect(() => () => clearGestureChrome(), [clearGestureChrome]);
+
   const beginDrag = useCallback(
     (e, kind) => {
       if (!box || !selection) return;
@@ -237,24 +352,56 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       e.stopPropagation();
       const root = rootRef.current;
 
-      // Width context: per-column px from the parent row's width / its grid total.
-      let colPx = 0;
-      let startCols = selection.item?.width || 1;
-      if ((kind === 'width' || kind === 'width-left' || kind === 'corner') && rowPathForItem && root) {
-        const rowEl = root.querySelector(`[data-canvas-path="${rowPathForItem}"]`);
-        const rowBox = rowEl ? measure(rowEl, root) : null;
-        const total =
-          (selection.itemsInRow || []).reduce((sum, it) => sum + (it.width || 1), 0) || 1;
-        const rowWidth = rowBox ? rowBox.width : box.width;
-        colPx = rowWidth / total;
-      }
+      const isWidthKind = kind === 'width' || kind === 'width-left' || kind === 'corner';
+      const startCols = selection.item?.width || 1;
 
       // Left-edge context: the previous sibling's start width bounds how far the
       // shared boundary can move (the neighbour can't drop below width 1).
       const neighborStartCols =
         kind === 'width-left' && hasLeftNeighbor
-          ? (selection.itemsInRow?.[itemIndexInRow - 1]?.width || 1)
+          ? selection.itemsInRow?.[itemIndexInRow - 1]?.width || 1
           : 1;
+
+      // Width context — MEASURED, then run through the same sum-normalized
+      // formula <Dashboard> lays the row out with (canvasGridGeometry). We keep
+      // the row's live pixel width, its live column gap and its start grid total
+      // so every frame of the gesture can ask "what will this width RENDER as?"
+      // without touching the DOM again.
+      //
+      // A RIGHT-EDGE (or corner) drag rebalances the row: the item's weight and
+      // the row total both move, so the reachable span is only bounded by the
+      // persistence clamp. A LEFT-EDGE drag TRANSFERS columns across the shared
+      // boundary: the total is fixed and the neighbour cannot drop below 1.
+      let rowWidth = box.width;
+      let gapPx = 0;
+      let startTotal = startCols;
+      const rebalance = kind !== 'width-left';
+      let maxCols = MAX_ITEM_WIDTH;
+      if (isWidthKind && rowPathForItem && root) {
+        const rowEl = root.querySelector(`[data-canvas-path="${rowPathForItem}"]`);
+        const rowBox = rowEl ? measure(rowEl, root) : null;
+        rowWidth = rowBox ? rowBox.width : box.width;
+        gapPx = readColumnGapPx(rowEl);
+        startTotal = rowGridTotal(selection.itemsInRow);
+        maxCols = rebalance
+          ? MAX_ITEM_WIDTH
+          : Math.min(MAX_ITEM_WIDTH, startCols + Math.max(0, neighborStartCols - 1));
+      }
+      // The item's slot width at rest, in the row's measured pixel space. The
+      // pointer delta is applied to THIS (not to the item's own measured box) so
+      // the target width and the candidate widths are quoted in one space, and a
+      // zero-travel gesture resolves back to `startCols` exactly.
+      const startSlotPx = Math.max(
+        1,
+        previewItemWidthPx({
+          rowWidth,
+          startTotal,
+          startCols,
+          spanCols: startCols,
+          gapPx,
+          rebalance,
+        })
+      );
 
       // Height context: the gesture's row is the selection's row (item → parent
       // row; row → itself). startPx from the row's current enum/px height.
@@ -266,10 +413,16 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         kind,
         startX: e.clientX,
         startY: e.clientY,
-        colPx: colPx || 1,
+        rowWidth,
+        gapPx,
+        startTotal,
+        rebalance,
+        maxCols,
+        startSlotPx,
+        precedingCols,
         startCols,
         liveCols: startCols,
-        neighborStartCols,
+        liveTotal: startTotal,
         startPx,
         livePx: startPx,
         fluid: !!e.shiftKey,
@@ -278,11 +431,22 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
             ? e.shiftKey
               ? `${Math.round(startPx)} px`
               : pixelsToNearestHeightEnum(startPx)
-            : `${startCols} / ${COLS}`,
+            : `${startCols} / ${startTotal}`,
         box,
       };
       dragRef.current = next;
       setDrag(next);
+
+      // One emphasized outline (the ghost) + a faded card: dim the node the
+      // gesture actually resizes — the ITEM for a width/corner drag, the whole
+      // ROW for a height drag (the ghost spans the row there).
+      fadeNodeAtPath(
+        kind === 'height' && selectedKind === 'item' ? parentRowPathOf(selectedKey) : selectedKey
+      );
+      // …and park the selection overlay's persistent ring. It sits in a SIBLING
+      // layer at the PRE-DRAG geometry, so the fade above cannot touch it and it
+      // would otherwise read as a second, equally emphasized target.
+      if (setCanvasResizeKey) setCanvasResizeKey(selectedKey);
 
       // Capture the pointer on the handle so a reflow mid-drag can't drop the
       // gesture (the canvas-overlay gotcha — the canvas reflows on the
@@ -296,7 +460,19 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         // is the fallback so the gesture still completes.
       }
     },
-    [box, selection, rowPathForItem, itemIndexInRow, hasLeftNeighbor, rootRef]
+    [
+      box,
+      selection,
+      rowPathForItem,
+      itemIndexInRow,
+      hasLeftNeighbor,
+      precedingCols,
+      rootRef,
+      selectedKey,
+      selectedKind,
+      fadeNodeAtPath,
+      setCanvasResizeKey,
+    ]
   );
 
   // Window-level move/up handlers active only while a drag is in flight. They
@@ -314,42 +490,73 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       let livePx = d.livePx;
       const fluid = !!e.shiftKey;
 
-      if (d.kind === 'width' || d.kind === 'corner') {
-        const deltaCols = Math.round(dx / d.colPx);
-        liveCols = Math.max(1, Math.min(COLS, d.startCols + deltaCols));
-      }
-      if (d.kind === 'width-left') {
-        // Dragging the LEFT edge left (dx < 0) grows the item; dragging it right
-        // shrinks it. Columns transfer across the shared boundary with the left
-        // neighbour, so the live span is bounded by the neighbour's spare width.
-        const deltaCols = -Math.round(dx / d.colPx);
-        const maxGrow = Math.max(0, (d.neighborStartCols || 1) - 1);
-        const transfer = Math.max(-(d.startCols - 1), Math.min(maxGrow, deltaCols));
-        liveCols = d.startCols + transfer;
+      // Width: the pointer drags the slot's EDGE, so the span we pick is the one
+      // whose RENDERED width lands nearest where the edge now is. `startSlotPx`
+      // and the candidate widths both come from canvasGridGeometry, so the ghost
+      // tracks the hand as closely as an integer weight allows — no fixed
+      // `rowWidth / total` step that sum-normalization makes a lie.
+      if (d.kind === 'width' || d.kind === 'corner' || d.kind === 'width-left') {
+        // Right edge: dragging right (dx > 0) grows. Left edge: dragging LEFT
+        // (dx < 0) grows, because the boundary moves away from the item.
+        const targetWidthPx = d.kind === 'width-left' ? d.startSlotPx - dx : d.startSlotPx + dx;
+        liveCols = nearestSpanForWidth({
+          rowWidth: d.rowWidth,
+          startTotal: d.startTotal,
+          startCols: d.startCols,
+          targetWidthPx,
+          gapPx: d.gapPx,
+          minCols: 1,
+          maxCols: d.maxCols,
+          rebalance: d.rebalance,
+        });
       }
       if (d.kind === 'height' || d.kind === 'corner') {
         livePx = Math.max(48, Math.min(2048, d.startPx + dy));
       }
 
+      // The row's grid total AFTER the drag — it moves with a right-edge drag
+      // and holds still for a left-edge transfer. This is the readout's honest
+      // denominator: `8 / 14`, never `8 / 12` on a row that is 14 wide.
+      const liveTotal = d.rebalance
+        ? Math.max(1, d.startTotal - d.startCols + liveCols)
+        : d.startTotal;
+
       let label;
       if (d.kind === 'width' || d.kind === 'width-left') {
-        label = `${liveCols} / ${COLS}`;
+        label = `${liveCols} / ${liveTotal}`;
       } else if (d.kind === 'corner') {
         const hLabel = fluid ? `${Math.round(livePx)} px` : pixelsToNearestHeightEnum(livePx);
-        label = `width ${liveCols} · height ${hLabel}`;
+        label = `width ${liveCols} / ${liveTotal} · height ${hLabel}`;
       } else {
         label = fluid ? `${Math.round(livePx)} px` : pixelsToNearestHeightEnum(livePx);
       }
 
-      const updated = { ...d, liveCols, livePx, fluid, label };
+      const updated = { ...d, liveCols, liveTotal, livePx, fluid, label };
       dragRef.current = updated;
       setDrag(updated);
+    };
+
+    // Abort: drop the gesture WITHOUT committing and un-fade the card. Fires on
+    // Esc and on pointercancel (the browser took the pointer away mid-gesture —
+    // an interrupted drag never expressed an intent to resize).
+    const onAbort = () => {
+      dragRef.current = null;
+      setDrag(null);
+      clearGestureChrome();
+      measureBox();
+    };
+
+    const onKeyDown = e => {
+      if (e.key !== 'Escape' || !dragRef.current) return;
+      e.preventDefault();
+      onAbort();
     };
 
     const onUp = () => {
       const d = dragRef.current;
       dragRef.current = null;
       setDrag(null);
+      clearGestureChrome();
       if (!d || !selection || !dashboardConfig) {
         measureBox();
         return;
@@ -404,11 +611,13 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointercancel', onAbort);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('pointercancel', onAbort);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [
     drag,
@@ -420,14 +629,54 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
     itemIndexInRow,
     commitCanvasConfig,
     measureBox,
+    clearGestureChrome,
   ]);
 
   if (!dashboardConfig || !box || selectedKind === 'chrome' || !selection) return null;
 
-  // Ghost geometry while dragging: width gesture stretches the item box to its
-  // live col-span (relative to the start span); height gesture stretches the
-  // box to its live pixel height. Pure transform on the overlay — the Dashboard
-  // render below is untouched (chart stays static).
+  // Ghost geometry while dragging — THE TRUTHFUL PREVIEW (M26), in BOTH axes.
+  //
+  // WIDTH: the pixel width the slot will actually render at once the new
+  // relative weight is committed. `previewItemWidthPx` re-derives it from the
+  // row's measured width, its live gap and the SUM-NORMALIZED total (which moves
+  // with a right-edge drag), exactly as <Dashboard> lays the row out.
+  //
+  // LEFT: the slot MOVES as well as grows. Sum-normalization shrinks every
+  // track, including the `precedingCols` tracks in front of this item, so a
+  // right-edge drag slides the slot LEFT while widening it. Freezing the ghost's
+  // left at `box.left` was right only for the first item in a row; on
+  // `[2,2,2,2]` the last item's committed slot lands ~390px away from such a
+  // ghost, and the ghost is drawn hanging off the row's right edge.
+  // `previewItemLeftShiftPx` supplies that delta (0 for the first item, and 0
+  // for a left-edge transfer, which anchors the RIGHT edge instead).
+  //
+  // Both are applied as a RATIO/OFFSET against the item's own measured start
+  // box, so zero travel is pixel-identical to the card underneath and any canvas
+  // scale/zoom cancels out.
+  //
+  // Height gestures stretch the box to their live pixel height. Pure geometry on
+  // the overlay — the Dashboard render below is untouched (chart stays static).
+  const previewWidthFor = spanCols =>
+    previewItemWidthPx({
+      rowWidth: drag.rowWidth,
+      startTotal: drag.startTotal,
+      startCols: drag.startCols,
+      spanCols,
+      gapPx: drag.gapPx,
+      rebalance: drag.rebalance,
+    });
+
+  const previewLeftShiftFor = spanCols =>
+    previewItemLeftShiftPx({
+      rowWidth: drag.rowWidth,
+      startTotal: drag.startTotal,
+      startCols: drag.startCols,
+      spanCols,
+      precedingCols: drag.precedingCols,
+      gapPx: drag.gapPx,
+      rebalance: drag.rebalance,
+    });
+
   const ghost = (() => {
     if (!drag) return null;
     // A pure height drag resizes the ROW, so preview the full row box
@@ -444,13 +693,18 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
     let w = box.width;
     let h = box.height;
     let left = box.left;
-    if (drag.kind === 'width' || drag.kind === 'corner') {
-      w = box.width * (drag.liveCols / Math.max(1, drag.startCols));
+    if (drag.kind === 'width' || drag.kind === 'corner' || drag.kind === 'width-left') {
+      // One scale factor for both axes: the measured box over the formula's
+      // idea of the same slot. It is 1 on an untransformed canvas and absorbs a
+      // zoom otherwise, and it keeps the ghost welded to the card at zero travel.
+      const scale = box.width / Math.max(1, drag.startSlotPx);
+      w = previewWidthFor(drag.liveCols) * scale;
+      left = box.left + previewLeftShiftFor(drag.liveCols) * scale;
     }
     if (drag.kind === 'width-left') {
-      // The left-edge gesture moves the LEFT boundary: anchor the right edge and
-      // extend leftward as the span grows.
-      w = box.width * (drag.liveCols / Math.max(1, drag.startCols));
+      // The left-edge gesture moves the LEFT boundary: columns only TRANSFER
+      // across the shared boundary, so the row total — and every track — holds
+      // still and the slot's RIGHT edge is the fixed point.
       left = box.left + box.width - w;
     }
     if (drag.kind === 'corner') {
@@ -467,10 +721,29 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
   // bottom-edge height handle. An item with a LEFT neighbour also gets a
   // left-edge width handle that moves the shared boundary; the first item in a
   // row has no shared left boundary and so gets no left handle.
-  const showWidthHandle = selection.isItem;
-  const showLeftWidthHandle = selection.isItem && hasLeftNeighbor;
-  const showHeightHandle = !isContainerItem && !!heightBox; // rows + non-container items
-  const showCornerHandle = isContainerItem;
+  //
+  // An item that is ALONE in its row gets no width handle at all: Σ widths is
+  // its own width, so every span renders full-bleed and the gesture provably
+  // cannot move a pixel. A handle that paints a ghost, prints a frozen readout
+  // and then does nothing is exactly the kind of lie this lane exists to remove.
+  //
+  // DURING a gesture only the handle being dragged is painted: the others sit at
+  // the pre-drag geometry, which the ghost has already moved on from, and a
+  // solid mulberry bar at a stale edge is exactly the second emphasis M26 asks
+  // us to delete.
+  const dragging = !!drag;
+  const showWidthHandle = selection.isItem && !isSoloInRow && (!dragging || drag.kind === 'width');
+  const showLeftWidthHandle =
+    selection.isItem && hasLeftNeighbor && (!dragging || drag.kind === 'width-left');
+  const showHeightHandle =
+    !isContainerItem && !!heightBox && (!dragging || drag.kind === 'height'); // rows + non-container items
+  const showCornerHandle = isContainerItem && (!dragging || drag.kind === 'corner');
+
+  // The handle you are holding rides the GHOST's matching edge, so the affordance
+  // stays under the pointer and reads as the edge you are dragging; at rest every
+  // handle sits on the measured selection box.
+  const widthAnchor = dragging && ghost && drag.kind !== 'height' ? ghost : box;
+  const heightAnchor = drag?.kind === 'height' && ghost ? ghost : heightBox;
 
   const handleBase =
     'pointer-events-auto absolute z-30 transition-opacity hover:opacity-100';
@@ -484,23 +757,17 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       // pill steals the row-height resize zone (VIS-986 follow-up).
       className="pointer-events-none absolute inset-0 z-40"
     >
-      {/* Selected-node frame (subtle, so the handles read as edge affordances). */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute rounded-md"
-        style={{
-          top: box.top,
-          left: box.left,
-          width: box.width,
-          height: box.height,
-          boxShadow: drag ? `inset 0 0 0 1px ${MULBERRY}55` : 'none',
-        }}
-      />
-
-      {/* Drag ghost — the live target geometry, painted only during a gesture. */}
+      {/* Drag ghost — the live target geometry, painted only during a gesture,
+          and the ONLY emphasized outline on screen while it is (M26). The card
+          it will replace is faded imperatively and the sibling selection ring is
+          parked (see `setCanvasResizeKey` above) instead of leaving a second
+          competing frame, so "what lands where" is unambiguous: one solid 2px
+          mulberry ring at the geometry the drop produces, lifted off the canvas
+          by a soft drop shadow (a shadow, not a second ring). */}
       {drag && ghost && (
         <div
           data-testid="canvas-resize-ghost"
+          {...EMPHASIZED_OUTLINE_PROPS}
           aria-hidden="true"
           className="pointer-events-none absolute rounded-md"
           style={{
@@ -508,8 +775,8 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
             left: ghost.left,
             width: ghost.width,
             height: ghost.height,
-            background: 'color-mix(in srgb, var(--color-primary-500) 6%, transparent)',
-            boxShadow: `0 0 0 2px ${MULBERRY}, 0 0 0 5px color-mix(in srgb, var(--color-primary-500) 18%, transparent)`,
+            background: 'color-mix(in srgb, var(--color-primary-500) 8%, transparent)',
+            boxShadow: `0 0 0 2px ${MULBERRY}, 0 10px 24px -8px rgba(17, 12, 15, 0.35)`,
           }}
         />
       )}
@@ -528,10 +795,10 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           className={`${handleBase} opacity-80`}
           onPointerDown={e => beginDrag(e, 'width-left')}
           style={{
-            top: box.top + 6,
-            left: box.left - 3,
+            top: widthAnchor.top + 6,
+            left: widthAnchor.left - 3,
             width: 6,
-            height: Math.max(0, box.height - 12),
+            height: Math.max(0, widthAnchor.height - 12),
             cursor: 'col-resize',
             background: drag?.kind === 'width-left' ? MULBERRY : `${MULBERRY}99`,
             borderRadius: 3,
@@ -553,10 +820,10 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           className={`${handleBase} opacity-80`}
           onPointerDown={e => beginDrag(e, 'width')}
           style={{
-            top: box.top + 6,
-            left: box.left + box.width - 3,
+            top: widthAnchor.top + 6,
+            left: widthAnchor.left + widthAnchor.width - 3,
             width: 6,
-            height: Math.max(0, box.height - 12),
+            height: Math.max(0, widthAnchor.height - 12),
             cursor: 'col-resize',
             background: drag?.kind === 'width' ? MULBERRY : `${MULBERRY}99`,
             borderRadius: 3,
@@ -581,9 +848,9 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           style={{
             // A taller hit zone (10px) so the row-height handle is easy to grab
             // (VIS-986 follow-up — a 6px strip was too fiddly to land on).
-            top: heightBox.top + heightBox.height - 5,
-            left: heightBox.left + 6,
-            width: Math.max(0, heightBox.width - 12),
+            top: heightAnchor.top + heightAnchor.height - 5,
+            left: heightAnchor.left + 6,
+            width: Math.max(0, heightAnchor.width - 12),
             height: 10,
             cursor: 'row-resize',
             background: drag?.kind === 'height' ? MULBERRY : `${MULBERRY}99`,
@@ -605,8 +872,8 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           className={`${handleBase} opacity-90`}
           onPointerDown={e => beginDrag(e, 'corner')}
           style={{
-            top: box.top + box.height - 9,
-            left: box.left + box.width - 9,
+            top: widthAnchor.top + widthAnchor.height - 9,
+            left: widthAnchor.left + widthAnchor.width - 9,
             width: 14,
             height: 14,
             cursor: 'se-resize',
@@ -618,7 +885,10 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         />
       )}
 
-      {/* Live readout — rides near the active handle during the gesture. For a
+      {/* Live readout — rides the GHOST's active edge during the gesture, so the
+          number sits on the geometry it describes. A width readout is honest
+          about the row it lands in: `N / <row total>` (the total a right-edge
+          drag rebalances TO), never `N / 12` on a row that is not 12 wide. For a
           height tick drag it shows the HeightEnum stack with the active stop
           mulberry-filled; otherwise a single readout pill. */}
       {drag && (
@@ -627,13 +897,13 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           aria-hidden="true"
           className="pointer-events-none absolute z-40"
           style={{
-            top: Math.max(2, box.top - 8),
+            top: Math.max(2, (ghost || box).top - 8),
             left:
               drag.kind === 'height'
-                ? (heightBox || box).left + (heightBox || box).width / 2 - 40
+                ? (heightAnchor || box).left + (heightAnchor || box).width / 2 - 40
                 : drag.kind === 'width-left'
-                  ? box.left
-                  : box.left + box.width - 30,
+                  ? widthAnchor.left
+                  : widthAnchor.left + widthAnchor.width - 30,
           }}
         >
           {drag.kind === 'height' && !drag.fluid ? (

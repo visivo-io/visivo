@@ -210,6 +210,21 @@ const createWorkspaceSlice = (set, get) => ({
   // hovering never mutates selection.
   workspaceCanvasHoverKey: null,
 
+  // Canvas resize-in-flight key — the composite `data-canvas-path` of the node
+  // whose resize handle is currently being DRAGGED (`null` at rest). Written by
+  // CanvasResizeLayer for the life of one gesture and read by
+  // CanvasSelectionOverlay, which parks its persistent mulberry ring while it is
+  // set (M26 / VIS-1260).
+  //
+  // Why the store and not a prop: the two overlays are SIBLINGS mounted by
+  // ProjectCanvas, so neither can see the other, and the resize layer's
+  // card-fade — an imperative opacity on the measured <Dashboard> node — cannot
+  // reach a ring that lives in a different layer. Without this the canvas paints
+  // a full-strength 2px ring at the PRE-DRAG geometry beside an identical one at
+  // the drag target, and "what lands where" is ambiguous. Ephemeral view state:
+  // never persisted, always cleared on release / Esc / pointercancel / unmount.
+  workspaceCanvasResizeKey: null,
+
   // Source outline (right-rail "Data" tab when a `source` is the active object,
   // VIS-1004). A DISJOINT selection-key grammar from the dashboard outline so
   // the two consumers never collide:
@@ -940,6 +955,20 @@ const createWorkspaceSlice = (set, get) => ({
       state.workspaceCanvasHoverKey === (key || null)
         ? state
         : { workspaceCanvasHoverKey: key || null }
+    );
+  },
+
+  /**
+   * Mark a canvas resize gesture as in flight on `key` (or `null` to clear).
+   * Only the selection overlay's ring suppression reads this; it never affects
+   * the Outline selection, which must survive the gesture so the handles are
+   * still there when the user releases (M26 / VIS-1260).
+   */
+  setWorkspaceCanvasResizeKey: (key) => {
+    set(state =>
+      state.workspaceCanvasResizeKey === (key || null)
+        ? state
+        : { workspaceCanvasResizeKey: key || null }
     );
   },
 
