@@ -627,41 +627,6 @@ def register_commit_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
 
-def _renest_model_scoped_fields(project):
-    """Put draft metrics/dimensions back under the model they belong to.
-
-    ``inject_cached_objects`` overlays every manager's cached objects onto the
-    project by appending to the matching TOP-LEVEL list — so a draft field that
-    is model-scoped lands in ``project.metrics`` rather than under its model.
-    For a run that is harmless; for validation it is not, because "is this
-    field nested?" is exactly the question the project-level rules ask. Without
-    this, a perfectly good nested draft is reported as a project-level field
-    that references nothing, and the commit is refused.
-
-    ``project_writer`` nests by ``parent_model`` when it writes, so this makes
-    the validated shape match the shape that would land on disk.
-    """
-    for field_attr, model_attr in (("metrics", "metrics"), ("dimensions", "dimensions")):
-        remaining = []
-        for field in getattr(project, field_attr, None) or []:
-            parent_name = getattr(field, "_parent_name", None)
-            if not parent_name:
-                remaining.append(field)
-                continue
-            owner = next(
-                (m for m in project.models if getattr(m, "name", None) == parent_name), None
-            )
-            if owner is None:
-                # Orphaned scope — leave it top-level so the normal validators
-                # report it rather than silently dropping the field.
-                remaining.append(field)
-                continue
-            owned = list(getattr(owner, model_attr, None) or [])
-            owned = [o for o in owned if getattr(o, "name", None) != field.name] + [field]
-            setattr(owner, model_attr, owned)
-        setattr(project, field_attr, remaining)
-
-
 def _validate_pending_project(flask_app):
     """The validation error a commit would produce, or None.
 
@@ -671,6 +636,12 @@ def _validate_pending_project(flask_app):
     validator chain. Re-constructing is the point: ``inject_cached_objects``
     mutates via ``setattr``, which does not re-validate, so only a fresh
     ``Project(**dump)`` exercises the project-level rules.
+
+    The overlay puts model-scoped fields back under their model itself
+    (``renest_model_scoped_fields``), so what is validated here has the shape
+    ``project_writer`` would land on disk. That matters both ways: a nested
+    ``count(*)`` must not be judged by the project-level rule, and a
+    project-level field must not escape it.
 
     Fails OPEN on an unexpected error: this gate exists to catch a *known*
     invalid project, and must not become a new way for a commit to fail.
@@ -683,7 +654,6 @@ def _validate_pending_project(flask_app):
     try:
         pending = deepcopy(flask_app.project)
         inject_cached_objects(flask_app, pending)
-        _renest_model_scoped_fields(pending)
         Project(**pending.model_dump(exclude_none=True))
     except ValueError as error:
         message = str(error)
