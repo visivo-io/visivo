@@ -158,6 +158,51 @@ class NewInstallationEvent(BaseEvent):
 
 
 @dataclass
+class FirstRunStepEvent(BaseEvent):
+    """
+    Event for one step mark on the time-to-value ladder (Guided First Run W1).
+
+    ``specs/marketing-relaunch/event-taxonomy.md`` §4 specifies the ladder and
+    every required property. The event name is the step id itself
+    (``first_run_launched``, ...) so a funnel reads the ladder step-by-step;
+    ``step_id`` / ``step_index`` ride along as properties too.
+    """
+
+    @classmethod
+    def create(
+        cls,
+        step_id: str,
+        properties: Optional[Dict[str, Any]] = None,
+        project_hash: Optional[str] = None,
+    ) -> "FirstRunStepEvent":
+        """Create a first-run step event carrying the ladder payload plus system properties."""
+        # machine_id is the distinct_id already, but it is repeated as a property
+        # because the viewer's half of the ladder ships under a browser
+        # distinct_id — this is the only column the two halves join on.
+        merged_properties = {
+            **(properties or {}),
+            "machine_id": _get_machine_id(),
+            "surface": "cli",
+            "plan": "anonymous",
+            "visivo_version": VISIVO_VERSION,
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": platform.system().lower(),
+            "is_ci": is_ci_environment(),
+        }
+
+        if project_hash:
+            merged_properties["project_hash"] = project_hash
+
+        return cls(
+            event_type=step_id,
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            session_id=SESSION_ID,
+            machine_id=_get_machine_id(),
+            properties=merged_properties,
+        )
+
+
+@dataclass
 class WorkspaceEvent(BaseEvent):
     """
     Event for a viewer Workspace interaction (dashboard-building telemetry).
