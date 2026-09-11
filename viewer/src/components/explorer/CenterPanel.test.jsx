@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import selectEvent from 'react-select-event';
 import CenterPanel from './CenterPanel';
 import useStore from '../../stores/store';
+import { _resetExplorationResultCacheForTests } from '../../stores/explorationResultCache';
 
 // Mock DraggableColumnHeader (requires @dnd-kit/core)
 jest.mock('./DraggableColumnHeader', () => {
@@ -12,11 +13,16 @@ jest.mock('./DraggableColumnHeader', () => {
   };
 });
 
-// Mock SQLEditor — mirrors the real editor's run-context snapshot: the
-// "capture" button records queryContext (as handleRun does at execute time)
-// and the completion buttons deliver results with that captured context.
+// Mock SQLEditor — mirrors the real editor's run snapshot: the "capture"
+// button records queryContext AND the sql/source in flight (as handleRun does
+// at execute time) and the completion buttons deliver results with that
+// captured snapshot. Keeping the sql/source in the snapshot is what lets
+// CenterPanel key M27's result cache on what actually ran rather than on
+// whatever the editor holds when the rows land.
 jest.mock('./SQLEditor', () => {
   let capturedContext;
+  let capturedSql;
+  let capturedSource;
   return function MockSQLEditor({
     sourceName,
     initialValue,
@@ -40,6 +46,8 @@ jest.mock('./SQLEditor', () => {
           data-testid="trigger-run-capture"
           onClick={() => {
             capturedContext = queryContext;
+            capturedSql = (initialValue || '').trim();
+            capturedSource = sourceName;
           }}
         >
           Run (capture context)
@@ -51,6 +59,8 @@ jest.mock('./SQLEditor', () => {
               result: { columns: ['id'], rows: [{ id: 1 }], row_count: 1 },
               error: null,
               context: capturedContext,
+              executedSql: capturedSql,
+              executedSourceName: capturedSource,
             })
           }
         >
@@ -63,6 +73,8 @@ jest.mock('./SQLEditor', () => {
               result: null,
               error: 'SQL error',
               context: capturedContext,
+              executedSql: capturedSql,
+              executedSourceName: capturedSource,
             })
           }
         >
@@ -725,6 +737,184 @@ describe('CenterPanel', () => {
         rafSpy.mockRestore();
         dispatchSpy.mockRestore();
       }
+    });
+  });
+
+  /**
+   * M27 — results survive a tab switch.
+   *
+   * These drive the FULL round trip through the real store and the real cache
+   * module: run a query, then reproduce exactly what parking an exploration
+   * tab does (`ExplorationPane`'s deactivate/activate pair — unmount, and
+   * rebuild the model state from the persisted draft, which by design carries
+   * no `queryResult`), then mount again and assert what the grid shows.
+   *
+   * Asserting on the rendered grid rather than on store internals is the
+   * point: "the rows came back" is the user-visible claim, and the empty
+   * state is the honest alternative whenever the cache must miss.
+   */
+  describe('exploration result cache (M27)', () => {
+    const EXPLORATION_ID = 'exp-a';
+
+    // Exactly what restoreExplorerWorkingState does on activate: rebuild the
+    // model state from the draft, which never carried the rows.
+    const parkAndResume = (overrides = {}) => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({
+            sql: 'SELECT 1',
+            sourceName: 'test_source',
+            ...overrides,
+          }),
+        },
+      });
+    };
+
+    const runAQuery = () => {
+      fireEvent.click(screen.getByTestId('trigger-run-capture'));
+      fireEvent.click(screen.getByTestId('trigger-query-complete'));
+    };
+
+    beforeEach(() => {
+      _resetExplorationResultCacheForTests();
+    });
+
+    it('returning to the tab shows the same rows again, without re-running', () => {
+      const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
+      runAQuery();
+      expect(screen.getByTestId('data-table')).toBeInTheDocument();
+
+      view.unmount();
+      parkAndResume();
+      render(<CenterPanel explorationId={EXPLORATION_ID} />);
+
+      expect(screen.getByTestId('data-table')).toBeInTheDocument();
+      expect(screen.getByTestId('dt-row-count')).toHaveTextContent('1');
+      expect(screen.queryByTestId('empty-results')).not.toBeInTheDocument();
+    });
+
+    it('shows the run-your-query state after the SQL is edited', () => {
+      const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
+      runAQuery();
+      view.unmount();
+
+      // Resume with edited SQL — the rows on hand answer a question the user
+      // is no longer asking.
+      parkAndResume({ sql: 'SELECT 2' });
+      render(<CenterPanel explorationId={EXPLORATION_ID} />);
+
+      expect(screen.getByTestId('empty-results')).toBeInTheDocument();
+      expect(screen.queryByTestId('data-table')).not.toBeInTheDocument();
+    });
+
+    it('shows the run-your-query state after the source is changed', () => {
+      const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
+      runAQuery();
+      view.unmount();
+
+      useStore.setState({
+        explorerSources: [
+          { source_name: 'test_source', source_type: 'postgresql' },
+          { source_name: 'other_source', source_type: 'postgresql' },
+        ],
+      });
+      parkAndResume({ sourceName: 'other_source' });
+      render(<CenterPanel explorationId={EXPLORATION_ID} />);
+
+      expect(screen.getByTestId('empty-results')).toBeInTheDocument();
+    });
+
+    it('shows the run-your-query state after the chip is renamed', () => {
+      const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
+      runAQuery();
+      view.unmount();
+
+      // A rename moves the whole model state to a new key — which is exactly
+      // what the promote-naming rail does.
+      useStore.setState({
+        explorerActiveModelName: 'test_model_renamed',
+        explorerModelTabs: ['test_model_renamed'],
+        explorerModelStates: {
+          test_model_renamed: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+        },
+      });
+      render(<CenterPanel explorationId={EXPLORATION_ID} />);
+
+      expect(screen.getByTestId('empty-results')).toBeInTheDocument();
+    });
+
+    it('never shows a sibling exploration the rows', () => {
+      const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
+      runAQuery();
+      view.unmount();
+
+      parkAndResume();
+      render(<CenterPanel explorationId="exp-b" />);
+
+      expect(screen.getByTestId('empty-results')).toBeInTheDocument();
+    });
+
+    it('does not resurrect rows once the same query starts failing', () => {
+      const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
+      runAQuery();
+      // Same SQL, same source — it just errors now (a dropped table, a source
+      // that went away). The rows it used to return are precisely the rows
+      // that must not come back.
+      fireEvent.click(screen.getByTestId('trigger-query-error'));
+      view.unmount();
+
+      parkAndResume();
+      render(<CenterPanel explorationId={EXPLORATION_ID} />);
+
+      expect(screen.getByTestId('empty-results')).toBeInTheDocument();
+    });
+
+    it('parks the rows under the query that RAN, not the tab that is active when they land', () => {
+      // The user starts a run on `test_model` and switches to `other_model`
+      // while it is in flight. The rows belong to `test_model`'s query — key
+      // them by whatever the editor happens to be showing when they arrive
+      // and this chip's cache entry describes a query that never ran.
+      useStore.setState({
+        explorerActiveModelName: 'test_model',
+        explorerModelTabs: ['test_model', 'other_model'],
+        explorerModelStates: {
+          test_model: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+          other_model: makeModelState({ sql: 'SELECT 999', sourceName: 'test_source' }),
+        },
+      });
+      const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
+
+      fireEvent.click(screen.getByTestId('trigger-run-capture'));
+      act(() => {
+        useStore.setState({ explorerActiveModelName: 'other_model' });
+      });
+      fireEvent.click(screen.getByTestId('trigger-query-complete'));
+      view.unmount();
+
+      // Resume with test_model active and holding the SQL it actually ran.
+      useStore.setState({
+        explorerActiveModelName: 'test_model',
+        explorerModelStates: {
+          test_model: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+          other_model: makeModelState({ sql: 'SELECT 999', sourceName: 'test_source' }),
+        },
+      });
+      render(<CenterPanel explorationId={EXPLORATION_ID} />);
+
+      expect(screen.getByTestId('data-table')).toBeInTheDocument();
+    });
+
+    it('parks nothing when the panel is not inside an exploration', () => {
+      // `explorationId` omitted — CenterPanel's default. Nothing is keyed,
+      // so nothing is stored and nothing is served.
+      const view = render(<CenterPanel />);
+      runAQuery();
+      view.unmount();
+
+      parkAndResume();
+      render(<CenterPanel />);
+
+      expect(screen.getByTestId('empty-results')).toBeInTheDocument();
     });
   });
 });

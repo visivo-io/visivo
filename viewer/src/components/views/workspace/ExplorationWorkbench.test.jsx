@@ -15,9 +15,13 @@ import ExplorationWorkbench from './ExplorationWorkbench';
 import useStore from '../../../stores/store';
 
 jest.mock('../../explorer/CenterPanel', () => {
-  return function MockCenterPanel({ modelTabBar, enableLibraryDrop }) {
+  return function MockCenterPanel({ modelTabBar, enableLibraryDrop, explorationId }) {
     return (
-      <div data-testid="center-panel" data-enable-library-drop={enableLibraryDrop ? 'true' : 'false'}>
+      <div
+        data-testid="center-panel"
+        data-enable-library-drop={enableLibraryDrop ? 'true' : 'false'}
+        data-exploration-id={explorationId || 'none'}
+      >
         CenterPanel
         {modelTabBar}
       </div>
@@ -67,6 +71,20 @@ describe('ExplorationWorkbench', () => {
   test('opts CenterPanel into the Library SQL-editor drop target (D9)', () => {
     render(<ExplorationWorkbench />);
     expect(screen.getByTestId('center-panel')).toHaveAttribute('data-enable-library-drop', 'true');
+  });
+
+  // M27: the exploration id is the isolation half of the session result
+  // cache's key — without it two explorations with an identically-named chip
+  // running identical SQL would be one cache entry, and one document would be
+  // shown the other's rows.
+  test('hands CenterPanel the exploration id so parked results stay per-document', () => {
+    render(<ExplorationWorkbench explorationId="exp_1" />);
+    expect(screen.getByTestId('center-panel')).toHaveAttribute('data-exploration-id', 'exp_1');
+  });
+
+  test('passes no exploration id when it has none — the cache stays off rather than guessing', () => {
+    render(<ExplorationWorkbench />);
+    expect(screen.getByTestId('center-panel')).toHaveAttribute('data-exploration-id', 'none');
   });
 
   test('sizes to fill its container (no fixed viewport height, unlike the standalone route)', () => {

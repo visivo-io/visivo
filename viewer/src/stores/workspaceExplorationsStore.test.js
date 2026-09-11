@@ -21,6 +21,12 @@ import { buildPromoteChecklist } from './promoteChecklist';
 import { setWorkspaceTelemetryListener } from '../components/views/workspace/telemetry';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 import { buildInsightFreshnessSignature } from '../utils/insightFreshnessSignature';
+import {
+  putCachedExplorationResult,
+  getCachedExplorationResult,
+  explorationResultCacheStats,
+  _resetExplorationResultCacheForTests,
+} from './explorationResultCache';
 
 jest.mock('../api/explorations');
 jest.mock('./promoteChecklist', () => ({ buildPromoteChecklist: jest.fn() }));
@@ -94,6 +100,7 @@ const reset = () => {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  _resetExplorationResultCacheForTests();
   reset();
 });
 
@@ -2480,5 +2487,130 @@ describe('flywheel telemetry (VIS-1072)', () => {
       await useStore.getState().discardExploration('exp_1');
     });
     expect(events.find(e => e.eventName === 'exploration_discarded')).toBeUndefined();
+  });
+});
+
+/**
+ * M27 — the session result cache is not allowed to outlive the reason the
+ * rows were trustworthy.
+ *
+ * `explorationResultCache.js` keys itself so that an edited query, a renamed
+ * chip or a changed source simply misses. These are the two invalidations the
+ * KEY cannot express, because nothing about the key changes when they happen —
+ * they have to be told.
+ */
+describe('exploration result cache invalidation (M27)', () => {
+  const scopeFor = (id, modelName) => ({
+    explorationId: id,
+    modelName,
+    sourceName: 'warehouse',
+    sql: 'select 1',
+  });
+  const park = (id, modelName) =>
+    putCachedExplorationResult(scopeFor(id, modelName), {
+      columns: ['a'],
+      rows: [{ a: 1 }],
+      row_count: 1,
+    });
+
+  const checklistRow = overrides => ({
+    tier: 'model',
+    type: 'model',
+    name: 'orders_q',
+    parentModel: null,
+    status: 'new',
+    valid: true,
+    error: null,
+    config: { sql: 'select 1' },
+    ...overrides,
+  });
+
+  test('promoting a model retires that chip’s parked rows', async () => {
+    // Once the model is a project object its rows belong to the project's own
+    // build (`useModelTabPrefill`'s last-build path), and the promoted config
+    // is the checklist's — not necessarily the raw text the chip last ran.
+    // A session result must not shadow either.
+    park('exp_1', 'orders_q');
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveModel: jest.fn().mockResolvedValue({ success: true }) });
+    });
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).toBeNull();
+  });
+
+  test('a promote that FAILS to save leaves the parked rows alone', async () => {
+    // Nothing changed hands — the chip is still an exploration chip and its
+    // rows are still the honest answer to its query.
+    park('exp_1', 'orders_q');
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    act(() => {
+      useStore.setState({
+        saveModel: jest.fn().mockResolvedValue({ success: false, error: 'nope' }),
+      });
+    });
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).not.toBeNull();
+  });
+
+  test('promoting an INSIGHT leaves the model chip’s parked rows alone', async () => {
+    // Only a model promotion hands rows to the project; an insight promotion
+    // says nothing about where the underlying rows should come from.
+    park('exp_1', 'orders_q');
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: { props: {} } }),
+    ]);
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveInsight: jest.fn().mockResolvedValue({ success: true }) });
+    });
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'insight', name: 'churn' }]);
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).not.toBeNull();
+  });
+
+  test('deleting an exploration drops every result parked for it', async () => {
+    park('exp_1', 'orders_q');
+    park('exp_1', 'users_q');
+    park('exp_other', 'orders_q');
+    seedRecord();
+    explorationsApi.deleteExploration.mockResolvedValueOnce(true);
+
+    await act(async () => {
+      await useStore.getState().deleteExploration('exp_1');
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).toBeNull();
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'users_q'))).toBeNull();
+    // A different document's rows are none of this delete's business.
+    expect(getCachedExplorationResult(scopeFor('exp_other', 'orders_q'))).not.toBeNull();
+    expect(explorationResultCacheStats().entries).toBe(1);
+  });
+
+  test('a delete that FAILS keeps the parked rows — the exploration is still there', async () => {
+    park('exp_1', 'orders_q');
+    seedRecord();
+    explorationsApi.deleteExploration.mockRejectedValueOnce(new Error('locked'));
+
+    await act(async () => {
+      await useStore.getState().deleteExploration('exp_1');
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).not.toBeNull();
   });
 });
