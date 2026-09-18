@@ -42,16 +42,65 @@ class DagRunner:
         self.threads = threads
         self.soft_failure = soft_failure
         self.server_url = server_url
-        self.job_dag = job_dag
         self.working_dir = working_dir
         self.run_id = run_id
-        self.job_tracking_dag = job_dag.copy()
         self.project_dag = project.dag()
+        self.job_dag = self._with_unbuilt_dependencies(job_dag)
+        self.job_tracking_dag = self.job_dag.copy()
         self.failed_job_results = []
         self.successful_job_results = []
         self.lock = Lock()
         # Schema cache for SQL model jobs - builds DataTypes once per source
         self.schema_cache = SourceSchemaCache()
+
+    def _with_unbuilt_dependencies(self, job_dag):
+        """``job_dag`` plus any dependency of it that nothing has built yet.
+
+        A filter says what to look at, not what a run needs: an insight can be
+        in scope while a model it reads is not. That model is usually still on
+        disk from an earlier run and the insight reads it there, but in a fresh
+        directory there is nothing to read and the insight fails on a
+        dependency it was never going to build.
+
+        Only unbuilt ones are added, so a filter over a warm directory still
+        runs exactly what it named.
+        """
+        from networkx import descendants
+
+        wanted = set(job_dag.nodes)
+        for node in list(job_dag.nodes):
+            # The project consumes everything, so its dependencies are the
+            # whole graph.
+            if node is self.project:
+                continue
+            for dependency in descendants(self.project_dag, node):
+                if dependency not in wanted and not self._is_built(dependency):
+                    wanted.add(dependency)
+
+        if wanted == set(job_dag.nodes):
+            return job_dag
+        return self.project_dag.subgraph(wanted).copy()
+
+    def _is_built(self, item):
+        """Whether this run's output directory already holds ``item``'s output.
+
+        Only the types another job reads are answered, so an unknown type is
+        never dragged into the run.
+        """
+        import os
+
+        from visivo.constants import DEFAULT_RUN_ID
+
+        run_dir = f"{self.output_dir}/{self.run_id or DEFAULT_RUN_ID}"
+        name = getattr(item, "name", None)
+        if not name:
+            return True
+
+        if isinstance(item, (SqlModel, Source)):
+            return os.path.exists(f"{run_dir}/schemas/{name}.json")
+        if isinstance(item, Input):
+            return os.path.exists(f"{run_dir}/inputs/{name}.json")
+        return True
 
     def run(self):
         complete = False

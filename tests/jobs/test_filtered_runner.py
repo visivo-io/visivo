@@ -13,8 +13,10 @@ from tests.factories.model_factories import (
     ChartFactory,
     ItemFactory,
     RowFactory,
+    InputFactory,
 )
 from visivo.jobs.filtered_runner import FilteredRunner
+from visivo.models.interaction import InsightInteraction
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
 from visivo.server.hot_reload_server import HotReloadServer
@@ -177,3 +179,70 @@ def test_runner_seeds_land_before_a_model_joins_them():
         {"x": 3, "y": 4, "z": 8},
         {"x": 5, "y": 6, "z": 9},
     ]
+
+
+def _project_with_an_input_and_two_models(output_dir):
+    """The shape that exposed this: an input, and an insight reading both the
+    input and a model of its own."""
+    source = SourceFactory(name="test_source", database=f"{output_dir}/test.sqlite")
+    options_model = SqlModelFactory(name="data", source="ref(test_source)")
+    charted = SqlModelFactory(name="charted_model", source="ref(test_source)")
+    input_obj = InputFactory(name="test_input", options="?{ SELECT x FROM ${ref(data)} }")
+    insight = InsightFactory(name="insight1", model=charted)
+    insight.interactions = [
+        InsightInteraction(filter="?{ ${ref(charted_model).x} = ${ref(test_input).value} }")
+    ]
+
+    chart = ChartFactory(name="Chart", insights=[insight])
+    item = ItemFactory(chart=chart, name="item")
+    row = RowFactory(items=[item], name="row")
+    dashboard = DashboardFactory(name="dashboard", rows=[row])
+
+    project = ProjectFactory(
+        sources=[source],
+        models=[options_model, charted],
+        inputs=[input_obj],
+        dashboards=[dashboard],
+    )
+    create_file_database(url=source.url(), output_dir=output_dir)
+    return project, charted
+
+
+def test_runner_builds_a_dependency_the_filter_left_out():
+    """A filter says what to look at, not what a run needs.
+
+    `+test_input+` selects the insight downstream of the input but not the
+    model that insight charts. In a directory holding that model's output the
+    insight reads it from disk; in a fresh one there is nothing to read.
+    """
+    output_dir = temp_folder()
+    project, charted = _project_with_an_input_and_two_models(output_dir)
+
+    FilteredRunner(
+        project=project,
+        output_dir=output_dir,
+        dag_filter="+test_input+",
+        server_url=f"http://localhost:{get_test_port()}",
+    ).run()
+
+    assert os.path.exists(f"{output_dir}/main/schemas/{charted.name}.json")
+
+
+def test_runner_leaves_a_dependency_that_is_already_built():
+    """The filter still means what it says once its outputs are on disk."""
+    output_dir = temp_folder()
+    project, charted = _project_with_an_input_and_two_models(output_dir)
+    server_url = f"http://localhost:{get_test_port()}"
+
+    FilteredRunner(project=project, output_dir=output_dir, server_url=server_url).run()
+    schema_file = f"{output_dir}/main/schemas/{charted.name}.json"
+    built_at = os.path.getmtime(schema_file)
+
+    FilteredRunner(
+        project=project,
+        output_dir=output_dir,
+        dag_filter="+test_input+",
+        server_url=server_url,
+    ).run()
+
+    assert os.path.getmtime(schema_file) == built_at
