@@ -204,50 +204,55 @@ def test_filter_dag():
 def test_filter_dag_includes_what_a_selected_consumer_reads():
     """`+name+` has to bring in the other models its consumers read.
 
-    A consumer selected from the descendant side is going to be built, and it
-    cannot build without its own inputs. Locally this hid behind `target/`,
-    which still held the previous run's outputs; a cloud run starts in an empty
-    TemporaryDirectory and fails with "Missing schema for model".
+    Edges run consumer -> dependency, so the pre side selects consumers. A
+    consumer that is going to be rebuilt needs everything it reads, which may be
+    nothing the named node depends on. Locally this hid behind `target/`, which
+    still held the previous run's outputs; a cloud run starts in an empty
+    directory and fails with "Missing schema for model".
     """
     dag = ProjectDag()
 
-    # Two independent models feeding one insight, with a third model feeding an
-    # input the insight filters on — the shape that exposed this.
-    filtered_on = Model(name="filtered-on")
-    other_input = Model(name="other-input")
-    insight = Model(name="insight")
-    dag.add_edge(filtered_on, insight)
-    dag.add_edge(other_input, insight)
+    # One input feeding two insights, each charting a model of its own. The
+    # project node is part of the shape: it consumes every item, which is why
+    # the closure has to skip roots or it would select the whole graph.
+    project_node = Model(name="project-root")
+    selected_input = Model(name="selected-input")
+    insight_one = Model(name="insight-one")
+    insight_two = Model(name="insight-two")
+    model_one = Model(name="model-one")
+    model_two = Model(name="model-two")
+    for item in (selected_input, insight_one, insight_two, model_one, model_two):
+        dag.add_edge(project_node, item)
+    dag.add_edge(insight_one, selected_input)
+    dag.add_edge(insight_two, selected_input)
+    dag.add_edge(insight_one, model_one)
+    dag.add_edge(insight_two, model_two)
 
-    nodes = dag.filter_dag("+filtered-on+")[0].nodes
+    nodes = dag.filter_dag("+selected-input+")[0].nodes
 
-    assert filtered_on in nodes
-    assert insight in nodes
-    # The one that used to be missing.
-    assert other_input in nodes
+    assert {selected_input, insight_one, insight_two} <= set(nodes)
+    # The two that used to be missing: read by the insights, not by the input.
+    assert model_one in nodes
+    assert model_two in nodes
 
 
 def test_filter_dag_respects_a_bounded_radius():
     """`1+model+1` names an exact radius, and widening it would ignore that."""
     dag = ProjectDag()
 
-    grandparent = Model(name="bounded-grandparent")
-    parent = Model(name="bounded-parent")
-    model = Model(name="bounded-model")
-    child = Model(name="bounded-child")
-    other_parent = Model(name="bounded-other-parent")
-    dag.add_edge(grandparent, parent)
-    dag.add_edge(parent, model)
-    dag.add_edge(model, child)
-    dag.add_edge(other_parent, child)
+    consumer = Model(name="bounded-consumer")
+    named = Model(name="bounded-named")
+    dependency = Model(name="bounded-dependency")
+    other_dependency = Model(name="bounded-other-dependency")
+    dag.add_edge(consumer, named)
+    dag.add_edge(named, dependency)
+    dag.add_edge(consumer, other_dependency)
 
-    nodes = dag.filter_dag("1+bounded-model+1")[0].nodes
+    nodes = dag.filter_dag("1+bounded-named+1")[0].nodes
 
-    assert {parent, model, child} <= set(nodes)
-    # Neither the grandparent nor the child's other parent: the radius was
-    # given on purpose.
-    assert grandparent not in nodes
-    assert other_parent not in nodes
+    assert {consumer, named, dependency} <= set(nodes)
+    # The consumer's other dependency stays out: the radius was given on purpose.
+    assert other_dependency not in nodes
 
 
 def test_get_diff_dag_filter():

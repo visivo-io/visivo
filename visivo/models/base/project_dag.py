@@ -232,13 +232,18 @@ class ProjectDag(DiGraph):
 
             filtered_nodes = {node for node in self.nodes if matches_length_and_side(node)}
 
-            # A consumer selected downstream still needs its own inputs, which
-            # may sit outside the filter. Only for an unbounded `+name`, since a
-            # bounded radius is an explicit limit.
-            if pre == "+":
+            # Edges run consumer -> dependency, so `a` holds the consumers the
+            # pre side pulled in. A consumer is going to be rebuilt and needs
+            # everything it reads, which the named node may not depend on.
+            #
+            # Roots are skipped: the project node consumes everything, so
+            # closing over it would select the whole graph. Bounded radii are
+            # skipped too, being an explicit limit.
+            if post == "+":
+                roots = set(self.get_root_nodes())
                 for node in list(filtered_nodes):
-                    if node in d:
-                        filtered_nodes |= ancestors(self, node)
+                    if node in a and node not in roots:
+                        filtered_nodes |= descendants(self, node)
 
             filtered_dags.append(subgraph(self, filtered_nodes))
 
