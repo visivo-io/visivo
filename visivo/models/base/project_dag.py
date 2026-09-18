@@ -230,7 +230,15 @@ class ProjectDag(DiGraph):
                     or node == item
                 )
 
-            filtered_nodes = [node for node in self.nodes if matches_length_and_side(node)]
+            filtered_nodes = {node for node in self.nodes if matches_length_and_side(node)}
+
+            # A consumer selected downstream still needs its own inputs, which
+            # may sit outside the filter. Only for an unbounded `+name`, since a
+            # bounded radius is an explicit limit.
+            if pre == "+":
+                for node in list(filtered_nodes):
+                    if node in d:
+                        filtered_nodes |= ancestors(self, node)
 
             filtered_dags.append(subgraph(self, filtered_nodes))
 

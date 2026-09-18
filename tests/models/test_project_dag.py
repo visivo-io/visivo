@@ -201,6 +201,55 @@ def test_filter_dag():
     assert len(filtered_dag[0].edges) == 3
 
 
+def test_filter_dag_includes_what_a_selected_consumer_reads():
+    """`+name+` has to bring in the other models its consumers read.
+
+    A consumer selected from the descendant side is going to be built, and it
+    cannot build without its own inputs. Locally this hid behind `target/`,
+    which still held the previous run's outputs; a cloud run starts in an empty
+    TemporaryDirectory and fails with "Missing schema for model".
+    """
+    dag = ProjectDag()
+
+    # Two independent models feeding one insight, with a third model feeding an
+    # input the insight filters on — the shape that exposed this.
+    filtered_on = Model(name="filtered-on")
+    other_input = Model(name="other-input")
+    insight = Model(name="insight")
+    dag.add_edge(filtered_on, insight)
+    dag.add_edge(other_input, insight)
+
+    nodes = dag.filter_dag("+filtered-on+")[0].nodes
+
+    assert filtered_on in nodes
+    assert insight in nodes
+    # The one that used to be missing.
+    assert other_input in nodes
+
+
+def test_filter_dag_respects_a_bounded_radius():
+    """`1+model+1` names an exact radius, and widening it would ignore that."""
+    dag = ProjectDag()
+
+    grandparent = Model(name="bounded-grandparent")
+    parent = Model(name="bounded-parent")
+    model = Model(name="bounded-model")
+    child = Model(name="bounded-child")
+    other_parent = Model(name="bounded-other-parent")
+    dag.add_edge(grandparent, parent)
+    dag.add_edge(parent, model)
+    dag.add_edge(model, child)
+    dag.add_edge(other_parent, child)
+
+    nodes = dag.filter_dag("1+bounded-model+1")[0].nodes
+
+    assert {parent, model, child} <= set(nodes)
+    # Neither the grandparent nor the child's other parent: the radius was
+    # given on purpose.
+    assert grandparent not in nodes
+    assert other_parent not in nodes
+
+
 def test_get_diff_dag_filter():
     existing_project = ProjectFactory()
     new_project = ProjectFactory()
