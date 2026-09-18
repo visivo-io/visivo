@@ -214,6 +214,35 @@ describe('TopNav', () => {
     expect(def.compareDocumentPosition(starred) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('lists the default branch once, even when it is starred', () => {
+    // Starring the default is the ordinary thing to do, and it was then
+    // rendered under both DEFAULT and STARRED.
+    const branches = [
+      {
+        id: 'main',
+        name: 'main',
+        color: '#16a34a',
+        isDefault: true,
+        starred: true,
+        flag: 'Default',
+      },
+      { id: 'feature', name: 'feature', color: '#6b7280', starred: true },
+    ];
+    renderNav({
+      branches,
+      currentBranch: branches[0],
+      projects: [{ id: 'p', name: 'p' }],
+      currentProject: { id: 'p', name: 'p' },
+    });
+
+    fireEvent.click(screen.getAllByText('main')[0]);
+
+    // Two: the top bar's own button, and one row in the menu. It was three,
+    // with the default rendered under DEFAULT and again under STARRED.
+    expect(screen.getAllByText('main')).toHaveLength(2);
+    expect(screen.getByText('feature')).toBeInTheDocument();
+  });
+
   describe('branches holding the same project', () => {
     // These were reachable only by typing into the search box, so the one
     // switch someone actually wants — "show me this project over there" — was
