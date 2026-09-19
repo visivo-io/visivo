@@ -32,6 +32,7 @@ from visivo.query.sqlglot_utils import (
 )
 from visivo.query.model_schema_inference import infer_model_columns
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.output_paths import schema_file as schema_file_path
 
 
 def _build_and_write_schema(
@@ -249,7 +250,7 @@ def schema_only_action(
 
         # Organize by run_id
         run_output_dir = f"{output_dir}/{run_id}"
-        schema_file = f"{run_output_dir}/schemas/{sql_model.name}.json"
+        schema_file = schema_file_path(run_output_dir, sql_model.name)
         success_message = format_message_success(
             details=f"Wrote schema for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,
