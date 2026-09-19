@@ -107,8 +107,10 @@ function BranchRow({ s, active, onPick }) {
 
 function BranchMenu({ branches, currentBranch, onPick, onAllBranches, close }) {
   const [q, setQ] = React.useState('');
-  const starred = branches.filter(s => s.starred);
   const def = branches.filter(s => s.isDefault);
+  // The default has its own section, and starring it is the ordinary thing to
+  // do — without this it is listed twice.
+  const starred = branches.filter(s => s.starred && !s.isDefault);
   // Branches the project you are looking at also lives on. Without a section of
   // their own they were reachable only by typing into the search box, so the
   // one switch someone actually wants — "show me this project over there" —
