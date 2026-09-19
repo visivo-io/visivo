@@ -373,3 +373,61 @@ describe('prepPostQuery - Template Literal Injection', () => {
     });
   });
 });
+
+describe('loadInsightParquetFiles content validation', () => {
+  const htmlBody = new TextEncoder().encode('<!doctype html><html>…</html>').buffer;
+  const realParquet = new Uint8Array([0x50, 0x41, 0x52, 0x31, 1, 2, 3, 4]).buffer;
+
+  const respond = body => ({
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: { get: () => 'text/html' },
+    arrayBuffer: async () => body,
+  });
+
+  const makeDb = () => ({
+    connect: jest.fn().mockResolvedValue(mockConn),
+    registerFileBuffer: jest.fn().mockResolvedValue(undefined),
+    dropFile: jest.fn().mockResolvedValue(undefined),
+  });
+
+  beforeEach(() => {
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
+
+  it('reports what actually arrived instead of letting DuckDB complain', async () => {
+    // A 200 carrying the SPA's index.html reached DuckDB as bytes, which said
+    // "No magic bytes found at end of file" about a temp file nobody chose —
+    // naming neither the URL nor what came back.
+    jest.doMock('../api/utils', () => ({ apiFetch: jest.fn().mockResolvedValue(respond(htmlBody)) }));
+    const { loadInsightParquetFiles } = require('./queries');
+
+    const db = makeDb();
+    const { failed } = await loadInsightParquetFiles(db, [
+      { name_hash: 'abc_options', signed_data_file_url: '/tmp/run/abc_options.parquet' },
+    ]);
+
+    expect(failed).toHaveLength(1);
+    expect(failed[0].error).toContain('Expected a parquet file');
+    expect(failed[0].error).toContain('abc_options');
+    expect(failed[0].error).toContain('/tmp/run/abc_options.parquet');
+    expect(db.registerFileBuffer).not.toHaveBeenCalled();
+  });
+
+  it('lets a real parquet through', async () => {
+    jest.doMock('../api/utils', () => ({
+      apiFetch: jest.fn().mockResolvedValue(respond(realParquet)),
+    }));
+    const { loadInsightParquetFiles } = require('./queries');
+
+    const db = makeDb();
+    const { failed } = await loadInsightParquetFiles(db, [
+      { name_hash: 'abc', signed_data_file_url: 'https://storage/abc.parquet' },
+    ]);
+
+    expect(failed).toHaveLength(0);
+    expect(db.registerFileBuffer).toHaveBeenCalled();
+  });
+});
