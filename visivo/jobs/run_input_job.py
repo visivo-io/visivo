@@ -13,6 +13,8 @@ Output follows the insights pattern:
 
 import json
 import os
+
+from visivo.output_paths import input_metadata_file
 from time import time
 from typing import Optional, Union, List, Any, Tuple, Dict
 
@@ -521,7 +523,7 @@ def action(
         run_output_dir = f"{output_dir}/{run_id}"
         inputs_directory = f"{run_output_dir}/inputs"
         os.makedirs(inputs_directory, exist_ok=True)
-        json_path = f"{inputs_directory}/{input_name}.json"
+        json_path = input_metadata_file(run_output_dir, input_name)
 
         # Process based on input type
         if isinstance(input_obj, SingleSelectInput):

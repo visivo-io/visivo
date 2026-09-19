@@ -229,7 +229,12 @@ def test_runner_builds_a_dependency_the_filter_left_out():
 
 
 def test_runner_leaves_a_dependency_that_is_already_built():
-    """The filter still means what it says once its outputs are on disk."""
+    """The filter still means what it says once its outputs are on disk.
+
+    Also what keeps the runner's "is this built?" check honest: it looks for
+    the file through `output_paths`, the same builders the jobs write through,
+    and this fails if the two ever stop agreeing.
+    """
     output_dir = temp_folder()
     project, charted = _project_with_an_input_and_two_models(output_dir)
     server_url = f"http://localhost:{get_test_port()}"

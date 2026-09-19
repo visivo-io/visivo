@@ -84,22 +84,26 @@ class DagRunner:
     def _is_built(self, item):
         """Whether this run's output directory already holds ``item``'s output.
 
+        The paths come from ``output_paths``, the same builders the jobs write
+        through: asking whether a file exists somewhere the writer no longer
+        puts it is a check that quietly answers the wrong question.
+
         Only the types another job reads are answered, so an unknown type is
         never dragged into the run.
         """
         import os
 
-        from visivo.constants import DEFAULT_RUN_ID
+        from visivo.output_paths import input_metadata_file, run_dir, schema_file
 
-        run_dir = f"{self.output_dir}/{self.run_id or DEFAULT_RUN_ID}"
         name = getattr(item, "name", None)
         if not name:
             return True
 
+        directory = run_dir(self.output_dir, self.run_id)
         if isinstance(item, (SqlModel, Source)):
-            return os.path.exists(f"{run_dir}/schemas/{name}.json")
+            return os.path.exists(schema_file(directory, name))
         if isinstance(item, Input):
-            return os.path.exists(f"{run_dir}/inputs/{name}.json")
+            return os.path.exists(input_metadata_file(directory, name))
         return True
 
     def run(self):
