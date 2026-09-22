@@ -3,6 +3,23 @@ from visivo.logger.logger import Logger
 import traceback
 
 
+def normalize_deployment_root(deployment_root):
+    """``/path/sub`` from whatever a person typed, or ``""`` for the site root.
+
+    Every URL in a dist is written by pasting this in front of an absolute path,
+    so a root without its leading slash produces a RELATIVE one:
+    ``src="path/sub/assets/index.js"`` loaded from ``/path/sub/`` asks the server
+    for ``/path/sub/path/sub/assets/index.js``, which 404s. The bundle never
+    runs and the page is blank — no error, because nothing got far enough to
+    raise one.
+
+    The viewer's own ``URLConfig`` normalizes the same way, which is why data
+    URLs looked right while the page they were for never loaded.
+    """
+    deployment_root = (deployment_root or "").strip().strip("/")
+    return f"/{deployment_root}" if deployment_root else ""
+
+
 def _current_artifacts(json_paths):
     """One artifact per object name, dropping residue from older runs.
 
@@ -76,7 +93,7 @@ def dist_phase(
 
     os.makedirs(f"{dist_dir}/data", exist_ok=True)
 
-    deployment_root = deployment_root or ""
+    deployment_root = normalize_deployment_root(deployment_root)
 
     try:
         # `dist` packages a previously-run project. The dereferenced project.json
