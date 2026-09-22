@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import useStore from '../../../../stores/store';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
+import { EMPHASIZED_OUTLINE_PROPS } from './canvasEmphasis';
 
 /**
  * CanvasSelectionOverlay — VIS-D2 / VIS-768.
@@ -102,6 +103,14 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
   // This overlay is the single hover source (it already resolves the target);
   // sharing the key keeps the grip reveal aligned 1:1 with the hover ring.
   const setHoverKey = useStore(s => s.setWorkspaceCanvasHoverKey);
+  // Non-null for the LIFE of a <CanvasResizeLayer> gesture. During a resize the
+  // only truthful geometry on the canvas is that layer's ghost: our ring is
+  // frozen at the PRE-DRAG box (the Dashboard deliberately does not re-lay-out
+  // mid-gesture) and lives in a sibling layer the resize layer's card-fade
+  // cannot reach, so leaving it up puts a full-strength 2px mulberry ring at the
+  // OLD geometry beside an identical one at the target. We stand down instead —
+  // one gesture, one emphasized outline (see `canvasEmphasis`).
+  const canvasResizeKey = useStore(s => s.workspaceCanvasResizeKey);
 
   // Hovered + selected box geometry, measured from the live Dashboard DOM.
   const [hoverBox, setHoverBox] = useState(null); // { rect, kind }
@@ -243,6 +252,11 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
   }, [rootRef, handleMouseMove, handleMouseLeave, handleClick]);
 
   const chromeSelected = selectedKey === 'dashboard';
+  // A resize gesture owns the canvas's emphasis. Both of our rings are stale for
+  // its duration (the ring is pinned to the pre-drag box; the hover ring tracks
+  // a pointer that is dragging a handle, not browsing), so both stand down and
+  // come straight back on release / Esc / pointercancel.
+  const resizing = !!canvasResizeKey;
 
   return (
     <div
@@ -264,7 +278,8 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
           node; the former hover-time resize-handle placeholder is removed so
           there is exactly one resize affordance. Suppressed when this exact
           node is the persistent selection, so the selection ring reads cleanly. */}
-      {hoverBox &&
+      {!resizing &&
+        hoverBox &&
         hoverBox.rect &&
         !(
           selectedBox &&
@@ -292,10 +307,18 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
         )}
 
       {/* Selection overlay — persistent mulberry-500 ring with offset
-          (D-1 states 05/06). Chrome selection is handled above. */}
-      {selectedBox && selectedBox.rect && (
+          (D-1 states 05/06). Chrome selection is handled above. Hidden while a
+          resize gesture is in flight: that layer's ghost is then the canvas's
+          single emphasized outline (M26), and this ring would sit at the
+          superseded pre-drag geometry. */}
+      {!resizing && selectedBox && selectedBox.rect && (
         <div
           data-testid={`canvas-overlay-selected-${selectedBox.kind}`}
+          // The 2px mulberry ring is a STRONG outline, so it joins the canvas's
+          // one-emphasized-outline invariant (`canvasEmphasis`) — that is what
+          // makes "exactly one ring during a gesture" a countable, falsifiable
+          // property instead of a marker only the ghost ever carries.
+          {...EMPHASIZED_OUTLINE_PROPS}
           // rounded-lg (matches the card radius) + NO ring-offset: the offset
           // gap was what produced the ugly double line against the card's own
           // border (VIS-990 polish). The 2px mulberry ring now hugs the card edge.
