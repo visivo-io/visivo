@@ -1,0 +1,1934 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation for Visivo, the AI-native open-source BI-as-code platform. Define data sources, a semantic layer of metrics, dimensions, and relations, and dashboards as version-controlled YAML, then explore them interactively with Insights. Develop locally with visivo serve and deploy to Visivo Cloud.">
+      
+      
+        <meta name="author" content="Visivo">
+      
+      
+        <link rel="canonical" href="https://docs.visivo.io/reference/configuration/Insight/Props/Choroplethmap/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../../../assets/favicon_io/favicon-32x32.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Choroplethmap - Visivo Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+  
+  
+  
+  
+  <style>:root{--md-annotation-icon:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M22%2012a10%2010%200%200%201-10%2010A10%2010%200%200%201%202%2012%2010%2010%200%200%201%2012%202a10%2010%200%200%201%2010%2010M6%2013h8l-3.5%203.5%201.42%201.42L17.84%2012l-5.92-5.92L10.5%207.5%2014%2011H6z%22/%3E%3C/svg%3E');}</style>
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/brand_colors.css">
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/icon-colors.css">
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <!--
+  Copyright (c) 2016-2023 Martin Donath <martin.donath@squidfunk.com>
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to
+  deal in the Software without restriction, including without limitation the
+  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+  sell copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+  IN THE SOFTWARE.
+-->
+
+<!-- Determine analytics property -->
+
+
+
+
+<!-- Integrate with Google Analytics 4 -->
+<script id="__analytics">
+  function __md_analytics() {
+    window.dataLayer = window.dataLayer || []
+    function gtag() { dataLayer.push(arguments) }
+
+    /* Set up integration and send page view */
+    gtag("js", new Date())
+    gtag("config", "G-50DF3C95TL")
+
+    /* Register event handlers after documented loaded */
+    document.addEventListener("DOMContentLoaded", function () {
+
+      /* Set up search tracking */
+      if (document.forms.search) {
+        var query = document.forms.search.query
+        query.addEventListener("blur", function () {
+          if (this.value)
+            gtag("event", "search", { search_term: this.value })
+        })
+      }
+
+      /* Set up feedback, i.e. "Was this page helpful?" */
+      document$.subscribe(function () {
+        var feedback = document.forms.feedback
+        if (typeof feedback === "undefined")
+          return
+
+        /* Send feedback to Google Analytics */
+        for (var button of feedback.querySelectorAll("[type=submit]")) {
+          button.addEventListener("click", function (ev) {
+            ev.preventDefault()
+
+            /* Retrieve and send data */
+            var page = document.location.pathname
+            var data = this.getAttribute("data-md-value")
+            gtag("event", "feedback", { page, data })
+
+            /* Disable form and show note, if given */
+            feedback.firstElementChild.disabled = true
+            var note = feedback.querySelector(
+              ".md-feedback__note [data-md-value='" + data + "']"
+            )
+            if (note)
+              note.hidden = false
+          })
+
+          /* Show feedback */
+          feedback.hidden = false
+        }
+      })
+
+      /* Send page view on location change */
+      location$.subscribe(function (url) {
+        gtag("config", "G-50DF3C95TL", {
+          page_path: url.pathname
+        })
+      })
+    })
+
+    /* Create script tag */
+    var script = document.createElement("script")
+    script.async = true
+    script.src = "https://www.googletagmanager.com/gtag/js?id=G-50DF3C95TL"
+
+    /* Inject script tag */
+    var container = document.getElementById("__analytics")
+    container.insertAdjacentElement("afterEnd", script)
+  }
+</script>
+<script>
+  (function (h, o, t, j, a, r) {
+    h.hj = h.hj || function () { (h.hj.q = h.hj.q || []).push(arguments) };
+    h._hjSettings = { hjid: 3760829, hjsv: 6 };
+    a = o.getElementsByTagName('head')[0];
+    r = o.createElement('script'); r.async = 1;
+    r.src = t + h._hjSettings.hjid + j + h._hjSettings.hjsv;
+    a.appendChild(r);
+  })(window, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
+</script>
+
+<!--
+  PostHog observability for docs.visivo.io (VIS-998) — the docs leg of the
+  unified www → docs → CLI → cloud telemetry initiative (P0). PostHog is the
+  single source of conversion truth; GA4 above stays running in tandem.
+
+  • Public project key (193619) — shared with the www site and the visivo CLI
+    telemetry (visivo/telemetry/config.py). phc_* keys are PUBLIC client keys
+    and are safe to embed in shipped HTML.
+  • Host us.i.posthog.com (the www site uses the same host).
+  • Material runs with `navigation.instant`, so a full page load only happens
+    once; subsequent nav swaps the <main> in place. We init PostHog once, then
+    fire a manual `$pageview` (+ `docs_page_viewed`) on every `location$`
+    change so SPA-style nav still tracks. Referrer / UA are captured by default
+    so ChatGPT / Perplexity / Claude referrals + AI-crawler hits are visible.
+  • Conversion CTAs are delegated to autocapture + an explicit click handler:
+    the header "Start free" → app.visivo.io and copy-to-clipboard on install /
+    code blocks. Taxonomy: ../../specs/marketing-relaunch/event-taxonomy.md
+    (snake_case, surface: docs, no PII).
+
+  If the key ever needs rotating, it is the same public key used in
+  www/src/analytics/posthog.js and visivo/telemetry/config.py.
+-->
+<script>
+  (function () {
+    /* Public PostHog project key (193619) — shared across www, CLI, and docs.
+       This is a PUBLIC client key; embedding it in shipped HTML is intended. */
+    var PHC_KEY = "phc_DaLOz39kD2u4ZFNi6aXQuA7ncmnbAGoE8dLZc2z7Agj";
+    var PHC_HOST = "https://us.i.posthog.com";
+
+    /* Only load PostHog on the real docs origin so local dev / sandbox / CI
+       builds (127.0.0.1, localhost, file://) never pollute the prod project. */
+    var host = (window.location && window.location.hostname) || "";
+    var IS_DOCS_PROD = host === "docs.visivo.io" || host.endsWith(".docs.visivo.io");
+
+    /* Capture the very first referrer/UA so AI-referral traffic (chatgpt.com,
+       perplexity.ai, claude.ai, etc.) and AI-crawler hits are attributable
+       even after instant-nav rewrites document.referrer. */
+    var entryReferrer = document.referrer || "";
+
+    function pageProps(extra) {
+      var props = {
+        surface: "docs",
+        $current_url: window.location.href,
+        docs_path: window.location.pathname,
+        docs_referrer: entryReferrer,
+      };
+      if (extra) {
+        for (var k in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, k)) props[k] = extra[k];
+        }
+      }
+      return props;
+    }
+
+    function track(event, extra) {
+      if (window.posthog && typeof window.posthog.capture === "function") {
+        window.posthog.capture(event, pageProps(extra));
+      }
+    }
+
+    /* Wire conversion-CTA + page-change handlers. Re-run on every Material
+       `document$` tick so instant-nav-swapped content keeps its listeners. */
+    function wireHandlers() {
+      /* Header "Start free" → app.visivo.io (the single primary CTA). */
+      var cta = document.querySelector(".vz-header-cta");
+      if (cta && !cta.dataset.phWired) {
+        cta.dataset.phWired = "1";
+        cta.addEventListener("click", function () {
+          track("cta_clicked", { target: "start_free", cta_location: "docs_header" });
+        });
+      }
+
+      /* Install / code-block copy buttons (Material renders a copy button per
+         fenced block). Treat a copy as an install/code-copy conversion signal. */
+      var copyBtns = document.querySelectorAll(".md-clipboard");
+      for (var i = 0; i < copyBtns.length; i++) {
+        var btn = copyBtns[i];
+        if (btn.dataset.phWired) continue;
+        btn.dataset.phWired = "1";
+        btn.addEventListener("click", function (ev) {
+          var target = ev.currentTarget;
+          var codeId = target.getAttribute("data-clipboard-target") || "";
+          var codeEl = codeId ? document.querySelector(codeId) : null;
+          var text = codeEl ? (codeEl.innerText || "") : "";
+          /* Heuristic: surface install commands distinctly from generic copies. */
+          var isInstall =
+            /pip\s+install\s+visivo|visivo\.sh|curl\s+-fsSL\s+https:\/\/visivo\.sh|brew\s+install\s+visivo/i.test(
+              text
+            );
+          if (isInstall) {
+            track("install_command_copied", {
+              command_preview: text.slice(0, 120),
+            });
+          } else {
+            track("code_snippet_copied", {});
+          }
+        });
+      }
+    }
+
+    function init() {
+      if (!IS_DOCS_PROD) return;
+      if (!window.posthog || typeof window.posthog.init !== "function") return;
+
+      window.posthog.init(PHC_KEY, {
+        api_host: PHC_HOST,
+        /* Material owns navigation (instant nav) — fire pageviews manually so
+           SPA-style nav is tracked exactly once per location change. */
+        capture_pageview: false,
+        capture_pageleave: true,
+        persistence: "localStorage+cookie",
+        autocapture: true,
+        loaded: function (ph) {
+          /* Super property so every docs event carries surface: docs. */
+          ph.register({ surface: "docs" });
+        },
+      });
+
+      /* Initial pageview for the full load. */
+      track("docs_page_viewed");
+
+      /* Material's reactive observables: document$ fires after each instant-nav
+         content swap; location$ fires on every URL change. Use document$ for
+         re-wiring handlers (it's available on the Material `window`). */
+      if (typeof window.document$ !== "undefined" && window.document$.subscribe) {
+        window.document$.subscribe(function () {
+          wireHandlers();
+        });
+      } else {
+        wireHandlers();
+      }
+
+      var lastPath = window.location.pathname;
+      if (typeof window.location$ !== "undefined" && window.location$.subscribe) {
+        window.location$.subscribe(function (url) {
+          var path = (url && url.pathname) || window.location.pathname;
+          if (path === lastPath) return; /* dedupe initial emit */
+          lastPath = path;
+          track("docs_page_viewed");
+        });
+      }
+    }
+
+    /* Lazy-load posthog-js from the PostHog asset CDN, then init. */
+    function loadPostHog() {
+      if (!IS_DOCS_PROD) return;
+      !(function (t, e) {
+        var o, n, p, r;
+        e.__SV ||
+          ((window.posthog = e),
+          (e._i = []),
+          (e.init = function (i, s, a) {
+            function g(t, e) {
+              var o = e.split(".");
+              2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                (t[e] = function () {
+                  t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+                });
+            }
+            ((p = t.createElement("script")).type = "text/javascript"),
+              (p.crossOrigin = "anonymous"),
+              (p.async = !0),
+              (p.src =
+                s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") +
+                "/static/array.js"),
+              (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(p, r);
+            var u = e;
+            for (
+              void 0 !== a ? (u = e[a] = []) : (a = "posthog"),
+                u.people = u.people || [],
+                u.toString = function (t) {
+                  var e = "posthog";
+                  return "posthog" !== a && (e += "." + a), t || (e += " (stub)"), e;
+                },
+                u.people.toString = function () {
+                  return u.toString(1) + ".people (stub)";
+                },
+                o =
+                  "init me ws ys ps bs capture je Di ks register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing _start_queue_if_opted_in _dom_loaded debug getPageViewId captureTraceFeedback captureTraceMetric".split(
+                    " "
+                  ),
+                n = 0;
+              n < o.length;
+              n++
+            )
+              g(u, o[n]);
+            e._i.push([i, s, a]);
+          }),
+          (e.__SV = 1));
+      })(document, window.posthog || []);
+      init();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", loadPostHog);
+    } else {
+      loadPostHog();
+    }
+  })();
+</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+    
+  
+
+  
+    
+  
+
+  
+  <meta property="og:site_name" content="Visivo Docs">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Choroplethmap - Visivo Docs">
+  <meta property="og:description" content="Documentation for Visivo, the AI-native open-source BI-as-code platform. Define data sources, a semantic layer of metrics, dimensions, and relations, and dashboards as version-controlled YAML, then explore them interactively with Insights. Develop locally with visivo serve and deploy to Visivo Cloud.">
+  <meta property="og:url" content="https://docs.visivo.io/reference/configuration/Insight/Props/Choroplethmap/">
+  <meta property="og:image" content="https://visivo.io/og-image.png"><meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Choroplethmap - Visivo Docs">
+  <meta name="twitter:description" content="Documentation for Visivo, the AI-native open-source BI-as-code platform. Define data sources, a semantic layer of metrics, dimensions, and relations, and dashboards as version-controlled YAML, then explore them interactively with Insights. Develop locally with visivo serve and deploy to Visivo Cloud.">
+  <meta name="twitter:image" content="https://visivo.io/og-image.png"><link rel="alternate" type="text/plain" title="llms.txt" href="/llms.txt"><script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Visivo",
+    "url": "https://visivo.io/",
+    "logo": "https://visivo.io/images/logo.webp",
+    "description": "Visivo is an AI-native, open-source BI-as-code platform. Define a semantic layer of metrics, dimensions, and relations and dashboards as version-controlled code, explore them with Insights, develop locally with instant feedback, and deploy without breaking production.",
+    "sameAs": [
+      "https://github.com/visivo-io"
+    ]
+  }
+  </script><script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Visivo",
+    "url": "https://visivo.io/",
+    "applicationCategory": "BusinessApplication",
+    "applicationSubCategory": "Business Intelligence",
+    "operatingSystem": "macOS, Linux, Windows",
+    "description": "AI-native, open-source business intelligence as code. Define data sources, a semantic layer of metrics, dimensions, and relations, and dashboards as version-controlled YAML, then explore interactively with Insights. Install the CLI with pip install visivo or curl -fsSL https://visivo.sh | bash, develop locally with visivo serve, and deploy with a hosted cloud platform at app.visivo.io.",
+    "softwareHelp": "https://docs.visivo.io",
+    "publisher": {
+      "@type": "Organization",
+      "name": "Visivo",
+      "url": "https://visivo.io/"
+    },
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Open Source",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free, open-source CLI. Install with pip install visivo or curl -fsSL https://visivo.sh | bash.",
+        "url": "https://visivo.io/get-started"
+      },
+      {
+        "@type": "Offer",
+        "name": "Cloud",
+        "price": "15",
+        "priceCurrency": "USD",
+        "description": "Hosted cloud platform with a 14-day free trial.",
+        "url": "https://visivo.io/pricing"
+      }
+    ],
+    "keywords": "BI-as-code, AI-native BI, semantic layer, metrics, dimensions, relations, Insights, dashboards, version control, CI/CD, open source"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Choroplethmap",
+    "description": "Documentation for Visivo, the AI-native open-source BI-as-code platform. Define data sources, a semantic layer of metrics, dimensions, and relations, and dashboards as version-controlled YAML, then explore them interactively with Insights. Develop locally with visivo serve and deploy to Visivo Cloud.",
+    "url": "https://docs.visivo.io/reference/configuration/Insight/Props/Choroplethmap/",
+    "image": "https://visivo.io/og-image.png",
+    "inLanguage": "en",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "Visivo Docs",
+      "url": "https://docs.visivo.io/"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Visivo",
+      "url": "https://visivo.io/",
+      "logo": "https://visivo.io/images/logo.webp"
+    }
+  }
+  </script>
+  
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="visivo_light" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#choroplethmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../.." title="Visivo Docs" class="md-header__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
+      
+  <img src="../../../../../assets/favicon_io/android-chrome-192x192.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Visivo Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Choroplethmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="visivo_light" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="visivo_dark" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.41 16.58 10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+    <a class="vz-header-cta" href="https://app.visivo.io/register" title="Create a free Visivo Cloud account">
+      Start free
+    </a>
+    
+      <div class="md-header__source">
+        <a href="https://github.com/visivo-io/visivo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    visivo-io/visivo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../../how_tos/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../../concepts/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../../cloud/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Cloud
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../cli/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../../compare/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compare
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../../background/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  About
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="Visivo Docs" class="md-nav__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
+      
+  <img src="../../../../../assets/favicon_io/android-chrome-192x192.png" alt="logo">
+
+    </a>
+    Visivo Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/visivo-io/visivo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    visivo-io/visivo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../../../.." class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../../../../how_tos/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../../../../concepts/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../../../../cloud/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../../../cli/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../../../../compare/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../../../../background/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/visivo-io/visivo/edit/main/mkdocs/reference/configuration/Insight/Props/Choroplethmap/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"/></svg>
+    </a>
+  
+  
+
+
+<div><h1 id="choroplethmap">Choroplethmap</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>choroplethmap</code> insight is used to create choropleth maps on top of a MapLibre layer. It's a more advanced form of the standard <code>choropleth</code> insight, allowing for greater control over map projections, interactivity, and advanced map features like zooming and tilting.</p>
+<p>With <code>choroplethmap</code>, you can visualize data across geographic regions on MapLibre maps, and customize the map's appearance using layers, color scales, and hover labels.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>Geospatial Data Visualization</strong>: Displaying data on an interactive MapLibre map.</li>
+<li><strong>Thematic Mapping with Interactivity</strong>: Creating maps that can zoom, tilt, and rotate while visualizing variables like population or economic metrics.</li>
+<li><strong>Map Projections</strong>: Applying various MapLibre projections for advanced geographical data representation.</li>
+</ul>
+</div>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple ChoroplethMapLibre Map</label><label for="__tabbed_1_2">ChoroplethMapLibre with Custom Colorscale and Zoom</label><label for="__tabbed_1_3">Interactive ChoroplethMapLibre with Hover Data</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>choroplethmap</code> showing population density across different regions on a MapLibre layer:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">sources</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">country-population-data-map-source</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">duckdb</span>
+<span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target/seeds/country_population_data_map.duckdb</span>
+<span class="w">    </span><span class="nt">seeds</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">table_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model</span>
+<span class="w">        </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">            </span><span class="no">iso_alpha,population_density</span>
+<span class="w">            </span><span class="no">USA,36</span>
+<span class="w">            </span><span class="no">CAN,4</span>
+<span class="w">            </span><span class="no">RUS,9</span>
+<span class="w">            </span><span class="no">CHN,153</span>
+<span class="w">            </span><span class="no">IND,450</span>
+<span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">country-population-data-map</span>
+<span class="w">    </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(country-population-data-map-source)}</span>
+<span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">select * from model</span>
+<span class="nt">insights</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple ChoroplethMapLibre Map</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmap</span>
+<span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(country-population-data-map).iso_alpha}}</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(country-population-data-map).population_density}}</span>
+<span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Blues"</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple ChoroplethMapLibre Chart</span>
+<span class="w">    </span><span class="nt">insights</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple ChoroplethMapLibre Map)}</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Population Density by Country on MapLibre&lt;br&gt;&lt;sub&gt;Data in Persons per Square Kilometer&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"carto-positron"</span>
+<span class="w">        </span><span class="nt">zoom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">        </span><span class="nt">center</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">          </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="nt">sources</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">european-gdp-data-source</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">duckdb</span>
+<span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target/seeds/european_gdp_data.duckdb</span>
+<span class="w">    </span><span class="nt">seeds</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">table_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model</span>
+<span class="w">        </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">            </span><span class="no">iso_alpha,gdp</span>
+<span class="w">            </span><span class="no">FRA,2716</span>
+<span class="w">            </span><span class="no">DEU,3846</span>
+<span class="w">            </span><span class="no">ITA,2001</span>
+<span class="w">            </span><span class="no">ESP,1419</span>
+<span class="w">            </span><span class="no">GBR,2827</span>
+<span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">european-gdp-data</span>
+<span class="w">    </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(european-gdp-data-source)}</span>
+<span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">select * from model</span>
+<span class="nt">insights</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ChoroplethMapLibre with Custom Colorscale</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmap</span>
+<span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(european-gdp-data).iso_alpha}}</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(european-gdp-data).gdp}}</span>
+<span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(255,245,240)"</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(252,146,114)"</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(165,15,21)"</span><span class="p p-Indicator">]]</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.75</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ChoroplethMapLibre with Custom Colorscale</span>
+<span class="w">    </span><span class="nt">insights</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(ChoroplethMapLibre with Custom Colorscale)}</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GDP by Country in Europe&lt;br&gt;&lt;sub&gt;Data in Billions of USD&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"carto-positron"</span>
+<span class="w">        </span><span class="nt">zoom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">        </span><span class="nt">center</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">          </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="nt">sources</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">covid-data-map-source</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">duckdb</span>
+<span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target/seeds/covid_data_map.duckdb</span>
+<span class="w">    </span><span class="nt">seeds</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">table_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model</span>
+<span class="w">        </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">            </span><span class="no">iso_alpha,covid_cases,covid_deaths</span>
+<span class="w">            </span><span class="no">USA,33000000,600000</span>
+<span class="w">            </span><span class="no">BRA,20000000,550000</span>
+<span class="w">            </span><span class="no">IND,30000000,400000</span>
+<span class="w">            </span><span class="no">RUS,6000000,150000</span>
+<span class="w">            </span><span class="no">ZAF,2000000,60000</span>
+<span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">covid-data-map</span>
+<span class="w">    </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(covid-data-map-source)}</span>
+<span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">select * from model</span>
+<span class="nt">insights</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Interactive ChoroplethMapLibre with Hover Data</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmap</span>
+<span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(covid-data-map).iso_alpha}}</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(covid-data-map).covid_cases}}</span>
+<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(covid-data-map).covid_deaths}}</span>
+<span class="w">      </span><span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">"Cases:</span><span class="nv"> </span><span class="s">%{z}&lt;br&gt;Deaths:</span><span class="nv"> </span><span class="s">%{text}"</span>
+<span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Reds"</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Interactive ChoroplethMapLibre with Hover Data</span>
+<span class="w">    </span><span class="nt">insights</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Interactive ChoroplethMapLibre with Hover Data)}</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">COVID-19 Cases by Country on MapLibre&lt;br&gt;&lt;sub&gt;Hover to See Deaths Data&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"carto-darkmatter"</span>
+<span class="w">        </span><span class="nt">zoom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">        </span><span class="nt">center</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">          </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
+<p>A schema to validate plotly trace properties</p>
+<h2 id="attributes">Attributes</h2>
+<p>These attributes apply to insights where <code>insight.props.type</code> is set to <code>choroplethmap</code>. You would configure these attributes on the insight with the <code>insight.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<span class="nt">below</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(2)!</span>
+<span class="nt">coloraxis</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="nt">colorbar</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(4)!</span>
+<span class="w">  </span><span class="nt">bordercolor</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(5)!</span>
+<span class="w">  </span><span class="nt">borderwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(6)!</span>
+<span class="w">  </span><span class="nt">exponentformat</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(7)!</span>
+<span class="w">  </span><span class="nt">len</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(8)!</span>
+<span class="w">  </span><span class="nt">lenmode</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(9)!</span>
+<span class="w">  </span><span class="nt">minexponent</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(10)!</span>
+<span class="w">  </span><span class="nt">nticks</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(11)!</span>
+<span class="w">  </span><span class="nt">orientation</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(12)!</span>
+<span class="w">  </span><span class="nt">outlinecolor</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(13)!</span>
+<span class="w">  </span><span class="nt">outlinewidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(14)!</span>
+<span class="w">  </span><span class="nt">separatethousands</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(15)!</span>
+<span class="w">  </span><span class="nt">showexponent</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(16)!</span>
+<span class="w">  </span><span class="nt">showticklabels</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(17)!</span>
+<span class="w">  </span><span class="nt">showtickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(18)!</span>
+<span class="w">  </span><span class="nt">showticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(19)!</span>
+<span class="w">  </span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(20)!</span>
+<span class="w">  </span><span class="nt">thicknessmode</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(21)!</span>
+<span class="w">  </span><span class="nt">tickangle</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(22)!</span>
+<span class="w">  </span><span class="nt">tickcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(23)!</span>
+<span class="w">  </span><span class="nt">tickfont</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(24)!</span>
+<span class="w">    </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(25)!</span>
+<span class="w">    </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(26)!</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
+<span class="w">    </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(27)!</span>
+<span class="w">    </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(28)!</span>
+<span class="w">    </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(29)!</span>
+<span class="w">    </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(30)!</span>
+<span class="w">  </span><span class="nt">tickformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(31)!</span>
+<span class="w">  </span><span class="nt">tickformatstops</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
+<span class="w">  </span><span class="nt">ticklabeloverflow</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(32)!</span>
+<span class="w">  </span><span class="nt">ticklabelposition</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(33)!</span>
+<span class="w">  </span><span class="nt">ticklabelstep</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(34)!</span>
+<span class="w">  </span><span class="nt">ticklen</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(35)!</span>
+<span class="w">  </span><span class="nt">tickmode</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(36)!</span>
+<span class="w">  </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(37)!</span>
+<span class="w">  </span><span class="nt">ticks</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(38)!</span>
+<span class="w">  </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(39)!</span>
+<span class="w">  </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(40)!</span>
+<span class="w">  </span><span class="nt">ticktextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(41)!</span>
+<span class="w">  </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(42)!</span>
+<span class="w">  </span><span class="nt">tickvalssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(43)!</span>
+<span class="w">  </span><span class="nt">tickwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(44)!</span>
+<span class="w">  </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">font</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
+<span class="w">      </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(45)!</span>
+<span class="w">      </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(46)!</span>
+<span class="w">      </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(47)!</span>
+<span class="w">      </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
+<span class="w">      </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(48)!</span>
+<span class="w">      </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(49)!</span>
+<span class="w">      </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(50)!</span>
+<span class="w">      </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(51)!</span>
+<span class="w">    </span><span class="nt">side</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(52)!</span>
+<span class="w">    </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(53)!</span>
+<span class="w">  </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(54)!</span>
+<span class="w">  </span><span class="nt">xanchor</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(55)!</span>
+<span class="w">  </span><span class="nt">xpad</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(56)!</span>
+<span class="w">  </span><span class="nt">xref</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(57)!</span>
+<span class="w">  </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(58)!</span>
+<span class="w">  </span><span class="nt">yanchor</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(59)!</span>
+<span class="w">  </span><span class="nt">ypad</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(60)!</span>
+<span class="w">  </span><span class="nt">yref</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(61)!</span>
+<span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(62)!</span>
+<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(63)!</span>
+<span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(64)!</span>
+<span class="nt">featureidkey</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(65)!</span>
+<span class="nt">hoverinfo</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(66)!</span>
+<span class="nt">hoverinfosrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(67)!</span>
+<span class="nt">hoverlabel</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">align</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(68)!</span>
+<span class="w">  </span><span class="nt">alignsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(69)!</span>
+<span class="w">  </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(70)!</span>
+<span class="w">  </span><span class="nt">bgcolorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(71)!</span>
+<span class="w">  </span><span class="nt">bordercolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(72)!</span>
+<span class="w">  </span><span class="nt">bordercolorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(73)!</span>
+<span class="w">  </span><span class="nt">font</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color | array</span>
+<span class="w">    </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(74)!</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(75)!</span>
+<span class="w">    </span><span class="nt">familysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(76)!</span>
+<span class="w">    </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(77)!</span>
+<span class="w">    </span><span class="nt">linepositionsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(78)!</span>
+<span class="w">    </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(79)!</span>
+<span class="w">    </span><span class="nt">shadowsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(80)!</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number | array</span>
+<span class="w">    </span><span class="nt">sizesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(81)!</span>
+<span class="w">    </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(82)!</span>
+<span class="w">    </span><span class="nt">stylesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(83)!</span>
+<span class="w">    </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(84)!</span>
+<span class="w">    </span><span class="nt">textcasesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(85)!</span>
+<span class="w">    </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(86)!</span>
+<span class="w">    </span><span class="nt">variantsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(87)!</span>
+<span class="w">    </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(88)!</span>
+<span class="w">    </span><span class="nt">weightsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(89)!</span>
+<span class="w">  </span><span class="nt">namelength</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(90)!</span>
+<span class="w">  </span><span class="nt">namelengthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(91)!</span>
+<span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(92)!</span>
+<span class="nt">hovertemplatesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(93)!</span>
+<span class="nt">hovertext</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(94)!</span>
+<span class="nt">hovertextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(95)!</span>
+<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(96)!</span>
+<span class="nt">idssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(97)!</span>
+<span class="nt">legend</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(98)!</span>
+<span class="nt">legendgroup</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(99)!</span>
+<span class="nt">legendgrouptitle</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">font</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(100)!</span>
+<span class="w">    </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(101)!</span>
+<span class="w">    </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(102)!</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
+<span class="w">    </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(103)!</span>
+<span class="w">    </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(104)!</span>
+<span class="w">    </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(105)!</span>
+<span class="w">    </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(106)!</span>
+<span class="w">  </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(107)!</span>
+<span class="nt">legendrank</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(108)!</span>
+<span class="nt">legendwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(109)!</span>
+<span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(110)!</span>
+<span class="nt">locationssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(111)!</span>
+<span class="nt">marker</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">line</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(112)!</span>
+<span class="w">    </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(113)!</span>
+<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(114)!</span>
+<span class="w">    </span><span class="nt">widthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(115)!</span>
+<span class="w">  </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(116)!</span>
+<span class="w">  </span><span class="nt">opacitysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(117)!</span>
+<span class="nt">metasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(118)!</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(119)!</span>
+<span class="nt">reversescale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(120)!</span>
+<span class="nt">selected</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(121)!</span>
+<span class="nt">showlegend</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(122)!</span>
+<span class="nt">showscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(123)!</span>
+<span class="nt">stream</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">maxpoints</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(124)!</span>
+<span class="w">  </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(125)!</span>
+<span class="nt">subplot</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(126)!</span>
+<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(127)!</span>
+<span class="nt">textsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(128)!</span>
+<span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmap</span>
+<span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(129)!</span>
+<span class="nt">unselected</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(130)!</span>
+<span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(131)!</span>
+<span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(132)!</span>
+<span class="nt">zauto</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(133)!</span>
+<span class="nt">zmax</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(134)!</span>
+<span class="nt">zmid</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(135)!</span>
+<span class="nt">zmin</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(136)!</span>
+<span class="nt">zsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(137)!</span>
+</code></pre></div>
+<ol>
+<li>Determines whether the colorscale is a default palette (<code>autocolorscale: true</code>) or the palette determined by <code>colorscale</code>. In case <code>colorscale</code> is unspecified or <code>autocolorscale</code> is true, the default palette will be chosen according to whether numbers in the <code>color</code> array are all positive, all negative or mixed.</li>
+<li>Determines if the choropleth polygons will be inserted before the layer with the specified ID. By default, choroplethmap traces are placed above the water layers. If set to '', the layer will be inserted above every existing layer.</li>
+<li>Sets a reference to a shared color axis. References to these shared color axes are <em>coloraxis</em>, <em>coloraxis2</em>, <em>coloraxis3</em>, etc. Settings for these shared color axes are set in the layout, under <code>layout.coloraxis</code>, <code>layout.coloraxis2</code>, etc. Note that multiple color scales can be linked to the same color axis.</li>
+<li>Sets the color of padded area.</li>
+<li>Sets the axis line color.</li>
+<li>Sets the width (in px) or the border enclosing this color bar.</li>
+<li>Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If <em>none</em>, it appears as 1,000,000,000. If <em>e</em>, 1e+9. If <em>E</em>, 1E+9. If <em>power</em>, 1x10^9 (with 9 in a super script). If <em>SI</em>, 1G. If <em>B</em>, 1B.</li>
+<li>Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends.</li>
+<li>Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot <em>fraction</em> or in *pixels. Use <code>len</code> to set the value.</li>
+<li>Hide SI prefix for 10^n if |n| is below this number. This only has an effect when <code>tickformat</code> is <em>SI</em> or <em>B</em>.</li>
+<li>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to <code>nticks</code>. Has an effect only if <code>tickmode</code> is set to <em>auto</em>.</li>
+<li>Sets the orientation of the colorbar.</li>
+<li>Sets the axis line color.</li>
+<li>Sets the width (in px) of the axis line.</li>
+<li>If "true", even 4-digit integers are separated</li>
+<li>If <em>all</em>, all exponents are shown besides their significands. If <em>first</em>, only the exponent of the first tick is shown. If <em>last</em>, only the exponent of the last tick is shown. If <em>none</em>, no exponents appear.</li>
+<li>Determines whether or not the tick labels are drawn.</li>
+<li>If <em>all</em>, all tick labels are displayed with a prefix. If <em>first</em>, only the first tick is displayed with a prefix. If <em>last</em>, only the last tick is displayed with a suffix. If <em>none</em>, tick prefixes are hidden.</li>
+<li>Same as <code>showtickprefix</code> but for tick suffixes.</li>
+<li>Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels.</li>
+<li>Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot <em>fraction</em> or in <em>pixels</em>. Use <code>thickness</code> to set the value.</li>
+<li>Sets the angle of the tick labels with respect to the horizontal. For example, a <code>tickangle</code> of -90 draws the tick labels vertically.</li>
+<li>Sets the tick color.</li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.</li>
+<li>Sets the kind of decoration line(s) with text, such as an <em>under</em>, <em>over</em> or <em>through</em> as well as combinations e.g. <em>under+over</em>, etc.</li>
+<li>Sets the shape and color of the shadow behind text. <em>auto</em> places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.</li>
+<li>Sets whether a font should be styled with a normal or italic face from its family.</li>
+<li>Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.</li>
+<li>Sets the variant of the font.</li>
+<li>Sets the weight (or boldness) of the font.</li>
+<li>Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: <em>%h</em> for half of the year as a decimal number as well as <em>%{n}f</em> for fractional seconds with n digits. For example, <em>2016-10-13 09:15:23.456</em> with tickformat <em>%H~%M~%S.%2f</em> would display <em>09~15~23.46</em></li>
+<li>Determines how we handle tick labels that would overflow either the graph div or the domain of the axis. The default value for inside tick labels is <em>hide past domain</em>. In other cases the default is <em>hide past div</em>.</li>
+<li>Determines where tick labels are drawn relative to the ticks. Left and right options are used when <code>orientation</code> is <em>h</em>, top and bottom when <code>orientation</code> is <em>v</em>.</li>
+<li>Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. <code>tick0</code> determines which labels are shown. Not implemented for axes with <code>type</code> <em>log</em> or <em>multicategory</em>, or when <code>tickmode</code> is <em>array</em>.</li>
+<li>Sets the tick length (in px).</li>
+<li>Sets the tick mode for this axis. If <em>auto</em>, the number of ticks is set via <code>nticks</code>. If <em>linear</em>, the placement of the ticks is determined by a starting position <code>tick0</code> and a tick step <code>dtick</code> (<em>linear</em> is the default value if <code>tick0</code> and <code>dtick</code> are provided). If <em>array</em>, the placement of the ticks is set via <code>tickvals</code> and the tick text is <code>ticktext</code>. (<em>array</em> is the default value if <code>tickvals</code> is provided).</li>
+<li>Sets a tick label prefix.</li>
+<li>Determines whether ticks are drawn or not. If <em><em>, this axis' ticks are not drawn. If </em>outside</em> (<em>inside</em>), this axis' are drawn outside (inside) the axis lines.</li>
+<li>Sets a tick label suffix.</li>
+<li>Sets the text displayed at the ticks position via <code>tickvals</code>. Only has an effect if <code>tickmode</code> is set to <em>array</em>. Used with <code>tickvals</code>.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>ticktext</code>.</li>
+<li>Sets the values at which ticks on this axis appear. Only has an effect if <code>tickmode</code> is set to <em>array</em>. Used with <code>ticktext</code>.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>tickvals</code>.</li>
+<li>Sets the tick width (in px).</li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.</li>
+<li>Sets the kind of decoration line(s) with text, such as an <em>under</em>, <em>over</em> or <em>through</em> as well as combinations e.g. <em>under+over</em>, etc.</li>
+<li>Sets the shape and color of the shadow behind text. <em>auto</em> places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.</li>
+<li>Sets whether a font should be styled with a normal or italic face from its family.</li>
+<li>Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.</li>
+<li>Sets the variant of the font.</li>
+<li>Sets the weight (or boldness) of the font.</li>
+<li>Determines the location of color bar's title with respect to the color bar. Defaults to <em>top</em> when <code>orientation</code> if <em>v</em> and  defaults to <em>right</em> when <code>orientation</code> if <em>h</em>.</li>
+<li>Sets the title of the color bar.</li>
+<li>Sets the x position with respect to <code>xref</code> of the color bar (in plot fraction). When <code>xref</code> is <em>paper</em>, defaults to 1.02 when <code>orientation</code> is <em>v</em> and 0.5 when <code>orientation</code> is <em>h</em>. When <code>xref</code> is <em>container</em>, defaults to <em>1</em> when <code>orientation</code> is <em>v</em> and 0.5 when <code>orientation</code> is <em>h</em>. Must be between <em>0</em> and <em>1</em> if <code>xref</code> is <em>container</em> and between <em>-2</em> and <em>3</em> if <code>xref</code> is <em>paper</em>.</li>
+<li>Sets this color bar's horizontal position anchor. This anchor binds the <code>x</code> position to the <em>left</em>, <em>center</em> or <em>right</em> of the color bar. Defaults to <em>left</em> when <code>orientation</code> is <em>v</em> and <em>center</em> when <code>orientation</code> is <em>h</em>.</li>
+<li>Sets the amount of padding (in px) along the x direction.</li>
+<li>Sets the container <code>x</code> refers to. <em>container</em> spans the entire <code>width</code> of the plot. <em>paper</em> refers to the width of the plotting area only.</li>
+<li>Sets the y position with respect to <code>yref</code> of the color bar (in plot fraction). When <code>yref</code> is <em>paper</em>, defaults to 0.5 when <code>orientation</code> is <em>v</em> and 1.02 when <code>orientation</code> is <em>h</em>. When <code>yref</code> is <em>container</em>, defaults to 0.5 when <code>orientation</code> is <em>v</em> and 1 when <code>orientation</code> is <em>h</em>. Must be between <em>0</em> and <em>1</em> if <code>yref</code> is <em>container</em> and between <em>-2</em> and <em>3</em> if <code>yref</code> is <em>paper</em>.</li>
+<li>Sets this color bar's vertical position anchor This anchor binds the <code>y</code> position to the <em>top</em>, <em>middle</em> or <em>bottom</em> of the color bar. Defaults to <em>middle</em> when <code>orientation</code> is <em>v</em> and <em>bottom</em> when <code>orientation</code> is <em>h</em>.</li>
+<li>Sets the amount of padding (in px) along the y direction.</li>
+<li>Sets the container <code>y</code> refers to. <em>container</em> spans the entire <code>height</code> of the plot. <em>paper</em> refers to the height of the plotting area only.</li>
+<li>Sets the colorscale. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, <code>[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]</code>. To control the bounds of the colorscale in color space, use <code>zmin</code> and <code>zmax</code>. Alternatively, <code>colorscale</code> may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd.</li>
+<li>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, <em>scatter</em> traces also appends customdata items in the markers DOM elements</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>customdata</code>.</li>
+<li>Sets the key in GeoJSON features which is used as id to match the items included in the <code>locations</code> array. Support nested property, for example <em>properties.name</em>.</li>
+<li>Determines which trace information appear on hover. If <code>none</code> or <code>skip</code> are set, no information is displayed upon hovering. But, if <code>none</code> is set, click and hover events are still fired.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>hoverinfo</code>.</li>
+<li>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>align</code>.</li>
+<li>Sets the background color of the hover labels for this trace</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>bgcolor</code>.</li>
+<li>Sets the border color of the hover labels for this trace.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>bordercolor</code>.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>color</code>.</li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>family</code>.</li>
+<li>Sets the kind of decoration line(s) with text, such as an <em>under</em>, <em>over</em> or <em>through</em> as well as combinations e.g. <em>under+over</em>, etc.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>lineposition</code>.</li>
+<li>Sets the shape and color of the shadow behind text. <em>auto</em> places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>shadow</code>.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>size</code>.</li>
+<li>Sets whether a font should be styled with a normal or italic face from its family.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>style</code>.</li>
+<li>Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>textcase</code>.</li>
+<li>Sets the variant of the font.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>variant</code>.</li>
+<li>Sets the weight (or boldness) of the font.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>weight</code>.</li>
+<li>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer &gt;3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to <code>namelength - 3</code> characters and add an ellipsis.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>namelength</code>.</li>
+<li>Template string used for rendering the information that appear on hover box. Note that this will override <code>hoverinfo</code>. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%<em>xother}, {%_xother</em>}, {%xother_}. When showing info for several points, <em>xother</em> will be added to those with different x positions from the first point. An underscore before or after <em>(x|y)other</em> will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in <code>hovertemplate</code> are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are <code>arrayOk: true</code>) are available. Finally, the template string has access to variable <code>properties</code> Anything contained in tag <code>&lt;extra&gt;</code> is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag <code>&lt;extra&gt;&lt;/extra&gt;</code>.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>hovertemplate</code>.</li>
+<li>Same as <code>text</code>.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>hovertext</code>.</li>
+<li>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>ids</code>.</li>
+<li>Sets the reference to a legend to show this trace in. References to these legends are <em>legend</em>, <em>legend2</em>, <em>legend3</em>, etc. Settings for these legends are set in the layout, under <code>layout.legend</code>, <code>layout.legend2</code>, etc.</li>
+<li>Sets the legend group for this trace. Traces and shapes part of the same legend group hide/show at the same time when toggling legend items.</li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.</li>
+<li>Sets the kind of decoration line(s) with text, such as an <em>under</em>, <em>over</em> or <em>through</em> as well as combinations e.g. <em>under+over</em>, etc.</li>
+<li>Sets the shape and color of the shadow behind text. <em>auto</em> places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.</li>
+<li>Sets whether a font should be styled with a normal or italic face from its family.</li>
+<li>Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.</li>
+<li>Sets the variant of the font.</li>
+<li>Sets the weight (or boldness) of the font.</li>
+<li>Sets the title of the legend group.</li>
+<li>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with <em>reversed</em> <code>legend.traceorder</code> they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout.</li>
+<li>Sets the width (in px or fraction) of the legend for this trace.</li>
+<li>Sets which features found in <em>geojson</em> to plot using their feature <code>id</code> field.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>locations</code>.</li>
+<li>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to <code>marker.line.cmin</code> and <code>marker.line.cmax</code> if set.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>color</code>.</li>
+<li>Sets the width (in px) of the lines bounding the marker points.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>width</code>.</li>
+<li>Sets the opacity of the locations.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>opacity</code>.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>meta</code>.</li>
+<li>Sets the trace name. The trace name appears as the legend item and on hover.</li>
+<li>Reverses the color mapping if true. If true, <code>zmin</code> will correspond to the last color in the array and <code>zmax</code> will correspond to the first color.</li>
+<li>Sets the marker opacity of selected points.</li>
+<li>Determines whether or not an item corresponding to this trace is shown in the legend.</li>
+<li>Determines whether or not a colorbar is displayed for this trace.</li>
+<li>Sets the maximum number of points to keep on the plots from an incoming stream. If <code>maxpoints</code> is set to <em>50</em>, only the newest 50 points will be displayed on the plot.</li>
+<li>The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.</li>
+<li>Sets a reference between this trace's data coordinates and a map subplot. If <em>map</em> (the default value), the data refer to <code>layout.map</code>. If <em>map2</em>, the data refer to <code>layout.map2</code>, and so on.</li>
+<li>Sets the text elements associated with each location.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>text</code>.</li>
+<li>Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.</li>
+<li>Sets the marker opacity of unselected points, applied only when a selection exists.</li>
+<li>Determines whether or not this trace is visible. If <em>legendonly</em>, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible).</li>
+<li>Sets the color values.</li>
+<li>Determines whether or not the color domain is computed with respect to the input data (here in <code>z</code>) or the bounds set in <code>zmin</code> and <code>zmax</code> Defaults to <code>false</code> when <code>zmin</code> and <code>zmax</code> are set by the user.</li>
+<li>Sets the upper bound of the color domain. Value should have the same units as in <code>z</code> and if set, <code>zmin</code> must be set as well.</li>
+<li>Sets the mid-point of the color domain by scaling <code>zmin</code> and/or <code>zmax</code> to be equidistant to this point. Value should have the same units as in <code>z</code>. Has no effect when <code>zauto</code> is <code>false</code>.</li>
+<li>Sets the lower bound of the color domain. Value should have the same units as in <code>z</code> and if set, <code>zmax</code> must be set as well.</li>
+<li>Sets the source reference on Chart Studio Cloud for <code>z</code>.</li>
+</ol></div>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["content.tabs.link", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.prune", "navigation.top", "navigation.path", "navigation.tracking", "navigation.instant", "navigation.footer", "toc.follow", "content.action.edit", "content.tooltips", "content.code.annotate", "content.code.copy"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../../../javascripts/mermaid-init.js"></script>
+      
+    
+  </body>
+</html>
