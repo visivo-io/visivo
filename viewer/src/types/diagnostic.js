@@ -52,6 +52,7 @@ export const DIAGNOSTIC_CODES = [
   'dependency_failed',
   'missing_relation',
   'ambiguous_relation',
+  'cross_source',
   'query_execution_failed',
   'schema_build_failed',
   'not_built',

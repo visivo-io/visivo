@@ -15,6 +15,7 @@ from visivo.models.validators.standalone_field_refs_validator import (
     StandaloneFieldRefsValidator,
     standalone_field_ref_error,
 )
+from visivo.models.validators.cross_source_validator import CrossSourceValidator
 from visivo.models.validators.project_validator import ProjectValidator
 
 __all__ = [
@@ -31,5 +32,6 @@ __all__ = [
     "SingleSourceValidator",
     "StandaloneFieldRefsValidator",
     "standalone_field_ref_error",
+    "CrossSourceValidator",
     "ProjectValidator",
 ]

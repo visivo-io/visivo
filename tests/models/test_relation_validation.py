@@ -319,6 +319,29 @@ class TestRelationGetReferencedModels:
         assert models == {"my-orders", "my-users"}
 
 
+def _cross_source_project(sources, models, relations, cross):
+    """Build a project whose models span sources.
+
+    ``CrossSourceValidator`` now runs inside ``Project``'s ``mode="after"``
+    validator, so such a project can no longer be constructed — which is the
+    fix. To keep exercising ``validate_same_source`` directly, build the legal
+    version and move one model afterwards (nothing re-validates on assignment)
+    and drop the cached DAG. ``cross`` maps ``{model_name: source_ref}``.
+    """
+    project = Project(
+        name="test_project",
+        sources=sources,
+        models=models,
+        relations=relations,
+        dashboards=[],
+    )
+    for model in project.models:
+        if model.name in cross:
+            model.source = cross[model.name]
+    project.invalidate_dag_cache()
+    return project
+
+
 class TestRelationCrossSourceValidation:
     """Test cross-source relation validation."""
 
@@ -355,19 +378,18 @@ class TestRelationCrossSourceValidation:
         source_b = DuckdbSource(name="source_b", database="db_b.duckdb", type="duckdb")
 
         model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(source_a)")
-        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(source_b)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(source_a)")
 
         relation = Relation(
             name="cross_source",
             condition="${ref(orders).user_id} = ${ref(users).id}",
         )
 
-        project = Project(
-            name="test_project",
+        project = _cross_source_project(
             sources=[source_a, source_b],
             models=[model_a, model_b],
             relations=[relation],
-            dashboards=[],
+            cross={"users": "ref(source_b)"},
         )
         dag = project.dag()
 
@@ -397,7 +419,7 @@ class TestRelationCrossSourceValidation:
             name="sales_orders", sql="SELECT * FROM orders", source="ref(production_warehouse)"
         )
         model_metrics = SqlModel(
-            name="user_metrics", sql="SELECT * FROM metrics", source="ref(analytics_db)"
+            name="user_metrics", sql="SELECT * FROM metrics", source="ref(production_warehouse)"
         )
 
         relation = Relation(
@@ -405,12 +427,11 @@ class TestRelationCrossSourceValidation:
             condition="${ref(sales_orders).user_id} = ${ref(user_metrics).user_id}",
         )
 
-        project = Project(
-            name="test_project",
+        project = _cross_source_project(
             sources=[source_warehouse, source_analytics],
             models=[model_orders, model_metrics],
             relations=[relation],
-            dashboards=[],
+            cross={"user_metrics": "ref(analytics_db)"},
         )
         dag = project.dag()
 

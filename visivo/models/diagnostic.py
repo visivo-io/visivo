@@ -67,6 +67,7 @@ DIAGNOSTIC_CODES = {
     "dependency_failed": "The job was skipped because something it depends on failed.",
     "missing_relation": "An insight joins models with no relation declared between them.",
     "ambiguous_relation": "More than one relation path exists between the joined models.",
+    "cross_source": "A relation or insight spans models that resolve to more than one source.",
     "query_execution_failed": "The source raised an error executing the job's query.",
     "schema_build_failed": "Schema inference for a model failed.",
     "not_built": "The artifact has never been produced (empty state, not an error).",
