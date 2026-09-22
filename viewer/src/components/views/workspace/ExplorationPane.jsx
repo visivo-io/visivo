@@ -496,7 +496,7 @@ const ExplorationPane = ({ id }) => {
           onDismiss={handleDismissStaleness}
         />
       )}
-      <ExplorationWorkbench />
+      <ExplorationWorkbench explorationId={id} />
     </section>
   );
 };

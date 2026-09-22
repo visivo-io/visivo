@@ -37,6 +37,24 @@ const SQLEditor = ({
   const handleRunRef = useRef(null);
   const handleCancelRef = useRef(null);
   const isRunningRef = useRef(false);
+  // M27: what was actually SENT, snapshotted at execute time for the same
+  // reason `runContextRef` below is. The text sent may be a SELECTION rather
+  // than the whole buffer, and the user can keep typing (or change source)
+  // while the job runs — so a caller that keyed a cached result on whatever
+  // the editor holds when the rows land would file one query's rows under
+  // another query's identity. Declared here, and assigned ahead of
+  // `runContextRef` in `handleRun`, deliberately: PR #659 is adding its own
+  // ref and its own statement at exactly those two anchors, and leaving its
+  // context lines untouched keeps the two merges apart.
+  const runSqlRef = useRef(null);
+  const runSourceRef = useRef(null);
+
+  const completionPayload = () => ({
+    context: runContextRef.current,
+    executedSql: runSqlRef.current,
+    executedSourceName: runSourceRef.current,
+  });
+
   // Snapshot of queryContext at execute time — passed back through
   // onQueryComplete so the caller can route results to the tab/model that
   // started the run even if the context changed while the job was in flight.
@@ -70,13 +88,13 @@ const SQLEditor = ({
   // Notify parent when query completes
   useEffect(() => {
     if (onQueryComplete && result) {
-      onQueryComplete({ result, error: null, context: runContextRef.current });
+      onQueryComplete({ result, error: null, ...completionPayload() });
     }
   }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (onQueryComplete && error) {
-      onQueryComplete({ result: null, error, context: runContextRef.current });
+      onQueryComplete({ result: null, error, ...completionPayload() });
     }
   }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,6 +137,11 @@ const SQLEditor = ({
     }
 
     setShowError(true);
+    // M27 — the run snapshot, taken before the job starts. Assigned above
+    // `runContextRef` rather than below `executeQuery` so the three lines that
+    // follow stay byte-identical to main; see the ref declarations.
+    runSqlRef.current = queryText.trim();
+    runSourceRef.current = sourceName;
     runContextRef.current = queryContext ?? null;
     executeQuery(sourceName, queryText.trim());
     recordOnboardingAction('query_run');

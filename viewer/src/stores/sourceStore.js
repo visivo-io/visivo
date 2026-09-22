@@ -1,3 +1,4 @@
+import { invalidateResultsForSource } from './explorationResultCache';
 import * as sourcesApi from '../api/sources';
 
 // Object status constants (matches backend ObjectStatus enum)
@@ -40,6 +41,13 @@ const createSourceSlice = (set, get) => ({
     try {
       const projectId = get().project?.id;
       const result = await sourcesApi.saveSource(name, config, projectId);
+      // M27: this source no longer connects to what it connected to a moment
+      // ago — a different database file, schema, or credential — while the
+      // name every parked exploration result is keyed by is unchanged. Those
+      // rows came out of the old definition, so they stop being an answer to
+      // anything. Dropping them costs one re-run; keeping them would show the
+      // wrong database's rows with nothing on screen saying so.
+      invalidateResultsForSource(name);
       // Refresh sources list to get updated status
       await get().fetchSources();
       // Trigger commit status check
@@ -57,6 +65,10 @@ const createSourceSlice = (set, get) => ({
     try {
       const projectId = get().project?.id;
       await sourcesApi.deleteSource(name, projectId);
+      // M27: same reasoning as `saveSource`, in its sharpest form — the source
+      // that produced these rows is gone, so nothing can re-derive or verify
+      // them.
+      invalidateResultsForSource(name);
       await get().fetchSources();
       // Trigger commit status check
       if (get().checkCommitStatus) {
