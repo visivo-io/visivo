@@ -29,7 +29,15 @@ def run_phase(
     server_url: str = None,
     no_deprecation_warnings: bool = False,
     run_id: str = DEFAULT_RUN_ID,
+    defer_exit: bool = False,
 ):
+    """
+    ``defer_exit`` runs soft and hands failure reporting to the caller, so
+    ``visivo run --json`` can read ``failed_job_results`` off the returned
+    runner, emit its envelope, and pick the exit code itself. Running soft also
+    means every filtered DAG is attempted rather than stopping at the first
+    failing one, so one ``--json`` run reports every broken object.
+    """
     from visivo.logger.logger import Logger
     from visivo.jobs.filtered_runner import FilteredRunner
     from time import time
@@ -92,17 +100,24 @@ def run_phase(
         project=project,
         output_dir=output_dir,
         threads=threads,
-        soft_failure=soft_failure,
+        soft_failure=soft_failure or defer_exit,
         dag_filter=dag_filter,
         server_url=server_url,
         working_dir=working_dir,
         run_id=run_id,
     )
-    runner.run()
+    run_completed = True
+    if defer_exit:
+        try:
+            runner.run()
+        except SystemExit:
+            run_completed = False
+    else:
+        runner.run()
 
     # See sweep_artifacts.py for what this removes and why. Gated on a clean
     # run: a failed job can leave a half-written artifact.
-    if not runner.failed_job_results:
+    if run_completed and not runner.failed_job_results:
         from visivo.commands.sweep_artifacts import sweep_orphaned_artifacts
 
         try:
