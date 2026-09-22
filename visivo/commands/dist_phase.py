@@ -1,4 +1,5 @@
 from visivo.utils import DIST_PATH
+from visivo.models.base.named_model import alpha_hash
 from visivo.logger.logger import Logger
 import traceback
 
@@ -183,6 +184,38 @@ def dist_phase(
             for parquet_file in glob(f"{files_src}/*.parquet"):
                 filename = os.path.basename(parquet_file)
                 shutil.copyfile(parquet_file, f"{dist_dir}/data/files/{filename}")
+
+        # Generate models.json for dist mode.
+        #
+        # A table whose `data` is a model reads `modelJobs`, which is fed by
+        # this manifest — and a dist had none, so `fetchModelJobs` returned []
+        # and every model-backed table rendered "No data available" while the
+        # insight-backed charts beside it worked. The parquets were already
+        # being copied above; only the manifest naming them was missing.
+        #
+        # Shaped like `/api/model-jobs/` so the viewer reads one contract in
+        # both: `name_hash` is the DuckDB table the client registers the file
+        # as and then selects from.
+        models_src = os.path.join(run_dir, "models")
+        models_list = []
+        if os.path.isdir(models_src):
+            os.makedirs(f"{dist_dir}/data/models", exist_ok=True)
+            for parquet_file in sorted(glob(f"{models_src}/*.parquet")):
+                name = os.path.splitext(os.path.basename(parquet_file))[0]
+                model_data = {
+                    "id": name,
+                    "name": name,
+                    "name_hash": alpha_hash(name),
+                    "signed_data_file_url": (
+                        f"{deployment_root}/data/files/{os.path.basename(parquet_file)}"
+                    ),
+                }
+                with open(f"{dist_dir}/data/models/{name}.json", "w") as f:
+                    json.dump(model_data, f)
+                models_list.append(model_data)
+
+        with open(f"{dist_dir}/data/models.json", "w") as f:
+            json.dump(models_list, f)
 
         # Generate insights.json for dist mode
         insights_src = os.path.join(run_dir, "insights")

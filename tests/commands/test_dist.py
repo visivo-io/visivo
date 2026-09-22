@@ -13,6 +13,7 @@ from tests.factories.model_factories import (
     ItemFactory,
     RowFactory,
     DashboardFactory,
+    TableFactory,
 )
 import pytest
 
@@ -59,6 +60,27 @@ def _write_project(project, output_dir):
 @pytest.fixture
 def setup_project(output_dir):
     project = _make_runnable_project()
+    return project, _write_project(project, output_dir)
+
+
+def _project_with_a_model_backed_table(**overrides):
+    """A dashboard whose item is a TABLE reading a model, not a chart.
+
+    That shape is what makes the run materialise `models/<name>.parquet` — a
+    model is built to data only when a dynamic insight or a table reads it —
+    and it is the shape the models manifest exists for.
+    """
+    model = SqlModelFactory(name="model", source="ref(source)")
+    table = TableFactory(name="table", data="${ref(model)}")
+    item = ItemFactory(name="item", chart=None, table=table)
+    row = RowFactory(name="row", items=[item])
+    dashboard = DashboardFactory(name="dashboard", rows=[row])
+    return ProjectFactory(models=[model], dashboards=[dashboard], **overrides)
+
+
+@pytest.fixture
+def setup_table_project(output_dir):
+    project = _project_with_a_model_backed_table()
     return project, _write_project(project, output_dir)
 
 
@@ -467,3 +489,92 @@ def _references(html, attribute):
         found.append(html[start:end])
         index = html.find(attribute, end)
     return found
+
+
+def test_dist_writes_a_models_manifest(setup_table_project, output_dir, dist_dir):
+    """A table whose `data` is a model reads `modelJobs`, which this manifest
+    feeds. Without it `fetchModelJobs` returns [] and the table renders "No data
+    available" while the insight-backed charts beside it work — the parquets
+    were already being copied, only the manifest naming them was missing."""
+    _, working_dir = setup_table_project
+
+    from visivo.commands.run import run
+    from visivo.models.base.named_model import alpha_hash
+
+    assert runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"]).exit_code == 0
+    assert (
+        runner.invoke(
+            dist,
+            ["-w", working_dir, "-s", "source", "--output-dir", output_dir, "--dist-dir", dist_dir],
+        ).exit_code
+        == 0
+    )
+
+    with open(os.path.join(dist_dir, "data", "models.json")) as f:
+        models = json.load(f)
+
+    assert models, "a project whose table reads a model should list it"
+    for model in models:
+        # name_hash is the DuckDB table the client registers the file as and
+        # then selects from; without it every model registers as "undefined".
+        assert model["name_hash"] == alpha_hash(model["name"])
+        assert model["signed_data_file_url"].endswith(f"{model['name']}.parquet")
+        # The file it names has to actually be in the bundle.
+        assert os.path.exists(os.path.join(dist_dir, "data", "files", f"{model['name']}.parquet"))
+
+
+def test_dist_models_manifest_follows_the_deployment_root(
+    setup_table_project, output_dir, dist_dir
+):
+    _, working_dir = setup_table_project
+
+    from visivo.commands.run import run
+
+    assert runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"]).exit_code == 0
+    assert (
+        runner.invoke(
+            dist,
+            [
+                "-w",
+                working_dir,
+                "-s",
+                "source",
+                "--output-dir",
+                output_dir,
+                "--dist-dir",
+                dist_dir,
+                "-dr",
+                "path/sub",
+            ],
+        ).exit_code
+        == 0
+    )
+
+    with open(os.path.join(dist_dir, "data", "models.json")) as f:
+        models = json.load(f)
+
+    assert models
+    for model in models:
+        assert model["signed_data_file_url"].startswith("/path/sub/")
+
+
+def test_dist_writes_an_empty_models_manifest_when_there_are_none(
+    setup_project, output_dir, dist_dir
+):
+    """An absent file 404s, which reads as a broken bundle. An empty list is
+    the honest answer and matches insights.json."""
+    _, working_dir = setup_project
+
+    from visivo.commands.run import run
+
+    assert runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"]).exit_code == 0
+    assert (
+        runner.invoke(
+            dist,
+            ["-w", working_dir, "-s", "source", "--output-dir", output_dir, "--dist-dir", dist_dir],
+        ).exit_code
+        == 0
+    )
+
+    with open(os.path.join(dist_dir, "data", "models.json")) as f:
+        assert json.load(f) == []
