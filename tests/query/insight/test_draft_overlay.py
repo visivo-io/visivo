@@ -131,6 +131,31 @@ class TestBuildDraftOverlayValidation:
                 draft_models=[{"name": "missing_sql_field"}],
             )
 
+    def test_a_draft_model_that_fails_pydantic_raises_draft_overlay_error(self, flask_app):
+        # The module's stated contract: a Pydantic ValidationError never escapes
+        # uncaught to the view. `sql` is Optional (post-#533), so the gate above
+        # catches a MISSING one — this covers a dict that fails validation
+        # outright, which is a different branch.
+        with pytest.raises(DraftOverlayError, match="Invalid draft models"):
+            build_draft_overlay(
+                flask_app,
+                insight_config(),
+                draft_models=[{"name": "orders_q", "sql": "select 1", "not_a_field": True}],
+            )
+
+    @pytest.mark.parametrize("field", ["draft_metrics", "draft_dimensions"])
+    def test_a_malformed_model_scoped_draft_field_raises_draft_overlay_error(
+        self, flask_app, field
+    ):
+        # Same contract on the model-scoped branch, which validates each config
+        # separately after popping its `model` key.
+        with pytest.raises(DraftOverlayError, match="Invalid draft"):
+            build_draft_overlay(
+                flask_app,
+                insight_config(),
+                **{field: [{"name": "avg_total", "model": "orders_q"}]},
+            )
+
     @pytest.mark.parametrize("blank_sql", ["", "   ", "\n\t"])
     def test_a_blank_or_whitespace_only_sql_is_gated_like_missing_sql(self, flask_app, blank_sql):
         # Phase 4 review fix: the gate must treat "" / "   " the same as
@@ -253,7 +278,10 @@ class TestBuildDraftOverlayModelScopedDraftFields:
     def test_a_draft_field_naming_an_unknown_model_falls_back_to_project_level(self, flask_app):
         # A metric whose `model` names no known model must not silently vanish —
         # it falls back to the project-level list so a later resolution failure
-        # is a clean, surfaced error rather than a silent drop.
+        # is a clean, surfaced error rather than a silent drop. This is also the
+        # guard on the FINAL re-nest pass `build_draft_overlay` runs after the
+        # wire drafts land: that fallback deliberately leaves `_parent_name`
+        # unset, so the pass must leave the field exactly where it is.
         project, _, _ = build_draft_overlay(
             flask_app,
             self._bar_insight(),
@@ -278,6 +306,289 @@ class TestBuildDraftOverlayModelScopedDraftFields:
         matching = [m for m in model_node.metrics if m.name == "avg_total"]
         assert len(matching) == 1
         assert matching[0].expression == "avg(amount)"
+
+
+# The wire shape the Explorer ACTUALLY sends: `useDraftInsightPreview.js`
+# builds a `draft_models` entry for EVERY entry in `modelStates` that has
+# `sql` + `sourceName` — published models included, since
+# `buildModelStateFromObject` fills both from the published config. It carries
+# only {name, sql, source}; it never carries `metrics`/`dimensions`. Every
+# test below that exercises the cached/published field path is parameterised
+# over "client sends it" vs "it is absent", because merging this dict by name
+# is a REPLACEMENT and that is where a nested field gets deleted.
+_CLIENT_DRAFT_MODEL = {
+    "name": "orders_q",
+    "sql": "select * from orders",
+    "source": "${ref(warehouse)}",
+}
+_WIRE_SHAPES = pytest.mark.parametrize(
+    "draft_models",
+    [pytest.param(None, id="no_draft_models"), pytest.param([_CLIENT_DRAFT_MODEL], id="client")],
+)
+
+
+class TestBuildDraftOverlayModelScopedCachedFields:
+    """The other way a model-scoped field reaches this overlay: not on the wire
+    as a draft, but SAVED into the editor's cached tier and not yet committed —
+    a computed column the user promoted, then went on using.
+
+    Those arrive through ``inject_cached_objects``, which can only append them
+    to the flat top-level list. Left there, the very reference the Explorer
+    emits for them — ``${ref(model).field}`` — no longer finds them, and the
+    same "computed metric behaves like a dimension" symptom comes back on a
+    field that was, from the user's side, already promoted.
+
+    Every case runs BOTH wire shapes. The overlay re-nests the field and then
+    injects the wire drafts, so a ``draft_models`` entry naming the same model
+    used to replace the model wholesale and take the just-nested field with it
+    — the field ended up in neither ``model.metrics`` nor ``project.metrics``.
+    ``draft_models=None`` alone cannot see that."""
+
+    def _bar_insight(self):
+        return {
+            "name": "draft_insight",
+            "props": {
+                "type": "bar",
+                "x": "?{${ref(orders_q).region}}",
+                "y": "?{${ref(orders_q).avg_total}}",
+            },
+        }
+
+    def _flask_app_with_cached_metric(self, project):
+        from types import SimpleNamespace
+
+        cached = Metric(name="avg_total", expression="avg(amount)")
+        cached.set_parent_name("orders_q")
+        app = FlaskAppStub(project)
+        app.metric_manager = SimpleNamespace(cached_objects={"avg_total": cached})
+        return app
+
+    def _compile(self, app, dag, insight, tmp_path):
+        model_node = dag.get_descendant_by_name("orders_q")
+        return insight.get_query_info(
+            dag,
+            str(tmp_path),
+            schema_overrides={
+                "orders_q": {
+                    model_node.name_hash(): {
+                        "region": "VARCHAR",
+                        "amount": "DOUBLE",
+                        # The client's `modelSchemas` still lists a computed
+                        # column among the RAW columns (see the comment at
+                        # useDraftInsightPreview.js). That is what makes a lost
+                        # metric silent rather than loud: the raw column answers
+                        # the ref, the aggregate is dropped, and the metric
+                        # reads as a plain dimension.
+                        "avg_total": "DOUBLE",
+                    }
+                }
+            },
+            force_dynamic=True,
+        )
+
+    @_WIRE_SHAPES
+    def test_a_cached_model_scoped_metric_lands_on_its_model(
+        self, project_with_model, draft_models
+    ):
+        app = self._flask_app_with_cached_metric(project_with_model)
+
+        project, dag, _ = build_draft_overlay(app, self._bar_insight(), draft_models=draft_models)
+
+        model_node = dag.get_descendant_by_name("orders_q")
+        assert [m.name for m in model_node.metrics or []] == ["avg_total"]
+        assert all(m.name != "avg_total" for m in (project.metrics or []))
+
+    @_WIRE_SHAPES
+    def test_a_cached_model_scoped_metric_compiles_as_an_aggregate(
+        self, project_with_model, tmp_path, draft_models
+    ):
+        app = self._flask_app_with_cached_metric(project_with_model)
+
+        _, dag, insight = build_draft_overlay(app, self._bar_insight(), draft_models=draft_models)
+        query_info = self._compile(app, dag, insight, tmp_path)
+
+        post_query = (query_info.post_query or "").lower()
+        assert "avg(" in post_query
+        assert "group by" in post_query
+
+    @_WIRE_SHAPES
+    def test_a_cached_model_scoped_metric_still_answers_a_bare_ref(
+        self, project_with_model, tmp_path, draft_models
+    ):
+        # A model-scoped field remains a DAG node addressable WITHOUT its model
+        # qualifier (`Metric.child_items` emits `ref(<parent>)`, the edge #639
+        # relies on). Deleting the field from the overlay does not degrade this
+        # one quietly — `project.dag()` refuses to build at all, so the
+        # compile-draft view answers 400 for an insight that used to render.
+        app = self._flask_app_with_cached_metric(project_with_model)
+        bare = self._bar_insight()
+        bare["props"]["y"] = "?{${ref(avg_total)}}"
+
+        _, dag, insight = build_draft_overlay(app, bare, draft_models=draft_models)
+        query_info = self._compile(app, dag, insight, tmp_path)
+
+        assert "avg(" in (query_info.post_query or "").lower()
+
+
+class TestBuildDraftOverlayDraftModelPreservesNestedFields:
+    """A ``draft_models`` entry is a partial override — the SQL and source of
+    the model the user is editing. It is not a redeclaration of everything that
+    model owns, so merging it by name must not evict the model's metrics and
+    dimensions."""
+
+    def _insight(self, field="avg_total"):
+        return {
+            "name": "draft_insight",
+            "props": {
+                "type": "bar",
+                "x": "?{${ref(orders_q).region}}",
+                "y": f"?{{${{ref(orders_q).{field}}}}}",
+            },
+        }
+
+    def test_a_published_nested_metric_survives_the_client_draft_model(
+        self, flask_app, project_with_model, tmp_path
+    ):
+        # Committed to YAML, not cached: the model in the project already owns
+        # `avg_total`. The client still sends a draft_models entry for it on
+        # every preview, and that must not take the metric with it.
+        project_with_model.models[0].metrics = [Metric(name="avg_total", expression="avg(amount)")]
+
+        project, dag, insight = build_draft_overlay(
+            flask_app, self._insight(), draft_models=[_CLIENT_DRAFT_MODEL]
+        )
+
+        model_node = dag.get_descendant_by_name("orders_q")
+        assert [m.name for m in model_node.metrics or []] == ["avg_total"]
+        query_info = insight.get_query_info(
+            dag,
+            str(tmp_path),
+            schema_overrides={
+                "orders_q": {
+                    model_node.name_hash(): {
+                        "region": "VARCHAR",
+                        "amount": "DOUBLE",
+                        "avg_total": "DOUBLE",
+                    }
+                }
+            },
+            force_dynamic=True,
+        )
+        assert "avg(" in (query_info.post_query or "").lower()
+
+    def test_a_published_nested_dimension_survives_the_client_draft_model(
+        self, flask_app, project_with_model
+    ):
+        from visivo.models.dimension import Dimension
+
+        project_with_model.models[0].dimensions = [
+            Dimension(name="loud_region", expression="upper(region)")
+        ]
+
+        _, dag, _ = build_draft_overlay(
+            flask_app, self._insight(field="loud_region"), draft_models=[_CLIENT_DRAFT_MODEL]
+        )
+
+        model_node = dag.get_descendant_by_name("orders_q")
+        assert [d.name for d in model_node.dimensions or []] == ["loud_region"]
+
+    def test_a_carried_forward_field_keeps_its_scope_on_the_replacement_model(
+        self, flask_app, project_with_model
+    ):
+        # Carrying the object over is not enough on its own: the replacement is
+        # built post-construction, so SqlModel's after-validator never runs and
+        # the scope has to be re-asserted explicitly (the same contract
+        # `_inject_model_scoped_fields` uses).
+        project_with_model.models[0].metrics = [Metric(name="avg_total", expression="avg(amount)")]
+
+        project, _, _ = build_draft_overlay(
+            flask_app, self._insight(), draft_models=[_CLIENT_DRAFT_MODEL]
+        )
+
+        model = next(m for m in project.models if m.name == "orders_q")
+        assert model.metrics[0]._parent_name == "orders_q"
+
+    def test_a_draft_model_that_declares_its_own_metrics_overrides_them(
+        self, flask_app, project_with_model
+    ):
+        # Only keys the draft dict actually carries override. A dict that DOES
+        # declare `metrics` is authoritative — inheritance must not resurrect
+        # the published set behind it.
+        project_with_model.models[0].metrics = [Metric(name="avg_total", expression="avg(amount)")]
+
+        project, _, _ = build_draft_overlay(
+            flask_app,
+            self._insight(field="max_total"),
+            draft_models=[
+                dict(
+                    _CLIENT_DRAFT_MODEL,
+                    metrics=[{"name": "max_total", "expression": "max(amount)"}],
+                )
+            ],
+        )
+
+        model = next(m for m in project.models if m.name == "orders_q")
+        assert [m.name for m in model.metrics] == ["max_total"]
+
+    def test_a_scratch_model_does_not_inherit_another_models_fields(
+        self, flask_app, project_with_model
+    ):
+        # Inheritance is keyed on the name being REPLACED. A brand-new scratch
+        # model shadows nothing, so it must come through empty rather than
+        # picking up whatever the other model in the project happens to own.
+        project_with_model.models[0].metrics = [Metric(name="avg_total", expression="avg(amount)")]
+
+        project, _, _ = build_draft_overlay(
+            flask_app,
+            insight_config(model_name="cohort_q"),
+            draft_models=[
+                {"name": "cohort_q", "sql": "select * from cohorts", "source": "${ref(warehouse)}"}
+            ],
+        )
+
+        scratch = next(m for m in project.models if m.name == "cohort_q")
+        assert scratch.metrics == []
+        assert scratch.dimensions == []
+        # …and the model it did NOT shadow keeps its own.
+        published = next(m for m in project.models if m.name == "orders_q")
+        assert [m.name for m in published.metrics] == ["avg_total"]
+
+
+class TestBuildDraftOverlayCachedFieldOnAWireOnlyModel:
+    """A cached field whose owner reaches the overlay only as a wire draft.
+
+    ``inject_cached_objects`` re-nests against the models it can see, and the
+    scratch model is not one of them yet — it arrives in the NEXT step. The
+    rule therefore has to be re-applied once the whole overlay is assembled,
+    or the field stays a project-level orphan and its qualified reference,
+    ``${ref(cohort_q).avg_total}``, cannot find it."""
+
+    def test_the_field_is_nested_once_its_model_arrives_on_the_wire(self, project_with_model):
+        from types import SimpleNamespace
+
+        cached = Metric(name="avg_total", expression="avg(amount)")
+        cached.set_parent_name("cohort_q")
+        app = FlaskAppStub(project_with_model)
+        app.metric_manager = SimpleNamespace(cached_objects={"avg_total": cached})
+
+        project, dag, _ = build_draft_overlay(
+            app,
+            {
+                "name": "draft_insight",
+                "props": {
+                    "type": "bar",
+                    "x": "?{${ref(cohort_q).region}}",
+                    "y": "?{${ref(cohort_q).avg_total}}",
+                },
+            },
+            draft_models=[
+                {"name": "cohort_q", "sql": "select * from cohorts", "source": "${ref(warehouse)}"}
+            ],
+        )
+
+        model_node = dag.get_descendant_by_name("cohort_q")
+        assert [m.name for m in model_node.metrics or []] == ["avg_total"]
+        assert all(m.name != "avg_total" for m in (project.metrics or []))
 
 
 class TestBuildDraftOverlayNameShadowing:
