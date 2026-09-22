@@ -193,3 +193,61 @@ describe('createURLConfig factory', () => {
     expect(config.getRoute()).toBe('/');
   });
 });
+
+describe('withDeploymentRoot', () => {
+  // For URLs the bundle CARRIES rather than builds. Vite bakes `/assets/...`
+  // into the JS at build time; a dist is mounted wherever `-dr` says at package
+  // time. dist_phase rewrites index.html and nothing else, so the DuckDB worker
+  // and wasm asked the server root, 404'd, and left `db` null — which gates the
+  // insight query, so every chart sat spinning having never asked for data.
+  const { withDeploymentRoot } = require('./urls');
+
+  afterEach(() => {
+    delete window.deploymentRoot;
+  });
+
+  it('puts the deployment root in front of a baked-in asset URL', () => {
+    window.deploymentRoot = '/path/sub';
+
+    expect(withDeploymentRoot('/assets/duckdb-eh.wasm')).toBe(
+      '/path/sub/assets/duckdb-eh.wasm'
+    );
+  });
+
+  it('leaves the URL alone at the site root', () => {
+    window.deploymentRoot = '';
+
+    expect(withDeploymentRoot('/assets/duckdb-eh.wasm')).toBe('/assets/duckdb-eh.wasm');
+  });
+
+  it('leaves the URL alone when nothing set a root at all', () => {
+    expect(withDeploymentRoot('/assets/duckdb-eh.wasm')).toBe('/assets/duckdb-eh.wasm');
+  });
+
+  it('normalizes a root written without its leading slash', () => {
+    window.deploymentRoot = 'path/sub';
+
+    expect(withDeploymentRoot('/assets/x.wasm')).toBe('/path/sub/assets/x.wasm');
+  });
+
+  it('does not double the slash on a trailing one', () => {
+    window.deploymentRoot = '/path/sub/';
+
+    expect(withDeploymentRoot('/assets/x.wasm')).toBe('/path/sub/assets/x.wasm');
+  });
+
+  it('leaves an absolute URL to another origin alone', () => {
+    window.deploymentRoot = '/path/sub';
+
+    expect(withDeploymentRoot('https://cdn.example.com/x.wasm')).toBe(
+      'https://cdn.example.com/x.wasm'
+    );
+  });
+
+  it('leaves a relative URL alone', () => {
+    // Already resolves against the page, so prefixing would break it.
+    window.deploymentRoot = '/path/sub';
+
+    expect(withDeploymentRoot('assets/x.wasm')).toBe('assets/x.wasm');
+  });
+});

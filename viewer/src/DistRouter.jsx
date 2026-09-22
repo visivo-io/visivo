@@ -9,18 +9,21 @@ import DistHome from './components/DistHome';
 import { loadError } from './loaders/error';
 import logo from './images/logo.png';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
+import { withDeploymentRoot } from './config/urls';
 
 // Set global URL config early for router loaders
 export const distURLConfig = createURLConfig({ environment: 'dist' });
 setGlobalURLConfig(distURLConfig);
 const root = distURLConfig.getRoute();
 
-const logo_path = root === '/' ? logo : root + logo;
+// An <img src>, not a router link, so the basename below does not reach it —
+// it takes the same prefix every other baked-in asset URL needs.
+const logo_path = withDeploymentRoot(logo);
 
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
     <Route
-      path={root}
+      path="/"
       element={<DistHome />}
       loader={loadError}
       handle={{
@@ -32,7 +35,7 @@ const DistRouter = createBrowserRouter(
       }}
     >
       <Route
-        path={root}
+        path="/"
         element={<Project />}
         errorElement={<ErrorPage />}
         shouldRevalidate={() => false}
@@ -60,6 +63,12 @@ const DistRouter = createBrowserRouter(
     </Route>
   ),
   {
+    // The deployment root belongs here, not on each route's `path`. As a path it
+    // matched the URL but nothing else knew about it: every `to="/…"` rendered
+    // an href at the SERVER root, so a dist under /path/sub linked straight out
+    // of itself. A basename is what React Router prepends to generated links and
+    // strips before matching, which is the whole job.
+    basename: root,
     future: futureFlags,
   }
 );
