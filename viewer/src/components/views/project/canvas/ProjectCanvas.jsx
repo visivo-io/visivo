@@ -12,6 +12,7 @@ import CanvasAddRow from './CanvasAddRow';
 import CanvasContextMenu from './CanvasContextMenu';
 import CanvasKeyboardLayer from './CanvasKeyboardLayer';
 import CanvasItemFlipLayer from './CanvasItemFlipLayer';
+import { useFirstDashboardRenderedMark } from '../../../onboarding/firstDashboardRendered';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
@@ -64,6 +65,11 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
     if (!entry) return null;
     return entry.config || entry;
   }, [dashboards, dashboardName]);
+
+  // Terminal mark of the time-to-value ladder. Onboarding's connect-your-own-
+  // data path lands here rather than on /project/:name; Project.jsx mounts the
+  // same hook, and it is idempotent per journey.
+  useFirstDashboardRenderedMark(dashboardName, dashboardConfig);
 
   const handleCreateNew = useCallback(
     typeKey => {

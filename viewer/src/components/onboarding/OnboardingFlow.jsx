@@ -9,6 +9,7 @@ import Data from './screens/Data';
 import Cloud from './screens/Cloud';
 import Handoff from './screens/Handoff';
 import { fireEvent } from './telemetry';
+import { markTimeToValueStep, TTV_STEPS } from './timeToValue';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
 import SourceEditForm from '../views/common/SourceEditForm';
 import useStore from '../../stores/store';
@@ -199,6 +200,12 @@ export default function OnboardingFlow() {
   const handleConnected = useCallback(
     sourceType => {
       fire('onboarding_data_connect_succeeded', { source_type: sourceType });
+      // Step 2 of the time-to-value ladder, separate from the onboarding event
+      // above because sourceStore.saveSource marks it for the other doors in.
+      markTimeToValueStep(TTV_STEPS.SOURCE_CONNECTED, {
+        source_type: sourceType,
+        via: 'onboarding',
+      });
       setShowSourceModal(false);
       setOutcome(o => ({ ...o, path: 'data', sourceConnected: true }));
       const cloudIdx = steps.findIndex(s => s.kind === 'cloud');

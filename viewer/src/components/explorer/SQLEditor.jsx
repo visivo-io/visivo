@@ -10,6 +10,7 @@ import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import { recordOnboardingAction } from '../onboarding/onboardingState';
+import { markTimeToValueStep, TTV_STEPS } from '../onboarding/timeToValue';
 
 const SQLEditor = ({
   initialValue = '',
@@ -41,6 +42,9 @@ const SQLEditor = ({
   // onQueryComplete so the caller can route results to the tab/model that
   // started the run even if the context changed while the job was in flight.
   const runContextRef = useRef(null);
+  // Set when the user ran a query here, so step 3 is claimed by a query this
+  // editor sent rather than by any result that happens to arrive.
+  const ranAQueryRef = useRef(false);
 
   const [sql, setSql] = useState(initialValue);
   const [showError, setShowError] = useState(true);
@@ -65,6 +69,14 @@ const SQLEditor = ({
     if (result) {
       setResultsPage(0);
     }
+  }, [result]);
+
+  // Step 3 of the time-to-value ladder, claimed on the result rather than the
+  // submit: a query that fails on a typo or is cancelled would otherwise
+  // permanently consume the journey's one mark.
+  useEffect(() => {
+    if (!result || !ranAQueryRef.current) return;
+    markTimeToValueStep(TTV_STEPS.FIRST_QUERY_RUN);
   }, [result]);
 
   // Notify parent when query completes
@@ -122,6 +134,7 @@ const SQLEditor = ({
     runContextRef.current = queryContext ?? null;
     executeQuery(sourceName, queryText.trim());
     recordOnboardingAction('query_run');
+    ranAQueryRef.current = true;
   }, [sourceName, sql, executeQuery, queryContext]);
 
   // Handle cancel
