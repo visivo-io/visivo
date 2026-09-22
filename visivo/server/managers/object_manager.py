@@ -4,10 +4,57 @@ from enum import Enum
 from threading import Lock
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
+from pydantic import BaseModel as PydanticBaseModel
+
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
 
 T = TypeVar("T")
+
+# Bookkeeping fields recording where an object lives, not what it is. The parser
+# stamps them on and every serializer strips them off, so a config a client sends
+# back can never carry them and they must not participate in "did this change?".
+LOCATION_FIELDS = {"path", "file_path"}
+
+
+def strip_location_fields(instance: Any, dump: Any) -> Any:
+    """``dump`` with location bookkeeping removed at EVERY depth — and nowhere else.
+
+    The walk is guided by the MODEL INSTANCE rather than by key name because
+    ``path`` is also a real Plotly property (``layout.shapes[].path`` — the SVG
+    path of a drawn shape), living in free-form prop space as an extra on a
+    ``JsonSchemaBase``. A key is therefore dropped only where it is a DECLARED
+    field of the visivo model at that node.
+
+    Fails safe: where the dump's shape cannot be matched back to the instance
+    (a custom serializer that renames keys, ``by_alias=True``), the subtree is
+    returned untouched rather than guessed at.
+    """
+    if isinstance(dump, dict):
+        if isinstance(instance, PydanticBaseModel):
+            declared = LOCATION_FIELDS.intersection(type(instance).model_fields)
+            return {
+                key: strip_location_fields(getattr(instance, key, None), value)
+                for key, value in dump.items()
+                if key not in declared
+            }
+        if isinstance(instance, dict):
+            return {
+                key: strip_location_fields(instance.get(key), value) for key, value in dump.items()
+            }
+        return dump
+    if isinstance(dump, list):
+        items = instance if isinstance(instance, (list, tuple)) else ()
+        return [
+            strip_location_fields(items[index] if index < len(items) else None, value)
+            for index, value in enumerate(dump)
+        ]
+    return dump
+
+
+def location_free_dump(obj: Any, **dump_kwargs) -> Any:
+    """``obj.model_dump(**dump_kwargs)`` with location bookkeeping removed at every depth."""
+    return strip_location_fields(obj, obj.model_dump(**dump_kwargs))
 
 
 class ObjectStatus(str, Enum):
@@ -196,6 +243,11 @@ class ObjectManager(ABC, Generic[T]):
 
         Uses model_dump() for Pydantic models, otherwise uses direct comparison.
 
+        ``_parent_name`` is compared even though it is a ``PrivateAttr`` no
+        ``model_dump`` can see: for a metric or dimension it names the model the
+        field is scoped to, which ``commit_views._build_child_info`` reads to
+        pick the YAML file to write it into — so it is content, not location.
+
         Args:
             obj1: First object
             obj2: Second object
@@ -210,7 +262,11 @@ class ObjectManager(ABC, Generic[T]):
 
         # For Pydantic models, compare serialized dictionaries
         if hasattr(obj1, "model_dump") and hasattr(obj2, "model_dump"):
-            return obj1.model_dump(exclude_none=True) == obj2.model_dump(exclude_none=True)
+            if getattr(obj1, "_parent_name", None) != getattr(obj2, "_parent_name", None):
+                return False
+            return location_free_dump(obj1, exclude_none=True) == location_free_dump(
+                obj2, exclude_none=True
+            )
 
         # Fallback to direct comparison
         return obj1 == obj2
@@ -357,5 +413,5 @@ class ObjectManager(ABC, Generic[T]):
             "name": name,
             "status": status.value if status else None,
             "child_item_names": child_names,
-            "config": obj.model_dump(mode="json", exclude_none=True, exclude={"file_path", "path"}),
+            "config": location_free_dump(obj, mode="json", exclude_none=True),
         }

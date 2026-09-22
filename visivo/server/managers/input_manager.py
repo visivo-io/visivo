@@ -6,7 +6,7 @@ from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.inputs.input import Input
 from visivo.models.inputs.fields import InputField
-from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+from visivo.server.managers.object_manager import ObjectManager, ObjectStatus, location_free_dump
 
 
 class InputManager(ObjectManager[Input]):
@@ -157,6 +157,6 @@ class InputManager(ObjectManager[Input]):
         """
         return {
             "name": name,
-            "config": input_obj.model_dump(mode="json", exclude_none=True, exclude={"path"}),
+            "config": location_free_dump(input_obj, mode="json", exclude_none=True),
             "status": status.value,
         }
