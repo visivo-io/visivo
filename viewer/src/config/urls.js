@@ -192,9 +192,12 @@ const URL_PATTERNS = {
     dashboardsList: '/data/dashboards.json',
     dashboardQuery: '/data/dashboards/{name}.json',
     dashboardThumbnail: '/data/dashboards/{name}.png',
+    // A table whose `data` is a model reads this. It used to be absent, so
+    // fetchModelJobs returned [] and every model-backed table said "No data
+    // available" while the charts beside it rendered.
+    modelJobsQuery: '/data/models.json',
 
     // Deliberately absent, though the artifacts exist:
-    //   modelJobsQuery   — a dist build writes no model-jobs manifest.
     //   model-schemas    — inference needs a server; a dist build has none.
   },
 };

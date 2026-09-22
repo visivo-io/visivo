@@ -251,3 +251,30 @@ describe('withDeploymentRoot', () => {
     expect(withDeploymentRoot('assets/x.wasm')).toBe('assets/x.wasm');
   });
 });
+
+describe('model jobs in a dist build', () => {
+  // A table whose `data` is a model reads `modelJobs`, which `fetchModelJobs`
+  // feeds — and it returns [] when this key is unavailable. A dist had no
+  // models manifest, so every model-backed table rendered "No data available"
+  // while the insight-backed charts beside it worked.
+  const { createURLConfig } = require('./urls');
+
+  it('is available and reads the packaged manifest', () => {
+    const config = createURLConfig({ environment: 'dist' });
+
+    expect(config.isAvailable('modelJobsQuery')).toBe(true);
+    expect(config.getUrl('modelJobsQuery')).toBe('/data/models.json');
+  });
+
+  it('follows the deployment root like every other data URL', () => {
+    const config = createURLConfig({ environment: 'dist', deploymentRoot: '/path/sub' });
+
+    expect(config.getUrl('modelJobsQuery')).toBe('/path/sub/data/models.json');
+  });
+
+  it('still points at the API when served', () => {
+    const config = createURLConfig({ environment: 'server' });
+
+    expect(config.getUrl('modelJobsQuery')).toBe('/api/model-jobs/');
+  });
+});
