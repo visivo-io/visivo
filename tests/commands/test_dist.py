@@ -336,3 +336,134 @@ def test_dist_errors_with_invalid_project_file(output_dir, dist_dir):
     result = runner.invoke(dist, ["--output-dir", output_dir, "--dist-dir", dist_dir])
 
     assert "Error creating dist" in result.output
+
+
+class TestDeploymentRoot:
+    """Where a dist is mounted, and how every URL in it is written.
+
+    Each URL is built by pasting the root in front of an absolute path, so the
+    root having a leading slash is the difference between an absolute URL and a
+    relative one — and a relative ``src`` on the bundle means the page never
+    loads at all.
+    """
+
+    def test_a_typed_root_becomes_absolute(self):
+        from visivo.commands.dist_phase import normalize_deployment_root
+
+        assert normalize_deployment_root("path/sub") == "/path/sub"
+
+    def test_an_absolute_root_is_left_as_it_is(self):
+        from visivo.commands.dist_phase import normalize_deployment_root
+
+        assert normalize_deployment_root("/path/sub") == "/path/sub"
+
+    def test_a_trailing_slash_goes(self):
+        """Otherwise every URL gets a double slash where the two are joined."""
+        from visivo.commands.dist_phase import normalize_deployment_root
+
+        assert normalize_deployment_root("/path/sub/") == "/path/sub"
+
+    def test_the_site_root_stays_empty(self):
+        from visivo.commands.dist_phase import normalize_deployment_root
+
+        assert normalize_deployment_root(None) == ""
+        assert normalize_deployment_root("") == ""
+        assert normalize_deployment_root("/") == ""
+
+
+def test_dist_under_a_deployment_root_writes_absolute_urls(setup_project, output_dir, dist_dir):
+    """A root typed without its leading slash used to produce
+    ``src="path/sub/assets/index.js"``. Loaded from ``/path/sub/`` the browser
+    asks for ``/path/sub/path/sub/assets/index.js``, 404s, and renders nothing —
+    no error, because nothing ran.
+    """
+    _, working_dir = setup_project
+
+    from visivo.commands.run import run
+
+    assert runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"]).exit_code == 0
+    result = runner.invoke(
+        dist,
+        [
+            "-w",
+            working_dir,
+            "-s",
+            "source",
+            "--output-dir",
+            output_dir,
+            "--dist-dir",
+            dist_dir,
+            "-dr",
+            "path/sub",
+        ],
+    )
+    assert result.exit_code == 0
+
+    with open(os.path.join(dist_dir, "index.html")) as f:
+        html = f.read()
+
+    assert "window.deploymentRoot = '/path/sub';" in html
+    # Every asset the document pulls in, not just the ones we happened to check.
+    for attribute in ('src="', 'href="'):
+        for reference in _references(html, attribute):
+            assert reference.startswith("/") or "://" in reference, (
+                f'{attribute}{reference}" is relative — it resolves against the '
+                "page's own directory, not the deployment root"
+            )
+    assert '"/path/sub/assets/' in html
+
+
+def test_dist_under_a_deployment_root_writes_absolute_data_urls(
+    setup_project, output_dir, dist_dir
+):
+    """The dashboards list and insight envelopes paste the same root in front of
+    their own paths, so they go relative in exactly the same way."""
+    _, working_dir = setup_project
+
+    from visivo.commands.run import run
+
+    assert runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"]).exit_code == 0
+    assert (
+        runner.invoke(
+            dist,
+            [
+                "-w",
+                working_dir,
+                "-s",
+                "source",
+                "--output-dir",
+                output_dir,
+                "--dist-dir",
+                dist_dir,
+                "-dr",
+                "path/sub",
+            ],
+        ).exit_code
+        == 0
+    )
+
+    with open(os.path.join(dist_dir, "data", "dashboards.json")) as f:
+        dashboards = json.load(f)["dashboards"]
+    for dashboard in dashboards:
+        url = dashboard.get("signed_thumbnail_file_url")
+        assert url is None or url.startswith("/path/sub/"), url
+
+    insights_dir = os.path.join(dist_dir, "data", "insights")
+    for name in os.listdir(insights_dir):
+        with open(os.path.join(insights_dir, name)) as f:
+            insight = json.load(f)
+        for file_ref in insight.get("files") or []:
+            url = file_ref.get("signed_data_file_url")
+            assert url is None or url.startswith("/path/sub/"), url
+
+
+def _references(html, attribute):
+    """Every ``attribute`` value in ``html`` — e.g. every ``src="…"``."""
+    found = []
+    index = html.find(attribute)
+    while index != -1:
+        start = index + len(attribute)
+        end = html.find('"', start)
+        found.append(html[start:end])
+        index = html.find(attribute, end)
+    return found
