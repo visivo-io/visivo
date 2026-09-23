@@ -14,13 +14,10 @@ class InputTypes(str, Enum):
 class Input(NamedModel, ParentModel):
     """Base class for all input types."""
 
-    # The label is what the widget is called on screen; no query reads it. It
-    # used to rebuild the input's options and everything downstream, so
-    # renaming "Cuisine" to "Pick a cuisine" ran the project.
-    #
-    # ``file_path`` is where the object was authored, not an input to anything
-    # a job runs — moving it between files should not rebuild it.
-    presentation_fields = frozenset({"label", "file_path"})
+    # The label is what the widget is called on screen; the input job reads
+    # options, display and range, never this. Renaming "Cuisine" to "Pick a
+    # cuisine" used to rebuild the options and everything downstream.
+    presentation_fields = frozenset({"label"})
 
     type: InputTypes = Field(
         description="Type of input component (single-select or multi-select)",

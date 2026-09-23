@@ -147,6 +147,12 @@ class ServerSource(Source):
     These are resolved at runtime when the connection is established.
     """
 
+    # Everything a source carries reaches the connection the schema job opens
+    # — host, port, database, credentials, schema, seeds — so a source is data
+    # almost end to end. The pool size is the exception: it decides how many
+    # connections are held, never what they return.
+    presentation_fields = frozenset({"connection_pool_size"})
+
     host: Optional[StringOrEnvVar] = Field(None, description="The host url of the database.")
     port: Optional[int] = Field(None, description="The port of the database.")
     database: StringOrEnvVar = Field(
