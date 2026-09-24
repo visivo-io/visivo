@@ -11,6 +11,13 @@ class TypeEnum(str, Enum):
     spinner = "spinner"
 
 
+def is_debug() -> bool:
+    """The one definition of "is debug logging on": DEBUG must be exactly
+    "true". Callers that tested mere presence turned the flood on for
+    DEBUG=false (the hot-reload server's werkzeug/socketio access log)."""
+    return os.environ.get("DEBUG") == "true"
+
+
 @Singleton
 class Logger:
     def __init__(self):
@@ -27,7 +34,7 @@ class Logger:
             self.echo = None
 
     def debug(self, message: str):
-        if os.environ.get("DEBUG") == "true":
+        if is_debug():
             if self.echo:
                 self.echo(message)
             elif self.spinner:

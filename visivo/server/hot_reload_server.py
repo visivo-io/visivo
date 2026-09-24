@@ -3,7 +3,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from threading import Thread, Event, Lock
 import time
-from visivo.logger.logger import Logger
+from visivo.logger.logger import Logger, is_debug
 import os
 from flask_socketio import SocketIO
 import logging
@@ -69,7 +69,7 @@ class HotReloadServer:
         self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode="threading")
         self.pause_lock = Lock()  # Lock for pausing file watcher during operations
 
-        if not os.environ.get("DEBUG"):
+        if not is_debug():
             # Suppress Flask logging
             log = logging.getLogger("werkzeug")
             log.setLevel(logging.ERROR)
@@ -121,8 +121,8 @@ class HotReloadServer:
                 port=port,
                 use_reloader=False,
                 allow_unsafe_werkzeug=True,
-                debug=bool(os.environ.get("DEBUG")),
-                log_output=bool(os.environ.get("DEBUG")),
+                debug=is_debug(),
+                log_output=is_debug(),
             )
 
         self.server_thread = Thread(target=run, daemon=True)

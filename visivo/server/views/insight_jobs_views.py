@@ -26,7 +26,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                 insight_file = os.path.join(output_dir, run_id, "insights", f"{name}.json")
 
                 if not os.path.exists(insight_file):
-                    Logger.instance().info(f"Insight file not found: {insight_file}")
+                    Logger.instance().debug(f"Insight file not found: {insight_file}")
                     missing_insights.append(name)
                     continue
 
@@ -63,11 +63,23 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                     return jsonify({"error": f"Error loading insight '{name}': {str(e)}"}), 500
 
             if missing_insights:
-                Logger.instance().info(f"Missing insight files: {missing_insights}")
+                Logger.instance().debug(f"Missing insight files: {missing_insights}")
                 if not insights:
+                    # Never-built is an EMPTY STATE, not an error. This used to
+                    # 404, and the client treated any non-2xx as transient —
+                    # retrying 3x at 1s inside fetchInsightJobs, once more via
+                    # React Query — so ONE render of a not-yet-built insight
+                    # produced up to six polls and six log lines. The 200
+                    # envelope tells the client "nothing to fetch yet, stop".
                     return (
-                        jsonify({"error": f"No insight files found for: {missing_insights}"}),
-                        404,
+                        jsonify(
+                            {
+                                "insights": [],
+                                "missing": missing_insights,
+                                "state": "not_built",
+                            }
+                        ),
+                        200,
                     )
 
             return jsonify(insights)
