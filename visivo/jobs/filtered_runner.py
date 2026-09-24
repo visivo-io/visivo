@@ -30,6 +30,14 @@ class FilteredRunner:
         self.failed_job_results = []
         self.successful_job_results = []
 
+    @property
+    def diagnostics(self):
+        """The structured failures across every filtered DAG iteration,
+        including dependency_failed entries synthesized for skipped jobs."""
+        return [
+            result.diagnostic for result in self.failed_job_results if result.diagnostic is not None
+        ]
+
     def run(self):
         for job_dag in self.project_dag.filter_dag(self.dag_filter):
             dag_runner = DagRunner(
