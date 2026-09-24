@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from visivo.agent.tools import TOOLS, ToolError, call, tool_names
+from visivo.agent.tools import SPECIAL_TOOL_NAMES, TOOLS, ToolError, call, tool_names
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
 
@@ -31,7 +31,9 @@ class TestItIsARegistryNotAList:
     def test_it_covers_the_type_map_and_nothing_it_invented(self):
         """The map is the source; a tool for a type that is not in it would be
         a hand-written one that nothing keeps in step."""
-        typed = {n for n in tool_names() if not n.startswith("list_")}
+        typed = {
+            n for n in tool_names() if not n.startswith("list_") and n not in SPECIAL_TOOL_NAMES
+        }
         singulars = {k[:-1] for k in TYPE_TO_MANAGER}
 
         for name in typed:

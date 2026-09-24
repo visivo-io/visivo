@@ -29,6 +29,7 @@ hijacked agent is a draft someone can discard.
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
+from visivo.agent.schema import SchemaSlicer
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
 
@@ -201,7 +202,63 @@ def _generated_tools():
     return tools
 
 
-TOOLS: Dict[str, Tool] = _generated_tools()
+# --- the hand-written ones --------------------------------------------------
+
+_slicer = None
+
+
+def _schema_slicer():
+    """Built once. Slicing the project schema means generating it, which is the
+    expensive part; the slices themselves are cheap."""
+    global _slicer
+    if _slicer is None:
+        _slicer = SchemaSlicer()
+    return _slicer
+
+
+def _get_schema_handler(app, arguments):
+    slicer = _schema_slicer()
+    requested = (arguments or {}).get("type")
+    if not isinstance(requested, str) or not requested.strip():
+        raise ToolError("'type' is required — one of: " + ", ".join(slicer.type_keys()))
+    # Accept 'model' as readily as 'models'. An agent reading a tool named
+    # get_model will reach for the singular.
+    key = requested if requested in slicer.by_type else f"{requested}s"
+    try:
+        return slicer.for_type(key)
+    except KeyError:
+        raise ToolError(f"No type '{requested}'. Available: " + ", ".join(slicer.type_keys()))
+
+
+_SPECIAL_TOOLS = {
+    "get_schema": Tool(
+        name="get_schema",
+        description=(
+            "The config vocabulary for one object type — what fields it takes "
+            "and which are required. Ask for the type you are about to author; "
+            "the whole project schema is megabytes and most of it is Plotly."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "An object type, e.g. 'model' or 'models'.",
+                }
+            },
+            "required": ["type"],
+        },
+        handler=_get_schema_handler,
+    ),
+}
+
+
+# Hand-written, and named so the "generated from the type map" property can be
+# checked against the generated ones alone. Keep this list short: 133 routes is
+# a menu, not a toolset, and a wide surface makes agents worse.
+SPECIAL_TOOL_NAMES = frozenset(_SPECIAL_TOOLS)
+
+TOOLS: Dict[str, Tool] = {**_generated_tools(), **_SPECIAL_TOOLS}
 
 
 def tool_names():
