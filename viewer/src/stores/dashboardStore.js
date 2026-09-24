@@ -2,6 +2,11 @@ import * as dashboardsApi from '../api/dashboards';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 import { getEffectiveLevels } from '../utils/effectiveLevels';
 import { insertItemAtTarget } from '../components/views/project/canvas/canvasReorder';
+import {
+  createRow,
+  setItemLeaf,
+  LEAF_REF_FIELDS,
+} from '../components/views/workspace/itemMutations';
 
 /**
  * Translate a J-1 / J-2 `slot` descriptor into the `insertItemAtTarget` target
@@ -154,6 +159,113 @@ const createDashboardSlice = (set, get) => ({
       return { success: false, error: 'Could not place the chart in the requested slot' };
     }
     return get().saveDashboard(dashboardName, nextConfig);
+  },
+
+  /**
+   * W6 (Dashboard Building v1) — the promote modal's "New dashboard…" exit
+   * ramp, for the first-run project with ZERO dashboards: create a brand-new
+   * dashboard through the STANDARD inline-create path (`createDashboard` →
+   * `createWorkspaceObject('dashboard')`, so the naming + template rules
+   * stay in one place), then place `chartName` into the born row's existing
+   * empty slot. #621 makes every new dashboard start with one row holding
+   * one empty slot — the chart FILLS that slot (`setItemLeaf`), never
+   * appends a second row, so the new dashboard opens showing the chart
+   * rather than an empty placeholder row above it.
+   *
+   * Persistence goes through `saveDashboard`, exactly like
+   * `placeChartInDashboardSlot` above: the dashboard was created this
+   * instant, so there is no #46/#617 working copy to clobber, and the
+   * post-save refetch resets baselines — any subsequent canvas editing
+   * session starts its explicit-save working copy clean on server truth.
+   *
+   * The create and the placement are two saves, so a placement failure is
+   * ROLLED BACK (the just-created empty dashboard is deleted) rather than
+   * left as an orphan in the project's pending changes — see the rollback
+   * block below.
+   *
+   * Returns `{ success, dashboardName, … }` so the caller can open the new
+   * dashboard's tab; `{ success: false, error }` otherwise.
+   */
+  placeChartInNewDashboard: async chartName => {
+    if (!chartName) {
+      return { success: false, error: 'chart name is required' };
+    }
+    const created = await get().createDashboard();
+    if (!created?.success) {
+      return { success: false, error: created?.error || 'Could not create a new dashboard' };
+    }
+    const dashboardName = created.name;
+    // `saveDashboard` refetches before resolving, so the born config is in
+    // the list; fall back to the template's own shape defensively so the
+    // placement never silently drops the chart.
+    const config =
+      (get().dashboards || []).find(d => d.name === dashboardName)?.config || {
+        rows: [createRow()],
+      };
+    const rows = Array.isArray(config.rows) ? config.rows : [];
+    // An empty slot is an item with no leaf ref and no nested rows (a bare
+    // `{ width }` — itemMutations' own definition); a nullish item is
+    // fillable too (`setItemLeaf` normalizes it to a valid slot).
+    const isEmptySlot = item =>
+      !item || (!Array.isArray(item.rows) && !LEAF_REF_FIELDS.some(field => item[field]));
+    let target = null;
+    rows.some((rowConfig, rowIdx) => {
+      const items = Array.isArray(rowConfig?.items) ? rowConfig.items : [];
+      const itemIdx = items.findIndex(isEmptySlot);
+      if (itemIdx === -1) return false;
+      target = { rowIdx, itemIdx };
+      return true;
+    });
+    let nextConfig;
+    if (target) {
+      nextConfig = {
+        ...config,
+        rows: rows.map((rowConfig, rowIdx) =>
+          rowIdx !== target.rowIdx
+            ? rowConfig
+            : {
+                ...rowConfig,
+                items: rowConfig.items.map((item, itemIdx) =>
+                  itemIdx !== target.itemIdx ? item : setItemLeaf(item, 'chart', chartName)
+                ),
+              }
+        ),
+      };
+    } else {
+      // Defensive: the born template always has an empty slot (#621), but if
+      // that ever changes the chart still lands — appended through the same
+      // never-drop fallback the slot-descriptor path uses.
+      const baseConfig = { ...config, rows };
+      nextConfig = insertItemAtTarget(baseConfig, slotToInsertTarget(baseConfig, 'new'), {
+        width: 1,
+        chart: `ref(${chartName})`,
+      });
+    }
+    const saved = await get().saveDashboard(dashboardName, nextConfig);
+    if (saved?.success) {
+      return { ...saved, dashboardName };
+    }
+    // ROLLBACK. The create succeeded and the placement did not, so without
+    // this the project is left carrying an EMPTY orphan dashboard: it rides
+    // along in pending changes into the user's .visivo.yml, the inline error
+    // never mentions it exists, and every retry mints another one
+    // (`new-dashboard-1`, `-2`, …) because `generateUniqueName` dedupes
+    // against the one already there. Undoing the create is safe here in a way
+    // a general delete is not — the dashboard was created microseconds ago by
+    // this action, is empty, and nothing references it — and it leaves no
+    // staged change behind: `mark_for_deletion` DROPS a never-published
+    // object outright rather than tombstoning it (object_manager.py).
+    const rollback = await get().deleteDashboard?.(dashboardName);
+    const placeError = saved?.error || 'Could not place the chart in the dashboard';
+    if (!rollback?.success) {
+      // The orphan really is still there — say so, rather than reporting a
+      // clean failure the project state contradicts.
+      return {
+        success: false,
+        error: `${placeError}. An empty dashboard "${dashboardName}" was created and could not be removed — delete it from the Library.`,
+      };
+    }
+    return { success: false, error: placeError };
   },
 
   // Mark dashboard for deletion
