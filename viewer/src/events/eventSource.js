@@ -17,6 +17,20 @@ import { isAvailable } from '../contexts/URLContext';
  * A topic declares both halves because only the topic knows them: the socket
  * event its payload arrives on, and how to fetch the same thing when there is
  * no socket to arrive on.
+ *
+ * One rule decides what a subscriber receives, and it falls out of what the
+ * topic declared rather than needing a flag:
+ *
+ *   with `poll`    the socket event is a SIGNAL — `poll` fetches the value and
+ *                  the subscriber gets that, so both transports deliver the
+ *                  identical shape by construction. Runs work this way.
+ *   without `poll` the socket payload IS the value, because nothing can be
+ *                  asked for it — there is no endpoint that returns "a tool
+ *                  just ran" or "the project recompiled".
+ *
+ * The first case is what makes "a screen cannot tell which transport it got"
+ * true rather than aspirational: a payload shape and a polled shape that only
+ * have to agree by convention are two shapes that will eventually disagree.
  */
 
 /** No socket to connect to — a dist build is static files (VIS-1326). */
@@ -48,9 +62,21 @@ const connect = () =>
 export function subscribe(topic, handler) {
   if (canPush()) {
     const socket = connect();
-    socket.on(topic.event, handler);
+    // A topic that knows how to fetch its value always fetches it; the event
+    // only says when. See the rule in the module docstring.
+    const onEvent = topic.poll
+      ? async () => {
+          try {
+            const value = await topic.poll();
+            if (value !== undefined) handler(value);
+          } catch {
+            // A push we could not follow up on is not a dead subscription.
+          }
+        }
+      : handler;
+    socket.on(topic.event, onEvent);
     return () => {
-      socket.off(topic.event, handler);
+      socket.off(topic.event, onEvent);
       socket.close();
     };
   }

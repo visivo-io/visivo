@@ -3,6 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import RunsView from './RunsView';
 import { cancelRun } from '../api/runs';
 import useStore from '../stores/store';
+import { subscribe } from '../events/eventSource';
+
+// Shared so a test can assert what the runs subscription wrote into the cache.
+const mockQueryClient = { invalidateQueries: jest.fn(), setQueryData: jest.fn() };
 
 // Control the runs the view renders; the real store provides the project id.
 jest.mock('@tanstack/react-query', () => {
@@ -17,7 +21,7 @@ jest.mock('@tanstack/react-query', () => {
       isPending: false,
       isError: false,
     })),
-    useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+    useQueryClient: () => mockQueryClient,
   };
 });
 jest.mock('../api/runs', () => ({
@@ -32,6 +36,12 @@ jest.mock('../api/runs', () => ({
 // Workspace.test.jsx's identical stub).
 jest.mock('socket.io-client', () => ({
   io: jest.fn(() => ({ on: jest.fn(), off: jest.fn(), close: jest.fn() })),
+}));
+
+// The list keeps itself current through the event-source seam (VIS-1345).
+jest.mock('../events/eventSource', () => ({
+  subscribe: jest.fn(() => jest.fn()),
+  canDeliver: jest.fn(() => true),
 }));
 
 // RunsView and the expanded RunDetail each call useQuery; dispatch on the key so
@@ -380,5 +390,51 @@ describe('RunsView staged panel', () => {
     mockQueries({ runs: [] });
     render(<RunsView />);
     expect(screen.getByText('Applies to all your projects.')).toBeInTheDocument();
+  });
+});
+
+describe('keeping the list current (VIS-1345)', () => {
+  // The list used to carry its own `refetchInterval`. It now subscribes to the
+  // runs topic, so when the cloud sidecar starts pushing `runs_changed` this
+  // component does not change — the topic fetches the value either way.
+  beforeEach(() => {
+    mockQueryClient.setQueryData.mockClear();
+    subscribe.mockClear();
+    subscribe.mockReturnValue(jest.fn());
+  });
+
+  test('the list query carries no timer of its own', () => {
+    mockQueries({ runs: [], log: null });
+
+    render(<RunsView />);
+
+    const listQuery = useQuery.mock.calls
+      .map(([options]) => options)
+      .find(options => options.queryKey[0] === 'runs');
+    expect(listQuery.refetchInterval).toBeUndefined();
+  });
+
+  test('what the topic delivers lands in the list', () => {
+    mockQueries({ runs: [], log: null });
+    render(<RunsView />);
+
+    const [topic, handler] = subscribe.mock.calls.at(-1);
+    expect(topic.event).toContain('runs_changed');
+    handler([{ id: 'run-9', state: 'running' }]);
+
+    expect(mockQueryClient.setQueryData).toHaveBeenCalledWith(
+      ['runs', expect.anything()],
+      [{ id: 'run-9', state: 'running' }]
+    );
+  });
+
+  test('it stops subscribing when the view goes away', () => {
+    const unsubscribe = jest.fn();
+    subscribe.mockReturnValue(unsubscribe);
+    mockQueries({ runs: [], log: null });
+
+    render(<RunsView />).unmount();
+
+    expect(unsubscribe).toHaveBeenCalled();
   });
 });

@@ -62,6 +62,48 @@ describe('where the server can push', () => {
     expect(getSocket().close).toHaveBeenCalled();
   });
 
+  it('a topic that can fetch treats the event as a signal', async () => {
+    // Both transports then deliver the identical shape by construction — a
+    // socket payload and a polled value that only agree by convention are two
+    // shapes that will eventually disagree.
+    const poll = jest.fn().mockResolvedValue([{ id: 'run-1', state: 'running' }]);
+    const handler = jest.fn();
+    subscribe({ event: 'runs_changed', poll }, handler);
+
+    getSocket()._handlers.runs_changed({ ignored: true });
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(poll).toHaveBeenCalled();
+    expect(handler).toHaveBeenCalledWith([{ id: 'run-1', state: 'running' }]);
+  });
+
+  it('a topic that cannot fetch delivers what the event carried', () => {
+    // Nothing can be asked "did the project recompile?" — the payload is the
+    // only source.
+    const handler = jest.fn();
+    subscribe(TOPIC, handler);
+
+    getSocket()._handlers.thing_happened({ drafts_dropped: true });
+
+    expect(handler).toHaveBeenCalledWith({ drafts_dropped: true });
+  });
+
+  it('a push we cannot follow up on is not a dead subscription', async () => {
+    const poll = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('nope'))
+      .mockResolvedValue(['second']);
+    const handler = jest.fn();
+    subscribe({ event: 'runs_changed', poll }, handler);
+
+    getSocket()._handlers.runs_changed({});
+    await new Promise(resolve => setTimeout(resolve, 0));
+    getSocket()._handlers.runs_changed({});
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(handler).toHaveBeenCalledWith(['second']);
+  });
+
   it('stops delivering after unsubscribe', () => {
     const handler = jest.fn();
     const unsubscribe = subscribe(TOPIC, handler);
