@@ -59,14 +59,15 @@ const CommitModal = () => {
     setRestoringKey(null);
   };
   // Discard (Q14 rollback) — drops the draft cache without writing YAML. It's
-  // destructive, so it confirms inline before firing. Local serve only:
-  // /api/commit/discard/ has no cloud equivalent yet (Django implements no
-  // discard endpoint), so the button is hidden when capabilities exist (cloud)
-  // rather than offered and guaranteed to fail.
+  // destructive, so it confirms inline before firing.
+  //
+  // This used to hide itself whenever capabilities were non-null, reading that
+  // as "cloud". Local serve answers the capabilities endpoint too now, so the
+  // button had quietly disappeared from the one place it works — and cloud
+  // never saw it either, because core renders its own CommitModal, not this
+  // one. The same action also hangs off the Commit button's menu.
   const discardChanges = useStore(state => state.discardChanges);
   const discardLoading = useStore(state => state.discardLoading);
-  const capabilities = useStore(state => state.capabilities);
-  const discardAvailable = capabilities === null;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
   if (!commitModalOpen) return null;
@@ -191,18 +192,14 @@ const CommitModal = () => {
           </div>
         ) : (
           <div className="flex items-center justify-between gap-3">
-            {discardAvailable ? (
-              <button
-                onClick={() => setConfirmingDiscard(true)}
-                disabled={commitLoading || count === 0}
-                data-testid="commit-modal-discard"
-                className="px-4 py-2 text-highlight-700 rounded-md hover:bg-highlight-50 focus:outline-none disabled:text-gray-300 disabled:hover:bg-transparent"
-              >
-                Discard
-              </button>
-            ) : (
-              <span />
-            )}
+            <button
+              onClick={() => setConfirmingDiscard(true)}
+              disabled={commitLoading || count === 0}
+              data-testid="commit-modal-discard"
+              className="px-4 py-2 text-highlight-700 rounded-md hover:bg-highlight-50 focus:outline-none disabled:text-gray-300 disabled:hover:bg-transparent"
+            >
+              Discard
+            </button>
             <div className="flex gap-3">
               <button
                 onClick={closeCommitModal}
