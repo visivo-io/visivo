@@ -194,3 +194,59 @@ class TestTheEndpointDoesNotKnowItRecords:
         source = Path("visivo/server/views/mcp_views.py").read_text()
 
         assert ".record(" not in source
+
+
+class TestListenersSeeRecordings:
+    """The push half (VIS-1337). ``record`` is where every producer already
+    converges, so a listener there needs no second wiring per producer."""
+
+    def test_a_listener_is_called_with_the_action(self):
+        log_ = ActionLog()
+        seen = []
+        log_.on_record(seen.append)
+
+        log_.record("write_model", obj={"type": "model", "name": "orders"})
+
+        assert [a["tool"] for a in seen] == ["write_model"]
+        assert seen[0]["object"] == {"type": "model", "name": "orders"}
+
+    def test_a_failing_listener_does_not_lose_the_action(self):
+        """The action really happened. A transport that cannot carry it is the
+        transport's problem, and the log is still readable."""
+        log_ = ActionLog()
+
+        def broken(action):
+            raise RuntimeError("socket is gone")
+
+        log_.on_record(broken)
+        delivered = []
+        log_.on_record(delivered.append)
+
+        log_.record("write_model")
+
+        assert [a["tool"] for a in log_.recent()] == ["write_model"]
+        assert len(delivered) == 1
+
+    def test_the_call_path_notifies(self, integration_app):
+        """Not ``record`` directly — the point is that a tool call reaches a
+        listener without the tool knowing one exists."""
+        pushed = []
+        log().on_record(pushed.append)
+
+        call(
+            integration_app,
+            "write_markdown",
+            {"config": {"name": "pushed", "content": "# pushed"}},
+        )
+
+        assert [a["tool"] for a in pushed] == ["write_markdown"]
+
+    def test_the_module_knows_nothing_of_a_socket(self):
+        """The seam exists so the recording layer stays importable without
+        Flask — a built-in loop records the same way with no server running."""
+        from pathlib import Path
+
+        source = Path("visivo/agent/actions.py").read_text()
+
+        assert "socketio" not in source
+        assert "flask" not in source.lower()
