@@ -24,9 +24,9 @@ describe('TopNav', () => {
     useMediaQuery.mockImplementation(() => false);
   });
 
-  it('renders the three intra-project tools (Workspace subsumes Editor + Lineage + Explorer)', () => {
+  it('renders the intra-project tools (Workspace subsumes Editor + Lineage + Explorer)', () => {
     renderNav();
-    ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
+    ['Workspace', 'Runs', 'Dashboards', 'Agent'].forEach(label => {
       expect(screen.getByTitle(label)).toBeInTheDocument();
     });
     // The legacy Editor / Lineage tools AND the Explorer are gone from the top
@@ -44,6 +44,15 @@ describe('TopNav', () => {
   // `{on && t.label}`), so asserting the label text is visible is the same
   // signal the component itself uses for "on". The Explorer tab is gone
   // entirely — its title never renders anywhere in the nav.
+
+  it('the Agent tool points at the agent tab', () => {
+    // The tab is where an external MCP client's work becomes visible, so the
+    // route has to be reachable from the bar rather than only by URL.
+    renderNav();
+
+    expect(screen.getByRole('link', { name: 'Agent' })).toHaveAttribute('href', '/agent');
+  });
+
   it('the Workspace pill is active on a nested exploration-detail route', () => {
     renderNav({}, ['/workspace/exploration/exp_a1b2c3']);
     expect(screen.getByText('Workspace')).toBeInTheDocument();
@@ -567,7 +576,7 @@ describe('TopNav', () => {
 
     it('still renders the tools, capsule, and user menu', () => {
       renderNav();
-      ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
+      ['Workspace', 'Runs', 'Dashboards', 'Agent'].forEach(label => {
         expect(screen.getByTitle(label)).toBeInTheDocument();
       });
       expect(screen.getByText('Local')).toBeInTheDocument();

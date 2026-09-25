@@ -170,6 +170,10 @@ const URL_PATTERNS = {
     // client so the CLI telemetry opt-out + anonymization apply (VIS-822).
     workspaceTelemetry: '/api/telemetry/workspace-event/',
 
+    // What agents have done this session. Absent from `dist` below, which is
+    // correct: a static build has no server for an agent to work through.
+    agentActions: '/api/agent/actions/',
+
     // ---- Realtime ---------------------------------------------------------
     // Not a REST call — useProjectChangeListener gates its socket.io connect
     // on this key (VIS-1326). A dist build is static files with nothing to

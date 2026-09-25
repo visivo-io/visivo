@@ -6,6 +6,7 @@ from tests.factories.model_factories import (
     RowFactory,
 )
 from tests.support.utils import temp_folder
+from visivo.agent.actions import log
 from visivo.commands.serve_phase import serve_phase
 from visivo.commands.utils import create_file_database
 from visivo.server.hot_reload_server import HotReloadServer
@@ -231,3 +232,50 @@ def test_on_project_change_clean_session_emits_without_dropping(
     on_project_change()
 
     emit_spy.assert_called_with("project_changed", {"drafts_dropped": False})
+
+
+def test_a_recorded_agent_action_is_pushed_over_the_socket(
+    test_project, output_dir, server_url, mocker
+):
+    """VIS-1337. The recording layer has no socket; serve is what gives it one,
+    so this is the only place the two halves meet."""
+    os.makedirs(output_dir, exist_ok=True)
+    server, _, _ = serve_phase(
+        output_dir=output_dir,
+        working_dir=".",
+        default_source=None,
+        dag_filter=None,
+        threads=1,
+        skip_compile=True,
+        project=test_project,
+        server_url=server_url,
+    )
+    emit = mocker.patch.object(server.socketio, "emit")
+
+    action = log().record("write_model", obj={"type": "model", "name": "orders"})
+
+    emit.assert_called_once_with("agent_action", {"id": action["id"]})
+
+
+def test_the_push_carries_no_payload_beyond_the_signal(
+    test_project, output_dir, server_url, mocker
+):
+    """The viewer refetches the log on this event, so sending the action itself
+    would be a second copy free to disagree with the one it reads."""
+    os.makedirs(output_dir, exist_ok=True)
+    server, _, _ = serve_phase(
+        output_dir=output_dir,
+        working_dir=".",
+        default_source=None,
+        dag_filter=None,
+        threads=1,
+        skip_compile=True,
+        project=test_project,
+        server_url=server_url,
+    )
+    emit = mocker.patch.object(server.socketio, "emit")
+
+    log().record("write_model", obj={"type": "model", "name": "orders"})
+
+    _, payload = emit.call_args.args
+    assert set(payload) == {"id"}

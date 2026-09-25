@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import useStore from '../stores/store';
 import { fetchRuns, fetchRunLog, cancelRun } from '../api/runs';
 import AnsiText from './common/AnsiText';
 import useProjectChangeListener from './views/workspace/useProjectChangeListener';
 import { getTypeColors, getTypeIcon } from './views/common/objectTypeConfigs';
+import { subscribe } from '../events/eventSource';
+import { runsFor } from '../events/topics';
 
 // queued/running are the only non-terminal states — while active a run is still
 // building, so the detail panel tail-polls the log.
@@ -331,11 +333,25 @@ export default function RunsView() {
     queryKey: ['runs', projectId],
     queryFn: () => fetchRuns(projectId),
     enabled: Boolean(projectId),
-    refetchInterval: 4000,
+    // No refetchInterval: the subscription below keeps this current, and two
+    // timers on one list is two fetches saying the same thing.
     // The view mounts on navigation; always refetch so a run triggered while you
     // were editing shows up the moment you open Runs (not the stale cache).
     refetchOnMount: 'always',
   });
+
+  // Keep the list current through the event-source seam rather than a timer of
+  // its own (VIS-1345). Today that resolves to polling — nothing emits
+  // `runs_changed` until the cloud sidecar lands — and when it does, this
+  // component does not change: the topic starts pushing and the same list
+  // arrives, because the topic fetches the value either way.
+  const runsQueryClient = useQueryClient();
+  useEffect(() => {
+    if (!projectId) return undefined;
+    return subscribe(runsFor(projectId, fetchRuns), fetched =>
+      runsQueryClient.setQueryData(['runs', projectId], fetched)
+    );
+  }, [projectId, runsQueryClient]);
 
   if (isLoading) {
     return (
