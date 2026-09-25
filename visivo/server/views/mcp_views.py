@@ -25,6 +25,7 @@ result is something the model can read and correct.
 
 from flask import jsonify, request
 
+from visivo.agent.actions import log as action_log
 from visivo.agent.tools import TOOLS, ToolError, call
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -36,6 +37,20 @@ _METHOD_NOT_FOUND = -32601
 
 
 def register_mcp_views(app, flask_app):
+    @app.route("/api/agent/actions/", methods=["GET"])
+    def agent_actions_api():
+        """What agents have done this session, newest first.
+
+        Read-only, and the Agent tab's source: an action is fetchable, so its
+        topic polls the same way runs do rather than needing a push channel to
+        exist first.
+        """
+        try:
+            limit = int(request.args.get("limit", 100))
+        except (TypeError, ValueError):
+            limit = 100
+        return jsonify({"actions": action_log().recent(max(1, min(limit, 500)))})
+
     @app.route("/api/mcp/", methods=["POST"])
     def mcp_api():
         payload = request.get_json(silent=True)
