@@ -173,6 +173,10 @@ const URL_PATTERNS = {
     // What agents have done this session. Absent from `dist` below, which is
     // correct: a static build has no server for an agent to work through.
     agentActions: '/api/agent/actions/',
+    // The built-in loop: start one, poll it, stop it.
+    agentSessions: '/api/agent/',
+    agentSession: ({ sessionId }) => `/api/agent/${sessionId}/`,
+    agentSessionCancel: ({ sessionId }) => `/api/agent/${sessionId}/cancel/`,
 
     // ---- Realtime ---------------------------------------------------------
     // Not a REST call — useProjectChangeListener gates its socket.io connect

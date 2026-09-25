@@ -44,9 +44,12 @@ const LOCAL_STAGE = {
 // `view_project` item); the others have their own anchors elsewhere.
 const DEFAULT_TOOLS = [
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
+  // Second, beside Workspace: asking the agent for a change is another way of
+  // doing what Workspace does by hand, and both produce the same drafts. Runs
+  // and Dashboards are what you look at afterwards.
+  { id: 'agent', label: 'Agent', to: '/agent', icon: PiRobot },
   { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate, onbTarget: 'top-nav-project' },
-  { id: 'agent', label: 'Agent', to: '/agent', icon: PiRobot },
 ];
 
 /* ---------------------------------------------------------------- menu row */
