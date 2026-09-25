@@ -50,7 +50,7 @@ it('calls authentication endpoint and opens auth URL', async () => {
   jest.advanceTimersByTime(2000);
 
   await waitFor(() => {
-    expect(setStatusMock).toHaveBeenCalledWith('stage');
+    expect(setStatusMock).toHaveBeenCalledWith('branch');
   });
 });
 

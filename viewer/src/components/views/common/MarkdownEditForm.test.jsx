@@ -147,7 +147,9 @@ describe('MarkdownEditForm — edit mode', () => {
     };
     renderForm({ markdown, isCreate: false });
     expect(screen.getByLabelText(/Markdown Name/)).toHaveValue('md1');
-    expect(screen.getByLabelText(/Markdown Name/)).toBeDisabled();
+    // Editable in edit mode now that a rename carries the `${ref()}` rewrite
+    // with it (VIS-1209); a server without the endpoint keeps it locked.
+    expect(screen.getByLabelText(/Markdown Name/)).toBeEnabled();
     expect(screen.getByLabelText(/Content/)).toHaveValue('Hi there');
 
     // Explicit save (no auto-save): a field change buffers locally and persists

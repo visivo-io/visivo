@@ -1,4 +1,4 @@
-import { fetchModelColumnNames } from '../api/modelSchema';
+import { fetchModelSchema } from '../api/modelSchema';
 import { generateUniqueName } from '../utils/uniqueName';
 import { createRow } from '../components/views/workspace/itemMutations';
 
@@ -53,32 +53,29 @@ const needsAModel = kind =>
   `A ${kind} references a model, and this project has none yet. Create a model first.`;
 
 /**
- * A real column on `modelName`, inferred server-side (SQLGlot against the
- * source's cached schema — no query, no run required).
+ * A real column on `modelName`, inferred server-side, or null when the server
+ * has none to offer.
  *
  * The scaffolds used to hardcode `id`. Most models don't have one, so "+ New
  * Metric" produced `count(${ref(orders).id})` against a column that isn't
- * there: valid to the parser, broken the moment it runs, and the user had no
- * reason to suspect the column rather than their own edit. Guess the model —
- * that is a starting point with a name attached — but never the column.
+ * there. Guess the model — that is a starting point with a name attached —
+ * but never the column.
  *
- * @returns {Promise<string|null>} null when the columns can't be determined,
- *   which the caller turns into a refusal rather than a fabricated reference.
+ * Null is NOT a failure. Inference is best-effort: in cloud it resolves against
+ * the source's cached schema, so a source nobody has introspected yet answers
+ * 200 with no columns and `source_schema_cached: false`. Treating that as "this
+ * model is broken" blamed the user's SQL and connection for a schema cache they
+ * had never been asked to populate, and refused to create anything.
  */
 const firstColumnOf = async (state, modelName) => {
   if (!modelName) return null;
   try {
-    const columns = await fetchModelColumnNames(modelName, { projectId: state.project?.id });
-    return columns?.[0] || null;
+    const schema = await fetchModelSchema(modelName, { projectId: state.project?.id });
+    return schema?.columns?.[0]?.name || null;
   } catch {
     return null;
   }
 };
-
-/** Why a draft can't be built when a model's columns are unknown. */
-const unknownColumns = modelName =>
-  `Could not read any columns from model '${modelName}', so there is nothing to reference yet. ` +
-  `Check the model's SQL and its source connection.`;
 
 export const CREATE_TEMPLATES = {
   dashboard: {
@@ -145,9 +142,12 @@ export const CREATE_TEMPLATES = {
     config: async state => {
       const model = firstModelName(state);
       const column = await firstColumnOf(state, model);
-      if (!column) throw new Error(unknownColumns(model));
-      // eslint-disable-next-line no-template-curly-in-string
-      return { expression: `\${ref(${model}).${column}}` };
+      // Without a known column, reference the model alone: still a real ref,
+      // still valid, and the pill's picker fills the rest in.
+      return {
+        // eslint-disable-next-line no-template-curly-in-string
+        expression: column ? `\${ref(${model}).${column}}` : `\${ref(${model})}`,
+      };
     },
   },
   metric: {
@@ -159,9 +159,10 @@ export const CREATE_TEMPLATES = {
     config: async state => {
       const model = firstModelName(state);
       const column = await firstColumnOf(state, model);
-      if (!column) throw new Error(unknownColumns(model));
-      // eslint-disable-next-line no-template-curly-in-string
-      return { expression: `count(\${ref(${model}).${column}})` };
+      return {
+        // eslint-disable-next-line no-template-curly-in-string
+        expression: column ? `count(\${ref(${model}).${column}})` : `count(\${ref(${model})})`,
+      };
     },
   },
   relation: {
@@ -182,12 +183,15 @@ export const CREATE_TEMPLATES = {
         firstColumnOf(state, left),
         firstColumnOf(state, right),
       ]);
-      if (!leftColumn) throw new Error(unknownColumns(left));
-      if (!rightColumn) throw new Error(unknownColumns(right));
+      // A condition needs a property on each side (`bareRefs: false`), so with
+      // no columns to offer this falls back to a placeholder the user replaces
+      // — the validator flags it inline rather than blocking the create.
+      const leftKey = leftColumn || 'id';
+      const rightKey = rightColumn || 'id';
       return {
         join_type: 'inner',
         // eslint-disable-next-line no-template-curly-in-string
-        condition: `\${ref(${left}).${leftColumn}} = \${ref(${right}).${rightColumn}}`,
+        condition: `\${ref(${left}).${leftKey}} = \${ref(${right}).${rightKey}}`,
       };
     },
   },

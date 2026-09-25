@@ -145,6 +145,34 @@ describe('ExplorerChartPreview', () => {
     );
   });
 
+  // M28 — the height chain, pinned where CI can actually see it.
+  //
+  // The geometry proof lives in e2e/stories/explorer-chart-fills-pane.spec.mjs,
+  // but `.rwx/test_visivo.yml` runs `viewer-test` (jest) and `viewer-lint` and
+  // no Playwright story task at all, so that file only ever runs by hand. This
+  // assertion is the half a merge gate sees. It is a class-string check
+  // because the defect IS a class string: jsdom computes no layout, so nothing
+  // cheaper than a browser can observe the resulting height.
+  //
+  // `flex-1` here is inert — this root's parent is CenterPanel's chart pane, a
+  // `display:block` div, and `flex-1` only means something to a flex
+  // container's child. With no `h-full` either the root's height was `auto`,
+  // every percentage height below it (ChartPreview's `h-full`, ItemContainer's
+  // `h-full`, the Plot's `style.height: 100%`) resolved against an indefinite
+  // parent and collapsed in turn, and Plotly fell back to its built-in 450px
+  // regardless of the pane: measured at 509px pane / 450px plot at a 1280px
+  // viewport, and 260px pane / 450px plot at 1600px.
+  it('roots the chart at h-full, not the inert flex-1 — the height chain to Plotly', () => {
+    render(<ExplorerChartPreview />);
+    const root = screen.getByTestId('explorer-chart-preview');
+    expect(root).toHaveClass('h-full');
+    expect(root).not.toHaveClass('flex-1');
+    // …and the chart's own slot, which takes whatever the chrome above leaves,
+    // is still the flex child that consumes it (and the anchor the e2e story
+    // measures against).
+    expect(screen.getByTestId('chart-preview-slot')).toHaveClass('flex-1', 'min-h-0');
+  });
+
   // VIS-1224 Bug 1: an empty draft insight (isNew, no props) can never produce
   // data — it must be excluded from the chart's keys so it can't block
   // Chart.jsx's all-or-nothing data gate (the infinite-spinner bug).

@@ -191,7 +191,7 @@ export default function Cloud({ role, connected, onConnect, onLater, onConnected
             </li>
             <li>Scheduled refreshes &amp; shared sources</li>
             <li>Auth, roles, per-dashboard sharing</li>
-            <li>Stage previews on every PR — CI for BI</li>
+            <li>Branch previews on every PR — CI for BI</li>
           </ul>
         </div>
       </div>

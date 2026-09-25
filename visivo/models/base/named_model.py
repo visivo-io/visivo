@@ -37,6 +37,13 @@ def alpha_hash(text: str, length: int = 28) -> str:
     return "m" + "".join(result)
 
 
+# Metric and dimension names become SQL identifiers — a metric's name IS its
+# alias in the generated query — so they take a narrower grammar than every
+# other object: no hyphens, and no leading digit. Declared here so the Pydantic
+# validators, the JSON schema, and the viewer all read one definition.
+SQL_IDENTIFIER_NAME_PATTERN = r"^[a-zA-Z_][a-zA-Z0-9_]*$"
+
+
 class NamedModel(BaseModel):
     def id(self):
         if self.name is not None:

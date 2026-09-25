@@ -6,7 +6,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import RefTextArea from './RefTextArea';
+import ExpressionField from './ExpressionField';
 import Select from '../../common/Select';
 import InsightEditFormFields from './InsightEditFormFields';
 import { validateName } from './namedModel';
@@ -14,7 +14,6 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { refKindsFor } from './fieldTypes';
 import { REF_INSERT_HINT } from './RefTextArea';
 import { decodeQueryString, encodeQueryString } from '../../../utils/expressionCodec';
 import {
@@ -24,6 +23,8 @@ import {
   interactionHelpText,
   interactionValueProblem,
 } from '../../../schemas/interactionHelp';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 import {
   SectionContainer,
   EmptyState,
@@ -51,6 +52,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   // Form state - Basic fields
   const [name, setName] = useState('');
+  const rename = useRenameFlow({ type: 'insight', recordName: insight?.name || '', name });
   const [description, setDescription] = useState('');
 
   // Props state - the insight's Plotly props object (carries `.type`). Fully
@@ -200,6 +202,18 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   };
 
   const handleSave = async () => {
+
+    // A changed name in edit mode is a RENAME — its own server operation,
+
+    // confirmed first, because every `${ref()}` to this object moves with it.
+
+    if (isEditMode && rename.nameChanged) {
+
+      rename.start();
+
+      return;
+
+    }
     if (!validateForm()) return;
 
     setSaving(true);
@@ -293,6 +307,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   return (
     <>
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
@@ -315,7 +330,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
             nameId="insightName"
             nameValue={name}
             onNameChange={e => setName(e.target.value)}
-            nameDisabled={isEditMode}
+            nameDisabled={isEditMode && !rename.supported}
             nameError={errors.name}
             showDescription
             description={description}
@@ -385,11 +400,17 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                     </div>
 
                     {/* Interaction Value */}
-                    <RefTextArea
+                    {/* `ExpressionField` owns the `?{ }` wrapper for query-string
+                        fields, so what `onChange` hands back is the STORED form.
+                        This form's state holds the BODY (the slice lives beside
+                        it), so decode once on the way in rather than letting the
+                        two representations mix. */}
+                    <ExpressionField
+                      objectType="interaction"
+                      field={interactionType}
                       value={interaction.value}
-                      onChange={value => updateInteractionValue(index, value)}
+                      onChange={value => updateInteractionValue(index, decodeQueryString(value).body)}
                       label={typeConfig.label}
-                      allowedTypes={refKindsFor('interaction', interactionType)}
                       rows={2}
                       helperText={interactionHelpText(interactionType, REF_INSERT_HINT)}
                       error={errors.interactions?.[index]}

@@ -18,6 +18,7 @@ from visivo.query.sqlglot_utils import (
     has_aggregate_function,
     has_window_function,
     find_non_aggregated_expressions,
+    unaliased_projections,
     normalize_identifier_for_dialect,
 )
 
@@ -849,3 +850,41 @@ class TestNormalizeIdentifierForDialect:
         assert result.this == "MyMixedCase"
         sql = result.sql(dialect="clickhouse")
         assert sql == '"MyMixedCase"'
+
+
+class TestUnaliasedProjections:
+    """VIS-1329: an unaliased projection is named `_col_N` by SQLGlot and
+    something else entirely by the database, so a schema built from it names
+    columns no engine returns and no `${ref()}` can reach."""
+
+    def test_the_aliased_and_unaliased_forms_of_one_query_differ(self):
+        """The card's repro: identical SQL, one aliased, one not."""
+        aliased = (
+            "SELECT date_trunc('day', created_at) as date_trunc, count(*) as count "
+            "FROM release_notes GROUP BY 1"
+        )
+        unaliased = "SELECT date_trunc('day', created_at), count(*) FROM release_notes GROUP BY 1"
+
+        assert unaliased_projections(aliased, "duckdb") == []
+        assert [position for position, _ in unaliased_projections(unaliased, "duckdb")] == [1, 2]
+
+    def test_it_reports_the_expression_so_the_message_can_name_it(self):
+        found = unaliased_projections("SELECT count(*) FROM t", "duckdb")
+
+        assert found == [(1, "COUNT(*)")]
+
+    def test_names_the_database_already_agrees_on_are_left_alone(self):
+        """A bare column, a qualified one, and both star forms all arrive with a
+        name the engine will return."""
+        assert unaliased_projections("SELECT a, t.b, t.*, * FROM t", "duckdb") == []
+
+    def test_only_the_outermost_select_is_checked(self):
+        """A CTE's columns are not the model's output columns."""
+        sql = "WITH c AS (SELECT count(*) FROM t) SELECT x AS y FROM c"
+
+        assert unaliased_projections(sql, "duckdb") == []
+
+    def test_positions_point_at_the_offending_column_only(self):
+        sql = "SELECT a, count(*), b AS c FROM t"
+
+        assert unaliased_projections(sql, "duckdb") == [(2, "COUNT(*)")]

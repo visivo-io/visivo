@@ -96,24 +96,39 @@ def user_dir(function):
     return function
 
 
-def validate_stage(ctx, param, value):
+def validate_branch(ctx, param, value):
     if value.strip() == "":
-        raise click.BadParameter("Only whitespace is not permitted for stage name.")
+        raise click.BadParameter("Only whitespace is not permitted for branch name.")
 
     if not re.search(NAME_REGEX, value):
         raise click.BadParameter(
-            "Only alphanumeric, whitespace, and '\"-_ characters permitted for stage name."
+            "Only alphanumeric, whitespace, and '\"-_ characters permitted for branch name."
         )
 
     return value
 
 
-def stage(function):
+def branch(function):
+    """``--branch``, with ``--stage`` kept as an alias (VIS-1352).
+
+    A stage is a branch: it maps to one, commits from it push to one, and a
+    pull request on that branch builds it. The word changed everywhere else, and
+    this is the last place it is still spoken out loud.
+
+    Both names bind to the same parameter rather than being two options, so
+    there is no state where a caller passes both and one silently wins.
+    ``--stage`` is still accepted because it is a required flag in everybody's
+    CI — removing it in the same release as renaming it would break every
+    pipeline at once. It goes a release later.
+    """
     click.option(
+        "-b",
+        "--branch",
         "-s",
         "--stage",
-        help="The stage of the project to deploy i.e. staging",
-        callback=validate_stage,
+        "branch",
+        help="The branch of the project to deploy, i.e. production. (--stage is the old name and still works.)",
+        callback=validate_branch,
         required=True,
     )(function)
     return function

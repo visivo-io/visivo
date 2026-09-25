@@ -94,7 +94,7 @@ class Table(NamedModel, ParentModel):
         values:
           - sum(${ref(sales-insight).revenue})
         format_cells:
-          scope: columns
+          scope: column
           min_color: "#ff0000"
           max_color: "#00ff00"
     ```

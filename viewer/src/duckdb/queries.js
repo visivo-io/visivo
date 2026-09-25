@@ -67,6 +67,26 @@ export const insertDuckDBFile = async (db, file, tableName) => {
   }
 };
 
+// Every parquet begins and ends with the four bytes `PAR1`. A 200 carrying
+// anything else means the URL served something that is not this file — an SPA
+// answering index.html for a path it does not know is the usual one — and
+// DuckDB's own complaint ("No magic bytes found at end of file") describes a
+// temp file the reader never chose, naming neither the URL nor what arrived.
+const PARQUET_MAGIC = [0x50, 0x41, 0x52, 0x31]; // PAR1
+
+const assertParquet = (buffer, file, response) => {
+  const startsRight =
+    buffer.length >= 8 && PARQUET_MAGIC.every((byte, i) => buffer[i] === byte);
+  if (startsRight) return;
+
+  const contentType = response?.headers?.get?.('content-type') || 'unknown';
+  const summary = buffer.length === 0 ? 'it was empty' : `it was ${contentType}`;
+  throw new Error(
+    `Expected a parquet file for "${file.name_hash}" but ${summary}. ` +
+      `Fetched from ${file.signed_data_file_url}`
+  );
+};
+
 const _insertJSON = async (db, file, tableName) => {
   const text = await file.text();
 
@@ -342,7 +362,9 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
           );
         }
         const arrayBuffer = await response.arrayBuffer();
-        return { file, buffer: new Uint8Array(arrayBuffer) };
+        const buffer = new Uint8Array(arrayBuffer);
+        assertParquet(buffer, file, response);
+        return { file, buffer };
       });
     })
   );

@@ -9,6 +9,8 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { getTypeByValue } from './objectTypeConfigs';
 import InlineFieldEditor from './InlineFieldEditor';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -36,6 +38,7 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
 
   // Form state
   const [name, setName] = useState('');
+  const rename = useRenameFlow({ type: 'model', recordName: model?.name || '', name });
   const [sql, setSql] = useState('');
   const [source, setSource] = useState(null); // Stored as ref(name) format
   const [dimensions, setDimensions] = useState([]); // Inline dimensions
@@ -110,6 +113,12 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
   };
 
   const handleSave = async () => {
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (!isCreate && rename.nameChanged) {
+      rename.start();
+      return;
+    }
     setError(null);
     setSaving(true);
 
@@ -183,6 +192,7 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
     // height to fill — the other leaf forms return a fragment and inherit that
     // from the rail, but this one owns a <form> element in between.
     <form onSubmit={handleFormSubmit} className="flex h-full flex-col">
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       <FormLayout>
         {error && <FormAlert variant="error">{error}</FormAlert>}
 
@@ -191,8 +201,12 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
           label="Model Name"
           value={name}
           onChange={e => setName(e.target.value)}
-          disabled={!isCreate}
-          helperText={!isCreate ? 'Model names cannot be changed after creation.' : undefined}
+          disabled={!isCreate && !rename.supported}
+          helperText={
+            !isCreate && rename.nameChanged
+              ? 'Saving will rename this model and update everything that references it.'
+              : undefined
+          }
         />
 
         {/* SQL field - Monaco Editor doesn't fit the standard form pattern */}

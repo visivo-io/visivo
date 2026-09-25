@@ -17,6 +17,7 @@ class ObjectStatus(str, Enum):
     MODIFIED = "modified"  # In both cached and published (cached differs)
     PUBLISHED = "published"  # In published_objects only (no cached changes)
     DELETED = "deleted"  # Marked for deletion (None in cache, exists in published)
+    RENAMED = "renamed"  # Cached under a new name; the published object holds the old one
 
 
 class ObjectManager(ABC, Generic[T]):
@@ -34,6 +35,10 @@ class ObjectManager(ABC, Generic[T]):
     def __init__(self):
         self._cached_objects: Dict[str, T] = {}
         self._published_objects: Dict[str, T] = {}
+        # {new_name: old_name} for objects renamed in the draft. Without it a
+        # rename is indistinguishable from "new object, plus an untouched old
+        # one", and the commit would write a duplicate instead of renaming.
+        self._renames: Dict[str, str] = {}
         self._lock = Lock()
 
     @property
@@ -131,6 +136,23 @@ class ObjectManager(ABC, Generic[T]):
         """
         return list(self.get_all_objects().values())
 
+    @property
+    def renames(self) -> Dict[str, str]:
+        """{new_name: old_name} for objects renamed in the draft."""
+        return self._renames
+
+    def record_rename(self, old_name: str, new_name: str) -> None:
+        """Remember that `new_name` is `old_name` renamed.
+
+        Chained renames collapse to the original: renaming a→b→c has to tell
+        the commit to find `a` in the YAML, not the `b` that was never written.
+        """
+        self._renames[new_name] = self._renames.pop(old_name, old_name)
+
+    def renamed_from(self, name: str) -> Optional[str]:
+        """The published name this object was renamed from, if it was."""
+        return self._renames.get(name)
+
     def get_status(self, name: str) -> Optional[ObjectStatus]:
         """
         Determine the status of an object by name.
@@ -155,7 +177,9 @@ class ObjectManager(ABC, Generic[T]):
                 # Only return DELETED if it exists in published (something to delete)
                 return ObjectStatus.DELETED if in_published else None
             elif not in_published:
-                return ObjectStatus.NEW
+                # A renamed object is also absent from published under its new
+                # name; only the rename record tells it apart from a new one.
+                return ObjectStatus.RENAMED if name in self._renames else ObjectStatus.NEW
             else:
                 # Compare actual values to determine if truly modified
                 published_obj = self._published_objects[name]

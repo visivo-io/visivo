@@ -13,6 +13,8 @@ Output follows the insights pattern:
 
 import json
 import os
+
+from visivo.output_paths import input_metadata_file
 from time import time
 from typing import Optional, Union, List, Any, Tuple, Dict
 
@@ -124,10 +126,20 @@ def _execute_query_for_options(
             f"Could not find source for model '{model_name}' referenced by input '{input_name}'"
         )
 
-    def replace_with_subquery(model_ref_name, _field):
-        if model_ref_name == model_name:
-            return f"({model.sql})"
-        return f"${{ref({model_ref_name})}}"
+    def replace_with_subquery(model_ref_name, field):
+        if model_ref_name != model_name:
+            return f"${{ref({model_ref_name})}}"
+        if field:
+            # `${ref(model).column}` alone (a dropped column, no hand-typed
+            # SQL around it) — a complete query in its own right, not a FROM
+            # source with the column dropped on the floor. DISTINCT because
+            # there's no hand-typed SQL for the user to add it to, unlike the
+            # documented `SELECT DISTINCT x FROM ${ref(model)}` form.
+            # Unparenthesized: some dialects (sqlite) reject a bare
+            # `(SELECT ...)` as a whole statement, and this is only ever the
+            # entire query, never a fragment composed into more SQL around it.
+            return f'SELECT DISTINCT "{field}" FROM ({model.sql}) AS "{model_ref_name}"'
+        return f"({model.sql})"
 
     resolved_query = replace_refs(query_value, replace_with_subquery)
 
@@ -511,7 +523,7 @@ def action(
         run_output_dir = f"{output_dir}/{run_id}"
         inputs_directory = f"{run_output_dir}/inputs"
         os.makedirs(inputs_directory, exist_ok=True)
-        json_path = f"{inputs_directory}/{input_name}.json"
+        json_path = input_metadata_file(run_output_dir, input_name)
 
         # Process based on input type
         if isinstance(input_obj, SingleSelectInput):

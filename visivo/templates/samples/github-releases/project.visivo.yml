@@ -90,7 +90,7 @@ charts:
         text: "Average contributors per release"
 
 dashboards:
-  - name: GitHub Releases
+  - name: GitHub Releases Overview
     rows:
       - height: compact
         items:

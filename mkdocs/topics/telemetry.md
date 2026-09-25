@@ -97,6 +97,8 @@ defaults:
 
 ### 3. Global Configuration
 Create or edit `~/.visivo/config.yml`:
+<!-- visivo-example: skip - the global ~/.visivo/config.yml, not a project file -->
+
 ```yaml
 telemetry_enabled: false
 ```

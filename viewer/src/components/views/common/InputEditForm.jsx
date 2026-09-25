@@ -7,12 +7,14 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import TuneIcon from '@mui/icons-material/Tune';
 import CodeIcon from '@mui/icons-material/Code';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import RefTextArea from './RefTextArea';
+import ExpressionField from './ExpressionField';
+import { REF_INSERT_HINT } from './RefTextArea';
 import Select from '../../common/Select';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { validateName } from './namedModel';
 import { validateInputDraft, buildInputConfig } from './inputConfigValidation';
-import { refKindsFor } from './fieldTypes';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 const INPUT_TYPES = [
   { value: 'single-select', label: 'Single Select' },
@@ -125,6 +127,10 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
   const hydratedRef = useRef(false);
 
   const isEditMode = !!input && !isCreate;
+
+  const recordName = input?.name || '';
+
+  const rename = useRenameFlow({ type: 'input', recordName, name });
   const isNewObject = input?.status === ObjectStatus.NEW;
 
   // VIS-1133: snapshot the last-saved values so the form can report dirtiness
@@ -257,6 +263,12 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
   };
 
   const handleSave = async () => {
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (isEditMode && rename.nameChanged) {
+      rename.start();
+      return;
+    }
     const draft = {
       name,
       inputType,
@@ -319,7 +331,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
             label="Name"
             value={name}
             onChange={e => setName(e.target.value)}
-            disabled={isEditMode}
+            disabled={isEditMode && !rename.supported}
             error={errors.name}
             helperText={isEditMode ? 'Input names cannot be changed after creation.' : undefined}
           />
@@ -405,14 +417,14 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
           ) : optionsMode === 'query' ? (
             <div className="space-y-2">
               {errors.optionsQuery && <p className="text-xs text-red-600">{errors.optionsQuery}</p>}
-              <RefTextArea
+              <ExpressionField
+                objectType="input"
+                field="options"
                 value={optionsQuery}
                 onChange={val => setOptionsQuery(val)}
-                allowedTypes={refKindsFor('input', 'options')}
                 label=""
                 rows={3}
-                // eslint-disable-next-line no-template-curly-in-string
-                helperText={'Use ${ref(model_name)} to reference a model'}
+                helperText={`The option list is a query against a model. ${REF_INSERT_HINT}`}
               />
             </div>
           ) : (
@@ -493,6 +505,9 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
           />
         </div>
       </div>
+
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
+
 
       <FormFooter
         onCancel={isEditMode ? discard : onClose}

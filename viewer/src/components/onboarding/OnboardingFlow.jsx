@@ -362,7 +362,7 @@ export default function OnboardingFlow() {
 
   return (
     <div className="onb-frame" data-testid="onboarding-frame">
-      <div className="onb-stage">
+      <div className="onb-branch">
         <div className="onb-progress">
           <div
             className="onb-progress__fill"

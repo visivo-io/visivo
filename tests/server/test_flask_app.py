@@ -287,7 +287,10 @@ def test_get_cloud_stages_success(client):
         data = response.get_json()
 
         assert response.status_code == 200
-        assert data["message"] == "Stages fetched successfully"
+        assert data["message"] == "Branches fetched successfully"
+        # Both keys for one release (VIS-1352): a viewer build that predates the
+        # rename still reads `stages`.
+        assert data["branches"] == mock_res_data
         assert data["stages"] == mock_res_data
 
 
@@ -327,7 +330,9 @@ def test_create_cloud_stages_success(client):
         data = response.get_json()
 
         assert response.status_code == 200
-        assert data["message"] == "Stages fetched successfully"
+        assert data["message"] == "Branch created successfully"
+        # Both keys for one release (VIS-1352).
+        assert data["branch"] == mock_response_data
         assert data["stage"] == mock_response_data
 
 
@@ -421,3 +426,20 @@ def test_serve_insight_data_by_name_default_run_id(client, output_dir):
     assert data[0]["id"] == insight_name
     assert data[0]["hello"] == "world"
     assert data[0]["default"] == "run"
+
+
+def test_cloud_branches_is_served_under_both_nouns(client):
+    """The viewer asks for `branches` now; a build that predates the rename
+    still asks for `stages`, and both have to reach the same handler
+    (VIS-1352)."""
+    from unittest.mock import patch
+
+    with patch("visivo.server.views.cloud_views.get_existing_token", return_value="t"):
+        with patch("visivo.server.views.cloud_views.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = [{"name": "main"}]
+
+            old = client.get("/api/cloud/stages/").get_json()
+            new = client.get("/api/cloud/branches/").get_json()
+
+    assert old["branches"] == new["branches"] == [{"name": "main"}]

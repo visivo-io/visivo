@@ -296,7 +296,8 @@ describe('InsightEditForm — interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const [, , config] = onSave.mock.calls[0];
-    // M6: the body the user typed is stored WRAPPED. Before this fix the form
+    // M6 / VIS-1327: the body the user typed is stored WRAPPED — `ExpressionField`
+    // re-applies the `?{ }` for a query-string field. Before this fix the form
     // wrote the bare body and the Pydantic `QueryString` validator rejected the
     // YAML the UI had just produced.
     expect(config.interactions).toEqual([
@@ -490,7 +491,7 @@ describe('InsightEditForm — edit mode', () => {
 
     const nameInput = screen.getByLabelText(/Insight Name/);
     expect(nameInput).toHaveValue('rev');
-    expect(nameInput).toBeDisabled();
+    expect(nameInput).toBeEnabled();
     expect(screen.getByLabelText('Description')).toHaveValue('revenue insight');
     // The stored props (with their type) seed the controlled editor.
     expect(screen.getByTestId('tpe-type')).toHaveTextContent('bar');

@@ -109,6 +109,8 @@ In CI there is no browser, so use the token directly. The CLI reads the `VISIVO_
 This workflow runs, tests, and deploys a per-branch preview stage on every pull request, and archives that stage when the PR closes. It is the three commands, gated by the pull-request event.
 
 {% raw %}
+<!-- visivo-example: skip - a GitHub Actions workflow file, not Visivo project config -->
+
 ``` yaml title=".github/workflows/visivo_ci.yml"
 name: Visivo CI
 

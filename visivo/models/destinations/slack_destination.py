@@ -10,7 +10,7 @@ class SlackDestination(Destination):
     """
     You can configure slack alerts by setting up an incoming message slack webhook. Once you do that, the set up in Visivo is super simple:
     ``` yaml
-    alerts:
+    destinations:
       - name: slack-destination #any name you choose
         type: slack
         webhook_url: ${env.SLACK_WEBHOOK}

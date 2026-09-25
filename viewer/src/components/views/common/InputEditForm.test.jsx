@@ -329,14 +329,16 @@ describe('InputEditForm — options mode switching, query & range editing', () =
     fireEvent.click(screen.getByLabelText('query string'));
     expect(await screen.findByText('Query is required')).toBeInTheDocument();
 
+    // The editor holds the query BODY — the `?{ }` wrapper the backend's
+    // QueryString type requires is applied on save, not typed by hand.
     const editor = screen.getByTestId('ref-textarea-editable');
-    editor.textContent = '?{ SELECT DISTINCT region FROM orders }';
+    editor.textContent = 'SELECT DISTINCT region FROM orders';
     fireEvent.input(editor);
     await waitFor(() => expect(screen.queryByText('Query is required')).not.toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('form-footer-save'));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave.mock.calls[0][2].options).toBe('?{ SELECT DISTINCT region FROM orders }');
+    expect(onSave.mock.calls[0][2].options).toBe('?{SELECT DISTINCT region FROM orders}');
   });
 
   test('range editing validates required fields and serializes numbers', async () => {

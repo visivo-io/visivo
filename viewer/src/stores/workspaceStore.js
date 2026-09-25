@@ -101,7 +101,7 @@ const createWorkspaceSlice = (set, get) => ({
 
   // The mount prefix for the tab URLs above. Studio serves the viewer at the
   // root (`/workspace`); a host that mounts it under a path prefix (the cloud
-  // app, at `/:account/:stage/:project/workspace`) registers its own base so
+  // app, at `/:account/:branch/:project/workspace`) registers its own base so
   // tab navigation stays inside the mount instead of escaping to the root. The
   // Workspace derives this from the URL on mount.
   workspaceUrlBase: WORKSPACE_BASE,

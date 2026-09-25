@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Comments
+
+Default to no comment. Prefer a clearer name, an extracted function, or a test case that pins the behavior — those stay true as the code changes; a comment restating logic in prose does not.
+
+Add a comment only when:
+- the reasoning can't be inferred from the code or tests (a non-obvious external constraint, a workaround for a specific upstream bug), or
+- the logic is genuinely complex enough that a reader needs a map before diving in.
+
+When one is justified, keep it to a line or two — state the constraint, not the history of how it was found. This applies to Python and JS alike, and to comments already in a PR as much as new ones: when touching a file, trim existing comments down to this bar rather than leaving them.
+
 ## Development Commands
 
 ### Environment Setup
@@ -18,8 +28,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run CLI**: `visivo [command]`
 - **Ensure python file formatting**: ensure that all python files are formatted in accordance with our black settings
 - When editing the python in @visivo/ remember to run - `poetry run black .`
-- **Code comments**: Use comments sparingly. Avoid redundant comments that simply restate what the code does (e.g., `# Use preview-{insight_name} as run_id` followed by `run_id = f"preview-{insight.name}"`). Comments should provide context, explain "why" rather than "what", or document complex logic. Prefer clear variable names and function signatures with docstrings over inline comments.
-
 ### JavaScript Viewer Development
 - **Install dependencies**: `yarn install` (in `viewer/` directory)
 - **Run tests**: `yarn test`

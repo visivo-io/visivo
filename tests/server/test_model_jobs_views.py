@@ -13,6 +13,7 @@ import os
 
 import pytest
 
+from visivo.models.base.named_model import alpha_hash
 from visivo.server.flask_app import FlaskApp
 from tests.factories.model_factories import ProjectFactory
 
@@ -47,6 +48,9 @@ def test_returns_a_file_reference_not_the_rows(client):
         {
             "id": "orders",
             "name": "orders",
+            # The DuckDB table the client registers the file as — see
+            # test_each_job_names_the_duckdb_table_to_select_from.
+            "name_hash": alpha_hash("orders"),
             "signed_data_file_url": "/api/files/orders/main/",
         }
     ]
@@ -107,3 +111,29 @@ def test_project_id_is_accepted_and_ignored(client):
     _write_parquet(output_dir, "orders")
 
     assert c.get("/api/model-jobs/?model_names=orders&project_id=whatever").status_code == 200
+
+
+def test_each_job_names_the_duckdb_table_to_select_from(client):
+    """``processModel`` registers the parquet as ``job.name_hash`` and then
+    runs ``SELECT * FROM "<name_hash>"``. Without one every model registered as
+    "undefined": the first loaded, the second found that table already present
+    and skipped its own file, so two model-backed tables showed the same rows.
+    """
+    c, output_dir = client
+    _write_parquet(output_dir, "orders")
+
+    resp = c.get("/api/model-jobs/?project_id=p1&model_names=orders")
+
+    [job] = json.loads(resp.data)
+    assert job["name_hash"] == alpha_hash("orders")
+
+
+def test_two_models_get_two_different_table_names(client):
+    c, output_dir = client
+    _write_parquet(output_dir, "orders")
+    _write_parquet(output_dir, "customers")
+
+    resp = c.get("/api/model-jobs/?project_id=p1&model_names=orders&model_names=customers")
+
+    hashes = {job["name_hash"] for job in json.loads(resp.data)}
+    assert len(hashes) == 2

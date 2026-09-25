@@ -91,7 +91,7 @@ charts:
         text: "BEV vs PHEV (cumulative)"
 
 dashboards:
-  - name: EV Sales
+  - name: EV Sales Overview
     rows:
       - height: compact
         items:

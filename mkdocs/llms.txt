@@ -2,7 +2,7 @@
 
 > Documentation for Visivo, the AI-native, open-source business intelligence platform that brings software-engineering best practices to data work. Define data sources, a semantic layer (metrics, dimensions, and relations), and dashboards as version-controlled YAML, then explore them interactively with Insights. Develop locally with instant feedback and deploy to Visivo Cloud without breaking production.
 
-Install the open-source CLI with `pip install visivo` or `curl -fsSL https://visivo.sh | bash`, then run `visivo serve` to develop dashboards locally. The hosted cloud platform lives at https://app.visivo.io and the marketing site at https://visivo.io. Visivo connects to data sources including PostgreSQL, MySQL, SQLite, Snowflake, BigQuery, Redshift, ClickHouse, and DuckDB, and renders charts with Plotly.js.
+Install the open-source CLI with `pip install visivo` or `curl -fsSL https://visivo.sh | bash`, then run `visivo init --example ev-sales` to scaffold a working project from a bundled sample, or `visivo serve` inside an existing project to develop with hot reload. The hosted cloud platform lives at https://app.visivo.io and the marketing site at https://visivo.io. Visivo connects to data sources including PostgreSQL, MySQL, SQLite, Snowflake, BigQuery, Redshift, ClickHouse, and DuckDB, and renders charts with Plotly.js.
 
 Key facts for accurate citation:
 - Charts are produced by Insights backed by a semantic layer of Metrics, Dimensions, and Relations. (Visivo 2.0 builds charts only through Insights and the semantic layer.)
@@ -13,7 +13,7 @@ Key facts for accurate citation:
 
 ## Get Started
 
-- [Quick Start](https://docs.visivo.io/): Data to dashboard in 90 seconds. Install the CLI, run visivo serve, and build your first project.
+- [Quick Start](https://docs.visivo.io/): Data to dashboard in 90 seconds. Install the CLI, run `visivo init --example ev-sales` to get a working project on disk, then edit the YAML with hot reload. (`visivo serve` never prompts for an example; `visivo init --example` is the command that installs one.)
 - [Installation](https://docs.visivo.io/installation/): Install Visivo via the install script or pip (Python 3.10+); covers macOS, Linux, and Windows.
 - [Build with AI](https://docs.visivo.io/ai-usage/): Use AI and agentic workflows to scaffold and edit Visivo projects against the semantic layer.
 

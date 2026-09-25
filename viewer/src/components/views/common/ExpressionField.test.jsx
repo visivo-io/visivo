@@ -6,12 +6,20 @@ import ExpressionField from './ExpressionField';
 // RefTextArea is a contentEditable pill editor; these tests care only about
 // WHICH editor is chosen and what it is told, not how it renders internally.
 jest.mock('./RefTextArea', () => {
-  return function MockRefTextArea({ value, onChange, allowedTypes, acceptDrops, label }) {
+  return function MockRefTextArea({
+    value,
+    onChange,
+    allowedTypes,
+    acceptDrops,
+    configurableChips,
+    label,
+  }) {
     return (
       <div
         data-testid="ref-text-area"
         data-allowed-types={(allowedTypes || []).join(',')}
         data-accept-drops={acceptDrops ? 'true' : 'false'}
+        data-configurable-chips={configurableChips ? 'true' : 'false'}
       >
         <span>{label}</span>
         <input value={value || ''} onChange={e => onChange(e.target.value)} data-testid="ref-input" />
@@ -107,11 +115,126 @@ describe('ExpressionField — the editor comes from the declared field type', ()
     spy.mockRestore();
   });
 
-  test('a query-string field names the component that still owns it', () => {
+  // VIS-1327 regression: query-string used to throw here instead of matching
+  // context-sql's affordances.
+  test('a query-string field renders the same ref-capable editor as context-sql', () => {
+    render(<ExpressionField objectType="insight" field="x" value="" onChange={jest.fn()} />);
+
+    const editor = screen.getByTestId('ref-text-area');
+    expect(editor).toHaveAttribute('data-accept-drops', 'true');
+    expect(editor).toHaveAttribute('data-configurable-chips', 'true');
+  });
+
+  // VIS-1327 regression: the merged branch handed RefTextArea the raw `?{ }`
+  // value and passed its edits straight to onChange, so a drop/edit saved as
+  // a bare string the backend's QueryString type rejects.
+  describe('a query-string field wraps/unwraps at its `?{ }` boundary', () => {
+    test('shows the unwrapped body, not the raw ?{ } value', () => {
+      render(
+        <ExpressionField
+          objectType="interaction"
+          field="filter"
+          value="?{status = 'open'}"
+          onChange={jest.fn()}
+        />
+      );
+      expect(screen.getByTestId('ref-input')).toHaveValue("status = 'open'");
+    });
+
+    test('wraps an edit back into ?{ } before calling onChange', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField
+          objectType="interaction"
+          field="filter"
+          value="?{status = 'open'}"
+          onChange={onChange}
+        />
+      );
+      fireEvent.change(screen.getByTestId('ref-input'), {
+        target: { value: "status = 'closed'" },
+      });
+      expect(onChange).toHaveBeenCalledWith("?{status = 'closed'}");
+    });
+
+    test('a dropped ref on an empty field still saves ?{ }-wrapped', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField objectType="interaction" field="filter" value="" onChange={onChange} />
+      );
+      fireEvent.change(screen.getByTestId('ref-input'), {
+        target: { value: '${ref(orders).status}' },
+      });
+      expect(onChange).toHaveBeenCalledWith('?{${ref(orders).status}}');
+    });
+
+    test('preserves an existing slice suffix across a body edit', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField objectType="insight" field="x" value="?{amount}[0]" onChange={onChange} />
+      );
+      expect(screen.getByTestId('ref-input')).toHaveValue('amount');
+      fireEvent.change(screen.getByTestId('ref-input'), { target: { value: 'total' } });
+      expect(onChange).toHaveBeenCalledWith('?{total}[0]');
+    });
+
+    test('a context-sql field is passed through unwrapped (no ?{ })', () => {
+      const onChange = jest.fn();
+      render(
+        <ExpressionField
+          objectType="relation"
+          field="condition"
+          value="${ref(orders).id} = ${ref(users).id}"
+          onChange={onChange}
+        />
+      );
+      expect(screen.getByTestId('ref-input')).toHaveValue('${ref(orders).id} = ${ref(users).id}');
+      fireEvent.change(screen.getByTestId('ref-input'), {
+        target: { value: '${ref(orders).id} = ${ref(users).uid}' },
+      });
+      expect(onChange).toHaveBeenCalledWith('${ref(orders).id} = ${ref(users).uid}');
+    });
+  });
+
+  test.each([
+    ['relation', 'condition'],
+    ['metric', 'expression'],
+    ['dimension', 'expression'],
+    ['table', 'columns'],
+    ['input', 'options'],
+    ['interaction', 'filter'],
+    ['interaction', 'split'],
+    ['interaction', 'sort'],
+    ['insight', 'props'],
+  ])('%s.%s accepts drops and configurable chips', (objectType, field) => {
+    render(<ExpressionField objectType={objectType} field={field} value="" onChange={jest.fn()} />);
+
+    const editor = screen.getByTestId('ref-text-area');
+    expect(editor).toHaveAttribute('data-accept-drops', 'true');
+    expect(editor).toHaveAttribute('data-configurable-chips', 'true');
+    expect(editor.getAttribute('data-allowed-types')).not.toBe('');
+  });
+
+  test('a ref-free field gets neither affordance', () => {
+    render(
+      <ExpressionField
+        objectType="metric"
+        field="expression"
+        nested
+        value=""
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('ref-text-area')).not.toBeInTheDocument();
+    expect(screen.getByTestId('plain-sql-input')).toBeInTheDocument();
+  });
+
+  test('object-ref still names the component that owns it', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     expect(() =>
-      render(<ExpressionField objectType="insight" field="x" value="" onChange={jest.fn()} />)
-    ).toThrow(/PropertyRow/);
+      render(<ExpressionField objectType="model" field="source" value="" onChange={jest.fn()} />)
+    ).toThrow(/RefDropZone/);
     spy.mockRestore();
   });
 

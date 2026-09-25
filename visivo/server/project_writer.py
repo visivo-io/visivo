@@ -93,7 +93,7 @@ class ProjectWriter:
                 case "Modified":
                     self._update(child_name)
                 case "Renamed":
-                    self._rename(child_name, child_name)
+                    self._rename(child_info["old_name"], child_name)
 
     def write(self):
         """
@@ -203,8 +203,37 @@ class ProjectWriter:
         self._new(child_name)
 
     def _rename(self, old_child_name: str, new_child_name: str):
-        """Find and replace the old child name with the new child name in all file refs & in the named_child"""
-        raise NotImplementedError("Rename is not implemented yet.")
+        """Write the renamed object over the entry the YAML still holds under
+        its old name.
+
+        `_update` cannot do this: it locates an object by matching `name:`
+        against the name it is given, and the file still says the old one, so
+        the search would miss and the change would be silently dropped.
+
+        Only the object's own entry is handled here. Every `${ref(old)}`
+        elsewhere belongs to a DIFFERENT object whose config genuinely changed,
+        so those arrive as ordinary `Modified` children and take `_update`.
+        """
+        new_object = self._get_named_child_config(new_child_name)
+
+        def recurse(current):
+            if isinstance(current, dict):
+                items = current.values()
+            elif isinstance(current, list):
+                items = current
+            else:
+                return False
+            for value in items:
+                if isinstance(value, dict) and value.get("name") == old_child_name:
+                    diff_result = diff(value, new_object)
+                    apply_diff(value, diff_result)
+                    return True
+                if isinstance(value, (dict, list)) and recurse(value):
+                    return True
+            return False
+
+        file_path = self.named_children[new_child_name]["file_path"]
+        recurse(self.files_to_write[file_path])
 
     def _get_named_child_config(self, named_child_name: str) -> dict:
         """

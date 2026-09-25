@@ -176,17 +176,9 @@ class SingleSelectInput(Input):
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, _info):
-        """
-        Custom serializer for single-select inputs.
-
-        Adds name_hash for client-side JSON file lookup.
-        """
+        """Custom serializer for single-select inputs: static list options as strings."""
         model = serializer(self)
 
-        # Add name_hash for viewer to construct JSON URL
-        model["name_hash"] = self.name_hash()
-
-        # Convert static list options to strings
         if isinstance(self.options, list):
             model["options"] = [str(option) for option in self.options]
 

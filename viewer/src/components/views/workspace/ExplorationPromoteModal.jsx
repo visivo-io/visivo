@@ -215,7 +215,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         });
         return;
       }
-      const formatError = validateName(nextName);
+      const formatError = validateName(nextName, row.type);
       if (formatError) {
         setNameErrors(prev => new Map(prev).set(key, formatError));
         return;

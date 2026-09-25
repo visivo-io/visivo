@@ -27,21 +27,21 @@ class Dashboard(BaseDashboard, ParentModel):
             rows:
               - height: medium
                 items: #item.width default is 1
-                  - chart: ...
-                  - chart: ...
-                  - chart: ...
+                  - chart: ${ref(a-chart-name)}
+                  - chart: ${ref(another-chart)}
+                  - chart: ${ref(a-third-chart)}
               - height: large
                 items:
                   - width: 2
-                    table: ...
+                    table: ${ref(a-table-name)}
                   - width: 1
-                    markdown: ...
+                    markdown: "# Some inline **markdown**"
               - height: small
                 items:
-                  - chart: ...
-                  - chart: ...
+                  - chart: ${ref(a-chart-name)}
+                  - chart: ${ref(another-chart)}
                   - width: 2
-                    chart: ...
+                    chart: ${ref(a-third-chart)}
         ```
 
     </div>
@@ -59,7 +59,7 @@ class Dashboard(BaseDashboard, ParentModel):
                 items:
                   - width: 2  #widths are evaluated relative to other items in the row
                     table: ref(a-table-name)
-                  - width 1  #this chart will be 1/3 of the row
+                  - width: 1  #this chart will be 1/3 of the row
                     chart: ref(a-chart-name)
               - height: small
                 items:

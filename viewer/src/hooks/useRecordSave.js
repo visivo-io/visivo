@@ -12,7 +12,7 @@ import { checkExpressions } from '../components/views/workspace/expressionPrefli
 
 /**
  * Cloud read-only probe (VIS-1025). `capabilities` is null/undefined under
- * local serve (always editable); in cloud it's the stage's capability object
+ * local serve (always editable); in cloud it's the branch's capability object
  * and `can_edit === false` holds every write.
  */
 const isReadOnly = state => {
@@ -54,7 +54,7 @@ const isReadOnly = state => {
  *
  * READ-ONLY SHORT-CIRCUIT (VIS-1025): `capabilities` (branchingStore) is null
  * under local serve (always editable) and an object in cloud, where
- * `can_edit: false` marks the stage read-only. The check runs BEFORE the
+ * `can_edit: false` marks the branch read-only. The check runs BEFORE the
  * optimistic write AND before the validation gate — a not-allowed edit is not
  * 'invalid' (no error churn for a viewer-only user): nothing writes, nothing
  * persists, and the hook reports `status: 'readonly'` with `errors: null`.

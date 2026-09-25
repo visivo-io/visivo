@@ -347,14 +347,14 @@ describe('useRecordSave (VIS-1018)', () => {
 
   // ── VIS-1025: cloud read-only short-circuit ────────────────────────────────
   // capabilities (branchingStore): null = local serve (always editable); an
-  // object = cloud, where can_edit:false means the stage is read-only. The
+  // object = cloud, where can_edit:false means the branch is read-only. The
   // check is mechanics (not validation): a not-allowed edit is not 'invalid'.
   describe('cloud read-only short-circuit (VIS-1025)', () => {
     const READONLY_CAPS = {
       can_view: true,
       can_edit: false,
       can_branch: true,
-      is_default_stage: true,
+      is_default_branch: true,
       edit_action: 'Create a draft to edit',
     };
 
@@ -434,7 +434,7 @@ describe('useRecordSave (VIS-1018)', () => {
       act(() => result.current.scheduleSave({ name: 'c1', v: 1 }));
       expect(jest.getTimerCount()).toBeGreaterThan(0);
 
-      // …then the stage flips read-only and a flush is attempted.
+      // …then the branch flips read-only and a flush is attempted.
       act(() => useStore.setState({ capabilities: READONLY_CAPS }));
       let outcome;
       await act(async () => {
@@ -457,7 +457,7 @@ describe('useRecordSave (VIS-1018)', () => {
       act(() => result.current.scheduleSave({ name: 'c1', v: 1 }));
       expect(result.current.status).toBe('pending');
 
-      // The stage flips read-only while the debounce is running (e.g. the
+      // The branch flips read-only while the debounce is running (e.g. the
       // draft was published under the user).
       act(() => useStore.setState({ capabilities: READONLY_CAPS }));
       await act(async () => {

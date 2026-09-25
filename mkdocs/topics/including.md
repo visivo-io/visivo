@@ -137,5 +137,6 @@ dashboards:
               insights:
                 - ${ref(Pull Request by Repository)}
               layout:
-                title: "Pull Request by Repository"
+                title:
+                  text: "Pull Request by Repository"
 ```

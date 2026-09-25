@@ -32,9 +32,18 @@ class Chart(NamedModel, ParentModel):
         ??? note "Code"
 
             ``` yaml
+            sources:
+              - name: array_of_numbers_source
+                type: duckdb
+                database: target/seeds/array_of_numbers.duckdb
+                seeds:
+                  - table_name: y_values
+                    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+
             models:
               - name: Array of Numbers
-                args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+                source: ${ref(array_of_numbers_source)}
+                sql: select * from y_values
 
             insights:
               - name: Simple Scatter
@@ -69,9 +78,18 @@ class Chart(NamedModel, ParentModel):
         ??? note "Code"
 
             ``` yaml
+            sources:
+              - name: series_of_numbers_source
+                type: duckdb
+                database: target/seeds/series_of_numbers.duckdb
+                seeds:
+                  - table_name: y_values
+                    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+
             models:
               - name: Series of Numbers
-                args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+                source: ${ref(series_of_numbers_source)}
+                sql: select * from y_values
 
             insights:
               - name: Yaxis Bars
@@ -136,9 +154,18 @@ class Chart(NamedModel, ParentModel):
         ??? note "Code"
 
             ``` yaml
+            sources:
+              - name: numbers_from_remote_csv_source
+                type: duckdb
+                database: target/seeds/numbers_from_remote_csv.duckdb
+                seeds:
+                  - table_name: y_values
+                    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+
             models:
               - name: Numbers From Remote CSV
-                args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+                source: ${ref(numbers_from_remote_csv_source)}
+                sql: select * from y_values
 
             insights:
               - name: Line

@@ -21,16 +21,27 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from visivo.commands.init_phase import (
     SAMPLE_DIR_MAP,
     _bundled_samples_root,
     load_example_project,
 )
+from visivo.models.dashboard import Dashboard
 from visivo.models.example_type import ExampleTypeEnum
 from visivo.parsers.parser_factory import ParserFactory
 
 SAMPLES = list(SAMPLE_DIR_MAP.items())
+
+
+def _default_run_filter(project):
+    """The DAG filter `visivo run` builds when the user passes none.
+
+    Mirrors visivo/commands/run_phase.py so the tests below exercise the
+    real selection, not an approximation of it.
+    """
+    return ",".join(f"+{d.name}+" for d in project.dag().get_nodes_by_types([Dashboard], True))
 
 
 @pytest.fixture
@@ -96,12 +107,60 @@ def test_bundled_sample_parses_with_current_schema(example_type, sample_dir, tmp
 
 
 @pytest.mark.parametrize("example_type,sample_dir", SAMPLES, ids=[s[1] for s in SAMPLES])
+def test_bundled_sample_selects_jobs_to_run(example_type, sample_dir, tmp_path, monkeypatch):
+    """The default run filter must actually select something.
+
+    A sample whose dashboard shares the project's name puts two nodes
+    of that name in the DAG, `filter_dag` resolves the ambiguity to
+    nothing, and `visivo run` does no work, prints no error and exits
+    0 — a blank dashboard with no signal that anything went wrong.
+    Exit status cannot catch that, so assert on the selection itself.
+    """
+    # Copy the sample VERBATIM — deliberately not through
+    # load_example_project, which stamps a caller-supplied project name
+    # into the YAML and so masks a name the sample itself ships with.
+    target = tmp_path / "project"
+    target.mkdir()
+    for f in (_bundled_samples_root() / sample_dir).iterdir():
+        if f.is_file():
+            shutil.copy2(f, target)
+
+    monkeypatch.chdir(target)
+    project = ParserFactory().build(project_file=target / "project.visivo.yml", files=[]).parse()
+
+    dag_filter = _default_run_filter(project)
+    assert dag_filter, f"{sample_dir} exposes no dashboard for the default filter"
+    assert len(project.dag().filter_dag(dag_filter)) > 0, (
+        f"{sample_dir}: the default filter {dag_filter!r} selected no sub-DAGs, "
+        f"so `visivo run` would do nothing and still exit 0"
+    )
+
+
+@pytest.mark.parametrize("example_type,sample_dir", SAMPLES, ids=[s[1] for s in SAMPLES])
+def test_bundled_sample_dashboard_does_not_shadow_the_project(example_type, sample_dir):
+    """A dashboard may not reuse its project's name.
+
+    This is the specific collision behind the zero-job run above, held
+    against the shipped YAML so a future sample cannot reintroduce it.
+    """
+    project_file = _bundled_samples_root() / sample_dir / "project.visivo.yml"
+    data = yaml.safe_load(project_file.read_text())
+    project_name = data["name"]
+    shadowing = [d["name"] for d in data.get("dashboards", []) if d.get("name") == project_name]
+    assert not shadowing, (
+        f"{sample_dir}: dashboard {shadowing} reuses the project name {project_name!r}; "
+        f"the DAG then holds two nodes of that name and the default run filter selects nothing"
+    )
+
+
+@pytest.mark.parametrize("example_type,sample_dir", SAMPLES, ids=[s[1] for s in SAMPLES])
 def test_bundled_sample_runs_end_to_end(example_type, sample_dir, tmp_path):
-    """`visivo run` succeeds on a copied sample.
+    """`visivo run` succeeds on a copied sample, and actually runs jobs.
 
     Slower than the parse test (executes the CSV models + data
     pipeline) but catches runtime issues like missing data files,
-    malformed CSV, or query-time SQL errors.
+    malformed CSV, or query-time SQL errors. Exit status alone is not
+    enough: a run that selects zero jobs also exits 0.
     """
     target = tmp_path / "project"
     target.mkdir()
@@ -125,6 +184,17 @@ def test_bundled_sample_runs_end_to_end(example_type, sample_dir, tmp_path):
     )
     assert result.returncode == 0, (
         f"`visivo run` failed for {sample_dir}\n"
+        f"stdout:\n{result.stdout}\n"
+        f"stderr:\n{result.stderr}"
+    )
+
+    # A zero-job run is indistinguishable from success by exit code, so
+    # require evidence that work happened: the run writes per-insight
+    # artifacts under the target directory.
+    produced = list((target / "target").rglob("*.json")) if (target / "target").exists() else []
+    assert produced, (
+        f"`visivo run` exited 0 for {sample_dir} but produced no artifacts — "
+        f"it almost certainly selected zero jobs\n"
         f"stdout:\n{result.stdout}\n"
         f"stderr:\n{result.stderr}"
     )

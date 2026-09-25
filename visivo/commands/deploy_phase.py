@@ -1069,7 +1069,7 @@ def upload_resources(resources_by_segment, project_id, json_headers, host):
 
 
 def deploy_phase(
-    working_dir, user_dir, output_dir, stage, host, deploy_id=None, run_id=DEFAULT_RUN_ID
+    working_dir, user_dir, output_dir, branch, host, deploy_id=None, run_id=DEFAULT_RUN_ID
 ):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
@@ -1078,7 +1078,7 @@ def deploy_phase(
         working_dir: Working directory path
         user_dir: User directory path
         output_dir: Output directory path
-        stage: Deployment stage
+        branch: Deployment branch
         host: Deployment host
         deploy_id: Optional deployment ID for tracking
         run_id: Run ID for file organization (default: "main")
@@ -1124,6 +1124,18 @@ def deploy_phase(
     project_json = json.loads(serializer.dereference().model_dump_json(exclude_none=True))
     send_progress(f"Project Compiled in {time() - deploy_start_time:.2f} seconds", "success")
 
+    # `name` is Optional on every NamedModel (Project included), so a project
+    # file with no top-level `name:` parses fine and runs fine — but the cloud
+    # uses the name to identify which project a deploy belongs to, and
+    # `exclude_none=True` above drops the key entirely rather than sending
+    # null. Catch it here with an actionable message instead of a bare
+    # KeyError on project_json["name"] below.
+    if not project_json.get("name"):
+        raise click.ClickException(
+            "Project has no `name`. Add a top-level `name:` to your project file "
+            "before deploying — the cloud uses it to identify the project."
+        )
+
     # Prepare request payloads and headers. The monolithic ``project_json``
     # blob is no longer sent — each object is posted to its own endpoint below
     # (decomposed deploy). ``project_json`` is still computed for the project
@@ -1131,7 +1143,7 @@ def deploy_phase(
     body = {
         "name": project_json["name"],
         "cli_version": project_json["cli_version"],
-        "stage": stage,
+        "stage": branch,
     }
     json_headers = {
         "content-type": "application/json",

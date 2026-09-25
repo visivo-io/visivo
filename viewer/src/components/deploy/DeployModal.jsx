@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Authentication from './Authentication';
-import StageSelection from './StageSelection';
+import BranchSelection from './BranchSelection';
 import DeployLoader from './DeployLoader';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 
@@ -13,7 +13,7 @@ const DeployModal = ({ isOpen, setIsOpen }) => {
       const response = await fetch('/api/auth/status/', { method: 'POST' });
       if (!response.ok) throw new Error('Auth status check failed');
       const data = await response.json();
-      setStatus(data?.token ? 'stage' : 'login-required');
+      setStatus(data?.token ? 'branch' : 'login-required');
     } catch {
       setStatus('login-required');
     }
@@ -27,7 +27,7 @@ const DeployModal = ({ isOpen, setIsOpen }) => {
 
   const renderContent = () => {
     if (status === 'loading') return <DeployLoader />;
-    if (status === 'stage') return <StageSelection status={status} />;
+    if (status === 'branch') return <BranchSelection status={status} />;
     return <Authentication setStatus={setStatus} />;
   };
 

@@ -10,7 +10,7 @@ import {
 } from '../../../stores/explorerStore';
 import InsightEditFormFields from '../common/InsightEditFormFields';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
-import RefTextArea from '../common/RefTextArea';
+import ExpressionField from '../common/ExpressionField';
 import Select from '../../common/Select';
 import { checkRefTargets } from './refPreflight';
 import { formatRefExpression } from '../../../utils/refString';
@@ -18,8 +18,7 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
-import { refKindsFor } from '../common/fieldTypes';
-import { decodeQueryString, encodeQueryString } from '../../../utils/expressionCodec';
+import { encodeQueryString } from '../../../utils/expressionCodec';
 import {
   INTERACTION_HELP,
   INTERACTION_TYPE_OPTIONS,
@@ -35,12 +34,6 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
     data: { type: 'interaction-zone', insightName, index },
   });
 
-  // The row edits the expression BODY; `?{ }` is the storage form. Decoding
-  // through the codec rather than a local regex fixes two things the greedy
-  // `/^\?\{([\s\S]*)\}$/` got wrong: a sliced value (`?{x}[0]`) didn't match at
-  // all, so the braces leaked into the field and the next keystroke stored
-  // `?{?{x}[0]}`; and a value already corrupted that way stayed corrupted.
-  const { body: innerValue, slice } = decodeQueryString(interaction.value);
   const interactionType = INTERACTION_HELP[interaction.type] ? interaction.type : 'filter';
 
   return (
@@ -60,16 +53,15 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         className={`flex-1 ${isOver ? 'ring-2 ring-primary-400 rounded' : ''}`}
         data-testid={`interaction-value-field-${index}`}
       >
-        <RefTextArea
-          value={innerValue}
+        <ExpressionField
+          objectType="interaction"
+          field={interactionType}
+          value={interaction.value || ''}
           onChange={newVal => {
-            updateInsightInteraction(insightName, index, {
-              value: encodeQueryString({ body: newVal, slice }),
-            });
+            updateInsightInteraction(insightName, index, { value: newVal });
           }}
           label=""
           rows={1}
-          allowedTypes={refKindsFor('interaction', interactionType)}
           helperText={interactionExampleHint(interactionType)}
         />
       </div>

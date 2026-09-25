@@ -121,6 +121,40 @@ class TestRunInputJobSingleSelect:
         assert df.shape[0] == 1
         assert df["option"][0] == "shipped"
 
+    def test_query_is_a_bare_column_ref(self):
+        """A dropped column (`?{${ref(model).col}}`, no hand-typed SQL around
+        it — the shape the viewer's Options field drop produces) selects just
+        that column, deduplicated, not every column on the model (VIS-1327)."""
+        source = SourceFactory(name="source")
+        model = SqlModelFactory(
+            name="ev_sales",
+            sql=(
+                "SELECT 'west' as region, 'BEV' as powertrain "
+                "UNION ALL SELECT 'west', 'PHEV' "
+                "UNION ALL SELECT 'east', 'BEV'"
+            ),
+            source="ref(source)",
+        )
+        input_obj = SingleSelectInputFactory(
+            name="region_filter",
+            options="?{${ref(ev_sales).region}}",
+        )
+        project = ProjectFactory(sources=[source], models=[model], inputs=[input_obj])
+        dag = project.dag()
+        output_dir = temp_folder()
+
+        result = action(input_obj, dag, output_dir)
+
+        assert result.success
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name}.json"
+        with open(json_path) as f:
+            data = json.load(f)
+
+        parquet_path = Path(data["files"][0]["signed_data_file_url"])
+        df = pl.read_parquet(parquet_path)
+        assert df.shape == (2, 1)
+        assert set(df["option"]) == {"west", "east"}
+
     def test_empty_result_raises_error(self):
         """Verify helpful error when query returns 0 results."""
         source = SourceFactory(name="source")

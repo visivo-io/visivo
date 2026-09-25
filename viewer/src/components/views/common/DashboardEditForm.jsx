@@ -12,6 +12,8 @@ import {
   createRow,
 } from '../workspace/itemMutations';
 import RowEditForm from './RowEditForm';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 /**
  * DashboardEditForm - Form for creating/editing Dashboard
@@ -25,6 +27,8 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const openWorkspaceTab = useStore(state => state.openWorkspaceTab);
 
   const [name, setName] = useState('');
+
+  const rename = useRenameFlow({ type: 'dashboard', recordName: dashboard?.name || '', name });
   const [rows, setRows] = useState([]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -62,6 +66,13 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   }, [dashboard]);
 
   const handleSubmit = async e => {
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (!isCreate && rename.nameChanged) {
+      e.preventDefault();
+      rename.start();
+      return;
+    }
     e.preventDefault();
     setError(null);
     setSaving(true);
@@ -191,6 +202,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
   return (
     <div className="flex-1 overflow-y-auto p-4">
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <FormAlert variant="error">{error}</FormAlert>}
 
@@ -199,7 +211,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
           label="Name"
           value={name}
           onChange={e => setName(e.target.value)}
-          disabled={!isCreate}
+          disabled={!isCreate && !rename.supported}
           helperText={!isCreate ? 'Dashboard names cannot be changed after creation.' : undefined}
         />
 

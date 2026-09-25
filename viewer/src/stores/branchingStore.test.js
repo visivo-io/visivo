@@ -29,7 +29,7 @@ describe('branchingStore', () => {
         can_view: true,
         can_edit: true,
         can_branch: false,
-        is_default_stage: true,
+        is_default_branch: true,
         edit_action: 'edit',
       };
       branchingApi.fetchCapabilities.mockResolvedValueOnce(caps);
@@ -73,16 +73,16 @@ describe('branchingStore', () => {
   });
 
   describe('startBranch', () => {
-    it('branches a new stage and retargets the active project to the branch', async () => {
+    it('branches a new branch and retargets the active project to the branch', async () => {
       const branch = { id: 'branch-3', name: 'p' };
       branchingApi.createBranch.mockResolvedValueOnce(branch);
       branchingApi.fetchCapabilities.mockResolvedValueOnce({ can_edit: true });
       const setProject = jest.fn();
       const store = build({ project: { id: 'proj-1' }, setProject });
-      const result = await store.get().startBranch({ newStageName: 'scratch' });
+      const result = await store.get().startBranch({ newBranchName: 'scratch' });
       expect(branchingApi.createBranch).toHaveBeenCalledWith({
         projectId: 'proj-1',
-        newStageName: 'scratch',
+        newBranchName: 'scratch',
       });
       expect(setProject).toHaveBeenCalledWith({ id: 'branch-3', name: 'p' });
       expect(result.success).toBe(true);

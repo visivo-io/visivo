@@ -112,6 +112,7 @@ nav:
   - Tutorials:
       - Overview: how_tos.md
       - Use Cases: use_cases.md
+      - Build a Dashboard: topics/dashboards.md
       - Sources: topics/sources.md
       - Source Types: topics/source-types.md
       - Semantic Layer: topics/semantic-layer.md
@@ -125,6 +126,7 @@ nav:
       - Annotations & Shapes: topics/annotations.md
       - CI/CD for BI: topics/ci-cd.md
       - Deployment: topics/deployments.md
+      - Static Distribution: topics/static-distribution.md
       - Telemetry: topics/telemetry.md
   - Concepts:
       - Overview: concepts/index.md
