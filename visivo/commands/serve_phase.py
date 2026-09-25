@@ -2,6 +2,7 @@ import webbrowser
 from visivo.commands.compile_phase import compile_phase
 from visivo.logger.logger import Logger
 
+from visivo.agent.actions import log as action_log
 from visivo.server.hot_reload_server import HotReloadServer
 from visivo.server.flask_app import FlaskApp
 from visivo.commands.run_phase import run_phase
@@ -175,5 +176,12 @@ def serve_phase(
 
     # Pass the server reference to the Flask app so it can control the file watcher
     app.hot_reload_server = server
+
+    # A signal, not the action: the viewer refetches the log, so a dropped
+    # emit costs a late update rather than a missing entry.
+    action_log().on_record(
+        lambda action: app.hot_reload_server
+        and app.hot_reload_server.socketio.emit("agent_action", {"id": action["id"]})
+    )
 
     return server, on_project_change, on_server_ready

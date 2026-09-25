@@ -37,6 +37,13 @@ class ActionLog:
         self._actions = []
         self._limit = limit
         self._lock = threading.Lock()
+        self._listeners = []
+
+    def on_record(self, listener):
+        """Call ``listener(action)`` whenever one is recorded, so this module
+        stays ignorant of how an action reaches anyone."""
+        self._listeners.append(listener)
+        return listener
 
     def record(self, tool, *, obj=None, outcome="ok", error=None, summary=None):
         action = {
@@ -52,7 +59,17 @@ class ActionLog:
             self._actions.append(action)
             if len(self._actions) > self._limit:
                 del self._actions[: len(self._actions) - self._limit]
+        self._notify(action)
         return action
+
+    def _notify(self, action):
+        """A listener that fails must not fail the recording — the action
+        really happened, and the log is still readable."""
+        for listener in list(self._listeners):
+            try:
+                listener(action)
+            except Exception:
+                pass
 
     def recent(self, limit=None):
         """Newest first — what a log is read in.
