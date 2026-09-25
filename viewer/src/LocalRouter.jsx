@@ -10,6 +10,7 @@ import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
 import Workspace from './components/views/workspace/Workspace';
 import RunsView from './components/RunsView';
+import AgentView from './components/AgentView';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 import useStore from './stores/store';
 
@@ -192,6 +193,14 @@ const LocalRouter = createBrowserRouter(
           element={<RunsView />}
           handle={{
             crumb: () => <BreadcrumbLink to="/runs">Runs</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="agent"
+          path="/agent"
+          element={<AgentView />}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/agent">Agent</BreadcrumbLink>,
           }}
         />
         <Route

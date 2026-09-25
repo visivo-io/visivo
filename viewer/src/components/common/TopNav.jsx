@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
 import RunsToolIcon from './RunsToolIcon';
+import { PiRobot } from 'react-icons/pi';
 import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
@@ -45,6 +46,7 @@ const DEFAULT_TOOLS = [
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
   { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate, onbTarget: 'top-nav-project' },
+  { id: 'agent', label: 'Agent', to: '/agent', icon: PiRobot },
 ];
 
 /* ---------------------------------------------------------------- menu row */
