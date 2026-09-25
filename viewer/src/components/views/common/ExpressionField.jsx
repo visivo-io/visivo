@@ -1,7 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
 import RefTextArea from './RefTextArea';
 import { fieldTypeFor, EDITORS } from './fieldTypes';
-import { parseQueryString, serializeQueryString } from '../../../utils/queryString';
+import {
+  decodeQueryString,
+  parseQueryString,
+  serializeQueryString,
+} from '../../../utils/queryString';
 
 /**
  * Renders the right editor for a field from its declared type (`fieldTypes.js`),
@@ -44,12 +48,18 @@ export function ExpressionField({
     () => (isQueryString ? parseQueryString(value) : null),
     [isQueryString, value]
   );
-  const displayValue = isQueryString
-    ? parsedIncoming
-      ? parsedIncoming.body
-      : value ?? ''
-    : value ?? '';
-  const incomingSlice = parsedIncoming ? parsedIncoming.slice : null;
+  // `parseQueryString` answers "is there a wrapper here"; `decodeQueryString`
+  // then strips it to a FIXPOINT, so a value an earlier double-wrapping write
+  // corrupted (`?{?{ x }}` — a blank chart today) is shown as the body its
+  // author meant and re-saved wrapped exactly once (M24). A value with no
+  // wrapper is passed through untouched — decoding it would trim whitespace
+  // the author is still typing.
+  const decoded = useMemo(
+    () => (parsedIncoming ? decodeQueryString(value) : null),
+    [parsedIncoming, value]
+  );
+  const displayValue = decoded ? decoded.body : value ?? '';
+  const incomingSlice = decoded ? decoded.slice : null;
   const handleChange = useCallback(
     raw => {
       if (!isQueryString) {

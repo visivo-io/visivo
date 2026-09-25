@@ -4,6 +4,31 @@ import re
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 
 
+def _query_string_rejection(value: str) -> str:
+    """Say which way the value missed, not just that it did.
+
+    The three ways a value reaches this function are distinguishable, and the
+    fix is different for each, so name them.
+    """
+    shown = value if len(value) <= 120 else value[:117] + "..."
+    if not value.startswith("?{"):
+        return (
+            "QueryString must be wrapped in '?{ }' (optionally followed by an "
+            f"[index|slice] suffix). Got: {shown!r}"
+        )
+    if re.match(r"^\?\{\s*\}\s*$", value, re.DOTALL):
+        return f"QueryString '?{{ }}' needs an expression between the braces. Got: {shown!r}"
+    if re.search(r"[\r\n]", value):
+        return (
+            "QueryString '?{ }' expressions must be on a single line — a newline "
+            f"inside the braces cannot be parsed. Got: {shown!r}"
+        )
+    return (
+        "QueryString must be '?{ expression }', optionally followed by an "
+        f"[index|slice] suffix such as [0], [1:5], [::2] or [0,2]. Got: {shown!r}"
+    )
+
+
 class QueryString:
     """
     Adds the value of the query string to the query.
@@ -46,14 +71,26 @@ class QueryString:
             if isinstance(value, cls):
                 return value
             str_value = str(value)
-            # Accept both ?{...} and ?{...}[N|a:b] forms. The new grammar
-            # supports a slicing suffix; the QUERY_STRING_VALUE_PATTERN
-            # is the source of truth.
-            if not (
-                str_value.startswith("?{")
-                and (str_value.endswith("}") or re.match(QUERY_STRING_VALUE_PATTERN, str_value))
-            ):
-                raise ValueError("QueryString must start with '?{' and end with '}' or '}[...]'")
+            # QUERY_STRING_VALUE_PATTERN is the source of truth, so this gate
+            # applies it rather than approximating it.
+            #
+            # The gate used to be `startswith("?{") and endswith("}")`, which is
+            # WIDER than the pattern `get_value()` reads the body with. Values in
+            # the gap — `?{}`, and any body carrying an interior newline —
+            # validated fine, were written to YAML, and then made `get_value()`
+            # return None. The failure surfaced much later and nowhere near the
+            # field: `InsightInteraction.field_values_with_js_template_literals`
+            # calls `re.sub(..., None)` and the run dies with
+            # `TypeError: expected string or bytes-like object, got 'NoneType'`.
+            #
+            # Refusing them here turns that into a validation error naming the
+            # field and the value.
+            match = re.match(QUERY_STRING_VALUE_PATTERN, str_value)
+            # `?{  }` matches the pattern (the body group swallows the spaces)
+            # but `get_value()` hands back the empty string, so it is the same
+            # empty expression as `?{}` by another spelling.
+            if match is None or not match.group("query_string").strip():
+                raise ValueError(_query_string_rejection(str_value))
             return cls(str_value)
 
         return core_schema.no_info_after_validator_function(
