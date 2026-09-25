@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
 import RunsToolIcon from './RunsToolIcon';
-import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
+import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight, FiTrash2 } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
@@ -343,7 +343,7 @@ function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
 }
 
 /* ------------------------------------------------------- commit / deploy */
-function CommitButton({ onClick, compact, count = 0 }) {
+function CommitButton({ onClick, compact, count = 0, split = false }) {
   const [h, setH] = React.useState(false);
   return (
     <button
@@ -360,7 +360,7 @@ function CommitButton({ onClick, compact, count = 0 }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 7, background: h ? '#15803d' : SUCCESS, color: '#fff',
         border: 'none', fontSize: 13, fontWeight: 600, padding: compact ? '7px 9px' : '7px 13px',
-        borderRadius: 99, cursor: 'pointer',
+        borderRadius: split ? '99px 0 0 99px' : 99, cursor: 'pointer',
       }}
     >
       <VscGitCommit size={16} /> {!compact && 'Commit'}
@@ -374,6 +374,78 @@ function CommitButton({ onClick, compact, count = 0 }) {
           {count}
         </span>
       )}
+    </button>
+  );
+}
+
+/**
+ * Commit, with the things you might do *instead* of committing hanging off it.
+ *
+ * Discard is the other end of the same decision — keep this work or drop it —
+ * so it belongs on the same control rather than in a second button competing
+ * for the bar's width, or buried in the commit modal where you only arrive
+ * once you have already decided to keep the changes. Cloud reaches the same
+ * shape through `renderAction`; this is the built-in equivalent.
+ *
+ * No `onDiscardAll` ⇒ the plain button, unchanged.
+ */
+function CommitControl({ onClick, compact, count, onDiscardAll }) {
+  if (!onDiscardAll) return <CommitButton onClick={onClick} compact={compact} count={count} />;
+
+  const caret = open => (
+    <button
+      aria-label="Commit options"
+      title="Commit options"
+      style={{
+        display: 'flex', alignItems: 'center', background: open ? '#15803d' : SUCCESS, color: '#fff',
+        border: 'none', borderLeft: '1px solid rgba(255,255,255,.28)', padding: '7px 8px',
+        borderRadius: '0 99px 99px 0', cursor: 'pointer', alignSelf: 'stretch',
+      }}
+    >
+      <FiChevronDown size={14} />
+    </button>
+  );
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch' }}>
+      <CommitButton onClick={onClick} compact={compact} count={count} split />
+      <Dropdown align="right" width={264} panelStyle={{ marginTop: 2 }} trigger={caret}>
+        {close => (
+          <DiscardMenuItem
+            count={count}
+            onClick={() => {
+              close();
+              onDiscardAll();
+            }}
+          />
+        )}
+      </Dropdown>
+    </div>
+  );
+}
+
+function DiscardMenuItem({ count, onClick }) {
+  const [h, setH] = React.useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', textAlign: 'left',
+        padding: '10px 12px', background: h ? '#fef2f2' : 'transparent', border: 'none',
+        cursor: 'pointer', color: '#b91c1c', fontSize: 13, fontFamily: 'inherit',
+      }}
+    >
+      <FiTrash2 size={15} style={{ marginTop: 2, flexShrink: 0 }} />
+      <span>
+        <span style={{ fontWeight: 600 }}>Discard all changes</span>
+        <span style={{ display: 'block', color: '#6b7280', fontSize: 11.5, marginTop: 2 }}>
+          {count > 0
+            ? `Drop all ${count} uncommitted change${count === 1 ? '' : 's'} and go back to your YAML.`
+            : 'Go back to what is in your YAML files.'}
+        </span>
+      </span>
     </button>
   );
 }
@@ -484,6 +556,9 @@ const TopNav = ({
   // count of pending (uncommitted) changes — shown as a badge on Commit.
   commitCount = 0,
   onCommitClick,
+  // Hangs "Discard all changes" off the Commit button. Absent ⇒ a plain
+  // Commit button, which is what a host without a discard endpoint wants.
+  onDiscardAll,
   onDeployClick,
   // cloud-only: Edit/Branch entry node, rendered in the action cluster at
   // project depth. Absent locally ⇒ nothing extra renders.
@@ -549,7 +624,12 @@ const TopNav = ({
     renderAction !== undefined ? (
       renderAction
     ) : hasUncommittedChanges ? (
-      <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
+      <CommitControl
+        onClick={onCommitClick}
+        compact={narrow}
+        count={commitCount}
+        onDiscardAll={onDiscardAll}
+      />
     ) : showDeploy ? (
       <DeployButton onClick={onDeployClick} compact={narrow} />
     ) : null;

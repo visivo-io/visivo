@@ -10,6 +10,7 @@ import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import CommitModal from './commit/CommitModal';
 import BranchingControls from './common/BranchingControls';
+import { useConfirm } from './common/ConfirmDialog';
 import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import OnboardingCoach from './onboarding/OnboardingCoach';
 import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
@@ -30,6 +31,8 @@ const Home = () => {
   const pendingCount = useStore(state => state.pendingCount);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const openCommitModal = useStore(state => state.openCommitModal);
+  const discardChanges = useStore(state => state.discardChanges);
+  const { confirm, ConfirmDialog } = useConfirm();
   // The capabilities endpoint drives the Edit/Branch entry and the viewer's
   // tool gating. Both servers answer it (Flask local + Django cloud), so the
   // viewer needs no local-vs-cloud branching.
@@ -130,11 +133,24 @@ const Home = () => {
     openCommitModal();
   };
 
+  const onDiscardAll = async () => {
+    const ok = await confirm({
+      title: 'Discard all changes?',
+      body:
+        'Every uncommitted change is dropped and the project goes back to what is ' +
+        'in your YAML files. This cannot be undone.',
+      confirmLabel: 'Discard changes',
+      danger: true,
+    });
+    if (ok) await discardChanges();
+  };
+
   return (
     <div className="visivo-home min-h-screen bg-gray-50">
       <TopNav
         onDeployClick={onDeployClick}
         onCommitClick={onCommitClick}
+        onDiscardAll={onDiscardAll}
         hasUncommittedChanges={hasUncommittedChanges}
         commitCount={pendingCount}
         tools={tools}
@@ -142,6 +158,7 @@ const Home = () => {
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />
+      {ConfirmDialog}
       <div>
         {isProject && (
           <div className="flex flex-row justify-end items-center whitespace-nowrap py-1">

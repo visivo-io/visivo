@@ -111,6 +111,45 @@ describe('TopNav', () => {
     expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
   });
 
+  it('is a plain Commit button when the host offers no discard', () => {
+    renderNav({ hasUncommittedChanges: true });
+    expect(screen.getByTitle('Commit changes')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Commit options')).not.toBeInTheDocument();
+  });
+
+  it('hangs Discard off Commit when onDiscardAll is given', () => {
+    const onDiscardAll = jest.fn();
+    const onCommitClick = jest.fn();
+    renderNav({ hasUncommittedChanges: true, commitCount: 3, onCommitClick, onDiscardAll });
+
+    // The menu is closed until asked for — discard must not be a stray click
+    // away from the button you press constantly.
+    expect(screen.queryByText('Discard all changes')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Commit options'));
+    fireEvent.click(screen.getByText('Discard all changes'));
+
+    expect(onDiscardAll).toHaveBeenCalledTimes(1);
+    // Opening the menu is not committing. The two halves share a pill, not a
+    // click target.
+    expect(onCommitClick).not.toHaveBeenCalled();
+  });
+
+  it('the caret does not swallow the Commit half', () => {
+    const onCommitClick = jest.fn();
+    renderNav({ hasUncommittedChanges: true, onCommitClick, onDiscardAll: jest.fn() });
+
+    fireEvent.click(screen.getByTitle('Commit changes'));
+
+    expect(onCommitClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the count in the discard row, so it says what it will drop', () => {
+    renderNav({ hasUncommittedChanges: true, commitCount: 4, onDiscardAll: jest.fn() });
+    fireEvent.click(screen.getByLabelText('Commit options'));
+    expect(screen.getByText(/Drop all 4 uncommitted changes/)).toBeInTheDocument();
+  });
+
   it('renderAction replaces the built-in Commit/Deploy pair', () => {
     // Core folds Commit together with Discard into one split control, which it
     // can only do by owning the whole node.

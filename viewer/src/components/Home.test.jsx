@@ -148,3 +148,32 @@ test('Commit button opens the commit modal and badges the pending count', async 
   fireEvent.click(screen.getByTitle('Commit changes'));
   expect(openCommitModal).toHaveBeenCalledTimes(1);
 });
+
+test('Discard all changes confirms first, then drops them', async () => {
+  const discardChanges = jest.fn().mockResolvedValue({ success: true });
+  renderWithStore({ hasUncommittedChanges: true, pendingCount: 2, discardChanges });
+
+  fireEvent.click(await screen.findByLabelText('Commit options'));
+  fireEvent.click(screen.getByText('Discard all changes'));
+
+  // Nothing is dropped on the strength of a menu click. Discard is the one
+  // action here that destroys work, so the dialog is the gate.
+  expect(discardChanges).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByRole('button', { name: 'Discard changes' }));
+
+  await waitFor(() => expect(discardChanges).toHaveBeenCalledTimes(1));
+});
+
+test('Cancelling the discard dialog keeps the changes', async () => {
+  const discardChanges = jest.fn();
+  renderWithStore({ hasUncommittedChanges: true, pendingCount: 2, discardChanges });
+
+  fireEvent.click(await screen.findByLabelText('Commit options'));
+  fireEvent.click(screen.getByText('Discard all changes'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Discard changes' })).not.toBeInTheDocument()
+  );
+  expect(discardChanges).not.toHaveBeenCalled();
+});
