@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock
 from flask import Flask
+import sqlglot
 
 from visivo.server.views.expression_views import register_expression_views
 
@@ -175,6 +176,31 @@ class TestExpressionViews:
         assert len(data["translations"]) == 1
         assert data["translations"][0]["duckdb_expression"] is not None
 
+    def test_blank_expression_is_reported_and_not_translated(self, client):
+        response = client.post(
+            "/api/expressions/translate/",
+            json={"expressions": [{"name": "t", "expression": "", "type": "metric"}]},
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["translations"] == []
+        assert data["errors"] == [{"name": "t", "error": "Empty expression"}]
+
+    def test_an_unexpected_failure_is_a_500_not_a_traceback(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "visivo.server.views.expression_views.get_sqlglot_dialect",
+            Mock(side_effect=RuntimeError("boom")),
+        )
+        response = client.post(
+            "/api/expressions/translate/",
+            json={
+                "expressions": [{"name": "t", "expression": "SUM(amount)"}],
+                "source_dialect": "duckdb",
+            },
+        )
+        assert response.status_code == 500
+        assert response.get_json()["error"] == "boom"
+
 
 class TestExpressionValidateView:
     """/api/expressions/validate/ (VIS-993 layer 2): sqlglot parse validation.
@@ -261,21 +287,40 @@ class TestExpressionValidateView:
         assert results[0]["valid"] is True
         assert results[1]["valid"] is False
 
+    def test_unknown_source_dialect_falls_back_to_duckdb(self, client):
+        result = self._validate(client, "AVG(value)", dialect="foobar_nonexistent")
+        assert result["valid"] is True
+
+    def test_an_unexpected_failure_is_a_500_not_a_traceback(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "visivo.server.views.expression_views.get_sqlglot_dialect",
+            Mock(side_effect=RuntimeError("boom")),
+        )
+        response = client.post(
+            "/api/expressions/validate/",
+            json={
+                "expressions": [{"name": "e", "expression": "AVG(value)"}],
+                "source_dialect": "duckdb",
+            },
+        )
+        assert response.status_code == 500
+        assert response.get_json()["error"] == "boom"
+
     def test_missing_body_is_400(self, client):
         response = client.post("/api/expressions/validate/", json=None)
         assert response.status_code == 400
 
 
 class TestExpressionErrorSanitisation:
-    """The parse harness must never leak into a user-facing message (M13).
+    """No text the user never wrote may reach a user-facing message (M13).
 
-    Both endpoints parse a bare expression by wrapping it into
-    ``SELECT <expr> FROM __placeholder__``, and ``/validate/`` additionally
-    swaps every ``${ref(...)}`` for an identifier sqlglot can read. When the
-    parse fails, sqlglot quotes that wrapped SQL back — so the viewer used to
-    show ``__visivo_ctx__`` and ``__placeholder__``, names that appear nowhere
-    in the user's project, alongside a column number counted in a statement
-    they never wrote.
+    Earlier versions wrapped the expression into ``SELECT <expr> FROM
+    __placeholder__`` and swapped every ``${ref(...)}`` for a
+    ``__visivo_ctx_N__`` sentinel, so a parse error quoted names that appear
+    nowhere in the user's project alongside a column number counted in a
+    statement they never wrote. Nothing is wrapped now and a ref is made
+    parseable by QUOTING it, so these assertions pin the absence of a harness
+    rather than the success of a scrubber.
     """
 
     @pytest.fixture
@@ -367,30 +412,34 @@ class TestExpressionErrorSanitisation:
         assert "placeholder" not in errors[0]["error"]
         assert "\x1b" not in errors[0]["error"]
 
-    def test_sanitiser_leaves_a_real_table_named_placeholder_alone(self):
-        """The tail stripper requires the sentinel's leading underscore."""
+    def test_sanitiser_passes_a_message_with_no_echo_through(self):
+        """A one-line message has no window to replace — keep it verbatim."""
         from visivo.server.views.expression_views import sanitize_expression_error
 
-        message = sanitize_expression_error(Exception("no such column in placeholder"))
+        message = sanitize_expression_error(
+            Exception("no such column in placeholder"), "placeholder"
+        )
         assert message == "no such column in placeholder"
 
-    def test_sanitiser_scrubs_an_unmapped_context_token(self):
-        """Belt and braces: a token the map missed still must not escape."""
-        from visivo.server.views.expression_views import sanitize_expression_error
+    def test_quoting_keeps_each_ref_as_the_authors_own_text(self):
+        """The substitution is a quote, not a rename — nothing to restore."""
+        from visivo.server.views.expression_views import quote_context_tokens
 
-        message = sanitize_expression_error(Exception("bad __visivo_ctx_7__ here"), {})
-        assert "__visivo_ctx" not in message
+        quoted = quote_context_tokens("${ref(a).x} = ${ref(b).y}")
+        assert quoted == '"${ref(a).x}" = "${ref(b).y}"'
+        assert sqlglot.parse_one(quoted, read="duckdb") is not None
 
-    def test_substitution_maps_each_ref_to_a_unique_token(self):
-        from visivo.server.views.expression_views import substitute_context_tokens
+    def test_quoting_follows_the_dialects_identifier_syntax(self):
+        """MySQL reads `"..."` as a string, so a ref there must be backticked."""
+        from visivo.server.views.expression_views import quote_context_tokens
 
-        substituted, mapping = substitute_context_tokens("${ref(a).x} = ${ref(b).y}")
-        assert len(mapping) == 2
-        assert len(set(mapping.keys())) == 2
-        assert "${" not in substituted
-        for token, original in mapping.items():
-            assert token in substituted
-            assert original in ("${ref(a).x}", "${ref(b).y}")
+        assert quote_context_tokens("${ref(a).x} > 0", "mysql") == "`${ref(a).x}` > 0"
+
+    def test_a_ref_carrying_the_identifier_quote_is_escaped(self):
+        from visivo.server.views.expression_views import quote_context_tokens
+
+        quoted = quote_context_tokens('${ref(o)."SELECT col"} + 1')
+        assert sqlglot.parse_one(quoted, read="duckdb") is not None
 
 
 def _harness_fragments():
@@ -404,6 +453,8 @@ def _harness_fragments():
     """
     fragments = set()
     stems = [f"__visivo_ctx_{i}__" for i in range(4)] + ["__placeholder__", "SELECT"]
+    # None of these are generated any more — nothing is wrapped and a ref is
+    # quoted rather than renamed. The sweep stays as the guard that says so.
     for stem in stems:
         for start in range(len(stem)):
             tail = stem[start:]
@@ -532,18 +583,7 @@ class TestSanitiserEchoesTheAuthorNotTheHarness:
         from visivo.server.views.expression_views import sanitize_expression_error
 
         message = sanitize_expression_error(
-            Exception(
-                "Expecting ). Line 1, Col: 32.\n  SELECT sum(__visivo_ctx_0__ FROM __placeholder__"
-            ),
-            {"__visivo_ctx_0__": "${ref(o).a}"},
-            expression="sum(${ref(o).a}",
+            Exception('Expecting ). Line 1, Col: 32.\n  sum("${ref(o).a}"'),
+            "sum(${ref(o).a}",
         )
         assert message == "Expecting ).\n  sum(${ref(o).a}"
-
-    def test_without_an_expression_it_still_strips_what_it_can(self):
-        """The fallback path stays honest for any caller that has no source text."""
-        from visivo.server.views.expression_views import sanitize_expression_error
-
-        message = sanitize_expression_error(Exception("bad __visivo_ctx_7__ here"))
-        assert "__visivo_ctx" not in message
-        assert "bad" in message
