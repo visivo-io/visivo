@@ -29,6 +29,7 @@ hijacked agent is a draft someone can discard.
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
+from visivo.agent.actions import log as action_log
 from visivo.agent.schema import SchemaSlicer
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
@@ -266,13 +267,61 @@ def tool_names():
     return sorted(TOOLS)
 
 
+def _object_of(name, arguments):
+    """The object a call was about, as ``{type, name}``, or ``None``.
+
+    Derived from the tool's own name and arguments rather than declared per
+    tool: a generated tool is ``<verb>_<singular>`` and takes either a ``name``
+    or a ``config`` carrying one, so the type and the target are both already
+    there. This is what makes a log entry navigable — the tab addresses objects
+    as ``type:name``.
+    """
+    if "_" not in name:
+        return None
+    _, singular = name.split("_", 1)
+    type_key = singular if singular in TYPE_TO_MANAGER else f"{singular}s"
+    if type_key not in TYPE_TO_MANAGER:
+        return None
+    arguments = arguments or {}
+    target = arguments.get("name")
+    if not isinstance(target, str):
+        config = arguments.get("config")
+        target = config.get("name") if isinstance(config, dict) else None
+    return {"type": singular, "name": target} if isinstance(target, str) else None
+
+
 def call(app, name, arguments=None):
-    """Invoke a tool by name.
+    """Invoke a tool by name, recording what happened.
 
     Raises ``ToolError`` for anything the agent could have avoided, so a
     transport can hand the reason back as a result rather than a stack trace.
+
+    The recording lives here rather than in a transport so every producer is
+    captured by construction: an external client over MCP and the built-in loop
+    both arrive through this function, and a log that only covered one of them
+    would mean the registry was being bypassed.
     """
+    arguments = arguments or {}
+    obj = _object_of(name, arguments)
     tool = TOOLS.get(name)
     if tool is None:
-        raise ToolError(f"No tool named '{name}'.")
-    return tool.handler(app, arguments or {})
+        message = f"No tool named '{name}'."
+        action_log().record(name, obj=obj, outcome="error", error=message)
+        raise ToolError(message)
+
+    try:
+        result = tool.handler(app, arguments)
+    except Exception as error:
+        # Recorded on the way past, then re-raised unchanged: "what failed" is
+        # half the value of the log, and the transport still decides how to
+        # report it.
+        action_log().record(name, obj=obj, outcome="error", error=str(error))
+        raise
+
+    # A validate tool answers `{"valid": False}` rather than raising — the
+    # config was bad, which the log should say, but the call itself worked.
+    if isinstance(result, dict) and result.get("valid") is False:
+        action_log().record(name, obj=obj, outcome="error", error=result.get("error"))
+    else:
+        action_log().record(name, obj=obj)
+    return result

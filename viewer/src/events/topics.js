@@ -33,3 +33,23 @@ export const runsFor = (projectId, fetchRuns) => ({
   poll: () => fetchRuns(projectId),
   intervalMs: 4000,
 });
+
+/**
+ * An agent did something — a tool ran, against an object, and it worked or it
+ * did not.
+ *
+ * Carries a `poll`, so this is a signal-then-fetch topic like runs rather than
+ * a payload one. That is a change from how the activity stream was first
+ * framed: it assumed the socket payload WAS the value because nothing could be
+ * asked for it. Once actions are recorded they can be asked for, which gives
+ * the tab one rule instead of two and makes it work where there is no socket
+ * at all.
+ *
+ * 2s: an agent's actions land in bursts while someone is watching the tab, and
+ * the tab is only mounted when they are.
+ */
+export const AGENT_ACTIONS = fetchAgentActions => ({
+  event: 'agent_action',
+  poll: () => fetchAgentActions(),
+  intervalMs: 2000,
+});
