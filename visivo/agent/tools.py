@@ -231,6 +231,42 @@ def _get_schema_handler(app, arguments):
         raise ToolError(f"No type '{requested}'. Available: " + ", ".join(slicer.type_keys()))
 
 
+# Run logs are the whole build output and an agent does not need the part that
+# went well — a failure explains itself at the end.
+RUN_LOG_TAIL = 4000
+
+
+def _run_entry(app, run, with_logs=False):
+    entry = run.to_dict(is_superseded=False)
+    entry.pop("is_superseded", None)
+    if with_logs:
+        logs = run.logs or ""
+        entry["logs"] = logs[-RUN_LOG_TAIL:]
+        entry["logs_truncated"] = len(logs) > RUN_LOG_TAIL
+    return entry
+
+
+def _list_runs_handler(app, arguments):
+    runs = app.run_manager.list()
+    return {"runs": runs, "latest": runs[0] if runs else None}
+
+
+def _get_run_handler(app, arguments):
+    run_id = (arguments or {}).get("run_id")
+    if run_id:
+        run = app.run_manager.get(run_id)
+        if run is None:
+            raise ToolError(f"No run '{run_id}'.")
+    else:
+        # No id means "the one that just happened", which is what an agent
+        # asking after its own write actually wants.
+        listed = app.run_manager.list()
+        if not listed:
+            raise ToolError("No runs yet.")
+        run = app.run_manager.get(listed[0]["id"])
+    return _run_entry(app, run, with_logs=True)
+
+
 _SPECIAL_TOOLS = {
     "get_schema": Tool(
         name="get_schema",
@@ -250,6 +286,35 @@ _SPECIAL_TOOLS = {
             "required": ["type"],
         },
         handler=_get_schema_handler,
+    ),
+    "list_runs": Tool(
+        name="list_runs",
+        description=(
+            "Recent runs of this project, newest first, with the state of each "
+            "and the structured error of any that failed. A write only becomes "
+            "real data once a run builds it, so this is how you find out "
+            "whether what you authored actually works."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        handler=_list_runs_handler,
+    ),
+    "get_run": Tool(
+        name="get_run",
+        description=(
+            "One run in full, including the tail of its build log. Call this "
+            "after list_runs shows a failure — the log is where a query error "
+            "names the column or table it could not find."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "description": "Omit for the most recent run.",
+                }
+            },
+        },
+        handler=_get_run_handler,
     ),
 }
 
