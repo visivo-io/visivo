@@ -26,7 +26,7 @@ describe('TopNav', () => {
 
   it('renders the intra-project tools (Workspace subsumes Editor + Lineage + Explorer)', () => {
     renderNav();
-    ['Workspace', 'Runs', 'Dashboards', 'Agent'].forEach(label => {
+    ['Workspace', 'Agent', 'Runs', 'Dashboards'].forEach(label => {
       expect(screen.getByTitle(label)).toBeInTheDocument();
     });
     // The legacy Editor / Lineage tools AND the Explorer are gone from the top
@@ -35,6 +35,19 @@ describe('TopNav', () => {
     expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Lineage')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
+  });
+
+  it('puts Agent second, beside Workspace', () => {
+    // Asking the agent for a change is another way of doing what Workspace
+    // does by hand, and both produce the same drafts. Runs and Dashboards are
+    // what you look at afterwards.
+    renderNav();
+
+    const order = screen
+      .getAllByTitle(/^(Workspace|Agent|Runs|Dashboards)$/)
+      .map(tool => tool.getAttribute('title'));
+
+    expect(order).toEqual(['Workspace', 'Agent', 'Runs', 'Dashboards']);
   });
 
   // The Explorer is a Workspace view now (no top-nav tab of its own), so every
@@ -576,7 +589,7 @@ describe('TopNav', () => {
 
     it('still renders the tools, capsule, and user menu', () => {
       renderNav();
-      ['Workspace', 'Runs', 'Dashboards', 'Agent'].forEach(label => {
+      ['Workspace', 'Agent', 'Runs', 'Dashboards'].forEach(label => {
         expect(screen.getByTitle(label)).toBeInTheDocument();
       });
       expect(screen.getByText('Local')).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import AgentPrompt from './AgentPrompt';
 import { fetchAgentActions } from '../api/agent';
 import { subscribe, canDeliver } from '../events/eventSource';
 import { AGENT_ACTIONS } from '../events/topics';
@@ -122,18 +123,20 @@ const AgentView = () => {
 
   return (
     <div className="min-h-full bg-gray-50 p-6">
-      <h1 className="text-lg font-medium text-gray-900 mb-1">Agent activity</h1>
+      <h1 className="text-lg font-medium text-gray-900 mb-1">Agent</h1>
       <p className="text-sm text-gray-500 mb-4">
-        What agents have done in this session. Changes land as uncommitted
-        drafts — review them in the Workspace before committing.
+        Ask for a change, or connect your own MCP client. Either way the work
+        lands as uncommitted drafts — review them in the Workspace before
+        committing.
       </p>
+      <AgentPrompt />
       {actions.length === 0 ? (
         <div
           className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500"
           data-testid="agent-view-empty"
         >
-          No agent activity yet. Connect an MCP client to this server and its
-          work will appear here.
+          No agent activity yet. Ask for something above, or connect an MCP
+          client to this server — either way the work appears here.
         </div>
       ) : (
         <ul
