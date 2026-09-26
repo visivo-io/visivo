@@ -43,7 +43,7 @@ def register_agent_views(app, flask_app):
             return jsonify({"action": ALREADY_RUNNING, "session": active[0].to_dict()}), 409
 
         try:
-            model, overlay = resolve(body.get("model"))
+            model, overlay, source = resolve(body.get("model"))
         except AgentNotConfigured as unconfigured:
             # 400, not 500: nothing is broken, the user has not set a key. The
             # message is the instructions, so the tab can show it verbatim.
@@ -55,7 +55,9 @@ def register_agent_views(app, flask_app):
             os.environ.setdefault(name, value)
 
         session = start(flask_app, prompt, model)
-        return jsonify(session.to_dict()), 201
+        # Whose money this is spending. The tab says so, because someone using
+        # their own key should never be unsure whether they are.
+        return jsonify({**session.to_dict(), "model_source": source}), 201
 
     @app.route("/api/agent/<session_id>/", methods=["GET"])
     def get_agent_session(session_id):

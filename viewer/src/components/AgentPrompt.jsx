@@ -25,6 +25,7 @@ const AgentPrompt = () => {
   const [session, setSession] = useState(null);
   const [notice, setNotice] = useState(null);
   const [starting, setStarting] = useState(false);
+  const [modelSource, setModelSource] = useState(null);
   const timer = useRef(null);
 
   const stopPolling = useCallback(() => {
@@ -68,6 +69,10 @@ const AgentPrompt = () => {
         setNotice({ kind: 'configure', text: result.unconfigured });
         return;
       }
+      if (result.limitReached) {
+        setNotice({ kind: 'limit', text: result.limitReached });
+        return;
+      }
       if (result.busy) {
         setSession(result.busy);
         setNotice({ kind: 'busy', text: 'An agent is already working. Stop it first.' });
@@ -76,6 +81,7 @@ const AgentPrompt = () => {
       }
       setPrompt('');
       setSession(result.session);
+      setModelSource(result.session.model_source || null);
       poll(result.session.id);
     } catch (error) {
       setNotice({ kind: 'error', text: error.message });
@@ -164,6 +170,14 @@ const AgentPrompt = () => {
 
       {session && !running && session.state !== 'queued' && (
         <Outcome session={session} />
+      )}
+
+      {modelSource && (
+        <div className="mt-2 text-xs text-gray-400" data-testid="agent-model-source">
+          {modelSource === 'visivo_cloud'
+            ? 'Using your Visivo account — see Agent Usage for what it costs.'
+            : 'Using your own API key.'}
+        </div>
       )}
     </div>
   );

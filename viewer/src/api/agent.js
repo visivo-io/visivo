@@ -39,6 +39,12 @@ export const startAgentSession = async ({ prompt, model } = {}) => {
   if (response.status === 400 && body.action === 'configure_agent') {
     return { unconfigured: body.error };
   }
+  // The account's Visivo-supplied inference budget is spent for the month. Not
+  // a failure to fix — a limit to wait out or raise — so it reads as its own
+  // outcome rather than a generic error.
+  if (response.status === 429 && body.action === 'inference_limit_reached') {
+    return { limitReached: body.error };
+  }
   throw new Error(body.error || 'Failed to start the agent');
 };
 

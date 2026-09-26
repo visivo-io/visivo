@@ -41,15 +41,17 @@ class TestStarting:
     def test_an_unconfigured_agent_is_a_400_with_instructions(
         self, integration_client, monkeypatch
     ):
-        """Nothing is broken — the user has not set a key. A 500 would send
-        them looking for a bug."""
+        """Nothing is broken — the user has neither a key nor a Visivo login. A
+        500 would send them looking for a bug."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.setattr("visivo.agent.model_config.read_profile", lambda *a, **k: {})
+        monkeypatch.setattr("visivo.agent.cloud_model.available", lambda host=None: False)
 
         response = integration_client.post("/api/agent/", json={"prompt": "hi"})
 
         assert response.status_code == 400
         assert response.get_json()["action"] == "configure_agent"
+        assert "visivo authorize" in response.get_json()["error"]
         assert "ANTHROPIC_API_KEY" in response.get_json()["error"]
 
     def test_only_one_at_a_time(self, integration_client, integration_app, sessions):

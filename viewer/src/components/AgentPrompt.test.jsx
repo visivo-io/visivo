@@ -105,3 +105,50 @@ describe('AgentPrompt', () => {
     expect(input).toHaveValue('expensive to retype');
   });
 });
+
+describe('AgentPrompt — whose model', () => {
+  it('says when the answer is coming from the Visivo account', async () => {
+    startAgentSession.mockResolvedValue({
+      session: session('running', { model_source: 'visivo_cloud' }),
+    });
+    fetchAgentSession.mockResolvedValue(session('succeeded', { output: 'ok' }));
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    expect(await screen.findByTestId('agent-model-source')).toHaveTextContent(
+      /Using your Visivo account/
+    );
+  });
+
+  it('says when it is the user’s own key', async () => {
+    // Someone spending their own money should never be unsure that they are.
+    startAgentSession.mockResolvedValue({
+      session: session('running', { model_source: 'byo_key' }),
+    });
+    fetchAgentSession.mockResolvedValue(session('succeeded', { output: 'ok' }));
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    expect(await screen.findByTestId('agent-model-source')).toHaveTextContent(
+      /Using your own API key/
+    );
+  });
+
+  it('a spent monthly limit reads as a limit, not a failure', async () => {
+    startAgentSession.mockResolvedValue({
+      limitReached: 'This account has used its $100 monthly inference limit.',
+    });
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    expect(await screen.findByTestId('agent-notice-limit')).toHaveTextContent(
+      /\$100 monthly inference limit/
+    );
+  });
+});
