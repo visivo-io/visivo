@@ -34,6 +34,7 @@ PROTOCOL_VERSION = "2025-06-18"
 _PARSE_ERROR = -32700
 _INVALID_REQUEST = -32600
 _METHOD_NOT_FOUND = -32601
+_INVALID_PARAMS = -32602
 
 
 def register_mcp_views(app, flask_app):
@@ -72,6 +73,19 @@ def register_mcp_views(app, flask_app):
 
         if method == "initialize":
             return _result(request_id, _initialize())
+        # The same skills the built-in loop is given. An external client that
+        # cannot read them is a second, worse agent against the same tools.
+        if method == "resources/list":
+            return _result(request_id, {"resources": _resource_list()})
+        if method == "resources/read":
+            # Asking for a resource that does not exist is the caller getting
+            # the protocol wrong, not a tool refusing — so it is a JSON-RPC
+            # error, not an error RESULT. Raising here would have 500'd the
+            # request instead of answering it.
+            try:
+                return _result(request_id, _read_resource(payload.get("params") or {}))
+            except ToolError as refused:
+                return _error(request_id, _INVALID_PARAMS, str(refused))
         if method == "tools/list":
             return _result(request_id, {"tools": _tool_list()})
         if method == "tools/call":
@@ -83,7 +97,7 @@ def register_mcp_views(app, flask_app):
 def _initialize():
     return {
         "protocolVersion": PROTOCOL_VERSION,
-        "capabilities": {"tools": {}},
+        "capabilities": {"tools": {}, "resources": {}},
         "serverInfo": {"name": "visivo", "version": _version()},
         "instructions": (
             "Tools read and write this Visivo project's objects. Writes land as "
@@ -93,6 +107,34 @@ def _initialize():
             "get_schema returns only the part you need."
         ),
     }
+
+
+SKILL_URI = "visivo://skills/{name}"
+
+
+def _resource_list():
+    from visivo.agent import skills
+
+    return [
+        {
+            "uri": SKILL_URI.format(name=skill["name"]),
+            "name": skill["name"],
+            "mimeType": "text/markdown",
+            "description": "Visivo skill — how this job is expected to be done.",
+        }
+        for skill in skills.packaged()
+    ]
+
+
+def _read_resource(params):
+    from visivo.agent import skills
+
+    uri = params.get("uri") or ""
+    wanted = uri.rsplit("/", 1)[-1] if uri.startswith("visivo://skills/") else None
+    for skill in skills.packaged():
+        if skill["name"] == wanted:
+            return {"contents": [{"uri": uri, "mimeType": "text/markdown", "text": skill["body"]}]}
+    raise ToolError(f"No such resource '{uri}'.")
 
 
 def _tool_list():

@@ -87,6 +87,18 @@ def _bind(app, tool):
     )
 
 
+def _instructions_for(app, base):
+    """The house rules, plus the skills, plus this project's own brief.
+
+    Assembled per agent rather than at import, because a project's AGENTS.md
+    can change while serve is running and the next turn should see it.
+    """
+    from visivo.agent import skills
+
+    extra = skills.as_prompt(getattr(app, "_working_dir", None))
+    return f"{base}\n\n{extra}" if extra else base
+
+
 def build_agent(app, model, instructions=INSTRUCTIONS):
     """An agent over the whole registry.
 
@@ -98,7 +110,7 @@ def build_agent(app, model, instructions=INSTRUCTIONS):
     return Agent(
         model,
         tools=[_bind(app, tool) for tool in TOOLS.values()],
-        instructions=instructions,
+        instructions=_instructions_for(app, instructions),
     )
 
 
