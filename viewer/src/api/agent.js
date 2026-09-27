@@ -8,8 +8,9 @@ import { getUrl } from '../contexts/URLContext';
  * list, so the tab works wherever the API does — including cloud, which has no
  * push channel — rather than only where a socket happens to exist.
  */
-export const fetchAgentActions = async ({ limit } = {}) => {
-  const url = limit ? `${getUrl('agentActions')}?limit=${limit}` : getUrl('agentActions');
+export const fetchAgentActions = async ({ projectId, limit } = {}) => {
+  const base = getUrl('agentActions', { projectId });
+  const url = limit ? `${base}?limit=${limit}` : base;
   const response = await apiFetch(url);
   if (response.status === 200) {
     return (await response.json()).actions;
@@ -27,8 +28,8 @@ export const fetchAgentActions = async ({ limit } = {}) => {
  * same draft tier would interleave), and 400 `configure_agent` when no API key
  * is set, which is the first-run case and carries its own instructions.
  */
-export const startAgentSession = async ({ prompt, model } = {}) => {
-  const response = await apiFetch(getUrl('agentSessions'), {
+export const startAgentSession = async ({ projectId, prompt, model } = {}) => {
+  const response = await apiFetch(getUrl('agentSessions', { projectId }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, ...(model ? { model } : {}) }),
@@ -48,15 +49,15 @@ export const startAgentSession = async ({ prompt, model } = {}) => {
   throw new Error(body.error || 'Failed to start the agent');
 };
 
-export const fetchAgentSession = async sessionId => {
-  const response = await apiFetch(getUrl('agentSession', { sessionId }));
+export const fetchAgentSession = async (sessionId, projectId) => {
+  const response = await apiFetch(getUrl('agentSession', { projectId, sessionId }));
   if (response.status === 200) return await response.json();
   if (response.status === 404) return null;
   throw new Error('Failed to read the agent session');
 };
 
-export const cancelAgentSession = async sessionId => {
-  const response = await apiFetch(getUrl('agentSessionCancel', { sessionId }), {
+export const cancelAgentSession = async (sessionId, projectId) => {
+  const response = await apiFetch(getUrl('agentSessionCancel', { projectId, sessionId }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });

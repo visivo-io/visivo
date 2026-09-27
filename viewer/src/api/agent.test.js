@@ -62,3 +62,20 @@ describe('the agent-actions topic', () => {
     expect(fetcher).toHaveBeenCalled();
   });
 });
+
+describe('the agent topic and the server agree', () => {
+  it('subscribes to the name serve actually emits', () => {
+    // serve_phase.py emits socketio 'agent_action'. Scoping this name by
+    // project (as runsFor does) silently stops the live push matching, and
+    // nothing fails — it just quietly degrades to the 2s poll. Caught exactly
+    // that way once already.
+    expect(AGENT_ACTIONS(jest.fn(), 'some-project').event).toBe('agent_action');
+  });
+
+  it('polls the project it was given, so one viewer can watch several', () => {
+    const fetcher = jest.fn();
+    AGENT_ACTIONS(fetcher, 'project-42').poll();
+
+    expect(fetcher).toHaveBeenCalledWith({ projectId: 'project-42' });
+  });
+});

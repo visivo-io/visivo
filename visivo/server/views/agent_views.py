@@ -4,6 +4,11 @@ Start, poll, stop — the same three verbs a run has, and deliberately the same
 shape, so the Agent tab reuses the polling the Runs view already does rather
 than inventing a second way to watch work happen.
 
+Dual-mounted, like ``commit`` and ``discard``: the project-scoped path is the
+one the viewer calls and the one core can serve, so the SAME tab drives a local
+loop and a cloud one without learning which it has. `visivo serve` hosts one
+project and ignores the id; cloud hosts many and does not.
+
 The loop is not held open across the request. A model call takes as long as it
 takes, and an HTTP request that waits for one is a request that times out in a
 proxy somebody else configured.
@@ -28,11 +33,13 @@ def register_agent_views(app, flask_app):
     sessions = SessionManager.instance()
 
     @app.route("/api/agent/", methods=["GET"])
-    def list_agent_sessions():
+    @app.route("/api/projects/<project_id>/agent/", methods=["GET"])
+    def list_agent_sessions(project_id=None):
         return jsonify({"sessions": sessions.list()})
 
     @app.route("/api/agent/", methods=["POST"])
-    def start_agent_session():
+    @app.route("/api/projects/<project_id>/agent/", methods=["POST"])
+    def start_agent_session(project_id=None):
         body = request.get_json(silent=True) or {}
         prompt = (body.get("prompt") or "").strip()
         if not prompt:
@@ -60,14 +67,16 @@ def register_agent_views(app, flask_app):
         return jsonify({**session.to_dict(), "model_source": source}), 201
 
     @app.route("/api/agent/<session_id>/", methods=["GET"])
-    def get_agent_session(session_id):
+    @app.route("/api/projects/<project_id>/agent/<session_id>/", methods=["GET"])
+    def get_agent_session(session_id, project_id=None):
         session = sessions.get(session_id)
         if session is None:
             return jsonify({"error": "Session not found"}), 404
         return jsonify(session.to_dict())
 
     @app.route("/api/agent/<session_id>/cancel/", methods=["POST"])
-    def cancel_agent_session(session_id):
+    @app.route("/api/projects/<project_id>/agent/<session_id>/cancel/", methods=["POST"])
+    def cancel_agent_session(session_id, project_id=None):
         session = sessions.get(session_id)
         if session is None:
             return jsonify({"error": "Session not found"}), 404

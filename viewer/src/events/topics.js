@@ -48,8 +48,14 @@ export const runsFor = (projectId, fetchRuns) => ({
  * 2s: an agent's actions land in bursts while someone is watching the tab, and
  * the tab is only mounted when they are.
  */
-export const AGENT_ACTIONS = fetchAgentActions => ({
+export const AGENT_ACTIONS = (fetchAgentActions, projectId) => ({
+  // NOT scoped by project, unlike `runsFor` above. `serve_phase` already emits
+  // this exact name (VIS-1337), and a socket belongs to one serve process
+  // hosting one project — so scoping it would only stop the live push
+  // matching. The POLL carries the project, which is what addresses the right
+  // log. If cloud ever grows a push channel serving several projects over one
+  // socket, scope it then, the way runs does.
   event: 'agent_action',
-  poll: () => fetchAgentActions(),
+  poll: () => fetchAgentActions({ projectId }),
   intervalMs: 2000,
 });

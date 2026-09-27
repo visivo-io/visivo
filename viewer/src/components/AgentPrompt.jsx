@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import useStore from '../stores/store';
 import { FiSend, FiSquare } from 'react-icons/fi';
 import { cancelAgentSession, fetchAgentSession, startAgentSession } from '../api/agent';
 
@@ -21,6 +22,9 @@ const ACTIVE = ['queued', 'running'];
 const isActive = session => Boolean(session) && ACTIVE.includes(session.state);
 
 const AgentPrompt = () => {
+  // Addressed per project, so the same component drives a local loop and a
+  // cloud one without knowing which it has.
+  const projectId = useStore(state => state.project?.id);
   const [prompt, setPrompt] = useState('');
   const [session, setSession] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -42,7 +46,7 @@ const AgentPrompt = () => {
       stopPolling();
       const check = async () => {
         try {
-          const latest = await fetchAgentSession(sessionId);
+          const latest = await fetchAgentSession(sessionId, projectId);
           if (!latest) return;
           setSession(latest);
           if (!isActive(latest)) stopPolling();
@@ -55,7 +59,7 @@ const AgentPrompt = () => {
       check();
       timer.current = setInterval(check, POLL_MS);
     },
-    [stopPolling]
+    [stopPolling, projectId]
   );
 
   const onSend = async () => {
@@ -64,7 +68,7 @@ const AgentPrompt = () => {
     setStarting(true);
     setNotice(null);
     try {
-      const result = await startAgentSession({ prompt: asked });
+      const result = await startAgentSession({ projectId, prompt: asked });
       if (result.unconfigured) {
         setNotice({ kind: 'configure', text: result.unconfigured });
         return;
@@ -93,7 +97,7 @@ const AgentPrompt = () => {
   const onStop = async () => {
     if (!session) return;
     try {
-      const result = await cancelAgentSession(session.id);
+      const result = await cancelAgentSession(session.id, projectId);
       setSession(result.session);
       stopPolling();
     } catch (error) {
