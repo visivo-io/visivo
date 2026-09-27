@@ -39,6 +39,26 @@ def build():
         "jsonschema_rs",
         "--collect-all",
         "pydantic_core",
+        # These read their own version out of installed metadata at IMPORT
+        # time, and PyInstaller bundles modules but not dist-info — so without
+        # this the binary dies with PackageNotFoundError before `visivo init`
+        # or `visivo serve` can start. Invisible from the source tree; it only
+        # reproduces in the built artifact.
+        #   pydantic_ai/__init__.py  -> version("pydantic_ai_slim")
+        #   genai_prices/__init__.py -> version("genai_prices")
+        "--copy-metadata",
+        "pydantic_ai_slim",
+        "--copy-metadata",
+        "genai_prices",
+        # pydantic-ai resolves a provider from a model string ("anthropic:...")
+        # at runtime, so nothing imports these by name for the analyser to
+        # follow from.
+        "--collect-submodules",
+        "pydantic_ai",
+        "--collect-submodules",
+        "openai",
+        "--collect-submodules",
+        "anthropic",
         "-n",
         "visivo",
         "--add-data",
