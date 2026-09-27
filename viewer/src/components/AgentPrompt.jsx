@@ -4,12 +4,17 @@ import { FiSend, FiSquare } from 'react-icons/fi';
 import { cancelAgentSession, fetchAgentSession, startAgentSession } from '../api/agent';
 
 /**
- * Asking the built-in loop for something.
+ * A conversation with the built-in loop.
  *
  * The loop runs in the background and this polls it, because a model call
  * takes as long as it takes — a request held open for one dies in whatever
  * proxy sits between. What the agent DOES appears in the activity log below;
- * this is only the ask, the state and the answer.
+ * this is what was said.
+ *
+ * Each turn carries the session id, so "now add a chart to that" has a
+ * referent. The transcript comes from the server rather than being accumulated
+ * here: a reload, a second tab, or a turn that started before this component
+ * mounted all have to show the same conversation.
  *
  * Stop is a first-class control rather than a menu item: a running loop the
  * user cannot stop is not shippable, and the moment they want it is the moment
@@ -68,13 +73,24 @@ const AgentPrompt = () => {
     setStarting(true);
     setNotice(null);
     try {
-      const result = await startAgentSession({ projectId, prompt: asked });
+      const result = await startAgentSession({
+        projectId,
+        prompt: asked,
+        sessionId: session?.id,
+      });
       if (result.unconfigured) {
         setNotice({ kind: 'configure', text: result.unconfigured });
         return;
       }
       if (result.limitReached) {
         setNotice({ kind: 'limit', text: result.limitReached });
+        return;
+      }
+      if (result.sessionGone) {
+        // Drop the dead id so the next Send starts a conversation rather than
+        // failing the same way again.
+        setSession(null);
+        setNotice({ kind: 'gone', text: `${result.sessionGone} Send again to start a new one.` });
         return;
       }
       if (result.busy) {
@@ -129,7 +145,11 @@ const AgentPrompt = () => {
         }}
         disabled={running}
         rows={2}
-        placeholder="Ask the agent to build or change something — e.g. “add a model for monthly revenue over the orders source”"
+        placeholder={
+          session?.transcript?.length
+            ? 'Reply, or ask for the next change…'
+            : 'Ask the agent to build or change something — e.g. “add a model for monthly revenue over the orders source”'
+        }
         className="w-full resize-y rounded-md border border-gray-300 p-2 text-sm focus:border-primary focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
       />
 
@@ -172,7 +192,11 @@ const AgentPrompt = () => {
         </div>
       )}
 
-      {session && !running && session.state !== 'queued' && (
+      {session?.transcript?.length > 0 && (
+        <Transcript entries={session.transcript} running={running} />
+      )}
+
+      {session && !running && session.state !== 'queued' && session.state !== 'succeeded' && (
         <Outcome session={session} />
       )}
 
@@ -187,14 +211,36 @@ const AgentPrompt = () => {
   );
 };
 
+/** What was said, oldest first — the shape a conversation is read in. */
+function Transcript({ entries, running }) {
+  return (
+    <div className="mt-3 space-y-2" data-testid="agent-transcript">
+      {entries.map((entry, index) => (
+        <div
+          key={`${entry.at}-${index}`}
+          className={
+            entry.role === 'user'
+              ? 'rounded-md bg-gray-100 p-3 text-sm text-gray-900'
+              : 'rounded-md bg-gray-50 p-3 text-sm text-gray-800'
+          }
+          data-testid={`agent-turn-${entry.role}`}
+        >
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            {entry.role === 'user' ? 'You' : 'Agent'}
+          </div>
+          {entry.text}
+        </div>
+      ))}
+      {running && (
+        <div className="px-3 text-sm text-gray-400" data-testid="agent-thinking">
+          Thinking…
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Outcome({ session }) {
-  if (session.state === 'succeeded') {
-    return (
-      <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-800" data-testid="agent-output">
-        {session.output}
-      </div>
-    );
-  }
   if (session.state === 'cancelled') {
     return (
       <div className="mt-3 text-sm text-gray-500" data-testid="agent-cancelled">
