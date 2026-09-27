@@ -180,3 +180,22 @@ class TestContinuingSomethingGone:
 
         assert response.status_code == 404
         assert response.get_json()["action"] == "agent_session_gone"
+
+    def test_it_says_so_even_with_no_model_configured(
+        self, integration_client, sessions, monkeypatch
+    ):
+        """Whether the session exists is a fact about the REQUEST; whether a
+        key is configured is a fact about the deployment. Resolving the model
+        first made the answer depend on whether the caller happened to have a
+        key — which is how the test above passed locally and 400'd in CI."""
+        for name in ("ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
+            monkeypatch.delenv(name, raising=False)
+        monkeypatch.setattr("visivo.agent.model_config.read_profile", lambda *a, **k: {})
+        monkeypatch.setattr("visivo.agent.cloud_model.available", lambda host=None: False)
+
+        response = integration_client.post(
+            "/api/agent/", json={"prompt": "carry on", "session_id": "gone"}
+        )
+
+        assert response.status_code == 404
+        assert response.get_json()["action"] == "agent_session_gone"

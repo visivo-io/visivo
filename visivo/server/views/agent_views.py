@@ -52,7 +52,23 @@ def register_agent_views(app, flask_app):
 
         # Continuing a conversation, or starting one. The id comes back from
         # the first turn; without it every prompt would begin from nothing.
+        #
+        # Checked BEFORE the model is resolved: whether this session exists is
+        # a fact about the request, while whether a key is configured is a fact
+        # about the deployment. Resolving first made the answer depend on
+        # whether the caller happened to have a key — which is how this passed
+        # locally and 400'd in CI.
         continuing = body.get("session_id")
+        if continuing and sessions.get(continuing) is None:
+            return (
+                jsonify(
+                    {
+                        "error": "That conversation is no longer available.",
+                        "action": SESSION_GONE,
+                    }
+                ),
+                404,
+            )
 
         try:
             model, overlay, source = resolve(body.get("model"))
@@ -68,9 +84,9 @@ def register_agent_views(app, flask_app):
 
         session = start(flask_app, prompt, model, session_id=continuing)
         if session is None:
-            # The conversation was evicted (the manager keeps a bounded
-            # number). Saying so lets the tab start a new one deliberately
-            # rather than appear to continue something that is gone.
+            # Evicted between the check above and here. Vanishingly unlikely,
+            # and still not something to answer by starting a conversation the
+            # user did not ask for.
             return (
                 jsonify(
                     {
