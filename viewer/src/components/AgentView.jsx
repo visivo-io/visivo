@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import useStore from '../stores/store';
+import AgentPrompt from './AgentPrompt';
 import { fetchAgentActions } from '../api/agent';
 import { subscribe, canDeliver } from '../events/eventSource';
 import { AGENT_ACTIONS } from '../events/topics';
@@ -21,8 +23,6 @@ import { getTypeColors, getTypeIcon } from './views/common/objectTypeConfigs';
  * Subscribed through the event-source seam rather than a timer of its own, so
  * when `visivo serve` starts emitting on its socket this view does not change.
  */
-
-const topic = AGENT_ACTIONS(fetchAgentActions);
 
 const when = timestamp =>
   timestamp ? new Date(timestamp * 1000).toLocaleTimeString() : '';
@@ -72,6 +72,8 @@ function Action({ action }) {
 }
 
 const AgentView = () => {
+  const projectId = useStore(state => state.project?.id);
+  const topic = useMemo(() => AGENT_ACTIONS(fetchAgentActions, projectId), [projectId]);
   const [actions, setActions] = useState(null);
   const [error, setError] = useState(null);
 
@@ -88,7 +90,7 @@ const AgentView = () => {
     // That is right for keeping a live view alive, but it means an unreachable
     // server and an empty log look identical, and they mean opposite things.
     // The first read is the one that can tell them apart.
-    fetchAgentActions()
+    fetchAgentActions({ projectId })
       .then(fetched => current && setActions(fetched))
       .catch(() => current && setError('Could not read agent activity.'));
 
@@ -102,7 +104,7 @@ const AgentView = () => {
       current = false;
       unsubscribe();
     };
-  }, []);
+  }, [topic, projectId]);
 
   if (error) {
     return (
@@ -122,18 +124,20 @@ const AgentView = () => {
 
   return (
     <div className="min-h-full bg-gray-50 p-6">
-      <h1 className="text-lg font-medium text-gray-900 mb-1">Agent activity</h1>
+      <h1 className="text-lg font-medium text-gray-900 mb-1">Agent</h1>
       <p className="text-sm text-gray-500 mb-4">
-        What agents have done in this session. Changes land as uncommitted
-        drafts — review them in the Workspace before committing.
+        Ask for a change, or connect your own MCP client. Either way the work
+        lands as uncommitted drafts — review them in the Workspace before
+        committing.
       </p>
+      <AgentPrompt />
       {actions.length === 0 ? (
         <div
           className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500"
           data-testid="agent-view-empty"
         >
-          No agent activity yet. Connect an MCP client to this server and its
-          work will appear here.
+          No agent activity yet. Ask for something above, or connect an MCP
+          client to this server — either way the work appears here.
         </div>
       ) : (
         <ul

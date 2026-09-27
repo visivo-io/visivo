@@ -38,12 +38,16 @@ _METHOD_NOT_FOUND = -32601
 
 def register_mcp_views(app, flask_app):
     @app.route("/api/agent/actions/", methods=["GET"])
-    def agent_actions_api():
+    @app.route("/api/projects/<project_id>/agent/actions/", methods=["GET"])
+    def agent_actions_api(project_id=None):
         """What agents have done this session, newest first.
 
         Read-only, and the Agent tab's source: an action is fetchable, so its
         topic polls the same way runs do rather than needing a push channel to
         exist first.
+
+        Dual-mounted so the project-scoped path core can serve works here too —
+        `visivo serve` hosts one project and ignores the id.
         """
         try:
             limit = int(request.args.get("limit", 100))

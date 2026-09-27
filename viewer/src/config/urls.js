@@ -172,7 +172,17 @@ const URL_PATTERNS = {
 
     // What agents have done this session. Absent from `dist` below, which is
     // correct: a static build has no server for an agent to work through.
-    agentActions: '/api/agent/actions/',
+    // Project-scoped, like capabilities/commit/discard/run above, and for the
+    // same reason: these are the paths core can serve, so ONE tab drives a
+    // local loop and a cloud one. `visivo serve` hosts a single project and
+    // ignores the id.
+    agentActions: '/api/projects/{projectId}/agent/actions/',
+    // The built-in loop: start one, poll it, stop it.
+    agentSessions: '/api/projects/{projectId}/agent/',
+    agentSession: ({ projectId, sessionId }) =>
+      `/api/projects/${projectId}/agent/${sessionId}/`,
+    agentSessionCancel: ({ projectId, sessionId }) =>
+      `/api/projects/${projectId}/agent/${sessionId}/cancel/`,
 
     // ---- Realtime ---------------------------------------------------------
     // Not a REST call — useProjectChangeListener gates its socket.io connect
