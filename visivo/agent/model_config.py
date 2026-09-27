@@ -21,6 +21,7 @@ import yaml
 
 from visivo.agent import cloud_model
 from visivo.commands.utils import get_profile_file
+from visivo.server.constants import VISIVO_HOST
 
 PROFILE_SECTION = "agent"
 
@@ -60,6 +61,21 @@ def read_profile(home_dir=None):
 
 def _section(profile):
     return (profile or {}).get(PROFILE_SECTION) or {}
+
+
+def agent_host(profile=None, environ=None, host=None):
+    """Which Visivo deployment answers for the agent.
+
+    Separate from the default host on purpose. The profile already keys tokens
+    by host, exactly as deploy tokens are — so pointing the agent at a
+    development deployment is naming it here, not re-authorising, and it does
+    not disturb where deploys go:
+
+        agent:
+          host: https://app.development.visivo.io
+    """
+    environ = os.environ if environ is None else environ
+    return host or environ.get("VISIVO_AGENT_HOST") or _section(profile).get("host") or VISIVO_HOST
 
 
 def resolve_model(requested=None, profile=None):
@@ -103,11 +119,14 @@ def resolve(requested=None, profile=None, environ=None, host=None):
     # that works without the user going and getting something first — but only
     # when they did not ASK for a specific model, because silently answering a
     # request for Claude with Gemini would be a lie.
-    if explicit is None and cloud_model.available(host):
-        return cloud_model.build(host), {}, SOURCE_CLOUD
+    chosen_host = agent_host(profile, environ, host)
+    if explicit is None and cloud_model.available(chosen_host):
+        return cloud_model.build(chosen_host), {}, SOURCE_CLOUD
 
     raise AgentNotConfigured(
-        f"No API key for '{prefix}'. Run `visivo authorize` to use your Visivo "
-        f"account, or set {variables[0]}, or add "
-        f"`{PROFILE_SECTION}:\n  api_key: ...` to {get_profile_file()}."
+        f"No model available. Set {variables[0]} to use your own key, or add "
+        f"`{PROFILE_SECTION}:\n  api_key: ...` to {get_profile_file()}.\n\n"
+        f"Visivo-supplied inference is not available at {chosen_host} — either "
+        "you have not run `visivo authorize`, or that deployment does not "
+        "offer it. Point the agent elsewhere with `agent:\n  host: ...`."
     )

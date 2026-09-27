@@ -13,10 +13,17 @@ from visivo.agent.model_config import (
     SOURCE_BYO,
     SOURCE_CLOUD,
     AgentNotConfigured,
+    agent_host,
     resolve,
 )
 
 HOST = "https://app.visivo.io"
+
+
+@pytest.fixture(autouse=True)
+def no_capability_probe(monkeypatch):
+    """Never let a test reach the network to ask whether inference exists."""
+    monkeypatch.setattr(cloud_model, "serves_inference", lambda host=None: False)
 
 
 @pytest.fixture
@@ -26,7 +33,10 @@ def no_cloud(monkeypatch):
 
 @pytest.fixture
 def with_cloud(monkeypatch):
+    """A token AND a deployment that serves inference. Both, because either
+    alone is not enough — which is the point of the pair."""
     monkeypatch.setattr(cloud_model, "token", lambda host=None: "visivo-token")
+    monkeypatch.setattr(cloud_model, "serves_inference", lambda host=None: True)
 
 
 class TestTheOrder:
@@ -60,6 +70,85 @@ class TestTheOrder:
         message = str(unconfigured.value)
         assert "visivo authorize" in message
         assert "ANTHROPIC_API_KEY" in message
+
+
+class TestVisivoRunsWithoutVisivoCloud:
+    """This is the open-source CLI. Holding a token is not consent to depend on
+    a hosted product being deployed — `visivo authorize` is what people run to
+    DEPLOY, so most users have one whether or not inference exists for them."""
+
+    def test_a_token_alone_is_not_enough(self, monkeypatch):
+        monkeypatch.setattr(cloud_model, "token", lambda host=None: "visivo-token")
+        monkeypatch.setattr(cloud_model, "serves_inference", lambda host=None: False)
+
+        with pytest.raises(AgentNotConfigured):
+            resolve(environ={}, profile={})
+
+    def test_and_the_message_says_which_half_is_missing(self, monkeypatch):
+        """Otherwise this is a 404 buried in an OpenAI client error, in place
+        of the one instruction that would have helped."""
+        monkeypatch.setattr(cloud_model, "token", lambda host=None: "visivo-token")
+        monkeypatch.setattr(cloud_model, "serves_inference", lambda host=None: False)
+
+        with pytest.raises(AgentNotConfigured) as unconfigured:
+            resolve(environ={}, profile={})
+
+        assert "not available at" in str(unconfigured.value)
+
+    def test_an_unreachable_host_is_simply_not_available(self, monkeypatch):
+        """A network that cannot reach us is indistinguishable from a
+        deployment that does not serve inference, and the answer is the same."""
+        import requests
+
+        cloud_model.forget()
+        monkeypatch.setattr(
+            cloud_model.requests,
+            "get",
+            lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError("no route")),
+        )
+
+        assert cloud_model.serves_inference("https://nowhere.example") is False
+        cloud_model.forget()
+
+
+class TestChoosingADeployment:
+    """Tokens are already per host, exactly as deploy tokens are, so pointing
+    the agent at development is naming it — not re-authorising."""
+
+    def test_the_profile_can_name_a_host(self):
+        assert (
+            agent_host(profile={"agent": {"host": "https://app.development.visivo.io"}}, environ={})
+            == "https://app.development.visivo.io"
+        )
+
+    def test_the_environment_wins_over_the_profile(self):
+        assert (
+            agent_host(
+                profile={"agent": {"host": "https://from-file"}},
+                environ={"VISIVO_AGENT_HOST": "https://from-env"},
+            )
+            == "https://from-env"
+        )
+
+    def test_it_falls_back_to_the_default_host(self):
+        assert agent_host(profile={}, environ={}) == "https://app.visivo.io"
+
+    def test_the_chosen_host_is_the_one_asked_and_used(self, monkeypatch):
+        """Naming a development deployment must move BOTH the capability probe
+        and the token lookup — asking one host and billing another would be a
+        confusing way to fail."""
+        asked = []
+        monkeypatch.setattr(cloud_model, "token", lambda host=None: "t")
+        monkeypatch.setattr(
+            cloud_model, "serves_inference", lambda host=None: asked.append(host) or True
+        )
+
+        _, _, source = resolve(
+            environ={}, profile={"agent": {"host": "https://app.development.visivo.io"}}
+        )
+
+        assert source == SOURCE_CLOUD
+        assert asked == ["https://app.development.visivo.io"]
 
 
 class TestAskingForSomethingSpecific:
