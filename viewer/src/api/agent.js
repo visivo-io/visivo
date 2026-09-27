@@ -28,11 +28,16 @@ export const fetchAgentActions = async ({ projectId, limit } = {}) => {
  * same draft tier would interleave), and 400 `configure_agent` when no API key
  * is set, which is the first-run case and carries its own instructions.
  */
-export const startAgentSession = async ({ projectId, prompt, model } = {}) => {
+export const startAgentSession = async ({ projectId, prompt, model, sessionId } = {}) => {
   const response = await apiFetch(getUrl('agentSessions', { projectId }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, ...(model ? { model } : {}) }),
+    body: JSON.stringify({
+      prompt,
+      ...(model ? { model } : {}),
+      // Continues the conversation. Absent starts a new one.
+      ...(sessionId ? { session_id: sessionId } : {}),
+    }),
   });
   const body = await response.json().catch(() => ({}));
   if (response.status === 201) return { session: body };
@@ -45,6 +50,11 @@ export const startAgentSession = async ({ projectId, prompt, model } = {}) => {
   // outcome rather than a generic error.
   if (response.status === 429 && body.action === 'inference_limit_reached') {
     return { limitReached: body.error };
+  }
+  // The conversation was evicted. The caller starts a new one deliberately
+  // rather than appearing to continue something that is gone.
+  if (response.status === 404 && body.action === 'agent_session_gone') {
+    return { sessionGone: body.error };
   }
   throw new Error(body.error || 'Failed to start the agent');
 };

@@ -27,6 +27,7 @@ from visivo.logger.logger import Logger
 # to the same objects with no way to tell whose was whose, and the user is
 # watching one conversation.
 ALREADY_RUNNING = "agent_in_progress"
+SESSION_GONE = "agent_session_gone"
 
 
 def register_agent_views(app, flask_app):
@@ -49,6 +50,10 @@ def register_agent_views(app, flask_app):
         if active:
             return jsonify({"action": ALREADY_RUNNING, "session": active[0].to_dict()}), 409
 
+        # Continuing a conversation, or starting one. The id comes back from
+        # the first turn; without it every prompt would begin from nothing.
+        continuing = body.get("session_id")
+
         try:
             model, overlay, source = resolve(body.get("model"))
         except AgentNotConfigured as unconfigured:
@@ -61,7 +66,20 @@ def register_agent_views(app, flask_app):
         for name, value in overlay.items():
             os.environ.setdefault(name, value)
 
-        session = start(flask_app, prompt, model)
+        session = start(flask_app, prompt, model, session_id=continuing)
+        if session is None:
+            # The conversation was evicted (the manager keeps a bounded
+            # number). Saying so lets the tab start a new one deliberately
+            # rather than appear to continue something that is gone.
+            return (
+                jsonify(
+                    {
+                        "error": "That conversation is no longer available.",
+                        "action": SESSION_GONE,
+                    }
+                ),
+                404,
+            )
         # Whose money this is spending. The tab says so, because someone using
         # their own key should never be unsure whether they are.
         return jsonify({**session.to_dict(), "model_source": source}), 201

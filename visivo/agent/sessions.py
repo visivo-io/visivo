@@ -1,4 +1,4 @@
-"""One run of the built-in loop, and the handle to stop it.
+"""A conversation with the built-in loop, and the handle to stop it.
 
 Mirrors ``RunManager``: the caller creates a session, a daemon thread executes
 it, and the client polls. A loop that talks to a model for a minute cannot hold
@@ -8,6 +8,17 @@ The cancel handle is what makes this more than a status dict. "A running loop
 the user cannot stop is not shippable" is the ticket's wording, and a flag the
 loop checks between turns is not the same thing — the wait is inside a model
 call, which is exactly where someone presses stop.
+
+## A session is a conversation, not a request
+
+Each turn is answered with the whole history in front of the model, so "now add
+a chart to that" means something. Without it every prompt starts from nothing
+and the agent is a one-shot tool wearing a chat box.
+
+History is pydantic-ai's own message objects, kept as they came back rather
+than re-derived from our transcript: the model has to be given exactly the turn
+it produced — including tool calls and their results — or it re-runs work it
+already did.
 """
 
 import threading
@@ -39,9 +50,24 @@ class Session:
         self.created_at = datetime.now()
         self.updated_at = self.created_at
         self._cancel = None
+        # pydantic-ai's own message objects, for the model.
+        self.history = []
+        # What a person reads. Kept separately because the two answer different
+        # questions: the model needs its own tool calls replayed verbatim, a
+        # reader needs to know who said what.
+        self.transcript = []
 
-    def to_dict(self):
-        return {
+    def say(self, role, text):
+        entry = {
+            "role": role,
+            "text": text,
+            "at": datetime.now().isoformat(),
+        }
+        self.transcript.append(entry)
+        return entry
+
+    def to_dict(self, with_transcript=True):
+        payload = {
             "id": self.id,
             "state": self.state.value,
             "prompt": self.prompt,
@@ -49,7 +75,11 @@ class Session:
             "error": self.error,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
+            "turns": len(self.transcript),
         }
+        if with_transcript:
+            payload["transcript"] = list(self.transcript)
+        return payload
 
 
 class SessionManager:
@@ -75,6 +105,7 @@ class SessionManager:
 
     def create(self, prompt):
         session = Session(str(uuid.uuid4()), prompt)
+        session.say("user", prompt)
         with self._lock:
             self._sessions[session.id] = session
             self._order.append(session.id)
@@ -87,9 +118,40 @@ class SessionManager:
             return self._sessions.get(session_id)
 
     def list(self, limit=20):
+        """Without transcripts — a list of conversations is not a place to send
+        every message of every one of them."""
         with self._lock:
             newest = list(reversed(self._order))[:limit]
-            return [self._sessions[i].to_dict() for i in newest if i in self._sessions]
+            return [
+                self._sessions[i].to_dict(with_transcript=False)
+                for i in newest
+                if i in self._sessions
+            ]
+
+    def add_turn(self, session_id, prompt):
+        """Continue an existing conversation. Returns the session, or None if
+        it has been evicted — a caller must not silently start a new one under
+        an id the user thinks they are still talking to."""
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None:
+                return None
+            session.prompt = prompt
+            session.output = None
+            session.error = None
+            session.state = SessionState.QUEUED
+            session.updated_at = datetime.now()
+            session.say("user", prompt)
+            return session
+
+    def remember(self, session_id, history, answer):
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None:
+                return
+            session.history = history
+            if answer:
+                session.say("agent", answer)
 
     def active(self):
         with self._lock:

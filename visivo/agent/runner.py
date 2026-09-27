@@ -19,10 +19,22 @@ from visivo.agent.sessions import SessionManager, SessionState
 from visivo.logger.logger import Logger
 
 
-def start(app, prompt, model, session_manager=None):
-    """Create a session and run it in the background. Returns immediately."""
+def start(app, prompt, model, session_manager=None, session_id=None):
+    """Answer ``prompt``, in a new conversation or the one named by
+    ``session_id``. Returns immediately; the turn runs in the background.
+
+    A named session that no longer exists returns ``None`` rather than starting
+    a fresh one — the user believes they are still in a conversation, and
+    silently giving them a new one loses everything it was about.
+    """
     manager = session_manager or SessionManager.instance()
-    session = manager.create(prompt)
+    if session_id:
+        session = manager.add_turn(session_id, prompt)
+        if session is None:
+            return None
+    else:
+        session = manager.create(prompt)
+
     thread = threading.Thread(
         target=_execute,
         args=(app, manager, session.id, prompt, model),
@@ -37,7 +49,14 @@ def _execute(app, manager, session_id, prompt, model):
     try:
         asyncio.set_event_loop(loop)
         agent = build_agent(app, model)
-        task = loop.create_task(agent.run(prompt, usage_limits=usage_limits()))
+        # Everything said so far, so a follow-up means something. Read before
+        # the turn starts and passed whole — pydantic-ai needs its own message
+        # objects back, including tool calls and their results, or it re-runs
+        # work it has already done.
+        history = list(getattr(manager.get(session_id), "history", []) or [])
+        task = loop.create_task(
+            agent.run(prompt, message_history=history, usage_limits=usage_limits())
+        )
 
         # Attached before the state flips to RUNNING, so there is no window in
         # which a session looks stoppable and is not.
@@ -51,7 +70,11 @@ def _execute(app, manager, session_id, prompt, model):
         except asyncio.CancelledError:
             manager.set_state(session_id, SessionState.CANCELLED)
             return
-        manager.set_state(session_id, SessionState.SUCCEEDED, output=str(result.output))
+        answer = str(result.output)
+        # Persisted BEFORE the state flips, so a poll that sees "succeeded"
+        # cannot arrive ahead of the answer it is being told about.
+        manager.remember(session_id, result.all_messages(), answer)
+        manager.set_state(session_id, SessionState.SUCCEEDED, output=answer)
     except Exception as error:  # noqa: BLE001 — reported to the session, never raised
         # An agent failure is a failure: it belongs in the same place every
         # other error goes, not a bespoke red box.
