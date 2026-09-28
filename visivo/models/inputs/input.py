@@ -14,6 +14,11 @@ class InputTypes(str, Enum):
 class Input(NamedModel, ParentModel):
     """Base class for all input types."""
 
+    # The label is what the widget is called on screen; the input job reads
+    # options, display and range, never this. Renaming "Cuisine" to "Pick a
+    # cuisine" used to rebuild the options and everything downstream.
+    presentation_fields = frozenset({"label"})
+
     type: InputTypes = Field(
         description="Type of input component (single-select or multi-select)",
     )

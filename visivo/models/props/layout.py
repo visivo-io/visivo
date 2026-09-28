@@ -1,3 +1,4 @@
+from typing import ClassVar
 from importlib.resources import files
 import json
 from jsonschema_rs import ValidationError, validator_for
@@ -7,6 +8,10 @@ from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_fro
 
 
 class Layout(JsonSchemaBase):
+    # Free-form plotly styling with no declared fields, so there is nothing to
+    # list as presentation. A title, a colourway and an axis range change how
+    # a chart is drawn; the same field holding a ``?{ }`` feeds the query.
+    data_when_query_valued: ClassVar[bool] = True
 
     @model_validator(mode="before")
     @classmethod
