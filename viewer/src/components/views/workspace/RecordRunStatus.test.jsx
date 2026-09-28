@@ -90,3 +90,90 @@ describe('RecordRunStatus', () => {
     expect(link).toHaveAttribute('href', '/runs');
   });
 });
+
+describe('RecordRunStatus with diagnostics payloads (W4)', () => {
+  const diagnosticsRun = diagnostics => ({
+    id: 'run-11',
+    state: 'failed',
+    dag_filter: '+revenue_insight+,+warehouse+',
+    error_json: { phase: 'run', diagnostics },
+    is_superseded: false,
+    created_at: '2026-07-01T12:00:00Z',
+  });
+
+  it('renders the diagnostic message and hint for the record', () => {
+    setRuns([
+      diagnosticsRun([
+        {
+          severity: 'error',
+          phase: 'run',
+          code: 'query_execution_failed',
+          message: 'no such table: orders',
+          object: { type: 'insight', name: 'revenue_insight' },
+          hint: 'Check the model SQL, then run again.',
+          related: [],
+        },
+      ]),
+    ]);
+    render(<RecordRunStatus name="revenue_insight" />);
+    const banner = screen.getByTestId('record-run-status');
+    expect(banner).toHaveTextContent('Last run failed');
+    expect(banner).toHaveTextContent('no such table: orders');
+    expect(screen.getByTestId('record-run-status-hint')).toHaveTextContent(
+      'Check the model SQL, then run again.'
+    );
+  });
+
+  it('names the upstream object when the failure is about a different record', () => {
+    setRuns([
+      diagnosticsRun([
+        {
+          severity: 'error',
+          phase: 'run',
+          code: 'source_locked',
+          message: 'database file is held by another connection',
+          object: { type: 'source', name: 'warehouse' },
+          related: [],
+        },
+      ]),
+    ]);
+    render(<RecordRunStatus name="revenue_insight" />);
+    const banner = screen.getByTestId('record-run-status');
+    expect(banner).toHaveTextContent("source 'warehouse':");
+    expect(banner).toHaveTextContent('database file is held by another connection');
+  });
+
+  it('never renders the raw {"phase":"run"} envelope for legacy payloads', () => {
+    setRuns([
+      {
+        id: 'run-12',
+        state: 'failed',
+        dag_filter: '+revenue_insight+',
+        error_json: { phase: 'run' },
+        is_superseded: false,
+        created_at: '2026-07-01T12:00:00Z',
+      },
+    ]);
+    render(<RecordRunStatus name="revenue_insight" />);
+    const banner = screen.getByTestId('record-run-status');
+    expect(banner).not.toHaveTextContent('{"phase":"run"}');
+    expect(banner).toHaveTextContent('Run failed');
+  });
+
+  it('omits the hint row when the diagnostic has none', () => {
+    setRuns([
+      diagnosticsRun([
+        {
+          severity: 'error',
+          phase: 'run',
+          code: 'query_execution_failed',
+          message: 'boom',
+          object: { type: 'insight', name: 'revenue_insight' },
+          related: [],
+        },
+      ]),
+    ]);
+    render(<RecordRunStatus name="revenue_insight" />);
+    expect(screen.queryByTestId('record-run-status-hint')).not.toBeInTheDocument();
+  });
+});
