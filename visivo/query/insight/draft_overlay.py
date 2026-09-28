@@ -26,6 +26,7 @@ from visivo.models.insight import Insight
 from visivo.server.jobs.project_injection import (
     inject_cached_objects,
     merge_objects_into_list,
+    renest_model_scoped_fields,
 )
 
 # Mirrors the pre-#507 ``preview_job_executor.py``'s ``CONTEXT_OBJECT_TYPES``
@@ -125,6 +126,47 @@ def _inject_model_scoped_fields(project, field_name, configs):
         setattr(project, field_name, merge_objects_into_list(existing, project_level))
 
 
+def _carry_forward_nested_fields(existing, replacement, config):
+    """A draft model dict is a partial override of the model the user is
+    editing — its SQL and source — NOT a fresh declaration of everything that
+    model owns.
+
+    The Explorer sends a ``draft_models`` entry for EVERY open model on every
+    preview (``useDraftInsightPreview.js``: every ``modelStates`` entry with
+    ``sql`` + ``sourceName``, published models included), and that wire dict
+    carries only ``{name, sql, source}``. Merging it by name is a REPLACEMENT
+    (``merge_objects_into_list`` does ``by_name[name] = obj``), so without this
+    the freshly validated ``SqlModel`` — ``metrics=[]``, ``dimensions=[]`` —
+    evicts every model-scoped field the overlay had just put on that model:
+    the ones re-nested out of the manager cache moments earlier, and the ones
+    already committed to YAML. The field is then in NEITHER
+    ``model.metrics`` nor ``project.metrics``, which is worse than the
+    flattening this module set out to fix — ``${ref(model).field}`` falls
+    through to the raw column (B12's headline symptom, silently), and a bare
+    ``${ref(field)}`` stops resolving at all because the node is simply gone.
+
+    Only keys the draft dict actually carries override. An explicit
+    ``"metrics": []`` still means "this model declares none"; an absent key
+    means "unchanged", which is what the client is really saying.
+    """
+    if existing is None:
+        return
+    cfg = config if isinstance(config, dict) else {}
+    for field_attr in _MODEL_SCOPED_FIELDS:
+        if cfg.get(field_attr) is not None:
+            continue
+        inherited = list(getattr(existing, field_attr, None) or [])
+        if not inherited:
+            continue
+        for field in inherited:
+            # Post-construction assignment bypasses SqlModel's after-validator,
+            # so re-assert the scope the same way `_inject_model_scoped_fields`
+            # does. (The name is unchanged — this is a same-name replacement —
+            # but stating it keeps the contract in one shape.)
+            field.set_parent_name(replacement.name)
+        setattr(replacement, field_attr, inherited)
+
+
 def _inject_draft_objects(project, draft_objects):
     """``draft_objects``: ``{"models": [...], "metrics": [...], "dimensions": [...]}``
     of wire-shaped config dicts -> validated Pydantic instances, merged by
@@ -144,6 +186,7 @@ def _inject_draft_objects(project, draft_objects):
             validated = [adapter.validate_python(c) for c in configs]
         except ValidationError as e:
             raise DraftOverlayError(f"Invalid draft {field_name}: {e}") from e
+        obj_list = list(getattr(project, field_name, None) or [])
         # A DRAFT model exists solely to be compiled + executed for this
         # insight preview, so it MUST carry executable SQL. Before #533,
         # ``ModelField`` was a discriminated union whose discriminator returned
@@ -157,7 +200,11 @@ def _inject_draft_objects(project, draft_objects):
         # "model not run" marker (a 422) instead of the intended clean 400.
         # Re-assert the gate explicitly for the draft flow only.
         if field_name == "models":
-            for obj in validated:
+            # The models this draft is about to REPLACE by name — captured
+            # before the merge so `_carry_forward_nested_fields` can keep what
+            # each one owns (see its docstring).
+            shadowed = {getattr(m, "name", None): m for m in obj_list}
+            for config, obj in zip(configs, validated):
                 # Blank / whitespace-only sql is as unexecutable as sql=None —
                 # gate both here so they produce the same clean 400 rather than
                 # letting an empty string slip through to a confusing downstream
@@ -167,7 +214,7 @@ def _inject_draft_objects(project, draft_objects):
                         f"Invalid draft models: model '{obj.name}' defines no `sql` — "
                         "a draft model must carry an executable SQL query."
                     )
-        obj_list = list(getattr(project, field_name, None) or [])
+                _carry_forward_nested_fields(shadowed.get(obj.name), obj, config)
         new_objects = [(obj.name, obj) for obj in validated]
         setattr(project, field_name, merge_objects_into_list(obj_list, new_objects))
 
@@ -205,6 +252,16 @@ def build_draft_overlay(
             "dimensions": draft_dimensions,
         },
     )
+    # The rule has to hold on the FINAL overlay, not on an intermediate one.
+    # `inject_cached_objects` re-nests against the models it knows about, but
+    # `draft_models` can introduce the owner AFTER it runs — a scratch model
+    # that lives only in the Explorer's local `modelStates` while a field
+    # scoped to it was already saved into the manager cache. Re-nesting last
+    # lets that field find its model instead of staying a project-level orphan.
+    # Idempotent: a field already nested is no longer in `project.metrics`, and
+    # the project-level fallback in `_inject_model_scoped_fields` deliberately
+    # leaves `_parent_name` unset, so this pass never claws those back.
+    renest_model_scoped_fields(project)
 
     try:
         insight = Insight.model_validate(insight_config)
