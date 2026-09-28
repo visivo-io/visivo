@@ -85,6 +85,7 @@ import {
   draftToLegacyState,
 } from '../components/views/workspace/explorationLegacyBridge';
 import { buildPromoteChecklist } from './promoteChecklist';
+import { invalidateExplorationResults } from './explorationResultCache';
 import { SAVE_ACTION } from '../components/views/workspace/collectionKeys';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 import { emitWorkspaceEvent, markExplorationCreated } from '../components/views/workspace/telemetry';
@@ -453,6 +454,10 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         return { success: false, error: error.message };
       }
       clearPendingSyncTimer(id);
+      // M27: the document is gone — so are any results parked for it. Nothing
+      // can read them again, and holding rows for a deleted exploration is
+      // just retained memory.
+      invalidateExplorationResults(id);
       const tabId = `exploration:${id}`;
       const wasOpen = (get().workspaceTabs || []).some(t => t.id === tabId);
       get().closeWorkspaceTab?.(tabId);
@@ -887,6 +892,16 @@ const createWorkspaceExplorationsSlice = (set, get) => {
 
         if (row.type === 'insight' && frozenSignaturesByInsightName[row.name]) {
           get().recordPromotedInsightSignature?.(row.name, frozenSignaturesByInsightName[row.name]);
+        }
+
+        // M27: a promoted model's rows stop being this session's private
+        // scratch result and become the project's. From here on the
+        // authoritative rows for that name are whatever the project builds
+        // (`useModelTabPrefill`'s last-build path), and the promoted config is
+        // the checklist's — not necessarily the raw text the chip last ran. A
+        // session-cached result must not shadow either.
+        if (row.type === 'model') {
+          invalidateExplorationResults(id, row.name);
         }
 
         if (row.type === 'metric' || row.type === 'dimension') {
