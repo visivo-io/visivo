@@ -30,6 +30,7 @@ from flask import g, jsonify, request
 from visivo.logger.logger import Logger
 from visivo.server.hash.data_fingerprint import data_fingerprint
 from visivo.server.jobs.save_run_executor import request_run, run_now
+from visivo.server.managers.object_manager import location_free_dump
 from visivo.server.user_config import AUTOMATIC, get_run_trigger
 
 # URL segment -> (manager attr, fingerprint mode, data_producing). Public so the
@@ -88,11 +89,7 @@ def _resource_fingerprint(flask_app, segment, name, *, deleted=False):
     if manager is None:
         return None
     obj = None if deleted else manager.get(name)
-    config = (
-        obj.model_dump(mode="json", exclude_none=True, exclude={"file_path", "path"})
-        if obj is not None
-        else None
-    )
+    config = location_free_dump(obj, mode="json", exclude_none=True) if obj is not None else None
     return data_fingerprint(mode, config, deleted=deleted, data_producing=data_producing)
 
 
