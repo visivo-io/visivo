@@ -532,10 +532,14 @@ describe('full-stack resize gesture → REAL provider commit (jsdom pointer driv
     render(<Host />);
     const handle = screen.getByTestId('canvas-resize-width-row.0.item.0');
 
-    // 12 grid cols over an 800px row → ~66.7px/col. Drag LEFT ~2 columns.
+    // M26: this row is 9 + 2 = 11 grid columns wide, NOT 12, and the total moves
+    // with the drag. Item 0 renders at 9/11 of the 800px row (654.5px); dragging
+    // its right edge LEFT 33px asks for a ~621px slot, and the span that renders
+    // nearest to that is 7 (7/9 of 800 = 622.2px — the next candidates are 6/8 =
+    // 600px and 8/10 = 640px).
     firePointerDown(handle, { clientX: 600, clientY: 100 });
-    firePointer('pointermove', { clientX: 466, clientY: 100 });
-    firePointer('pointerup', { clientX: 466, clientY: 100 });
+    firePointer('pointermove', { clientX: 567, clientY: 100 });
+    firePointer('pointerup', { clientX: 567, clientY: 100 });
 
     await waitFor(() => expect(currentConfig().rows[0].items[0].width).toBe(7));
     // #46: the pre-edit baseline was captured so the Save footer knows it's dirty.

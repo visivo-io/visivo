@@ -1394,6 +1394,43 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceCanvasHoverKey).toBeNull();
   });
 
+  // Canvas resize-in-flight key (M26 / VIS-1260) ------------------------------
+
+  test('setWorkspaceCanvasResizeKey sets/clears the gesture key, and is a reference-stable no-op when unchanged', () => {
+    expect(useStore.getState().workspaceCanvasResizeKey).toBeNull();
+    act(() => {
+      useStore.getState().setWorkspaceCanvasResizeKey('row.0.item.1');
+    });
+    expect(useStore.getState().workspaceCanvasResizeKey).toBe('row.0.item.1');
+    const stateBefore = useStore.getState();
+    act(() => {
+      useStore.getState().setWorkspaceCanvasResizeKey('row.0.item.1');
+    });
+    // A gesture re-publishing the same key must not re-render the whole canvas
+    // on every pointermove.
+    expect(useStore.getState()).toBe(stateBefore);
+    act(() => {
+      useStore.getState().setWorkspaceCanvasResizeKey(null);
+    });
+    expect(useStore.getState().workspaceCanvasResizeKey).toBeNull();
+  });
+
+  test('the resize key is disjoint from selection and hover — a gesture never moves them', () => {
+    act(() => {
+      useStore.getState().setWorkspaceOutlineSelectedKey('row.0.item.1');
+      useStore.getState().setWorkspaceCanvasHoverKey('row.0.item.0');
+      useStore.getState().setWorkspaceCanvasResizeKey('row.0.item.1');
+    });
+    // The selection MUST survive the gesture: the resize handles are painted on
+    // the selected node, so losing it mid-drag would take the handles with it.
+    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.0.item.1');
+    expect(useStore.getState().workspaceCanvasHoverKey).toBe('row.0.item.0');
+    act(() => {
+      useStore.getState().setWorkspaceCanvasResizeKey(null);
+    });
+    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.0.item.1');
+  });
+
   // Outline tree (VIS-793 / Track F F-3) ------------------------------------
 
   test('setWorkspaceOutlineSelectedKey updates the selection key', () => {
