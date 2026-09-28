@@ -100,6 +100,16 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
 
       const data = await response.json();
 
+      // Never-built is an EMPTY STATE, not an error (Flask answers 200
+      // {state: 'not_built'} instead of the old 404). Return [] with NO
+      // retry — retrying a not-yet-built insight is what turned one render
+      // into six polls and six server log lines. Cloud/older servers keep
+      // returning bare arrays and take the path below unchanged.
+      if (data && !Array.isArray(data) && data.state === 'not_built') {
+        console.debug('Insights not built yet:', data.missing);
+        return [];
+      }
+
       let insightJobs = Array.isArray(data) ? data : [data];
 
       const validInsightJobs = insightJobs.filter(insightJob => {
