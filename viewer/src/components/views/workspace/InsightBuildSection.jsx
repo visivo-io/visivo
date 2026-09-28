@@ -18,21 +18,23 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
+import { encodeQueryString } from '../../../utils/expressionCodec';
+import {
+  INTERACTION_HELP,
+  INTERACTION_TYPE_OPTIONS,
+  interactionExampleHint,
+} from '../../../schemas/interactionHelp';
 
 const INSIGHT_COLORS = getTypeColors('insight');
 const InsightTypeIcon = getTypeIcon('insight');
-
-const INTERACTION_TYPES = [
-  { value: 'filter', label: 'Filter' },
-  { value: 'split', label: 'Split' },
-  { value: 'sort', label: 'Sort' },
-];
 
 const InteractionRow = ({ interaction, index, insightName, updateInsightInteraction, handleRemoveInteraction }) => {
   const { isOver, setNodeRef } = useDroppable({
     id: `interaction-zone-${insightName}-${index}`,
     data: { type: 'interaction-zone', insightName, index },
   });
+
+  const interactionType = INTERACTION_HELP[interaction.type] ? interaction.type : 'filter';
 
   return (
     <div data-testid={`insight-interaction-${index}`} className="flex items-center gap-2">
@@ -41,7 +43,7 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         size="sm"
         className="min-w-[110px]"
         value={interaction.type || 'filter'}
-        options={INTERACTION_TYPES}
+        options={INTERACTION_TYPE_OPTIONS}
         onChange={type => {
           updateInsightInteraction(insightName, index, { type });
         }}
@@ -53,13 +55,14 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
       >
         <ExpressionField
           objectType="interaction"
-          field="filter"
+          field={interactionType}
           value={interaction.value || ''}
           onChange={newVal => {
             updateInsightInteraction(insightName, index, { value: newVal });
           }}
           label=""
           rows={1}
+          helperText={interactionExampleHint(interactionType)}
         />
       </div>
       <button
@@ -201,7 +204,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
       if (dragData.source === 'pill') {
         if (!dragData.sourcePath || !dragData.raw) return;
         if (dragData.sourcePath === path) return; // dropped back on itself — no-op, nothing to warn about
-        setInsightProp(insightName, path, `?{${dragData.raw}}`);
+        setInsightProp(insightName, path, encodeQueryString({ body: dragData.raw }));
         removeInsightProp(insightName, dragData.sourcePath);
         return;
       }
@@ -243,7 +246,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
         showWorkspaceToast?.("Can't drop that here.");
         return;
       }
-      setInsightProp(insightName, path, `?{${body}}`);
+      setInsightProp(insightName, path, encodeQueryString({ body }));
     },
     [activeModelName, insightName, setInsightProp, removeInsightProp, showWorkspaceToast]
   );
