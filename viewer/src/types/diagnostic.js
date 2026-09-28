@@ -46,6 +46,7 @@ export const DIAGNOSTIC_CODES = [
   'invalid_value',
   'broken_reference',
   'expression_parse_failed',
+  'non_plottable_axis_type',
   'yaml_parse_failed',
   'source_locked',
   'source_connection_failed',

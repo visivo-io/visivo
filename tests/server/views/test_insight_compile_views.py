@@ -214,3 +214,67 @@ class TestCompileDraftValidation:
 # mounted on the SAME Flask app (via the shared `integration_app`/
 # `integration_client` fixtures), which this file's minimal stub app
 # deliberately doesn't carry.
+
+
+class TestCompileDraftPositionalAxisTypeGate:
+    """WB9 / S5-14: a draft whose x resolves to a STRUCT must come back as a
+    400 that both READS well (``error``) and PARSES (``diagnostic``), instead
+    of a 200 the Explorer renders as an empty chart."""
+
+    def _struct_payload(self):
+        return {
+            "insight": {
+                "name": "blank_chart",
+                "props": {
+                    "type": "scatter",
+                    # The S5-14 double-wrap: the inner ?{...} survives into the
+                    # resolved SQL and SQLGlot reads it as a struct literal.
+                    "x": "?{?{${ref(orders_q).region}}}",
+                    "y": "?{sum(${ref(orders_q).amount})}",
+                },
+            }
+        }
+
+    def test_struct_bound_to_x_is_a_400_not_a_blank_200(self, client, tmp_path):
+        from visivo.models.base.named_model import alpha_hash
+
+        write_schema(
+            tmp_path, "orders_q", alpha_hash("orders_q"), {"region": "VARCHAR", "amount": "DOUBLE"}
+        )
+        resp = client.post("/api/insight-compile-draft/", json=self._struct_payload())
+        assert resp.status_code == 400
+        body = resp.get_json()
+        assert "blank_chart" in body["error"]
+        assert "props.x" in body["error"]
+        assert "STRUCT" in body["error"]
+
+    def test_the_400_carries_the_structured_diagnostic(self, client, tmp_path):
+        from visivo.models.base.named_model import alpha_hash
+
+        write_schema(
+            tmp_path, "orders_q", alpha_hash("orders_q"), {"region": "VARCHAR", "amount": "DOUBLE"}
+        )
+        resp = client.post("/api/insight-compile-draft/", json=self._struct_payload())
+        body = resp.get_json()
+        # PLURAL key, LIST value — the shape `diagnosticsFrom` in
+        # viewer/src/types/diagnostic.js reads. A singular object would be
+        # invisible to every existing client.
+        assert isinstance(body["diagnostics"], list)
+        assert len(body["diagnostics"]) == 1
+        diagnostic = body["diagnostics"][0]
+        assert diagnostic["code"] == "non_plottable_axis_type"
+        assert diagnostic["phase"] == "compile"
+        assert diagnostic["severity"] == "error"
+        assert diagnostic["field"] == "props.x"
+        assert diagnostic["object"] == {"type": "insight", "name": "blank_chart"}
+        assert diagnostic["hint"]
+
+    def test_an_ordinary_build_failure_carries_no_diagnostic_key(self, client):
+        """`diagnostic` is additive — a 400 from a failure that produced none
+        must not grow a null/empty key."""
+        resp = client.post(
+            "/api/insight-compile-draft/",
+            json=insight_payload(model_name="totally_made_up_model"),
+        )
+        assert resp.status_code == 400
+        assert "diagnostics" not in resp.get_json()
