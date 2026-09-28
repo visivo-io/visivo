@@ -5,9 +5,11 @@ from visivo.models.insight import Insight
 from visivo.jobs.job import (
     Job,
     JobResult,
+    diagnostic_object_ref,
     format_message_failure,
     format_message_success,
 )
+from visivo.models.diagnostic import Diagnostic, DiagnosticPhase, DiagnosticRelated
 from visivo.logger.query_error_logger import log_failed_query, extract_error_location
 from time import time
 from visivo.jobs.utils import get_source_for_model
@@ -33,7 +35,12 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
     insight_query_info = None
 
     try:
-        model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
+        models = all_descendants_of_type(type=Model, dag=dag, from_node=insight)
+        if not models:
+            # B9 guard: a model-less insight must fail ITS job with a legible
+            # diagnostic, not IndexError into the generic except below.
+            return _missing_model_result(insight, start_time)
+        model = models[0]
         source = get_source_for_model(model, dag, run_output_dir)
 
         insight_query_info = insight.get_query_info(dag, run_output_dir)
@@ -163,18 +170,70 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             full_path=None,
             error_msg=error_display,
         )
+        # error_details' error_type values are registered diagnostic codes by
+        # design (missing_relation / ambiguous_relation) — everything else is a
+        # query that the source refused.
+        diagnostic = Diagnostic.from_exception(
+            e,
+            phase=DiagnosticPhase.RUN,
+            code=error_details["error_type"] if error_details else "query_execution_failed",
+            object=diagnostic_object_ref(insight),
+            related=[
+                DiagnosticRelated(
+                    message=f"Join endpoint model '{model_name}'",
+                    object={"type": "model", "name": model_name},
+                )
+                for model_name in (error_details or {}).get("error_models", [])
+            ],
+        )
         return JobResult(
             item=insight,
             success=False,
             message=failure_message,
             error_details=error_details,
+            diagnostic=diagnostic,
         )
 
 
+def _missing_model_result(insight: Insight, start_time) -> JobResult:
+    """The failed JobResult for an insight that references no model (B9)."""
+    message = f"Insight '{insight.name}' does not reference a model, so it has no data to run."
+    failure_message = format_message_failure(
+        details=f"Failed job for insight \033[4m{insight.name}\033[0m",
+        start_time=start_time,
+        full_path=None,
+        error_msg=message,
+    )
+    return JobResult(
+        item=insight,
+        success=False,
+        message=failure_message,
+        diagnostic=Diagnostic(
+            phase=DiagnosticPhase.RUN,
+            code="missing_model",
+            message=message,
+            object=diagnostic_object_ref(insight),
+            hint=(
+                "Reference a model column in the insight's props, "
+                "e.g. x: ?{ ${ref(my_model).my_column} }."
+            ),
+        ),
+    )
+
+
+def missing_model_action(insight: Insight) -> JobResult:
+    """Job action for a model-less insight: report the failure through the
+    normal JobResult channel instead of crashing the runner (B9)."""
+    return _missing_model_result(insight, time())
+
+
 def _get_source(insight, dag, output_dir):
-    """Get the appropriate source for an insight"""
-    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-    return get_source_for_model(model, dag, output_dir)
+    """Get the appropriate source for an insight, or None when the insight
+    references no model."""
+    models = all_descendants_of_type(type=Model, dag=dag, from_node=insight)
+    if not models:
+        return None
+    return get_source_for_model(models[0], dag, output_dir)
 
 
 def job(dag, output_dir: str, insight: Insight, run_id: str = None):
@@ -187,6 +246,12 @@ def job(dag, output_dir: str, insight: Insight, run_id: str = None):
         run_id: Optional run ID for preview runs (passed to action for custom file naming)
     """
     run_output_dir = f"{output_dir}/{run_id}" if run_id is not None else f"{output_dir}/main"
+    if not all_descendants_of_type(type=Model, dag=dag, from_node=insight):
+        # B9: this used to IndexError right here — at job-creation time, inside
+        # the DAG runner's scheduling loop — killing the whole run (and, from
+        # `visivo run`, the process) instead of failing the one insight. Hand
+        # back a job whose action reports the failure like any other.
+        return Job(item=insight, source=None, action=missing_model_action, insight=insight)
     source = _get_source(insight, dag, run_output_dir)
     kwargs = {
         "insight": insight,

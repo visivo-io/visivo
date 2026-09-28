@@ -65,6 +65,7 @@ DIAGNOSTIC_CODES = {
     "source_connection_failed": "The source is unreachable or refused the connection.",
     # Jobs / runs
     "dependency_failed": "The job was skipped because something it depends on failed.",
+    "missing_model": "The object references no model, so there is nothing to run it against.",
     "missing_relation": "An insight joins models with no relation declared between them.",
     "ambiguous_relation": "More than one relation path exists between the joined models.",
     "query_execution_failed": "The source raised an error executing the job's query.",
@@ -154,6 +155,8 @@ class Diagnostic(BaseModel):
         code: str = "unexpected_error",
         object: Optional[DiagnosticObjectRef] = None,
         hint: Optional[str] = None,
+        location: Optional[DiagnosticLocation] = None,
+        related: Optional[List[DiagnosticRelated]] = None,
     ) -> "Diagnostic":
         """Wrap an exception without leaking a traceback into the headline.
 
@@ -173,6 +176,8 @@ class Diagnostic(BaseModel):
                 detail=f"(unregistered diagnostic code '{code}')\n{text}",
                 object=object,
                 hint=hint,
+                location=location,
+                related=related or [],
             )
         return cls(
             phase=phase,
@@ -181,4 +186,6 @@ class Diagnostic(BaseModel):
             detail=text if text != first_line else None,
             object=object,
             hint=hint,
+            location=location,
+            related=related or [],
         )

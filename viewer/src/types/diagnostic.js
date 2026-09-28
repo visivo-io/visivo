@@ -50,6 +50,7 @@ export const DIAGNOSTIC_CODES = [
   'source_locked',
   'source_connection_failed',
   'dependency_failed',
+  'missing_model',
   'missing_relation',
   'ambiguous_relation',
   'query_execution_failed',
