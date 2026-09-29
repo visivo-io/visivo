@@ -179,13 +179,16 @@ class TestAskingForSomethingSpecific:
 
 class TestTheCloudModel:
     def test_it_points_at_core_not_at_a_provider(self, with_cloud):
-        assert cloud_model.base_url(HOST) == f"{HOST}/api/inference/v1"
+        assert cloud_model.base_url(HOST) == f"{HOST}/api/inference"
 
     def test_the_base_url_is_what_openai_appends_to(self, with_cloud):
-        """pydantic-ai's OpenAIProvider appends `/chat/completions`, so this has
-        to be the prefix core mounts that path under — off by one segment and
-        every call 404s."""
-        assert cloud_model.base_url(HOST).endswith("/api/inference/v1")
+        """The SDK appends `/chat/completions`, so this has to be exactly the
+        prefix core mounts that path under. Off by a segment and every call
+        comes back as core's catch-all 404, which reads like the endpoint does
+        not exist rather than like the base_url is wrong."""
+        assert cloud_model.base_url(HOST) + "/chat/completions" == (
+            f"{HOST}/api/inference/chat/completions"
+        )
 
     def test_it_carries_the_visivo_token_as_its_key(self, with_cloud):
         model = cloud_model.build(HOST)

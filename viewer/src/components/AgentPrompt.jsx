@@ -22,6 +22,9 @@ import { cancelAgentSession, fetchAgentSession, startAgentSession } from '../api
  */
 
 const POLL_MS = 1000;
+// Enough that a momentary blip rides through, few enough that something
+// structurally broken says so rather than spinning forever.
+const POLL_FAILURES_BEFORE_GIVING_UP = 5;
 const ACTIVE = ['queued', 'running'];
 
 const isActive = session => Boolean(session) && ACTIVE.includes(session.state);
@@ -49,14 +52,27 @@ const AgentPrompt = () => {
   const poll = useCallback(
     sessionId => {
       stopPolling();
+      let consecutiveFailures = 0;
       const check = async () => {
         try {
           const latest = await fetchAgentSession(sessionId, projectId);
+          consecutiveFailures = 0;
           if (!latest) return;
           setSession(latest);
           if (!isActive(latest)) stopPolling();
-        } catch {
-          // A failed poll is not a failed session — the next one may work.
+        } catch (error) {
+          // One failed poll is not a failed session — the next may work. But
+          // a poll that keeps failing is not a blip, it is broken, and
+          // swallowing it forever is how a bad URL looked like an agent that
+          // never answered.
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= POLL_FAILURES_BEFORE_GIVING_UP) {
+            stopPolling();
+            setNotice({
+              kind: 'error',
+              text: `Lost contact with the agent: ${error.message}`,
+            });
+          }
         }
       };
       // Once immediately: a loop that answers in under a second should not

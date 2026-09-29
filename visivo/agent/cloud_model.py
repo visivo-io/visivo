@@ -29,8 +29,10 @@ from visivo.server.constants import VISIVO_HOST
 from visivo.tokens.token_functions import get_existing_token
 
 # pydantic-ai's OpenAIProvider appends `/chat/completions` to its base_url, so
-# this is the prefix core mounts that path under.
-INFERENCE_PATH = "/api/inference/v1"
+# this is the prefix core mounts that path under. No version segment: there is
+# one client and one server, both ours, released together — a version in the
+# path would be ceremony for a compatibility promise nobody is making.
+INFERENCE_PATH = "/api/inference"
 
 # The name is core's to honour — it pins the model server-side so a client
 # cannot choose its own cost — but a model name is required to construct the
