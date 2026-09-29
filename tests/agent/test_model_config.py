@@ -197,3 +197,45 @@ class TestTheCloudModel:
 
     def test_no_token_means_not_available(self, no_cloud):
         assert cloud_model.available(HOST) is False
+
+
+class TestWhenOurOwnEndpointFails:
+    """A 404 from Visivo Cloud arrives looking exactly like a provider error —
+    "status_code: 404, model_name: google/gemini-2.5-pro" — which sends someone
+    to Google's status page for a route on our own server."""
+
+    def _http_error(self, status):
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        return ModelHTTPError(
+            status_code=status,
+            model_name="google/gemini-2.5-pro",
+            body={"detail": "No API endpoint at /api/inference/chat/completions"},
+        )
+
+    def test_a_404_says_the_server_is_probably_old(self):
+        message = cloud_model.explain(self._http_error(404), HOST)
+
+        assert HOST in message
+        assert "older than this CLI" in message
+        assert "own provider key" in message, "always leave a way to keep working"
+
+    def test_a_503_says_it_is_switched_off_rather_than_missing(self):
+        """Different cause, different fix — not-deployed and not-enabled need
+        different things done about them."""
+        assert "not switched on" in cloud_model.explain(self._http_error(503), HOST)
+
+    def test_it_names_the_host_the_agent_was_pointed_at(self):
+        """`agent: host:` can point somewhere else entirely, and "not available"
+        without saying where is unactionable."""
+        message = cloud_model.explain(self._http_error(404), "https://app.development.visivo.io")
+
+        assert "app.development.visivo.io" in message
+
+    def test_a_real_provider_failure_is_left_alone(self):
+        """A rate limit from Google IS the provider's, and rewriting it as our
+        problem would be a lie in the other direction."""
+        assert cloud_model.explain(self._http_error(429), HOST) is None
+
+    def test_anything_that_is_not_an_http_error_is_left_alone(self):
+        assert cloud_model.explain(RuntimeError("something else"), HOST) is None
