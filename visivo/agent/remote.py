@@ -73,11 +73,28 @@ class CoreClient:
     would be a second way to edit a project.
     """
 
-    def __init__(self, base_url, token, project_id, session=None):
+    def __init__(self, base_url, token, project_id, session=None, host_header=None):
+        """``base_url`` is what we CONNECT to; ``host_header`` is what core is
+        told it is.
+
+        They differ in-cluster. A pod cannot reach its own cluster's external
+        ingress, so the connection goes to the web Service's DNS name — and
+        core's ALLOWED_HOSTS knows only the public hostname, rejecting anything
+        else with a 400 (``DisallowedHost``, which arrives as an HTML error
+        page rather than anything an agent can read). Sending the public name
+        as ``Host`` satisfies that, and ``X-Forwarded-Proto: https`` stops the
+        http->https redirect bouncing a plain-HTTP call.
+
+        The same pair the runner's own client sends, for the same reason.
+        """
         self.base_url = str(base_url).rstrip("/")
         self.project_id = project_id
         self.session = session or requests.Session()
-        self.session.headers.update({"Authorization": f"Api-Key {token}"})
+        headers = {"Authorization": f"Api-Key {token}"}
+        if host_header:
+            headers["Host"] = host_header
+            headers["X-Forwarded-Proto"] = "https"
+        self.session.headers.update(headers)
 
     def _url(self, path):
         return f"{self.base_url}{path}?project_id={self.project_id}"
@@ -215,7 +232,8 @@ def _write_through(manager, client, type_key):
     manager.save = save
 
 
-def build(base_url, token, project_id, working_dir=None, session=None):
+def build(base_url, token, project_id, working_dir=None, session=None, host_header=None):
     return RemoteProject(
-        CoreClient(base_url, token, project_id, session=session), working_dir=working_dir
+        CoreClient(base_url, token, project_id, session=session, host_header=host_header),
+        working_dir=working_dir,
     )
