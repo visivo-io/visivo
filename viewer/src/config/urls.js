@@ -179,10 +179,12 @@ const URL_PATTERNS = {
     agentActions: '/api/projects/{projectId}/agent/actions/',
     // The built-in loop: start one, poll it, stop it.
     agentSessions: '/api/projects/{projectId}/agent/',
-    agentSession: ({ projectId, sessionId }) =>
-      `/api/projects/${projectId}/agent/${sessionId}/`,
-    agentSessionCancel: ({ projectId, sessionId }) =>
-      `/api/projects/${projectId}/agent/${sessionId}/cancel/`,
+    // Templates, not functions: getUrl substitutes {param} into a STRING. A
+    // function pattern reaches `url.replace` and throws "url.replace is not a
+    // function" — which the session poll then swallowed, so the transcript
+    // silently never updated and only Stop surfaced it.
+    agentSession: '/api/projects/{projectId}/agent/{sessionId}/',
+    agentSessionCancel: '/api/projects/{projectId}/agent/{sessionId}/cancel/',
 
     // ---- Realtime ---------------------------------------------------------
     // Not a REST call — useProjectChangeListener gates its socket.io connect

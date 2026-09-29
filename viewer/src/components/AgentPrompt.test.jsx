@@ -245,3 +245,20 @@ describe('AgentPrompt — it is a conversation', () => {
     });
   });
 });
+
+describe('AgentPrompt — when polling itself is broken', () => {
+  it('gives up and says so rather than spinning forever', async () => {
+    // A malformed URL threw on every poll and the catch swallowed it, so a
+    // structural bug looked like an agent that simply never answered.
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockRejectedValue(new Error('url.replace is not a function'));
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    expect(await screen.findByTestId('agent-notice-error', {}, { timeout: 10000 })).toHaveTextContent(
+      /Lost contact with the agent/
+    );
+  }, 15000);
+});
