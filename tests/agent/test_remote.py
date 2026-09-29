@@ -182,6 +182,24 @@ class TestWhenCoreWillNotAnswer:
 
         assert "503" in str(refused.value)
 
+    def test_the_message_carries_enough_to_diagnose(self):
+        """ "Could not read sources from core (400)" gives a status and nothing
+        about which request produced it. The interesting part of a 400 is the
+        URL and what the server said — and this message is the only thing that
+        reaches whoever is looking at the Agent tab."""
+
+        class Complaining(FakeCore):
+            def get(self, url, timeout=None):
+                return FakeResponse({"error": "project_id is required param"}, 400)
+
+        with pytest.raises(RemoteProjectError) as refused:
+            _project(core=Complaining())
+
+        message = str(refused.value)
+        assert "/api/sources/" in message, "which endpoint"
+        assert "project_id=" in message, "what was actually sent"
+        assert "project_id is required param" in message, "what core said about it"
+
     def test_a_failed_write_is_not_reported_as_success(self):
         class Rejecting(FakeCore):
             def post(self, url, json=None, timeout=None):
