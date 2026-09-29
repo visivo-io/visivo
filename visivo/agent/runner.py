@@ -77,9 +77,16 @@ def _execute(app, manager, session_id, prompt, model):
         manager.set_state(session_id, SessionState.SUCCEEDED, output=answer)
     except Exception as error:  # noqa: BLE001 — reported to the session, never raised
         # An agent failure is a failure: it belongs in the same place every
-        # other error goes, not a bespoke red box.
+        # other error goes, not a bespoke red box. But a failure that is OURS
+        # should not be reported as the model provider's.
+        from visivo.agent import cloud_model
+
         Logger.instance().error(f"Agent session {session_id} failed: {error}")
-        manager.set_state(session_id, SessionState.FAILED, error=str(error))
+        manager.set_state(
+            session_id,
+            SessionState.FAILED,
+            error=cloud_model.explain(error) or str(error),
+        )
     finally:
         try:
             loop.close()
