@@ -103,7 +103,51 @@ def build(host=None, model_name=CLOUD_MODEL_NAME):
     from pydantic_ai.models.openai import OpenAIChatModel
     from pydantic_ai.providers.openai import OpenAIProvider
 
-    return OpenAIChatModel(
+    where = base_url(host)
+    model = OpenAIChatModel(
         model_name,
-        provider=OpenAIProvider(base_url=base_url(host), api_key=token(host)),
+        provider=OpenAIProvider(base_url=where, api_key=token(host)),
+    )
+    # Recorded so a failure can say which deployment it was talking to.
+    # `agent: host:` can point anywhere, and naming the DEFAULT host in an
+    # error about a different one is worse than naming none.
+    model._visivo_endpoint = where
+    return model
+
+
+def endpoint_of(model):
+    """Where this model was pointed, or ``None`` if it is not one of ours."""
+    return getattr(model, "_visivo_endpoint", None)
+
+
+def explain(error, host=None, model=None):
+    """A clearer message when the failure is OUR endpoint, or ``None``.
+
+    A 404 from Visivo Cloud is not a provider problem, but it arrives looking
+    exactly like one — "status_code: 404, model_name: google/gemini-2.5-pro" —
+    which sends someone to Google's status page for a route on our own server.
+
+    The capability probe cannot prevent this on its own: it asks
+    ``/api/inference/`` and a deployment can answer that while serving the
+    completions path at a different shape. So the two can disagree, and when
+    they do the message should say which one is wrong.
+    """
+    status = getattr(error, "status_code", None)
+    if status not in (404, 503):
+        return None
+
+    # The endpoint actually used, then an explicit host, then the default.
+    # Guessing the default when `agent: host:` pointed somewhere else would
+    # send someone to look at the wrong server.
+    where = endpoint_of(model) or host or VISIVO_HOST
+    if status == 404:
+        return (
+            f"Visivo-supplied inference is not available at {where} — the server "
+            "did not recognise the request. It is likely older than this CLI. "
+            "Update it, point `agent: host:` at one that is current, or set your "
+            "own provider key."
+        )
+    return (
+        f"Visivo-supplied inference is configured but not switched on at {where}. "
+        "Set your own provider key to keep working in the meantime."
     )

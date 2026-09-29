@@ -45,9 +45,19 @@ def start(app, prompt, model, session_manager=None, session_id=None):
 
 
 def _execute(app, manager, session_id, prompt, model):
+    from visivo.agent import cloud_model
+
+    # Bound before the try: the handler reports it, and an exception raised
+    # before the assignment would otherwise NameError inside `except` and
+    # replace the real failure with a bug in the reporting of it.
+    endpoint = cloud_model.endpoint_of(model)
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
+        if endpoint:
+            # Said at the start, not only on failure: "which server is this
+            # talking to" should not require something to go wrong first.
+            Logger.instance().info(f"Agent session {session_id} using {endpoint}")
         agent = build_agent(app, model)
         # Everything said so far, so a follow-up means something. Read before
         # the turn starts and passed whole — pydantic-ai needs its own message
@@ -77,9 +87,18 @@ def _execute(app, manager, session_id, prompt, model):
         manager.set_state(session_id, SessionState.SUCCEEDED, output=answer)
     except Exception as error:  # noqa: BLE001 — reported to the session, never raised
         # An agent failure is a failure: it belongs in the same place every
-        # other error goes, not a bespoke red box.
-        Logger.instance().error(f"Agent session {session_id} failed: {error}")
-        manager.set_state(session_id, SessionState.FAILED, error=str(error))
+        # other error goes, not a bespoke red box. But a failure that is OURS
+        # should not be reported as the model provider's.
+        Logger.instance().error(
+            f"Agent session {session_id} failed"
+            + (f" (inference endpoint: {endpoint})" if endpoint else "")
+            + f": {error}"
+        )
+        manager.set_state(
+            session_id,
+            SessionState.FAILED,
+            error=cloud_model.explain(error, model=model) or str(error),
+        )
     finally:
         try:
             loop.close()

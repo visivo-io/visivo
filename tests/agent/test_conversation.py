@@ -199,3 +199,26 @@ class TestContinuingSomethingGone:
 
         assert response.status_code == 404
         assert response.get_json()["action"] == "agent_session_gone"
+
+
+class TestReportingWhichServerFailed:
+    """ "Not sure what host it is trying" — a 404 that does not say where it
+    was pointed is unactionable, and `agent: host:` can point anywhere."""
+
+    def test_a_failure_before_the_model_is_built_still_reports(
+        self, integration_app, sessions, monkeypatch
+    ):
+        """The endpoint is read BEFORE the try. Reading it inside would mean an
+        early exception raises NameError in the handler and replaces the real
+        failure with a bug in the reporting of it."""
+        from visivo.agent import runner
+
+        monkeypatch.setattr(
+            runner, "build_agent", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("early"))
+        )
+
+        session = start(integration_app, "go", _answers("never"), session_manager=sessions)
+        settled = _settle(sessions, session.id)
+
+        assert settled.state == SessionState.FAILED
+        assert "early" in settled.error
