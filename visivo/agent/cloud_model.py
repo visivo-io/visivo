@@ -103,13 +103,24 @@ def build(host=None, model_name=CLOUD_MODEL_NAME):
     from pydantic_ai.models.openai import OpenAIChatModel
     from pydantic_ai.providers.openai import OpenAIProvider
 
-    return OpenAIChatModel(
+    where = base_url(host)
+    model = OpenAIChatModel(
         model_name,
-        provider=OpenAIProvider(base_url=base_url(host), api_key=token(host)),
+        provider=OpenAIProvider(base_url=where, api_key=token(host)),
     )
+    # Recorded so a failure can say which deployment it was talking to.
+    # `agent: host:` can point anywhere, and naming the DEFAULT host in an
+    # error about a different one is worse than naming none.
+    model._visivo_endpoint = where
+    return model
 
 
-def explain(error, host=None):
+def endpoint_of(model):
+    """Where this model was pointed, or ``None`` if it is not one of ours."""
+    return getattr(model, "_visivo_endpoint", None)
+
+
+def explain(error, host=None, model=None):
     """A clearer message when the failure is OUR endpoint, or ``None``.
 
     A 404 from Visivo Cloud is not a provider problem, but it arrives looking
@@ -125,7 +136,10 @@ def explain(error, host=None):
     if status not in (404, 503):
         return None
 
-    where = host or VISIVO_HOST
+    # The endpoint actually used, then an explicit host, then the default.
+    # Guessing the default when `agent: host:` pointed somewhere else would
+    # send someone to look at the wrong server.
+    where = endpoint_of(model) or host or VISIVO_HOST
     if status == 404:
         return (
             f"Visivo-supplied inference is not available at {where} — the server "

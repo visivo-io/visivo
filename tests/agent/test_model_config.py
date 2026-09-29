@@ -239,3 +239,34 @@ class TestWhenOurOwnEndpointFails:
 
     def test_anything_that_is_not_an_http_error_is_left_alone(self):
         assert cloud_model.explain(RuntimeError("something else"), HOST) is None
+
+
+class TestItNamesTheServerItActuallyUsed:
+    """ "Not sure what host it is trying." `agent: host:` can point anywhere,
+    so naming the DEFAULT host in an error about a different one is worse than
+    naming none at all."""
+
+    def _built_against(self, host, monkeypatch):
+        monkeypatch.setattr(cloud_model, "token", lambda h=None: "tok")
+        return cloud_model.build(host)
+
+    def test_the_model_records_where_it_was_pointed(self, monkeypatch):
+        model = self._built_against("https://app.development.visivo.io", monkeypatch)
+
+        assert cloud_model.endpoint_of(model) == ("https://app.development.visivo.io/api/inference")
+
+    def test_the_error_names_that_one_not_the_default(self, monkeypatch):
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        model = self._built_against("https://app.development.visivo.io", monkeypatch)
+        message = cloud_model.explain(
+            ModelHTTPError(status_code=404, model_name="m", body={}), model=model
+        )
+
+        assert "app.development.visivo.io" in message
+        assert "https://app.visivo.io/" not in message
+
+    def test_a_model_that_is_not_ours_records_nothing(self):
+        """A BYO-key run has no Visivo endpoint to report, and inventing one
+        would point someone at a server that had nothing to do with it."""
+        assert cloud_model.endpoint_of(object()) is None
