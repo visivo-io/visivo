@@ -42,6 +42,28 @@ class RemoteProjectError(Exception):
     """Core would not answer. The turn cannot run without the project."""
 
 
+def _why(what, url, response):
+    """A failure someone can act on.
+
+    "Could not read sources from core (400)" says a status and nothing about
+    which request produced it — and the interesting part of a 400 is always the
+    URL and what the server said about it. Both go in, because this message is
+    the only thing that reaches whoever is looking at the Agent tab.
+    """
+    detail = ""
+    try:
+        body = response.json()
+        detail = body.get("error") or body.get("detail") or ""
+    except Exception:
+        detail = (response.text or "")[:200]
+    where = url.split("?")[0]
+    query = url.split("?", 1)[1] if "?" in url else "(no query string)"
+    return (
+        f"Could not {what} from core: {response.status_code} at {where} "
+        f"[{query}]{' — ' + str(detail) if detail else ''}"
+    )
+
+
 class CoreClient:
     """The half-dozen calls an agent session makes against core.
 
@@ -61,23 +83,17 @@ class CoreClient:
         return f"{self.base_url}{path}?project_id={self.project_id}"
 
     def list(self, type_key):
-        response = self.session.get(self._url(f"/api/{type_key}/"), timeout=FETCH_TIMEOUT_SECONDS)
+        url = self._url(f"/api/{type_key}/")
+        response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code != 200:
-            raise RemoteProjectError(
-                f"Could not read {type_key} from core ({response.status_code})."
-            )
+            raise RemoteProjectError(_why(f"read {type_key}", url, response))
         return (response.json() or {}).get(type_key) or []
 
     def save(self, type_key, name, config):
-        response = self.session.post(
-            self._url(f"/api/{type_key}/{name}/"),
-            json=config,
-            timeout=SAVE_TIMEOUT_SECONDS,
-        )
+        url = self._url(f"/api/{type_key}/{name}/")
+        response = self.session.post(url, json=config, timeout=SAVE_TIMEOUT_SECONDS)
         if response.status_code not in (200, 201):
-            raise RemoteProjectError(
-                f"Could not save {type_key[:-1]} '{name}' ({response.status_code})."
-            )
+            raise RemoteProjectError(_why(f"save {type_key[:-1]} '{name}'", url, response))
         return response.json()
 
     def runs(self):
