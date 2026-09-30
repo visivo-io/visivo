@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import useStore from '../stores/store';
 import AgentPrompt from './AgentPrompt';
 import { fetchAgentActions } from '../api/agent';
 import { subscribe, canDeliver } from '../events/eventSource';
 import { AGENT_ACTIONS } from '../events/topics';
-import { getTypeColors, getTypeIcon } from './views/common/objectTypeConfigs';
+import AgentObjectLink from './AgentObjectLink';
 
 /**
  * What agents have done to this project.
@@ -27,22 +26,6 @@ import { getTypeColors, getTypeIcon } from './views/common/objectTypeConfigs';
 const when = timestamp =>
   timestamp ? new Date(timestamp * 1000).toLocaleTimeString() : '';
 
-/** An object reference, rendered as somewhere you can go. */
-function ObjectLink({ object }) {
-  const { bg, text, border } = getTypeColors(object.type);
-  const Icon = getTypeIcon(object.type);
-  return (
-    <Link
-      to={`/workspace?edit=${encodeURIComponent(`${object.type}:${object.name}`)}`}
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${bg} ${text} ${border} hover:underline`}
-      data-testid={`agent-action-object-${object.name}`}
-    >
-      {Icon && <Icon className="shrink-0" size={12} />}
-      {object.name}
-    </Link>
-  );
-}
-
 function Action({ action }) {
   const failed = action.outcome === 'error';
   return (
@@ -60,7 +43,7 @@ function Action({ action }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <code className="text-sm text-gray-900">{action.tool}</code>
-          {action.object && <ObjectLink object={action.object} />}
+          {action.object && <AgentObjectLink object={action.object} />}
         </div>
         {failed && action.error && (
           <p className="mt-1 text-xs text-highlight-700 break-words">{action.error}</p>

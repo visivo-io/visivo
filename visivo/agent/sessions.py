@@ -57,11 +57,18 @@ class Session:
         # reader needs to know who said what.
         self.transcript = []
 
-    def say(self, role, text):
+    def say(self, role, text, actions=None):
+        """Add to what a person reads.
+
+        An agent turn carries the tool calls it made, so the answer can be read
+        next to the work rather than beside an undated list that may also hold
+        an MCP client's.
+        """
         entry = {
             "role": role,
             "text": text,
             "at": datetime.now().isoformat(),
+            "actions": list(actions or []),
         }
         self.transcript.append(entry)
         return entry
@@ -144,14 +151,14 @@ class SessionManager:
             session.say("user", prompt)
             return session
 
-    def remember(self, session_id, history, answer):
+    def remember(self, session_id, history, answer, actions=None):
         with self._lock:
             session = self._sessions.get(session_id)
             if session is None:
                 return
             session.history = history
             if answer:
-                session.say("agent", answer)
+                session.say("agent", answer, actions=actions)
 
     def active(self):
         with self._lock:

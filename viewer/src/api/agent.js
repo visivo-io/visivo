@@ -19,6 +19,19 @@ export const fetchAgentActions = async ({ projectId, limit } = {}) => {
 };
 
 /**
+ * The project's conversations, newest first, without transcripts.
+ *
+ * What lets the tab pick up where it left off. A session lives on the server —
+ * a DB row in cloud, the serve process's memory locally — and until this was
+ * read, a reload lost a conversation that was sitting there the whole time.
+ */
+export const listAgentSessions = async ({ projectId } = {}) => {
+  const response = await apiFetch(getUrl('agentSessions', { projectId }));
+  if (response.status === 200) return (await response.json()).sessions || [];
+  throw new Error('Failed to list agent sessions');
+};
+
+/**
  * Start a run of the built-in loop. Returns the session immediately — the loop
  * runs in the background, because a model call takes as long as it takes and a
  * request that waits for one times out in a proxy somebody else configured.

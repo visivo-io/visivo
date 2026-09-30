@@ -71,6 +71,26 @@ class ActionLog:
             except Exception:
                 pass
 
+    def marker(self):
+        """Where the log stands now, for pairing with ``since``.
+
+        Ids come from a process-wide counter, so a marker stays meaningful even
+        though entries fall off the end of a bounded log.
+        """
+        with self._lock:
+            return self._actions[-1]["id"] if self._actions else 0
+
+    def since(self, marker):
+        """Everything recorded after ``marker``, oldest first.
+
+        How a turn learns what IT did. The log is shared — an MCP client can be
+        working through the same serve process — so scoping a turn by clearing
+        the log would take someone else's history with it, and counting entries
+        would miscount the moment the cap discards one.
+        """
+        with self._lock:
+            return [action for action in self._actions if action["id"] > marker]
+
     def recent(self, limit=None):
         """Newest first — what a log is read in.
 
