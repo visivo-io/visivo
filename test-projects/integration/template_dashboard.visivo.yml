@@ -1,0 +1,13 @@
+# A template dashboard: the layout is the HTML in templates/quarterly-review.html,
+# and each `data-visivo-item` element in it holds the chart, table, markdown or
+# input of that name.
+dashboards:
+  - name: template-dashboard
+    level: 1
+    tags:
+      - "layout"
+      - "template"
+    description: |
+      Lays existing charts, a table, a markdown and an input out with HTML
+      instead of rows/items.
+    template_file: templates/quarterly-review.html

@@ -14,6 +14,9 @@ from visivo.models.validators.single_source_validator import SingleSourceValidat
 from visivo.models.validators.standalone_field_refs_validator import (
     StandaloneFieldRefsValidator,
 )
+from visivo.models.validators.template_dashboard_items_validator import (
+    TemplateDashboardItemsValidator,
+)
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
@@ -38,6 +41,7 @@ class ProjectValidator:
             DagValidator(),
             ProjectRootNodeValidator(),
             NamesValidator(),
+            TemplateDashboardItemsValidator(),
             # Semantic layer validators - must run after DAG validator
             MetricReferencesValidator(),
             DimensionReferencesValidator(),

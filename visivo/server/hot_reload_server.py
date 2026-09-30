@@ -9,6 +9,9 @@ from flask_socketio import SocketIO
 import logging
 import socket
 
+# .html so a template dashboard's `template_file` hot-reloads like its YAML does.
+WATCHED_EXTENSIONS = (".yml", ".yaml", ".html")
+
 
 class ProjectChangeHandler(FileSystemEventHandler):
     def __init__(self, callback, ignore_patterns=None, pause_lock=None):
@@ -22,8 +25,7 @@ class ProjectChangeHandler(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        # Only process .yml files
-        if not (event.src_path.endswith(".yml") or event.src_path.endswith(".yaml")):
+        if not event.src_path.endswith(WATCHED_EXTENSIONS):
             return
 
         # Check if file should be ignored

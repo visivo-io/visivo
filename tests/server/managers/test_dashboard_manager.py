@@ -12,7 +12,11 @@ import networkx as nx
 
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.external_dashboard import ExternalDashboard
-from visivo.server.managers.dashboard_manager import DashboardManager
+import pytest
+
+from tests.factories.model_factories import TemplateDashboardFactory
+from visivo.models.dashboards.template_dashboard import TemplateDashboard
+from visivo.server.managers.dashboard_manager import DashboardManager, TemplateDashboardReadOnly
 
 
 def _make_internal(name: str) -> Dashboard:
@@ -90,3 +94,30 @@ class TestDashboardManagerValidate:
         )
         assert isinstance(dashboard, ExternalDashboard)
         assert str(dashboard.href).rstrip("/") == "https://example.com"
+
+
+class TestDashboardManagerTemplates:
+    """Template dashboards are listed like any other, but serve never writes them —
+    they are edited as HTML files."""
+
+    def test_template_dashboard_is_listed_with_its_html_and_slots(self):
+        manager = DashboardManager()
+        manager.extract_from_dag(dag=_dag_with(TemplateDashboardFactory(name="Review")))
+
+        [listed] = manager.get_all_dashboards_with_status()
+
+        assert listed["config"]["type"] == "template"
+        assert 'data-visivo-item="chart_name"' in listed["config"]["template"]
+        assert listed["child_item_names"] == ["chart_name"]
+
+    def test_validate_object_accepts_template_config(self):
+        dashboard = DashboardManager().validate_object({"name": "R", "template": "<p></p>"})
+        assert isinstance(dashboard, TemplateDashboard)
+
+    def test_saving_a_template_dashboard_is_refused(self):
+        manager = DashboardManager()
+        with pytest.raises(TemplateDashboardReadOnly, match="edit review.html instead"):
+            manager.save_from_config(
+                {"name": "R", "template": "<p></p>", "template_file": "review.html"}
+            )
+        assert manager._cached_objects == {}

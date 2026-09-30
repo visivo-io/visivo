@@ -14,6 +14,7 @@ import {
 import RowEditForm from './RowEditForm';
 import useRenameFlow from '../../../hooks/useRenameFlow';
 import RenameImpactDialog from '../workspace/RenameImpactDialog';
+import { templateItemNames } from '../../project/template/templateHtml';
 
 /**
  * DashboardEditForm - Form for creating/editing Dashboard
@@ -199,6 +200,35 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
   const isValid = name.trim();
   const isNewObject = dashboard?.status === 'new';
+
+  // Saving goes out as a rows/items config, which would replace the template.
+  if (typeof dashboard?.config?.template === 'string') {
+    const placed = templateItemNames(dashboard.config.template);
+    return (
+      <div className="flex-1 overflow-y-auto p-4 space-y-3" data-testid="template-dashboard-readonly">
+        <p className="text-sm font-medium text-gray-900">{dashboard.name}</p>
+        <p className="text-xs text-gray-600">
+          This is a template dashboard. Its layout is HTML — edit{' '}
+          <code>{dashboard.config.template_file || 'its YAML file'}</code> in your editor.
+        </p>
+        {placed.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-700">Places</p>
+            <ul className="mt-1 text-xs text-gray-600 list-disc pl-4">
+              {placed.map(itemName => (
+                <li key={itemName}>{itemName}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="flex justify-end pt-4 border-t border-gray-200">
+          <ButtonOutline type="button" onClick={onClose} className="text-sm">
+            Close
+          </ButtonOutline>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto p-4">

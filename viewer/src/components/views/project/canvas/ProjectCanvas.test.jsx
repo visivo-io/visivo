@@ -7,7 +7,7 @@
  * not the heavy Plotly/data tree; the overlay reads the real workspace store.
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ProjectCanvas from './ProjectCanvas';
 import useStore from '../../../../stores/store';
@@ -250,5 +250,29 @@ describe('ProjectCanvas — broken-ref repair wiring (VIS-792 / L-1)', () => {
     fireEvent.click(screen.getByTestId('mock-create-chart'));
     // No crash; the intent is still recorded.
     expect(events.find(e => e.eventName === 'inline_create_used')).toBeTruthy();
+  });
+
+  test('a template dashboard renders as a read-only preview with no editing layers', () => {
+    useStore.setState({
+      dashboards: [
+        {
+          name: 'review',
+          config: {
+            name: 'review',
+            template_file: 'templates/review.html',
+            template: '<div data-visivo-item="c"></div>',
+          },
+        },
+      ],
+    });
+    renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="review" />);
+
+    expect(screen.getByTestId('template-dashboard-notice')).toHaveTextContent(
+      'templates/review.html'
+    );
+    expect(screen.getByTestId('dashboard-new-mock')).toHaveAttribute('data-dashboard-name', 'review');
+    expect(screen.queryByTestId('canvas-overlay-layer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-dnd-layer')).not.toBeInTheDocument();
+    act(() => useStore.setState({ dashboards: [] }));
   });
 });

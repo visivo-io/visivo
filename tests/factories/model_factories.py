@@ -18,6 +18,7 @@ from visivo.models.insight import Insight
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.external_dashboard import ExternalDashboard
+from visivo.models.dashboards.template_dashboard import TemplateDashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
 from visivo.models.table import Table
@@ -338,6 +339,14 @@ class ExternalDashboardFactory(factory.Factory):
 
     name = "external_dashboard"
     href = "https://example.com"
+
+
+class TemplateDashboardFactory(factory.Factory):
+    class Meta:
+        model = TemplateDashboard
+
+    name = "template_dashboard"
+    template = '<div style="height: 200px" data-visivo-item="chart_name"></div>'
 
 
 class DashboardFactory(factory.Factory):
