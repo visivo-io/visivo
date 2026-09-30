@@ -23,9 +23,17 @@ def serve_phase(
     new=False,
     onboarding=False,
     no_deprecation_warnings=False,
+    host=None,
+    port=None,
 ):
 
-    app = FlaskApp(output_dir=output_dir, project=project, working_dir=working_dir)
+    app = FlaskApp(
+        output_dir=output_dir,
+        project=project,
+        working_dir=working_dir,
+        host=host,
+        port=port,
+    )
     server = None  # Will be set later
 
     def on_project_change(one_shot=False):

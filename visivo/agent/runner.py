@@ -105,6 +105,9 @@ def _execute(app, manager, session_id, prompt, model):
             session_id,
             SessionState.FAILED,
             error=cloud_model.explain(error, model=model) or str(error),
+            # A spend limit is not a broken agent. Tagged so the tab can say
+            # so rather than showing it in the same red box as a crash.
+            action=cloud_model.LIMIT_REACHED if cloud_model.limit_reached(error) else None,
         )
     finally:
         try:
