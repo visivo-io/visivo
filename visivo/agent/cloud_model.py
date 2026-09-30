@@ -57,26 +57,50 @@ def capability_url(host=None):
     return f"{host or VISIVO_HOST}/api/inference/"
 
 
-def serves_inference(host=None):
-    """Does this deployment offer inference at all?
+def capability(host=None):
+    """What this deployment offers: ``{"enabled": bool, "free_credit_micros": int|None}``.
 
-    Any failure is a no. An older Visivo Cloud 404s here, a self-hosted one may
-    not run the app, and a network that cannot reach it is indistinguishable
-    from either — in every case the right answer is to use a local key.
+    Any failure is "nothing". An older Visivo Cloud 404s here, a self-hosted
+    one may not run the app, and a network that cannot reach it is
+    indistinguishable from either — in every case the right answer is to use a
+    local key.
     """
     host = host or VISIVO_HOST
     if host in _capability:
         return _capability[host]
 
-    answer = False
+    answer = {"enabled": False, "free_credit_micros": None}
     try:
         response = requests.get(capability_url(host), timeout=CAPABILITY_TIMEOUT_SECONDS)
-        answer = response.status_code == 200 and bool(response.json().get("enabled"))
+        if response.status_code == 200:
+            body = response.json()
+            answer = {
+                "enabled": bool(body.get("enabled")),
+                "free_credit_micros": body.get("free_credit_micros"),
+            }
     except Exception as error:
         Logger.instance().debug(f"No Visivo-supplied inference at {host}: {error}")
 
     _capability[host] = answer
     return answer
+
+
+def serves_inference(host=None):
+    return capability(host)["enabled"]
+
+
+def free_credit(host=None):
+    """What a new account is given here, as a display string, or ``None``.
+
+    Read from the deployment rather than compiled in: a released CLI outlives
+    whatever the figure was when it shipped, and quoting a stale number at
+    someone about to sign up is worse than quoting none.
+    """
+    micros = capability(host).get("free_credit_micros")
+    if not micros:
+        return None
+    dollars = int(micros) / 1_000_000
+    return f"${dollars:,.0f}" if dollars == int(dollars) else f"${dollars:,.2f}"
 
 
 def forget(host=None):

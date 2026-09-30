@@ -123,10 +123,49 @@ def resolve(requested=None, profile=None, environ=None, host=None):
     if explicit is None and cloud_model.available(chosen_host):
         return cloud_model.build(chosen_host), {}, SOURCE_CLOUD
 
-    raise AgentNotConfigured(
-        f"No model available. Set {variables[0]} to use your own key, or add "
-        f"`{PROFILE_SECTION}:\n  api_key: ...` to {get_profile_file()}.\n\n"
-        f"Visivo-supplied inference is not available at {chosen_host} — either "
-        "you have not run `visivo authorize`, or that deployment does not "
-        "offer it. Point the agent elsewhere with `agent:\n  host: ...`."
+    raise AgentNotConfigured(_nothing_to_use(chosen_host, variables[0], explicit))
+
+
+def _byo_instructions(variable):
+    return (
+        f"Or use your own key: set {variable}, or add "
+        f"`{PROFILE_SECTION}:\n  api_key: ...` to {get_profile_file()}."
     )
+
+
+def _nothing_to_use(host, variable, explicit):
+    """What to do about it — which is not the same sentence in every case.
+
+    This is the message a FIRST RUN hits, and the old one led with "set
+    ANTHROPIC_API_KEY". That is accurate and it is the wrong first thing to
+    say: it sends someone to go and acquire a provider account before they can
+    see whether any of this is worth it, when there is credit waiting for them.
+
+    So the trial leads and BYO follows — except where the trial is not on offer,
+    because promising credit that this deployment does not give would be worse
+    than the technical message it replaced. Three states, because "not logged
+    in", "asked for a specific model" and "this server serves no inference"
+    have three different answers.
+    """
+    if explicit is not None:
+        # They named a model. Visivo-supplied inference serves one model, so
+        # answering a request for Claude with Gemini would be a lie — the only
+        # honest path here is their own key.
+        return (
+            f"No key for `{explicit}`. {_byo_instructions(variable)}\n\n"
+            "Leave the model unset to use the one included with your Visivo "
+            "account instead."
+        )
+
+    if not cloud_model.serves_inference(host):
+        return (
+            f"{host} does not offer Visivo-supplied inference.\n\n"
+            f"{_byo_instructions(variable)}\n"
+            "Or point the agent at a deployment that does, with "
+            "`agent:\n  host: ...`."
+        )
+
+    # It is on offer and they are not signed in. One sentence, one command.
+    credit = cloud_model.free_credit(host)
+    offer = f" You have {credit} of free credit to try it with." if credit else ""
+    return f"Run `visivo authorize` to use the agent.{offer}\n\n" f"{_byo_instructions(variable)}"
