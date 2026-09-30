@@ -5,7 +5,7 @@
  * runs list, so the tab works wherever the API does rather than only where a
  * socket happens to exist.
  */
-import { fetchAgentActions } from './agent';
+import { fetchAgentActions, listAgentSessions } from './agent';
 import { apiFetch } from './utils';
 import { AGENT_ACTIONS } from '../events/topics';
 
@@ -77,5 +77,33 @@ describe('the agent topic and the server agree', () => {
     AGENT_ACTIONS(fetcher, 'project-42').poll();
 
     expect(fetcher).toHaveBeenCalledWith({ projectId: 'project-42' });
+  });
+});
+
+describe('listAgentSessions', () => {
+  // What lets the tab pick a conversation back up. Both backends already
+  // answered this; nothing read it, so a reload lost a transcript the server
+  // still had.
+  it('returns the conversations the server listed', async () => {
+    apiFetch.mockResolvedValue({
+      status: 200,
+      json: async () => ({ sessions: [{ id: 's1', state: 'succeeded' }] }),
+    });
+
+    expect(await listAgentSessions({ projectId: 'p1' })).toEqual([
+      { id: 's1', state: 'succeeded' },
+    ]);
+  });
+
+  it('treats a body with no sessions as none, not as a crash', async () => {
+    apiFetch.mockResolvedValue({ status: 200, json: async () => ({}) });
+
+    expect(await listAgentSessions({ projectId: 'p1' })).toEqual([]);
+  });
+
+  it('throws on anything but 200, so the caller can decide to stay quiet', async () => {
+    apiFetch.mockResolvedValue({ status: 500, json: async () => ({}) });
+
+    await expect(listAgentSessions({ projectId: 'p1' })).rejects.toThrow();
   });
 });

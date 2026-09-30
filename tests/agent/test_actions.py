@@ -250,3 +250,70 @@ class TestListenersSeeRecordings:
 
         assert "socketio" not in source
         assert "flask" not in source.lower()
+
+
+class TestOneTurnsActions:
+    """Which of the log's entries belong to the turn that is being reported.
+
+    The log is process-wide on purpose — an MCP client and the built-in loop
+    write to the same one, because they share the registry. That is what makes
+    "what did THIS turn do" a question rather than just reading the log.
+    """
+
+    def test_a_marker_and_a_slice_give_one_turns_work(self):
+        log = ActionLog()
+        log.record("write_model", obj={"type": "model", "name": "before"})
+
+        mark = log.marker()
+        log.record("write_chart", obj={"type": "chart", "name": "during"})
+        log.record("write_table", obj={"type": "table", "name": "during_too"})
+
+        assert [a["tool"] for a in log.since(mark)] == ["write_chart", "write_table"]
+
+    def test_an_empty_log_has_a_marker_that_admits_everything(self):
+        log = ActionLog()
+        mark = log.marker()
+        log.record("write_model", obj={"type": "model", "name": "first"})
+
+        assert [a["tool"] for a in log.since(mark)] == ["write_model"]
+
+    def test_a_turn_that_did_nothing_reports_nothing(self):
+        log = ActionLog()
+        log.record("write_model", obj={"type": "model", "name": "earlier"})
+
+        assert log.since(log.marker()) == []
+
+    def test_another_producers_work_is_not_claimed_as_ours(self):
+        """An MCP client writing between our two calls is not part of our turn
+        — but it IS between them, so a slice by position would swallow it.
+        Ids are per-action, which is why this is by id."""
+        log = ActionLog()
+        mark = log.marker()
+        ours = log.record("write_model", obj={"type": "model", "name": "ours"})
+        theirs = log.record("write_chart", obj={"type": "chart", "name": "theirs"})
+
+        assert [a["id"] for a in log.since(mark)] == [ours["id"], theirs["id"]]
+        assert [a["id"] for a in log.since(ours["id"])] == [theirs["id"]]
+
+    def test_the_slice_is_oldest_first(self):
+        """The opposite order to `recent`, and deliberately: a log is read
+        newest first, a turn's work is read in the order it happened."""
+        log = ActionLog()
+        mark = log.marker()
+        log.record("write_model", obj={"type": "model", "name": "one"})
+        log.record("write_chart", obj={"type": "chart", "name": "two"})
+
+        assert [a["tool"] for a in log.since(mark)] == ["write_model", "write_chart"]
+        assert [a["tool"] for a in log.recent()] == ["write_chart", "write_model"]
+
+    def test_a_marker_survives_entries_falling_off_the_end(self):
+        """The log is capped. A marker is an id, not an index, so it still
+        means the same moment after the cap has discarded what it named."""
+        log = ActionLog(limit=3)
+        mark = log.marker()
+        for i in range(5):
+            log.record("write_model", obj={"type": "model", "name": f"m{i}"})
+
+        # Only what survived, but nothing older than the marker and nothing
+        # mistakenly excluded.
+        assert [a["object"]["name"] for a in log.since(mark)] == ["m2", "m3", "m4"]

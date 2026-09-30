@@ -1,20 +1,33 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import AgentPrompt from './AgentPrompt';
-import { cancelAgentSession, fetchAgentSession, startAgentSession } from '../api/agent';
+import { futureFlags } from '../router-config';
+import {
+  cancelAgentSession,
+  fetchAgentSession,
+  listAgentSessions,
+  startAgentSession,
+} from '../api/agent';
 
 jest.mock('../api/agent', () => ({
   startAgentSession: jest.fn(),
   fetchAgentSession: jest.fn(),
   cancelAgentSession: jest.fn(),
+  listAgentSessions: jest.fn(),
 }));
 
 const session = (state, extra = {}) => ({ id: 's1', state, transcript: [], ...extra });
 
 const said = (role, text) => ({ role, text, at: `2026-09-27T12:0${text.length}:00` });
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  // The default for every test that is not about resuming: this project has
+  // no earlier conversation.
+  listAgentSessions.mockResolvedValue([]);
+});
 
 describe('AgentPrompt', () => {
   it('will not send an empty prompt', () => {
@@ -261,4 +274,185 @@ describe('AgentPrompt — when polling itself is broken', () => {
       /Lost contact with the agent/
     );
   }, 15000);
+});
+
+describe('what a turn did', () => {
+  // An answer with no visible work reads as an agent that did nothing — the
+  // tool calls existed, but in a flat log nothing tied them to the turn.
+  const withRouter = () =>
+    render(
+      <MemoryRouter future={futureFlags}>
+        <AgentPrompt />
+      </MemoryRouter>
+    );
+
+  const call = (overrides = {}) => ({
+    id: 1,
+    tool: 'write_model',
+    object: { type: 'model', name: 'orders' },
+    outcome: 'ok',
+    error: null,
+    ...overrides,
+  });
+
+  const answered = actions =>
+    session('succeeded', {
+      transcript: [said('user', 'build a model'), { ...said('agent', 'Built it.'), actions }],
+    });
+
+  const ask = async () => {
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'build a model');
+    await userEvent.click(screen.getByTestId('agent-send'));
+  };
+
+  it('counts the tool calls above the answer', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      answered([call(), call({ id: 2, tool: 'write_chart' }), call({ id: 3, tool: 'write_table' })])
+    );
+    withRouter();
+    await ask();
+
+    expect(await screen.findByTestId('agent-turn-actions')).toHaveTextContent('3 tool calls');
+  });
+
+  it('says "1 tool call", not "1 tool calls"', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(answered([call()]));
+    withRouter();
+    await ask();
+
+    expect(await screen.findByTestId('agent-turn-actions')).toHaveTextContent('1 tool call');
+  });
+
+  it('lists each call, linked to what it touched', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      answered([
+        call(),
+        call({ id: 2, tool: 'write_chart', object: { type: 'chart', name: 'revenue' } }),
+      ])
+    );
+    withRouter();
+    await ask();
+
+    expect(await screen.findAllByTestId('agent-turn-action')).toHaveLength(2);
+    expect(screen.getByTestId('agent-action-object-orders')).toHaveAttribute(
+      'href',
+      '/workspace?edit=model%3Aorders'
+    );
+  });
+
+  it('surfaces a failure in the summary, so it need not be expanded to be seen', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      answered([call(), call({ id: 2, outcome: 'error', error: 'no such source' })])
+    );
+    withRouter();
+    await ask();
+
+    expect(await screen.findByTestId('agent-turn-actions-failed')).toHaveTextContent('1 failed');
+    expect(screen.getByTestId('agent-turn-actions')).toHaveTextContent('no such source');
+  });
+
+  it('shows nothing at all when a turn called no tools', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(answered([]));
+    withRouter();
+    await ask();
+
+    expect(await screen.findByTestId('agent-transcript')).toHaveTextContent('Built it.');
+    expect(screen.queryByTestId('agent-turn-actions')).not.toBeInTheDocument();
+  });
+
+  it('survives a turn from a server that does not send actions', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      session('succeeded', { transcript: [said('agent', 'Built it.')] })
+    );
+    withRouter();
+    await ask();
+
+    expect(await screen.findByTestId('agent-transcript')).toHaveTextContent('Built it.');
+    expect(screen.queryByTestId('agent-turn-actions')).not.toBeInTheDocument();
+  });
+});
+
+describe('picking the conversation back up', () => {
+  // Navigate away and back, or refresh, and the transcript used to vanish —
+  // even though the server still had it. Reported against cloud, but it was
+  // never a cloud bug: nothing ever asked which conversation this project was
+  // having.
+  const listed = (id, state) => ({ id, state, prompt: 'earlier', turns: 2 });
+
+  const whole = (id, state, text) =>
+    session(state, { id, transcript: [said('user', 'earlier'), said('agent', text)] });
+
+  it('shows the last conversation without being asked', async () => {
+    listAgentSessions.mockResolvedValue([listed('s9', 'succeeded')]);
+    fetchAgentSession.mockResolvedValue(whole('s9', 'succeeded', 'Built it earlier.'));
+    render(<AgentPrompt />);
+
+    expect(await screen.findByTestId('agent-transcript')).toHaveTextContent('Built it earlier.');
+    expect(fetchAgentSession).toHaveBeenCalledWith('s9', undefined);
+  });
+
+  it('prefers a turn that is still working over a newer finished one', async () => {
+    // A reload mid-turn is the moment this feels most like lost work.
+    listAgentSessions.mockResolvedValue([listed('s2', 'succeeded'), listed('s1', 'running')]);
+    fetchAgentSession.mockResolvedValue(whole('s1', 'running', 'partway'));
+    render(<AgentPrompt />);
+
+    expect(await screen.findByTestId('agent-stop')).toBeInTheDocument();
+    expect(fetchAgentSession).toHaveBeenCalledWith('s1', undefined);
+  });
+
+  it('does not poll a conversation that has already finished', async () => {
+    listAgentSessions.mockResolvedValue([listed('s9', 'succeeded')]);
+    fetchAgentSession.mockResolvedValue(whole('s9', 'succeeded', 'Built it earlier.'));
+    render(<AgentPrompt />);
+
+    await screen.findByTestId('agent-transcript');
+    const polls = fetchAgentSession.mock.calls.length;
+    await new Promise(resolve => setTimeout(resolve, 1200));
+
+    expect(fetchAgentSession).toHaveBeenCalledTimes(polls);
+    expect(screen.getByTestId('agent-send')).toBeInTheDocument();
+  });
+
+  it('a project with no history looks exactly as it always did', async () => {
+    listAgentSessions.mockResolvedValue([]);
+    render(<AgentPrompt />);
+
+    expect(await screen.findByTestId('agent-send')).toBeInTheDocument();
+    expect(screen.queryByTestId('agent-transcript')).not.toBeInTheDocument();
+    expect(fetchAgentSession).not.toHaveBeenCalled();
+  });
+
+  it('a list that cannot be read leaves the tab usable and says nothing', async () => {
+    // They came here to ask for something. A failed lookup of what they asked
+    // last time is not worth an error box.
+    listAgentSessions.mockRejectedValue(new Error('offline'));
+    render(<AgentPrompt />);
+
+    expect(await screen.findByTestId('agent-send')).toBeInTheDocument();
+    expect(screen.queryByTestId('agent-notice-error')).not.toBeInTheDocument();
+  });
+
+  it('does not overwrite a conversation started while it was still looking', async () => {
+    let release;
+    listAgentSessions.mockReturnValue(new Promise(resolve => (release = resolve)));
+    startAgentSession.mockResolvedValue({ session: session('running', { id: 'new' }) });
+    fetchAgentSession.mockResolvedValue(
+      session('succeeded', { id: 'new', transcript: [said('agent', 'The new one.')] })
+    );
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+    release([listed('old', 'succeeded')]);
+
+    expect(await screen.findByTestId('agent-transcript')).toHaveTextContent('The new one.');
+    expect(fetchAgentSession).not.toHaveBeenCalledWith('old', undefined);
+  });
 });

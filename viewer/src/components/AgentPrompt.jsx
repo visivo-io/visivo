@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useStore from '../stores/store';
 import { FiSend, FiSquare } from 'react-icons/fi';
-import { cancelAgentSession, fetchAgentSession, startAgentSession } from '../api/agent';
+import {
+  cancelAgentSession,
+  fetchAgentSession,
+  listAgentSessions,
+  startAgentSession,
+} from '../api/agent';
+import AgentObjectLink from './AgentObjectLink';
 
 /**
  * A conversation with the built-in loop.
@@ -39,6 +45,10 @@ const AgentPrompt = () => {
   const [starting, setStarting] = useState(false);
   const [modelSource, setModelSource] = useState(null);
   const timer = useRef(null);
+  // Whether this person has started talking. The resume below must never
+  // overwrite a conversation they began while it was still asking the server
+  // what the last one was.
+  const spokeFirst = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (timer.current) {
@@ -83,9 +93,44 @@ const AgentPrompt = () => {
     [stopPolling, projectId]
   );
 
+  // The conversation this project was having, picked up where it left off.
+  //
+  // Both backends already store it — rows in cloud, the serve process's memory
+  // locally — and both already answer with a list. Nothing read it, so a
+  // reload or a trip to another tab lost a transcript that was sitting on the
+  // server the whole time.
+  useEffect(() => {
+    let current = true;
+    const resume = async () => {
+      try {
+        const sessions = await listAgentSessions({ projectId });
+        if (!current || spokeFirst.current || !sessions?.length) return;
+        // An active turn first: a reload mid-turn is exactly the moment this
+        // feels like lost work. Otherwise the most recent conversation, shown
+        // but not polled — there is nothing to wait for.
+        const wanted = sessions.find(candidate => ACTIVE.includes(candidate.state)) || sessions[0];
+        // The list omits transcripts by design, so the one being resumed has
+        // to be fetched whole.
+        const full = await fetchAgentSession(wanted.id, projectId);
+        if (!current || spokeFirst.current || !full) return;
+        setSession(full);
+        if (isActive(full)) poll(full.id);
+      } catch {
+        // A project with no agent history is the ordinary case, and a list
+        // that cannot be read is not worth interrupting someone with: they
+        // came here to ask for something, and Send still works.
+      }
+    };
+    resume();
+    return () => {
+      current = false;
+    };
+  }, [projectId, poll]);
+
   const onSend = async () => {
     const asked = prompt.trim();
     if (!asked || starting) return;
+    spokeFirst.current = true;
     setStarting(true);
     setNotice(null);
     try {
@@ -244,6 +289,10 @@ function Transcript({ entries, running }) {
           <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
             {entry.role === 'user' ? 'You' : 'Agent'}
           </div>
+          {/* Above the answer, so a turn reads as ask -> work -> result. An
+              answer with no visible work is what made the agent look like it
+              had done nothing. */}
+          <TurnActions actions={entry.actions} />
           {entry.text}
         </div>
       ))}
@@ -253,6 +302,48 @@ function Transcript({ entries, running }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * What the agent did to answer, collapsed.
+ *
+ * Collapsed because the answer is the point and fifteen tool calls above it
+ * bury that — but present, because an answer with no evidence of work is
+ * indistinguishable from one that did none.
+ */
+function TurnActions({ actions }) {
+  if (!actions?.length) return null;
+  const failed = actions.filter(action => action.outcome === 'error').length;
+  return (
+    <details className="mb-2 rounded border border-gray-200 bg-white" data-testid="agent-turn-actions">
+      <summary className="cursor-pointer select-none px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
+        {actions.length} tool call{actions.length === 1 ? '' : 's'}
+        {failed > 0 && (
+          <span className="ml-2 text-highlight-700" data-testid="agent-turn-actions-failed">
+            {failed} failed
+          </span>
+        )}
+      </summary>
+      <ul className="border-t border-gray-100">
+        {actions.map((action, index) => (
+          <li
+            key={action.id ?? index}
+            className="flex items-center gap-2 flex-wrap px-2 py-1 text-xs border-b border-gray-50 last:border-0"
+            data-testid="agent-turn-action"
+          >
+            {action.outcome === 'error' && (
+              <span className="text-highlight-700 font-medium">failed</span>
+            )}
+            <code className="text-gray-700">{action.tool}</code>
+            {action.object && <AgentObjectLink object={action.object} />}
+            {action.outcome === 'error' && action.error && (
+              <span className="text-highlight-700 break-words">{action.error}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

@@ -222,3 +222,120 @@ class TestReportingWhichServerFailed:
 
         assert settled.state == SessionState.FAILED
         assert "early" in settled.error
+
+
+class TestATurnCarriesItsWork:
+    """The answer and the work that produced it, read together.
+
+    Without this the transcript says the agent replied and the activity log
+    says something happened, and nothing on screen joins them — which is what
+    "it responded but showed no tool calls" looks like from the outside.
+    """
+
+    def test_an_agent_turn_holds_the_actions_it_made(self):
+        manager = SessionManager()
+        manager._init()
+        session = manager.create("build me something")
+
+        manager.remember(
+            session.id,
+            [],
+            "built it",
+            actions=[{"id": 1, "tool": "write_model"}, {"id": 2, "tool": "write_chart"}],
+        )
+
+        agent_entry = session.transcript[-1]
+        assert agent_entry["role"] == "agent"
+        assert [a["tool"] for a in agent_entry["actions"]] == ["write_model", "write_chart"]
+
+    def test_the_prompt_carries_none(self):
+        """A person asking for something did not call a tool. The key is still
+        there so the reader never has to check whether it exists."""
+        manager = SessionManager()
+        manager._init()
+        session = manager.create("build me something")
+
+        assert session.transcript[0]["actions"] == []
+
+    def test_a_turn_that_called_nothing_says_so_rather_than_omitting_it(self):
+        manager = SessionManager()
+        manager._init()
+        session = manager.create("what models do I have?")
+
+        manager.remember(session.id, [], "you have three", actions=[])
+
+        assert session.transcript[-1]["actions"] == []
+
+    def test_each_turn_holds_only_its_own(self):
+        manager = SessionManager()
+        manager._init()
+        session = manager.create("first")
+        manager.remember(session.id, [], "did the first", actions=[{"tool": "write_model"}])
+
+        manager.add_turn(session.id, "second")
+        manager.remember(session.id, [], "did the second", actions=[{"tool": "write_chart"}])
+
+        agent_turns = [e for e in session.transcript if e["role"] == "agent"]
+        assert [[a["tool"] for a in t["actions"]] for t in agent_turns] == [
+            ["write_model"],
+            ["write_chart"],
+        ]
+
+
+class TestTheWorkReachesTheTranscript:
+    """End to end through the real loop, not just ``remember``.
+
+    The scoping lives in ``runner._execute`` — take a marker, run the turn,
+    slice. A unit test of the session cannot tell whether anything ever passes
+    it real actions, which is the failure that was on screen.
+    """
+
+    def _writes_then_answers(self):
+        turns = {"n": 0}
+
+        def respond(messages, info: AgentInfo):
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(
+                    parts=[
+                        ToolCallPart(
+                            "write_markdown",
+                            {"config": {"name": "from_the_turn", "content": "# hi"}},
+                        )
+                    ]
+                )
+            return ModelResponse(parts=[TextPart("Made it.")])
+
+        return FunctionModel(respond)
+
+    def test_the_answer_carries_the_tool_call_that_produced_it(self, integration_app, sessions):
+        session = start(
+            integration_app, "make it", self._writes_then_answers(), session_manager=sessions
+        )
+        _settle(sessions, session.id)
+
+        answer = sessions.get(session.id).to_dict()["transcript"][-1]
+        assert answer["role"] == "agent"
+        assert [a["tool"] for a in answer["actions"]] == ["write_markdown"]
+        assert answer["actions"][0]["object"]["name"] == "from_the_turn"
+
+    def test_a_second_turn_does_not_re_report_the_firsts_work(self, integration_app, sessions):
+        """The log is process-wide and not cleared between turns, so a slice
+        taken from the wrong place shows the first turn's work again on the
+        second — which reads as the agent redoing it."""
+        session = start(
+            integration_app, "make it", self._writes_then_answers(), session_manager=sessions
+        )
+        _settle(sessions, session.id)
+
+        start(
+            integration_app,
+            "anything else",
+            _answers("Nothing to do."),
+            session_manager=sessions,
+            session_id=session.id,
+        )
+        _settle(sessions, session.id)
+
+        agent_turns = [e for e in sessions.get(session.id).transcript if e["role"] == "agent"]
+        assert [len(t["actions"]) for t in agent_turns] == [1, 0]

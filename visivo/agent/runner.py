@@ -14,6 +14,7 @@ they can decide themselves, and discarding is one click (#699).
 import asyncio
 import threading
 
+from visivo.agent.actions import log as action_log
 from visivo.agent.loop import build_agent, usage_limits
 from visivo.agent.sessions import SessionManager, SessionState
 from visivo.logger.logger import Logger
@@ -64,6 +65,10 @@ def _execute(app, manager, session_id, prompt, model):
         # objects back, including tool calls and their results, or it re-runs
         # work it has already done.
         history = list(getattr(manager.get(session_id), "history", []) or [])
+        # Where the shared log stands before this turn touches it. The log is
+        # process-wide — an MCP client can be working through the same serve —
+        # so a turn reports what it did by slice, never by clearing.
+        mark = action_log().marker()
         task = loop.create_task(
             agent.run(prompt, message_history=history, usage_limits=usage_limits())
         )
@@ -83,7 +88,9 @@ def _execute(app, manager, session_id, prompt, model):
         answer = str(result.output)
         # Persisted BEFORE the state flips, so a poll that sees "succeeded"
         # cannot arrive ahead of the answer it is being told about.
-        manager.remember(session_id, result.all_messages(), answer)
+        manager.remember(
+            session_id, result.all_messages(), answer, actions=action_log().since(mark)
+        )
         manager.set_state(session_id, SessionState.SUCCEEDED, output=answer)
     except Exception as error:  # noqa: BLE001 — reported to the session, never raised
         # An agent failure is a failure: it belongs in the same place every
