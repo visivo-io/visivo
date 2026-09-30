@@ -211,6 +211,48 @@ class TestWhenCoreWillNotAnswer:
             call(project, "write_markdown", {"config": {"name": "x", "content": "#"}})
 
 
+class TestReachingCoreFromInsideTheCluster:
+    """A pod cannot reach its own cluster's external ingress, so the connection
+    goes to the web Service's DNS name — which core's ALLOWED_HOSTS rejects
+    with a 400 DisallowedHost, arriving as an HTML error page rather than
+    anything an agent can read."""
+
+    def test_the_public_name_is_sent_as_host(self):
+        core = FakeCore()
+        CoreClient(
+            "http://core-web.core.svc.cluster.local",
+            "tok",
+            "p1",
+            session=core,
+            host_header="app.development.visivo.io",
+        )
+
+        assert core.headers["Host"] == "app.development.visivo.io"
+
+    def test_and_the_proxy_proto_so_the_redirect_does_not_bounce_it(self):
+        """core redirects http->https; without this a plain-HTTP in-cluster
+        call is bounced to a URL the pod cannot reach."""
+        core = FakeCore()
+        CoreClient("http://x", "tok", "p1", session=core, host_header="app.visivo.io")
+
+        assert core.headers["X-Forwarded-Proto"] == "https"
+
+    def test_neither_is_sent_when_there_is_no_override(self):
+        """Out of cluster the connection host IS the public name, and forcing a
+        Host header would be a way to get it wrong."""
+        core = FakeCore()
+        CoreClient("https://app.visivo.io", "tok", "p1", session=core)
+
+        assert "Host" not in core.headers
+        assert "X-Forwarded-Proto" not in core.headers
+
+    def test_build_passes_it_through(self):
+        core = FakeCore()
+        build("http://x", "tok", "p1", session=core, host_header="app.visivo.io")
+
+        assert core.headers["Host"] == "app.visivo.io"
+
+
 class TestTheClient:
     def test_it_authenticates_the_way_everything_else_does(self):
         core = FakeCore()
