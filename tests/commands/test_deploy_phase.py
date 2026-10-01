@@ -6,6 +6,7 @@ from unittest import mock
 
 import click
 import pytest
+import requests
 
 from tests.factories.model_factories import (
     ProjectFactory,
@@ -14,6 +15,7 @@ from tests.factories.model_factories import (
 )
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
 from visivo.commands.deploy_phase import (
+    upload_project_settings,
     PURPOSE_BY_DESCRIPTION,
     collect_models_for_insights,
     collect_static_insight_parquet,
@@ -500,3 +502,31 @@ def test_verify_run_output_lists_them_under_stacktrace(tmp_path, monkeypatch):
             verify_run_output(project, str(tmp_path))
 
     assert "line-trace.parquet" in str(exc.value)
+
+
+def test_upload_project_settings_posts_defaults_and_theme(requests_mock):
+    requests_mock.post("http://host/api/defaults/?project_id=p1", json={}, status_code=200)
+    requests_mock.post("http://host/api/theme/?project_id=p1", json={}, status_code=200)
+
+    upload_project_settings(
+        {"defaults": {"source_name": "db"}, "theme": {"mode": "dark"}}, "p1", {}, "http://host"
+    )
+
+    posted = {r.path: r.json() for r in requests_mock.request_history}
+    assert posted == {"/api/defaults/": {"source_name": "db"}, "/api/theme/": {"mode": "dark"}}
+
+
+def test_upload_project_settings_skips_unset_settings(requests_mock):
+    upload_project_settings({"name": "p"}, "p1", {}, "http://host")
+    assert requests_mock.request_history == []
+
+
+def test_upload_project_settings_tolerates_a_cloud_without_themes(requests_mock):
+    requests_mock.post("http://host/api/theme/?project_id=p1", status_code=404)
+    upload_project_settings({"theme": {"mode": "dark"}}, "p1", {}, "http://host")
+
+
+def test_upload_project_settings_raises_on_other_theme_errors(requests_mock):
+    requests_mock.post("http://host/api/theme/?project_id=p1", status_code=400)
+    with pytest.raises(requests.HTTPError):
+        upload_project_settings({"theme": {"mode": "dark"}}, "p1", {}, "http://host")

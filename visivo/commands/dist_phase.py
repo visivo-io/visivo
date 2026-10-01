@@ -155,7 +155,12 @@ def dist_phase(
                                 project.defaults.model_dump(exclude_none=True, mode="json")
                                 if project.defaults
                                 else {}
-                            )
+                            ),
+                            "theme": (
+                                project.theme.model_dump(exclude_none=True, mode="json")
+                                if project.theme
+                                else {}
+                            ),
                         },
                         "dashboard_count": len(project.dashboards or []),
                         "source_count": len(project.sources or []),

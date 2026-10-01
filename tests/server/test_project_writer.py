@@ -355,3 +355,80 @@ def test_update_file_contents(simple_writer, simple_project_file, temp_project_d
     # Verify all operations were applied correctly
     assert len(simple_writer.files_to_write[simple_project_file]["components"]) > 0
     assert len(simple_writer.files_to_write[new_file_path]["components"]) > 0
+
+
+def _top_level_writer(project_file, key, config):
+    return ProjectWriter(
+        {
+            f"project.{key}": {
+                "status": "Modified",
+                "file_path": project_file,
+                "new_file_path": project_file,
+                "type_key": key,
+                "top_level_key": key,
+                "config": config,
+            }
+        }
+    )
+
+
+def _write_and_read(writer, project_file):
+    writer.update_file_contents()
+    writer.write()
+    with open(project_file) as f:
+        return f.read()
+
+
+def test_top_level_setting_updates_in_place_and_keeps_comments(tmp_path):
+    project_file = str(tmp_path / "project.visivo.yml")
+    with open(project_file, "w") as f:
+        f.write(
+            "name: demo\n"
+            "defaults:\n"
+            "  source_name: db # the warehouse\n"
+            "  threads: 4\n"
+            "charts: []\n"
+        )
+
+    writer = _top_level_writer(project_file, "defaults", {"source_name": "db", "threads": 8})
+    contents = _write_and_read(writer, project_file)
+
+    assert "threads: 8" in contents
+    assert "# the warehouse" in contents
+
+
+def test_top_level_setting_is_inserted_after_defaults_when_missing(tmp_path):
+    project_file = str(tmp_path / "project.visivo.yml")
+    with open(project_file, "w") as f:
+        f.write("name: demo\ndefaults:\n  source_name: db\ncharts: []\n")
+
+    writer = _top_level_writer(
+        project_file, "theme", {"mode": "dark", "dark": {"surface": "#1b1f36"}}
+    )
+    contents = _write_and_read(writer, project_file)
+
+    keys = [line.split(":")[0] for line in contents.splitlines() if not line.startswith(" ")]
+    assert keys == ["name", "defaults", "theme", "charts"]
+    assert "surface: '#1b1f36'" in contents or 'surface: "#1b1f36"' in contents
+
+
+def test_top_level_setting_drops_keys_removed_from_config(tmp_path):
+    project_file = str(tmp_path / "project.visivo.yml")
+    with open(project_file, "w") as f:
+        f.write("name: demo\ntheme:\n  mode: dark\n  accent: '#713b57'\n")
+
+    writer = _top_level_writer(project_file, "theme", {"mode": "light"})
+    contents = _write_and_read(writer, project_file)
+
+    assert "mode: light" in contents
+    assert "accent" not in contents
+
+
+def test_empty_top_level_setting_removes_the_key(tmp_path):
+    project_file = str(tmp_path / "project.visivo.yml")
+    with open(project_file, "w") as f:
+        f.write("name: demo\ntheme:\n  mode: dark\n")
+
+    contents = _write_and_read(_top_level_writer(project_file, "theme", {}), project_file)
+
+    assert "theme" not in contents

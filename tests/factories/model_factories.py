@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import factory
 from visivo.models.alert import Alert
 from visivo.models.defaults import Defaults
+from visivo.models.theme import Theme
 from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.seed import Seed
@@ -371,6 +372,15 @@ class DefaultsFactory(factory.Factory):
 
     class Meta:
         model = Defaults
+
+
+class ThemeFactory(factory.Factory):
+    mode = "dark"
+    accent = "#2d6a6f"
+    dark = factory.Dict({"surface": "#1b1f36"})
+
+    class Meta:
+        model = Theme
 
 
 class ProjectFactory(factory.Factory):

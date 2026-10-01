@@ -5,6 +5,7 @@ import re
 from flask import jsonify, request, send_file, send_from_directory
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
 from visivo.telemetry.config import is_telemetry_enabled
+from visivo.server.views.theme_views import current_theme_config
 
 
 def register_data_views(app, flask_app, output_dir):
@@ -40,7 +41,10 @@ def register_data_views(app, flask_app, output_dir):
             "id": "id",
             "name": flask_app._project.name,
             "project_dir": flask_app._project.project_dir or "",
-            "config": {"defaults": project_data.get("defaults", {})},
+            "config": {
+                "defaults": project_data.get("defaults", {}),
+                "theme": current_theme_config(flask_app),
+            },
             "dashboard_count": len(project_data.get("dashboards") or []),
             "source_count": len(project_data.get("sources") or []),
             "created_at": datetime.datetime.now().isoformat(),

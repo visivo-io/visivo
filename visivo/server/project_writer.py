@@ -81,6 +81,9 @@ class ProjectWriter:
 
     def update_file_contents(self):
         for child_name, child_info in self.named_children.items():
+            if child_info.get("top_level_key"):
+                self._update_top_level(child_name)
+                continue
             match child_info["status"]:
                 case "Unchanged":
                     continue
@@ -103,6 +106,26 @@ class ProjectWriter:
         for file, contents in self.files_to_write.items():
             with open(file, "w") as file:
                 self.yaml.dump(contents, file)
+
+    def _update_top_level(self, child_name: str):
+        """Write a project-level mapping such as ``defaults:`` or ``theme:``, which has no name."""
+        child_info = self.named_children[child_name]
+        key = child_info["top_level_key"]
+        config = self._get_named_child_config(child_name)
+        contents = self.files_to_write[child_info["file_path"]]
+
+        if not config:
+            contents.pop(key, None)
+            return
+        existing = contents.get(key)
+        if isinstance(existing, dict):
+            apply_diff(existing, diff(existing, config))
+            return
+
+        keys = list(contents.keys())
+        anchor = next((k for k in ("defaults", "name") if k in keys and k != key), None)
+        position = keys.index(anchor) + 1 if anchor else len(keys)
+        contents.insert(position, key, config)
 
     def _update(self, child_name: str):
         new_object = self._get_named_child_config(child_name)

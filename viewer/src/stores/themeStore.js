@@ -1,3 +1,5 @@
+import * as themeApi from '../api/theme';
+
 const STORAGE_PREFIX = 'visivo:dashboard-theme:';
 
 export const readStoredModeOverride = projectKey => {
@@ -18,10 +20,38 @@ const writeStoredModeOverride = (projectKey, mode) => {
   }
 };
 
-export const selectProjectTheme = state => state.project?.config?.theme ?? null;
+// `theme` is the editable draft-or-published theme once fetched; until then the theme that
+// arrived with the project envelope applies.
+export const selectProjectTheme = state => state.theme ?? state.project?.config?.theme ?? null;
 
-const createThemeSlice = set => ({
+const createThemeSlice = (set, get) => ({
+  theme: null,
   themeModeOverrides: {},
+
+  fetchTheme: async () => {
+    try {
+      const theme = await themeApi.fetchTheme(get().project?.id);
+      set({ theme });
+    } catch {
+      // Keep whatever theme is already showing; the project envelope still carries one.
+    }
+  },
+
+  saveTheme: async config => {
+    get().beginSaveActivity?.();
+    let ok = false;
+    try {
+      await themeApi.saveTheme(config, get().project?.id);
+      ok = true;
+      await get().fetchTheme();
+      await get().checkCommitStatus?.();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      get().endSaveActivity?.(ok);
+    }
+  },
 
   setThemeModeOverride: (projectKey, mode) => {
     writeStoredModeOverride(projectKey, mode);

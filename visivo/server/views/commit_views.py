@@ -22,6 +22,12 @@ def _env_file_keys(flask_app):
         return []
 
 
+def _cached_project_settings(flask_app):
+    """Draft project-level settings (top-level YAML keys like ``defaults``), keyed by YAML key."""
+    cached = {"defaults": flask_app._cached_defaults, "theme": flask_app._cached_theme}
+    return {key: value for key, value in cached.items() if value is not None}
+
+
 def register_commit_views(app, flask_app, output_dir):
     """Register commit-related API endpoints."""
 
@@ -42,6 +48,7 @@ def register_commit_views(app, flask_app, output_dir):
                 or flask_app.dashboard_manager.has_unpublished_changes()
                 or flask_app.input_manager.has_unpublished_changes()
                 or flask_app._cached_defaults is not None
+                or flask_app._cached_theme is not None
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -178,15 +185,8 @@ def register_commit_views(app, flask_app, output_dir):
                     }
                     pending.append(input_info)
 
-            # Get defaults changes
-            if flask_app._cached_defaults is not None:
-                pending.append(
-                    {
-                        "name": "defaults",
-                        "type": "defaults",
-                        "status": "modified",
-                    }
-                )
+            for setting in _cached_project_settings(flask_app):
+                pending.append({"name": setting, "type": setting, "status": "modified"})
 
             return jsonify({"pending": pending, "count": len(pending)})
         except Exception as e:
@@ -261,8 +261,8 @@ def register_commit_views(app, flask_app, output_dir):
                             to_remove.append(entry)
                         else:
                             to_publish.append(entry)
-            if flask_app._cached_defaults is not None:
-                to_publish.append({"name": "defaults", "type": "defaults", "status": "modified"})
+            for setting in _cached_project_settings(flask_app):
+                to_publish.append({"name": setting, "type": setting, "status": "modified"})
             # `staged` is a different question from `to_publish`: what a RUN
             # would build, not what a COMMIT would publish. A chart colour edit
             # is in the second and not the first. They share this endpoint
@@ -466,16 +466,15 @@ def register_commit_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
-            # Process defaults
-            if flask_app._cached_defaults is not None:
-                exclude_fields = {"path", "file_path"}
-                named_children["defaults"] = {
+            for setting, cached in _cached_project_settings(flask_app).items():
+                named_children[f"project.{setting}"] = {
                     "status": "Modified",
                     "file_path": flask_app.project.project_file_path,
                     "new_file_path": flask_app.project.project_file_path,
-                    "type_key": "defaults",
-                    "config": flask_app._cached_defaults.model_dump(
-                        exclude_none=True, exclude=exclude_fields
+                    "type_key": setting,
+                    "top_level_key": setting,
+                    "config": cached.model_dump(
+                        mode="json", exclude_none=True, exclude={"path", "file_path"}
                     ),
                 }
                 published_count += 1
@@ -556,6 +555,7 @@ def register_commit_views(app, flask_app, output_dir):
                 flask_app.dashboard_manager.clear_cache()
                 flask_app.input_manager.clear_cache()
                 flask_app._cached_defaults = None
+                flask_app._cached_theme = None
 
                 # Trigger project reload via hot reload server if available
                 if hot_reload_server:
@@ -608,9 +608,9 @@ def register_commit_views(app, flask_app, output_dir):
                     if status and status != ObjectStatus.PUBLISHED:
                         discarded_count += 1
                 manager.clear_cache()
-            if flask_app._cached_defaults is not None:
-                discarded_count += 1
-                flask_app._cached_defaults = None
+            discarded_count += len(_cached_project_settings(flask_app))
+            flask_app._cached_defaults = None
+            flask_app._cached_theme = None
 
             return jsonify(
                 {

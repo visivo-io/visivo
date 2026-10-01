@@ -43,6 +43,8 @@ export default defineConfig({
         '**/canvas-editing.spec.mjs',
         // VIS-1234 delete lifecycle — writes draft state (see state-mutating).
         '**/delete-lifecycle.spec.mjs',
+        // Saves and discards a draft project theme (see state-mutating).
+        '**/theme-edit.spec.mjs',
         // Phase 2 e2e gate (VIS-1050): explorations live in ONE file-backed
         // repository shared by every worker (`.visivo/explorations/`, no
         // per-worker isolation like localStorage-scoped Phase 0 state) — see
@@ -151,6 +153,8 @@ export default defineConfig({
         // several surfaces, restores one, and lets the auto-run fire. Every
         // case writes draft state.
         '**/delete-lifecycle.spec.mjs',
+        // Saves a draft project theme, then discards it.
+        '**/theme-edit.spec.mjs',
       ],
       dependencies: ['parallel'],
     },

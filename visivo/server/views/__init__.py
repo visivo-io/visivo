@@ -2,6 +2,7 @@ from visivo.server.views.auth_views import register_auth_views
 from visivo.server.views.cloud_views import register_cloud_views
 from visivo.server.views.dashboard_views import register_dashboard_views
 from visivo.server.views.defaults_views import register_defaults_views
+from visivo.server.views.theme_views import register_theme_views
 from visivo.server.views.data_views import register_data_views
 from visivo.server.views.dimension_views import register_dimension_views
 from visivo.server.views.file_views import register_file_views
@@ -59,6 +60,7 @@ def register_views(app, flask_app, output_dir):
     register_profiling_views(app, flask_app, output_dir)
     register_commit_views(app, flask_app, output_dir)
     register_defaults_views(app, flask_app, output_dir)
+    register_theme_views(app, flask_app)
     register_source_schema_jobs_views(app, flask_app, output_dir)
     register_auth_views(app, flask_app, output_dir)
     register_cloud_views(app, flask_app, output_dir)

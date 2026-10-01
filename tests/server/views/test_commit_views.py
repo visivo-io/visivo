@@ -60,6 +60,7 @@ class TestCommitViews:
         flask_app.input_manager.has_unpublished_changes.return_value = False
         flask_app.input_manager.cached_objects = {}
         flask_app._cached_defaults = None
+        flask_app._cached_theme = None
 
         register_commit_views(app, flask_app, "/tmp/output")
 

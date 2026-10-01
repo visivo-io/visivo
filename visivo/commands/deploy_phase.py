@@ -1050,6 +1050,33 @@ def collect_parquet_files_for_inputs(inputs, output_dir):
     return list(parquet_files.values())
 
 
+def upload_project_settings(project_json, project_id, json_headers, host):
+    """POST the project-level ``defaults`` and ``theme`` mappings to their singleton endpoints."""
+    defaults = project_json.get("defaults") or {}
+    if defaults:
+        response = requests.post(
+            f"{host}/api/defaults/?project_id={project_id}",
+            data=json.dumps(defaults),
+            headers=json_headers,
+        )
+        response.raise_for_status()
+
+    theme = project_json.get("theme") or {}
+    if theme:
+        response = requests.post(
+            f"{host}/api/theme/?project_id={project_id}",
+            data=json.dumps(theme),
+            headers=json_headers,
+        )
+        if response.status_code == 404:
+            Logger.instance().info(
+                "\tThis Visivo Cloud version does not support project themes yet; "
+                "dashboards will use the built-in theme."
+            )
+        else:
+            response.raise_for_status()
+
+
 def upload_resources(resources_by_segment, project_id, json_headers, host):
     """POST each non-empty per-type config array to its cloud endpoint.
 
@@ -1184,14 +1211,7 @@ def deploy_phase(
             json_headers=json_headers,
             host=host,
         )
-        defaults = project_json.get("defaults") or {}
-        if defaults:
-            defaults_response = requests.post(
-                f"{host}/api/defaults/?project_id={project_id}",
-                data=json.dumps(defaults),
-                headers=json_headers,
-            )
-            defaults_response.raise_for_status()
+        upload_project_settings(project_json, project_id, json_headers, host)
         send_progress(
             f"Project resources uploaded in {time() - upload_resources_start_time:.2f} seconds",
             "info",
