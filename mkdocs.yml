@@ -164,6 +164,8 @@ nav:
                           - reference/configuration/Dashboards/Dashboard/Row/Item/index.md
               - ExternalDashboard:
                   - reference/configuration/Dashboards/ExternalDashboard/index.md
+              - TemplateDashboard:
+                  - reference/configuration/Dashboards/TemplateDashboard/index.md
           - Dbt:
               - reference/configuration/Dbt/index.md
           - Defaults:

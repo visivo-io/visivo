@@ -15,6 +15,9 @@ from visivo.models.validators.standalone_field_refs_validator import (
     StandaloneFieldRefsValidator,
     standalone_field_ref_error,
 )
+from visivo.models.validators.template_dashboard_items_validator import (
+    TemplateDashboardItemsValidator,
+)
 from visivo.models.validators.project_validator import ProjectValidator
 
 __all__ = [
@@ -31,5 +34,6 @@ __all__ = [
     "SingleSourceValidator",
     "StandaloneFieldRefsValidator",
     "standalone_field_ref_error",
+    "TemplateDashboardItemsValidator",
     "ProjectValidator",
 ]

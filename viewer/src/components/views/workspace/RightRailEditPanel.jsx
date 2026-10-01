@@ -29,6 +29,7 @@ import { COLLECTION_KEY } from './collectionKeys';
 import useRecordSave from '../../../hooks/useRecordSave';
 import RecordRunStatus from './RecordRunStatus';
 import { appendEmptyItem, createRow, runDashboardConfigGate } from './itemMutations';
+import { templateItemNames } from '../../project/template/templateHtml';
 
 /**
  * RightRailEditPanel — VIS-802 / Track G G-1.
@@ -431,6 +432,23 @@ const RightRailEditPanel = () => {
   }
 
   // ── Scoped dashboard → route by the Outline selection ──────────────────────
+  // A template dashboard's layout is an HTML file; the rows/items editor and its
+  // Save would replace it with a grid.
+  if (isDashboardScoped && typeof dashboardConfig?.template === 'string') {
+    const placed = templateItemNames(dashboardConfig.template);
+    return (
+      <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
+        <Placeholder
+          testId="right-rail-template-dashboard"
+          title="Template dashboard"
+          body={`Its layout is HTML — edit ${dashboardConfig.template_file || 'its YAML file'} in your editor.${
+            placed.length ? ` Places: ${placed.join(', ')}.` : ''
+          }`}
+        />
+      </div>
+    );
+  }
+
   if (isDashboardScoped && dashboardConfig) {
     const sel = parseOutlineKey(outlineKey);
 

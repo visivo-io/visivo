@@ -53,6 +53,13 @@ class TestProjectChangeHandlerFilters:
         handler.on_modified(event)
         callback.assert_called_once()
 
+    def test_template_html_triggers(self):
+        callback = Mock()
+        handler = ProjectChangeHandler(callback)
+        event = Mock(is_directory=False, src_path="/proj/templates/quarterly.html")
+        handler.on_modified(event)
+        callback.assert_called_once()
+
 
 class TestFindAvailablePort:
     def test_returns_a_bindable_port(self):

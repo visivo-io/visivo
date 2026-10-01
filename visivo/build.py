@@ -45,6 +45,8 @@ def build():
         "visivo/schema/*.json:visivo/schema",
         "--add-data",
         "visivo/viewers/*:visivo/viewers",
+        "--add-data",
+        "visivo/models/dashboards/template_policy.json:visivo/models/dashboards",
     ]
 
     if debug_mode:

@@ -1,0 +1,37 @@
+<style>
+  :host { --accent: #7c3aed; font-family: Georgia, serif; }
+  .masthead { border-bottom: 3px solid var(--accent); padding: 8px 0 12px; margin-bottom: 16px; }
+  .masthead h1 { margin: 0; font-size: 28px; }
+  .masthead p { margin: 4px 0 0; color: #555; }
+  .banner { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .kpi { height: 220px; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .note { height: 220px; }
+  .split { display: grid; grid-template-columns: 1fr 3fr; gap: 16px; margin-top: 16px; }
+  .control { height: 90px; }
+  .wide { height: 360px; }
+  article p { max-width: 70ch; line-height: 1.6; }
+  .table { height: 320px; }
+</style>
+<header class="masthead">
+  <h1>Quarterly Review</h1>
+  <p>A template dashboard: this layout is HTML, and the charts sit where it says.</p>
+</header>
+<section class="banner">
+  <div class="kpi" data-visivo-item="indicator_chart"></div>
+  <div class="note" data-visivo-item="welcome-note"></div>
+</section>
+<section class="split">
+  <aside>
+    <div class="control" data-visivo-item="split_threshold"></div>
+  </aside>
+  <div class="wide" data-visivo-item="split-input-test-chart"></div>
+</section>
+<article>
+  <p>
+    Revenue held through the quarter. The scatter below is the same chart the grid
+    dashboards use; only its placement comes from this file.
+  </p>
+  <div class="wide" data-visivo-item="simple-scatter-chart"></div>
+  <p>The detail table follows the narrative, where a grid row could not put it.</p>
+  <div class="table" data-visivo-item="new_table"></div>
+</article>

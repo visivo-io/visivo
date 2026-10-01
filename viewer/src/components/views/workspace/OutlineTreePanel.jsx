@@ -4,6 +4,7 @@ import useStore from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
 import { getTypeIcon } from '../common/objectTypeConfigs';
 import { parseRefValue } from '../../../utils/refString';
+import { templateItemNames } from '../../project/template/templateHtml';
 
 /**
  * OutlineTreePanel — VIS-793 / Track F F-3.
@@ -186,6 +187,24 @@ const EmptyState = ({ onAddRow }) => (
   </div>
 );
 
+const TemplateState = ({ source, itemNames }) => (
+  <div
+    data-testid="outline-tree-template"
+    className="flex flex-1 flex-col px-6 py-8 text-[12px] leading-relaxed text-gray-600"
+  >
+    <p>
+      This is a template dashboard. Its layout is HTML — edit <code>{source}</code> in your editor.
+    </p>
+    {itemNames.length > 0 && (
+      <ul className="mt-2 list-disc pl-4">
+        {itemNames.map(itemName => (
+          <li key={itemName}>{itemName}</li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
+
 const NoDashboardState = () => (
   <div
     data-testid="outline-tree-no-dashboard"
@@ -233,6 +252,16 @@ const OutlineTreePanel = () => {
     if (!entry) return null;
     const config = entry.config || entry;
     return Array.isArray(config.rows) ? config.rows : [];
+  }, [dashboards, dashboardName]);
+
+  const template = useMemo(() => {
+    const entry = (dashboards || []).find(d => d.name === dashboardName);
+    const config = entry?.config || entry;
+    if (typeof config?.template !== 'string') return null;
+    return {
+      source: config.template_file || 'its YAML file',
+      itemNames: templateItemNames(config.template),
+    };
   }, [dashboards, dashboardName]);
 
   const handleAddRow = useCallback(() => {
@@ -329,7 +358,9 @@ const OutlineTreePanel = () => {
       data-testid="workspace-right-rail-outline"
       className="flex flex-1 flex-col overflow-hidden"
     >
-      {isEmpty ? (
+      {template ? (
+        <TemplateState source={template.source} itemNames={template.itemNames} />
+      ) : isEmpty ? (
         <EmptyState onAddRow={handleAddRow} />
       ) : (
         <div

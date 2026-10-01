@@ -10,6 +10,12 @@ import { useModelsData } from '../../hooks/useModelsData';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
+import TemplateDashboard from './template/TemplateDashboard';
+import { prepareTemplate } from './template/templateHtml';
+
+// Template slots are sized by the template, so they render through the grid's
+// item renderer with no row height of their own.
+const TEMPLATE_ROW = {};
 
 /**
  * Normalize a chart/table `insights` array so Chart/Table always receive
@@ -246,10 +252,12 @@ const Dashboard = ({
 
   // Markdown store
   const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
+  const markdowns = useStore(state => state.markdowns);
   const getMarkdownByName = useStore(state => state.getMarkdownByName);
 
   // Input store
   const fetchInputs = useStore(state => state.fetchInputs);
+  const inputs = useStore(state => state.inputs);
   const getInputByName = useStore(state => state.getInputByName);
 
   // Insight configs — the /project route doesn't otherwise load them, but Chart
@@ -327,6 +335,34 @@ const Dashboard = ({
     return dashboardData.config || dashboardData;
   }, [dashboards, dashboardName]);
 
+  // A template dashboard names its items in HTML rather than listing them in
+  // rows. Each slot becomes a grid item so the prefetch and render paths below
+  // serve both kinds of dashboard.
+  const templateHtml = typeof dashboard?.template === 'string' ? dashboard.template : null;
+  const preparedTemplate = useMemo(
+    () => (templateHtml === null ? null : prepareTemplate(templateHtml)),
+    [templateHtml]
+  );
+
+  const templateItemFor = useCallback(
+    name => {
+      if (getChartByName(name)) return { chart: name };
+      if (getTableByName(name)) return { table: name };
+      if (getMarkdownByName(name)) return { markdown: name };
+      if (getInputByName(name)) return { input: name };
+      return null;
+    },
+    // The getters are stable; the lists they read are what change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getChartByName, getTableByName, getMarkdownByName, getInputByName, charts, tables, markdowns, inputs]
+  );
+
+  const layoutRows = useMemo(() => {
+    if (!preparedTemplate) return dashboard?.rows;
+    const items = preparedTemplate.slots.map(slot => templateItemFor(slot.name)).filter(Boolean);
+    return [{ items }];
+  }, [preparedTemplate, templateItemFor, dashboard?.rows]);
+
   // Height calculation helpers.
   // `Row.height` accepts either an enum token (compact|xsmall|...|xxlarge) or a
   // positive integer pixel value (canvas's Shift-modifier fluid-resize gesture
@@ -381,14 +417,14 @@ const Dashboard = ({
 
   // Centralized input prefetching - fetch for ALL rows (optimize later)
   const visibleInputNames = useMemo(() => {
-    if (!dashboard?.rows) return [];
-    const allRowIndices = dashboard.rows.map((_, idx) => idx);
-    return collectInputNames(dashboard.rows, allRowIndices, shouldShowItem);
-  }, [dashboard?.rows, shouldShowItem]);
+    if (!layoutRows) return [];
+    const allRowIndices = layoutRows.map((_, idx) => idx);
+    return collectInputNames(layoutRows, allRowIndices, shouldShowItem);
+  }, [layoutRows, shouldShowItem]);
 
   const knownInsightNames = useMemo(() => {
     const names = new Set();
-    forEachItemDeep(dashboard?.rows, item => {
+    forEachItemDeep(layoutRows, item => {
       const chart = resolveItem(item.chart, getChartByName);
       chart?.insights?.forEach(i => {
         const n = typeof i === 'string' ? parseRefValue(i) : i?.name;
@@ -407,13 +443,13 @@ const Dashboard = ({
       }
     });
     return names;
-  }, [dashboard?.rows, getChartByName, getTableByName, isKnownModel]);
+  }, [layoutRows, getChartByName, getTableByName, isKnownModel]);
 
   const { visibleInsightNames, visibleModelNames } = useMemo(() => {
-    if (!dashboard?.rows) return { visibleInsightNames: [], visibleModelNames: [] };
-    const allRowIndices = dashboard.rows.map((_, idx) => idx);
+    if (!layoutRows) return { visibleInsightNames: [], visibleModelNames: [] };
+    const allRowIndices = layoutRows.map((_, idx) => idx);
     const { insightNames, modelNames } = collectDataNames(
-      dashboard.rows,
+      layoutRows,
       allRowIndices,
       shouldShowItem,
       getChartByName,
@@ -423,7 +459,7 @@ const Dashboard = ({
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.rows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel]);
+  }, [layoutRows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel]);
 
   // Inputs an insight DEPENDS ON (referenced via `${input.value}` inside its
   // query / static_props) must be prefetched too. Otherwise an input-driven
@@ -795,6 +831,26 @@ const Dashboard = ({
       <div className="flex items-center justify-center h-full">
         <div className="text-gray-500">Loading dashboard...</div>
       </div>
+    );
+  }
+
+  if (preparedTemplate) {
+    return (
+      <TemplateDashboard
+        dashboardName={dashboardName}
+        prepared={preparedTemplate}
+        renderItem={(slot, { width: slotWidth, height: slotHeight }) => {
+          const item = templateItemFor(slot.name);
+          if (!item) {
+            return (
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                Not found: {slot.name}
+              </div>
+            );
+          }
+          return renderItem(item, TEMPLATE_ROW, 0, 0, true, [item], slotHeight, slotWidth, `${slot.slotName}-`);
+        }}
+      />
     );
   }
 
