@@ -20,7 +20,6 @@ from visivo.agent.model_config import (
     SOURCE_BYO,
     SOURCE_CLOUD,
     AgentNotConfigured,
-    agent_host,
     resolve,
 )
 
@@ -120,30 +119,17 @@ class TestVisivoRunsWithoutVisivoCloud:
 
 
 class TestChoosingADeployment:
-    """Tokens are already per host, exactly as deploy tokens are, so pointing
-    the agent at development is naming it — not re-authorising."""
+    """One host per serve (VIS-1376).
 
-    def test_the_profile_can_name_a_host(self):
-        assert (
-            agent_host(profile={"agent": {"host": "https://app.development.visivo.io"}}, environ={})
-            == "https://app.development.visivo.io"
-        )
+    There used to be an agent-only host — a profile key and an env var — so
+    the agent could be pointed at development while deploys stayed on
+    production. Two settings that could silently disagree about which
+    deployment you were on, and about which token was the right one.
+    """
 
-    def test_the_environment_wins_over_the_profile(self):
-        assert (
-            agent_host(
-                profile={"agent": {"host": "https://from-file"}},
-                environ={"VISIVO_AGENT_HOST": "https://from-env"},
-            )
-            == "https://from-env"
-        )
-
-    def test_it_falls_back_to_the_default_host(self):
-        assert agent_host(profile={}, environ={}) == "https://app.visivo.io"
-
-    def test_the_chosen_host_is_the_one_asked_and_used(self, monkeypatch):
-        """Naming a development deployment must move BOTH the capability probe
-        and the token lookup — asking one host and billing another would be a
+    def test_the_host_it_is_given_is_the_host_it_asks(self, monkeypatch):
+        """Naming a deployment must move BOTH the capability probe and the
+        token lookup — asking one host and billing another would be a
         confusing way to fail."""
         asked = []
         monkeypatch.setattr(cloud_model, "token", lambda host=None: "t")
@@ -151,12 +137,35 @@ class TestChoosingADeployment:
             cloud_model, "serves_inference", lambda host=None: asked.append(host) or True
         )
 
-        _, _, source = resolve(
-            environ={}, profile={"agent": {"host": "https://app.development.visivo.io"}}
-        )
+        _, _, source = resolve(environ={}, profile={}, host="https://app.development.visivo.io")
 
         assert source == SOURCE_CLOUD
         assert asked == ["https://app.development.visivo.io"]
+
+    def test_with_no_host_it_uses_the_process_default(self, monkeypatch):
+        asked = []
+        monkeypatch.setattr(cloud_model, "token", lambda host=None: "t")
+        monkeypatch.setattr(
+            cloud_model, "serves_inference", lambda host=None: asked.append(host) or True
+        )
+
+        resolve(environ={}, profile={})
+
+        assert asked == ["https://app.visivo.io"]
+
+    def test_the_profile_can_no_longer_name_its_own(self, monkeypatch):
+        """An `agent: host:` left in someone's profile must be INERT rather
+        than quietly still in charge — a setting that half-works is worse than
+        one that is gone."""
+        asked = []
+        monkeypatch.setattr(cloud_model, "token", lambda host=None: "t")
+        monkeypatch.setattr(
+            cloud_model, "serves_inference", lambda host=None: asked.append(host) or True
+        )
+
+        resolve(environ={}, profile={"agent": {"host": "https://stale.example"}})
+
+        assert asked == ["https://app.visivo.io"]
 
 
 class TestAskingForSomethingSpecific:

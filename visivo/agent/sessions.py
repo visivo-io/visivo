@@ -50,6 +50,10 @@ class Session:
         self.created_at = datetime.now()
         self.updated_at = self.created_at
         self._cancel = None
+        # Why it failed, when "why" is something a reader can act on rather
+        # than a bug. Mirrors the action codes the endpoints already return, so
+        # the tab has one branch for a limit however it was hit.
+        self.action = None
         # pydantic-ai's own message objects, for the model.
         self.history = []
         # What a person reads. Kept separately because the two answer different
@@ -80,6 +84,7 @@ class Session:
             "prompt": self.prompt,
             "output": self.output,
             "error": self.error,
+            "action": self.action,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "turns": len(self.transcript),
@@ -164,7 +169,7 @@ class SessionManager:
         with self._lock:
             return [s for s in self._sessions.values() if s.state not in FINISHED]
 
-    def set_state(self, session_id, state, output=None, error=None):
+    def set_state(self, session_id, state, output=None, error=None, action=None):
         with self._lock:
             session = self._sessions.get(session_id)
             if session is None:
@@ -175,6 +180,8 @@ class SessionManager:
                 session.output = output
             if error is not None:
                 session.error = error
+            if action is not None:
+                session.action = action
 
     def attach_cancel(self, session_id, cancel):
         """Registered BEFORE the loop starts. Registering after would leave a

@@ -378,16 +378,46 @@ describe('TopNav', () => {
   });
 
   describe('user menu (local, signed out)', () => {
-    it('offers login, docs, community, and issue links when no user is present', () => {
+    it('offers docs, community, and issue links when no user is present', () => {
       renderNav();
       fireEvent.click(screen.getByText('U')); // default avatar initial
-      expect(screen.getByText('Log in / Sign up')).toHaveAttribute(
-        'href',
-        'https://app.visivo.io/register'
-      );
       expect(screen.getByText('Documentation')).toBeInTheDocument();
       expect(screen.getByText('Join the Community')).toBeInTheDocument();
       expect(screen.getByText('Log an Issue')).toBeInTheDocument();
+    });
+
+    // The first item used to be "Log in / Sign up", linking to the register
+    // page — wrong both ways round (VIS-1377). To someone already authorized
+    // it offers an account they have; to someone who is not, it sends them to
+    // a page that cannot authorize THIS machine, leaving them to find
+    // `visivo authorize` on their own.
+    it('offers to open the account when this serve is authorized', () => {
+      renderNav({ authorization: { authorized: true, host: 'https://app.development.visivo.io' } });
+      fireEvent.click(screen.getByText('U'));
+
+      expect(screen.getByTestId('top-nav-open-cloud')).toHaveAttribute(
+        'href',
+        'https://app.development.visivo.io'
+      );
+      expect(screen.queryByTestId('top-nav-authorize')).not.toBeInTheDocument();
+    });
+
+    it('offers to authorize when it is not, and starts the flow here', () => {
+      const onAuthorize = jest.fn();
+      renderNav({ authorization: { authorized: false, onAuthorize } });
+      fireEvent.click(screen.getByText('U'));
+
+      fireEvent.click(screen.getByTestId('top-nav-authorize'));
+
+      expect(onAuthorize).toHaveBeenCalled();
+      expect(screen.queryByTestId('top-nav-open-cloud')).not.toBeInTheDocument();
+    });
+
+    it('says it is working rather than looking unresponsive', () => {
+      renderNav({ authorization: { authorized: false, authorizing: true } });
+      fireEvent.click(screen.getByText('U'));
+
+      expect(screen.getByTestId('top-nav-authorize')).toHaveTextContent('Authorizing');
     });
 
     it('closes the menu when a link is clicked', () => {

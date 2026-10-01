@@ -339,3 +339,83 @@ class TestTheWorkReachesTheTranscript:
 
         agent_turns = [e for e in sessions.get(session.id).transcript if e["role"] == "agent"]
         assert [len(t["actions"]) for t in agent_turns] == [1, 0]
+
+
+class TestTheSpendLimitReachesTheUser:
+    """A local `visivo serve` IS limited — core gates every call to the
+    inference proxy, whoever is calling — but it used to arrive unreadable.
+
+    pydantic-ai raises `ModelHTTPError`, whose str() is:
+
+        status_code: 429, model_name: google/gemini-2.5-pro, body: {'error':
+        'This account has used its $30 of free credit.', ...}
+
+    The sentence that helps was in there, buried in a dict repr beside a model
+    name implying Google had rate-limited us.
+    """
+
+    def _refused(self, detail="This account has used its $30 of free credit."):
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        return ModelHTTPError(
+            status_code=429,
+            model_name="google/gemini-2.5-pro",
+            body={"error": detail, "action": "inference_limit_reached"},
+        )
+
+    def test_the_limit_is_recognised_as_a_limit(self):
+        from visivo.agent import cloud_model
+
+        assert cloud_model.limit_reached(self._refused()) is True
+
+    def test_an_ordinary_rate_limit_is_not_mistaken_for_one(self):
+        """A 429 from the provider itself is a different thing — it is
+        temporary, and telling someone their credit is gone would be wrong."""
+        from pydantic_ai.exceptions import ModelHTTPError
+        from visivo.agent import cloud_model
+
+        upstream = ModelHTTPError(
+            status_code=429, model_name="m", body={"error": {"message": "slow down"}}
+        )
+
+        assert cloud_model.limit_reached(upstream) is False
+        assert cloud_model.explain(upstream) is None
+
+    def test_the_message_is_the_one_core_wrote(self):
+        """Core already phrased it — which limit, what it cost, when it resets.
+        A second copy here would be one to keep in step."""
+        from visivo.agent import cloud_model
+
+        assert cloud_model.explain(self._refused()) == (
+            "This account has used its $30 of free credit."
+        )
+
+    def test_a_refused_turn_says_so_instead_of_a_stack_of_status_codes(
+        self, integration_app, sessions
+    ):
+        from pydantic_ai.models.function import FunctionModel
+
+        def refuse(messages, info: AgentInfo):
+            raise self._refused()
+
+        session = start(integration_app, "build me a model", FunctionModel(refuse), sessions)
+        _settle(sessions, session.id)
+
+        finished = sessions.get(session.id).to_dict()
+        assert finished["state"] == "failed"
+        assert finished["error"] == "This account has used its $30 of free credit."
+        # Tagged, so the tab renders it as a limit rather than in the same red
+        # box as a crash — the same word the endpoint returns when a turn is
+        # refused BEFORE it starts.
+        assert finished["action"] == "inference_limit_reached"
+
+    def test_an_ordinary_failure_carries_no_action(self, integration_app, sessions):
+        def explode(messages, info: AgentInfo):
+            raise RuntimeError("something actually broke")
+
+        from pydantic_ai.models.function import FunctionModel
+
+        session = start(integration_app, "go", FunctionModel(explode), sessions)
+        _settle(sessions, session.id)
+
+        assert sessions.get(session.id).to_dict()["action"] is None

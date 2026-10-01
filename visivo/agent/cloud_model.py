@@ -144,6 +144,23 @@ def endpoint_of(model):
     return getattr(model, "_visivo_endpoint", None)
 
 
+# What core answers with when an account has nothing left to spend. The same
+# word the tab already branches on when a turn is refused before it starts.
+LIMIT_REACHED = "inference_limit_reached"
+
+
+def _body(error):
+    body = getattr(error, "body", None)
+    return body if isinstance(body, dict) else {}
+
+
+def limit_reached(error):
+    """Whether this failure is a spend limit rather than something broken."""
+    return getattr(error, "status_code", None) == 429 and _body(error).get("action") == (
+        LIMIT_REACHED
+    )
+
+
 def explain(error, host=None, model=None):
     """A clearer message when the failure is OUR endpoint, or ``None``.
 
@@ -155,8 +172,21 @@ def explain(error, host=None, model=None):
     ``/api/inference/`` and a deployment can answer that while serving the
     completions path at a different shape. So the two can disagree, and when
     they do the message should say which one is wrong.
+
+    A spend limit is the same shape of problem. The limit IS enforced for a
+    local `visivo serve` — core gates every call to the proxy, whoever is
+    calling — but it arrived as "status_code: 429, model_name:
+    google/gemini-2.5-pro, body: {'error': 'This account has used its $30 of
+    free credit.', ...}". The sentence that helps was in there, buried in a
+    dict repr beside a model name implying Google had rate-limited us.
     """
     status = getattr(error, "status_code", None)
+
+    if limit_reached(error):
+        # Core already phrased it — which limit, what it cost, when it resets.
+        # Repeating that here would be a second copy to keep in step.
+        return _body(error).get("error") or "This account has reached its spend limit."
+
     if status not in (404, 503):
         return None
 

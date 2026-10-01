@@ -63,21 +63,6 @@ def _section(profile):
     return (profile or {}).get(PROFILE_SECTION) or {}
 
 
-def agent_host(profile=None, environ=None, host=None):
-    """Which Visivo deployment answers for the agent.
-
-    Separate from the default host on purpose. The profile already keys tokens
-    by host, exactly as deploy tokens are — so pointing the agent at a
-    development deployment is naming it here, not re-authorising, and it does
-    not disturb where deploys go:
-
-        agent:
-          host: https://app.development.visivo.io
-    """
-    environ = os.environ if environ is None else environ
-    return host or environ.get("VISIVO_AGENT_HOST") or _section(profile).get("host") or VISIVO_HOST
-
-
 def resolve_model(requested=None, profile=None):
     """A model string pydantic-ai understands, e.g. ``anthropic:claude-...``."""
     section = _section(profile)
@@ -119,7 +104,9 @@ def resolve(requested=None, profile=None, environ=None, host=None):
     # that works without the user going and getting something first — but only
     # when they did not ASK for a specific model, because silently answering a
     # request for Claude with Gemini would be a lie.
-    chosen_host = agent_host(profile, environ, host)
+    # Whatever host this serve is bound to (VIS-1376). There is no agent-only
+    # host any more: one session, one deployment, one token to look for.
+    chosen_host = host or VISIVO_HOST
     if explicit is None and cloud_model.available(chosen_host):
         return cloud_model.build(chosen_host), {}, SOURCE_CLOUD
 

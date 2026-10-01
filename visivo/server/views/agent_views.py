@@ -71,7 +71,9 @@ def register_agent_views(app, flask_app):
             )
 
         try:
-            model, overlay, source = resolve(body.get("model"))
+            # The host this serve is bound to, not the import-time default:
+            # `--host` has to move the agent along with everything else.
+            model, overlay, source = resolve(body.get("model"), host=flask_app.host)
         except AgentNotConfigured as unconfigured:
             # 400, not 500: nothing is broken, the user has not set a key. The
             # message is the instructions, so the tab can show it verbatim.

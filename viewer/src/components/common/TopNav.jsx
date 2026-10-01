@@ -53,10 +53,11 @@ const DEFAULT_TOOLS = [
 ];
 
 /* ---------------------------------------------------------------- menu row */
-function Row({ children, active, onClick, style }) {
+function Row({ children, active, onClick, style, ...rest }) {
   const [hover, setHover] = React.useState(false);
   return (
     <div
+      {...rest}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -404,13 +405,41 @@ function DeployButton({ onClick, compact }) {
 }
 
 /* ------------------------------------------------------------ user menu */
-function localMenu(close) {
+/**
+ * The first item says what this serve's relationship to cloud actually is
+ * (VIS-1377).
+ *
+ * It used to read "Log in / Sign up" and link to the register page — which is
+ * wrong twice over. To someone already authorized it offers an account they
+ * have; to someone who is not, it sends them to a web page that cannot
+ * authorize THIS machine, leaving them to discover `visivo authorize` on their
+ * own. So: authorized, open the account; not, run the device flow from here.
+ */
+function localMenu(close, { authorized, host, authorizing, onAuthorize }) {
   const linkStyle = { display: 'block', padding: '8px 10px', borderRadius: 6, color: '#374151', textDecoration: 'none' };
+  const cloud = host || 'https://app.visivo.io';
   return (
     <div style={{ padding: 6 }}>
-      <a href="https://app.visivo.io/register" target="_blank" rel="noopener noreferrer" onClick={close} style={linkStyle}>
-        Log in / Sign up
-      </a>
+      {authorized ? (
+        <a
+          href={cloud}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={close}
+          data-testid="top-nav-open-cloud"
+          style={linkStyle}
+        >
+          Open Cloud Account
+        </a>
+      ) : (
+        <Row
+          onClick={() => { onAuthorize && onAuthorize(); close(); }}
+          style={{ borderRadius: 6 }}
+          data-testid="top-nav-authorize"
+        >
+          {authorizing ? 'Authorizing…' : 'Authorize'}
+        </Row>
+      )}
       <a href="https://docs.visivo.io" target="_blank" rel="noopener noreferrer" onClick={close} style={{ ...linkStyle, display: 'flex', alignItems: 'center', gap: 8 }}>
         <MdMenuBook size={16} color="#6b7280" /> Documentation
       </a>
@@ -430,7 +459,7 @@ function localMenu(close) {
   );
 }
 
-function UserMenu({ user, onSignOut, items = [] }) {
+function UserMenu({ user, onSignOut, items = [], authorization = {} }) {
   const initial = user?.name ? user.name[0].toUpperCase() : 'U';
   const trigger = (
     <span style={{ display: 'inline-flex', cursor: 'pointer' }}>
@@ -460,7 +489,7 @@ function UserMenu({ user, onSignOut, items = [] }) {
             <Row onClick={() => { onSignOut && onSignOut(); close(); }} style={{ borderRadius: 6 }}><FiLogOut size={15} color="#6b7280" /> Sign out</Row>
           </div>
         ) : (
-          localMenu(close)
+          localMenu(close, authorization)
         )
       }
     </Dropdown>
@@ -511,6 +540,11 @@ const TopNav = ({
   // link in the branch dropdown. Absent locally → plain logo, no all-branches.
   renderLogo,
   onAllBranches,
+  // Local only: whether this serve holds a token for its host, and how to get
+  // one ({authorized, host, authorizing, onAuthorize}). Passed IN rather than
+  // read here, because this component is vendored into cloud, where there is
+  // no local server to ask and `user` is supplied instead.
+  authorization = {},
 }) => {
   const location = useLocation();
   const theme = useTheme();
@@ -598,7 +632,7 @@ const TopNav = ({
             {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
             {showProject && branchControls}
             {showProject && action}
-            <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
+            <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} authorization={authorization} />
           </div>
         </div>
         {banner}
@@ -624,7 +658,7 @@ const TopNav = ({
           {showProject && branchControls}
           {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />
-          <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
+          <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} authorization={authorization} />
         </div>
       </div>
       {banner}

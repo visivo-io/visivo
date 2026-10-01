@@ -8,6 +8,8 @@ import {
   startAgentSession,
 } from '../api/agent';
 import AgentObjectLink from './AgentObjectLink';
+import AgentAuthorize from './AgentAuthorize';
+import useAuthorization from '../hooks/useAuthorization';
 
 /**
  * A conversation with the built-in loop.
@@ -45,6 +47,10 @@ const AgentPrompt = () => {
   const [starting, setStarting] = useState(false);
   const [modelSource, setModelSource] = useState(null);
   const timer = useRef(null);
+  // One idea of "authorized", shared with Deploy (VIS-1377). Until this the
+  // tab's answer to a first-time user was the resolver's BYO error.
+  const { authorized, host, working: authorizing, message: authMessage, authorize } =
+    useAuthorization();
   // Whether this person has started talking. The resume below must never
   // overwrite a conversation they began while it was still asking the server
   // what the last one was.
@@ -183,6 +189,21 @@ const AgentPrompt = () => {
   };
 
   const running = isActive(session);
+
+  // Not signed in and nothing said yet: offer the one click that fixes it
+  // rather than a prompt box that will answer with instructions. Once there
+  // IS a conversation the box stays, because hiding someone's transcript
+  // behind a login is worse than a Send that explains itself.
+  if (authorized === false && !session) {
+    return (
+      <AgentAuthorize
+        host={host}
+        working={authorizing}
+        message={authMessage}
+        onAuthorize={authorize}
+      />
+    );
+  }
 
   return (
     <div
@@ -352,6 +373,18 @@ function Outcome({ session }) {
     return (
       <div className="mt-3 text-sm text-gray-500" data-testid="agent-cancelled">
         Stopped. Anything it had already written is still there as a draft.
+      </div>
+    );
+  }
+  // A spend limit is not a broken agent, and the same word arrives whether the
+  // turn was refused before it started or ran into the limit mid-way.
+  if (session.action === 'inference_limit_reached') {
+    return (
+      <div
+        className="mt-3 rounded-md bg-blue-50 p-3 text-sm text-blue-900"
+        data-testid="agent-limit-reached"
+      >
+        {session.error}
       </div>
     );
   }

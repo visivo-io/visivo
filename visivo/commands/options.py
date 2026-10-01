@@ -135,11 +135,20 @@ def branch(function):
 
 
 def host(function):
+    """The Visivo deployment this command talks to.
+
+    Defaulted through the resolver rather than to a literal, so
+    `VISIVO_HOST=... visivo authorize` writes its token where `visivo serve`
+    will look for it. Hardcoding the production URL here meant the two halves
+    of one session could land on different deployments (VIS-1376).
+    """
+    from visivo.server.constants import resolve_host
+
     click.option(
         "-h",
         "--host",
-        help="Host to deploy to",
-        default=f"https://app.visivo.io",
+        help="Visivo Cloud host to authorize against and deploy to.",
+        default=resolve_host,
     )(function)
     return function
 

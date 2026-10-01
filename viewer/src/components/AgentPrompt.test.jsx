@@ -10,12 +10,23 @@ import {
   listAgentSessions,
   startAgentSession,
 } from '../api/agent';
+import {
+  authorizationProgress,
+  fetchAuthorization,
+  startAuthorization,
+} from '../api/authorization';
 
 jest.mock('../api/agent', () => ({
   startAgentSession: jest.fn(),
   fetchAgentSession: jest.fn(),
   cancelAgentSession: jest.fn(),
   listAgentSessions: jest.fn(),
+}));
+
+jest.mock('../api/authorization', () => ({
+  fetchAuthorization: jest.fn(),
+  startAuthorization: jest.fn(),
+  authorizationProgress: jest.fn(),
 }));
 
 const session = (state, extra = {}) => ({ id: 's1', state, transcript: [], ...extra });
@@ -27,12 +38,17 @@ beforeEach(() => {
   // The default for every test that is not about resuming: this project has
   // no earlier conversation.
   listAgentSessions.mockResolvedValue([]);
+  // And for every test that is not about authorizing: already connected, so
+  // the prompt box is what renders.
+  fetchAuthorization.mockResolvedValue({ authorized: true, host: 'https://app.visivo.io' });
 });
 
 describe('AgentPrompt', () => {
-  it('will not send an empty prompt', () => {
+  it('will not send an empty prompt', async () => {
     render(<AgentPrompt />);
-    expect(screen.getByTestId('agent-send')).toBeDisabled();
+    // Awaited because the authorization check settles after mount; asserting
+    // synchronously leaves its state update outside act().
+    expect(await screen.findByTestId('agent-send')).toBeDisabled();
   });
 
   it('sends the prompt and then shows the answer in the transcript', async () => {
@@ -454,5 +470,126 @@ describe('picking the conversation back up', () => {
 
     expect(await screen.findByTestId('agent-transcript')).toHaveTextContent('The new one.');
     expect(fetchAgentSession).not.toHaveBeenCalledWith('old', undefined);
+  });
+});
+
+describe('before this serve has been authorized', () => {
+  // It used to meet a first-time user with the resolver's BYO error — "Set
+  // ANTHROPIC_API_KEY, or add `agent: api_key:` to ~/.visivo/profile.yml" —
+  // which asks them to go and acquire a provider account, in a terminal, for
+  // something this page can do in one click.
+  const unauthorized = () =>
+    fetchAuthorization.mockResolvedValue({
+      authorized: false,
+      host: 'https://app.visivo.io',
+    });
+
+  it('offers to connect the account instead of a prompt box', async () => {
+    unauthorized();
+    render(<AgentPrompt />);
+
+    expect(await screen.findByTestId('agent-authorize-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('agent-send')).not.toBeInTheDocument();
+  });
+
+  it('names the deployment it would connect to', async () => {
+    // One host per serve — the page should not leave someone guessing which.
+    unauthorized();
+    render(<AgentPrompt />);
+
+    expect(await screen.findByTestId('agent-authorize-host')).toHaveTextContent(
+      'https://app.visivo.io'
+    );
+  });
+
+  it('runs the device flow and becomes usable without a reload', async () => {
+    unauthorized();
+    startAuthorization.mockResolvedValue({ authId: 'a1', url: 'https://app.visivo.io/x' });
+    authorizationProgress.mockResolvedValue({ done: true, failed: false, message: 'Authorized' });
+    window.open = jest.fn();
+    render(<AgentPrompt />);
+
+    await userEvent.click(await screen.findByTestId('agent-authorize-button'));
+    // What the popup lands on, once.
+    expect(startAuthorization).toHaveBeenCalled();
+
+    fetchAuthorization.mockResolvedValue({ authorized: true, host: 'https://app.visivo.io' });
+
+    expect(await screen.findByTestId('agent-send', undefined, { timeout: 5000 })).toBeInTheDocument();
+  });
+
+  it('keeps bring-your-own-key, below and collapsed', async () => {
+    // Real, and the option that keeps working when the credit runs out — just
+    // not the first ask. Stated outright rather than waiting on a failed
+    // request to reveal it: the prompt box is not on screen here, so nothing
+    // can fail to produce the instructions.
+    unauthorized();
+    render(<AgentPrompt />);
+
+    const byo = await screen.findByTestId('agent-authorize-byo');
+    expect(byo).toHaveTextContent('ANTHROPIC_API_KEY');
+    // A disclosure, not the headline.
+    expect(byo.tagName).toBe('DETAILS');
+    expect(byo).not.toHaveAttribute('open');
+  });
+
+  it('does not hide a conversation already on screen behind a login', async () => {
+    // Someone using their own key is authorized for nothing and still has a
+    // transcript. Replacing it with a sign-in prompt would lose their work.
+    fetchAuthorization.mockResolvedValue({ authorized: true, host: 'https://app.visivo.io' });
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      session('succeeded', { transcript: [said('agent', 'Built it.')] })
+    );
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+    await screen.findByTestId('agent-transcript');
+
+    fetchAuthorization.mockResolvedValue({ authorized: false, host: 'https://app.visivo.io' });
+
+    expect(screen.getByTestId('agent-transcript')).toBeInTheDocument();
+  });
+});
+
+describe('running out of credit mid-turn', () => {
+  // The limit applies to a local serve too — core gates every call to the
+  // inference proxy, whoever is calling. What was missing was saying so: it
+  // arrived as "status_code: 429, model_name: google/gemini-2.5-pro, body:
+  // {...}", which reads as Google rate-limiting us.
+  const refused = () =>
+    session('failed', {
+      error: 'This account has used its $30 of free credit.',
+      action: 'inference_limit_reached',
+      transcript: [said('user', 'build a model')],
+    });
+
+  it('reads as a limit, not as a crash', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(refused());
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'build a model');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    expect(await screen.findByTestId('agent-limit-reached')).toHaveTextContent(
+      '$30 of free credit'
+    );
+    expect(screen.queryByTestId('agent-failed')).not.toBeInTheDocument();
+  });
+
+  it('still shows an ordinary failure as a failure', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      session('failed', { error: 'something actually broke', action: null })
+    );
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    expect(await screen.findByTestId('agent-failed')).toHaveTextContent('something actually broke');
+    expect(screen.queryByTestId('agent-limit-reached')).not.toBeInTheDocument();
   });
 });

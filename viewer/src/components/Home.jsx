@@ -16,6 +16,7 @@ import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
 import { hasCompletedOnboarding } from './onboarding/onboardingState';
 import { useRunPolling } from '../hooks/useRunPolling';
 import { useState, useEffect } from 'react';
+import useAuthorization from '../hooks/useAuthorization';
 
 const Home = () => {
   const error = useLoaderData();
@@ -23,6 +24,13 @@ const Home = () => {
   const isRoot = location.pathname === '/';
   const isProject = location.pathname.startsWith('/project');
   const [isDeployOpen, setIsDeployOpen] = useState(false);
+  // One idea of "authorized", shared with the Agent tab and the deploy modal.
+  const {
+    authorized,
+    host: authorizationHost,
+    working: authorizing,
+    authorize,
+  } = useAuthorization();
 
   const isNewProject = useStore(state => state.isNewProject);
   const isOnboardingRequested = useStore(state => state.isOnboardingRequested);
@@ -139,6 +147,15 @@ const Home = () => {
         commitCount={pendingCount}
         tools={tools}
         branchControls={<BranchingControls />}
+        // The menu's first item is either "Open Cloud Account" or "Authorize",
+        // and the second runs the device flow from here rather than sending
+        // someone to a web page that cannot authorize this machine.
+        authorization={{
+          authorized,
+          host: authorizationHost,
+          authorizing,
+          onAuthorize: authorize,
+        }}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />
