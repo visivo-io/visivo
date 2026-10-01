@@ -38,21 +38,43 @@ class TestStarting:
     def test_a_prompt_is_required(self, integration_client):
         assert integration_client.post("/api/agent/", json={"prompt": "  "}).status_code == 400
 
+    def _unconfigured(self, monkeypatch, *, offered):
+        """No key and no login. ``offered`` is whether the host would serve
+        inference to someone who signed in, which is what decides WHICH
+        instruction is the useful one."""
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.setattr("visivo.agent.model_config.read_profile", lambda *a, **k: {})
+        monkeypatch.setattr("visivo.agent.cloud_model.available", lambda host=None: False)
+        # Patched even when False: unpatched this reaches the network, and a
+        # test whose answer depends on whether app.visivo.io responded in three
+        # seconds is not a test.
+        monkeypatch.setattr("visivo.agent.cloud_model.serves_inference", lambda host=None: offered)
+        monkeypatch.setattr("visivo.agent.cloud_model.free_credit", lambda host=None: "$30")
+
     def test_an_unconfigured_agent_is_a_400_with_instructions(
         self, integration_client, monkeypatch
     ):
         """Nothing is broken — the user has neither a key nor a Visivo login. A
         500 would send them looking for a bug."""
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.setattr("visivo.agent.model_config.read_profile", lambda *a, **k: {})
-        monkeypatch.setattr("visivo.agent.cloud_model.available", lambda host=None: False)
+        self._unconfigured(monkeypatch, offered=False)
 
         response = integration_client.post("/api/agent/", json={"prompt": "hi"})
 
         assert response.status_code == 400
         assert response.get_json()["action"] == "configure_agent"
-        assert "visivo authorize" in response.get_json()["error"]
         assert "ANTHROPIC_API_KEY" in response.get_json()["error"]
+
+    def test_where_there_is_credit_to_be_had_it_says_so_first(
+        self, integration_client, monkeypatch
+    ):
+        """The first run's message leads with the trial, not with going to get
+        a provider account (VIS-1367)."""
+        self._unconfigured(monkeypatch, offered=True)
+
+        error = integration_client.post("/api/agent/", json={"prompt": "hi"}).get_json()["error"]
+
+        assert "visivo authorize" in error.splitlines()[0]
+        assert "$30 of free credit" in error
 
     def test_only_one_at_a_time(self, integration_client, integration_app, sessions):
         """Two loops editing the same draft tier would interleave writes to the

@@ -8,6 +8,13 @@ Visivo login would have worked.
 
 import pytest
 
+
+def unconfigured_from(resolver, **kwargs):
+    with pytest.raises(AgentNotConfigured) as raised:
+        resolver(environ={}, profile={}, **kwargs)
+    return raised.value
+
+
 from visivo.agent import cloud_model
 from visivo.agent.model_config import (
     SOURCE_BYO,
@@ -63,13 +70,13 @@ class TestTheOrder:
         assert overlay == {}
         assert model.__class__.__name__ == "OpenAIChatModel"
 
-    def test_nothing_at_all_explains_both_ways_out(self, no_cloud):
+    def test_nothing_at_all_still_names_the_key_as_a_way_out(self, no_cloud):
+        """With no cloud inference on offer here, a login is not a way out —
+        so this says the one thing that IS (VIS-1367)."""
         with pytest.raises(AgentNotConfigured) as unconfigured:
             resolve(environ={}, profile={})
 
-        message = str(unconfigured.value)
-        assert "visivo authorize" in message
-        assert "ANTHROPIC_API_KEY" in message
+        assert "ANTHROPIC_API_KEY" in str(unconfigured.value)
 
 
 class TestVisivoRunsWithoutVisivoCloud:
@@ -90,10 +97,11 @@ class TestVisivoRunsWithoutVisivoCloud:
         monkeypatch.setattr(cloud_model, "token", lambda host=None: "visivo-token")
         monkeypatch.setattr(cloud_model, "serves_inference", lambda host=None: False)
 
-        with pytest.raises(AgentNotConfigured) as unconfigured:
-            resolve(environ={}, profile={})
-
-        assert "not available at" in str(unconfigured.value)
+        message = str(unconfigured_from(resolve))
+        assert "does not offer" in message
+        # And NOT a login: they are already logged in, and authorizing again
+        # would not conjure inference onto a deployment that has none.
+        assert "visivo authorize" not in message
 
     def test_an_unreachable_host_is_simply_not_available(self, monkeypatch):
         """A network that cannot reach us is indistinguishable from a
@@ -270,3 +278,103 @@ class TestItNamesTheServerItActuallyUsed:
         """A BYO-key run has no Visivo endpoint to report, and inventing one
         would point someone at a server that had nothing to do with it."""
         assert cloud_model.endpoint_of(object()) is None
+
+
+class TestTheFirstThingAFirstRunIsTold:
+    """The message a first run hits (VIS-1367).
+
+    It used to lead with "Set ANTHROPIC_API_KEY", which is accurate and is the
+    wrong first thing to say: it sends someone to go and acquire a provider
+    account before they can see whether any of this is worth it, when there is
+    credit sitting there waiting for them.
+
+    Three states, because "not signed in", "asked for a particular model" and
+    "this server serves no inference" have three different answers — and
+    offering credit that a deployment does not give would be worse than the
+    technical message it replaced.
+    """
+
+    @pytest.fixture
+    def offered(self, monkeypatch):
+        """Inference on offer here, nobody signed in."""
+        monkeypatch.setattr(cloud_model, "token", lambda host=None: None)
+        monkeypatch.setattr(cloud_model, "serves_inference", lambda host=None: True)
+        monkeypatch.setattr(cloud_model, "free_credit", lambda host=None: "$30")
+
+    def test_it_leads_with_the_one_command(self, offered):
+        message = str(unconfigured_from(resolve))
+
+        first_line = message.splitlines()[0]
+        assert "visivo authorize" in first_line
+        assert "ANTHROPIC_API_KEY" not in first_line
+
+    def test_it_says_what_they_get_for_running_it(self, offered):
+        assert "$30 of free credit" in str(unconfigured_from(resolve))
+
+    def test_byo_is_there_but_second(self, offered):
+        """A real and supported option — the one that keeps working when the
+        credit runs out — but not the first sentence."""
+        message = str(unconfigured_from(resolve))
+
+        assert "ANTHROPIC_API_KEY" in message
+        assert message.index("visivo authorize") < message.index("ANTHROPIC_API_KEY")
+
+    def test_a_deployment_that_names_no_figure_promises_none(self, offered, monkeypatch):
+        """Better to say nothing than to quote a number this deployment does
+        not give."""
+        monkeypatch.setattr(cloud_model, "free_credit", lambda host=None: None)
+
+        message = str(unconfigured_from(resolve))
+
+        assert "visivo authorize" in message
+        assert "credit" not in message
+
+    def test_asking_for_a_model_we_cannot_supply_is_not_answered_with_a_login(self, offered):
+        """Visivo-supplied inference serves one model. Telling someone who
+        asked for Claude to log in would be offering them Gemini without
+        saying so."""
+        message = str(unconfigured_from(lambda **kw: resolve(requested="anthropic:claude-x", **kw)))
+
+        assert "anthropic:claude-x" in message
+        assert not message.startswith("Run `visivo authorize`")
+        assert "ANTHROPIC_API_KEY" in message
+
+
+class TestTheCreditFigureComesFromTheDeployment:
+    """A number compiled into a released CLI outlives whatever it was when that
+    CLI shipped, and quoting a stale figure at someone about to sign up is
+    worse than quoting none."""
+
+    def test_it_is_read_from_the_capability_answer(self, monkeypatch):
+        monkeypatch.setattr(
+            cloud_model,
+            "capability",
+            lambda host=None: {"enabled": True, "free_credit_micros": 30_000_000},
+        )
+
+        assert cloud_model.free_credit() == "$30"
+
+    def test_a_fractional_grant_is_not_rounded_away(self, monkeypatch):
+        monkeypatch.setattr(
+            cloud_model,
+            "capability",
+            lambda host=None: {"enabled": True, "free_credit_micros": 2_500_000},
+        )
+
+        assert cloud_model.free_credit() == "$2.50"
+
+    def test_a_deployment_that_offers_none_says_none(self, monkeypatch):
+        monkeypatch.setattr(
+            cloud_model,
+            "capability",
+            lambda host=None: {"enabled": False, "free_credit_micros": None},
+        )
+
+        assert cloud_model.free_credit() is None
+
+    def test_an_older_deployment_that_does_not_send_it_is_not_a_crash(self, monkeypatch):
+        """The field is new. A server that predates it still answers
+        `enabled`, and inference still works — only the figure is missing."""
+        monkeypatch.setattr(cloud_model, "capability", lambda host=None: {"enabled": True})
+
+        assert cloud_model.free_credit() is None
