@@ -40,15 +40,15 @@ describe('computeGradientStyles', () => {
       });
 
       // Column 'a' min=0, max=100 -> row 0 ratio=0 (red), row 2 ratio=1 (green)
-      expect(result.get('0-a')).toEqual({ backgroundColor: 'rgb(255, 0, 0)' });
-      expect(result.get('2-a')).toEqual({ backgroundColor: 'rgb(0, 255, 0)' });
+      expect(result.get('0-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(255, 0, 0)' }));
+      expect(result.get('2-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(0, 255, 0)' }));
 
       // Column 'a' row 1: ratio=0.5
-      expect(result.get('1-a')).toEqual({ backgroundColor: 'rgb(128, 128, 0)' });
+      expect(result.get('1-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(128, 128, 0)' }));
 
       // Column 'b' min=10, max=30 -> row 0 ratio=0, row 2 ratio=1
-      expect(result.get('0-b')).toEqual({ backgroundColor: 'rgb(255, 0, 0)' });
-      expect(result.get('2-b')).toEqual({ backgroundColor: 'rgb(0, 255, 0)' });
+      expect(result.get('0-b')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(255, 0, 0)' }));
+      expect(result.get('2-b')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(0, 255, 0)' }));
     });
   });
 
@@ -61,9 +61,9 @@ describe('computeGradientStyles', () => {
       });
 
       // Global min=0 (a[0]), max=100 (a[2])
-      expect(result.get('0-a')).toEqual({ backgroundColor: 'rgb(0, 0, 0)' }); // 0/100
-      expect(result.get('2-a')).toEqual({ backgroundColor: 'rgb(255, 255, 255)' }); // 100/100
-      expect(result.get('0-b')).toEqual({ backgroundColor: 'rgb(26, 26, 26)' }); // 10/100
+      expect(result.get('0-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(0, 0, 0)' })); // 0/100
+      expect(result.get('2-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(255, 255, 255)' })); // 100/100
+      expect(result.get('0-b')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(26, 26, 26)' })); // 10/100
     });
   });
 
@@ -76,8 +76,8 @@ describe('computeGradientStyles', () => {
       });
 
       // Row 0: min=0 (a), max=10 (b) -> a ratio=0, b ratio=1
-      expect(result.get('0-a')).toEqual({ backgroundColor: 'rgb(255, 0, 0)' });
-      expect(result.get('0-b')).toEqual({ backgroundColor: 'rgb(0, 255, 0)' });
+      expect(result.get('0-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(255, 0, 0)' }));
+      expect(result.get('0-b')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(0, 255, 0)' }));
     });
   });
 
@@ -98,7 +98,17 @@ describe('computeGradientStyles', () => {
       ['a'],
       { scope: 'column', min_color: '#f00', max_color: '#0f0' }
     );
-    expect(result.get('0-a')).toEqual({ backgroundColor: 'rgb(255, 0, 0)' });
-    expect(result.get('1-a')).toEqual({ backgroundColor: 'rgb(0, 255, 0)' });
+    expect(result.get('0-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(255, 0, 0)' }));
+    expect(result.get('1-a')).toEqual(expect.objectContaining({ backgroundColor: 'rgb(0, 255, 0)' }));
+  });
+
+  it('picks a readable text color for each gradient cell', () => {
+    const result = computeGradientStyles(
+      [{ a: 0 }, { a: 1 }],
+      ['a'],
+      { scope: 'column', min_color: '#000000', max_color: '#ffffff' }
+    );
+    expect(result.get('0-a').color).toBe('#ffffff');
+    expect(result.get('1-a').color).toBe('#1d2136');
   });
 });

@@ -1,22 +1,20 @@
 import tw from 'tailwind-styled-components';
 
-// w-full / h-full ensure the container fills its parent dashboard item div
-// rather than sizing to the natural width of inner content. Without these,
-// 2.0 tables shrink to content (leaving empty gutters in narrow slots) or
-// overflow horizontally with no scrollbar in wide slots. See B15 in
-// specs/plan/v1-final-bugfixes/.
+// w-full / h-full make the container fill its dashboard slot; without them tables shrink to
+// content in narrow slots or overflow with no scrollbar in wide ones.
 export const ItemContainer = tw.div`
     relative
     w-full
     h-full
     rounded-2xl
-    shadow-lg           // Adds a subtle shadow for the "pop out" effect
-    transition          // Enables smooth transition
-    duration-200        // Sets the duration of the transition
+    shadow-lg
+    transition
+    duration-200
     overflow-hidden
-    hover:shadow-lg     // Increases shadow on hover for the "pop out" effect
+    hover:shadow-lg
     hover:z-40
     hover:border-gray-300
     border
-    border-gray-150
+    border-(--vt-border)
+    bg-(--vt-surface)
 `;

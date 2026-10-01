@@ -5,7 +5,6 @@ import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 import PivotableTable from './PivotableTable';
 import {
-  createTheme,
   ThemeProvider,
   Box,
   IconButton,
@@ -34,9 +33,12 @@ import {
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import { itemNameToSlug } from './utils';
+import { useDashboardTheme } from '../../theme/DashboardThemeContext';
+import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
 const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
+  const { tokens: themeTokens } = useDashboardTheme();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -205,7 +207,7 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
     muiTableHeadProps: {
       sx: {
         '& tr': {
-          backgroundColor: 'white',
+          backgroundColor: 'var(--vt-table-header)',
         },
       },
     },
@@ -241,18 +243,7 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
     );
   }
 
-  // Brand-aligned MUI theme for the legacy material-react-table renderer (the
-  // non-pivot data path). Previously hand-rolled hex (a red-orange #fc4023 +
-  // gray) that diverged from the Visivo palette; now mirrors the design-system
-  // tokens (primary mauve #713b57 / secondary gray #4f494c) from src/index.css.
-  const tableTheme = createTheme({
-    palette: {
-      primary: { main: '#713b57' },
-      secondary: { main: '#4f494c' },
-      info: { main: '#4f494c' },
-    },
-    shape: { borderRadius: 8 },
-  });
+  const tableTheme = createDashboardMuiTheme(themeTokens);
 
   /* eslint-disable react/jsx-pascal-case */
   return (

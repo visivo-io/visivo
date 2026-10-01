@@ -1,3 +1,5 @@
+import { readableTextOn } from '../theme/colorUtils';
+
 /**
  * Parse a hex color string to { r, g, b }.
  * @param {string} hex - e.g. "#ff0000" or "#f00"
@@ -15,18 +17,10 @@ function parseHex(hex) {
   };
 }
 
-/**
- * Interpolate between two colors based on a ratio (0 to 1).
- * @param {{ r: number, g: number, b: number }} minRgb
- * @param {{ r: number, g: number, b: number }} maxRgb
- * @param {number} ratio - 0 to 1
- * @returns {string} CSS rgb() color string
- */
-function interpolateColor(minRgb, maxRgb, ratio) {
-  const r = Math.round(minRgb.r + (maxRgb.r - minRgb.r) * ratio);
-  const g = Math.round(minRgb.g + (maxRgb.g - minRgb.g) * ratio);
-  const b = Math.round(minRgb.b + (maxRgb.b - minRgb.b) * ratio);
-  return `rgb(${r}, ${g}, ${b})`;
+function gradientCellStyle(minRgb, maxRgb, ratio) {
+  const channels = ['r', 'g', 'b'].map(k => Math.round(minRgb[k] + (maxRgb[k] - minRgb[k]) * ratio));
+  const hex = `#${channels.map(v => v.toString(16).padStart(2, '0')).join('')}`;
+  return { backgroundColor: `rgb(${channels.join(', ')})`, color: readableTextOn(hex) };
 }
 
 /**
@@ -66,9 +60,7 @@ export function computeGradientStyles(rows, numericColumnIds, formatCells) {
         const val = Number(row[colId]);
         if (!isNaN(val) && range > 0) {
           const ratio = (val - globalMin) / range;
-          styles.set(`${rowIdx}-${colId}`, {
-            backgroundColor: interpolateColor(minRgb, maxRgb, ratio),
-          });
+          styles.set(`${rowIdx}-${colId}`, gradientCellStyle(minRgb, maxRgb, ratio));
         }
       }
     });
@@ -88,9 +80,7 @@ export function computeGradientStyles(rows, numericColumnIds, formatCells) {
         const val = Number(row[colId]);
         if (!isNaN(val) && range > 0) {
           const ratio = (val - colMin) / range;
-          styles.set(`${rowIdx}-${colId}`, {
-            backgroundColor: interpolateColor(minRgb, maxRgb, ratio),
-          });
+          styles.set(`${rowIdx}-${colId}`, gradientCellStyle(minRgb, maxRgb, ratio));
         }
       });
     }
@@ -110,9 +100,7 @@ export function computeGradientStyles(rows, numericColumnIds, formatCells) {
         const val = Number(row[colId]);
         if (!isNaN(val) && range > 0) {
           const ratio = (val - rowMin) / range;
-          styles.set(`${rowIdx}-${colId}`, {
-            backgroundColor: interpolateColor(minRgb, maxRgb, ratio),
-          });
+          styles.set(`${rowIdx}-${colId}`, gradientCellStyle(minRgb, maxRgb, ratio));
         }
       }
     });
