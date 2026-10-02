@@ -51,6 +51,14 @@ describe('AgentPrompt', () => {
     expect(await screen.findByTestId('agent-send')).toBeDisabled();
   });
 
+  it('says in the box what it can be asked for, and that changes are drafts', async () => {
+    render(<AgentPrompt />);
+
+    const input = await screen.findByLabelText('What should the agent do?');
+    expect(input.placeholder).toMatch(/model, insight, chart, table or dashboard/);
+    expect(input.placeholder).toMatch(/drafts you review/);
+  });
+
   it('sends the prompt and then shows the answer in the transcript', async () => {
     startAgentSession.mockResolvedValue({ session: session('running') });
     fetchAgentSession.mockResolvedValue(

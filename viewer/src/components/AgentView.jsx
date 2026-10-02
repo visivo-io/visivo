@@ -4,53 +4,37 @@ import AgentPrompt from './AgentPrompt';
 import { fetchAgentActions } from '../api/agent';
 import { subscribe, canDeliver } from '../events/eventSource';
 import { AGENT_ACTIONS } from '../events/topics';
-import AgentObjectLink from './AgentObjectLink';
+import AgentToolCalls from './AgentToolCalls';
 
 /**
- * What agents have done to this project.
+ * The Agent tab: the conversation with the built-in loop, and below it any
+ * calls an external MCP client made.
  *
- * An activity log, not a transcript. The value is seeing what an agent
- * changed and being able to reach it — so every object reference is a link,
- * addressed the way the rest of the app addresses objects (`type:name`, the
- * identity the rename flow and the workspace edit param already use).
- *
- * Both producers land here: an external client over the serve-hosted MCP
- * endpoint and, later, the built-in loop. They share a log because they share
- * the registry — if only one of them appeared, the registry would be being
- * bypassed.
+ * The loop's calls already sit under the turn that made them, so only calls the
+ * server attributes to MCP are listed here, grouped the same way. Calls with no
+ * attribution — the cloud runner's — are the loop's and are never repeated.
  *
  * Subscribed through the event-source seam rather than a timer of its own, so
  * when `visivo serve` starts emitting on its socket this view does not change.
  */
 
-const when = timestamp =>
-  timestamp ? new Date(timestamp * 1000).toLocaleTimeString() : '';
-
-function Action({ action }) {
-  const failed = action.outcome === 'error';
+function ExternalCalls({ actions }) {
   return (
-    <li
-      className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 last:border-0"
-      data-testid={`agent-action-${action.id}`}
+    <section
+      aria-labelledby="agent-external-calls-heading"
+      className="bg-white border border-gray-200 rounded-lg p-4"
+      data-testid="agent-external-calls"
     >
-      <span
-        className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium shrink-0 ${
-          failed ? 'bg-highlight-100 text-highlight-700' : 'bg-green-100 text-green-800'
-        }`}
-      >
-        {failed ? 'failed' : 'ok'}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <code className="text-sm text-gray-900">{action.tool}</code>
-          {action.object && <AgentObjectLink object={action.object} />}
-        </div>
-        {failed && action.error && (
-          <p className="mt-1 text-xs text-highlight-700 break-words">{action.error}</p>
-        )}
+      <div className="rounded-md bg-gray-50 p-3 text-sm text-gray-800">
+        <h2
+          id="agent-external-calls-heading"
+          className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400"
+        >
+          External MCP calls
+        </h2>
+        <AgentToolCalls actions={actions} />
       </div>
-      <span className="text-xs text-gray-400 shrink-0">{when(action.timestamp)}</span>
-    </li>
+    </section>
   );
 }
 
@@ -75,7 +59,7 @@ const AgentView = () => {
     // The first read is the one that can tell them apart.
     fetchAgentActions({ projectId })
       .then(fetched => current && setActions(fetched))
-      .catch(() => current && setError('Could not read agent activity.'));
+      .catch(() => current && setError('Could not read external MCP activity.'));
 
     const unsubscribe = subscribe(topic, fetched => {
       if (!current) return;
@@ -89,49 +73,19 @@ const AgentView = () => {
     };
   }, [topic, projectId]);
 
-  if (error) {
-    return (
-      <div className="min-h-full bg-gray-50 p-6 text-highlight-700" data-testid="agent-view-error">
-        {error}
-      </div>
-    );
-  }
-
-  if (actions === null) {
-    return (
-      <div className="min-h-full bg-gray-50 p-6 text-gray-500" data-testid="agent-view-loading">
-        Loading agent activity…
-      </div>
-    );
-  }
+  // The log is newest first; a group of calls reads in the order they happened.
+  const external = (actions || []).filter(action => action.source === 'mcp').reverse();
 
   return (
     <div className="min-h-full bg-gray-50 p-6">
-      <h1 className="text-lg font-medium text-gray-900 mb-1">Agent</h1>
-      <p className="text-sm text-gray-500 mb-4">
-        Ask for a change, or connect your own MCP client. Either way the work
-        lands as uncommitted drafts — review them in the Workspace before
-        committing.
-      </p>
+      <h1 className="text-lg font-medium text-gray-900 mb-4">Agent</h1>
       <AgentPrompt />
-      {actions.length === 0 ? (
-        <div
-          className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500"
-          data-testid="agent-view-empty"
-        >
-          No agent activity yet. Ask for something above, or connect an MCP
-          client to this server — either way the work appears here.
-        </div>
-      ) : (
-        <ul
-          className="bg-white border border-gray-200 rounded-lg overflow-hidden"
-          data-testid="agent-actions"
-        >
-          {actions.map(action => (
-            <Action key={action.id} action={action} />
-          ))}
-        </ul>
+      {error && (
+        <p className="text-sm text-highlight-700" data-testid="agent-view-error">
+          {error}
+        </p>
       )}
+      {external.length > 0 && <ExternalCalls actions={external} />}
     </div>
   );
 };

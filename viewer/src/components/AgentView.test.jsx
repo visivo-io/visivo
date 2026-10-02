@@ -1,13 +1,10 @@
 /**
- * The Agent tab (VIS-1336).
- *
- * An activity log, not a transcript: the value is seeing what an agent changed
- * and being able to reach it. So the properties worth pinning are that an
- * object reference is navigable, that a failure says what went wrong, and that
- * the view cannot tell whether its data was pushed or polled.
+ * The Agent tab: the conversation, and an external MCP client's calls grouped
+ * beneath it. The loop's own calls already sit under their turn, so the log
+ * must never repeat them.
  */
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AgentView from './AgentView';
 import { fetchAgentActions } from '../api/agent';
@@ -15,6 +12,8 @@ import { subscribe, canDeliver } from '../events/eventSource';
 import { futureFlags } from '../router-config';
 
 jest.mock('../api/agent', () => ({ fetchAgentActions: jest.fn() }));
+// Tested on its own; here it only has to be on the page.
+jest.mock('./AgentPrompt', () => () => <div data-testid="agent-prompt" />);
 jest.mock('../events/eventSource', () => ({
   subscribe: jest.fn(() => jest.fn()),
   canDeliver: jest.fn(() => true),
@@ -28,6 +27,8 @@ const action = (overrides = {}) => ({
   outcome: 'ok',
   error: null,
   summary: "write_model model 'orders'",
+  source: 'mcp',
+  session_id: null,
   ...overrides,
 });
 
@@ -45,29 +46,58 @@ beforeEach(() => {
   fetchAgentActions.mockResolvedValue([]);
 });
 
-describe('the log', () => {
-  test('lists what an agent did', async () => {
+const external = () => screen.findByRole('region', { name: 'External MCP calls' });
+
+describe('what is listed', () => {
+  test("an external client's calls are grouped like an agent turn", async () => {
     fetchAgentActions.mockResolvedValue([action()]);
 
     renderView();
 
-    expect(await screen.findByText('write_model')).toBeInTheDocument();
+    const group = await external();
+    expect(within(group).getByTestId('agent-turn-actions')).toHaveTextContent('1 tool call');
+    expect(within(group).getByText('write_model')).toBeInTheDocument();
   });
 
-  test('an empty log says how activity gets here', async () => {
-    // Someone opening the tab before connecting a client should learn what to
-    // do, not see a blank panel.
+  test("the agent's own calls are not listed again", async () => {
+    // They already sit under the turn that made them.
+    fetchAgentActions.mockResolvedValue([action({ source: 'agent', session_id: 's1' })]);
+
     renderView();
 
-    expect(await screen.findByTestId('agent-view-empty')).toHaveTextContent('MCP client');
+    await waitFor(() => expect(fetchAgentActions).toHaveBeenCalled());
+    expect(screen.queryByRole('region', { name: 'External MCP calls' })).not.toBeInTheDocument();
+    expect(screen.queryByText('write_model')).not.toBeInTheDocument();
   });
 
-  test('it says writes are drafts', async () => {
-    // The consequence an agent's user most needs to know, and cannot infer.
+  test('unattributed calls are the cloud loop\'s and are not listed either', async () => {
+    fetchAgentActions.mockResolvedValue([action({ source: undefined })]);
+
     renderView();
 
-    await screen.findByTestId('agent-view-empty');
-    expect(screen.getByText(/uncommitted drafts/)).toBeInTheDocument();
+    await waitFor(() => expect(fetchAgentActions).toHaveBeenCalled());
+    expect(screen.queryByRole('region', { name: 'External MCP calls' })).not.toBeInTheDocument();
+  });
+
+  test('a group reads oldest first', async () => {
+    fetchAgentActions.mockResolvedValue([
+      action({ id: 2, tool: 'write_chart', object: null }),
+      action({ id: 1, tool: 'write_model', object: null }),
+    ]);
+
+    renderView();
+
+    const rows = within(await external()).getAllByTestId('agent-turn-action');
+    expect(rows.map(row => row.textContent)).toEqual(['write_model', 'write_chart']);
+  });
+
+  test('there is no subheading, and the prompt is there from the start', async () => {
+    fetchAgentActions.mockReturnValue(new Promise(() => {}));
+
+    renderView();
+
+    expect(screen.getByTestId('agent-prompt')).toBeInTheDocument();
+    expect(screen.queryByText(/connect your own MCP client/)).not.toBeInTheDocument();
   });
 });
 
@@ -81,49 +111,26 @@ describe('an entry is navigable', () => {
     expect(link).toHaveAttribute('href', '/workspace?edit=model%3Aorders');
   });
 
-  test('a name needing encoding survives the query string', async () => {
-    fetchAgentActions.mockResolvedValue([
-      action({ object: { type: 'model', name: 'a&b c' } }),
-    ]);
-
-    renderView();
-
-    const link = await screen.findByTestId('agent-action-object-a&b c');
-    expect(link.getAttribute('href')).toContain(encodeURIComponent('model:a&b c'));
-  });
-
   test('a tool about no object renders without one', async () => {
-    fetchAgentActions.mockResolvedValue([
-      action({ tool: 'get_schema', object: null }),
-    ]);
+    fetchAgentActions.mockResolvedValue([action({ tool: 'get_schema', object: null })]);
 
     renderView();
 
-    expect(await screen.findByText('get_schema')).toBeInTheDocument();
+    expect(within(await external()).getByText('get_schema')).toBeInTheDocument();
   });
 });
 
 describe('when something failed', () => {
-  test('it is marked, and says why', async () => {
+  test('it is counted, and says why', async () => {
     fetchAgentActions.mockResolvedValue([
       action({ outcome: 'error', error: "No source named 'nope'." }),
     ]);
 
     renderView();
 
-    expect(await screen.findByText('failed')).toBeInTheDocument();
-    expect(screen.getByText(/No source named/)).toBeInTheDocument();
-  });
-
-  test('a failed entry is still navigable', async () => {
-    // The entry you most want to click is the one that went wrong.
-    fetchAgentActions.mockResolvedValue([
-      action({ outcome: 'error', error: 'nope' }),
-    ]);
-
-    renderView();
-
-    expect(await screen.findByTestId('agent-action-object-orders')).toBeInTheDocument();
+    const group = await external();
+    expect(within(group).getByTestId('agent-turn-actions-failed')).toHaveTextContent('1 failed');
+    expect(within(group).getByText(/No source named/)).toBeInTheDocument();
   });
 });
 
@@ -146,7 +153,7 @@ describe('where its data comes from', () => {
       handler([action({ id: 2, tool: 'write_chart', object: null })]);
     });
 
-    expect(await screen.findByText('write_chart')).toBeInTheDocument();
+    expect(within(await external()).getByText('write_chart')).toBeInTheDocument();
   });
 
   test('it stops subscribing when the tab goes away', async () => {
@@ -160,23 +167,21 @@ describe('where its data comes from', () => {
     expect(unsubscribe).toHaveBeenCalled();
   });
 
-  test('an unreachable server is not shown as an empty log', async () => {
-    // The seam swallows a failed poll by design, so the first read is what
-    // tells these two apart — and they mean opposite things.
+  test('an unreachable server says so, without hiding the prompt', async () => {
     fetchAgentActions.mockRejectedValue(new Error('nope'));
 
     renderView();
 
     expect(await screen.findByTestId('agent-view-error')).toBeInTheDocument();
+    expect(screen.getByTestId('agent-prompt')).toBeInTheDocument();
   });
 
-  test('a dist build shows an empty log rather than spinning', async () => {
-    // Static files: there is no server an agent could have worked through.
+  test('a dist build lists nothing and does not subscribe', async () => {
     canDeliver.mockReturnValue(false);
 
     renderView();
 
-    expect(await screen.findByTestId('agent-view-empty')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'External MCP calls' })).not.toBeInTheDocument();
     expect(subscribe).not.toHaveBeenCalled();
   });
 });
