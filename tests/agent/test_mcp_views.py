@@ -107,6 +107,22 @@ class TestCalling:
 
         assert "via-mcp" in integration_app.markdown_manager.cached_objects
 
+    def test_a_call_is_recorded_as_external(self, integration_client):
+        from visivo.agent.actions import log
+
+        _result(
+            _rpc(
+                integration_client,
+                "tools/call",
+                {
+                    "name": "write_markdown",
+                    "arguments": {"config": {"name": "via-mcp", "content": "# hi"}},
+                },
+            )
+        )
+
+        assert log().recent()[0]["source"] == "mcp"
+
     def test_and_writes_no_file(self, integration_client, output_dir):
         before = _yaml_files(output_dir)
 

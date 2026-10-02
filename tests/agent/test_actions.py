@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from visivo.agent.actions import ActionLog, log
+from visivo.agent.actions import ActionLog, attributed_to, log
 from visivo.agent.tools import ToolError, call
 
 
@@ -317,3 +317,48 @@ class TestOneTurnsActions:
         # Only what survived, but nothing older than the marker and nothing
         # mistakenly excluded.
         assert [a["object"]["name"] for a in log.since(mark)] == ["m2", "m3", "m4"]
+
+
+class TestWhoMadeTheCall:
+    """The tab shows the built-in loop's calls with the turn that made them and
+    gathers an external client's under their own heading, so a recording has to
+    say which it was."""
+
+    def test_an_unattributed_call_says_nothing_about_its_source(self):
+        action = ActionLog().record("write_model")
+
+        assert action["source"] is None
+        assert action["session_id"] is None
+
+    def test_an_mcp_call_says_so(self):
+        log = ActionLog()
+        with attributed_to("mcp"):
+            action = log.record("write_model")
+
+        assert action["source"] == "mcp"
+
+    def test_an_agent_call_carries_its_session(self):
+        log = ActionLog()
+        with attributed_to("agent", "s1"):
+            action = log.record("write_model")
+
+        assert (action["source"], action["session_id"]) == ("agent", "s1")
+
+    def test_attribution_ends_with_its_block(self):
+        log = ActionLog()
+        with attributed_to("mcp"):
+            pass
+
+        assert log.record("write_model")["source"] is None
+
+    def test_a_turns_slice_leaves_out_other_callers(self):
+        log = ActionLog()
+        mark = log.marker()
+        with attributed_to("agent", "s1"):
+            ours = log.record("write_model")
+        with attributed_to("mcp"):
+            log.record("write_chart")
+        with attributed_to("agent", "s2"):
+            log.record("write_table")
+
+        assert [a["id"] for a in log.since(mark, session_id="s1")] == [ours["id"]]

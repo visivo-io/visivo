@@ -14,7 +14,7 @@ they can decide themselves, and discarding is one click (#699).
 import asyncio
 import threading
 
-from visivo.agent.actions import log as action_log
+from visivo.agent.actions import attributed_to, log as action_log
 from visivo.agent.loop import build_agent, usage_limits
 from visivo.agent.sessions import SessionManager, SessionState
 from visivo.logger.logger import Logger
@@ -69,9 +69,12 @@ def _execute(app, manager, session_id, prompt, model):
         # process-wide — an MCP client can be working through the same serve —
         # so a turn reports what it did by slice, never by clearing.
         mark = action_log().marker()
-        task = loop.create_task(
-            agent.run(prompt, message_history=history, usage_limits=usage_limits())
-        )
+        # Set before the task exists: the task copies this context, and so do
+        # the threads it runs sync tools in.
+        with attributed_to("agent", session_id):
+            task = loop.create_task(
+                agent.run(prompt, message_history=history, usage_limits=usage_limits())
+            )
 
         # Attached before the state flips to RUNNING, so there is no window in
         # which a session looks stoppable and is not.
@@ -89,7 +92,10 @@ def _execute(app, manager, session_id, prompt, model):
         # Persisted BEFORE the state flips, so a poll that sees "succeeded"
         # cannot arrive ahead of the answer it is being told about.
         manager.remember(
-            session_id, result.all_messages(), answer, actions=action_log().since(mark)
+            session_id,
+            result.all_messages(),
+            answer,
+            actions=action_log().since(mark, session_id=session_id),
         )
         manager.set_state(session_id, SessionState.SUCCEEDED, output=answer)
     except Exception as error:  # noqa: BLE001 — reported to the session, never raised
