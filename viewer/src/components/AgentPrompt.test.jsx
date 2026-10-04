@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import AgentPrompt from './AgentPrompt';
@@ -228,7 +228,7 @@ describe('AgentPrompt — it is a conversation', () => {
     });
   });
 
-  it('shows both sides, oldest first', async () => {
+  it('shows both sides, newest exchange first, each question above its answer', async () => {
     startAgentSession.mockResolvedValue({ session: session('running') });
     fetchAgentSession.mockResolvedValue(
       session('succeeded', {
@@ -245,9 +245,30 @@ describe('AgentPrompt — it is a conversation', () => {
     await userEvent.type(screen.getByLabelText('What should the agent do?'), 'one');
     await userEvent.click(screen.getByTestId('agent-send'));
 
-    await screen.findByTestId('agent-transcript');
-    expect(screen.getAllByTestId('agent-turn-user')).toHaveLength(2);
-    expect(screen.getAllByTestId('agent-turn-agent')).toHaveLength(2);
+    const transcript = await screen.findByTestId('agent-transcript');
+    const order = within(transcript)
+      .getAllByTestId(/^agent-turn-(user|agent)$/)
+      .map(turn => turn.textContent.replace(/^(You|Agent)/, ''));
+    expect(order).toEqual(['three', 'four', 'one', 'two']);
+  });
+
+  it('shows Thinking… with the newest question, at the top', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      session('running', {
+        transcript: [said('user', 'one'), said('agent', 'two'), said('user', 'three')],
+      })
+    );
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'three');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    const thinking = await screen.findByTestId('agent-thinking');
+    const [newest, older] = screen.getAllByTestId('agent-turn-user');
+    expect(newest).toHaveTextContent('three');
+    expect(newest.compareDocumentPosition(thinking) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(thinking.compareDocumentPosition(older) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('an evicted conversation drops its id so the next Send starts a new one', async () => {

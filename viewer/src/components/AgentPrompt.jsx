@@ -278,12 +278,12 @@ const AgentPrompt = () => {
         </div>
       )}
 
-      {session?.transcript?.length > 0 && (
-        <Transcript entries={session.transcript} running={running} />
-      )}
-
       {session && !running && session.state !== 'queued' && session.state !== 'succeeded' && (
         <Outcome session={session} />
+      )}
+
+      {session?.transcript?.length > 0 && (
+        <Transcript entries={session.transcript} running={running} />
       )}
 
       {modelSource && (
@@ -297,35 +297,56 @@ const AgentPrompt = () => {
   );
 };
 
-/** What was said, oldest first — the shape a conversation is read in. */
+/**
+ * Exchanges newest first, so the latest answer is under the prompt box without
+ * scrolling; within an exchange the question stays above its answer.
+ */
+const exchangesNewestFirst = entries => {
+  const exchanges = [];
+  entries.forEach((entry, index) => {
+    if (entry.role === 'user' || exchanges.length === 0) exchanges.push([]);
+    exchanges[exchanges.length - 1].push({ entry, index });
+  });
+  return exchanges.reverse();
+};
+
 function Transcript({ entries, running }) {
   return (
     <div className="mt-3 space-y-2" data-testid="agent-transcript">
-      {entries.map((entry, index) => (
-        <div
-          key={`${entry.at}-${index}`}
-          className={
-            entry.role === 'user'
-              ? 'rounded-md bg-gray-100 p-3 text-sm text-gray-900'
-              : 'rounded-md bg-gray-50 p-3 text-sm text-gray-800'
-          }
-          data-testid={`agent-turn-${entry.role}`}
-        >
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
-            {entry.role === 'user' ? 'You' : 'Agent'}
-          </div>
-          {/* Above the answer, so a turn reads as ask -> work -> result. An
-              answer with no visible work is what made the agent look like it
-              had done nothing. */}
-          <AgentToolCalls actions={entry.actions} />
-          {entry.text}
-        </div>
+      {exchangesNewestFirst(entries).map((exchange, position) => (
+        <React.Fragment key={exchange[0].index}>
+          {exchange.map(({ entry, index }) => (
+            <Turn key={`${entry.at}-${index}`} entry={entry} />
+          ))}
+          {position === 0 && running && (
+            <div className="px-3 text-sm text-gray-400" data-testid="agent-thinking">
+              Thinking…
+            </div>
+          )}
+        </React.Fragment>
       ))}
-      {running && (
-        <div className="px-3 text-sm text-gray-400" data-testid="agent-thinking">
-          Thinking…
-        </div>
-      )}
+    </div>
+  );
+}
+
+function Turn({ entry }) {
+  return (
+    <div
+      className={
+        entry.role === 'user'
+          ? 'rounded-md bg-gray-100 p-3 text-sm text-gray-900'
+          : 'rounded-md bg-gray-50 p-3 text-sm text-gray-800'
+      }
+      data-testid={`agent-turn-${entry.role}`}
+    >
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        {entry.role === 'user' ? 'You' : 'Agent'}
+      </div>
+      {/* Above the answer, so a turn reads as ask -> work -> result. An
+          answer with no visible work is what made the agent look like it
+          had done nothing. */}
+      <AgentToolCalls actions={entry.actions} />
+      {entry.text}
     </div>
   );
 }
