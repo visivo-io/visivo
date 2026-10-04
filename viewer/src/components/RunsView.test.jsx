@@ -438,3 +438,24 @@ describe('keeping the list current (VIS-1345)', () => {
     expect(unsubscribe).toHaveBeenCalled();
   });
 });
+
+describe('RunsView header', () => {
+  test('is titled for the project it is scoped to, with no subtitle', () => {
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+
+    expect(screen.getByRole('heading', { name: 'Project Runs' })).toBeInTheDocument();
+    expect(screen.queryByText(/rebuilds the assets your changes affect/)).not.toBeInTheDocument();
+  });
+
+  test('shares its row with the run controls', () => {
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+
+    const heading = screen.getByRole('heading', { name: 'Project Runs' });
+    const runAll = screen.getByRole('button', { name: 'Run all' });
+    const panel = screen.getByTestId('runs-staged-panel');
+    expect(heading.compareDocumentPosition(runAll) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(runAll.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
