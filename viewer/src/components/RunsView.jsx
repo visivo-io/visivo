@@ -44,7 +44,7 @@ const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'a
  * the only way back when outputs are missing or corrupt but the fingerprints
  * say they're built.
  */
-function StagedPanel() {
+function StagedPanel({ heading }) {
   const staged = useStore(s => s.stagedChanges);
   const runTrigger = useStore(s => s.runTrigger);
   const setRunTrigger = useStore(s => s.setRunTrigger);
@@ -79,19 +79,22 @@ function StagedPanel() {
   return (
     <>
       {/* Global controls — above the box, because they act on everything, not on
-          this project's staged changes. */}
-      <div className="flex items-center justify-end gap-3 mb-2">
-        <RunTriggerToggle value={runTrigger} onChange={setRunTrigger} />
-        <button
-          type="button"
-          onClick={onRunAll}
-          disabled={busy}
-          className={`px-3 py-1.5 rounded text-sm font-medium text-white ${
-            busy ? 'bg-gray-300 cursor-not-allowed' : 'bg-primary hover:opacity-90'
-          }`}
-        >
-          {running ? 'Running…' : 'Run all'}
-        </button>
+          this project's staged changes — sharing a row with the page heading. */}
+      <div className="flex items-center justify-between gap-3 mb-3">
+        {heading}
+        <div className="flex items-center gap-3">
+          <RunTriggerToggle value={runTrigger} onChange={setRunTrigger} />
+          <button
+            type="button"
+            onClick={onRunAll}
+            disabled={busy}
+            className={`px-3 py-1.5 rounded text-sm font-medium text-white ${
+              busy ? 'bg-gray-300 cursor-not-allowed' : 'bg-primary hover:opacity-90'
+            }`}
+          >
+            {running ? 'Running…' : 'Run all'}
+          </button>
+        </div>
       </div>
 
       <div className="border rounded mb-6" data-testid="runs-staged-panel">
@@ -370,11 +373,7 @@ export default function RunsView() {
 
   return (
     <div data-testid="runs-view" className="min-h-full bg-gray-50 p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-1">Runs</h2>
-      <p className="text-gray-500 text-sm mb-4">
-        A run rebuilds the assets your changes affect. Click a run for details.
-      </p>
-      <StagedPanel />
+      <StagedPanel heading={<h2 className="text-xl font-bold text-gray-900">Project Runs</h2>} />
       {runs.length === 0 ? (
         <p className="text-gray-500">No runs yet.</p>
       ) : (

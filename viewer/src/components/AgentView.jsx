@@ -78,7 +78,7 @@ const AgentView = () => {
 
   return (
     <div className="min-h-full bg-gray-50 p-6">
-      <h1 className="text-lg font-medium text-gray-900 mb-4">Agent</h1>
+      <h1 className="sr-only">Agent</h1>
       {error && (
         <p className="mb-4 text-sm text-highlight-700" data-testid="agent-view-error">
           {error}

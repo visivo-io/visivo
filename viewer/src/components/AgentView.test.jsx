@@ -101,13 +101,15 @@ describe('what is listed', () => {
     expect(rows.map(row => row.textContent)).toEqual(['write_model', 'write_chart']);
   });
 
-  test('there is no subheading, and the prompt is there from the start', async () => {
+  test('there is no visible title or subheading, and the prompt is there from the start', async () => {
     fetchAgentActions.mockReturnValue(new Promise(() => {}));
 
     renderView();
 
     expect(screen.getByTestId('agent-prompt')).toBeInTheDocument();
     expect(screen.queryByText(/connect your own MCP client/)).not.toBeInTheDocument();
+    // The placeholder explains the page; the heading stays for screen readers only.
+    expect(screen.getByRole('heading', { level: 1, name: 'Agent' })).toHaveClass('sr-only');
   });
 });
 
