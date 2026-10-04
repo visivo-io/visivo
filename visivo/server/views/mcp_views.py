@@ -25,7 +25,7 @@ result is something the model can read and correct.
 
 from flask import jsonify, request
 
-from visivo.agent.actions import log as action_log
+from visivo.agent.actions import attributed_to, log as action_log
 from visivo.agent.tools import TOOLS, ToolError, call
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -152,7 +152,8 @@ def _call(flask_app, params):
     name = params.get("name")
     arguments = params.get("arguments") or {}
     try:
-        value = call(flask_app, name, arguments)
+        with attributed_to("mcp"):
+            value = call(flask_app, name, arguments)
     except ToolError as refused:
         return _tool_error(str(refused))
     except Exception as unexpected:  # noqa: BLE001 — reported, never raised on

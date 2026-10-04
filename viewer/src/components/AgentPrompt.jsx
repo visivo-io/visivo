@@ -7,7 +7,7 @@ import {
   listAgentSessions,
   startAgentSession,
 } from '../api/agent';
-import AgentObjectLink from './AgentObjectLink';
+import AgentToolCalls from './AgentToolCalls';
 import AgentAuthorize from './AgentAuthorize';
 import useAuthorization from '../hooks/useAuthorization';
 
@@ -37,6 +37,14 @@ const ACTIVE = ['queued', 'running'];
 
 const isActive = session => Boolean(session) && ACTIVE.includes(session.state);
 
+const FIRST_PLACEHOLDER =
+  'Ask for a source, model, insight, chart, table or dashboard, or a change to one.\n' +
+  'e.g. “Add a model of revenue by month from the orders source and chart it on the sales dashboard”\n' +
+  'Changes land as drafts you review in the Workspace before committing.';
+
+const REPLY_PLACEHOLDER =
+  'Reply, or ask for the next change, e.g. “make that a line chart” or “add it to the dashboard”';
+
 const AgentPrompt = () => {
   // Addressed per project, so the same component drives a local loop and a
   // cloud one without knowing which it has.
@@ -64,6 +72,15 @@ const AgentPrompt = () => {
   }, []);
 
   useEffect(() => stopPolling, [stopPolling]);
+
+  // The box sits under the conversation, so bring it into view when the tab
+  // opens on one and each time it grows: the latest exchange is just above it.
+  const box = useRef(null);
+  const turns = session?.transcript?.length || 0;
+  const working = isActive(session);
+  useEffect(() => {
+    if (turns > 0) box.current?.scrollIntoView?.({ block: 'end' });
+  }, [turns, working]);
 
   const poll = useCallback(
     sessionId => {
@@ -189,6 +206,8 @@ const AgentPrompt = () => {
   };
 
   const running = isActive(session);
+  const ended =
+    Boolean(session) && !running && session.state !== 'queued' && session.state !== 'succeeded';
 
   // Not signed in and nothing said yet: offer the one click that fixes it
   // rather than a prompt box that will answer with instructions. Once there
@@ -210,6 +229,13 @@ const AgentPrompt = () => {
       className="bg-white border border-gray-200 rounded-lg p-4 mb-4"
       data-testid="agent-prompt"
     >
+      {(turns > 0 || ended) && (
+        <div className="mb-3">
+          {turns > 0 && <Transcript entries={session.transcript} running={running} />}
+          {ended && <Outcome session={session} />}
+        </div>
+      )}
+
       <label htmlFor="agent-prompt-input" className="sr-only">
         What should the agent do?
       </label>
@@ -226,12 +252,8 @@ const AgentPrompt = () => {
           }
         }}
         disabled={running}
-        rows={2}
-        placeholder={
-          session?.transcript?.length
-            ? 'Reply, or ask for the next change…'
-            : 'Ask the agent to build or change something — e.g. “add a model for monthly revenue over the orders source”'
-        }
+        rows={3}
+        placeholder={session?.transcript?.length ? REPLY_PLACEHOLDER : FIRST_PLACEHOLDER}
         className="w-full resize-y rounded-md border border-gray-300 p-2 text-sm focus:border-primary focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
       />
 
@@ -274,13 +296,6 @@ const AgentPrompt = () => {
         </div>
       )}
 
-      {session?.transcript?.length > 0 && (
-        <Transcript entries={session.transcript} running={running} />
-      )}
-
-      {session && !running && session.state !== 'queued' && session.state !== 'succeeded' && (
-        <Outcome session={session} />
-      )}
 
       {modelSource && (
         <div className="mt-2 text-xs text-gray-400" data-testid="agent-model-source">
@@ -289,6 +304,7 @@ const AgentPrompt = () => {
             : 'Using your own API key.'}
         </div>
       )}
+      <div ref={box} aria-hidden="true" />
     </div>
   );
 };
@@ -296,7 +312,7 @@ const AgentPrompt = () => {
 /** What was said, oldest first — the shape a conversation is read in. */
 function Transcript({ entries, running }) {
   return (
-    <div className="mt-3 space-y-2" data-testid="agent-transcript">
+    <div className="space-y-2" data-testid="agent-transcript">
       {entries.map((entry, index) => (
         <div
           key={`${entry.at}-${index}`}
@@ -313,7 +329,7 @@ function Transcript({ entries, running }) {
           {/* Above the answer, so a turn reads as ask -> work -> result. An
               answer with no visible work is what made the agent look like it
               had done nothing. */}
-          <TurnActions actions={entry.actions} />
+          <AgentToolCalls actions={entry.actions} />
           {entry.text}
         </div>
       ))}
@@ -323,48 +339,6 @@ function Transcript({ entries, running }) {
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * What the agent did to answer, collapsed.
- *
- * Collapsed because the answer is the point and fifteen tool calls above it
- * bury that — but present, because an answer with no evidence of work is
- * indistinguishable from one that did none.
- */
-function TurnActions({ actions }) {
-  if (!actions?.length) return null;
-  const failed = actions.filter(action => action.outcome === 'error').length;
-  return (
-    <details className="mb-2 rounded border border-gray-200 bg-white" data-testid="agent-turn-actions">
-      <summary className="cursor-pointer select-none px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
-        {actions.length} tool call{actions.length === 1 ? '' : 's'}
-        {failed > 0 && (
-          <span className="ml-2 text-highlight-700" data-testid="agent-turn-actions-failed">
-            {failed} failed
-          </span>
-        )}
-      </summary>
-      <ul className="border-t border-gray-100">
-        {actions.map((action, index) => (
-          <li
-            key={action.id ?? index}
-            className="flex items-center gap-2 flex-wrap px-2 py-1 text-xs border-b border-gray-50 last:border-0"
-            data-testid="agent-turn-action"
-          >
-            {action.outcome === 'error' && (
-              <span className="text-highlight-700 font-medium">failed</span>
-            )}
-            <code className="text-gray-700">{action.tool}</code>
-            {action.object && <AgentObjectLink object={action.object} />}
-            {action.outcome === 'error' && action.error && (
-              <span className="text-highlight-700 break-words">{action.error}</span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </details>
   );
 }
 

@@ -319,6 +319,40 @@ class TestTheWorkReachesTheTranscript:
         assert [a["tool"] for a in answer["actions"]] == ["write_markdown"]
         assert answer["actions"][0]["object"]["name"] == "from_the_turn"
 
+    def test_the_turns_calls_are_marked_as_the_agents(self, integration_app, sessions):
+        session = start(
+            integration_app, "make it", self._writes_then_answers(), session_manager=sessions
+        )
+        _settle(sessions, session.id)
+
+        [action] = sessions.get(session.id).to_dict()["transcript"][-1]["actions"]
+        assert (action["source"], action["session_id"]) == ("agent", session.id)
+
+    def test_an_mcp_call_made_during_the_turn_is_not_the_turns(self, integration_app, sessions):
+        """An external client can be working through the same serve while a turn
+        runs; its calls must not be reported as the agent's."""
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        writes = self._writes_then_answers()
+
+        def respond(messages, info: AgentInfo):
+            with attributed_to("mcp"):
+                call(
+                    integration_app,
+                    "write_markdown",
+                    {"config": {"name": "from_mcp", "content": "# hi"}},
+                )
+            return writes.function(messages, info)
+
+        session = start(
+            integration_app, "make it", FunctionModel(respond), session_manager=sessions
+        )
+        _settle(sessions, session.id)
+
+        answer = sessions.get(session.id).to_dict()["transcript"][-1]
+        assert [a["object"]["name"] for a in answer["actions"]] == ["from_the_turn"]
+
     def test_a_second_turn_does_not_re_report_the_firsts_work(self, integration_app, sessions):
         """The log is process-wide and not cleared between turns, so a slice
         taken from the wrong place shows the first turn's work again on the

@@ -18,9 +18,11 @@ The tab renders links from an entry, and nothing can be done with a sentence.
 ``type:name``, the same identity the rename flow uses.
 """
 
+import contextvars
 import itertools
 import threading
 import time
+from contextlib import contextmanager
 
 # A window, not an archive. Large enough that a long agent session stays
 # readable, small enough that an idle serve process is not holding a
@@ -28,6 +30,22 @@ import time
 MAX_ACTIONS = 500
 
 _counter = itertools.count(1)
+
+# Who is calling, for the tab to tell the built-in loop's work (shown with the
+# turn that did it) from an external MCP client's. Unset means unattributed —
+# the cloud runner records without it, and its calls are all the loop's.
+_caller = contextvars.ContextVar("agent_action_caller", default=(None, None))
+
+
+@contextmanager
+def attributed_to(source, session_id=None):
+    """Attribute every action recorded inside to ``source`` (``"agent"`` or
+    ``"mcp"``) and, for the built-in loop, its session."""
+    token = _caller.set((source, session_id))
+    try:
+        yield
+    finally:
+        _caller.reset(token)
 
 
 class ActionLog:
@@ -46,6 +64,7 @@ class ActionLog:
         return listener
 
     def record(self, tool, *, obj=None, outcome="ok", error=None, summary=None):
+        source, session_id = _caller.get()
         action = {
             "id": next(_counter),
             "timestamp": time.time(),
@@ -54,6 +73,8 @@ class ActionLog:
             "outcome": outcome,
             "error": error,
             "summary": summary or _summarise(tool, obj, outcome, error),
+            "source": source,
+            "session_id": session_id,
         }
         with self._lock:
             self._actions.append(action)
@@ -80,7 +101,7 @@ class ActionLog:
         with self._lock:
             return self._actions[-1]["id"] if self._actions else 0
 
-    def since(self, marker):
+    def since(self, marker, session_id=None):
         """Everything recorded after ``marker``, oldest first.
 
         How a turn learns what IT did. The log is shared — an MCP client can be
@@ -89,7 +110,12 @@ class ActionLog:
         would miscount the moment the cap discards one.
         """
         with self._lock:
-            return [action for action in self._actions if action["id"] > marker]
+            return [
+                action
+                for action in self._actions
+                if action["id"] > marker
+                and (session_id is None or action["session_id"] == session_id)
+            ]
 
     def recent(self, limit=None):
         """Newest first — what a log is read in.
