@@ -91,11 +91,13 @@ describe('CommitModal', () => {
     expect(screen.getByTestId('commit-modal-discard')).toBeDisabled();
   });
 
-  it('hides Discard on cloud (capabilities present) — no cloud discard endpoint exists', () => {
-    mockState.capabilities = { can_edit: true, can_branch: true };
+  it('offers Discard once capabilities load — local serve answers that endpoint too', () => {
+    // The gate used to read a non-null capabilities as "this is cloud", which
+    // hid the button in local serve, the one place it works.
+    mockState.capabilities = { can_edit: true, can_branch: false, is_draft: true };
     mockState.pendingChanges = [{ name: 'a', type: 'chart', status: 'NEW' }];
     render(<CommitModal />);
-    expect(screen.queryByTestId('commit-modal-discard')).not.toBeInTheDocument();
+    expect(screen.getByTestId('commit-modal-discard')).toBeEnabled();
   });
 
   it('Discard confirms inline, then drops the draft cache and closes (Q14)', async () => {

@@ -70,6 +70,12 @@ def test_two_unjoined_model_insight_run_yields_missing_relation(tmpdir):
     assert result.error_details is not None
     assert result.error_details["error_type"] == "missing_relation"
     assert set(result.error_details["error_models"]) == {"orders", "users"}
+    # W3: the same failure lifted into the Diagnostic contract without renaming.
+    assert result.diagnostic is not None
+    assert result.diagnostic.code == "missing_relation"
+    assert result.diagnostic.object.type == "insight"
+    assert result.diagnostic.object.name == "cross_model_insight"
+    assert {r.object.name for r in result.diagnostic.related if r.object} == {"orders", "users"}
 
 
 def test_non_join_failure_has_no_structured_error_details(tmpdir):
@@ -95,3 +101,9 @@ def test_non_join_failure_has_no_structured_error_details(tmpdir):
 
     assert result.success is False
     assert result.error_details is None
+    # W3: ordinary failures still carry a diagnostic — just the generic
+    # query-execution one, with no join-fix related[] models.
+    assert result.diagnostic is not None
+    assert result.diagnostic.code == "query_execution_failed"
+    assert result.diagnostic.object.name == "single_model_insight"
+    assert result.diagnostic.related == []
