@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import AgentPrompt from './AgentPrompt';
@@ -245,9 +245,26 @@ describe('AgentPrompt — it is a conversation', () => {
     await userEvent.type(screen.getByLabelText('What should the agent do?'), 'one');
     await userEvent.click(screen.getByTestId('agent-send'));
 
-    await screen.findByTestId('agent-transcript');
-    expect(screen.getAllByTestId('agent-turn-user')).toHaveLength(2);
-    expect(screen.getAllByTestId('agent-turn-agent')).toHaveLength(2);
+    const transcript = await screen.findByTestId('agent-transcript');
+    const order = within(transcript)
+      .getAllByTestId(/^agent-turn-(user|agent)$/)
+      .map(turn => turn.textContent.replace(/^(You|Agent)/, ''));
+    expect(order).toEqual(['one', 'two', 'three', 'four']);
+  });
+
+  it('puts the prompt box below the conversation', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(
+      session('succeeded', { transcript: [said('user', 'one'), said('agent', 'two')] })
+    );
+    render(<AgentPrompt />);
+    const box = screen.getByLabelText('What should the agent do?');
+
+    await userEvent.type(box, 'one');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    const transcript = await screen.findByTestId('agent-transcript');
+    expect(transcript.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('an evicted conversation drops its id so the next Send starts a new one', async () => {
@@ -411,6 +428,19 @@ describe('picking the conversation back up', () => {
 
   const whole = (id, state, text) =>
     session(state, { id, transcript: [said('user', 'earlier'), said('agent', text)] });
+
+  it('opens at the end of the conversation', async () => {
+    const scrollIntoView = jest.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    listAgentSessions.mockResolvedValue([listed('s1', 'succeeded')]);
+    fetchAgentSession.mockResolvedValue(whole('s1', 'succeeded', 'Built it earlier.'));
+
+    render(<AgentPrompt />);
+
+    await screen.findByTestId('agent-transcript');
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
+    delete Element.prototype.scrollIntoView;
+  });
 
   it('shows the last conversation without being asked', async () => {
     listAgentSessions.mockResolvedValue([listed('s9', 'succeeded')]);

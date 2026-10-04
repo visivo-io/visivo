@@ -59,6 +59,16 @@ describe('what is listed', () => {
     expect(within(group).getByText('write_model')).toBeInTheDocument();
   });
 
+  test('they sit above the conversation, so the prompt box is last', async () => {
+    fetchAgentActions.mockResolvedValue([action()]);
+
+    renderView();
+
+    const group = await external();
+    const prompt = screen.getByTestId('agent-prompt');
+    expect(group.compareDocumentPosition(prompt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   test("the agent's own calls are not listed again", async () => {
     // They already sit under the turn that made them.
     fetchAgentActions.mockResolvedValue([action({ source: 'agent', session_id: 's1' })]);

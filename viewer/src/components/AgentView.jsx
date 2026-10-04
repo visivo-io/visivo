@@ -7,8 +7,8 @@ import { AGENT_ACTIONS } from '../events/topics';
 import AgentToolCalls from './AgentToolCalls';
 
 /**
- * The Agent tab: the conversation with the built-in loop, and below it any
- * calls an external MCP client made.
+ * The Agent tab: any calls an external MCP client made, then the conversation
+ * with the built-in loop, with its prompt box last.
  *
  * The loop's calls already sit under the turn that made them, so only calls the
  * server attributes to MCP are listed here, grouped the same way. Calls with no
@@ -22,7 +22,7 @@ function ExternalCalls({ actions }) {
   return (
     <section
       aria-labelledby="agent-external-calls-heading"
-      className="bg-white border border-gray-200 rounded-lg p-4"
+      className="bg-white border border-gray-200 rounded-lg p-4 mb-4"
       data-testid="agent-external-calls"
     >
       <div className="rounded-md bg-gray-50 p-3 text-sm text-gray-800">
@@ -79,13 +79,13 @@ const AgentView = () => {
   return (
     <div className="min-h-full bg-gray-50 p-6">
       <h1 className="text-lg font-medium text-gray-900 mb-4">Agent</h1>
-      <AgentPrompt />
       {error && (
-        <p className="text-sm text-highlight-700" data-testid="agent-view-error">
+        <p className="mb-4 text-sm text-highlight-700" data-testid="agent-view-error">
           {error}
         </p>
       )}
       {external.length > 0 && <ExternalCalls actions={external} />}
+      <AgentPrompt />
     </div>
   );
 };

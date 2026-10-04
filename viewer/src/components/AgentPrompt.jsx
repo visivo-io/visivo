@@ -73,6 +73,15 @@ const AgentPrompt = () => {
 
   useEffect(() => stopPolling, [stopPolling]);
 
+  // The box sits under the conversation, so bring it into view when the tab
+  // opens on one and each time it grows: the latest exchange is just above it.
+  const box = useRef(null);
+  const turns = session?.transcript?.length || 0;
+  const working = isActive(session);
+  useEffect(() => {
+    if (turns > 0) box.current?.scrollIntoView?.({ block: 'end' });
+  }, [turns, working]);
+
   const poll = useCallback(
     sessionId => {
       stopPolling();
@@ -197,6 +206,8 @@ const AgentPrompt = () => {
   };
 
   const running = isActive(session);
+  const ended =
+    Boolean(session) && !running && session.state !== 'queued' && session.state !== 'succeeded';
 
   // Not signed in and nothing said yet: offer the one click that fixes it
   // rather than a prompt box that will answer with instructions. Once there
@@ -218,6 +229,13 @@ const AgentPrompt = () => {
       className="bg-white border border-gray-200 rounded-lg p-4 mb-4"
       data-testid="agent-prompt"
     >
+      {(turns > 0 || ended) && (
+        <div className="mb-3">
+          {turns > 0 && <Transcript entries={session.transcript} running={running} />}
+          {ended && <Outcome session={session} />}
+        </div>
+      )}
+
       <label htmlFor="agent-prompt-input" className="sr-only">
         What should the agent do?
       </label>
@@ -278,13 +296,6 @@ const AgentPrompt = () => {
         </div>
       )}
 
-      {session?.transcript?.length > 0 && (
-        <Transcript entries={session.transcript} running={running} />
-      )}
-
-      {session && !running && session.state !== 'queued' && session.state !== 'succeeded' && (
-        <Outcome session={session} />
-      )}
 
       {modelSource && (
         <div className="mt-2 text-xs text-gray-400" data-testid="agent-model-source">
@@ -293,6 +304,7 @@ const AgentPrompt = () => {
             : 'Using your own API key.'}
         </div>
       )}
+      <div ref={box} aria-hidden="true" />
     </div>
   );
 };
@@ -300,7 +312,7 @@ const AgentPrompt = () => {
 /** What was said, oldest first — the shape a conversation is read in. */
 function Transcript({ entries, running }) {
   return (
-    <div className="mt-3 space-y-2" data-testid="agent-transcript">
+    <div className="space-y-2" data-testid="agent-transcript">
       {entries.map((entry, index) => (
         <div
           key={`${entry.at}-${index}`}
