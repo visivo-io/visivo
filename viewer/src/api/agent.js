@@ -58,11 +58,16 @@ export const startAgentSession = async ({ projectId, prompt, model, sessionId } 
   if (response.status === 400 && body.action === 'configure_agent') {
     return { unconfigured: body.error };
   }
-  // The account's Visivo-supplied inference budget is spent for the month. Not
-  // a failure to fix — a limit to wait out or raise — so it reads as its own
-  // outcome rather than a generic error.
+  // The account cannot spend any more right now. Not a failure to fix, so it
+  // reads as its own outcome rather than a generic error.
+  //
+  // `limit` says WHICH ceiling stopped it, and the two have different fixes:
+  // `no_credit` is a balance that does not reset and has to be topped up,
+  // while an account or user limit is a per-period cap to wait out or raise.
+  // Carried through rather than dropped, because "it resets on the 14th" is a
+  // promise nothing keeps for an empty balance.
   if (response.status === 429 && body.action === 'inference_limit_reached') {
-    return { limitReached: body.error };
+    return { limitReached: body.error, limitReason: body.limit };
   }
   // The conversation was evicted. The caller starts a new one deliberately
   // rather than appearing to continue something that is gone.

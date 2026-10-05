@@ -186,9 +186,10 @@ describe('AgentPrompt — whose model', () => {
     );
   });
 
-  it('a spent monthly limit reads as a limit, not a failure', async () => {
+  it('a period cap reads as a limit, not a failure', async () => {
     startAgentSession.mockResolvedValue({
-      limitReached: 'This account has used its $100 monthly inference limit.',
+      limitReached: 'This account has used the $100 limit for this period.',
+      limitReason: 'account_limit',
     });
     render(<AgentPrompt />);
 
@@ -196,8 +197,26 @@ describe('AgentPrompt — whose model', () => {
     await userEvent.click(screen.getByTestId('agent-send'));
 
     expect(await screen.findByTestId('agent-notice-limit')).toHaveTextContent(
-      /\$100 monthly inference limit/
+      /limit for this period/
     );
+  });
+
+  it('an empty balance is its own outcome, because the fix is different', async () => {
+    // A period cap is waited out; a balance has to be topped up. Telling
+    // someone to wait for a balance to reset is a promise nothing keeps
+    // (VIS-1384).
+    startAgentSession.mockResolvedValue({
+      limitReached: 'This account is out of credit. Buy more to keep going.',
+      limitReason: 'no_credit',
+    });
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    const notice = await screen.findByTestId('agent-notice-no-credit');
+    expect(notice).toHaveTextContent(/out of credit/);
+    expect(notice).toHaveTextContent(/Buy more/);
   });
 });
 
