@@ -167,7 +167,14 @@ const AgentPrompt = () => {
         return;
       }
       if (result.limitReached) {
-        setNotice({ kind: 'limit', text: result.limitReached });
+        // `no_credit` is its own kind, not a flavour of 'limit'. An empty
+        // balance is a thing to do something about — the message says to buy
+        // more — where a period cap is a thing to wait out, and they should
+        // not look the same.
+        setNotice({
+          kind: result.limitReason === 'no_credit' ? 'no-credit' : 'limit',
+          text: result.limitReached,
+        });
         return;
       }
       if (result.sessionGone) {
@@ -286,7 +293,9 @@ const AgentPrompt = () => {
       {notice && (
         <div
           className={`mt-3 rounded-md p-3 text-sm ${
-            notice.kind === 'configure'
+            // Both of these are "here is what to do", so they read as
+            // information. The rest are things that went wrong.
+            notice.kind === 'configure' || notice.kind === 'no-credit'
               ? 'bg-blue-50 text-blue-900 whitespace-pre-line'
               : 'bg-highlight-50 text-highlight-900'
           }`}
