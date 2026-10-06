@@ -213,21 +213,40 @@ def test_load_example_project_success(client, monkeypatch):
     assert response.get_json()["message"] == "Project created successfully"
 
 
-def test_authorize_device_token_exists(client):
-    """Test POST /api/auth/status check auth status"""
+def test_authorize_status_says_yes_without_handing_over_the_token(client):
+    """A token for this host means authorized (VIS-1376/VIS-1377).
+
+    The token itself is NOT in the answer. The page has no use for it, and a
+    local server handing a cloud credential to a browser is a habit worth not
+    having — this used to return it in the body and in a message beside it.
+    """
     with patch("visivo.server.views.auth_views.get_existing_token", return_value="test123"):
-        response = client.post("/api/auth/status/", json={})
+        response = client.get("/api/auth/status/")
+
         assert response.status_code == 200
-        assert response.get_json()["token"] == "test123"
-        assert b"A token already exists in your profile" in response.data
+        assert response.get_json()["authorized"] is True
+        assert "test123" not in response.get_data(as_text=True)
 
 
-def test_authorize_device_token_does_not_exists(client):
-    """Test POST /api/auth/status check auth status"""
+def test_authorize_status_says_no_when_there_is_no_token(client):
     with patch("visivo.server.views.auth_views.get_existing_token", return_value=None):
-        response = client.post("/api/auth/status/", json={})
+        response = client.get("/api/auth/status/")
+
         assert response.status_code == 200
-        assert b"UnAuthenticated user access" in response.data
+        assert response.get_json()["authorized"] is False
+
+
+def test_authorize_status_names_the_host_it_answered_for(client):
+    """Authorized for WHICH deployment. With one host per serve the question
+    has one answer, and the page should not have to guess it."""
+    with patch("visivo.server.views.auth_views.get_existing_token", return_value=None):
+        assert client.get("/api/auth/status/").get_json()["host"].startswith("http")
+
+
+def test_authorize_status_still_answers_a_post(client):
+    """The deploy modal asks that way, and it predates this."""
+    with patch("visivo.server.views.auth_views.get_existing_token", return_value=None):
+        assert client.post("/api/auth/status/", json={}).status_code == 200
 
 
 def test_authorize_device_token_browser_full_response(client):
@@ -443,3 +462,74 @@ def test_cloud_branches_is_served_under_both_nouns(client):
             new = client.get("/api/cloud/branches/").get_json()
 
     assert old["branches"] == new["branches"] == [{"name": "main"}]
+
+
+def test_deploy_is_not_offered_archived_branches(client):
+    """An archived branch is one someone has put away. Offering it as a deploy
+    target is offering a mistake, and the filter belongs on the endpoint so
+    every caller gets the same list rather than each page deciding."""
+    with patch("visivo.server.views.cloud_views.get_existing_token", return_value="t"):
+        with patch("visivo.server.views.cloud_views.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = [{"name": "main"}]
+
+            client.get("/api/cloud/branches/")
+
+    assert mock_get.call_args.kwargs["params"] == {"archived": "false"}
+
+
+def test_the_device_callback_names_the_port_serve_is_on(output_dir):
+    """Hardcoded 8000 sent the token nowhere whenever someone served on
+    another port, and the failure is silent: the browser posts to a closed
+    port and the CLI keeps waiting (VIS-1376)."""
+    import urllib.parse
+
+    served = FlaskApp(os.path.abspath(output_dir), ProjectFactory(), port=8123)
+    served.app.config["TESTING"] = True
+
+    with patch("visivo.server.views.auth_views.get_existing_token", return_value=None):
+        body = (
+            served.app.test_client().post("/api/auth/authorize-device-token/", json={}).get_json()
+        )
+
+    redirect_url = urllib.parse.parse_qs(urllib.parse.urlparse(body["full_url"]).query)[
+        "redirect_url"
+    ][0]
+    assert "localhost:8123" in redirect_url
+
+
+def test_the_device_callback_goes_to_the_host_this_serve_is_bound_to(output_dir):
+    """`--host` has to move the authorize flow along with everything else, or
+    the token is minted on one deployment and looked for on another."""
+    served = FlaskApp(
+        os.path.abspath(output_dir), ProjectFactory(), host="https://app.development.visivo.io"
+    )
+    served.app.config["TESTING"] = True
+
+    with patch("visivo.server.views.auth_views.get_existing_token", return_value=None):
+        body = (
+            served.app.test_client().post("/api/auth/authorize-device-token/", json={}).get_json()
+        )
+
+    assert body["full_url"].startswith("https://app.development.visivo.io/authorize-device")
+
+
+def test_deploys_follow_the_host_this_serve_is_bound_to(output_dir):
+    """`--host` has to move deploys along with the token lookup and the agent
+    (VIS-1376). Moving two of the three leaves the odd one out silently
+    talking to production."""
+    served = FlaskApp(
+        os.path.abspath(output_dir), ProjectFactory(), host="https://app.development.visivo.io"
+    )
+    served.app.config["TESTING"] = True
+
+    with patch("visivo.server.views.cloud_views.get_existing_token", return_value="t") as token:
+        with patch("visivo.server.views.cloud_views.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = []
+
+            served.app.test_client().get("/api/cloud/branches/")
+
+    assert mock_get.call_args.args[0].startswith("https://app.development.visivo.io")
+    # And the token looked up is the one for THAT deployment, not production's.
+    assert token.call_args.kwargs["host"] == "https://app.development.visivo.io"

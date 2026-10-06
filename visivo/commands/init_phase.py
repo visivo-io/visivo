@@ -107,6 +107,45 @@ ENV_EXAMPLE_CONTENT = """\
 """
 
 
+AGENTS_CONTENT = """# Working on this project
+
+Notes for an AI agent — Visivo's own, or one you bring (Claude Code, Cursor,
+anything that speaks MCP). Visivo ships general skills already; this file is
+for what is true about *this* project. Edit it.
+
+## What this is
+
+A Visivo project. `project.visivo.yml` is the entry point; config can be split
+across files and is merged.
+
+The objects, roughly in dependency order:
+
+- **sources** — where data lives
+- **models** — SQL over a source
+- **metrics / dimensions** — reusable expressions, nested under a model or
+  standalone
+- **insights** — a query, the thing a chart draws
+- **charts / tables / markdowns** — how it is shown
+- **dashboards** — what a person opens
+
+## House rules
+
+- Objects refer to each other by **name**, as `${ref(name)}`.
+- **Alias every column in a SELECT.** An unaliased expression gets a positional
+  name like `col_1`, which validates, runs, and then does not match what a
+  chart asks for.
+- **Never put a credential in YAML.** Use `${env.VAR_NAME}`.
+- An agent's changes land as **uncommitted drafts**. A human reviews and
+  commits them; nothing is live until they do.
+
+## Specific to us
+
+<!-- Replace this. What an agent would get wrong here and nowhere else:
+     naming conventions, which source to prefer, tables that look useful and
+     are not, the metric everyone means when they say "revenue". -->
+"""
+
+
 def _write_if_missing(path: str, content: str) -> bool:
     """Write file at path with given content only if path does not exist.
 
@@ -141,6 +180,10 @@ def create_basic_project(project_name: str, project_dir: str = "."):
     env_example_path = os.path.join(project_dir, ".env.example")
     if _write_if_missing(env_example_path, ENV_EXAMPLE_CONTENT):
         Logger.instance().success(f"Created .env.example: {env_example_path}")
+
+    agents_path = os.path.join(project_dir, "AGENTS.md")
+    if _write_if_missing(agents_path, AGENTS_CONTENT):
+        Logger.instance().success(f"Created AGENTS.md: {agents_path}")
 
     return project_file_path
 
