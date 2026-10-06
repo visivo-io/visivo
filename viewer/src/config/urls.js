@@ -171,6 +171,22 @@ const URL_PATTERNS = {
     // client so the CLI telemetry opt-out + anonymization apply (VIS-822).
     workspaceTelemetry: '/api/telemetry/workspace-event/',
 
+    // What agents have done this session. Absent from `dist` below, which is
+    // correct: a static build has no server for an agent to work through.
+    // Project-scoped, like capabilities/commit/discard/run above, and for the
+    // same reason: these are the paths core can serve, so ONE tab drives a
+    // local loop and a cloud one. `visivo serve` hosts a single project and
+    // ignores the id.
+    agentActions: '/api/projects/{projectId}/agent/actions/',
+    // The built-in loop: start one, poll it, stop it.
+    agentSessions: '/api/projects/{projectId}/agent/',
+    // Templates, not functions: getUrl substitutes {param} into a STRING. A
+    // function pattern reaches `url.replace` and throws "url.replace is not a
+    // function" — which the session poll then swallowed, so the transcript
+    // silently never updated and only Stop surfaced it.
+    agentSession: '/api/projects/{projectId}/agent/{sessionId}/',
+    agentSessionCancel: '/api/projects/{projectId}/agent/{sessionId}/cancel/',
+
     // ---- Realtime ---------------------------------------------------------
     // Not a REST call — useProjectChangeListener gates its socket.io connect
     // on this key (VIS-1326). A dist build is static files with nothing to

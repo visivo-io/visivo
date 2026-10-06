@@ -11,7 +11,7 @@ jest.mock('../../stores/store');
 // socket client so jsdom never attempts a real polling connection (mirrors
 // Workspace.test.jsx's identical stub).
 jest.mock('socket.io-client', () => ({
-  io: jest.fn(() => ({ on: jest.fn(), close: jest.fn() })),
+  io: jest.fn(() => ({ on: jest.fn(), off: jest.fn(), close: jest.fn() })),
 }));
 
 jest.mock('react-router-dom', () => ({

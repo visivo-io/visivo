@@ -23,10 +23,22 @@ from visivo.server.managers.run_manager import RunManager
 from visivo.server.managers.staged_manager import StagedManager
 
 
+from visivo.server.constants import resolve_host
+
+
 class FlaskApp:
 
-    def __init__(self, output_dir, project: Project, working_dir=None):
+    def __init__(self, output_dir, project: Project, working_dir=None, host=None, port=None):
         self.app = Flask(__name__, static_folder=output_dir, static_url_path="/data")
+
+        # Which Visivo deployment this serve is bound to (VIS-1376). Everything
+        # that reaches cloud reads it from here rather than from the import-time
+        # constant, which a --host flag cannot change.
+        self.host = resolve_host(host)
+        # The port this serve is actually on. The device-authorize callback URL
+        # is built from it — hardcoding 8000 sent the token nowhere whenever
+        # someone served on a different port.
+        self.port = port
 
         self._project_json = (
             Serializer(project=project).dereference().model_dump_json(exclude_none=True)

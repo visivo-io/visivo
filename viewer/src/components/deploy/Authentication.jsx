@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock, faZap } from '@fortawesome/free-solid-svg-icons';
 import Loading from '../common/Loading';
 import { openOauthPopupWindow } from '../../utils/utils';
+import { authorizationProgress, startAuthorization } from '../../api/authorization';
 
 const Authentication = ({ setStatus }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,22 +13,14 @@ const Authentication = ({ setStatus }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/authorize-device-token/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!response.ok) {
-        setIsLoading(false);
-        return;
-      }
-
-      const data = await response.json();
+      // Through the shared client, so Deploy and the Agent tab drive one
+      // device flow rather than two that drift (VIS-1377).
+      const { authId, url } = await startAuthorization();
 
       setLoadingText('Redirecting ...');
-      openOauthPopupWindow(data.full_url);
+      openOauthPopupWindow(url);
 
-      pollAuthStatus(data.auth_id);
+      pollAuthStatus(authId);
     } catch (error) {
       setIsLoading(false);
     }
@@ -44,17 +37,16 @@ const Authentication = ({ setStatus }) => {
       }
 
       try {
-        const res = await fetch(`/api/cloud/job/status/${authId}/`);
-        const data = await res.json();
+        const progress = await authorizationProgress(authId);
         retries++;
 
-        setLoadingText(data.message || 'Authenticating ...');
+        setLoadingText(progress.message);
 
-        if (data.status === 200) {
+        if (progress.done) {
           clearInterval(interval);
           setIsLoading(false);
           setStatus('branch');
-        } else if ([400, 401, 500].includes(data.status)) {
+        } else if (progress.failed) {
           clearInterval(interval);
           setIsLoading(false);
         }

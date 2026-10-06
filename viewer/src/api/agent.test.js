@@ -1,0 +1,109 @@
+/**
+ * fetchAgentActions (VIS-1364).
+ *
+ * Fetchable is the point: it makes the Agent tab's topic a `poll` like the
+ * runs list, so the tab works wherever the API does rather than only where a
+ * socket happens to exist.
+ */
+import { fetchAgentActions, listAgentSessions } from './agent';
+import { apiFetch } from './utils';
+import { AGENT_ACTIONS } from '../events/topics';
+
+jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
+
+const respond = (actions, status = 200) => ({
+  status,
+  json: async () => ({ actions }),
+});
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('fetchAgentActions', () => {
+  it('returns the actions the server listed', async () => {
+    apiFetch.mockResolvedValue(respond([{ id: 1, tool: 'write_model' }]));
+
+    expect(await fetchAgentActions()).toEqual([{ id: 1, tool: 'write_model' }]);
+  });
+
+  it('asks for a bounded page when told to', async () => {
+    apiFetch.mockResolvedValue(respond([]));
+
+    await fetchAgentActions({ limit: 20 });
+
+    expect(apiFetch.mock.calls[0][0]).toContain('limit=20');
+  });
+
+  it('throws on a failure rather than returning an empty log', async () => {
+    // An empty log and an unreachable server read identically on the tab, and
+    // they mean opposite things.
+    apiFetch.mockResolvedValue(respond(null, 500));
+
+    await expect(fetchAgentActions()).rejects.toThrow('Failed to fetch agent actions');
+  });
+});
+
+describe('the agent-actions topic', () => {
+  it('is signal-then-fetch, like runs', () => {
+    // Not a payload topic: once actions are recorded they can be asked for,
+    // so the tab gets one rule instead of two and works with no socket.
+    const topic = AGENT_ACTIONS(fetchAgentActions);
+
+    expect(topic.event).toBe('agent_action');
+    expect(typeof topic.poll).toBe('function');
+  });
+
+  it('polls through the fetcher it was given', async () => {
+    const fetcher = jest.fn().mockResolvedValue([]);
+
+    await AGENT_ACTIONS(fetcher).poll();
+
+    expect(fetcher).toHaveBeenCalled();
+  });
+});
+
+describe('the agent topic and the server agree', () => {
+  it('subscribes to the name serve actually emits', () => {
+    // serve_phase.py emits socketio 'agent_action'. Scoping this name by
+    // project (as runsFor does) silently stops the live push matching, and
+    // nothing fails — it just quietly degrades to the 2s poll. Caught exactly
+    // that way once already.
+    expect(AGENT_ACTIONS(jest.fn(), 'some-project').event).toBe('agent_action');
+  });
+
+  it('polls the project it was given, so one viewer can watch several', () => {
+    const fetcher = jest.fn();
+    AGENT_ACTIONS(fetcher, 'project-42').poll();
+
+    expect(fetcher).toHaveBeenCalledWith({ projectId: 'project-42' });
+  });
+});
+
+describe('listAgentSessions', () => {
+  // What lets the tab pick a conversation back up. Both backends already
+  // answered this; nothing read it, so a reload lost a transcript the server
+  // still had.
+  it('returns the conversations the server listed', async () => {
+    apiFetch.mockResolvedValue({
+      status: 200,
+      json: async () => ({ sessions: [{ id: 's1', state: 'succeeded' }] }),
+    });
+
+    expect(await listAgentSessions({ projectId: 'p1' })).toEqual([
+      { id: 's1', state: 'succeeded' },
+    ]);
+  });
+
+  it('treats a body with no sessions as none, not as a crash', async () => {
+    apiFetch.mockResolvedValue({ status: 200, json: async () => ({}) });
+
+    expect(await listAgentSessions({ projectId: 'p1' })).toEqual([]);
+  });
+
+  it('throws on anything but 200, so the caller can decide to stay quiet', async () => {
+    apiFetch.mockResolvedValue({ status: 500, json: async () => ({}) });
+
+    await expect(listAgentSessions({ projectId: 'p1' })).rejects.toThrow();
+  });
+});
