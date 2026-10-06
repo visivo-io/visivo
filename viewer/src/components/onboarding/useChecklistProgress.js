@@ -57,15 +57,19 @@ export default function useChecklistProgress(roleId) {
       let resolvedSteps = null;
       let currentStep = null;
       let macroDone;
+      const predicateSatisfied = it.predicate ? !!it.predicate(ctx) : false;
       if (Array.isArray(it.steps) && it.steps.length > 0) {
         resolvedSteps = it.steps.map(step => ({
           ...step,
           done: !!step.done(ctx),
         }));
-        macroDone = resolvedSteps.every(s => s.done);
+        // A predicate counts as well as the steps, not instead of them. The
+        // steps are a walkthrough; the predicate is "you already did this",
+        // and an item with both used to ignore the latter entirely.
+        macroDone = predicateSatisfied || resolvedSteps.every(s => s.done);
         currentStep = resolvedSteps.find(s => !s.done) || null;
       } else {
-        macroDone = it.predicate ? !!it.predicate(ctx) : false;
+        macroDone = predicateSatisfied;
       }
       return {
         ...it,

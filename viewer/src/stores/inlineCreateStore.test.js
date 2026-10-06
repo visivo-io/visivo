@@ -69,7 +69,7 @@ describe('createWorkspaceObject', () => {
 
     expect(result.success).toBe(true);
     expect(result.name).not.toBe('new-model');
-    expect(save).toHaveBeenCalledWith(result.name, { sql: 'SELECT 1' });
+    expect(save).toHaveBeenCalledWith(result.name, { sql: 'SELECT 1 as placeholder' });
   });
 
   test('dimension/metric names stay SQL-identifier safe (underscores, no dashes)', () => {
@@ -259,5 +259,16 @@ describe('createWorkspaceObject', () => {
     });
     const result = await useStore.getState().createWorkspaceObject('chart');
     expect(result).toEqual({ success: false, error: 'boom' });
+  });
+});
+
+describe('the model scaffold', () => {
+  it('aliases its column, because the server rejects one that does not', () => {
+    // A bare `SELECT 1` failed validation the moment it was created:
+    // "Model 'new-model' has SELECT columns with no alias, so nothing can
+    // reference them". Every New model errored.
+    const { sql } = CREATE_TEMPLATES.model.config();
+
+    expect(sql).toMatch(/\bas\s+\w+/i);
   });
 });
