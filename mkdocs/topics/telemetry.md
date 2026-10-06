@@ -39,6 +39,10 @@ Visivo collects anonymous usage telemetry to help us understand how the tool is 
 - Anonymous session ID (regenerated each time Visivo starts)
 - CI/CD indicator (is_ci: true/false)
 
+## API Request Telemetry From `visivo serve`
+
+While `visivo serve` runs, only requests under `/api/` are reported, never the viewer's static assets or project data files. A burst of requests to one endpoint is coalesced: one `api_request` event per endpoint per minute, carrying a `request_count` of how many requests it stands for. The telemetry relay endpoint itself is never reported.
+
 ## Example of Command Sanitization
 
 When you run a command like:
@@ -141,6 +145,7 @@ In CI/CD environments:
 - Machine IDs are prefixed with "ci-" for easy identification
 - Machine IDs are not persisted (regenerated each run)
 - The `is_ci` property is set to `true` in all events
+- `visivo serve` sends no API-request telemetry at all, and the viewer it serves does not initialize analytics (a browser driven against a pipeline server is a test, not usage)
 
 This helps us:
 - Separate CI/CD usage from developer usage

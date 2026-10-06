@@ -18,7 +18,7 @@ TELEMETRY_TIMEOUT = 1.0  # Maximum time to wait for telemetry requests
 POSTHOG_API_KEY = os.getenv(
     "VISIVO_POSTHOG_API_KEY", "phc_DaLOz39kD2u4ZFNi6aXQuA7ncmnbAGoE8dLZc2z7Agj"
 )
-POSTHOG_HOST = os.getenv("VISIVO_POSTHOG_HOST", "https://app.posthog.com")
+POSTHOG_HOST = os.getenv("VISIVO_POSTHOG_HOST", "https://us.i.posthog.com")
 
 
 def _check_env_disabled() -> bool:
