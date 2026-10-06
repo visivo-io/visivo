@@ -34,8 +34,6 @@ insights:
       type: bar
       x: ?{ ${ref(releases).repo} }
       y: ?{ COUNT(${ref(releases).version}) }
-      marker:
-        color: "#713b57"
     interactions:
       - sort: ?{ COUNT(${ref(releases).version}) DESC }
 
@@ -45,8 +43,6 @@ insights:
       mode: lines+markers
       x: ?{ ${ref(releases).release_date} }
       y: ?{ ${ref(releases).download_count} }
-      line:
-        color: "#d25946"
     interactions:
       - sort: ?{ ${ref(releases).release_date} ASC }
       - split: ?{ ${ref(releases).repo} }
@@ -56,8 +52,6 @@ insights:
       type: bar
       x: ?{ ${ref(releases).repo} }
       y: ?{ AVG(${ref(releases).contributor_count}) }
-      marker:
-        color: "#4f494c"
 
 charts:
   - name: total_releases_chart

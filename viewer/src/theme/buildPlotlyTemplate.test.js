@@ -110,3 +110,32 @@ describe.each(THEME_MODES)('built-in %s theme contrast', mode => {
     expect(contrastRatio(t.accent, t.surface)).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('indicator sizing', () => {
+  // Plotly scales an indicator's number to fill the space it is given. Naming a
+  // size opts out of that scaling, so a KPI renders at body-text size in the
+  // middle of a large empty card however big the slot is.
+  const indicator = () => buildPlotlyTemplate(BUILTIN_THEMES.light).data.indicator[0];
+
+  it('does not pin the number to a font size', () => {
+    expect(indicator().number.font.size).toBeUndefined();
+  });
+
+  it('does not pin the delta to a font size', () => {
+    expect(indicator().delta.font.size).toBeUndefined();
+  });
+
+  it('does not pin the title to a font size', () => {
+    expect(indicator().title.font.size).toBeUndefined();
+  });
+
+  it('still carries the theme family and colours', () => {
+    const t = BUILTIN_THEMES.light;
+    const ind = indicator();
+    expect(ind.number.font.family).toBe(t.font_family);
+    expect(ind.number.font.color).toBe(t.text);
+    expect(ind.title.font.color).toBe(t.muted_text);
+    expect(ind.delta.increasing.color).toBe(t.increasing);
+    expect(ind.delta.decreasing.color).toBe(t.decreasing);
+  });
+});

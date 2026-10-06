@@ -37,8 +37,6 @@ insights:
       type: bar
       x: ?{ ${ref(ev_sales).quarter} }
       y: ?{ SUM(${ref(ev_sales).units_sold}) }
-      marker:
-        color: "#713b57"
     interactions:
       - sort: ?{ ${ref(ev_sales).quarter} ASC }
 
@@ -47,8 +45,6 @@ insights:
       type: bar
       x: ?{ ${ref(ev_sales).region} }
       y: ?{ SUM(${ref(ev_sales).units_sold}) }
-      marker:
-        color: "#d25946"
     interactions:
       - sort: ?{ SUM(${ref(ev_sales).units_sold}) DESC }
 
@@ -57,8 +53,6 @@ insights:
       type: pie
       labels: ?{ ${ref(ev_sales).powertrain} }
       values: ?{ SUM(${ref(ev_sales).units_sold}) }
-      marker:
-        colors: ["#713b57", "#d25946"]
 
 charts:
   - name: total_units_chart

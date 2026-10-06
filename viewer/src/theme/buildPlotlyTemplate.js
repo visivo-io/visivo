@@ -4,6 +4,10 @@ import { BUILTIN_THEMES } from './builtinThemes';
 
 const font = (t, extra = {}) => ({ family: t.font_family, size: t.font_size, color: t.text, ...extra });
 const mutedFont = (t, extra = {}) => font(t, { color: t.muted_text, ...extra });
+// Family and colour, deliberately no size. Plotly sizes an indicator's number
+// and delta to fill the space it is given; naming a size opts out of that, and
+// a KPI then renders at body-text size in the middle of a large empty card.
+const autoSizedFont = (t, extra = {}) => ({ family: t.font_family, color: t.text, ...extra });
 
 const cartesianAxis = t => ({
   gridcolor: t.grid,
@@ -224,10 +228,10 @@ const traceDefaults = t => {
       },
     },
     indicator: {
-      title: { font: mutedFont(t) },
-      number: { font: font(t) },
+      title: { font: autoSizedFont(t, { color: t.muted_text }) },
+      number: { font: autoSizedFont(t) },
       delta: {
-        font: font(t),
+        font: autoSizedFont(t),
         increasing: { color: t.increasing },
         decreasing: { color: t.decreasing },
       },
