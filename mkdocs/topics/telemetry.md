@@ -80,7 +80,17 @@ For example, a project named "my-secret-project" might be hashed to "a7b9c2d4e6f
 
 ## Opting Out
 
-You can disable telemetry using any of these methods (in order of precedence):
+The simplest way is one command, which persists for the machine:
+
+```bash
+visivo telemetry off      # writes telemetry_enabled: false to ~/.visivo/config.yml
+visivo telemetry status   # shows the effective setting and what decided it
+visivo telemetry on       # re-enable
+```
+
+To send events from an opted-out machine for a single command (for example to verify a tracking change end to end), set `VISIVO_TELEMETRY_FORCE=true`; it overrides every opt-out below for that invocation only.
+
+You can also disable telemetry using any of these methods (in order of precedence):
 
 ### 1. Environment Variable
 Set the environment variable to disable telemetry:
@@ -95,7 +105,7 @@ defaults:
   telemetry_enabled: false
 ```
 
-### 3. Global Configuration
+### 3. Global Configuration (what `visivo telemetry off` writes)
 Create or edit `~/.visivo/config.yml`:
 <!-- visivo-example: skip - the global ~/.visivo/config.yml, not a project file -->
 

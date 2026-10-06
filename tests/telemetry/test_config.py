@@ -11,6 +11,7 @@ import yaml
 
 from visivo.telemetry.config import (
     is_telemetry_enabled,
+    telemetry_decision,
     _check_env_disabled,
     _check_global_config_disabled,
 )
@@ -155,3 +156,54 @@ class TestTelemetryConfig:
             with mock.patch("pathlib.Path.home", return_value=Path(tmpdir)):
                 with mock.patch.dict(os.environ, {}, clear=True):
                     assert not is_telemetry_enabled(project_defaults=defaults)
+
+
+class TestTelemetryForce:
+    """``VISIVO_TELEMETRY_FORCE`` is the escape hatch for an opted-out machine."""
+
+    def _home_with(self, tmpdir, enabled):
+        config_dir = Path(tmpdir) / ".visivo"
+        config_dir.mkdir()
+        with open(config_dir / "config.yml", "w") as f:
+            yaml.dump({"telemetry_enabled": enabled}, f)
+
+    def test_force_overrides_machine_opt_out(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._home_with(tmpdir, False)
+            with mock.patch("pathlib.Path.home", return_value=Path(tmpdir)):
+                with mock.patch.dict(os.environ, {"VISIVO_TELEMETRY_FORCE": "true"}, clear=True):
+                    assert is_telemetry_enabled()
+                    assert telemetry_decision() == (True, "VISIVO_TELEMETRY_FORCE is set")
+
+    def test_force_overrides_project_and_env_opt_out(self):
+        defaults = Defaults(telemetry_enabled=False)
+        env = {"VISIVO_TELEMETRY_FORCE": "1", "VISIVO_TELEMETRY_DISABLED": "true"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            assert is_telemetry_enabled(project_defaults=defaults)
+
+    def test_force_false_is_not_a_force(self):
+        with mock.patch.dict(
+            os.environ, {"VISIVO_TELEMETRY_FORCE": "false", "VISIVO_TELEMETRY_DISABLED": "true"}
+        ):
+            assert not is_telemetry_enabled()
+
+    def test_decision_reasons(self):
+        defaults = Defaults(telemetry_enabled=False)
+        with mock.patch.dict(os.environ, {"VISIVO_TELEMETRY_DISABLED": "true"}):
+            assert telemetry_decision()[1] == "VISIVO_TELEMETRY_DISABLED is set"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._home_with(tmpdir, False)
+            with mock.patch("pathlib.Path.home", return_value=Path(tmpdir)):
+                with mock.patch.dict(os.environ, {}, clear=True):
+                    assert telemetry_decision(project_defaults=defaults) == (
+                        False,
+                        "the project's defaults set telemetry_enabled: false",
+                    )
+                    assert telemetry_decision() == (
+                        False,
+                        "this machine opted out (visivo telemetry off)",
+                    )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch("pathlib.Path.home", return_value=Path(tmpdir)):
+                with mock.patch.dict(os.environ, {}, clear=True):
+                    assert telemetry_decision() == (True, "enabled by default")
