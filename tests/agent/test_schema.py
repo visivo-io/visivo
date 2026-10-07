@@ -170,3 +170,64 @@ def _collect_refs(node, found):
     elif isinstance(node, list):
         for item in node:
             _collect_refs(item, found)
+
+
+class TestTypeKeysComeFromOneSource:
+    """The slicer and the tool registry describe the same set of types.
+
+    Raised in review on #719: the list was hardcoded here while
+    ``tools.py`` and ``remote.py`` both derive theirs from
+    ``TYPE_TO_MANAGER``. Two lists means a new type gets tools but no schema
+    slice, and the agent is told it may write something it cannot look up.
+    """
+
+    def test_every_type_with_tools_has_a_schema_slice(self):
+        """Stated against the TOOLS, which is what the claim is actually about.
+
+        It used to compare against ``TYPE_TO_MANAGER``, which was the same set
+        while every writable type had a manager. ``theme`` is a singleton with
+        hand-written tools and no manager, so comparing to the map would now
+        say a type the agent can write has no slice — the exact failure this
+        guards, asserted backwards.
+        """
+        from visivo.agent import tools
+        from visivo.agent.schema import _TYPE_KEYS
+
+        writable = {
+            name[len("write_") :] for name in tools.tool_names() if name.startswith("write_")
+        }
+
+        assert {key[:-1] if key.endswith("s") else key for key in _TYPE_KEYS} == writable
+
+    def test_a_managed_type_is_still_covered_by_the_map(self):
+        from visivo.agent.schema import _TYPE_KEYS
+        from visivo.server.rename_service import TYPE_TO_MANAGER
+
+        assert set(TYPE_TO_MANAGER) <= set(_TYPE_KEYS)
+
+    def test_adding_a_type_needs_no_edit_here(self, monkeypatch):
+        """The property the comment claimed but the hardcoded tuple did not
+        deliver."""
+        from visivo.server import rename_service
+
+        monkeypatch.setitem(rename_service.TYPE_TO_MANAGER, "widgets", "widget_manager")
+
+        import importlib
+
+        from visivo.agent import schema as schema_module
+
+        importlib.reload(schema_module)
+        try:
+            assert "widgets" in schema_module._TYPE_KEYS
+        finally:
+            rename_service.TYPE_TO_MANAGER.pop("widgets", None)
+            importlib.reload(schema_module)
+
+    def test_project_metadata_is_not_mistaken_for_an_authorable_type(self):
+        """Why this derives from TYPE_TO_MANAGER and not Project.model_fields:
+        the model carries metadata and collections the agent has no tools for,
+        so a new field there must not become a schema slice."""
+        from visivo.agent.schema import _TYPE_KEYS
+
+        for not_a_type in ("path", "name", "cli_version", "destinations", "alerts", "tests"):
+            assert not_a_type not in _TYPE_KEYS
