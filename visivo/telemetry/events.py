@@ -105,13 +105,20 @@ class APIEvent(BaseEvent):
         status_code: int,
         duration_ms: int,
         project_hash: Optional[str] = None,
+        request_count: int = 1,
     ) -> "APIEvent":
-        """Create an API event with common properties."""
+        """Create an API event with common properties.
+
+        ``request_count`` is how many requests this event stands for: the
+        middleware coalesces bursts to one event per endpoint per window, so
+        summing ``request_count`` gives the true request total.
+        """
         properties = {
             "endpoint": endpoint,
             "method": method,
             "status_code": status_code,
             "duration_ms": duration_ms,
+            "request_count": request_count,
             "visivo_version": VISIVO_VERSION,
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "platform": platform.system().lower(),

@@ -123,7 +123,9 @@ export const CREATE_TEMPLATES = {
     namePrefix: 'new-model',
     collectionKey: 'models',
     saveKey: 'saveModel',
-    config: () => ({ sql: 'SELECT 1' }),
+    // Aliased because the server rejects unaliased SELECT columns — nothing can
+    // ${ref()} them. A bare `SELECT 1` made every New model fail on creation.
+    config: () => ({ sql: 'SELECT 1 as placeholder' }),
   },
   source: {
     namePrefix: 'new-source',

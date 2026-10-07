@@ -19,6 +19,11 @@ jest.mock('socket.io-client', () => {
     on: jest.fn((event, fn) => {
       handlers[event] = fn;
     }),
+    // The seam removes its own listener on unsubscribe rather than closing a
+    // connection other screens may still be using.
+    off: jest.fn(event => {
+      delete handlers[event];
+    }),
     close: jest.fn(),
     _handlers: handlers,
   };

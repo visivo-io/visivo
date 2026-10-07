@@ -3,17 +3,19 @@ import Authentication from './Authentication';
 import BranchSelection from './BranchSelection';
 import DeployLoader from './DeployLoader';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
+import { fetchAuthorization } from '../../api/authorization';
 
 const DeployModal = ({ isOpen, setIsOpen }) => {
   const [status, setStatus] = useState('login-required');
 
+  // The same question the Agent tab asks, through the same client (VIS-1377).
+  // This used to read `data.token` — the endpoint no longer hands the token to
+  // the browser, and it never had a use for it.
   const fetchAuthStatus = async () => {
     try {
       setStatus('loading');
-      const response = await fetch('/api/auth/status/', { method: 'POST' });
-      if (!response.ok) throw new Error('Auth status check failed');
-      const data = await response.json();
-      setStatus(data?.token ? 'branch' : 'login-required');
+      const { authorized } = await fetchAuthorization();
+      setStatus(authorized ? 'branch' : 'login-required');
     } catch {
       setStatus('login-required');
     }

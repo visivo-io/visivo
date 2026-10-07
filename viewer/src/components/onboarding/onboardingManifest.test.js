@@ -237,3 +237,38 @@ describe('onboardingManifest', () => {
     });
   });
 });
+
+describe('build_model credits a model that already exists', () => {
+  // The row was asking forever: it had only `steps`, each reading a
+  // `persisted.actions.*` flag set by a specific UI interaction, and the
+  // progress hook consulted a predicate only when there were NO steps. So
+  // having a model — from a sample project, or work done before onboarding —
+  // counted for nothing, and dismissing did not help either.
+  const item = CHECKLIST_ITEMS.find(i => i.id === 'build_model');
+
+  const ctx = (over = {}) => ({
+    project: {},
+    sources: [],
+    models: [],
+    insights: [],
+    dashboards: [],
+    persisted: {},
+    ...over,
+  });
+
+  it('has a predicate at all', () => {
+    expect(typeof item.predicate).toBe('function');
+  });
+
+  it('is satisfied by an existing model', () => {
+    expect(item.predicate(ctx({ models: [{ name: 'orders' }] }))).toBe(true);
+  });
+
+  it('is satisfied by a model the project counts but the store has not loaded', () => {
+    expect(item.predicate(ctx({ project: { model_count: 3 } }))).toBe(true);
+  });
+
+  it('is not satisfied by an empty project', () => {
+    expect(item.predicate(ctx())).toBe(false);
+  });
+});

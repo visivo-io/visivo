@@ -1,16 +1,16 @@
 import { useEffect } from 'react';
-import { io } from 'socket.io-client';
 import useStore from '../../../stores/store';
 import { emitWorkspaceEvent } from './telemetry';
-import { isAvailable } from '../../../contexts/URLContext';
+import { subscribe, canDeliver } from '../../../events/eventSource';
+import { PROJECT_CHANGED } from '../../../events/topics';
 
 /**
  * useProjectChangeListener — VIS-808 (Track H H-2).
  *
  * While the Workspace is mounted, listen for the backend's `project_changed`
- * Socket.IO event (fired after every successful recompile — external YAML
- * edits AND post-publish refreshes) and soft-refresh the store instead of
- * letting the page hard-reload:
+ * event (fired after every successful recompile — external YAML edits AND
+ * post-publish refreshes) and soft-refresh the store instead of letting the
+ * page hard-reload:
  *
  *   - `drafts_dropped: true` means the recompile happened during a dirty
  *     Build session and the backend dropped the drafts (Q15
@@ -20,25 +20,21 @@ import { isAvailable } from '../../../contexts/URLContext';
  *     `/hot-reload.js` script (injected when Flask serves the bundle) skips
  *     its `window.location.reload()` while the Workspace handles updates.
  *
- * The socket connects to the page origin; the vite dev server proxies
- * `/socket.io` to the Flask backend (see vite.config.mjs).
+ * Subscribes through the event-source seam rather than opening its own socket
+ * (VIS-1345): the run view and the agent tab want the same kind of "this is
+ * happening now" event, and the seam is what lets one screen serve both a
+ * pushing environment and a polling one.
  *
- * No-ops on a dist build (VIS-1326): static files have no Socket.IO server
- * to connect to, so it polled `/socket.io/` 404s forever otherwise.
+ * Still a no-op on a dist build (VIS-1326): static files have no server to
+ * push, and this topic has no polling equivalent — only a server watching the
+ * filesystem knows a recompile happened.
  */
 export default function useProjectChangeListener() {
   useEffect(() => {
-    if (!isAvailable('socketIo')) return;
+    if (!canDeliver(PROJECT_CHANGED)) return;
 
     window.__VISIVO_SOFT_RELOAD__ = true;
-    const socket = io({
-      // The Flask-SocketIO server runs in threading mode — polling is its
-      // native transport; websocket upgrade is attempted automatically.
-      transports: ['polling', 'websocket'],
-      reconnectionAttempts: 5,
-    });
-
-    socket.on('project_changed', payload => {
+    const unsubscribe = subscribe(PROJECT_CHANGED, payload => {
       const draftsDropped = Boolean(payload?.drafts_dropped);
       const refresh = useStore.getState().refreshFromProjectChange;
       if (typeof refresh === 'function') {
@@ -51,7 +47,7 @@ export default function useProjectChangeListener() {
 
     return () => {
       window.__VISIVO_SOFT_RELOAD__ = false;
-      socket.close();
+      unsubscribe();
     };
   }, []);
 }

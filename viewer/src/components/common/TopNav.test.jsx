@@ -24,9 +24,9 @@ describe('TopNav', () => {
     useMediaQuery.mockImplementation(() => false);
   });
 
-  it('renders the three intra-project tools (Workspace subsumes Editor + Lineage + Explorer)', () => {
+  it('renders the intra-project tools (Workspace subsumes Editor + Lineage + Explorer)', () => {
     renderNav();
-    ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
+    ['Workspace', 'Agent', 'Runs', 'Dashboards'].forEach(label => {
       expect(screen.getByTitle(label)).toBeInTheDocument();
     });
     // The legacy Editor / Lineage tools AND the Explorer are gone from the top
@@ -37,6 +37,19 @@ describe('TopNav', () => {
     expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
+  it('puts Agent second, beside Workspace', () => {
+    // Asking the agent for a change is another way of doing what Workspace
+    // does by hand, and both produce the same drafts. Runs and Dashboards are
+    // what you look at afterwards.
+    renderNav();
+
+    const order = screen
+      .getAllByTitle(/^(Workspace|Agent|Runs|Dashboards)$/)
+      .map(tool => tool.getAttribute('title'));
+
+    expect(order).toEqual(['Workspace', 'Agent', 'Runs', 'Dashboards']);
+  });
+
   // The Explorer is a Workspace view now (no top-nav tab of its own), so every
   // `/workspace/...` route — including the Explorer's own
   // `/workspace/exploration[/:id]` — lights the WORKSPACE pill. Only the ACTIVE
@@ -44,6 +57,15 @@ describe('TopNav', () => {
   // `{on && t.label}`), so asserting the label text is visible is the same
   // signal the component itself uses for "on". The Explorer tab is gone
   // entirely — its title never renders anywhere in the nav.
+
+  it('the Agent tool points at the agent tab', () => {
+    // The tab is where an external MCP client's work becomes visible, so the
+    // route has to be reachable from the bar rather than only by URL.
+    renderNav();
+
+    expect(screen.getByRole('link', { name: 'Agent' })).toHaveAttribute('href', '/agent');
+  });
+
   it('the Workspace pill is active on a nested exploration-detail route', () => {
     renderNav({}, ['/workspace/exploration/exp_a1b2c3']);
     expect(screen.getByText('Workspace')).toBeInTheDocument();
@@ -395,16 +417,46 @@ describe('TopNav', () => {
   });
 
   describe('user menu (local, signed out)', () => {
-    it('offers login, docs, community, and issue links when no user is present', () => {
+    it('offers docs, community, and issue links when no user is present', () => {
       renderNav();
       fireEvent.click(screen.getByText('U')); // default avatar initial
-      expect(screen.getByText('Log in / Sign up')).toHaveAttribute(
-        'href',
-        'https://app.visivo.io/register'
-      );
       expect(screen.getByText('Documentation')).toBeInTheDocument();
       expect(screen.getByText('Join the Community')).toBeInTheDocument();
       expect(screen.getByText('Log an Issue')).toBeInTheDocument();
+    });
+
+    // The first item used to be "Log in / Sign up", linking to the register
+    // page — wrong both ways round (VIS-1377). To someone already authorized
+    // it offers an account they have; to someone who is not, it sends them to
+    // a page that cannot authorize THIS machine, leaving them to find
+    // `visivo authorize` on their own.
+    it('offers to open the account when this serve is authorized', () => {
+      renderNav({ authorization: { authorized: true, host: 'https://app.development.visivo.io' } });
+      fireEvent.click(screen.getByText('U'));
+
+      expect(screen.getByTestId('top-nav-open-cloud')).toHaveAttribute(
+        'href',
+        'https://app.development.visivo.io'
+      );
+      expect(screen.queryByTestId('top-nav-authorize')).not.toBeInTheDocument();
+    });
+
+    it('offers to authorize when it is not, and starts the flow here', () => {
+      const onAuthorize = jest.fn();
+      renderNav({ authorization: { authorized: false, onAuthorize } });
+      fireEvent.click(screen.getByText('U'));
+
+      fireEvent.click(screen.getByTestId('top-nav-authorize'));
+
+      expect(onAuthorize).toHaveBeenCalled();
+      expect(screen.queryByTestId('top-nav-open-cloud')).not.toBeInTheDocument();
+    });
+
+    it('says it is working rather than looking unresponsive', () => {
+      renderNav({ authorization: { authorized: false, authorizing: true } });
+      fireEvent.click(screen.getByText('U'));
+
+      expect(screen.getByTestId('top-nav-authorize')).toHaveTextContent('Authorizing');
     });
 
     it('closes the menu when a link is clicked', () => {
@@ -606,7 +658,7 @@ describe('TopNav', () => {
 
     it('still renders the tools, capsule, and user menu', () => {
       renderNav();
-      ['Workspace', 'Runs', 'Dashboards'].forEach(label => {
+      ['Workspace', 'Agent', 'Runs', 'Dashboards'].forEach(label => {
         expect(screen.getByTitle(label)).toBeInTheDocument();
       });
       expect(screen.getByText('Local')).toBeInTheDocument();
