@@ -140,9 +140,23 @@ def _write_handler(type_key):
             obj = manager.validate_object(config)
         except Exception as error:
             raise ToolError(f"Invalid {_singular(type_key)}: {error}")
+
+        # Local import: run_views reaches back into the server package, and the
+        # tool registry is imported from it.
+        from visivo.server.views.run_views import resource_fingerprint, stage_and_maybe_run
+
+        before = resource_fingerprint(app, type_key, name)
         # Into the draft tier, never the filesystem. See the module docstring.
         manager.save(name, obj)
-        return {"name": name, "status": "draft"}
+        # A person's edit reaches this through the after_request hook on
+        # POST /api/<type>/<name>/. The agent saves in-process, so without this
+        # its writes stage nothing (leaving the top bar on Deploy) and never
+        # trigger a run, however run_trigger is set.
+        outcome = stage_and_maybe_run(app, type_key, name, before)
+        result = {"name": name, "status": "draft"}
+        if outcome:
+            result["change"] = outcome
+        return result
 
     return handler
 

@@ -82,6 +82,13 @@ const AgentPrompt = () => {
     if (turns > 0) box.current?.scrollIntoView?.({ block: 'end' });
   }, [turns, working]);
 
+  // Read off the store rather than captured in the callback's closure: the
+  // poll is created once and would otherwise hold the first render's function.
+  const refreshAfterAgentTurn = useCallback(() => {
+    const { checkCommitStatus } = useStore.getState();
+    if (checkCommitStatus) checkCommitStatus();
+  }, []);
+
   const poll = useCallback(
     sessionId => {
       stopPolling();
@@ -92,7 +99,14 @@ const AgentPrompt = () => {
           consecutiveFailures = 0;
           if (!latest) return;
           setSession(latest);
-          if (!isActive(latest)) stopPolling();
+          if (!isActive(latest)) {
+            stopPolling();
+            // The agent writes server-side, so nothing here knows the draft
+            // tier moved. Without this the top bar keeps offering Deploy over
+            // Commit, and the Run view keeps showing a stale staged set, until
+            // some unrelated edit happens to refetch.
+            refreshAfterAgentTurn();
+          }
         } catch (error) {
           // One failed poll is not a failed session — the next may work. But
           // a poll that keeps failing is not a blip, it is broken, and
@@ -113,7 +127,7 @@ const AgentPrompt = () => {
       check();
       timer.current = setInterval(check, POLL_MS);
     },
-    [stopPolling, projectId]
+    [stopPolling, projectId, refreshAfterAgentTurn]
   );
 
   // The conversation this project was having, picked up where it left off.

@@ -169,3 +169,76 @@ def _project_files(output_dir):
                 with open(path, "rb") as handle:
                     found[path] = handle.read()
     return found
+
+
+class TestAWriteStagesAndRuns:
+    """A person's edit reaches staging and the run trigger through the
+    ``after_request`` hook on ``POST /api/<type>/<name>/``. The agent saves
+    in-process, so it never passed through a request — its writes staged
+    nothing (leaving the top bar offering Deploy rather than Commit) and never
+    triggered a run, however ``run_trigger`` was set.
+    """
+
+    def _staged_names(self, app):
+        records = app.staged_manager.list() if hasattr(app.staged_manager, "list") else []
+        return {getattr(r, "name", r.get("name") if isinstance(r, dict) else None) for r in records}
+
+    def test_a_write_is_staged(self, integration_app):
+        call(
+            integration_app,
+            "write_model",
+            {"config": {"name": "agent-staged", "sql": "select 1 as n"}},
+        )
+
+        assert "agent-staged" in self._staged_names(integration_app)
+
+    def test_a_presentation_only_write_stages_nothing(self, integration_app):
+        """The staged set is what a RUN would build, not what a COMMIT would
+        publish. A markdown moves no data, so it belongs in neither."""
+        result = call(
+            integration_app,
+            "write_markdown",
+            {"config": {"name": "agent-note-only", "content": "# hi"}},
+        )
+
+        assert "change" not in result
+        assert "agent-note-only" not in self._staged_names(integration_app)
+
+    def test_an_automatic_trigger_requests_a_run(self, integration_app, monkeypatch):
+        import visivo.server.views.run_views as run_views
+
+        requested = []
+        monkeypatch.setattr(run_views, "get_run_trigger", lambda: run_views.AUTOMATIC)
+        monkeypatch.setattr(
+            run_views, "request_run", lambda app, names: requested.append(list(names))
+        )
+
+        result = call(
+            integration_app,
+            "write_model",
+            {"config": {"name": "agent-model", "sql": "select 1 as n"}},
+        )
+
+        assert requested == [["agent-model"]]
+        assert result["change"] == "ran"
+
+    def test_a_manual_trigger_stages_without_running(self, integration_app, monkeypatch):
+        """The staged set still has to be recorded — it is what the Run view
+        lists and what offers Commit — but nothing runs until asked."""
+        import visivo.server.views.run_views as run_views
+
+        requested = []
+        monkeypatch.setattr(run_views, "get_run_trigger", lambda: "manual")
+        monkeypatch.setattr(
+            run_views, "request_run", lambda app, names: requested.append(list(names))
+        )
+
+        result = call(
+            integration_app,
+            "write_model",
+            {"config": {"name": "agent-manual", "sql": "select 1 as n"}},
+        )
+
+        assert requested == []
+        assert result["change"] == "staged"
+        assert "agent-manual" in self._staged_names(integration_app)

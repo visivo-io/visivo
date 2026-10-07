@@ -4,7 +4,7 @@ import os
 import re
 from flask import jsonify, request, send_file, send_from_directory
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
-from visivo.telemetry.config import is_telemetry_enabled
+from visivo.telemetry.config import is_telemetry_enabled, is_ci_environment
 from visivo.server.views.theme_views import current_theme_config
 
 
@@ -87,8 +87,10 @@ def register_data_views(app, flask_app, output_dir):
         # initializes or captures. When enabled, inject nothing extra so the
         # viewer's default-on telemetry runs. Cloud (core) never serves through
         # here, so it has no flag and stays always-on.
+        # CI counts as disabled for the viewer: a browser driven against
+        # `visivo serve` in a pipeline is a smoke test, not a user session.
         project_defaults = getattr(flask_app._project, "defaults", None)
-        if not is_telemetry_enabled(project_defaults):
+        if not is_telemetry_enabled(project_defaults) or is_ci_environment():
             scripts = "<script>window.__VISIVO_TELEMETRY_DISABLED=true</script>" + scripts
 
         html = html.replace("</head>", f"{scripts}</head>")
