@@ -78,6 +78,7 @@ const URL_PATTERNS = {
     // OUTLIER: a singleton — no list, no name. Correct, since a project has
     // exactly one defaults document.
     defaults: '/api/defaults/',
+    theme: '/api/theme/',
 
     // Explorations are per-user scratch state, keyed by id rather than name
     // (two users' explorations can share a name), and carry two sub-actions

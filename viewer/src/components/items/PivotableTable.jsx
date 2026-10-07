@@ -16,25 +16,16 @@ import {
   TextField,
   InputAdornment,
   ThemeProvider,
-  createTheme,
 } from '@mui/material';
+import { useDashboardTheme } from '../../theme/DashboardThemeContext';
+import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { mkConfig, generateCsv } from 'export-to-csv';
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000];
 
-// Brand-aligned MUI theme for the pivot toolbar controls (search field + CSV
-// download). Without this the raw MUI controls fall back to the default blue
-// palette, clashing with the Visivo mauve brand. Colors mirror the design-system
-// tokens (primary mauve #713b57 / secondary gray #4f494c) from src/index.css.
-const pivotToolbarTheme = createTheme({
-  palette: {
-    primary: { main: '#713b57' },
-    secondary: { main: '#4f494c' },
-  },
-  shape: { borderRadius: 8 },
-});
-
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
+  const { tokens: themeTokens } = useDashboardTheme();
+  const pivotToolbarTheme = createDashboardMuiTheme(themeTokens);
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState(null);
   const [page, setPage] = useState(0);

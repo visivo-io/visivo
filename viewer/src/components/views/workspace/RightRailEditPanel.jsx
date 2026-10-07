@@ -410,10 +410,13 @@ const RightRailEditPanel = () => {
   }
 
   // ── Project-chrome / defaults → DefaultsEditForm (VIS-809 / M-3) ───────────
-  if (type === 'project' || type === 'defaults') {
+  if (type === 'project' || type === 'defaults' || type === 'theme') {
     return (
       <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-        <DefaultsEditForm name={activeObject.name} />
+        <DefaultsEditForm
+          name={type === 'theme' ? undefined : activeObject.name}
+          initialTab={type === 'theme' ? 'theme' : 'defaults'}
+        />
       </div>
     );
   }

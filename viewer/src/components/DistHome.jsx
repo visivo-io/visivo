@@ -8,7 +8,7 @@ const DistHome = () => {
   const error = useLoaderData();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="visivo-dist-home min-h-screen bg-gray-50">
       <div className={'mx-4'}>
         <div className="flex flex-row justify-between items-center whitespace-nowrap py-4">
           <Breadcrumbs />

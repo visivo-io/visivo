@@ -134,6 +134,7 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
         assert "project_json" not in data
         assert data["name"] == project.name
         assert "defaults" in data["config"]
+        assert data["config"]["theme"] == {}
         # COUNTS, not just presence. These were read out of the dereferenced
         # dump, and `Serializer.dereference` deliberately empties the
         # top-level collections once everything is inlined into the dashboards
