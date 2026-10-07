@@ -29,22 +29,15 @@ the agent can follow up rather than guess at a dangling reference.
 import json
 
 from visivo.parsers.schema_generator import generate_schema
+from visivo.server.rename_service import TYPE_TO_MANAGER
 
-# The defs each authorable type resolves to, read off the project schema rather
-# than listed, so a new type or a new source flavour needs no edit here.
-_TYPE_KEYS = (
-    "sources",
-    "models",
-    "metrics",
-    "dimensions",
-    "relations",
-    "insights",
-    "charts",
-    "tables",
-    "markdowns",
-    "inputs",
-    "dashboards",
-)
+# What an agent can author, from the same map the tool registry builds from, so
+# a new type gets its schema slice and its four tools together.
+#
+# Not `Project.model_fields`: that carries metadata (`path`, `cli_version`) and
+# collections with no tools behind them (`destinations`, `alerts`, `tests`), so
+# it would need an exclusion list that a newly added field could slip past.
+_TYPE_KEYS = tuple(TYPE_TO_MANAGER)
 
 # Plotly, not Visivo. Recognised by where they live in the schema rather than by
 # name: these are the defs the trace/layout props point at.
