@@ -281,7 +281,81 @@ def _get_run_handler(app, arguments):
     return _run_entry(app, run, with_logs=True)
 
 
+def _theme_config(app):
+    """The draft theme if one is cached, otherwise the published one."""
+    from visivo.server.views.theme_views import current_theme_config
+
+    return current_theme_config(app)
+
+
+def _get_theme_handler(app, arguments):
+    return _theme_config(app)
+
+
+def _validate_theme_handler(app, arguments):
+    from visivo.models.theme import Theme
+
+    config = _config_argument(arguments)
+    try:
+        Theme(**config)
+    except Exception as error:
+        return {"valid": False, "error": str(error)}
+    return {"valid": True}
+
+
+def _write_theme_handler(app, arguments):
+    """Replace the theme wholesale, as the editor's save does.
+
+    A singleton has no name to merge on, so a partial config would silently
+    drop whatever it omitted. The tool description says to read it first; this
+    returns the stored result so an agent can see what it actually set.
+    """
+    from visivo.models.theme import Theme
+
+    config = _config_argument(arguments)
+    try:
+        app._cached_theme = Theme(**config)
+    except Exception as error:
+        raise ToolError(f"Invalid theme: {error}")
+    return {"status": "draft", "theme": _theme_config(app)}
+
+
 _SPECIAL_TOOLS = {
+    "get_theme": Tool(
+        name="get_theme",
+        description=(
+            "The project's theme — the colors, fonts and light/dark mode every "
+            "dashboard is drawn with. Read this before writing it: a theme is "
+            "one document, and write_theme replaces it."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        handler=_get_theme_handler,
+    ),
+    "validate_theme": Tool(
+        name="validate_theme",
+        description="Check a theme config without saving it.",
+        input_schema={
+            "type": "object",
+            "properties": {"config": {"type": "object"}},
+            "required": ["config"],
+        },
+        handler=_validate_theme_handler,
+    ),
+    "write_theme": Tool(
+        name="write_theme",
+        description=(
+            "Save the project's theme as a draft. REPLACES it wholesale — a "
+            "theme has no name to merge on, so send the whole document: read "
+            "get_theme, change what you mean to, and write the result. "
+            "get_schema('theme') has the vocabulary."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {"config": {"type": "object"}},
+            "required": ["config"],
+        },
+        handler=_write_theme_handler,
+    ),
     "get_schema": Tool(
         name="get_schema",
         description=(

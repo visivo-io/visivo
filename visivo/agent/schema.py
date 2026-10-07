@@ -44,6 +44,10 @@ _TYPE_KEYS = (
     "markdowns",
     "inputs",
     "dashboards",
+    # A singleton rather than a list, but the slice is derived from the
+    # property either way, and an agent asked to restyle a project needs the
+    # vocabulary as much as for any other type.
+    "theme",
 )
 
 # Plotly, not Visivo. Recognised by where they live in the schema rather than by
