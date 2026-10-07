@@ -5,6 +5,8 @@ from threading import Lock
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from visivo.models.base.context_string import ContextString
+from visivo.models.item import Item
+from visivo.models.row import Row
 from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
 
 T = TypeVar("T")
@@ -339,11 +341,18 @@ class ObjectManager(ABC, Generic[T]):
                 if match:
                     _add(match.group("model_name").strip("'\""))
                 return
+            # Layout containers are recursed THROUGH, named or not. A row may
+            # carry a name for the canvas to label it with, but it is not a
+            # resource anything depends on — reporting it stopped the walk and
+            # listed "row" where the chart it holds should have been.
+            if isinstance(child, (Row, Item)):
+                for grandchild in child.child_items():
+                    _collect(grandchild)
+                return
             child_name = getattr(child, "name", None)
             if child_name:
                 _add(child_name)
                 return
-            # Anonymous container — recurse to its named leaves.
             if hasattr(child, "child_items"):
                 for grandchild in child.child_items():
                     _collect(grandchild)

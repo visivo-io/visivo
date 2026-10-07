@@ -185,7 +185,11 @@ class Item(NamedModel, ParentModel):
             return self.chart
         if self.input is not None:
             return self.input
-        if self.markdown is not None and isinstance(self.markdown, Markdown):
+        # Returned whether it is an inline Markdown or a `${ref()}` to one, the
+        # same as the three above. Guarding on `isinstance(..., Markdown)` meant
+        # a referenced markdown was not a child at all, so it was missing from
+        # the DAG and from `child_item_names`.
+        if self.markdown is not None:
             return self.markdown
 
 
