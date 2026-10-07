@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import Chart from './Chart';
 import { withProviders } from '../../utils/test-utils';
+import { BUILTIN_THEMES } from '../../theme/builtinThemes';
 import useStore from '../../stores/store';
 
 let capturedLayout = null;
@@ -91,12 +92,22 @@ describe('Chart', () => {
       expect(capturedLayout.margin).toEqual({ t: 100, r: 100, b: 10, l: 10 });
     });
 
-    test('applies default colorway when colorway is unset', async () => {
+    test('applies the built-in light theme template when the chart sets none', async () => {
       chart.layout = {};
       render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
       await waitFor(() => expect(capturedLayout).not.toBeNull());
-      expect(capturedLayout.colorway).toBeDefined();
-      expect(capturedLayout.colorway).toContain('#713B57');
+      expect(capturedLayout.colorway).toBeUndefined();
+      expect(capturedLayout.template.layout.colorway).toEqual(BUILTIN_THEMES.light.colorway);
+      expect(capturedLayout.template.layout.paper_bgcolor).toBe(BUILTIN_THEMES.light.surface);
+    });
+
+    test('chart layout keys and templates win over the theme', async () => {
+      const ownTemplate = { layout: { paper_bgcolor: '#000000' } };
+      chart.layout = { colorway: ['#123456'], template: ownTemplate };
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedLayout).not.toBeNull());
+      expect(capturedLayout.colorway).toEqual(['#123456']);
+      expect(capturedLayout.template).toEqual(ownTemplate);
     });
 
     test('hideToolbar forces layout autosize', async () => {

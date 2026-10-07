@@ -182,10 +182,28 @@ class TestTypeKeysComeFromOneSource:
     """
 
     def test_every_type_with_tools_has_a_schema_slice(self):
+        """Stated against the TOOLS, which is what the claim is actually about.
+
+        It used to compare against ``TYPE_TO_MANAGER``, which was the same set
+        while every writable type had a manager. ``theme`` is a singleton with
+        hand-written tools and no manager, so comparing to the map would now
+        say a type the agent can write has no slice — the exact failure this
+        guards, asserted backwards.
+        """
+        from visivo.agent import tools
+        from visivo.agent.schema import _TYPE_KEYS
+
+        writable = {
+            name[len("write_") :] for name in tools.tool_names() if name.startswith("write_")
+        }
+
+        assert {key[:-1] if key.endswith("s") else key for key in _TYPE_KEYS} == writable
+
+    def test_a_managed_type_is_still_covered_by_the_map(self):
         from visivo.agent.schema import _TYPE_KEYS
         from visivo.server.rename_service import TYPE_TO_MANAGER
 
-        assert set(_TYPE_KEYS) == set(TYPE_TO_MANAGER)
+        assert set(TYPE_TO_MANAGER) <= set(_TYPE_KEYS)
 
     def test_adding_a_type_needs_no_edit_here(self, monkeypatch):
         """The property the comment claimed but the hardcoded tuple did not

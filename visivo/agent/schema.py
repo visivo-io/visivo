@@ -37,7 +37,11 @@ from visivo.server.rename_service import TYPE_TO_MANAGER
 # Not `Project.model_fields`: that carries metadata (`path`, `cli_version`) and
 # collections with no tools behind them (`destinations`, `alerts`, `tests`), so
 # it would need an exclusion list that a newly added field could slip past.
-_TYPE_KEYS = tuple(TYPE_TO_MANAGER)
+#
+# `theme` is appended rather than coming from the map: it is a singleton with
+# no manager, so it is not in TYPE_TO_MANAGER, but it has hand-written tools
+# (get/validate/write_theme) and an agent needs its vocabulary like any other.
+_TYPE_KEYS = tuple(TYPE_TO_MANAGER) + ("theme",)
 
 # Plotly, not Visivo. Recognised by where they live in the schema rather than by
 # name: these are the defs the trace/layout props point at.

@@ -47,3 +47,5 @@ ci
 cd
 sdk
 otel
+colorway
+gridlines

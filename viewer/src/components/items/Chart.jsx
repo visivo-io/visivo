@@ -6,6 +6,7 @@ import { itemNameToSlug } from './utils';
 import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
+import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 
 const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -100,14 +101,13 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     return data;
   }, [insightsData, chart.insights, hasInsights, inputs, insightTypeOverrides]);
 
+  const { plotlyTemplate } = useDashboardTheme();
+
   const layoutRef = useMemo(() => {
     const l = structuredClone(chart.layout ? chart.layout : {});
 
-    if (!l.colorway) {
-      l.colorway = [
-        '#713B57', '#FFB400', '#003F91', '#D25946', '#1CA9C9',
-        '#999999', '#E63946', '#A8DADC', '#457B9D', '#2B2B2B',
-      ];
+    if (!l.template) {
+      l.template = plotlyTemplate;
     }
 
     if (!l.legend) {
@@ -127,7 +127,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     }
 
     return l;
-  }, [chart.layout, chart.name, hideToolbar]);
+  }, [chart.layout, chart.name, hideToolbar, plotlyTemplate]);
 
   const plotLayout = useMemo(() => {
     const layout = { ...layoutRef };

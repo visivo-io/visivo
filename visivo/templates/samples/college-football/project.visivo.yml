@@ -33,8 +33,6 @@ insights:
       type: bar
       x: ?{ ${ref(games).home_team} }
       y: ?{ AVG(${ref(games).home_score}) }
-      marker:
-        color: "#713b57"
     interactions:
       - sort: ?{ AVG(${ref(games).home_score}) DESC }
 
@@ -43,16 +41,12 @@ insights:
       type: box
       x: ?{ ${ref(games).conference} }
       y: ?{ ${ref(games).home_score} }
-      marker:
-        color: "#d25946"
 
   - name: attendance_by_team
     props:
       type: bar
       x: ?{ ${ref(games).home_team} }
       y: ?{ AVG(${ref(games).attendance}) }
-      marker:
-        color: "#4f494c"
     interactions:
       - sort: ?{ AVG(${ref(games).attendance}) DESC }
 

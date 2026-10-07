@@ -36,6 +36,7 @@ const NAMED_CHILD_FETCHERS = [
   'fetchDashboards',
   'fetchInputs',
   'fetchDefaults',
+  'fetchTheme',
 ];
 
 // What "we don't know of any changes" looks like. Used both before a project is

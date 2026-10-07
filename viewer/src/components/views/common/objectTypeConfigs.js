@@ -10,6 +10,7 @@ import TableChartIcon from '@mui/icons-material/TableChart';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import TuneIcon from '@mui/icons-material/Tune';
 import SettingsIcon from '@mui/icons-material/Settings';
+import PaletteIcon from '@mui/icons-material/Palette';
 import HomeIcon from '@mui/icons-material/Home';
 import HubIcon from '@mui/icons-material/Hub';
 import ExploreIcon from '@mui/icons-material/Explore';
@@ -270,6 +271,24 @@ export const OBJECT_TYPES = [
       node: 'bg-gray-50 border-gray-200',
       nodeSelected: 'bg-gray-100 border-gray-400',
       connectionHandle: '#6b7280', // gray-500
+    },
+  },
+  {
+    value: 'theme',
+    label: 'Theme',
+    singularLabel: 'Theme',
+    icon: PaletteIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-gray-100',
+      text: 'text-gray-800',
+      border: 'border-gray-200',
+      bgHover: 'hover:bg-gray-50',
+      bgSelected: 'bg-gray-100',
+      borderSelected: 'border-gray-300',
+      node: 'bg-gray-50 border-gray-200',
+      nodeSelected: 'bg-gray-100 border-gray-400',
+      connectionHandle: '#737373', // neutral-500
     },
   },
   // Workspace DESTINATIONS (Explore 2.0 Phase 0, `higherLevelViews.js`) — not

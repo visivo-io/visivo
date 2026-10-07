@@ -41,6 +41,8 @@ const buildState = (overrides = {}) => ({
   filteredDashboards: [],
   dashboardsByLevel: {},
   initializeDashboardView: jest.fn(),
+  themeModeOverrides: {},
+  setThemeModeOverride: jest.fn(),
   ...overrides,
 });
 
@@ -110,6 +112,44 @@ describe('Project', () => {
     const dash = screen.getByTestId('dashboard');
     expect(dash).toHaveAttribute('data-name', 'sales');
     expect(dash).toHaveAttribute('data-project', 'project-1');
+  });
+
+  it('wraps the selected Dashboard in the project theme, honouring the viewer override', () => {
+    useParams.mockReturnValue({ dashboardName: 'sales' });
+    mockStore(
+      buildState({
+        project: { id: 'project-1', config: { theme: { mode: 'light' } } },
+        dashboards: [{ name: 'sales', config: {} }],
+        themeModeOverrides: { 'project-1': 'dark' },
+      })
+    );
+    render(<Project />);
+
+    const root = screen.getByTestId('dashboard-theme-root');
+    expect(root).toHaveAttribute('data-theme', 'dark');
+    expect(root).toContainElement(screen.getByTestId('dashboard'));
+    expect(screen.getByRole('radio', { name: 'Dark theme' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('hides the theme toggle when the project disallows viewer overrides', () => {
+    useParams.mockReturnValue({ dashboardName: 'sales' });
+    mockStore(
+      buildState({
+        project: { id: 'project-1', config: { theme: { mode: 'dark', allow_viewer_toggle: false } } },
+        dashboards: [{ name: 'sales', config: {} }],
+        themeModeOverrides: { 'project-1': 'light' },
+      })
+    );
+    render(<Project />);
+
+    expect(screen.getByTestId('dashboard-theme-root')).toHaveAttribute('data-theme', 'dark');
+    expect(screen.queryByRole('radiogroup', { name: 'Dashboard theme' })).not.toBeInTheDocument();
+  });
+
+  it('does not theme the dashboard list', () => {
+    mockStore(buildState({ dashboards: [{ name: 'a', config: {} }], dashboardsByLevel: { L1: [] } }));
+    render(<Project />);
+    expect(screen.queryByTestId('dashboard-theme-root')).not.toBeInTheDocument();
   });
 
   it('fetches dashboards on mount and initializes the dashboard view', () => {

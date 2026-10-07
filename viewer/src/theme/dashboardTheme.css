@@ -1,0 +1,105 @@
+/* Defaults match the built-in light theme so dashboard items rendered outside a theme root
+   (editor previews) look the same as a light dashboard. */
+:root {
+  --vt-bg: #f6f5f1;
+  --vt-surface: #ffffff;
+  --vt-text: #1d2136;
+  --vt-muted: #5d5a66;
+  --vt-border: #e3e1da;
+  --vt-grid: #ecebe5;
+  --vt-accent: #713b57;
+  --vt-table-header: #f4f4f5;
+  --vt-table-stripe: #fafafb;
+  --vt-table-hover: #f4eff2;
+  --vt-input-bg: #ffffff;
+}
+
+body[data-dashboard-theme] .visivo-home,
+body[data-dashboard-theme] .visivo-dist-home {
+  background-color: var(--vt-page-bg);
+  color: var(--vt-page-text);
+}
+
+.visivo-dashboard-theme {
+  background-color: var(--vt-bg);
+  color: var(--vt-text);
+  font-family: var(--vt-font);
+  accent-color: var(--vt-accent);
+
+  /* Tailwind v4 utilities read these variables, so remapping them themes every gray utility
+     (including hover/focus variants) used by items inside the dashboard. */
+  --color-gray-50: color-mix(in srgb, var(--vt-surface), var(--vt-text) 3%);
+  --color-gray-100: color-mix(in srgb, var(--vt-surface), var(--vt-text) 6%);
+  --color-gray-150: var(--vt-border);
+  --color-gray-200: var(--vt-border);
+  --color-gray-300: color-mix(in srgb, var(--vt-border), var(--vt-text) 15%);
+  --color-gray-400: color-mix(in srgb, var(--vt-surface), var(--vt-muted) 75%);
+  --color-gray-500: var(--vt-muted);
+  --color-gray-600: color-mix(in srgb, var(--vt-muted), var(--vt-text) 35%);
+  --color-gray-700: color-mix(in srgb, var(--vt-muted), var(--vt-text) 60%);
+  --color-gray-800: color-mix(in srgb, var(--vt-muted), var(--vt-text) 80%);
+  --color-gray-900: var(--vt-text);
+  --color-secondary-50: var(--vt-table-stripe);
+  --color-secondary-100: var(--vt-table-header);
+  --color-secondary-200: var(--vt-border);
+  --color-blue-50: color-mix(in srgb, var(--vt-surface), var(--vt-accent) 10%);
+  --color-blue-100: color-mix(in srgb, var(--vt-surface), var(--vt-accent) 18%);
+  --color-blue-200: color-mix(in srgb, var(--vt-surface), var(--vt-accent) 32%);
+  --color-blue-300: color-mix(in srgb, var(--vt-surface), var(--vt-accent) 55%);
+  --color-blue-400: color-mix(in srgb, var(--vt-surface), var(--vt-accent) 80%);
+  --color-blue-500: var(--vt-accent);
+  --color-blue-600: var(--vt-accent);
+  --color-blue-700: color-mix(in srgb, var(--vt-accent), var(--vt-text) 25%);
+  --color-blue-800: color-mix(in srgb, var(--vt-accent), var(--vt-text) 45%);
+}
+
+.visivo-dashboard-theme[data-theme='dark'] {
+  --color-secondary-300: color-mix(in srgb, var(--vt-surface), var(--vt-muted) 60%);
+  --color-secondary-400: var(--vt-muted);
+  --color-secondary-500: var(--vt-muted);
+  --color-secondary-600: color-mix(in srgb, var(--vt-muted), var(--vt-text) 40%);
+  --color-secondary-700: color-mix(in srgb, var(--vt-muted), var(--vt-text) 70%);
+  --color-secondary-800: var(--vt-text);
+  --color-secondary-900: var(--vt-text);
+  --color-primary-50: var(--vt-table-hover);
+  --color-primary-100: color-mix(in srgb, var(--vt-surface), var(--vt-accent) 28%);
+  --color-primary-200: color-mix(in srgb, var(--vt-surface), var(--vt-accent) 45%);
+  --color-primary-700: color-mix(in srgb, var(--vt-accent), var(--vt-text) 40%);
+  --color-primary-800: color-mix(in srgb, var(--vt-accent), var(--vt-text) 60%);
+  --color-primary-900: var(--vt-text);
+}
+
+.visivo-dashboard-theme .bg-white {
+  background-color: var(--vt-surface);
+}
+
+.visivo-dashboard-theme input:not(.MuiInputBase-input),
+.visivo-dashboard-theme select,
+.visivo-dashboard-theme textarea {
+  background-color: var(--vt-input-bg);
+  color: var(--vt-text);
+  border-color: var(--vt-border);
+}
+
+.visivo-dashboard-theme .prose {
+  --tw-prose-body: var(--vt-text);
+  --tw-prose-headings: var(--vt-text);
+  --tw-prose-lead: var(--vt-muted);
+  --tw-prose-links: var(--vt-accent);
+  --tw-prose-bold: var(--vt-text);
+  --tw-prose-counters: var(--vt-muted);
+  --tw-prose-bullets: var(--vt-muted);
+  --tw-prose-hr: var(--vt-border);
+  --tw-prose-quotes: var(--vt-text);
+  --tw-prose-quote-borders: var(--vt-border);
+  --tw-prose-captions: var(--vt-muted);
+  --tw-prose-code: var(--vt-text);
+  --tw-prose-pre-code: var(--vt-text);
+  --tw-prose-pre-bg: var(--vt-table-header);
+  --tw-prose-th-borders: var(--vt-border);
+  --tw-prose-td-borders: var(--vt-border);
+}
+
+.visivo-dashboard-theme[data-theme='dark'] .prose a {
+  color: color-mix(in srgb, var(--vt-accent), var(--vt-text) 25%);
+}
