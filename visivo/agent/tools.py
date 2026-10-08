@@ -320,7 +320,36 @@ def _write_theme_handler(app, arguments):
     return {"status": "draft", "theme": _theme_config(app)}
 
 
+def _read_skill_handler(app, arguments):
+    from visivo.agent import skills
+
+    name = _name_argument(arguments)
+    try:
+        return {"name": name, "body": skills.body(name)}
+    except KeyError as missing:
+        raise ToolError(str(missing).strip("'\""))
+
+
 _SPECIAL_TOOLS = {
+    "read_skill": Tool(
+        name="read_skill",
+        description=(
+            "Read one of Visivo's skills — the short, task-shaped instructions "
+            "for a job agents get wrong unaided. The system prompt lists them "
+            "by name; call this before a task one covers and follow it."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "A skill name from the index, e.g. 'build-a-model'.",
+                }
+            },
+            "required": ["name"],
+        },
+        handler=_read_skill_handler,
+    ),
     "get_theme": Tool(
         name="get_theme",
         description=(

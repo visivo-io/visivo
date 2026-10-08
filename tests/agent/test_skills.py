@@ -310,3 +310,73 @@ class TestTheTwoTiers:
 
         for name, _, _ in skills.index():
             assert name in prompt
+
+
+class TestReadSkill:
+    """VIS-1404: on-demand skills are reachable from both transports through
+    the same function, so neither reader can end up better instructed."""
+
+    def test_the_tool_returns_the_file(self, integration_app):
+        from visivo.agent.tools import call
+
+        result = call(integration_app, "read_skill", {"name": "build-a-model"})
+
+        assert result == {"name": "build-a-model", "body": skills.body("build-a-model")}
+
+    def test_a_subdirectory_skill_round_trips(self, integration_app, skill_tree):
+        from visivo.agent.tools import call
+
+        assert call(integration_app, "read_skill", {"name": "charts/line"})["body"].endswith(
+            "# Line\n"
+        )
+
+    def test_an_unknown_name_is_a_refusal_that_lists_the_index(self, integration_app):
+        from visivo.agent.tools import ToolError, call
+
+        with pytest.raises(ToolError, match="build-a-model"):
+            call(integration_app, "read_skill", {"name": "nope"})
+
+    def test_a_missing_name_is_a_refusal(self, integration_app):
+        from visivo.agent.tools import ToolError, call
+
+        with pytest.raises(ToolError, match="'name' is required"):
+            call(integration_app, "read_skill", {})
+
+    def test_mcp_reads_a_namespaced_skill_through_the_same_function(
+        self, integration_client, skill_tree
+    ):
+        response = integration_client.post(
+            "/api/mcp/",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "resources/read",
+                "params": {"uri": "visivo://skills/charts/line"},
+            },
+        )
+
+        served = json.loads(response.data)["result"]["contents"][0]["text"]
+        assert served == skills.body("charts/line")
+
+    def test_mcp_lists_the_summary_as_the_description(self, integration_client):
+        response = integration_client.post(
+            "/api/mcp/", json={"jsonrpc": "2.0", "id": 1, "method": "resources/list"}
+        )
+
+        listed = {
+            r["name"]: r["description"] for r in json.loads(response.data)["result"]["resources"]
+        }
+        assert listed["build-a-model"] == "Turn a table into a model an insight can use."
+
+    def test_a_uri_outside_the_skills_scheme_is_a_protocol_error(self, integration_client):
+        response = integration_client.post(
+            "/api/mcp/",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "resources/read",
+                "params": {"uri": "file:///etc/passwd"},
+            },
+        )
+
+        assert json.loads(response.data)["error"]["code"] == -32602
