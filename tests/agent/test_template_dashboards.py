@@ -46,15 +46,15 @@ class TestTheAgentCanWriteOne:
 
 
 class TestTheTrapsTheSkillTeaches:
-    def test_template_file_cannot_be_written_through_the_agent(self, integration_app):
-        # Template files are read when the project is parsed from disk, so a
-        # config carrying one has nothing behind it. The agent writes inline
-        # `template`; the skill says so because the failure is otherwise only
-        # discoverable by trying.
+    def test_a_template_file_key_is_not_recognised(self, integration_app):
+        # Removed before it shipped, so the HTML travels with the config and a
+        # runner working from a checkout cannot be missing it. An agent that
+        # reaches for the old key is refused rather than silently writing an
+        # empty dashboard.
         result = _validate(integration_app, {"name": "t", "template_file": "x.html"})
 
         assert result["valid"] is False
-        assert "was not loaded" in result["error"]
+        assert "template_file" in result["error"]
 
     def test_disallowed_html_is_refused_with_line_numbers(self, integration_app):
         result = _validate(
@@ -97,7 +97,6 @@ class TestTheAgentCanSeeTheVocabulary:
         slice_text = json.dumps(SchemaSlicer().for_type("dashboards"))
 
         assert "TemplateDashboard" in slice_text
-        assert "template_file" in slice_text
         assert "data-visivo-item" in slice_text
 
     def test_the_skill_ships_and_reaches_the_prompt(self):

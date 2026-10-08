@@ -11,7 +11,7 @@ def get_dashboard_discriminator_value(value: Any) -> str:
     if isinstance(value, (dict, YamlOrderedDict)):
         if "href" in value:
             return "external"
-        elif "template" in value or "template_file" in value:
+        elif "template" in value:
             return "template"
         elif "rows" in value:
             return "internal"

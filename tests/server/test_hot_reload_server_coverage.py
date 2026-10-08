@@ -53,12 +53,15 @@ class TestProjectChangeHandlerFilters:
         handler.on_modified(event)
         callback.assert_called_once()
 
-    def test_template_html_triggers(self):
+    def test_html_does_not_trigger(self):
+        """`.html` was watched only for a template dashboard's `template_file`.
+        That is gone — a template's HTML lives in the YAML now — so watching it
+        would reload the project for any unrelated HTML in the directory."""
         callback = Mock()
         handler = ProjectChangeHandler(callback)
         event = Mock(is_directory=False, src_path="/proj/templates/quarterly.html")
         handler.on_modified(event)
-        callback.assert_called_once()
+        callback.assert_not_called()
 
 
 class TestFindAvailablePort:

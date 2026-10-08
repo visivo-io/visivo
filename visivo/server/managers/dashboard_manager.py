@@ -53,9 +53,8 @@ class DashboardManager(ObjectManager[BaseDashboard]):
     def save_from_config(self, config: dict) -> BaseDashboard:
         dashboard = self.validate_object(config)
         if isinstance(dashboard, TemplateDashboard):
-            source = dashboard.template_file or "its YAML file"
             raise TemplateDashboardReadOnly(
-                f"'{dashboard.name}' is a template dashboard; edit {source} instead."
+                f"'{dashboard.name}' is a template dashboard; edit its YAML file instead."
             )
         self.save(dashboard.name, dashboard)
         return dashboard

@@ -25,39 +25,28 @@ class TemplateDashboard(BaseDashboard, ParentModel):
 
     !!! example
 
-        <!-- visivo-example: skip - template_file is read from disk when the project is parsed -->
         ``` yaml
         dashboards:
           - name: Quarterly Review
-            template_file: templates/quarterly-review.html
+            template: |
+              <style>
+                .banner { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+                .kpi { height: 160px; }
+                .wide { height: 420px; }
+              </style>
+              <section class="banner">
+                <div class="kpi" data-visivo-item="revenue-kpi"></div>
+                <div class="kpi" data-visivo-item="margin-kpi"></div>
+              </section>
+              <article>
+                <p>Revenue held through the quarter.</p>
+                <div class="wide" data-visivo-item="revenue-by-month"></div>
+              </article>
         ```
 
-        ``` html title="templates/quarterly-review.html"
-        <style>
-          .banner { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-          .kpi { height: 160px; }
-          .wide { height: 420px; }
-        </style>
-        <section class="banner">
-          <div class="kpi" data-visivo-item="revenue-kpi"></div>
-          <div class="kpi" data-visivo-item="margin-kpi"></div>
-        </section>
-        <article>
-          <p>Revenue held through the quarter.</p>
-          <div class="wide" data-visivo-item="revenue-by-month"></div>
-        </article>
-        ```
-
-    `template_file` is resolved relative to the YAML file that declares the dashboard.
-    For short templates, `template` takes the HTML inline instead; set one or the other.
-
-    ``` yaml
-    dashboards:
-      - name: Revenue Note
-        template: |
-          <p>Revenue held through the quarter.</p>
-          <div style="height: 420px" data-visivo-item="revenue-by-month"></div>
-    ```
+    The HTML lives in the YAML. It travels with the config everywhere the project
+    goes — `dist`, a deploy, a cloud runner working from a checkout — so a dashboard
+    cannot arrive somewhere its layout did not.
 
     ## What the HTML may contain
 
@@ -80,32 +69,18 @@ class TemplateDashboard(BaseDashboard, ParentModel):
     template: Optional[str] = Field(
         None,
         description=(
-            "The dashboard's HTML, inline. Mark where items go with "
-            f'`{SLOT_ATTRIBUTE}="<name>"`. Mutually exclusive with `template_file`.'
-        ),
-    )
-    template_file: Optional[str] = Field(
-        None,
-        description=(
-            "Path to an HTML file holding the dashboard's template, relative to the YAML "
-            "file that declares the dashboard. Mutually exclusive with `template`."
+            "The dashboard's HTML. Mark where items go with " f'`{SLOT_ATTRIBUTE}="<name>"`.'
         ),
     )
 
     @model_validator(mode="after")
     def validate_template(self):
         if self.template is None:
-            if self.template_file:
-                raise ValueError(
-                    f"template_file '{self.template_file}' was not loaded. Template files are "
-                    "read when the project is parsed from disk."
-                )
-            raise ValueError("A template dashboard needs a `template` or a `template_file`.")
+            raise ValueError("A template dashboard needs a `template`.")
         violations = analyze_template(self.template).violations
         if violations:
-            source = f"'{self.template_file}'" if self.template_file else "the template"
             details = "\n".join(f"  {violation}" for violation in violations)
-            raise ValueError(f"The HTML in {source} is not allowed:\n{details}")
+            raise ValueError(f"The HTML in the template is not allowed:\n{details}")
         return self
 
     def item_names(self) -> List[str]:

@@ -116,10 +116,8 @@ class TestDashboardManagerTemplates:
 
     def test_saving_a_template_dashboard_is_refused(self):
         manager = DashboardManager()
-        with pytest.raises(TemplateDashboardReadOnly, match="edit review.html instead"):
-            manager.save_from_config(
-                {"name": "R", "template": "<p></p>", "template_file": "review.html"}
-            )
+        with pytest.raises(TemplateDashboardReadOnly, match="edit its YAML file instead"):
+            manager.save_from_config({"name": "R", "template": "<p></p>"})
         assert manager._cached_objects == {}
 
 

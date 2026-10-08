@@ -28,24 +28,24 @@ def test_template_dashboard_rejects_unsafe_html():
     assert "line 2: <script> is not allowed" in str(error.value)
 
 
-def test_template_dashboard_names_its_file_in_errors():
-    with pytest.raises(ValidationError) as error:
-        TemplateDashboard(name="d", template="<script></script>", template_file="t.html")
-    assert "The HTML in 't.html' is not allowed" in str(error.value)
-
-
 def test_template_dashboard_needs_html():
-    with pytest.raises(ValidationError, match="needs a `template` or a `template_file`"):
+    with pytest.raises(ValidationError, match="needs a `template`"):
         TemplateDashboard(name="d")
-    with pytest.raises(ValidationError, match="template_file 't.html' was not loaded"):
-        TemplateDashboard(name="d", template_file="t.html")
+
+
+def test_a_template_file_key_is_not_a_template_dashboard():
+    """`template_file` was removed before it shipped: the HTML has to travel
+    with the config so a runner working from a checkout cannot be missing it.
+    The key is no longer recognised, which is a refusal rather than a silent
+    empty dashboard."""
+    with pytest.raises(ValidationError, match="template_file"):
+        TypeAdapter(DashboardField).validate_python({"name": "d", "template_file": "t.html"})
 
 
 @pytest.mark.parametrize(
     "config, expected",
     [
         ({"name": "d", "template": "<p></p>"}, "TemplateDashboard"),
-        ({"name": "d", "template_file": "t.html", "template": "<p></p>"}, "TemplateDashboard"),
         ({"name": "d", "rows": []}, "Dashboard"),
         ({"name": "d", "href": "https://x.test"}, "ExternalDashboard"),
         ({"name": "d"}, "Dashboard"),

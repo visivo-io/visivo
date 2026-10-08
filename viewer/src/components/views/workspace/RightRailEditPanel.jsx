@@ -444,7 +444,7 @@ const RightRailEditPanel = () => {
         <Placeholder
           testId="right-rail-template-dashboard"
           title="Template dashboard"
-          body={`Its layout is HTML — edit ${dashboardConfig.template_file || 'its YAML file'} in your editor.${
+          body={`Its layout is HTML — edit its YAML file in your editor.${
             placed.length ? ` Places: ${placed.join(', ')}.` : ''
           }`}
         />

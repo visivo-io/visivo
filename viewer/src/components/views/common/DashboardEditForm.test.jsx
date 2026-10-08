@@ -298,17 +298,16 @@ describe('DashboardEditForm — template dashboards', () => {
     config: {
       name: 'review',
       type: 'template',
-      template_file: 'templates/review.html',
       template: '<div data-visivo-item="revenue"></div><div data-visivo-item="notes"></div>',
     },
   };
 
-  test('is read-only, pointing at the template file and listing what it places', () => {
+  test('is read-only, pointing at the YAML file and listing what it places', () => {
     const onSave = jest.fn();
     const onClose = jest.fn();
     render(<DashboardEditForm dashboard={templateDashboard} isCreate={false} onSave={onSave} onClose={onClose} />);
 
-    expect(screen.getByTestId('template-dashboard-readonly')).toHaveTextContent('templates/review.html');
+    expect(screen.getByTestId('template-dashboard-readonly')).toHaveTextContent('its YAML file');
     expect(screen.getByText('revenue')).toBeInTheDocument();
     expect(screen.getByText('notes')).toBeInTheDocument();
     expect(screen.queryByText('Add Row')).not.toBeInTheDocument();

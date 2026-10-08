@@ -40,14 +40,11 @@ class CoreParser:
 
     def __merged_project_data(self):
         project_data = self.project_file_data()
-        self.__inline_template_files(project_data, self.project_file)
-
         data_files = {}
         for file in self.files:
             if file == self.project_file:
                 continue
             data_files[file] = load_yaml_file(file)
-            self.__inline_template_files(data_files[file], file)
 
         return self.__merge_data_into_project(project_data=project_data, data_files=data_files)
 
@@ -64,29 +61,6 @@ class CoreParser:
                     self.__recursively_add_file_path(file_to_merge, file_path)
                     project_data[key_to_merge] = always_merger.merge(base_merge, file_to_merge)
         return project_data
-
-    def __inline_template_files(self, file_data, file_path):
-        """Read each template dashboard's `template_file` into `template`, relative to the
-        YAML file declaring it. The file name is kept so the source stays traceable."""
-        if not isinstance(file_data, dict):
-            return
-        for dashboard in file_data.get("dashboards") or []:
-            if not isinstance(dashboard, dict) or not dashboard.get("template_file"):
-                continue
-            name = dashboard.get("name", "(unnamed)")
-            if dashboard.get("template") is not None:
-                raise click.ClickException(
-                    f"Dashboard '{name}' in {file_path} sets both `template` and "
-                    "`template_file`; set one or the other."
-                )
-            template_path = Path(file_path).parent / dashboard["template_file"]
-            try:
-                dashboard["template"] = template_path.read_text(encoding="utf-8")
-            except OSError as error:
-                raise click.ClickException(
-                    f"Dashboard '{name}' in {file_path}: could not read template_file "
-                    f"'{dashboard['template_file']}' ({error.strerror or error})."
-                )
 
     def __recursively_add_file_path(self, obj, file_path: str):
         """

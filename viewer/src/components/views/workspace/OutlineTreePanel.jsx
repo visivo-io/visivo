@@ -259,7 +259,7 @@ const OutlineTreePanel = () => {
     const config = entry?.config || entry;
     if (typeof config?.template !== 'string') return null;
     return {
-      source: config.template_file || 'its YAML file',
+      source: 'its YAML file',
       itemNames: templateItemNames(config.template),
     };
   }, [dashboards, dashboardName]);

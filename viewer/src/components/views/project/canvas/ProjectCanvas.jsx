@@ -124,7 +124,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
   );
 
   if (typeof dashboardConfig?.template === 'string') {
-    const source = dashboardConfig.template_file || 'its YAML file';
+    const source = 'its YAML file';
     return (
       <div data-testid="project-canvas" className="flex flex-1 min-h-0 w-full max-w-full flex-col">
         <div

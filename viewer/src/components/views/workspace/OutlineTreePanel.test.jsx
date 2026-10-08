@@ -366,7 +366,6 @@ describe('OutlineTreePanel', () => {
             config: {
               name: DASH,
               type: 'template',
-              template_file: 'templates/review.html',
               template: '<div data-visivo-item="revenue_chart"></div>',
             },
           },
@@ -379,7 +378,7 @@ describe('OutlineTreePanel', () => {
     renderPanel();
 
     const note = screen.getByTestId('outline-tree-template');
-    expect(note).toHaveTextContent('templates/review.html');
+    expect(note).toHaveTextContent('its YAML file');
     expect(note).toHaveTextContent('revenue_chart');
     expect(screen.queryByTestId('outline-tree-add-row-empty')).not.toBeInTheDocument();
     expect(screen.queryByTestId('outline-tree-add-row')).not.toBeInTheDocument();

@@ -132,10 +132,9 @@ def _validate(flask_app, type_key, old_name, new_name):
         raise RenameError(f"'{old_name}' is a template dashboard; rename it in its YAML file.", 400)
     for dashboard in _current_objects(flask_app.dashboard_manager).values():
         if isinstance(dashboard, TemplateDashboard) and old_name in dashboard.item_names():
-            source = dashboard.template_file or "its template"
             raise RenameError(
                 f"Template dashboard '{dashboard.name}' places '{old_name}'. Rename it in "
-                f"{source} and the YAML together.",
+                "that dashboard's template too.",
                 409,
             )
 

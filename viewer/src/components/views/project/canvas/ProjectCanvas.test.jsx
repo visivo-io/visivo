@@ -259,7 +259,6 @@ describe('ProjectCanvas — broken-ref repair wiring (VIS-792 / L-1)', () => {
           name: 'review',
           config: {
             name: 'review',
-            template_file: 'templates/review.html',
             template: '<div data-visivo-item="c"></div>',
           },
         },
@@ -268,7 +267,7 @@ describe('ProjectCanvas — broken-ref repair wiring (VIS-792 / L-1)', () => {
     renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="review" />);
 
     expect(screen.getByTestId('template-dashboard-notice')).toHaveTextContent(
-      'templates/review.html'
+      'its YAML file'
     );
     expect(screen.getByTestId('dashboard-new-mock')).toHaveAttribute('data-dashboard-name', 'review');
     expect(screen.queryByTestId('canvas-overlay-layer')).not.toBeInTheDocument();

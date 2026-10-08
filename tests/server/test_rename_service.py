@@ -184,14 +184,13 @@ class TestTemplateDashboards:
                 "review": TemplateDashboardFactory(
                     name="review",
                     template='<div data-visivo-item="rev"></div>',
-                    template_file="review.html",
                 )
             }
         )
         return app
 
     def test_renaming_an_item_a_template_places_is_409(self):
-        with pytest.raises(RenameError, match="'review' places 'rev'.*review.html") as caught:
+        with pytest.raises(RenameError, match="'review' places 'rev'") as caught:
             rename_impact(
                 self._app_with_template(), type_key="charts", old_name="rev", new_name="revenue"
             )

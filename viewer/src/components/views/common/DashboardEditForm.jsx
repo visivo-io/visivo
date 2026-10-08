@@ -209,7 +209,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
         <p className="text-sm font-medium text-gray-900">{dashboard.name}</p>
         <p className="text-xs text-gray-600">
           This is a template dashboard. Its layout is HTML — edit{' '}
-          <code>{dashboard.config.template_file || 'its YAML file'}</code> in your editor.
+          <code>its YAML file</code> in your editor.
         </p>
         {placed.length > 0 && (
           <div>

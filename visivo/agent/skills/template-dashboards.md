@@ -26,13 +26,6 @@ dashboards:
 A dashboard is a template one because it has `template` — there is no `type`
 field to set. Use `rows` when the grid is enough; reach for this when it is not.
 
-## Write `template`, never `template_file`
-
-`template_file` is read from disk when the project is parsed, so a config you
-write through `write_dashboard` carrying one is refused: there is no file to
-read. Put the HTML inline in `template`. `template_file` is for a human editing
-YAML in a checkout.
-
 ## Slots name existing displayable objects
 
 `data-visivo-item="<name>"` is a slot, and the name is a reference to a chart,

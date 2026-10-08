@@ -152,51 +152,19 @@ def test_Core_Parser_omitting_default_source_preserves_yaml_defaults():
     assert project.defaults.source_name == "local-duckdb"
 
 
-def test_Core_Parser_reads_template_file_relative_to_its_yaml(tmp_path):
-    (tmp_path / "dashboards" / "templates").mkdir(parents=True)
-    (tmp_path / "dashboards" / "templates" / "review.html").write_text(
-        '<div data-visivo-item="chart"></div>'
-    )
-    project_file = temp_yml_file(
-        {"name": "project", "charts": [{"name": "chart"}]},
-        name=PROJECT_FILE_NAME,
-        output_dir=str(tmp_path),
-    )
-    other_file = temp_yml_file(
-        {"dashboards": [{"name": "Review", "template_file": "templates/review.html"}]},
-        name="dashboards.yml",
-        output_dir=str(tmp_path / "dashboards"),
-    )
-
-    project = CoreParser(project_file=project_file, files=[project_file, other_file]).parse()
-
-    dashboard = project.dashboards[0]
-    assert dashboard.template == '<div data-visivo-item="chart"></div>'
-    assert dashboard.template_file == "templates/review.html"
-    assert dashboard.item_names() == ["chart"]
-
-
-def test_Core_Parser_reports_a_missing_template_file(tmp_path):
-    project_file = temp_yml_file(
-        {"name": "project", "dashboards": [{"name": "Review", "template_file": "nope.html"}]},
-        name=PROJECT_FILE_NAME,
-        output_dir=str(tmp_path),
-    )
-    with pytest.raises(click.ClickException, match="could not read template_file 'nope.html'"):
-        CoreParser(project_file=project_file, files=[project_file]).parse()
-
-
-def test_Core_Parser_rejects_template_and_template_file_together(tmp_path):
-    (tmp_path / "review.html").write_text("<p></p>")
+def test_Core_Parser_keeps_an_inline_template(tmp_path):
+    """The HTML lives in the YAML, so the parser has nothing to resolve — but a
+    template dashboard still has to come out of it as one."""
     project_file = temp_yml_file(
         {
             "name": "project",
-            "dashboards": [
-                {"name": "Review", "template": "<p></p>", "template_file": "review.html"}
-            ],
+            "charts": [{"name": "chart"}],
+            "dashboards": [{"name": "Review", "template": '<div data-visivo-item="chart"></div>'}],
         },
         name=PROJECT_FILE_NAME,
         output_dir=str(tmp_path),
     )
-    with pytest.raises(click.ClickException, match="sets both `template` and `template_file`"):
-        CoreParser(project_file=project_file, files=[project_file]).parse()
+
+    project = CoreParser(project_file=project_file, files=[project_file]).parse()
+
+    assert project.dashboards[0].item_names() == ["chart"]

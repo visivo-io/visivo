@@ -1576,7 +1576,6 @@ describe('RightRailEditPanel template dashboards', () => {
           config: {
             name: 'review',
             type: 'template',
-            template_file: 'templates/review.html',
             template: '<div data-visivo-item="rev_chart"></div><div data-visivo-item="notes"></div>',
           },
         },
@@ -1585,7 +1584,7 @@ describe('RightRailEditPanel template dashboards', () => {
     renderPanel('/workspace/dashboard/review');
 
     const panel = screen.getByTestId('right-rail-template-dashboard');
-    expect(panel).toHaveTextContent('templates/review.html');
+    expect(panel).toHaveTextContent('its YAML file');
     expect(panel).toHaveTextContent('Places: rev_chart, notes.');
     expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
