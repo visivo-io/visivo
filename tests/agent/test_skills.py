@@ -209,7 +209,7 @@ def skill_tree(tmp_path, monkeypatch):
     charts = tmp_path / "charts"
     charts.mkdir()
     (charts / "line.md").write_text(
-        "---\nname: line\nsummary: Lines.\nfamily: line\ntools: [list_models, get_model]\n---\n# Line\n"
+        "---\nname: line\nsummary: Lines.\nfamily: line\ntools: [list_models, get_source]\n---\n# Line\n"
     )
     (charts / "bar.md").write_text(
         "---\nname: bar\nsummary: Bars.\ntools: [list_models]\n---\n# Bar\n"
@@ -254,7 +254,7 @@ class TestDiscovery:
             "charts/bar",
             "charts/line",
         }
-        assert [s["name"] for s in skills.attached_to("get_model")] == ["charts/line"]
+        assert [s["name"] for s in skills.attached_to("get_source")] == ["charts/line"]
         assert skills.attached_to("write_chart") == []
 
     def test_shipped_names_are_unchanged(self):
@@ -380,3 +380,130 @@ class TestReadSkill:
         )
 
         assert json.loads(response.data)["error"]["code"] == -32602
+
+
+class TestAutoAttach:
+    """VIS-1405: a skill that lists a tool arrives with that tool's first
+    result, once per session, and only for the built-in loop."""
+
+    @pytest.fixture(autouse=True)
+    def fresh(self):
+        from visivo.agent import tools
+
+        tools.reset_attachments()
+        yield
+        tools.reset_attachments()
+
+    def test_the_first_call_in_a_session_carries_the_skill(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            wrapped = call(integration_app, "list_models")
+
+        assert set(wrapped) == {"result", "skills_attached"}
+        assert isinstance(wrapped["result"], list)
+        assert [s["name"] for s in wrapped["skills_attached"]] == ["charts/bar", "charts/line"]
+        assert wrapped["skills_attached"][1]["body"] == "# Line\n"
+
+    def test_the_second_call_in_the_same_session_does_not(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            call(integration_app, "list_models")
+            again = call(integration_app, "list_models")
+
+        assert isinstance(again, list)
+
+    def test_a_skill_already_delivered_by_another_tool_is_not_repeated(
+        self, integration_app, skill_tree
+    ):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        source = integration_app.source_manager.get_all_objects_list()[0]
+        with attributed_to("agent", "s1"):
+            call(integration_app, "list_models")
+            wrapped = call(integration_app, "get_source", {"name": source.name})
+
+        assert isinstance(wrapped, dict) and "skills_attached" not in wrapped
+
+    def test_a_new_session_is_attached_again(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            call(integration_app, "list_models")
+        with attributed_to("agent", "s2"):
+            wrapped = call(integration_app, "list_models")
+
+        assert "skills_attached" in wrapped
+
+    def test_an_mcp_client_never_gets_a_wrapped_result(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("mcp"):
+            result = call(integration_app, "list_models")
+
+        assert isinstance(result, list)
+
+    def test_an_unattributed_call_is_left_alone(self, integration_app, skill_tree):
+        from visivo.agent.tools import call
+
+        assert isinstance(call(integration_app, "list_models"), list)
+
+    def test_a_tool_no_skill_lists_returns_the_bare_result(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            result = call(integration_app, "list_charts")
+
+        assert isinstance(result, list)
+
+    def test_a_failed_call_attaches_nothing(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import ToolError, call
+
+        with attributed_to("agent", "s1"), pytest.raises(ToolError):
+            call(integration_app, "get_model", {"name": "no-such-model"})
+        with attributed_to("agent", "s1"):
+            wrapped = call(integration_app, "list_models")
+
+        assert "skills_attached" in wrapped, "the refusal must not have spent the attachment"
+
+    def test_the_session_table_is_bounded(self, integration_app, skill_tree, monkeypatch):
+        from visivo.agent import tools
+        from visivo.agent.actions import attributed_to
+
+        monkeypatch.setattr(tools, "MAX_ATTACHMENT_SESSIONS", 2)
+        for session in ("a", "b", "c"):
+            with attributed_to("agent", session):
+                tools.call(integration_app, "list_models")
+
+        assert len(tools._attached) <= 2
+
+    def test_the_loop_sees_the_attachment_in_the_tool_result(self, integration_app, skill_tree):
+        """End to end through pydantic-ai: the model's second turn can read the
+        skill that arrived with its first tool result."""
+        from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+        from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.loop import build_agent
+
+        seen = {}
+
+        def respond(messages, info: AgentInfo):
+            returns = [p for m in messages for p in m.parts if isinstance(p, ToolReturnPart)]
+            if not returns:
+                return ModelResponse(parts=[ToolCallPart("list_models", {})])
+            seen["content"] = returns[0].content
+            return ModelResponse(parts=[TextPart("done")])
+
+        with attributed_to("agent", "loop-1"):
+            build_agent(integration_app, FunctionModel(respond)).run_sync("go")
+
+        assert "skills_attached" in seen["content"]
