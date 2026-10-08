@@ -89,25 +89,53 @@ def parse(text, path=None):
     return meta, body
 
 
+def _registry_name(path):
+    """``charts/line`` for ``skills/charts/line.md``: the directory is the
+    namespace, so a subdirectory is an on-demand tier by construction."""
+    return path.relative_to(SKILLS_DIR).with_suffix("").as_posix()
+
+
 def packaged():
-    """``[{name, summary, always, family, tools, body}]`` — every skill that
-    ships with Visivo. ``body`` is the whole file, front matter included, so a
-    transport that serves the file serves what is on disk."""
+    """``[{name, summary, always, family, tools, body, text}]`` — every skill
+    that ships with Visivo, sorted by name. ``body`` is the whole file, front
+    matter included, so a transport that serves the file serves what is on
+    disk; ``text`` is the markdown below the fence, for a prompt."""
     if not SKILLS_DIR.is_dir():
         return []
     skills = []
-    for path in sorted(SKILLS_DIR.glob("*.md")):
+    for path in sorted(SKILLS_DIR.rglob("*.md")):
         if path.name == "README.md":
             # Documentation for us, not instruction for an agent.
             continue
-        text = path.read_text()
-        meta, _ = parse(text, path)
+        raw = path.read_text()
+        meta, text = parse(raw, path)
         if meta.name != path.stem:
             raise SkillError(
                 f"{path}: front matter names '{meta.name}' but the file is '{path.stem}'"
             )
-        skills.append({**meta.model_dump(), "body": text})
+        entry = meta.model_dump()
+        entry.update(name=_registry_name(path), body=raw, text=text)
+        skills.append(entry)
     return skills
+
+
+def index():
+    """``[(name, summary, always)]`` — the one-line table of contents an agent
+    reads instead of every body."""
+    return [(s["name"], s["summary"], s["always"]) for s in packaged()]
+
+
+def body(name):
+    """One skill's file, by registry name. ``KeyError`` names the valid ones."""
+    for skill in packaged():
+        if skill["name"] == name:
+            return skill["body"]
+    raise KeyError(f"No skill named '{name}'. Available: " + ", ".join(n for n, _, _ in index()))
+
+
+def attached_to(tool_name):
+    """The skills that asked to ride along with ``tool_name``'s first result."""
+    return [s for s in packaged() if tool_name in s["tools"]]
 
 
 def project_brief(working_dir=None):

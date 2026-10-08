@@ -198,3 +198,66 @@ class TestFrontMatter:
 
         with pytest.raises(skills.SkillError, match="claimed"):
             skills.packaged()
+
+
+@pytest.fixture
+def skill_tree(tmp_path, monkeypatch):
+    """A small skills directory with one nested family, so discovery is tested
+    against a known shape rather than whatever ships today."""
+    (tmp_path / "top.md").write_text("---\nname: top\nsummary: Top level.\n---\n# Top\n")
+    (tmp_path / "README.md").write_text("# not a skill\n")
+    charts = tmp_path / "charts"
+    charts.mkdir()
+    (charts / "line.md").write_text(
+        "---\nname: line\nsummary: Lines.\nfamily: line\ntools: [list_models, get_model]\n---\n# Line\n"
+    )
+    (charts / "bar.md").write_text(
+        "---\nname: bar\nsummary: Bars.\ntools: [list_models]\n---\n# Bar\n"
+    )
+    monkeypatch.setattr(skills, "SKILLS_DIR", tmp_path)
+    return tmp_path
+
+
+class TestDiscovery:
+    """VIS-1402: a subdirectory is a namespace, and the registry is queryable."""
+
+    def test_subdirectories_are_discovered_and_namespaced(self, skill_tree):
+        assert [s["name"] for s in skills.packaged()] == ["charts/bar", "charts/line", "top"]
+
+    def test_the_readme_in_any_directory_is_skipped(self, skill_tree):
+        (skill_tree / "charts" / "README.md").write_text("# nope\n")
+
+        assert "charts/README" not in [s["name"] for s in skills.packaged()]
+
+    def test_body_is_the_file_and_text_is_below_the_fence(self, skill_tree):
+        line = next(s for s in skills.packaged() if s["name"] == "charts/line")
+
+        assert line["body"].startswith("---\nname: line")
+        assert line["text"] == "# Line\n"
+
+    def test_index_is_name_summary_always(self, skill_tree):
+        assert skills.index() == [
+            ("charts/bar", "Bars.", False),
+            ("charts/line", "Lines.", False),
+            ("top", "Top level.", False),
+        ]
+
+    def test_body_by_registry_name(self, skill_tree):
+        assert skills.body("charts/line").endswith("# Line\n")
+
+    def test_an_unknown_name_lists_the_valid_ones(self, skill_tree):
+        with pytest.raises(KeyError, match="charts/line"):
+            skills.body("charts/pie")
+
+    def test_attached_to_finds_every_skill_that_lists_the_tool(self, skill_tree):
+        assert {s["name"] for s in skills.attached_to("list_models")} == {
+            "charts/bar",
+            "charts/line",
+        }
+        assert [s["name"] for s in skills.attached_to("get_model")] == ["charts/line"]
+        assert skills.attached_to("write_chart") == []
+
+    def test_shipped_names_are_unchanged(self):
+        """Nothing today lives in a subdirectory, so every name is still a stem."""
+        for skill in skills.packaged():
+            assert "/" not in skill["name"]
