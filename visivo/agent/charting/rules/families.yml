@@ -1,0 +1,75 @@
+# The chart families the recommender ranks. Phase 2a lifts most of this from
+# the per-trace entries; these five are the obvious rules the golden-3 cases
+# pin so the engine has a shape before the research lands (VIS-1407).
+families:
+  - name: kpi
+    trace_types: [indicator]
+    hard_gates:
+      metrics: {min: 1, max: 1}
+      dimensions: {min: 0, max: 0}
+    score:
+      - {when: "intent == kpi", delta: 0.5, reason: "a single number is what was asked for"}
+    layout: {height: xsmall, width_share: 0.25, row_role: kpi}
+    skill: charts/kpi
+
+  - name: line
+    trace_types: [scatter]
+    hard_gates:
+      time_required: true
+      metrics: {min: 1}
+      dimensions: {min: 1, max: 2}
+      min_time_points: 3
+    limits:
+      series_ideal: 5
+      series_max: 12
+      repair: [top_n_other, input_filter, small_multiples]
+    score:
+      - {when: "intent == trend", delta: 0.4, reason: "a trend reads best as a line"}
+      - {when: "series <= ideal", delta: 0.2, reason: "few enough series to follow"}
+    pairings: [indicator_total_overlay]
+    layout: {height: medium, width_share: 1.0, row_role: hero}
+    skill: charts/line
+
+  - name: bar
+    trace_types: [bar]
+    hard_gates:
+      time_forbidden: true
+      metrics: {min: 1, max: 3}
+      dimensions: {min: 1, max: 2}
+      dimension_roles: [categorical, boolean, geo_region]
+    limits:
+      series_ideal: 7
+      series_max: 20
+      repair: [top_n_other, input_filter]
+    score:
+      - {when: "intent in (compare, rank)", delta: 0.4, reason: "bars compare categories directly"}
+      - {when: "two few dimensions", delta: 0.2, reason: "a stacked or grouped bar carries a second small dimension"}
+    encodings: {second_dimension: "stacked when part_of_whole, grouped otherwise"}
+    layout: {height: medium, width_share: 0.5, row_role: breakdown}
+    skill: charts/bar
+
+  - name: histogram
+    trace_types: [histogram]
+    hard_gates:
+      metrics: {min: 0, max: 0}
+      dimensions: {min: 1, max: 1}
+      dimension_roles: [numeric_continuous, numeric_discrete]
+      intents: [distribution]
+    limits:
+      repair: [clip_p99]
+    score:
+      - {when: "intent == distribution", delta: 0.5, reason: "the shape of one numeric column"}
+    warnings: ["Pre-bucket in SQL above ~1M rows; the browser bins every row otherwise."]
+    layout: {height: medium, width_share: 0.5, row_role: relationship}
+    skill: charts/histogram
+
+  - name: table
+    trace_types: [table, table_pivot]
+    hard_gates:
+      metrics: {min: 0}
+      dimensions: {min: 1}
+    score:
+      - {when: "identifier or high cardinality", delta: 0.6, reason: "identifier-level detail is for looking up, not charting"}
+      - {when: "intent == detail", delta: 0.3, reason: "exact values were asked for"}
+    layout: {height: medium, width_share: 1.0, row_role: detail}
+    skill: charts/table

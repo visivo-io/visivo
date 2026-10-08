@@ -73,6 +73,9 @@ def build():
         # importlib.resources.files("visivo") finds them.
         f"--include-data-dir={HERE / 'schema'}=visivo/schema",
         f"--include-data-dir={HERE / 'viewers'}=visivo/viewers",
+        # The agent reads its skills and chart rules from disk at runtime.
+        f"--include-data-dir={HERE / 'agent' / 'skills'}=visivo/agent/skills",
+        f"--include-data-dir={HERE / 'agent' / 'charting' / 'rules'}=visivo/agent/charting/rules",
         str(HERE / "command_line.py"),
     ]
     print("Nuitka:", " ".join(args), flush=True)
