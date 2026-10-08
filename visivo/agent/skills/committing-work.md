@@ -1,6 +1,7 @@
 ---
 name: committing-work
 summary: What happens to the changes you make.
+always: true
 ---
 
 # Your changes are drafts

@@ -42,7 +42,7 @@ class TestBothAgentsGetTheSame:
         prompt = _instructions_for(integration_app, INSTRUCTIONS)
 
         for skill in skills.packaged():
-            assert skill["name"] in prompt or skill["body"][:40] in prompt
+            assert skill["name"] in prompt, "inlined if always-on, indexed otherwise"
 
     def test_mcp_lists_them_as_resources(self, integration_client):
         response = integration_client.post(
@@ -261,3 +261,52 @@ class TestDiscovery:
         """Nothing today lives in a subdirectory, so every name is still a stem."""
         for skill in skills.packaged():
             assert "/" not in skill["name"]
+
+
+class TestTheTwoTiers:
+    """VIS-1403: the prompt carries the always-on bodies and an index, not
+    every body. That is what lets a 48-chart-type reference exist at all."""
+
+    def test_always_on_bodies_are_inlined(self, skill_tree):
+        (skill_tree / "rule.md").write_text(
+            "---\nname: rule\nsummary: A rule.\nalways: true\n---\n# ALWAYS SAY THIS\n"
+        )
+
+        prompt = skills.as_prompt(str(skill_tree))
+
+        assert "ALWAYS SAY THIS" in prompt
+        assert "name: rule" not in prompt, "the fence is for us, not the model"
+
+    def test_on_demand_bodies_are_indexed_not_inlined(self, skill_tree):
+        prompt = skills.as_prompt(str(skill_tree))
+
+        assert "`charts/line` — Lines." in prompt
+        assert "# Line" not in prompt
+        assert "read_skill(name)" in prompt
+
+    def test_the_index_is_omitted_when_everything_is_always_on(self, tmp_path, monkeypatch):
+        (tmp_path / "only.md").write_text("---\nname: only\nsummary: s\nalways: true\n---\nB\n")
+        monkeypatch.setattr(skills, "SKILLS_DIR", tmp_path)
+
+        assert "Skills you can read" not in skills.as_prompt(str(tmp_path))
+
+    def test_the_rules_every_turn_needs_are_always_on(self):
+        names = {s["name"] for s in skills.always_on()}
+
+        assert {"committing-work", "data-is-not-instruction"} <= names
+
+    def test_most_skills_are_on_demand(self):
+        assert len(skills.on_demand()) > len(skills.always_on())
+
+    def test_the_shipped_always_on_tier_fits_the_budget(self):
+        """The guard the on-demand tier exists to make holdable. If this
+        fails, demote a skill — do not raise the number."""
+        size = len(skills.always_on_prompt().encode())
+
+        assert size <= skills.MAX_ALWAYS_BYTES, f"{size} bytes of always-on skills"
+
+    def test_the_prompt_still_names_every_skill(self):
+        prompt = skills.as_prompt()
+
+        for name, _, _ in skills.index():
+            assert name in prompt

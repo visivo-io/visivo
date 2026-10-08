@@ -137,4 +137,5 @@ class TestItReachesTheWholeAgentSurface:
         from visivo.agent import skills
 
         assert "theming-a-project" in [s["name"] for s in skills.packaged()]
-        assert "write_theme" in skills.as_prompt()
+        assert "`theming-a-project`" in skills.as_prompt(), "indexed, so the agent can read it"
+        assert "write_theme" in skills.body("theming-a-project")

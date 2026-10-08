@@ -34,6 +34,11 @@ PROJECT_BRIEF = "AGENTS.md"
 # novel in AGENTS.md cannot crowd out the conversation.
 MAX_BRIEF_BYTES = 20_000
 
+# The packaged skills' share of every prompt: the always-on bodies plus the
+# one-line index of everything else. The 48-trace-type reference lives below
+# this line as on-demand skills, which is what makes the budget holdable.
+MAX_ALWAYS_BYTES = 12_000
+
 FRONT_MATTER_FENCE = "---"
 
 
@@ -159,9 +164,42 @@ def project_brief(working_dir=None):
     return text
 
 
+def always_on():
+    """The skills inlined into every turn's prompt."""
+    return [s for s in packaged() if s["always"]]
+
+
+def on_demand():
+    """The skills an agent reads with ``read_skill`` when a task calls for one."""
+    return [s for s in packaged() if not s["always"]]
+
+
+def skill_index():
+    """The on-demand tier as a table of contents, or ``""`` if there is none."""
+    rest = on_demand()
+    if not rest:
+        return ""
+    lines = [f"- `{s['name']}` — {s['summary']}" for s in rest]
+    return (
+        "# Skills you can read\n\n"
+        "Before a task one of these covers, call `read_skill(name)` and follow it. "
+        "Each is short; reading the right one is cheaper than a wrong draft.\n\n" + "\n".join(lines)
+    )
+
+
+def always_on_prompt():
+    """The part of the prompt the packaged skills contribute: always-on bodies
+    then the index. Measured against ``MAX_ALWAYS_BYTES``."""
+    sections = [f"<!-- skill: {s['name']} -->\n{s['text'].rstrip()}" for s in always_on()]
+    index_text = skill_index()
+    if index_text:
+        sections.append(index_text)
+    return "\n\n---\n\n".join(sections)
+
+
 def as_prompt(working_dir=None):
     """Everything an agent should know, as one block for a system prompt."""
-    sections = [skill["body"] for skill in packaged()]
+    sections = [always_on_prompt()] if packaged() else []
     brief = project_brief(working_dir)
     if brief:
         # Last, so a project can override us. Fenced so its headings cannot be
