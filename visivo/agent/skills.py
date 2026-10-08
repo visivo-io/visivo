@@ -21,6 +21,10 @@ ours — whoever wrote the project knows things we do not.
 
 import os
 from pathlib import Path
+from typing import List, Optional
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SKILLS_DIR = Path(__file__).parent / "skills"
 PROJECT_BRIEF = "AGENTS.md"
@@ -30,17 +34,65 @@ PROJECT_BRIEF = "AGENTS.md"
 # novel in AGENTS.md cannot crowd out the conversation.
 MAX_BRIEF_BYTES = 20_000
 
+FRONT_MATTER_FENCE = "---"
 
-def _named(text, fallback):
-    """The ``name:`` from a skill's front matter, or its filename."""
-    for line in text.splitlines()[:6]:
-        if line.startswith("name:"):
-            return line.split(":", 1)[1].strip()
-    return fallback
+
+class FrontMatter(BaseModel):
+    """What a skill declares about itself, above its first ``---``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    summary: str = Field(min_length=1)
+    always: bool = False
+    family: Optional[str] = None
+    tools: List[str] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def _no_whitespace(cls, value):
+        if not value or any(c.isspace() for c in value):
+            raise ValueError("must be a single token with no whitespace")
+        return value
+
+
+class SkillError(ValueError):
+    """A skill file that cannot be loaded, named by path so it can be fixed."""
+
+
+def split_front_matter(text):
+    """``(front_matter_dict, body)`` from a file that opens with a ``---`` fence."""
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].strip() != FRONT_MATTER_FENCE:
+        raise SkillError("missing front matter: the file must open with '---'")
+    for index in range(1, len(lines)):
+        if lines[index].strip() == FRONT_MATTER_FENCE:
+            raw = "".join(lines[1:index])
+            body = "".join(lines[index + 1 :]).lstrip("\n")
+            loaded = yaml.safe_load(raw) or {}
+            if not isinstance(loaded, dict):
+                raise SkillError("front matter must be a mapping")
+            return loaded, body
+    raise SkillError("unterminated front matter: no closing '---'")
+
+
+def parse(text, path=None):
+    """A skill's front matter, validated, plus its body without the fence."""
+    where = f" in {path}" if path else ""
+    try:
+        raw, body = split_front_matter(text)
+        meta = FrontMatter(**raw)
+    except SkillError as error:
+        raise SkillError(f"{error}{where}")
+    except Exception as error:
+        raise SkillError(f"invalid front matter{where}: {error}")
+    return meta, body
 
 
 def packaged():
-    """``[{name, body}]`` — every skill that ships with Visivo."""
+    """``[{name, summary, always, family, tools, body}]`` — every skill that
+    ships with Visivo. ``body`` is the whole file, front matter included, so a
+    transport that serves the file serves what is on disk."""
     if not SKILLS_DIR.is_dir():
         return []
     skills = []
@@ -48,8 +100,13 @@ def packaged():
         if path.name == "README.md":
             # Documentation for us, not instruction for an agent.
             continue
-        body = path.read_text()
-        skills.append({"name": _named(body, path.stem), "body": body})
+        text = path.read_text()
+        meta, _ = parse(text, path)
+        if meta.name != path.stem:
+            raise SkillError(
+                f"{path}: front matter names '{meta.name}' but the file is '{path.stem}'"
+            )
+        skills.append({**meta.model_dump(), "body": text})
     return skills
 
 

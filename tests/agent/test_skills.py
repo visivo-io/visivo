@@ -130,3 +130,71 @@ class TestTheProjectsOwnBrief:
         (tmp_path / "AGENTS.md").mkdir()
 
         assert skills.project_brief(str(tmp_path)) is None
+
+
+class TestFrontMatter:
+    """VIS-1401: the fence is a contract, not a convention."""
+
+    def test_it_parses_every_declared_field(self):
+        meta, body = skills.parse(
+            "---\nname: x\nsummary: s\nalways: true\nfamily: line\ntools: [list_models]\n---\n\n# X\n"
+        )
+
+        assert meta.model_dump() == {
+            "name": "x",
+            "summary": "s",
+            "always": True,
+            "family": "line",
+            "tools": ["list_models"],
+        }
+        assert body == "# X\n"
+
+    def test_the_defaults_make_a_skill_on_demand(self):
+        meta, _ = skills.parse("---\nname: x\nsummary: s\n---\nbody")
+
+        assert meta.always is False and meta.family is None and meta.tools == []
+
+    def test_a_summary_is_required(self):
+        with pytest.raises(skills.SkillError, match="summary"):
+            skills.parse("---\nname: x\n---\nbody")
+
+    def test_an_unknown_key_is_rejected_rather_than_ignored(self):
+        """A typo like `alway: true` would otherwise silently demote a skill."""
+        with pytest.raises(skills.SkillError, match="alway"):
+            skills.parse("---\nname: x\nsummary: s\nalway: true\n---\nbody")
+
+    def test_a_name_with_whitespace_is_rejected(self):
+        with pytest.raises(skills.SkillError, match="whitespace"):
+            skills.parse("---\nname: two words\nsummary: s\n---\nbody")
+
+    @pytest.mark.parametrize(
+        "text, problem",
+        [
+            ("# no fence\n", "missing front matter"),
+            ("---\nname: x\nsummary: s\n", "unterminated"),
+            ("---\n- a list\n---\nbody", "mapping"),
+        ],
+    )
+    def test_a_broken_fence_names_the_problem(self, text, problem):
+        with pytest.raises(skills.SkillError, match=problem):
+            skills.parse(text)
+
+    def test_the_error_names_the_file(self, tmp_path):
+        path = tmp_path / "broken.md"
+        with pytest.raises(skills.SkillError, match="broken.md"):
+            skills.parse("---\nname: x\n---\n", path)
+
+    def test_every_packaged_skill_validates(self):
+        for skill in skills.packaged():
+            assert skill["summary"]
+            assert isinstance(skill["always"], bool)
+            assert isinstance(skill["tools"], list)
+
+    def test_a_file_whose_name_disagrees_with_its_front_matter_fails_to_load(
+        self, tmp_path, monkeypatch
+    ):
+        (tmp_path / "actual.md").write_text("---\nname: claimed\nsummary: s\n---\nbody")
+        monkeypatch.setattr(skills, "SKILLS_DIR", tmp_path)
+
+        with pytest.raises(skills.SkillError, match="claimed"):
+            skills.packaged()
