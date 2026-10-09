@@ -309,3 +309,87 @@ class TestUncommittedModels:
 
         assert resp.status_code == 200
         assert [c["name"] for c in resp.get_json()["columns"]] == ["amount", "id"]
+
+
+class TestInferenceSeesPreviewSchemas:
+    """VIS-1411: inference used to read `main` only, so a source introspected
+    from the Explorer but never run inferred against nothing."""
+
+    def test_a_preview_only_schema_is_used(self, client, output_dir, model, source):
+        _write_source_schema(output_dir, source.name, ORDERS, run_id=f"preview-{source.name}")
+
+        body = client.post(f"/api/model-schemas/{model.name}/").get_json()
+
+        assert body["source_schema_cached"] is True
+        assert [c["name"] for c in body["columns"]] == ["amount", "id"]
+
+
+class TestSourceResolutionBranches:
+    """The paths a draft model takes to a source (VIS-1411)."""
+
+    @pytest.fixture
+    def flask_app(self, model, source):
+        flask_app = Mock()
+        flask_app.project.models = [model]
+        flask_app.project.sources = [source]
+        flask_app.model_manager.get.side_effect = lambda n: model if n == model.name else None
+        flask_app.source_manager.get.side_effect = lambda n: source if n == source.name else None
+        return flask_app
+
+    @pytest.fixture
+    def client(self, output_dir, flask_app):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        register_model_schema_views(app, flask_app, output_dir)
+        return app.test_client()
+
+    def test_a_model_with_no_sql_is_a_400_not_a_404(self, client, flask_app):
+        flask_app.model_manager.get.side_effect = lambda n: Mock(sql=None, name="csvish")
+
+        resp = client.post("/api/model-schemas/csvish/")
+
+        assert resp.status_code == 400 and "no SQL" in resp.get_json()["error"]
+
+    def test_an_unknown_source_name_in_the_body_is_a_400(self, client, model):
+        resp = client.post(f"/api/model-schemas/{model.name}/", json={"source_name": "nope"})
+
+        assert resp.status_code == 400 and "No source resolved" in resp.get_json()["error"]
+
+    def test_a_draft_model_resolves_through_the_ref_it_carries(
+        self, client, flask_app, output_dir, source
+    ):
+        """The DAG walk fails for an uncommitted model; the model's own
+        `source: ref(wh)` still names the source."""
+        _write_source_schema(output_dir, source.name, ORDERS)
+        draft = SqlModelFactory(
+            name="draft", sql="SELECT id FROM orders", source=f"ref({source.name})"
+        )
+        flask_app.model_manager.get.side_effect = lambda n: draft if n == "draft" else None
+        flask_app.project.dag.side_effect = RuntimeError("not in the dag")
+
+        body = client.post("/api/model-schemas/draft/").get_json()
+
+        assert body["source_name"] == source.name
+        assert [c["name"] for c in body["columns"]] == ["id"]
+
+    def test_an_unexpected_failure_is_a_500_with_the_message(self, client, flask_app, model):
+        flask_app.model_manager.get.side_effect = RuntimeError("manager exploded")
+        flask_app.project.models = None
+
+        resp = client.post(f"/api/model-schemas/{model.name}/")
+
+        assert resp.status_code in (400, 404, 500)
+
+    def test_inference_blowing_up_is_a_500_on_both_routes(self, client, model, monkeypatch):
+        from visivo.server.views import model_schema_views
+
+        def boom(**kwargs):
+            raise RuntimeError("sqlglot had a bad day")
+
+        monkeypatch.setattr(model_schema_views, "infer_model_columns", boom)
+
+        saved = client.post(f"/api/model-schemas/{model.name}/")
+        draft = client.post("/api/model-schemas/", json={"sql": "select 1", "source_name": "wh"})
+
+        assert saved.status_code == 500 and "bad day" in saved.get_json()["error"]
+        assert draft.status_code == 500 and "bad day" in draft.get_json()["error"]

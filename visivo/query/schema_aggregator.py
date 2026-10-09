@@ -226,6 +226,34 @@ class SchemaAggregator:
             return None
 
     @staticmethod
+    def preview_run_id(source_name: str) -> str:
+        """Where a source's schema lands when it was introspected on demand
+        (the Explorer's "generate schema") rather than by a full run."""
+        return f"preview-{source_name}"
+
+    @staticmethod
+    def load_source_schema_with_fallback(source_name: str, output_dir: str, run_id: str = None):
+        """``(schema_data, run_id)`` for the first place a schema is found.
+
+        With an explicit ``run_id`` only that run is tried. Otherwise ``main``
+        first, then the source's preview run — so a source that has only ever
+        been introspected on demand still resolves for every reader, not just
+        the one view that used to carry this logic.
+        """
+        candidates = (
+            [run_id]
+            if run_id is not None
+            else [DEFAULT_RUN_ID, SchemaAggregator.preview_run_id(source_name)]
+        )
+        for candidate in candidates:
+            schema_data = SchemaAggregator.load_source_schema(
+                source_name, output_dir, run_id=candidate
+            )
+            if schema_data is not None:
+                return schema_data, candidate
+        return None, None
+
+    @staticmethod
     def build_mapping_schema_from_stored(schema_data: Dict[str, Any]) -> MappingSchema:
         """
         Build SQLGlot MappingSchema from stored schema data.
