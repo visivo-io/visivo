@@ -120,7 +120,7 @@ def _resource_list():
             "uri": SKILL_URI.format(name=skill["name"]),
             "name": skill["name"],
             "mimeType": "text/markdown",
-            "description": "Visivo skill — how this job is expected to be done.",
+            "description": skill["summary"],
         }
         for skill in skills.packaged()
     ]
@@ -130,11 +130,15 @@ def _read_resource(params):
     from visivo.agent import skills
 
     uri = params.get("uri") or ""
-    wanted = uri.rsplit("/", 1)[-1] if uri.startswith("visivo://skills/") else None
-    for skill in skills.packaged():
-        if skill["name"] == wanted:
-            return {"contents": [{"uri": uri, "mimeType": "text/markdown", "text": skill["body"]}]}
-    raise ToolError(f"No such resource '{uri}'.")
+    prefix = SKILL_URI.format(name="")
+    if not uri.startswith(prefix):
+        raise ToolError(f"No such resource '{uri}'.")
+    try:
+        # The same function the built-in loop's read_skill tool calls.
+        text = skills.body(uri[len(prefix) :])
+    except KeyError:
+        raise ToolError(f"No such resource '{uri}'.")
+    return {"contents": [{"uri": uri, "mimeType": "text/markdown", "text": text}]}
 
 
 def _tool_list():

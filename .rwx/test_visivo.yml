@@ -194,8 +194,9 @@ tasks:
     use: visivo-install
     run: |
       cd test-projects/integration
-      # Test that visivo serve starts without errors
-      timeout 10 visivo serve -s local-duckdb || exit_code=$?
+      # Test that visivo serve starts without errors. The PyInstaller binary
+      # takes 7-11s to print its first line on these runners, so 10s flaked.
+      timeout 30 visivo serve -s local-duckdb || exit_code=$?
       # timeout returns 124 if it times out (expected behavior)
       if [ "${exit_code:-0}" -ne 0 ] && [ "${exit_code:-0}" -ne 124 ]; then
         echo "visivo serve failed with exit code $exit_code"

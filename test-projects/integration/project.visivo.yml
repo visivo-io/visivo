@@ -5,7 +5,6 @@ includes:
   - path: insights.visivo.yml
   - path: nested_layouts.visivo.yml
   - path: template_dashboard.visivo.yml
-  - path: visivo-io/example-include.git@main
 
 defaults:
   source_name: local-duckdb

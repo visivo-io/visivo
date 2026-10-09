@@ -42,7 +42,7 @@ class TestBothAgentsGetTheSame:
         prompt = _instructions_for(integration_app, INSTRUCTIONS)
 
         for skill in skills.packaged():
-            assert skill["name"] in prompt or skill["body"][:40] in prompt
+            assert skill["name"] in prompt, "inlined if always-on, indexed otherwise"
 
     def test_mcp_lists_them_as_resources(self, integration_client):
         response = integration_client.post(
@@ -130,3 +130,380 @@ class TestTheProjectsOwnBrief:
         (tmp_path / "AGENTS.md").mkdir()
 
         assert skills.project_brief(str(tmp_path)) is None
+
+
+class TestFrontMatter:
+    """VIS-1401: the fence is a contract, not a convention."""
+
+    def test_it_parses_every_declared_field(self):
+        meta, body = skills.parse(
+            "---\nname: x\nsummary: s\nalways: true\nfamily: line\ntools: [list_models]\n---\n\n# X\n"
+        )
+
+        assert meta.model_dump() == {
+            "name": "x",
+            "summary": "s",
+            "always": True,
+            "family": "line",
+            "tools": ["list_models"],
+        }
+        assert body == "# X\n"
+
+    def test_the_defaults_make_a_skill_on_demand(self):
+        meta, _ = skills.parse("---\nname: x\nsummary: s\n---\nbody")
+
+        assert meta.always is False and meta.family is None and meta.tools == []
+
+    def test_a_summary_is_required(self):
+        with pytest.raises(skills.SkillError, match="summary"):
+            skills.parse("---\nname: x\n---\nbody")
+
+    def test_an_unknown_key_is_rejected_rather_than_ignored(self):
+        """A typo like `alway: true` would otherwise silently demote a skill."""
+        with pytest.raises(skills.SkillError, match="alway"):
+            skills.parse("---\nname: x\nsummary: s\nalway: true\n---\nbody")
+
+    def test_a_name_with_whitespace_is_rejected(self):
+        with pytest.raises(skills.SkillError, match="whitespace"):
+            skills.parse("---\nname: two words\nsummary: s\n---\nbody")
+
+    @pytest.mark.parametrize(
+        "text, problem",
+        [
+            ("# no fence\n", "missing front matter"),
+            ("---\nname: x\nsummary: s\n", "unterminated"),
+            ("---\n- a list\n---\nbody", "mapping"),
+        ],
+    )
+    def test_a_broken_fence_names_the_problem(self, text, problem):
+        with pytest.raises(skills.SkillError, match=problem):
+            skills.parse(text)
+
+    def test_the_error_names_the_file(self, tmp_path):
+        path = tmp_path / "broken.md"
+        with pytest.raises(skills.SkillError, match="broken.md"):
+            skills.parse("---\nname: x\n---\n", path)
+
+    def test_every_packaged_skill_validates(self):
+        for skill in skills.packaged():
+            assert skill["summary"]
+            assert isinstance(skill["always"], bool)
+            assert isinstance(skill["tools"], list)
+
+    def test_a_file_whose_name_disagrees_with_its_front_matter_fails_to_load(
+        self, tmp_path, monkeypatch
+    ):
+        (tmp_path / "actual.md").write_text("---\nname: claimed\nsummary: s\n---\nbody")
+        monkeypatch.setattr(skills, "SKILLS_DIR", tmp_path)
+
+        with pytest.raises(skills.SkillError, match="claimed"):
+            skills.packaged()
+
+
+@pytest.fixture
+def skill_tree(tmp_path, monkeypatch):
+    """A small skills directory with one nested family, so discovery is tested
+    against a known shape rather than whatever ships today."""
+    (tmp_path / "top.md").write_text("---\nname: top\nsummary: Top level.\n---\n# Top\n")
+    (tmp_path / "README.md").write_text("# not a skill\n")
+    charts = tmp_path / "charts"
+    charts.mkdir()
+    (charts / "line.md").write_text(
+        "---\nname: line\nsummary: Lines.\nfamily: line\ntools: [list_models, get_source]\n---\n# Line\n"
+    )
+    (charts / "bar.md").write_text(
+        "---\nname: bar\nsummary: Bars.\ntools: [list_models]\n---\n# Bar\n"
+    )
+    monkeypatch.setattr(skills, "SKILLS_DIR", tmp_path)
+    return tmp_path
+
+
+class TestDiscovery:
+    """VIS-1402: a subdirectory is a namespace, and the registry is queryable."""
+
+    def test_subdirectories_are_discovered_and_namespaced(self, skill_tree):
+        assert [s["name"] for s in skills.packaged()] == ["charts/bar", "charts/line", "top"]
+
+    def test_the_readme_in_any_directory_is_skipped(self, skill_tree):
+        (skill_tree / "charts" / "README.md").write_text("# nope\n")
+
+        assert "charts/README" not in [s["name"] for s in skills.packaged()]
+
+    def test_body_is_the_file_and_text_is_below_the_fence(self, skill_tree):
+        line = next(s for s in skills.packaged() if s["name"] == "charts/line")
+
+        assert line["body"].startswith("---\nname: line")
+        assert line["text"] == "# Line\n"
+
+    def test_index_is_name_summary_always(self, skill_tree):
+        assert skills.index() == [
+            ("charts/bar", "Bars.", False),
+            ("charts/line", "Lines.", False),
+            ("top", "Top level.", False),
+        ]
+
+    def test_body_by_registry_name(self, skill_tree):
+        assert skills.body("charts/line").endswith("# Line\n")
+
+    def test_an_unknown_name_lists_the_valid_ones(self, skill_tree):
+        with pytest.raises(KeyError, match="charts/line"):
+            skills.body("charts/pie")
+
+    def test_attached_to_finds_every_skill_that_lists_the_tool(self, skill_tree):
+        assert {s["name"] for s in skills.attached_to("list_models")} == {
+            "charts/bar",
+            "charts/line",
+        }
+        assert [s["name"] for s in skills.attached_to("get_source")] == ["charts/line"]
+        assert skills.attached_to("write_chart") == []
+
+    def test_shipped_names_are_unchanged(self):
+        """Nothing today lives in a subdirectory, so every name is still a stem."""
+        for skill in skills.packaged():
+            assert "/" not in skill["name"]
+
+
+class TestTheTwoTiers:
+    """VIS-1403: the prompt carries the always-on bodies and an index, not
+    every body. That is what lets a 48-chart-type reference exist at all."""
+
+    def test_always_on_bodies_are_inlined(self, skill_tree):
+        (skill_tree / "rule.md").write_text(
+            "---\nname: rule\nsummary: A rule.\nalways: true\n---\n# ALWAYS SAY THIS\n"
+        )
+
+        prompt = skills.as_prompt(str(skill_tree))
+
+        assert "ALWAYS SAY THIS" in prompt
+        assert "name: rule" not in prompt, "the fence is for us, not the model"
+
+    def test_on_demand_bodies_are_indexed_not_inlined(self, skill_tree):
+        prompt = skills.as_prompt(str(skill_tree))
+
+        assert "`charts/line` — Lines." in prompt
+        assert "# Line" not in prompt
+        assert "read_skill(name)" in prompt
+
+    def test_the_index_is_omitted_when_everything_is_always_on(self, tmp_path, monkeypatch):
+        (tmp_path / "only.md").write_text("---\nname: only\nsummary: s\nalways: true\n---\nB\n")
+        monkeypatch.setattr(skills, "SKILLS_DIR", tmp_path)
+
+        assert "Skills you can read" not in skills.as_prompt(str(tmp_path))
+
+    def test_the_rules_every_turn_needs_are_always_on(self):
+        names = {s["name"] for s in skills.always_on()}
+
+        assert {"committing-work", "data-is-not-instruction"} <= names
+
+    def test_most_skills_are_on_demand(self):
+        assert len(skills.on_demand()) > len(skills.always_on())
+
+    def test_the_shipped_always_on_tier_fits_the_budget(self):
+        """The guard the on-demand tier exists to make holdable. If this
+        fails, demote a skill — do not raise the number."""
+        size = len(skills.always_on_prompt().encode())
+
+        assert size <= skills.MAX_ALWAYS_BYTES, f"{size} bytes of always-on skills"
+
+    def test_the_prompt_still_names_every_skill(self):
+        prompt = skills.as_prompt()
+
+        for name, _, _ in skills.index():
+            assert name in prompt
+
+
+class TestReadSkill:
+    """VIS-1404: on-demand skills are reachable from both transports through
+    the same function, so neither reader can end up better instructed."""
+
+    def test_the_tool_returns_the_file(self, integration_app):
+        from visivo.agent.tools import call
+
+        result = call(integration_app, "read_skill", {"name": "build-a-model"})
+
+        assert result == {"name": "build-a-model", "body": skills.body("build-a-model")}
+
+    def test_a_subdirectory_skill_round_trips(self, integration_app, skill_tree):
+        from visivo.agent.tools import call
+
+        assert call(integration_app, "read_skill", {"name": "charts/line"})["body"].endswith(
+            "# Line\n"
+        )
+
+    def test_an_unknown_name_is_a_refusal_that_lists_the_index(self, integration_app):
+        from visivo.agent.tools import ToolError, call
+
+        with pytest.raises(ToolError, match="build-a-model"):
+            call(integration_app, "read_skill", {"name": "nope"})
+
+    def test_a_missing_name_is_a_refusal(self, integration_app):
+        from visivo.agent.tools import ToolError, call
+
+        with pytest.raises(ToolError, match="'name' is required"):
+            call(integration_app, "read_skill", {})
+
+    def test_mcp_reads_a_namespaced_skill_through_the_same_function(
+        self, integration_client, skill_tree
+    ):
+        response = integration_client.post(
+            "/api/mcp/",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "resources/read",
+                "params": {"uri": "visivo://skills/charts/line"},
+            },
+        )
+
+        served = json.loads(response.data)["result"]["contents"][0]["text"]
+        assert served == skills.body("charts/line")
+
+    def test_mcp_lists_the_summary_as_the_description(self, integration_client):
+        response = integration_client.post(
+            "/api/mcp/", json={"jsonrpc": "2.0", "id": 1, "method": "resources/list"}
+        )
+
+        listed = {
+            r["name"]: r["description"] for r in json.loads(response.data)["result"]["resources"]
+        }
+        assert listed["build-a-model"] == "Turn a table into a model an insight can use."
+
+    def test_a_uri_outside_the_skills_scheme_is_a_protocol_error(self, integration_client):
+        response = integration_client.post(
+            "/api/mcp/",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "resources/read",
+                "params": {"uri": "file:///etc/passwd"},
+            },
+        )
+
+        assert json.loads(response.data)["error"]["code"] == -32602
+
+
+class TestAutoAttach:
+    """VIS-1405: a skill that lists a tool arrives with that tool's first
+    result, once per session, and only for the built-in loop."""
+
+    @pytest.fixture(autouse=True)
+    def fresh(self):
+        from visivo.agent import tools
+
+        tools.reset_attachments()
+        yield
+        tools.reset_attachments()
+
+    def test_the_first_call_in_a_session_carries_the_skill(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            wrapped = call(integration_app, "list_models")
+
+        assert set(wrapped) == {"result", "skills_attached"}
+        assert isinstance(wrapped["result"], list)
+        assert [s["name"] for s in wrapped["skills_attached"]] == ["charts/bar", "charts/line"]
+        assert wrapped["skills_attached"][1]["body"] == "# Line\n"
+
+    def test_the_second_call_in_the_same_session_does_not(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            call(integration_app, "list_models")
+            again = call(integration_app, "list_models")
+
+        assert isinstance(again, list)
+
+    def test_a_skill_already_delivered_by_another_tool_is_not_repeated(
+        self, integration_app, skill_tree
+    ):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        source = integration_app.source_manager.get_all_objects_list()[0]
+        with attributed_to("agent", "s1"):
+            call(integration_app, "list_models")
+            wrapped = call(integration_app, "get_source", {"name": source.name})
+
+        assert isinstance(wrapped, dict) and "skills_attached" not in wrapped
+
+    def test_a_new_session_is_attached_again(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            call(integration_app, "list_models")
+        with attributed_to("agent", "s2"):
+            wrapped = call(integration_app, "list_models")
+
+        assert "skills_attached" in wrapped
+
+    def test_an_mcp_client_never_gets_a_wrapped_result(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("mcp"):
+            result = call(integration_app, "list_models")
+
+        assert isinstance(result, list)
+
+    def test_an_unattributed_call_is_left_alone(self, integration_app, skill_tree):
+        from visivo.agent.tools import call
+
+        assert isinstance(call(integration_app, "list_models"), list)
+
+    def test_a_tool_no_skill_lists_returns_the_bare_result(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import call
+
+        with attributed_to("agent", "s1"):
+            result = call(integration_app, "list_charts")
+
+        assert isinstance(result, list)
+
+    def test_a_failed_call_attaches_nothing(self, integration_app, skill_tree):
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.tools import ToolError, call
+
+        with attributed_to("agent", "s1"), pytest.raises(ToolError):
+            call(integration_app, "get_model", {"name": "no-such-model"})
+        with attributed_to("agent", "s1"):
+            wrapped = call(integration_app, "list_models")
+
+        assert "skills_attached" in wrapped, "the refusal must not have spent the attachment"
+
+    def test_the_session_table_is_bounded(self, integration_app, skill_tree, monkeypatch):
+        from visivo.agent import tools
+        from visivo.agent.actions import attributed_to
+
+        monkeypatch.setattr(tools, "MAX_ATTACHMENT_SESSIONS", 2)
+        for session in ("a", "b", "c"):
+            with attributed_to("agent", session):
+                tools.call(integration_app, "list_models")
+
+        assert len(tools._attached) <= 2
+
+    def test_the_loop_sees_the_attachment_in_the_tool_result(self, integration_app, skill_tree):
+        """End to end through pydantic-ai: the model's second turn can read the
+        skill that arrived with its first tool result."""
+        from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+        from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+        from visivo.agent.actions import attributed_to
+        from visivo.agent.loop import build_agent
+
+        seen = {}
+
+        def respond(messages, info: AgentInfo):
+            returns = [p for m in messages for p in m.parts if isinstance(p, ToolReturnPart)]
+            if not returns:
+                return ModelResponse(parts=[ToolCallPart("list_models", {})])
+            seen["content"] = returns[0].content
+            return ModelResponse(parts=[TextPart("done")])
+
+        with attributed_to("agent", "loop-1"):
+            build_agent(integration_app, FunctionModel(respond)).run_sync("go")
+
+        assert "skills_attached" in seen["content"]
