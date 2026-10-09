@@ -1,6 +1,10 @@
 """Model query job execution logic using the model data job infrastructure."""
 
-from visivo.jobs.run_model_data_job import execute_and_get_result
+from visivo.jobs.run_model_data_job import (
+    UI_MAX_ROWS,
+    UI_QUERY_TIMEOUT_S,
+    execute_and_get_result,
+)
 from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.logger.logger import Logger
 
@@ -74,9 +78,13 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
 
         Logger.instance().info(f"Executing model query job {job_id} on source {source_name}")
 
+        # An ad-hoc query from the Explorer, so it is bounded: a person is
+        # waiting, and the viewer loads every returned row into DuckDB-WASM.
         result = execute_and_get_result(
             source=source,
             sql=sql,
+            max_rows=UI_MAX_ROWS,
+            timeout_s=UI_QUERY_TIMEOUT_S,
         )
 
         job_manager.update_status(

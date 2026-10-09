@@ -405,3 +405,56 @@ class TestItReadsWhatTheRunWrote:
 
         assert column["null_count"] == 2
         assert column["null_percentage"] == 50.0
+
+
+class TestStatisticsAcrossRowGroups:
+    """Tier 1 merges min/max over every row group; a single-group fixture
+    never exercised the merge."""
+
+    def test_min_and_max_span_all_row_groups(self, tmp_path):
+        table = pa.table(
+            {
+                "n": pa.array([5, 6, 7, 1, 2, 3, 9, 8, 4], type=pa.int64()),
+                "s": pa.array(list("mnoabcxyz"), type=pa.string()),
+            }
+        )
+        path = model_data_file(run_dir(str(tmp_path)), "groups")
+        os.makedirs(os.path.dirname(path))
+        pq.write_table(table, path, row_group_size=3)
+
+        columns = {
+            c["name"]: c
+            for c in ProfilingService(str(tmp_path)).get_tier1_profile("groups")["columns"]
+        }
+
+        assert (columns["n"]["min"], columns["n"]["max"]) == (1, 9)
+        assert (columns["s"]["min"], columns["s"]["max"]) == ("a", "z")
+
+
+class TestValueConversion:
+    def test_parquet_statistics_become_json_values(self, tmp_path):
+        import datetime
+
+        import numpy as np
+
+        service = ProfilingService(str(tmp_path))
+
+        assert service._convert_stat_value(None) is None
+        assert service._convert_stat_value(b"abc") == "abc"
+        assert service._convert_stat_value(b"\xff\xfe") is None
+        assert service._convert_stat_value(datetime.date(2024, 1, 2)) == "2024-01-02"
+        assert service._convert_stat_value(np.int64(3)) == 3
+        assert service._convert_stat_value("plain") == "plain"
+
+    def test_duckdb_values_become_json_values(self, tmp_path):
+        import datetime
+        from decimal import Decimal
+
+        service = ProfilingService(str(tmp_path))
+
+        assert service._convert_duckdb_value(None) is None
+        assert service._convert_duckdb_value(float("nan")) is None
+        assert service._convert_duckdb_value(datetime.date(2024, 1, 2)) == "2024-01-02"
+        assert service._convert_duckdb_value(Decimal("1.5")) == 1.5
+        assert service._convert_duckdb_value("text") == "text"
+        assert service._null_count(None, 10) is None
