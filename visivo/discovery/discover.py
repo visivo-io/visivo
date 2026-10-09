@@ -165,19 +165,19 @@ class Discover:
                 include = Include(**include_data)
                 include_path = f"{base_path}/{include.path}"
 
-                # Handle Git repositories (existing functionality)
-                if ".git" in include.path:
-                    include_path = self.__get_project_file_from_git(git_url=include.path)
-                    if not os.path.exists(include_path):
-                        raise click.ClickException(
-                            f'Invalid "include" in project. "{include_path}" referenced in "{file}" does not exist.'
-                        )
-                    files.append(Path(include_path))
-                    self.__add_includes(files=files, file=include_path)
-                    continue
-
                 # Check if path exists
                 if not os.path.exists(include_path):
+                    # A path like `visivo-io/example.git@main` used to be cloned
+                    # from GitHub (VIS-1456). Without this it now fails as a
+                    # missing file, which is true but tells the reader nothing
+                    # about why a project that used to work no longer does.
+                    if ".git@" in include.path:
+                        raise click.ClickException(
+                            f'Invalid "include" in project. "{include.path}" referenced in '
+                            f'"{file}" looks like a git include. Including other projects from '
+                            "GitHub is no longer supported — vendor the files you need into this "
+                            "project and include them by path."
+                        )
                     raise click.ClickException(
                         f'Invalid "include" in project. "{include_path}" referenced in "{file}" does not exist.'
                     )
@@ -215,39 +215,3 @@ class Discover:
         if dir == "":
             return os.path.exists(f"{PROJECT_FILE_NAME}")
         return os.path.exists(f"{dir}/{PROJECT_FILE_NAME}")
-
-    def __get_project_file_from_git(self, git_url):
-        from git import Repo
-
-        deps_folder = f"{self.working_dir}/.visivo_cache"
-        if not os.path.exists(deps_folder):
-            os.makedirs(deps_folder)
-        if "@" not in git_url:
-            raise click.ClickException(
-                f'Invalid github dependency "{git_url}". A version specified with "@" is required'
-            )
-
-        repo_url = f"https://github.com/{git_url.split('@')[0]}"
-        version = git_url.split("@")[1]
-        if "--" in version:
-            file = version.split("--")[1].strip()
-            version = version.split("--")[0].strip()
-        else:
-            file = None
-
-        local_folder = f"{deps_folder}/{git_url.split('@')[0].replace('.git', '')}@{version}"
-        if os.path.exists(local_folder):
-            repo = Repo(local_folder)
-        else:
-            repo = Repo.clone_from(repo_url, local_folder)
-
-        try:
-            repo.git.checkout(version)
-        except Exception as e:
-            repo.close()
-            raise click.ClickException(f'Error cloning "{git_url}": {e}')
-
-        if file:
-            return f"{local_folder}/{file}"
-
-        return self._get_any_project_file(local_folder)

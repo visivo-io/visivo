@@ -8,9 +8,7 @@ from visivo.models.base.base_model import BaseModel
 class Include(BaseModel):
     """
     Includes break a project apart into multiple files by pulling other YAML files —
-    or whole directories — into the root project file. Paths can point at local files
-    or at files in remote GitHub repositories, which lets you share sources, models,
-    and dashboards across projects.
+    or whole directories — into the root project file.
 
     !!! example
 
@@ -28,7 +26,7 @@ class Include(BaseModel):
 
     path: str = Field(
         None,
-        description="The path or git reference to external yml files or directories to include in this project",
+        description="Path to a yml file or directory to include in this project, relative to the file that declares it",
     )
 
     depth: Optional[int] = Field(

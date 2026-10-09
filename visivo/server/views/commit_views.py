@@ -509,13 +509,17 @@ def register_commit_views(app, flask_app, output_dir):
 
             # Serialize with the file watcher for the whole write→refresh
             # window. Without this, the YAML writes below fire a debounced
-            # watcher recompile that races the synchronous one — both clone
-            # git includes into the same cache, one dies on the git lock,
-            # `on_project_change` swallows the error, and this endpoint then
+            # watcher recompile that races the synchronous one; if either
+            # fails, `on_project_change` swallows the error and this endpoint
             # returns success while the served project is still stale (the
             # canvas silently "loses" the just-published edit). Pausing
             # blocks until any in-flight watcher compile finishes and drops
             # the watcher events our own writes would otherwise queue.
+            #
+            # The original failure here was two compiles cloning git includes
+            # into one cache and deadlocking on the git lock (VIS-1456 removed
+            # git includes). The race between the two compiles is not specific
+            # to that, so the pause stays.
             hot_reload_server = flask_app.hot_reload_server
             if hot_reload_server:
                 hot_reload_server.pause_file_watcher()
