@@ -21,48 +21,53 @@ from visivo.agent.charting.schema import (
 _LOOKUP_ROLES = ("categorical", "text", "geo_region", "geo_point")
 
 
-def _time_dims(request):
-    return [d for d in request.dimensions if d.role == "time"]
+def _window(min_max):
+    upper = "∞" if min_max.max is None else min_max.max
+    return f"{min_max.min}–{upper}"
+
+
+def _axis(request):
+    """The dimension drawn along the x axis: the first ordered one (time
+    before numbers), else the first dimension, else ``None``."""
+    ordered = [d for d in request.dimensions if d.is_ordered()]
+    if ordered:
+        return next((d for d in ordered if d.role == "time"), ordered[0])
+    return request.dimensions[0] if request.dimensions else None
 
 
 def _series_count(request):
-    """One series per value of the smallest non-axis categorical dimension,
-    or one when every dimension is the axis."""
-    others = [d for d in request.dimensions if d.role != "time"]
-    if _time_dims(request):
-        candidates = others
-    else:
-        candidates = others[1:]
-    if not candidates:
+    """One series per value of the largest non-axis dimension, or one when
+    the axis is the only dimension."""
+    axis = _axis(request)
+    others = [d for d in request.dimensions if d is not axis]
+    if not others:
         return 1
-    return max(max(d.cardinality, 1) for d in candidates)
+    return max(max(d.cardinality, 1) for d in others)
 
 
 def _gate(rule, request):
     """``None`` if the family is allowed, else the reason it is not."""
     gates = rule.hard_gates
-    time_dims = _time_dims(request)
-    if gates.time_required and not time_dims:
-        return "needs a time dimension"
-    if gates.time_forbidden and time_dims:
-        return "a time axis belongs on a line"
+    axis = _axis(request)
+    if gates.ordered_axis_required and not (axis and axis.is_ordered()):
+        return "needs an ordered axis (time, a number, or a dimension marked ordered)"
     if not gates.metrics.admits(len(request.metrics)):
-        return f"takes {gates.metrics.min}–{gates.metrics.max or '∞'} metrics"
+        return f"takes {_window(gates.metrics)} metrics"
     if not gates.dimensions.admits(len(request.dimensions)):
-        return f"takes {gates.dimensions.min}–{gates.dimensions.max or '∞'} dimensions"
+        return f"takes {_window(gates.dimensions)} dimensions"
+    if axis and gates.axis_roles and axis.role not in gates.axis_roles:
+        return f"{axis.column} cannot be the axis; needs {', '.join(gates.axis_roles)}"
     if gates.dimension_roles:
         off_role = [
             d.column
             for d in request.dimensions
-            if d.role != "time" and d.role not in gates.dimension_roles
+            if d is not axis and d.role not in gates.dimension_roles
         ]
         if off_role:
             return f"{off_role[0]} is not one of {', '.join(gates.dimension_roles)}"
-    if gates.min_time_points and time_dims:
-        points = time_dims[0].time_span_points or time_dims[0].cardinality
-        if points < gates.min_time_points:
-            return f"fewer than {gates.min_time_points} time points"
-    if gates.intents and request.intent not in gates.intents:
+    if axis and not gates.axis_points.admits(axis.axis_points()):
+        return f"needs {_window(gates.axis_points)} axis points, has {axis.axis_points()}"
+    if gates.intents and request.intent is not None and request.intent not in gates.intents:
         return f"only for intents {', '.join(gates.intents)}"
     return None
 
@@ -79,26 +84,39 @@ def _repair(rule, series):
     return None, f"{series} series exceeds {limits.series_max} and nothing repairs it"
 
 
-def _score(rule, request, series):
-    """Additive adjustments, each with its reason. The ``when`` strings are
-    the small vocabulary the scaffold needs; VIS-1428 widens it."""
-    total, why = 0.0, []
-    ideal = rule.limits.series_ideal
+def _fires(when, request, series, ideal):
+    """The small ``when`` vocabulary the scaffold needs; VIS-1428 widens it."""
+    axis = _axis(request)
+    axis_points = axis.axis_points() if axis else 0
     high_card = any(
         d.role == "identifier" or (d.role in _LOOKUP_ROLES and d.cardinality_bucket == "high")
         for d in request.dimensions
     )
     few_dims = [d for d in request.dimensions if d.cardinality_bucket in ("one", "few")]
+    if when == f"intent == {request.intent}":
+        return True
+    if when.startswith("intent in ("):
+        return request.intent in when[len("intent in (") : -1].split(", ")
+    if when == "series <= ideal":
+        return ideal is not None and series <= ideal
+    if when == "two few dimensions":
+        return len(few_dims) == 2
+    if when == "identifier or high cardinality":
+        return high_card
+    if when == "axis is time":
+        return axis is not None and axis.role == "time"
+    if when.startswith("axis_points > "):
+        return axis_points > int(when[len("axis_points > ") :])
+    if when.startswith("dimensions == "):
+        return len(request.dimensions) == int(when[len("dimensions == ") :])
+    return False
+
+
+def _score(rule, request, series):
+    """Additive adjustments, each with its reason."""
+    total, why = 0.0, []
     for adjustment in rule.score:
-        when = adjustment.when
-        fires = (
-            when == f"intent == {request.intent}"
-            or (when.startswith("intent in (") and request.intent in when[11:-1].split(", "))
-            or (when == "series <= ideal" and ideal is not None and series <= ideal)
-            or (when == "two few dimensions" and len(few_dims) == 2)
-            or (when == "identifier or high cardinality" and high_card)
-        )
-        if fires:
+        if _fires(adjustment.when, request, series, rule.limits.series_ideal):
             total += adjustment.delta
             why.append(adjustment.reason)
     return total, why

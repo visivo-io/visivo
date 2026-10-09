@@ -100,6 +100,29 @@ class TestShapeCard:
             ShapeCard(column="b", role="text", cardinality=1, colour="red")
 
 
+class TestOrderedAxes:
+    @pytest.mark.parametrize("role", ["time", "numeric_continuous", "numeric_discrete"])
+    def test_time_and_numbers_are_ordered_by_default(self, role):
+        assert ShapeCard(column="c", role=role, cardinality=10).is_ordered()
+
+    @pytest.mark.parametrize("role", ["categorical", "boolean", "identifier", "text", "geo_region"])
+    def test_everything_else_is_not(self, role):
+        assert not ShapeCard(column="c", role=role, cardinality=10).is_ordered()
+
+    def test_an_explicit_flag_wins_either_way(self):
+        assert ShapeCard(column="c", role="categorical", cardinality=3, ordered=True).is_ordered()
+        assert not ShapeCard(
+            column="c", role="numeric_discrete", cardinality=3, ordered=False
+        ).is_ordered()
+
+    def test_axis_points_prefers_the_time_span(self):
+        assert (
+            ShapeCard(column="c", role="time", cardinality=300, time_span_points=365).axis_points()
+            == 365
+        )
+        assert ShapeCard(column="c", role="numeric_discrete", cardinality=24).axis_points() == 24
+
+
 class TestRecommendRequest:
     def test_there_is_no_global_dimension_cap(self):
         dims = [ShapeCard(column=f"d{i}", role="categorical", cardinality=3) for i in range(6)]

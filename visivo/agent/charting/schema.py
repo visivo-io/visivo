@@ -31,6 +31,8 @@ Role = Literal[
     "text",
 ]
 
+ORDERED_ROLES = ("time", "numeric_continuous", "numeric_discrete")
+
 CardinalityBucket = Literal["one", "few", "some", "many", "high"]
 
 # Upper bound (inclusive) of each bucket, in order. "high" is everything above.
@@ -113,8 +115,20 @@ class ShapeCard(_Strict):
     time_span_points: Optional[int] = Field(default=None, ge=0)
     geo_kind: Optional[GeoKind] = None
     additive: Optional[bool] = None
+    ordered: Optional[bool] = None
     top_n: List[TopValue] = Field(default_factory=list)
     stats: Optional[ColumnStats] = None
+
+    def is_ordered(self):
+        """Whether the values have a natural sequence a line can follow:
+        time and numbers always do; a categorical does only if the profiler
+        or the agent says so (sizes S/M/L, funnel stages)."""
+        if self.ordered is not None:
+            return self.ordered
+        return self.role in ORDERED_ROLES
+
+    def axis_points(self):
+        return self.time_span_points or self.cardinality
 
     @model_validator(mode="after")
     def _derive_bucket(self):
@@ -188,12 +202,16 @@ class LayoutHint(_Strict):
 
 
 class HardGates(_Strict):
-    time_required: bool = False
-    time_forbidden: bool = False
+    """What must be true of a request for a family to be drawable at all.
+    Preferences belong in ``score``; a gate here means the chart would be
+    wrong, not merely worse."""
+
+    ordered_axis_required: bool = False
     metrics: MinMax = Field(default_factory=MinMax)
     dimensions: MinMax = Field(default_factory=MinMax)
+    axis_roles: List[Role] = Field(default_factory=list)
     dimension_roles: List[Role] = Field(default_factory=list)
-    min_time_points: Optional[int] = Field(default=None, ge=0)
+    axis_points: MinMax = Field(default_factory=MinMax)
     intents: List[Intent] = Field(default_factory=list)
 
 
