@@ -213,6 +213,12 @@ const URL_PATTERNS = {
     // fetchModelJobs returned [] and every model-backed table said "No data
     // available" while the charts beside it rendered.
     modelJobsQuery: '/data/models.json',
+    // A template dashboard names its items rather than inlining them, so it
+    // resolves each one through these lists.
+    chartsList: '/data/lists/charts.json',
+    tablesList: '/data/lists/tables.json',
+    markdownsList: '/data/lists/markdowns.json',
+    inputsList: '/data/lists/inputs.json',
 
     // Deliberately absent, though the artifacts exist:
     //   model-schemas    — inference needs a server; a dist build has none.

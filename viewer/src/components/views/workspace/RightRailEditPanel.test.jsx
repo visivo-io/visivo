@@ -1565,3 +1565,28 @@ describe('a deleted record shows Restore, not an edit form (VIS-1234)', () => {
     expect(screen.getByTestId('chart-edit-form-stub')).toBeInTheDocument();
   });
 });
+
+describe('RightRailEditPanel template dashboards', () => {
+  test('shows where the layout lives instead of the rows editor and its Save', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'dashboard', name: 'review' },
+      dashboards: [
+        {
+          name: 'review',
+          config: {
+            name: 'review',
+            type: 'template',
+            template: '<div data-visivo-item="rev_chart"></div><div data-visivo-item="notes"></div>',
+          },
+        },
+      ],
+    });
+    renderPanel('/workspace/dashboard/review');
+
+    const panel = screen.getByTestId('right-rail-template-dashboard');
+    expect(panel).toHaveTextContent('its YAML file');
+    expect(panel).toHaveTextContent('Places: rev_chart, notes.');
+    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
+});

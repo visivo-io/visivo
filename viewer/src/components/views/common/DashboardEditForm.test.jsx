@@ -290,3 +290,31 @@ describe('DashboardEditForm — row & item editing', () => {
     expect(JSON.stringify(config)).not.toContain('selector');
   });
 });
+
+describe('DashboardEditForm — template dashboards', () => {
+  const templateDashboard = {
+    name: 'review',
+    status: 'published',
+    config: {
+      name: 'review',
+      type: 'template',
+      template: '<div data-visivo-item="revenue"></div><div data-visivo-item="notes"></div>',
+    },
+  };
+
+  test('is read-only, pointing at the YAML file and listing what it places', () => {
+    const onSave = jest.fn();
+    const onClose = jest.fn();
+    render(<DashboardEditForm dashboard={templateDashboard} isCreate={false} onSave={onSave} onClose={onClose} />);
+
+    expect(screen.getByTestId('template-dashboard-readonly')).toHaveTextContent('its YAML file');
+    expect(screen.getByText('revenue')).toBeInTheDocument();
+    expect(screen.getByText('notes')).toBeInTheDocument();
+    expect(screen.queryByText('Add Row')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});

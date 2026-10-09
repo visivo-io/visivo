@@ -65,9 +65,11 @@ def build():
         "visivo/schema/*.json:visivo/schema",
         "--add-data",
         "visivo/viewers/*:visivo/viewers",
-        # Skills are markdown read at runtime, so the analyser has no import to
-        # follow and would ship a binary whose agent silently knows less than
-        # the source tree's.
+        # Data the analyser cannot find by following imports: the policy is read
+        # as JSON and the skills as markdown, so neither is referenced by a
+        # module the build can trace.
+        "--add-data",
+        "visivo/models/dashboards/template_policy.json:visivo/models/dashboards",
         "--add-data",
         "visivo/agent/skills/*.md:visivo/agent/skills",
     ]

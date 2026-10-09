@@ -29,6 +29,8 @@ they have no row to rename.
 
 import re
 
+from visivo.models.dashboards.template_dashboard import TemplateDashboard
+
 TYPE_TO_MANAGER = {
     "sources": "source_manager",
     "models": "model_manager",
@@ -124,6 +126,17 @@ def _validate(flask_app, type_key, old_name, new_name):
     # visivo names are project-global, so a collision crosses every type.
     if new_name in _all_names(flask_app):
         raise RenameError(f"A resource named '{new_name}' already exists.", 409)
+
+    # A template's HTML lives in a file the rename can't rewrite.
+    if isinstance(target, TemplateDashboard):
+        raise RenameError(f"'{old_name}' is a template dashboard; rename it in its YAML file.", 400)
+    for dashboard in _current_objects(flask_app.dashboard_manager).values():
+        if isinstance(dashboard, TemplateDashboard) and old_name in dashboard.item_names():
+            raise RenameError(
+                f"Template dashboard '{dashboard.name}' places '{old_name}'. Rename it in "
+                "that dashboard's template too.",
+                409,
+            )
 
     return manager, target
 

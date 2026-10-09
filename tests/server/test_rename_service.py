@@ -1,5 +1,6 @@
 import pytest
 
+from tests.factories.model_factories import TemplateDashboardFactory
 from visivo.server.managers.object_manager import ObjectStatus
 from visivo.server.rename_service import RenameError, rename_impact, rename_object
 
@@ -169,6 +170,47 @@ class TestValidation:
         impact = rename_impact(app, type_key="models", old_name="orders", new_name="db")
 
         assert impact["target"]["new_name"] == "db"
+
+
+class TestTemplateDashboards:
+    """A template's HTML is a file the rename can't rewrite, so a rename that would
+    leave a slot pointing at a missing name is refused instead."""
+
+    def _app_with_template(self):
+        app = _app()
+        app.chart_manager = RecordingManager(published={"rev": _Obj({"name": "rev"})})
+        app.dashboard_manager = RecordingManager(
+            published={
+                "review": TemplateDashboardFactory(
+                    name="review",
+                    template='<div data-visivo-item="rev"></div>',
+                )
+            }
+        )
+        return app
+
+    def test_renaming_an_item_a_template_places_is_409(self):
+        with pytest.raises(RenameError, match="'review' places 'rev'") as caught:
+            rename_impact(
+                self._app_with_template(), type_key="charts", old_name="rev", new_name="revenue"
+            )
+        assert caught.value.status == 409
+
+    def test_renaming_a_template_dashboard_is_400(self):
+        with pytest.raises(RenameError, match="rename it in its YAML file") as caught:
+            rename_impact(
+                self._app_with_template(),
+                type_key="dashboards",
+                old_name="review",
+                new_name="q3-review",
+            )
+        assert caught.value.status == 400
+
+    def test_items_a_template_does_not_place_rename_as_before(self):
+        impact = rename_impact(
+            self._app_with_template(), type_key="models", old_name="orders", new_name="purchases"
+        )
+        assert impact["target"]["new_name"] == "purchases"
 
 
 class TestApply:

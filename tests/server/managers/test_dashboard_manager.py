@@ -12,7 +12,11 @@ import networkx as nx
 
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.external_dashboard import ExternalDashboard
-from visivo.server.managers.dashboard_manager import DashboardManager
+import pytest
+
+from tests.factories.model_factories import TemplateDashboardFactory
+from visivo.models.dashboards.template_dashboard import TemplateDashboard
+from visivo.server.managers.dashboard_manager import DashboardManager, TemplateDashboardReadOnly
 
 
 def _make_internal(name: str) -> Dashboard:
@@ -90,3 +94,100 @@ class TestDashboardManagerValidate:
         )
         assert isinstance(dashboard, ExternalDashboard)
         assert str(dashboard.href).rstrip("/") == "https://example.com"
+
+
+class TestDashboardManagerTemplates:
+    """Template dashboards are listed like any other, but serve never writes them —
+    they are edited as HTML files."""
+
+    def test_template_dashboard_is_listed_with_its_html_and_slots(self):
+        manager = DashboardManager()
+        manager.extract_from_dag(dag=_dag_with(TemplateDashboardFactory(name="Review")))
+
+        [listed] = manager.get_all_dashboards_with_status()
+
+        assert listed["config"]["type"] == "template"
+        assert 'data-visivo-item="chart_name"' in listed["config"]["template"]
+        assert listed["child_item_names"] == ["chart_name"]
+
+    def test_validate_object_accepts_template_config(self):
+        dashboard = DashboardManager().validate_object({"name": "R", "template": "<p></p>"})
+        assert isinstance(dashboard, TemplateDashboard)
+
+    def test_saving_a_template_dashboard_is_refused(self):
+        manager = DashboardManager()
+        with pytest.raises(TemplateDashboardReadOnly, match="edit its YAML file instead"):
+            manager.save_from_config({"name": "R", "template": "<p></p>"})
+        assert manager._cached_objects == {}
+
+
+class TestChildItemNamesAreTheLeavesADashboardPlaces:
+    """``child_item_names`` is what the lineage graph draws edges from, in the
+    viewer and in core. It has to be the OBJECTS a dashboard places, whatever
+    layout holds them — so these cover the shapes that reported something else.
+    """
+
+    def _children(self, config):
+        manager = DashboardManager()
+        dashboard = manager.validate_object(config)
+        return manager._serialize_object(config["name"], dashboard, None)["child_item_names"]
+
+    @pytest.mark.parametrize("field", ["chart", "table", "input", "markdown"])
+    def test_every_item_field_reports_its_ref(self, field):
+        # `markdown` used to report nothing: Item.__get_child returned it only
+        # when it was an INLINE Markdown, so a referenced one was not a child
+        # at all and was missing from the DAG.
+        config = {"name": "d", "rows": [{"items": [{field: "${ref(x)}"}]}]}
+
+        assert self._children(config) == ["x"]
+
+    def test_a_named_row_does_not_replace_its_contents(self):
+        # A row may carry a name for the canvas to label it with, but it is not
+        # a resource anything depends on. Reporting it stopped the walk, so a
+        # dashboard listed "r" where the chart it holds should have been.
+        config = {"name": "d", "rows": [{"name": "r", "items": [{"chart": "${ref(c)}"}]}]}
+
+        assert self._children(config) == ["c"]
+
+    def test_nested_container_rows_are_walked_to_the_leaves(self):
+        # VIS-826. The viewer used to do this walk; it now reads this list, so
+        # the guarantee lives here.
+        config = {
+            "name": "d",
+            "rows": [
+                {
+                    "items": [
+                        {"chart": "${ref(top)}"},
+                        {"rows": [{"items": [{"chart": "${ref(deep)}"}]}]},
+                    ]
+                }
+            ],
+        }
+
+        assert self._children(config) == ["top", "deep"]
+
+    def test_a_template_dashboard_reports_its_slots(self):
+        config = {
+            "name": "d",
+            "template": '<div data-visivo-item="a"></div><div data-visivo-item="b"></div>',
+        }
+
+        assert self._children(config) == ["a", "b"]
+
+    def test_both_kinds_agree_when_they_place_the_same_items(self):
+        # The point of the whole change: a template dashboard and a rows one
+        # placing the same charts are the same node in the graph.
+        rows = self._children(
+            {
+                "name": "d",
+                "rows": [{"items": [{"chart": "${ref(a)}"}, {"table": "${ref(b)}"}]}],
+            }
+        )
+        template = self._children(
+            {
+                "name": "d",
+                "template": '<div data-visivo-item="a"></div><div data-visivo-item="b"></div>',
+            }
+        )
+
+        assert rows == template == ["a", "b"]

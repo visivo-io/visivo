@@ -222,6 +222,12 @@ def dist_phase(
         with open(f"{dist_dir}/data/models.json", "w") as f:
             json.dump(models_list, f)
 
+        # The list endpoints a template dashboard resolves its slots through.
+        os.makedirs(f"{dist_dir}/data/lists", exist_ok=True)
+        for list_key, entries in Serializer(project=project).collect_item_lists().items():
+            with open(f"{dist_dir}/data/lists/{list_key}.json", "w") as f:
+                json.dump({list_key: entries}, f)
+
         # Generate insights.json for dist mode
         insights_src = os.path.join(run_dir, "insights")
         insights_list = []

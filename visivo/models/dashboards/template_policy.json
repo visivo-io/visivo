@@ -1,0 +1,387 @@
+{
+  "$comment": "What a template dashboard's HTML may contain. Read by visivo/models/dashboards/template_html.py (compile-time validation) and, as a tracked copy, by viewer/src/components/project/template/templatePolicy.json (render-time sanitising). tests/models/dashboards/test_template_html.py fails if the two drift.",
+  "slot_attribute": "data-visivo-item",
+  "document_tags": [
+    "html",
+    "head",
+    "body"
+  ],
+  "dropped_tags": [
+    "meta"
+  ],
+  "dropped_tag_attributes": {
+    "meta": [
+      "charset",
+      "name",
+      "content"
+    ]
+  },
+  "tags": {
+    "a": [
+      "href",
+      "target",
+      "rel",
+      "download",
+      "hreflang"
+    ],
+    "abbr": [],
+    "address": [],
+    "article": [],
+    "aside": [],
+    "b": [],
+    "bdi": [],
+    "bdo": [],
+    "blockquote": [
+      "cite"
+    ],
+    "br": [],
+    "caption": [],
+    "cite": [],
+    "code": [],
+    "col": [
+      "span",
+      "width"
+    ],
+    "colgroup": [
+      "span",
+      "width"
+    ],
+    "data": [
+      "value"
+    ],
+    "dd": [],
+    "del": [
+      "cite",
+      "datetime"
+    ],
+    "details": [
+      "open"
+    ],
+    "dfn": [],
+    "div": [],
+    "dl": [],
+    "dt": [],
+    "em": [],
+    "figcaption": [],
+    "figure": [],
+    "footer": [],
+    "h1": [],
+    "h2": [],
+    "h3": [],
+    "h4": [],
+    "h5": [],
+    "h6": [],
+    "header": [],
+    "hgroup": [],
+    "hr": [],
+    "i": [],
+    "img": [
+      "src",
+      "alt",
+      "width",
+      "height",
+      "loading",
+      "decoding"
+    ],
+    "ins": [
+      "cite",
+      "datetime"
+    ],
+    "kbd": [],
+    "li": [
+      "value"
+    ],
+    "main": [],
+    "mark": [],
+    "nav": [],
+    "ol": [
+      "start",
+      "reversed",
+      "type"
+    ],
+    "p": [],
+    "pre": [],
+    "q": [
+      "cite"
+    ],
+    "rp": [],
+    "rt": [],
+    "ruby": [],
+    "s": [],
+    "samp": [],
+    "section": [],
+    "small": [],
+    "span": [],
+    "strong": [],
+    "style": [
+      "media"
+    ],
+    "sub": [],
+    "summary": [],
+    "sup": [],
+    "table": [],
+    "tbody": [],
+    "td": [
+      "colspan",
+      "rowspan",
+      "headers"
+    ],
+    "tfoot": [],
+    "th": [
+      "colspan",
+      "rowspan",
+      "headers",
+      "scope",
+      "abbr"
+    ],
+    "thead": [],
+    "time": [
+      "datetime"
+    ],
+    "tr": [],
+    "u": [],
+    "ul": [],
+    "var": [],
+    "wbr": [],
+    "svg": [
+      "viewbox",
+      "xmlns",
+      "xmlns:xlink",
+      "preserveaspectratio",
+      "width",
+      "height",
+      "x",
+      "y",
+      "version"
+    ],
+    "g": [],
+    "defs": [],
+    "symbol": [
+      "viewbox",
+      "preserveaspectratio"
+    ],
+    "use": [
+      "href",
+      "xlink:href",
+      "x",
+      "y",
+      "width",
+      "height"
+    ],
+    "path": [
+      "d",
+      "pathlength"
+    ],
+    "rect": [
+      "x",
+      "y",
+      "width",
+      "height",
+      "rx",
+      "ry",
+      "pathlength"
+    ],
+    "circle": [
+      "cx",
+      "cy",
+      "r",
+      "pathlength"
+    ],
+    "ellipse": [
+      "cx",
+      "cy",
+      "rx",
+      "ry",
+      "pathlength"
+    ],
+    "line": [
+      "x1",
+      "y1",
+      "x2",
+      "y2",
+      "pathlength"
+    ],
+    "polyline": [
+      "points",
+      "pathlength"
+    ],
+    "polygon": [
+      "points",
+      "pathlength"
+    ],
+    "text": [
+      "x",
+      "y",
+      "dx",
+      "dy",
+      "rotate",
+      "textlength",
+      "lengthadjust"
+    ],
+    "tspan": [
+      "x",
+      "y",
+      "dx",
+      "dy",
+      "rotate",
+      "textlength",
+      "lengthadjust"
+    ],
+    "textpath": [
+      "href",
+      "xlink:href",
+      "startoffset",
+      "method",
+      "spacing",
+      "side"
+    ],
+    "lineargradient": [
+      "x1",
+      "y1",
+      "x2",
+      "y2",
+      "gradientunits",
+      "gradienttransform",
+      "spreadmethod",
+      "href",
+      "xlink:href"
+    ],
+    "radialgradient": [
+      "cx",
+      "cy",
+      "r",
+      "fx",
+      "fy",
+      "fr",
+      "gradientunits",
+      "gradienttransform",
+      "spreadmethod",
+      "href",
+      "xlink:href"
+    ],
+    "stop": [
+      "offset"
+    ],
+    "clippath": [
+      "clippathunits"
+    ],
+    "mask": [
+      "x",
+      "y",
+      "width",
+      "height",
+      "maskunits",
+      "maskcontentunits"
+    ],
+    "pattern": [
+      "x",
+      "y",
+      "width",
+      "height",
+      "patternunits",
+      "patterncontentunits",
+      "patterntransform",
+      "viewbox",
+      "preserveaspectratio"
+    ],
+    "marker": [
+      "viewbox",
+      "preserveaspectratio",
+      "refx",
+      "refy",
+      "markerwidth",
+      "markerheight",
+      "markerunits",
+      "orient"
+    ],
+    "title": [],
+    "desc": []
+  },
+  "global_attributes": [
+    "class",
+    "id",
+    "style",
+    "title",
+    "lang",
+    "dir",
+    "role",
+    "hidden",
+    "tabindex",
+    "translate",
+    "fill",
+    "fill-opacity",
+    "fill-rule",
+    "stroke",
+    "stroke-width",
+    "stroke-opacity",
+    "stroke-linecap",
+    "stroke-linejoin",
+    "stroke-dasharray",
+    "stroke-dashoffset",
+    "stroke-miterlimit",
+    "opacity",
+    "transform",
+    "transform-origin",
+    "clip-path",
+    "clip-rule",
+    "mask",
+    "marker-start",
+    "marker-mid",
+    "marker-end",
+    "stop-color",
+    "stop-opacity",
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-anchor",
+    "dominant-baseline",
+    "alignment-baseline",
+    "letter-spacing",
+    "text-decoration",
+    "visibility",
+    "display",
+    "vector-effect",
+    "color",
+    "paint-order"
+  ],
+  "attribute_prefixes": [
+    "data-",
+    "aria-"
+  ],
+  "url_attributes": [
+    "href",
+    "src",
+    "xlink:href",
+    "cite"
+  ],
+  "url_schemes": [
+    "http",
+    "https",
+    "mailto"
+  ],
+  "data_url_tags": [
+    "img"
+  ],
+  "data_url_prefixes": [
+    "data:image/png",
+    "data:image/jpeg",
+    "data:image/gif",
+    "data:image/webp",
+    "data:image/svg+xml"
+  ],
+  "fragment_only_url_tags": [
+    "use",
+    "textpath",
+    "lineargradient",
+    "radialgradient"
+  ],
+  "css_forbidden": [
+    "@import",
+    "expression(",
+    "javascript:",
+    "vbscript:",
+    "-moz-binding",
+    "behavior:"
+  ]
+}

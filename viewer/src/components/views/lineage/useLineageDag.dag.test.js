@@ -160,6 +160,9 @@ describe('useLineageDag full project graph', () => {
     dashboards: [
       {
         name: 'exec',
+        // Reported by the backend, the same as every other type's. The
+        // duplicate is kept: dashboard edges must be deduped too.
+        child_item_names: ['rev_chart', 'rev_table', 'notes', 'date_picker', 'rev_chart'],
         config: {
           rows: [
             {
@@ -168,7 +171,6 @@ describe('useLineageDag full project graph', () => {
                 { table: '${ref(rev_table)}' },
                 { markdown: '${ref(notes)}' },
                 { input: '${ref(date_picker)}' },
-                // Duplicate ref — dashboard edges must be deduped too.
                 { chart: '${ref(rev_chart)}' },
               ],
             },
@@ -346,26 +348,15 @@ describe('useLineageDag full project graph', () => {
     expect(findNode(nodes, 'relation-r').data.model).toBeUndefined();
   });
 
-  it('skips dashboard items without resolvable refs (no rows, empty rows, unnamed inline objects)', () => {
+  it('skips dashboard children that do not resolve to an object', () => {
+    // The backend reports what a dashboard places; the graph draws only the
+    // ones that exist, rather than inventing a node for a name that does not.
     mockStoreState({
       charts: [{ name: 'c1' }],
       dashboards: [
         { name: 'no-config' },
-        { name: 'no-items', config: { rows: [{}] } },
-        {
-          name: 'mixed',
-          config: {
-            rows: [
-              {
-                items: [
-                  { chart: { config: {} } }, // inline object without a name → skipped
-                  { chart: '${ref(c1)}' }, // resolvable ref → edge
-                  {}, // empty item → skipped
-                ],
-              },
-            ],
-          },
-        },
+        { name: 'no-children', config: { rows: [{}] }, child_item_names: [] },
+        { name: 'mixed', child_item_names: ['c1', 'ghost'] },
       ],
     });
     const { result } = renderHook(() => useLineageDag());

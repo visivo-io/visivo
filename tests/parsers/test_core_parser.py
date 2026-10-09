@@ -150,3 +150,21 @@ def test_Core_Parser_omitting_default_source_preserves_yaml_defaults():
     core_parser = CoreParser(project_file=tmp, files=[tmp])
     project = core_parser.parse()
     assert project.defaults.source_name == "local-duckdb"
+
+
+def test_Core_Parser_keeps_an_inline_template(tmp_path):
+    """The HTML lives in the YAML, so the parser has nothing to resolve — but a
+    template dashboard still has to come out of it as one."""
+    project_file = temp_yml_file(
+        {
+            "name": "project",
+            "charts": [{"name": "chart"}],
+            "dashboards": [{"name": "Review", "template": '<div data-visivo-item="chart"></div>'}],
+        },
+        name=PROJECT_FILE_NAME,
+        output_dir=str(tmp_path),
+    )
+
+    project = CoreParser(project_file=project_file, files=[project_file]).parse()
+
+    assert project.dashboards[0].item_names() == ["chart"]
