@@ -298,3 +298,20 @@ class TestIntentIsAPreference:
 
         assert with_intent.rejected and "intents" in with_intent.rejected[0].reason
         assert without.recommendations[0].family == "bar"
+
+
+class TestEveryTraceTypeHasAHome:
+    """families.yml is a Phase 0 scaffold: five families so the engine has a
+    shape. P2a writes an entry for all 48 trace types and P2b lifts them into
+    ~22 families. Until then this is expected to fail; when it passes, drop
+    the marker. Strict, so it cannot pass by accident and go unnoticed."""
+
+    @pytest.mark.xfail(strict=True, reason="P2a/P2b (VIS-1419..1429) cover the remaining 43 types")
+    def test_every_prop_type_is_claimed_by_exactly_one_family(self):
+        from visivo.agent.charting.schema import TABLE_TYPES
+        from visivo.models.props.types import PropType
+
+        claimed = [t for r in rules.load_families() for t in r.trace_types]
+
+        assert sorted(set(claimed)) == sorted({p.value for p in PropType} | set(TABLE_TYPES))
+        assert len(claimed) == len(set(claimed)), "a type may belong to one family only"
