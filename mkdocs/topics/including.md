@@ -1,4 +1,4 @@
-# Including Other Files and Projects
+# Including Other Files
 
 ## Local Files
 
@@ -106,37 +106,3 @@ Exclusions support several pattern matching approaches:
 - **Regex patterns**: Advanced users can use regex for complex matching
 
 The exclusion patterns are matched against both the filename and the relative path from the include directory.
-
-## External Projects
-
-One of the most powerful aspects of Visivo is the ability to include public GitHub repos that contain Visivo dashboards in your project.  This gives everyone to share a useful dashboard that they may have. 
-
-We have published a series of projects that allow you to quickly build dashboards based on some popular tools.
-
-Those are tagged in GitHub [here](https://github.com/topics/visivo-dashboard).
-You can also build and share your own under the same `visivo-dashboard` topic in GitHub.
-
-Here is an example on how to include our dashboard that provides insights into your repositories' pull requests:
-
-``` yaml
-includes:
-  - path: visivo-io/github-dashboard.git@main
-```
-
-Once it is included then you can reference the `insights` and `charts` like you would if they were in your project like:
-
-``` yaml
-dashboards:
-  - name: Github Metrics
-    rows:
-      - height: medium
-        items:
-          - width: 1
-            chart:
-              name: Pull Requests by Repository
-              insights:
-                - ${ref(Pull Request by Repository)}
-              layout:
-                title:
-                  text: "Pull Request by Repository"
-```

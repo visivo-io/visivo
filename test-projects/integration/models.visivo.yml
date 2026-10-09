@@ -58,6 +58,11 @@ sources:
           - data/aapl_pl.csv
 
 models:
+  # Came from `visivo-io/example-include.git@main` until git includes were
+  # removed (VIS-1456). Same SQL, declared here — several insights reference it
+  # by name.
+  - name: test-table
+    sql: "SELECT * FROM test_table"
   - name: local_test_table
     sql: "SELECT * FROM test_table"
     metrics:
