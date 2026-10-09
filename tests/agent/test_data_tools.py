@@ -201,3 +201,180 @@ class TestRegistration:
         from visivo.agent import tool_types, tools
 
         assert tools.ToolError is tool_types.ToolError and tools.Tool is tool_types.Tool
+
+
+class TestQuerySourceGuard:
+    """SQLGlot decides what runs (VIS-1415). Each refusal below was proven to
+    pass with the guard removed, which is what makes it a guard."""
+
+    def guard(self, sql, limit=200, dialect="sqlite"):
+        return data_tools.guard_read_only(sql, dialect, limit)
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            "INSERT INTO t VALUES (1)",
+            "UPDATE t SET x = 1",
+            "DELETE FROM t",
+            "DROP TABLE t",
+            "CREATE TABLE t (x INT)",
+            "ATTACH 'evil.db' AS e",
+            "PRAGMA table_info(t)",
+            "COPY t TO '/tmp/out.csv'",
+        ],
+    )
+    def test_anything_but_a_query_is_refused(self, sql):
+        with pytest.raises(ToolError, match="Only read queries"):
+            self.guard(sql, dialect="duckdb")
+
+    def test_two_statements_are_refused(self):
+        with pytest.raises(ToolError, match="exactly one statement"):
+            self.guard("SELECT 1; SELECT 2")
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            "SELECT * FROM read_csv('/etc/passwd')",
+            "SELECT * FROM read_parquet('x.parquet')",
+            "SELECT * FROM read_json_auto('x.json')",
+            "SELECT pg_read_file('/etc/passwd')",
+            "SELECT load_extension('x')",
+            "SELECT * FROM glob('*')",
+        ],
+    )
+    def test_file_reading_functions_are_refused(self, sql):
+        with pytest.raises(ToolError, match="reads the server"):
+            self.guard(sql, dialect="duckdb")
+
+    def test_ctes_unions_and_subqueries_pass(self):
+        assert "LIMIT 200" in self.guard("WITH c AS (SELECT 1 AS a) SELECT a FROM c")
+        assert "LIMIT 200" in self.guard("SELECT 1 UNION ALL SELECT 2")
+        assert "LIMIT 200" in self.guard("SELECT * FROM (SELECT x FROM t) AS s WHERE x > 1")
+
+    def test_a_limit_is_injected_and_a_smaller_one_kept(self):
+        assert self.guard("SELECT x FROM t", limit=50).endswith("LIMIT 50")
+        assert self.guard("SELECT x FROM t LIMIT 5", limit=50).endswith("LIMIT 5")
+        assert self.guard("SELECT x FROM t LIMIT 5000", limit=50).endswith("LIMIT 50")
+
+    def test_a_parse_failure_names_the_dialect(self):
+        with pytest.raises(ToolError, match="did not parse \\(sqlite\\)"):
+            self.guard("SELECT FROM WHERE")
+
+    def test_the_guard_is_dialect_aware(self):
+        assert "LIMIT 10" in self.guard("SELECT x FROM t", limit=10, dialect="postgres")
+
+
+class TestQuerySource:
+    def test_rows_come_back_bounded_and_labelled(self, integration_app):
+        result = call(
+            integration_app,
+            "query_source",
+            {
+                "source": _source(integration_app).name,
+                "sql": "SELECT x, SUM(y) AS total FROM test_table GROUP BY x ORDER BY x",
+            },
+        )
+
+        assert result["note"] == data_tools.DATA_NOTICE
+        assert result["columns"] == ["x", "total"] and result["row_count"] == 6
+        assert result["sql_executed"].endswith("LIMIT 200") and result["truncated"] is False
+        assert isinstance(result["execution_time_ms"], int)
+
+    def test_the_limit_applies(self, integration_app):
+        result = call(
+            integration_app,
+            "query_source",
+            {
+                "source": _source(integration_app).name,
+                "sql": "SELECT x FROM test_table",
+                "limit": 2,
+            },
+        )
+
+        assert result["row_count"] == 2 and result["sql_executed"].endswith("LIMIT 2")
+
+    def test_a_write_never_reaches_the_source(self, integration_app):
+        with pytest.raises(ToolError, match="Only read queries"):
+            call(
+                integration_app,
+                "query_source",
+                {"source": _source(integration_app).name, "sql": "DELETE FROM test_table"},
+            )
+        assert (
+            call(
+                integration_app,
+                "preview_table",
+                {"source": _source(integration_app).name, "table": "test_table"},
+            )["row_count"]
+            == 6
+        )
+
+    def test_a_driver_error_is_a_refusal_with_the_message(self, integration_app):
+        with pytest.raises(ToolError, match="no_such"):
+            call(
+                integration_app,
+                "query_source",
+                {"source": _source(integration_app).name, "sql": "SELECT no_such FROM test_table"},
+            )
+
+    def test_a_timeout_is_a_refusal(self, integration_app, monkeypatch):
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        def slow(*args, **kwargs):
+            raise QueryTimeout("Query did not return within 20s.")
+
+        monkeypatch.setattr(data_tools, "execute_and_get_result", slow)
+        with pytest.raises(ToolError, match="within 20s"):
+            call(
+                integration_app,
+                "query_source",
+                {"source": _source(integration_app).name, "sql": "SELECT 1"},
+            )
+
+    def test_it_passes_the_agent_budget(self, integration_app, monkeypatch):
+        seen = {}
+
+        def fake(source, sql, **kwargs):
+            seen.update(kwargs)
+            return {
+                "columns": ["x"],
+                "rows": [{"x": 1}],
+                "row_count": 1,
+                "truncated": False,
+                "execution_time_ms": 1,
+            }
+
+        monkeypatch.setattr(data_tools, "execute_and_get_result", fake)
+        call(
+            integration_app,
+            "query_source",
+            {"source": _source(integration_app).name, "sql": "SELECT 1", "limit": 7},
+        )
+
+        assert seen == {"max_rows": 7, "timeout_s": 20}
+
+    def test_an_oversized_result_is_cut_by_bytes_and_flagged(self, integration_app, monkeypatch):
+        wide = [{"blob": "x" * 1000, "i": i} for i in range(200)]
+
+        def fake(source, sql, **kwargs):
+            return {
+                "columns": ["blob", "i"],
+                "rows": wide,
+                "row_count": 200,
+                "truncated": False,
+                "execution_time_ms": 1,
+            }
+
+        monkeypatch.setattr(data_tools, "execute_and_get_result", fake)
+        result = call(
+            integration_app,
+            "query_source",
+            {"source": _source(integration_app).name, "sql": "SELECT 1"},
+        )
+
+        assert result["truncated"] is True and 0 < result["row_count"] < 200
+        assert len(json.dumps(result)) <= data_tools.MAX_RESULT_BYTES
+
+    def test_sql_is_required(self, integration_app):
+        with pytest.raises(ToolError, match="'sql' is required"):
+            call(integration_app, "query_source", {"source": _source(integration_app).name})
