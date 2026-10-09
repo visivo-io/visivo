@@ -13,7 +13,9 @@ from typing import Dict, Any, List, Optional
 import pyarrow.parquet as pq
 import duckdb
 
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
+from visivo.output_paths import model_data_file, run_dir
 
 # Cache TTL in seconds (5 minutes)
 CACHE_TTL_SECONDS = 300
@@ -22,28 +24,23 @@ CACHE_TTL_SECONDS = 300
 class ProfilingService:
     """Service for profiling parquet files associated with models."""
 
-    def __init__(self, output_dir: str):
+    def __init__(self, output_dir: str, run_id: str = DEFAULT_RUN_ID):
         """
         Initialize the profiling service.
 
         Args:
-            output_dir: Directory where parquet files are stored
+            output_dir: The project's output directory (the parent of run directories)
+            run_id: The run whose model parquet is profiled
         """
         self.output_dir = output_dir
+        self.run_id = run_id
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._cache_timestamps: Dict[str, float] = {}
 
     def get_parquet_path(self, model_name: str) -> str:
-        """
-        Get the parquet file path for a model.
-
-        Args:
-            model_name: Name of the model
-
-        Returns:
-            Full path to the parquet file
-        """
-        return os.path.join(self.output_dir, f"{model_name}.parquet")
+        """The file ``run_model_data_job`` wrote for this model, via the one
+        definition of that path in ``output_paths``."""
+        return model_data_file(run_dir(self.output_dir, self.run_id), model_name)
 
     def parquet_exists(self, model_name: str) -> bool:
         """
@@ -221,7 +218,7 @@ class ProfilingService:
                     "q25": self._convert_duckdb_value(row_dict.get("q25")),
                     "q50": self._convert_duckdb_value(row_dict.get("q50")),
                     "q75": self._convert_duckdb_value(row_dict.get("q75")),
-                    "null_count": self._convert_duckdb_value(row_dict.get("null_percentage")),
+                    "null_count": self._null_count(row_dict.get("null_percentage"), row_count),
                     "null_percentage": self._convert_duckdb_value(row_dict.get("null_percentage")),
                     "approx_unique": self._convert_duckdb_value(row_dict.get("approx_unique")),
                 }
@@ -244,6 +241,13 @@ class ProfilingService:
         finally:
             if conn:
                 conn.close()
+
+    def _null_count(self, null_percentage: Any, row_count: int) -> Optional[int]:
+        """SUMMARIZE reports nulls as a percentage; callers want the count."""
+        pct = self._convert_duckdb_value(null_percentage)
+        if pct is None:
+            return None
+        return int(round(float(pct) / 100 * row_count))
 
     def _convert_duckdb_value(self, value: Any) -> Any:
         """Convert DuckDB value to a JSON-serializable type."""

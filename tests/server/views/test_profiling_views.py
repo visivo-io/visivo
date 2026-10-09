@@ -5,6 +5,18 @@ import pytest
 import tempfile
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+from visivo.output_paths import model_data_file, run_dir
+
+
+def _write_model(output_dir, name, table):
+    """Write ``table`` where ``run_model_data_job`` would put model ``name``."""
+    path = model_data_file(run_dir(output_dir), name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    pq.write_table(table, path)
+    return path
+
+
 from flask import Flask
 
 from visivo.server.views.profiling_views import register_profiling_views
@@ -30,7 +42,8 @@ class TestProfilingViews:
             }
         )
 
-        parquet_path = os.path.join(temp_dir, "test_model.parquet")
+        parquet_path = model_data_file(run_dir(temp_dir), "test_model")
+        os.makedirs(os.path.dirname(parquet_path))
         pq.write_table(table, parquet_path)
 
         return "test_model"
@@ -248,7 +261,7 @@ class TestProfilingViewsWithSpecialCases:
                 "id": pa.array([], type=pa.int64()),
             }
         )
-        pq.write_table(table, os.path.join(temp_dir, "empty.parquet"))
+        _write_model(temp_dir, "empty", table)
 
         response = client.get("/api/models/empty/profile/?tier=1")
 
@@ -263,7 +276,7 @@ class TestProfilingViewsWithSpecialCases:
                 "column name": pa.array([1, 2, 3], type=pa.int64()),
             }
         )
-        pq.write_table(table, os.path.join(temp_dir, "spaces.parquet"))
+        _write_model(temp_dir, "spaces", table)
 
         response = client.get("/api/models/spaces/histogram/column name/")
 
@@ -278,7 +291,7 @@ class TestProfilingViewsWithSpecialCases:
                 "id": pa.array([1, 2, 3], type=pa.int64()),
             }
         )
-        pq.write_table(table, os.path.join(temp_dir, "my_model_v2.parquet"))
+        _write_model(temp_dir, "my_model_v2", table)
 
         response = client.get("/api/models/my_model_v2/profile/")
 

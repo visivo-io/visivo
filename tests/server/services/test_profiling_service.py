@@ -7,6 +7,17 @@ import time
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from visivo.output_paths import model_data_file, run_dir
+
+
+def _write_model(output_dir, name, table):
+    """Write ``table`` where ``run_model_data_job`` would put model ``name``."""
+    path = model_data_file(run_dir(output_dir), name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    pq.write_table(table, path)
+    return path
+
+
 from visivo.server.services.profiling_service import ProfilingService, CACHE_TTL_SECONDS
 
 
@@ -36,7 +47,8 @@ class TestProfilingService:
             }
         )
 
-        parquet_path = os.path.join(temp_dir, "test_model.parquet")
+        parquet_path = model_data_file(run_dir(temp_dir), "test_model")
+        os.makedirs(os.path.dirname(parquet_path))
         pq.write_table(table, parquet_path)
 
         return "test_model"
@@ -238,8 +250,7 @@ class TestProfilingServiceWithLargeData:
             }
         )
 
-        parquet_path = os.path.join(temp_dir, "large_model.parquet")
-        pq.write_table(table, parquet_path)
+        parquet_path = _write_model(temp_dir, "large_model", table)
 
         return "large_model"
 
@@ -304,8 +315,7 @@ class TestProfilingServiceEdgeCases:
                 "value": pa.array([], type=pa.float64()),
             }
         )
-        parquet_path = os.path.join(temp_dir, "empty_model.parquet")
-        pq.write_table(table, parquet_path)
+        parquet_path = _write_model(temp_dir, "empty_model", table)
 
         profile = profiling_service.get_tier1_profile("empty_model")
         assert profile["row_count"] == 0
@@ -319,8 +329,7 @@ class TestProfilingServiceEdgeCases:
                 "value": pa.array([100.0], type=pa.float64()),
             }
         )
-        parquet_path = os.path.join(temp_dir, "single_row.parquet")
-        pq.write_table(table, parquet_path)
+        parquet_path = _write_model(temp_dir, "single_row", table)
 
         profile = profiling_service.get_tier1_profile("single_row")
         assert profile["row_count"] == 1
@@ -337,8 +346,7 @@ class TestProfilingServiceEdgeCases:
                 "all_null": pa.array([None, None, None], type=pa.float64()),
             }
         )
-        parquet_path = os.path.join(temp_dir, "all_nulls.parquet")
-        pq.write_table(table, parquet_path)
+        parquet_path = _write_model(temp_dir, "all_nulls", table)
 
         profile = profiling_service.get_tier1_profile("all_nulls")
         all_null_col = next(c for c in profile["columns"] if c["name"] == "all_null")
@@ -356,8 +364,7 @@ class TestProfilingServiceEdgeCases:
                 "column-with-dashes": pa.array([4, 5, 6], type=pa.int64()),
             }
         )
-        parquet_path = os.path.join(temp_dir, "special_cols.parquet")
-        pq.write_table(table, parquet_path)
+        parquet_path = _write_model(temp_dir, "special_cols", table)
 
         profile = profiling_service.get_tier1_profile("special_cols")
         assert len(profile["columns"]) == 2
@@ -365,3 +372,36 @@ class TestProfilingServiceEdgeCases:
         # Histogram should work with special column names
         histogram = profiling_service.get_histogram("special_cols", "column with spaces", bins=10)
         assert histogram["total_count"] == 3
+
+
+class TestItReadsWhatTheRunWrote:
+    """VIS-1409: the service read `{output}/{model}.parquet` after runs had
+    moved to `{output}/{run_id}/models/{model}.parquet`, so the endpoint
+    always 404'd. The path comes from output_paths now, like the writer's."""
+
+    def test_the_path_is_the_run_layout(self, tmp_path):
+        service = ProfilingService(str(tmp_path))
+
+        assert service.get_parquet_path("m") == f"{tmp_path}/main/models/m.parquet"
+
+    def test_a_specific_run_can_be_profiled(self, tmp_path):
+        service = ProfilingService(str(tmp_path), run_id="abc123")
+
+        assert service.get_parquet_path("m") == f"{tmp_path}/abc123/models/m.parquet"
+
+    def test_the_old_flat_path_is_not_consulted(self, tmp_path):
+        table = pa.table({"x": pa.array([1, 2, 3])})
+        pq.write_table(table, str(tmp_path / "m.parquet"))
+
+        assert ProfilingService(str(tmp_path)).parquet_exists("m") is False
+
+    def test_null_count_is_a_count_not_a_percentage(self, tmp_path):
+        table = pa.table({"amount": pa.array([1.0, None, None, 4.0], type=pa.float64())})
+        path = model_data_file(run_dir(str(tmp_path)), "m")
+        os.makedirs(os.path.dirname(path))
+        pq.write_table(table, path)
+
+        column = ProfilingService(str(tmp_path)).get_tier2_profile("m")["columns"][0]
+
+        assert column["null_count"] == 2
+        assert column["null_percentage"] == 50.0
