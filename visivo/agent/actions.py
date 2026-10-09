@@ -48,6 +48,11 @@ def attributed_to(source, session_id=None):
         _caller.reset(token)
 
 
+def caller():
+    """``(source, session_id)`` for the code running now."""
+    return _caller.get()
+
+
 class ActionLog:
     """The session's agent actions, newest last. Safe across serve's threads."""
 

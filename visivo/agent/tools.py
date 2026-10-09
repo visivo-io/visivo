@@ -29,7 +29,7 @@ hijacked agent is a draft someone can discard.
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
-from visivo.agent.actions import log as action_log
+from visivo.agent.actions import caller, log as action_log
 from visivo.agent.schema import SchemaSlicer
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
@@ -320,7 +320,36 @@ def _write_theme_handler(app, arguments):
     return {"status": "draft", "theme": _theme_config(app)}
 
 
+def _read_skill_handler(app, arguments):
+    from visivo.agent import skills
+
+    name = _name_argument(arguments)
+    try:
+        return {"name": name, "body": skills.body(name)}
+    except KeyError as missing:
+        raise ToolError(str(missing).strip("'\""))
+
+
 _SPECIAL_TOOLS = {
+    "read_skill": Tool(
+        name="read_skill",
+        description=(
+            "Read one of Visivo's skills — the short, task-shaped instructions "
+            "for a job agents get wrong unaided. The system prompt lists them "
+            "by name; call this before a task one covers and follow it."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "A skill name from the index, e.g. 'build-a-model'.",
+                }
+            },
+            "required": ["name"],
+        },
+        handler=_read_skill_handler,
+    ),
     "get_theme": Tool(
         name="get_theme",
         description=(
@@ -477,4 +506,44 @@ def call(app, name, arguments=None):
         action_log().record(name, obj=obj, outcome="error", error=result.get("error"))
     else:
         action_log().record(name, obj=obj)
-    return result
+    return _with_attached_skills(name, result)
+
+
+# --- skills that ride along with a tool's first result ----------------------
+
+# (source, session_id) -> skill names already delivered. Bounded because a
+# serve process outlives any one session.
+_attached = {}
+MAX_ATTACHMENT_SESSIONS = 1000
+
+
+def reset_attachments():
+    _attached.clear()
+
+
+def _with_attached_skills(name, result):
+    """Wrap ``result`` with any skill that lists ``name`` in its ``tools:``,
+    the first time this session calls it.
+
+    Only the built-in loop gets this: an MCP client has resources and asked
+    for none, and wrapping its result would change a shape it already parses.
+    """
+    source, session_id = caller()
+    if source != "agent":
+        return result
+    from visivo.agent import skills
+
+    candidates = skills.attached_to(name)
+    if not candidates:
+        return result
+    if len(_attached) >= MAX_ATTACHMENT_SESSIONS:
+        _attached.clear()
+    delivered = _attached.setdefault((source, session_id), set())
+    fresh = [s for s in candidates if s["name"] not in delivered]
+    if not fresh:
+        return result
+    delivered.update(s["name"] for s in fresh)
+    return {
+        "result": result,
+        "skills_attached": [{"name": s["name"], "body": s["text"]} for s in fresh],
+    }
