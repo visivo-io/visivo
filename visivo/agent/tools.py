@@ -26,36 +26,13 @@ is what makes an autonomous loop safe to ship, because the blast radius of a
 hijacked agent is a draft someone can discard.
 """
 
-from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Dict
 
 from visivo.agent.actions import caller, log as action_log
+from visivo.agent.data_tools import DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
+from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
 from visivo.server.rename_service import TYPE_TO_MANAGER
-
-
-@dataclass(frozen=True)
-class Tool:
-    """A callable an agent may invoke.
-
-    ``handler`` takes the Flask app (which owns the managers) and the decoded
-    arguments, so the registry itself is a module-level constant with no
-    lifecycle of its own — a transport builds no state to serve it.
-    """
-
-    name: str
-    description: str
-    input_schema: Dict[str, Any]
-    handler: Callable[[Any, Dict[str, Any]], Any]
-
-
-class ToolError(Exception):
-    """A tool refused, with a reason worth showing the agent.
-
-    Separate from an unexpected exception: this one is part of the contract —
-    a name that does not exist, a config that does not validate — and the
-    transport turns it into a result the model can act on rather than a crash.
-    """
 
 
 def _singular(type_key):
@@ -439,6 +416,7 @@ _SPECIAL_TOOLS = {
 # Hand-written, and named so the "generated from the type map" property can be
 # checked against the generated ones alone. Keep this list short: 133 routes is
 # a menu, not a toolset, and a wide surface makes agents worse.
+_SPECIAL_TOOLS.update(DATA_TOOLS)
 SPECIAL_TOOL_NAMES = frozenset(_SPECIAL_TOOLS)
 
 TOOLS: Dict[str, Tool] = {**_generated_tools(), **_SPECIAL_TOOLS}
