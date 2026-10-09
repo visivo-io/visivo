@@ -94,8 +94,8 @@ class TestProfilingViews:
 
         # Tier 2 should have additional stats
         amount_col = next(c for c in data["columns"] if c["name"] == "amount")
-        assert "avg" in amount_col
-        assert "std" in amount_col
+        assert amount_col["avg"] == 27.75
+        assert amount_col["std_dev"] is not None
 
     def test_get_profile_tier2_explicit(self, client, parquet_model):
         """Test GET with explicit tier=2 returns tier 2 profile."""

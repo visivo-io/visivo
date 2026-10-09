@@ -112,8 +112,8 @@ class TestProfilingService:
         # Amount column should have numeric stats
         amount_col = next(c for c in columns if c["name"] == "amount")
         assert "avg" in amount_col
-        assert "std" in amount_col
-        assert "q50" in amount_col
+        assert amount_col["std_dev"] is not None
+        assert amount_col["median"] is not None
 
     def test_tier2_profile_nonexistent(self, profiling_service):
         """Test tier 2 profiling raises FileNotFoundError for non-existent file."""
@@ -458,3 +458,191 @@ class TestValueConversion:
         assert service._convert_duckdb_value(Decimal("1.5")) == 1.5
         assert service._convert_duckdb_value("text") == "text"
         assert service._null_count(None, 10) is None
+
+
+class TestTheUnifiedShape:
+    """VIS-1412: one column shape for the viewer and the agent, numbers as
+    numbers, plus the extras the shape-card classifier reads."""
+
+    def _profile(self, tmp_path):
+        import datetime
+
+        table = pa.table(
+            {
+                "id": pa.array(range(1, 61), type=pa.int64()),
+                "amount": pa.array([float(i % 7) for i in range(60)], type=pa.float64()),
+                "category": pa.array([["A", "B", "C"][i % 3] for i in range(60)], type=pa.string()),
+                "day": pa.array([datetime.date(2024, 1, 1 + i % 10) for i in range(60)]),
+            }
+        )
+        _write_model(str(tmp_path), "shape", table)
+        return ProfilingService(str(tmp_path)).profile_model("shape")
+
+    def test_field_names_match_the_viewer(self, tmp_path):
+        amount = next(c for c in self._profile(tmp_path)["columns"] if c["name"] == "amount")
+
+        assert set(amount) >= {
+            "name",
+            "type",
+            "null_count",
+            "null_percentage",
+            "distinct",
+            "min",
+            "max",
+            "avg",
+            "median",
+            "std_dev",
+            "q25",
+            "q75",
+            "p99",
+            "zeros_pct",
+            "avg_length",
+            "top_values",
+        }
+        assert isinstance(amount["avg"], float) and isinstance(amount["std_dev"], float)
+        assert amount["distinct"] == 7 and amount["null_count"] == 0
+        assert amount["zeros_pct"] == pytest.approx(9 / 60)
+        assert amount["p99"] is not None
+
+    def test_text_columns_get_length_and_top_values_and_no_numeric_stats(self, tmp_path):
+        category = next(c for c in self._profile(tmp_path)["columns"] if c["name"] == "category")
+
+        assert category["avg_length"] == 1.0 and category["avg"] is None
+        assert [t["value"] for t in category["top_values"]] == ["A", "B", "C"]
+        assert category["top_values"][0]["count"] == 20
+
+    def test_bounds_are_typed(self, tmp_path):
+        columns = {c["name"]: c for c in self._profile(tmp_path)["columns"]}
+
+        assert columns["id"]["min"] == 1 and columns["id"]["max"] == 60
+        assert columns["amount"]["max"] == 6.0
+        assert columns["category"]["min"] == "A"
+        assert columns["day"]["min"] == "2024-01-01"
+
+    def test_a_column_subset(self, tmp_path):
+        self._profile(tmp_path)
+        profile = ProfilingService(str(tmp_path)).profile_model("shape", columns=["amount"])
+
+        assert [c["name"] for c in profile["columns"]] == ["amount"]
+
+    def test_wide_tables_are_capped_and_flagged(self, tmp_path):
+        from visivo.server.services.profiling_service import MAX_PROFILE_COLUMNS
+
+        wide = pa.table({f"c{i}": pa.array([1, 2, 3]) for i in range(MAX_PROFILE_COLUMNS + 5)})
+        _write_model(str(tmp_path), "wide", wide)
+
+        profile = ProfilingService(str(tmp_path)).profile_model("wide")
+
+        assert (
+            len(profile["columns"]) == MAX_PROFILE_COLUMNS and profile["columns_truncated"] is True
+        )
+
+    def test_shape_cards_come_from_the_same_profile(self, tmp_path):
+        service = ProfilingService(str(tmp_path))
+        cards = {c["column"]: c for c in service.shape_cards(self._profile(tmp_path))}
+
+        assert cards["id"]["role"] == "identifier"
+        assert cards["amount"]["role"] == "numeric_discrete"
+        assert (
+            cards["category"]["role"] == "categorical"
+            and cards["category"]["cardinality_bucket"] == "few"
+        )
+        assert cards["day"]["role"] == "time" and cards["day"]["time_grain"] == "day"
+
+    def test_the_cache_is_bypassed_for_custom_requests(self, tmp_path):
+        service = ProfilingService(str(tmp_path))
+        first = self._profile(tmp_path)
+        service._cache["tier2_shape"] = first
+        service._cache_timestamps["tier2_shape"] = time.time()
+
+        assert service.profile_model("shape") is first
+        assert (
+            service.profile_model("shape", top_n=1)["columns"][2]["top_values"][:1]
+            != first["columns"][2]["top_values"]
+        )
+
+
+class TestProfileQuery:
+    """Any SQL on any source: a bounded sample into DuckDB, an exact count
+    beside it, the same shape out."""
+
+    def _source(self, integration_app):
+        return integration_app.project.sources[0]
+
+    def test_a_query_profiles_like_a_model(self, integration_app, tmp_path):
+        profile = ProfilingService(str(tmp_path)).profile_query(
+            self._source(integration_app), "SELECT x, y FROM test_table"
+        )
+
+        assert profile["row_count"] == 6 and profile["sampled"] is False
+        x = next(c for c in profile["columns"] if c["name"] == "x")
+        assert x["distinct"] == 6 and x["min"] == 1 and x["max"] == 6 and x["avg"] == 3.5
+
+    def test_a_small_sample_is_flagged_and_the_count_is_still_exact(
+        self, integration_app, tmp_path
+    ):
+        profile = ProfilingService(str(tmp_path)).profile_query(
+            self._source(integration_app), "SELECT x FROM test_table", sample_rows=2
+        )
+
+        assert (
+            profile["row_count"] == 6 and profile["sampled"] is True and profile["sample_rows"] == 2
+        )
+
+    def test_the_sample_is_bounded_in_the_sources_dialect(
+        self, integration_app, tmp_path, monkeypatch
+    ):
+        from visivo.server.services import profiling_service as module
+
+        seen = []
+
+        def fake(source, sql, **kwargs):
+            seen.append((sql, kwargs))
+            return {
+                "columns": ["x"],
+                "rows": [{"x": 1}],
+                "row_count": 1,
+                "truncated": False,
+                "execution_time_ms": 1,
+            }
+
+        monkeypatch.setattr(module, "execute_and_get_result", fake)
+        ProfilingService(str(tmp_path)).profile_query(
+            self._source(integration_app), "SELECT x FROM test_table", sample_rows=5, timeout_s=3
+        )
+
+        sample_sql, kwargs = seen[0]
+        assert "LIMIT 5" in sample_sql and kwargs == {"max_rows": 5, "timeout_s": 3}
+        assert "COUNT(*)" in seen[1][0]
+
+    def test_a_failed_count_falls_back_to_the_sample_size(
+        self, integration_app, tmp_path, monkeypatch
+    ):
+        from visivo.server.services import profiling_service as module
+
+        def flaky(source, sql, **kwargs):
+            if "COUNT(*)" in sql:
+                raise RuntimeError("count timed out")
+            return {
+                "columns": ["x"],
+                "rows": [{"x": 1}, {"x": 2}],
+                "row_count": 2,
+                "truncated": False,
+                "execution_time_ms": 1,
+            }
+
+        monkeypatch.setattr(module, "execute_and_get_result", flaky)
+        profile = ProfilingService(str(tmp_path)).profile_query(
+            self._source(integration_app), "SELECT x FROM test_table"
+        )
+
+        assert profile["row_count"] == 2 and profile["sampled"] is False
+
+    def test_an_empty_result_profiles_to_zero_rows(self, integration_app, tmp_path):
+        profile = ProfilingService(str(tmp_path)).profile_query(
+            self._source(integration_app), "SELECT x FROM test_table WHERE x > 100"
+        )
+
+        assert profile["row_count"] == 0
+        assert profile["columns"] == []
+        assert profile["sampled"] is False
