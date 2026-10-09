@@ -99,9 +99,16 @@ class TestTheAgentCanSeeTheVocabulary:
         assert "TemplateDashboard" in slice_text
         assert "data-visivo-item" in slice_text
 
-    def test_the_skill_ships_and_reaches_the_prompt(self):
-        # One copy, two readers: `as_prompt` feeds the built-in loop and
-        # `packaged` feeds the MCP surface. Asserting the prompt covers both,
-        # since it is built from `packaged`.
-        assert "template-dashboards" in [s["name"] for s in skills.packaged()]
-        assert "data-visivo-item" in skills.as_prompt()
+    def test_the_skill_ships_and_is_discoverable(self):
+        """Listed in the index, with a body an agent can fetch.
+
+        Asserted against the index rather than the prompt TEXT: skills moved to
+        progressive disclosure, so an on-demand skill contributes its summary
+        line to the prompt and its body only when asked for. Checking the
+        prompt for the body passed only while every skill was inlined.
+        """
+        listed = {name for name, _, _ in skills.index()}
+
+        assert "template-dashboards" in listed
+        assert "template-dashboards" in skills.as_prompt()
+        assert "data-visivo-item" in skills.body("template-dashboards")
