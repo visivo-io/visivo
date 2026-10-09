@@ -76,3 +76,35 @@ class TestReferencedSourceName:
         assert res.referenced_source_name(Mock(source=None)) is None
         assert res.referenced_source_name(Mock(source="not a ref")) is None
         assert res.referenced_source_name(Mock(source=DuckdbSourceFactory())) is None
+
+
+class TestSourceForModel:
+    def test_the_dag_answer_wins(self):
+        app = _app()
+        source = DuckdbSourceFactory(name="wh")
+        app.project.dag.return_value = "dag"
+        import visivo.jobs.utils as utils
+
+        original = utils.get_source_for_model
+        utils.get_source_for_model = lambda model, dag, output_dir: source
+        try:
+            assert res.source_for_model(app, SqlModelFactory(name="m"), "/tmp") is source
+        finally:
+            utils.get_source_for_model = original
+
+    def test_falls_back_to_the_models_own_ref(self):
+        source = DuckdbSourceFactory(name="wh")
+        app = _app(committed_sources=[source])
+        app.project.dag.side_effect = RuntimeError("not in the dag")
+
+        model = SqlModelFactory(name="m", source="ref(wh)")
+        assert res.source_for_model(app, model, "/tmp") is source
+
+    def test_none_when_nothing_resolves(self):
+        app = _app()
+        app.project.dag.side_effect = RuntimeError("no dag")
+
+        assert (
+            res.source_for_model(app, SqlModelFactory(name="m", source="ref(ghost)"), "/tmp")
+            is None
+        )

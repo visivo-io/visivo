@@ -31,12 +31,11 @@ POST rather than GET because the draft form carries SQL in the body.
 
 from flask import jsonify, request
 
-from visivo.jobs.utils import get_source_for_model
 from visivo.logger.logger import Logger
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.model_schema_inference import infer_model_columns
 from visivo.query.schema_aggregator import SchemaAggregator
-from visivo.server.source_resolution import find_model, find_source, referenced_source_name
+from visivo.server.source_resolution import find_model, find_source, source_for_model
 
 
 def _columns_payload(column_map: dict) -> list:
@@ -100,8 +99,6 @@ def register_model_schema_views(app, flask_app, output_dir):
         """
         try:
             body = request.get_json(silent=True) or {}
-            project = flask_app.project
-
             model = find_model(flask_app, model_name)
             if model is None:
                 return jsonify({"error": f"Model '{model_name}' not found"}), 404
@@ -119,19 +116,7 @@ def register_model_schema_views(app, flask_app, output_dir):
             if source_name:
                 source = find_source(flask_app, source_name)
             else:
-                try:
-                    source = get_source_for_model(model, project.dag(), output_dir)
-                except Exception:
-                    # The DAG walk assumes the model is IN the DAG; an
-                    # uncommitted one never is.
-                    source = None
-                if source is None:
-                    # Fall back to the name the model itself carries, resolved
-                    # through the managers — the only path that works for a
-                    # draft model whose source is a ref string.
-                    referenced = referenced_source_name(model)
-                    if referenced:
-                        source = find_source(flask_app, referenced)
+                source = source_for_model(flask_app, model, output_dir)
 
             if source is None:
                 return (

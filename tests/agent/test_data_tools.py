@@ -378,3 +378,229 @@ class TestQuerySource:
     def test_sql_is_required(self, integration_app):
         with pytest.raises(ToolError, match="'sql' is required"):
             call(integration_app, "query_source", {"source": _source(integration_app).name})
+
+
+class TestProfileColumns:
+    def test_a_table_profiles_into_cards(self, integration_app):
+        result = call(
+            integration_app,
+            "profile_columns",
+            {"source": _source(integration_app).name, "table": "test_table"},
+        )
+
+        assert result["note"] == data_tools.DATA_NOTICE and result["row_count"] == 6
+        cards = {c["column"]: c for c in result["cards"]}
+        assert cards["x"]["role"] == "numeric_discrete" and cards["x"]["cardinality"] == 6
+        assert cards["y"]["top_n"] and "raw profile" not in json.dumps(result)
+        assert result["sql"].upper().startswith("SELECT * FROM")
+
+    def test_a_query_profiles_too_and_is_guarded(self, integration_app):
+        result = call(
+            integration_app,
+            "profile_columns",
+            {
+                "source": _source(integration_app).name,
+                "sql": "SELECT x, y * 2 AS y2 FROM test_table",
+            },
+        )
+
+        assert [c["column"] for c in result["cards"]] == ["x", "y2"]
+        with pytest.raises(ToolError, match="Only read queries"):
+            call(
+                integration_app,
+                "profile_columns",
+                {"source": _source(integration_app).name, "sql": "DELETE FROM test_table"},
+            )
+
+    def test_exactly_one_of_table_or_sql(self, integration_app):
+        with pytest.raises(ToolError, match="exactly one"):
+            call(integration_app, "profile_columns", {"source": _source(integration_app).name})
+        with pytest.raises(ToolError, match="exactly one"):
+            call(
+                integration_app,
+                "profile_columns",
+                {"source": _source(integration_app).name, "table": "t", "sql": "select 1"},
+            )
+
+    def test_columns_and_sample_rows_are_honoured(self, integration_app, monkeypatch):
+        seen = {}
+        original = data_tools.ProfilingService.profile_query
+
+        def spy(self, source, sql, **kwargs):
+            seen.update(kwargs)
+            return original(self, source, sql, **kwargs)
+
+        monkeypatch.setattr(data_tools.ProfilingService, "profile_query", spy)
+        result = call(
+            integration_app,
+            "profile_columns",
+            {
+                "source": _source(integration_app).name,
+                "table": "test_table",
+                "columns": ["y"],
+                "sample_rows": 3,
+            },
+        )
+
+        assert seen["columns"] == ["y"] and seen["sample_rows"] == 3 and seen["timeout_s"] == 20
+        assert [c["column"] for c in result["cards"]] == ["y"]
+        assert result["sampled"] is True and result["row_count"] == 6
+
+    def test_too_many_columns_is_a_refusal(self, integration_app):
+        with pytest.raises(ToolError, match="at most 40"):
+            call(
+                integration_app,
+                "profile_columns",
+                {
+                    "source": _source(integration_app).name,
+                    "table": "test_table",
+                    "columns": [f"c{i}" for i in range(41)],
+                },
+            )
+
+    def test_a_bad_table_is_a_refusal_with_the_driver_message(self, integration_app):
+        with pytest.raises(ToolError, match="Could not profile"):
+            call(
+                integration_app,
+                "profile_columns",
+                {"source": _source(integration_app).name, "table": "no_such_table"},
+            )
+
+    def test_a_timeout_is_a_refusal(self, integration_app, monkeypatch):
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        def slow(self, *args, **kwargs):
+            raise QueryTimeout("Query did not return within 20s.")
+
+        monkeypatch.setattr(data_tools.ProfilingService, "profile_query", slow)
+        with pytest.raises(ToolError, match="within 20s"):
+            call(
+                integration_app,
+                "profile_columns",
+                {"source": _source(integration_app).name, "table": "test_table"},
+            )
+
+
+class TestProfileModel:
+    def _write_model(self, integration_app, name="built_model"):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        import os
+
+        from visivo.output_paths import model_data_file, run_dir
+
+        call(
+            integration_app,
+            "write_model",
+            {
+                "config": {
+                    "name": name,
+                    "sql": "SELECT x FROM test_table",
+                    "source": f"ref({_source(integration_app).name})",
+                }
+            },
+        )
+        path = model_data_file(run_dir(integration_app.output_dir), name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        pq.write_table(
+            pa.table({"x": pa.array([1, 2, 3, 3]), "kind": pa.array(["a", "b", "a", "a"])}), path
+        )
+        return name
+
+    def test_a_built_model_profiles_from_its_parquet(self, integration_app):
+        name = self._write_model(integration_app)
+
+        result = call(integration_app, "profile_model", {"name": name, "columns": ["kind"]})
+
+        assert result["model"] == name and result["row_count"] == 4
+        assert [c["column"] for c in result["cards"]] == ["kind"] and result["cards"][0][
+            "role"
+        ] == "categorical"
+
+    def test_an_unbuilt_model_says_how_to_profile_it_anyway(self, integration_app):
+        call(
+            integration_app,
+            "write_model",
+            {
+                "config": {
+                    "name": "unbuilt",
+                    "sql": "SELECT 1 AS one",
+                    "source": f"ref({_source(integration_app).name})",
+                }
+            },
+        )
+
+        with pytest.raises(ToolError, match="no built data yet"):
+            call(integration_app, "profile_model", {"name": "unbuilt"})
+
+    def test_an_unknown_model_is_a_refusal(self, integration_app):
+        with pytest.raises(ToolError, match="No model named"):
+            call(integration_app, "profile_model", {"name": "ghost"})
+        with pytest.raises(ToolError, match="required"):
+            call(integration_app, "profile_model", {})
+
+
+class TestInferColumns:
+    def _cache_schema(self, integration_app):
+        call(integration_app, "describe_source", {"name": _source(integration_app).name})
+
+    def test_sql_plus_source(self, integration_app):
+        self._cache_schema(integration_app)
+
+        result = call(
+            integration_app,
+            "infer_columns",
+            {"sql": "SELECT x, y AS why FROM test_table", "source": _source(integration_app).name},
+        )
+
+        assert [c["name"] for c in result["columns"]] == ["why", "x"]
+        assert result["source_schema_cached"] is True and result["warnings"] == []
+
+    def test_a_draft_model_resolves_its_own_source(self, integration_app):
+        self._cache_schema(integration_app)
+        call(
+            integration_app,
+            "write_model",
+            {
+                "config": {
+                    "name": "drafted",
+                    "sql": "SELECT x FROM test_table",
+                    "source": f"ref({_source(integration_app).name})",
+                }
+            },
+        )
+
+        result = call(integration_app, "infer_columns", {"model": "drafted"})
+
+        assert [c["name"] for c in result["columns"]] == ["x"] and result["source"] == _source(
+            integration_app
+        ).name
+
+    def test_an_unaliased_expression_is_called_out(self, integration_app):
+        self._cache_schema(integration_app)
+
+        result = call(
+            integration_app,
+            "infer_columns",
+            {"sql": "SELECT x, y * 2 FROM test_table", "source": _source(integration_app).name},
+        )
+
+        names = [c["name"] for c in result["columns"]]
+        assert "x" in names and len(names) == 2
+        assert result["warnings"] and "alias" in result["warnings"][0]
+
+    def test_arguments_are_checked(self, integration_app):
+        with pytest.raises(ToolError, match="Pass 'model', or 'sql'"):
+            call(integration_app, "infer_columns", {"sql": "select 1"})
+        with pytest.raises(ToolError, match="No model named"):
+            call(integration_app, "infer_columns", {"model": "ghost"})
+        with pytest.raises(ToolError, match="No source resolved"):
+            call(integration_app, "infer_columns", {"sql": "select 1", "source": "nope"})
+
+    def test_a_model_without_sql_is_a_refusal(self, integration_app, monkeypatch):
+        monkeypatch.setattr(
+            data_tools, "find_model", lambda app, name: type("M", (), {"sql": None})()
+        )
+
+        with pytest.raises(ToolError, match="no SQL"):
+            call(integration_app, "infer_columns", {"model": "csvish"})

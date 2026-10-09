@@ -77,3 +77,21 @@ def referenced_source_name(model):
         if match:
             return match.group("model_name")
     return None
+
+
+def source_for_model(flask_app, model, output_dir):
+    """The source a model reads from, for a committed or a draft model.
+
+    The DAG walk is the normal answer; an uncommitted model is not in the DAG,
+    so the name the model itself carries is tried next.
+    """
+    from visivo.jobs.utils import get_source_for_model
+
+    try:
+        source = get_source_for_model(model, flask_app.project.dag(), output_dir)
+    except Exception:
+        source = None
+    if source is not None:
+        return source
+    referenced = referenced_source_name(model)
+    return find_source(flask_app, referenced) if referenced else None
