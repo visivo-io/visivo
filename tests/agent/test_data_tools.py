@@ -604,3 +604,170 @@ class TestInferColumns:
 
         with pytest.raises(ToolError, match="no SQL"):
             call(integration_app, "infer_columns", {"model": "csvish"})
+
+
+class TestPreviewInsight:
+    """VIS-1417: the Explorer's draft preview, callable by the agent, with
+    inputs filled in instead of refused."""
+
+    @pytest.fixture
+    def model(self, integration_app):
+        call(integration_app, "describe_source", {"name": _source(integration_app).name})
+        call(
+            integration_app,
+            "write_model",
+            {
+                "config": {
+                    "name": "orders_q",
+                    "sql": "SELECT x, y FROM test_table",
+                    "source": f"ref({_source(integration_app).name})",
+                }
+            },
+        )
+        return "orders_q"
+
+    def _config(self, name="by_x", interactions=None, **props):
+        base = {"type": "bar", "x": "?{${ref(orders_q).x}}", "y": "?{sum(${ref(orders_q).y})}"}
+        base.update(props)
+        config = {"name": name, "props": base}
+        if interactions:
+            config["interactions"] = interactions
+        return config
+
+    def test_a_config_previews_against_the_full_source(self, integration_app, model):
+        result = call(integration_app, "preview_insight", {"config": self._config()})
+
+        assert result["note"] == data_tools.DATA_NOTICE
+        assert (
+            result["row_count"] == 6
+            and result["type"] == "bar"
+            and result["models"] == ["orders_q"]
+        )
+        assert set(result["props_mapping"]) == {"props.x", "props.y"}
+        assert result["inputs_substituted"] == {} and result["truncated"] is False
+
+    def test_a_saved_insight_previews_by_name(self, integration_app, model):
+        call(integration_app, "write_insight", {"config": self._config(name="saved")})
+
+        result = call(integration_app, "preview_insight", {"name": "saved", "limit": 2})
+
+        assert (
+            result["insight"] == "saved"
+            and result["row_count"] == 2
+            and result["truncated"] is True
+        )
+
+    def test_an_input_is_filled_with_its_default(self, integration_app, model):
+        call(
+            integration_app,
+            "write_input",
+            {
+                "config": {
+                    "name": "min_x",
+                    "type": "single-select",
+                    "options": ["2", "4"],
+                    "display": {"type": "dropdown", "default": {"value": "4"}},
+                }
+            },
+        )
+        config = self._config(
+            interactions=[{"filter": "?{${ref(orders_q).x} > ${ref(min_x).value}}"}]
+        )
+
+        result = call(integration_app, "preview_insight", {"config": config})
+
+        assert result["inputs_substituted"] == {"min_x": {"value": "4"}}
+        assert result["row_count"] == 2
+
+    def test_input_values_override_the_default(self, integration_app, model):
+        call(
+            integration_app,
+            "write_input",
+            {"config": {"name": "min_x", "type": "single-select", "options": ["2", "4"]}},
+        )
+        config = self._config(
+            interactions=[{"filter": "?{${ref(orders_q).x} > ${ref(min_x).value}}"}]
+        )
+
+        result = call(
+            integration_app, "preview_insight", {"config": config, "input_values": {"min_x": 2}}
+        )
+
+        assert (
+            result["inputs_substituted"] == {"min_x": {"value": "2"}} and result["row_count"] == 4
+        )
+
+    def test_a_multi_select_renders_as_a_list(self, integration_app, model):
+        call(
+            integration_app,
+            "write_input",
+            {"config": {"name": "xs", "type": "multi-select", "options": ["1", "2", "3"]}},
+        )
+        config = self._config(
+            interactions=[{"filter": "?{${ref(orders_q).x} IN (${ref(xs).values})}"}]
+        )
+
+        result = call(
+            integration_app, "preview_insight", {"config": config, "input_values": {"xs": [1, 2]}}
+        )
+
+        assert result["inputs_substituted"]["xs"]["values"] == "1, 2" and result["row_count"] == 2
+
+    def test_a_prop_that_is_the_placeholder_gets_the_bare_value(self, integration_app, model):
+        call(
+            integration_app,
+            "write_input",
+            {
+                "config": {
+                    "name": "mode_toggle",
+                    "type": "single-select",
+                    "options": ["lines", "markers"],
+                }
+            },
+        )
+        config = self._config(type="scatter", mode="${ref(mode_toggle).value}")
+
+        result = call(
+            integration_app,
+            "preview_insight",
+            {"config": config, "input_values": {"mode_toggle": "markers"}},
+        )
+
+        assert result["inputs_substituted"] == {"mode_toggle": {"value": "'markers'"}}
+        assert result["type"] == "scatter"
+
+    def test_a_ref_to_nothing_is_left_for_the_compiler_to_refuse(self, integration_app, model):
+        config = self._config(
+            interactions=[{"filter": "?{${ref(orders_q).x} > ${ref(ghost).value}}"}]
+        )
+
+        with pytest.raises(ToolError):
+            call(integration_app, "preview_insight", {"config": config})
+
+    def test_a_broken_query_is_a_refusal_with_the_reason(self, integration_app, model):
+        config = self._config(y="?{sum(${ref(orders_q).nope})}")
+
+        with pytest.raises(ToolError):
+            call(integration_app, "preview_insight", {"config": config})
+
+    def test_arguments_are_checked(self, integration_app):
+        with pytest.raises(ToolError, match="Pass 'name'"):
+            call(integration_app, "preview_insight", {})
+        with pytest.raises(ToolError, match="No insight named"):
+            call(integration_app, "preview_insight", {"name": "ghost"})
+        with pytest.raises(ToolError, match="input_values"):
+            call(
+                integration_app,
+                "preview_insight",
+                {"config": {"name": "x"}, "input_values": "West"},
+            )
+
+    def test_rendering_rules(self):
+        assert data_tools._render_input_value("West", "value") == "'West'"
+        assert data_tools._render_input_value("5", "value") == "5"
+        assert data_tools._render_input_value("O'Hare", "value") == "'O''Hare'"
+        assert data_tools._render_input_value(True, "value") == "TRUE"
+        assert data_tools._render_input_value([1, 5], "min") == "1"
+        assert data_tools._render_input_value([1, 5], "max") == "5"
+        assert data_tools._render_input_value([], "first") == "NULL"
+        assert data_tools._render_input_value(["a", "b"], "values") == "'a', 'b'"

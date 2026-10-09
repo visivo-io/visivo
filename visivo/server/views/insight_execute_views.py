@@ -34,158 +34,34 @@ Response contract:
 
 from flask import request, jsonify
 
-from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
-from visivo.jobs.run_model_data_job import execute_and_get_result
-from visivo.jobs.utils import get_source_for_model
-from visivo.query.insight.draft_overlay import build_draft_overlay, DraftOverlayError
-from visivo.server.views.insight_draft_common import (
-    parse_draft_request,
-    build_schema_overrides,
-    is_model_not_run_error,
-    extract_model_not_run_name,
-)
+from visivo.server.services.draft_insight import DraftInsightError, execute_draft_insight
+from visivo.server.views.insight_draft_common import parse_draft_request
 
 from visivo.server.views.temporal_json import isoformat_temporal_values
 
 
 def register_insight_execute_views(app, flask_app, output_dir):
     @app.route("/api/insight-execute-draft/", methods=["POST"])
-    def execute_draft_insight():
+    def execute_draft_insight_view():
         fields, error = parse_draft_request(request.get_json(silent=True))
         if error:
             return error
-        insight_config = fields["insight_config"]
-        draft_models = fields["draft_models"]
-        draft_metrics = fields["draft_metrics"]
-        draft_dimensions = fields["draft_dimensions"]
-        model_schemas = fields["model_schemas"]
-
         try:
-            project, dag, insight = build_draft_overlay(
+            result = execute_draft_insight(
                 flask_app,
-                insight_config,
-                draft_models=draft_models,
-                draft_metrics=draft_metrics,
-                draft_dimensions=draft_dimensions,
+                output_dir,
+                fields["insight_config"],
+                draft_models=fields["draft_models"],
+                draft_metrics=fields["draft_metrics"],
+                draft_dimensions=fields["draft_dimensions"],
+                model_schemas=fields["model_schemas"],
             )
-        except DraftOverlayError as e:
-            return jsonify({"error": str(e)}), 400
-        except Exception as e:
-            Logger.instance().error(f"execute-draft: overlay build failed: {e}")
-            return jsonify({"error": str(e)}), 400
-
-        schema_overrides = build_schema_overrides(dag, model_schemas)
-        run_output_dir = f"{output_dir}/{DEFAULT_RUN_ID}"
-
-        # Reject a genuinely MULTI-SOURCE insight up front (before the query
-        # build). A relation-join insight spans >1 model and the built pre_query
-        # embeds every model's CTE, so all dependent models must resolve to ONE
-        # source for a single source.read_sql to be correct. get_dependent_source
-        # picks an ARBITRARY model's source rather than enforcing this, so a
-        # two-source insight would otherwise execute against one source and
-        # surface a raw "table does not exist" driver error for the other's
-        # tables. `dependent_models` is reused for the response payload below.
-        try:
-            dependent_models = insight.get_all_dependent_models(dag)
-            source_names = {
-                src.name
-                for src in (get_source_for_model(m, dag, run_output_dir) for m in dependent_models)
-                if src
-            }
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
-        if len(source_names) > 1:
-            return (
-                jsonify(
-                    {
-                        "error": (
-                            f"Insight '{insight.name}' references models from more than one "
-                            f"source ({', '.join(sorted(source_names))}) and cannot be "
-                            "previewed server-side."
-                        ),
-                        "error_type": "multi_source",
-                    }
-                ),
-                400,
-            )
-
-        try:
-            query_info = insight.get_query_info(
-                dag,
-                run_output_dir,
-                schema_overrides=schema_overrides or None,
-                # The real source query (pre_query), NOT the DuckDB-over-sample
-                # post_query the compile endpoint returns.
-                force_dynamic=False,
-            )
-        except Exception as e:
-            message = str(e)
-            if is_model_not_run_error(message):
-                return (
-                    jsonify(
-                        {
-                            "error": message,
-                            "error_type": "model_not_run",
-                            "model": extract_model_not_run_name(message),
-                        }
-                    ),
-                    422,
-                )
-            Logger.instance().error(f"execute-draft: query build failed: {e}")
-            return jsonify({"error": message}), 400
-
-        # A dynamic insight (references a real Input) has pre_query=None — its
-        # query carries unfilled ${input} placeholders the server can't bake, so
-        # tell the client to fall back to its own DuckDB sample lane.
-        if query_info.pre_query is None:
-            return (
-                jsonify(
-                    {
-                        "error": "Insight query is dynamic (references an input); cannot execute server-side",
-                        "error_type": "requires_client_lane",
-                    }
-                ),
-                409,
-            )
-
-        # `dependent_models` and the single-source guarantee were established
-        # above, so this resolves the one shared source for execution.
-        try:
-            source = insight.get_dependent_source(dag, run_output_dir)
-        except Exception as e:
-            # No dependent models, or no resolvable source for them.
-            return jsonify({"error": str(e)}), 400
-
-        try:
-            # No output_dir/name → pure in-memory execution, no parquet written.
-            result = execute_and_get_result(source=source, sql=query_info.pre_query)
-        except Exception as e:
-            message = str(e)
-            Logger.instance().error(f"execute-draft: source execution failed: {e}")
-            return jsonify({"error": message}), 400
-
-        insight_type = None
-        if insight.props is not None and insight.props.type is not None:
-            insight_type = insight.props.type.value
-
-        # `dependent_models` is already resolved above (the multi-source check).
+        except DraftInsightError as refused:
+            return jsonify(refused.payload), refused.status
+        # rows are the FINAL chart rows; ISO-8601 so the client's DuckDB lane
+        # reads them without coercion.
         return (
-            jsonify(
-                {
-                    # columns, rows, row_count, execution_time_ms — rows are the
-                    # FINAL chart rows.
-                    **result,
-                    "rows": isoformat_temporal_values(result.get("rows") or []),
-                    "props_mapping": query_info.props_mapping,
-                    "static_props": query_info.static_props,
-                    "props_slices": query_info.props_slices,
-                    "split_key": query_info.split_key,
-                    "type": insight_type,
-                    "models": [
-                        {"name": m.name, "name_hash": m.name_hash()} for m in dependent_models
-                    ],
-                }
-            ),
+            jsonify({**result, "rows": isoformat_temporal_values(result.get("rows") or [])}),
             200,
         )
