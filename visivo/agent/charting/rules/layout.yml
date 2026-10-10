@@ -1,0 +1,138 @@
+# How recommend_layout arranges a dashboard (VIS-1432). Every number here is
+# derived in specs/chart-selection/03-layout-research.md from the viewer
+# (Dashboard.jsx) and the Row/Item models; the policy choices are labelled
+# there as such. Widths are 12-unit columns; heights are Row tokens.
+grid:
+  width_total: 12
+  stack_breakpoint_px: 1024     # below this container width every item stacks full width
+  max_depth: 1                  # one container level; a nested row stacks against its own slot
+  max_items: 12                 # charts + tables per dashboard, then split by `level`
+  max_content_rows: 8           # rows that are not headers or inputs
+  max_adjacent_large: 1         # two >=large rows in a row need a header between them
+  max_inputs: 4                 # global inputs in the top row
+
+# Sections are emitted in this order; a role with no items is dropped.
+order: [inputs, header, kpi, hero, breakdown, relationship, detail]
+
+# intent chooses which family fills the hero slot; it never reorders sections.
+hero_by_intent:
+  trend: line
+  change: line
+  geo: geo_region
+  flow: flow
+  distribution: distribution
+  relationship: xy
+  compare: bar
+  rank: bar
+  composition: bar
+  kpi: null
+  detail: null
+
+# Where a chart of each family goes when the caller does not say.
+row_role_by_family:
+  kpi: kpi
+  line: hero
+  area: hero
+  xy: relationship
+  bar: breakdown
+  heatmap: breakdown
+  distribution: relationship
+  density2d: relationship
+  part_of_whole: breakdown
+  hierarchy: breakdown
+  flow: hero
+  funnel: breakdown
+  waterfall: breakdown
+  geo_region: hero
+  geo_point: hero
+  geo_density: hero
+  financial: hero
+  multivariate: relationship
+  polar: breakdown
+  ternary_smith: relationship
+  three_d: relationship
+  carpet: relationship
+  image: breakdown
+  table: detail
+
+rules:
+  - row_role: inputs
+    height: compact
+    max_per_row: 4
+    widths: {1: [12], 2: [6, 6], 3: [4, 4, 4], 4: [3, 3, 3, 3]}
+    notes: First row. Every input is referenced by an insight on this dashboard; a single-chart input sits beside its chart as [8, 4].
+  - row_role: header
+    height: compact
+    max_per_row: 1
+    widths: {1: [12]}
+    notes: "One markdown item: '## Title' plus one sentence saying what to look for."
+  - row_role: kpi
+    height: small                # xsmall leaves ~0 px of plot area under Plotly's default margins
+    max_per_row: 4
+    widths: {1: [12], 2: [6, 6], 3: [4, 4, 4], 4: [3, 3, 3, 3]}
+    notes: Most important first; a fifth KPI starts a second row, never a 5-wide one.
+  - row_role: hero
+    height: large
+    max_per_row: 1
+    widths: {1: [12]}
+    notes: The intent's family, full width; with related KPIs it becomes the kpi_cluster [8, 4].
+  - row_role: breakdown
+    height: medium
+    max_per_row: 3
+    widths: {1: [12], 2: [6, 6], 3: [4, 4, 4]}
+    notes: Peers split evenly; lead with the most important item because it stacks to the top.
+  - row_role: relationship
+    height: large
+    max_per_row: 2
+    widths: {1: [12], 2: [6, 6]}
+    notes: Scatter, heatmap and distributions need area; never three across.
+  - row_role: detail
+    height: large
+    max_per_row: 1
+    widths: {1: [12]}
+    notes: Tables last, alone, full width; height by expected rows (detail_height_by_rows).
+
+templates:
+  - {name: kpi, widths: [3, 3, 3, 3], height: small, slots: [kpi, kpi, kpi, kpi]}
+  - {name: hero, widths: [12], height: large, slots: [hero]}
+  - {name: 2up, widths: [6, 6], height: medium, slots: [breakdown, breakdown]}
+  - {name: 3up, widths: [4, 4, 4], height: medium, slots: [breakdown, breakdown, breakdown]}
+  - {name: mix, widths: [8, 4], height: medium, slots: [chart, side_panel]}
+  - name: kpi_cluster
+    widths: [8, 4]
+    height: large
+    slots: [hero, kpi_container]
+    notes: The container holds up to three single-KPI sub-rows; a nested 2x2 always stacks (Dashboard.jsx:692).
+  - {name: blank, widths: [12], height: medium, slots: [any]}
+
+# Per-family height when a chart is not in its role's default position.
+height_by_family:
+  kpi: small
+  line: medium
+  area: medium
+  xy: medium
+  bar: medium
+  part_of_whole: medium
+  distribution: medium
+  density2d: medium
+  funnel: medium
+  waterfall: medium
+  polar: medium
+  heatmap: medium
+  hierarchy: large
+  flow: large
+  geo_region: large
+  geo_point: large
+  geo_density: large
+  financial: large
+  multivariate: large
+  table: large
+
+heatmap_height: {base: 128, per_category: 20, stops: [256, 396, 512, 768, 1024], max_px: 2048}
+
+# ~36 px per table row and 60 px of chrome: small shows ~3 rows, medium ~7.
+detail_height_by_rows: {3: small, 7: medium}
+
+compact_allowed_kinds: [markdown, input]   # a chart in a compact row renders 1024 px tall
+
+kpi_cluster: {widths: [8, 4], max_kpis: 3, sub_row_height: small}

@@ -310,20 +310,161 @@ class TraceEntry(_Strict):
         return self
 
 
+HEIGHT_TOKENS = ("compact", "xsmall", "small", "medium", "large", "xlarge", "xxlarge")
+
+# What each token resolves to at the top level (viewer Dashboard.jsx:370-378).
+# `compact` wraps to content and is only safe for markdown and inputs.
+HEIGHT_PX = {
+    "xsmall": 128,
+    "small": 256,
+    "medium": 396,
+    "large": 512,
+    "xlarge": 768,
+    "xxlarge": 1024,
+}
+
+
+def height_px(height):
+    """Pixels for a height token or int; ``None`` for ``compact``."""
+    if isinstance(height, int):
+        return height
+    return HEIGHT_PX.get(height)
+
+
+def _check_height(value):
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        raise ValueError(f"height must be a token or a positive int, got {value!r}")
+    if isinstance(value, int) and value <= 0:
+        raise ValueError("a pixel height must be positive")
+    if isinstance(value, str) and value not in HEIGHT_TOKENS:
+        raise ValueError(f"'{value}' is not one of {HEIGHT_TOKENS}")
+    return value
+
+
 class LayoutRule(_Strict):
-    """One row of ``layout.yml``: how a row role is sized and bounded."""
+    """One row of ``layout.yml``: how a row role is sized and bounded.
+    ``widths`` maps an item count to 12-unit column widths."""
 
     row_role: RowRole
     height: Union[str, int] = "medium"
     max_per_row: int = Field(default=4, ge=1)
-    width_shares: List[float] = Field(default_factory=list)
+    widths: Dict[int, List[int]] = Field(default_factory=dict)
     notes: Optional[str] = None
 
     @model_validator(mode="after")
-    def _shares_sum_to_one(self):
-        if self.width_shares and abs(sum(self.width_shares) - 1.0) > 1e-6:
-            raise ValueError("width_shares must sum to 1")
+    def _consistent(self):
+        _check_height(self.height)
+        for count, widths in self.widths.items():
+            if count > self.max_per_row:
+                raise ValueError(f"widths for {count} items exceed max_per_row {self.max_per_row}")
+            if len(widths) != count or sum(widths) != 12 or any(w <= 0 for w in widths):
+                raise ValueError(
+                    f"widths for {count} items must be {count} positive ints summing to 12"
+                )
         return self
+
+    def widths_for(self, count):
+        """The 12-unit widths for ``count`` items; an even split when the file
+        does not name one (12 is divisible by 1, 2, 3, 4, 6)."""
+        if count in self.widths:
+            return list(self.widths[count])
+        if count <= 0 or 12 % count:
+            raise ValueError(f"no width rule for {count} items in a {self.row_role} row")
+        return [12 // count] * count
+
+
+class LayoutTemplate(_Strict):
+    name: str
+    widths: List[int] = Field(min_length=1)
+    height: Union[str, int] = "medium"
+    slots: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _twelve(self):
+        _check_height(self.height)
+        if sum(self.widths) != 12:
+            raise ValueError(f"template {self.name} widths must sum to 12")
+        return self
+
+
+class HeatmapHeight(_Strict):
+    """A heatmap grows with its vertical category count: ``base + per_category
+    * n`` snapped up to the next height stop, an int past the last stop."""
+
+    base: int = 128
+    per_category: int = 20
+    stops: List[int] = Field(default_factory=lambda: [256, 396, 512, 768, 1024])
+    max_px: int = 2048
+
+    def pick(self, n_categories):
+        px = self.base + self.per_category * max(n_categories, 0)
+        for stop in self.stops:
+            if px <= stop:
+                return next(token for token, value in HEIGHT_PX.items() if value == stop)
+        return min(px, self.max_px)
+
+
+class GridLimits(_Strict):
+    width_total: int = 12
+    stack_breakpoint_px: int = 1024
+    max_depth: int = Field(default=1, ge=0)
+    max_items: int = Field(default=12, ge=1)
+    max_content_rows: int = Field(default=8, ge=1)
+    max_adjacent_large: int = Field(default=1, ge=1)
+    max_inputs: int = Field(default=4, ge=1)
+
+
+class KpiCluster(_Strict):
+    """A hero chart with its KPIs stacked beside it. Never a nested 2×2: a
+    nested row stacks against its own slot width, so a 4-wide slot always
+    renders its sub-rows one above the other."""
+
+    widths: List[int] = Field(default_factory=lambda: [8, 4])
+    max_kpis: int = Field(default=3, ge=1)
+    sub_row_height: str = "small"
+
+    @model_validator(mode="after")
+    def _valid(self):
+        _check_height(self.sub_row_height)
+        if sum(self.widths) != 12 or len(self.widths) != 2:
+            raise ValueError("kpi_cluster widths must be two ints summing to 12")
+        return self
+
+
+class LayoutDoc(_Strict):
+    """The whole of ``layout.yml``."""
+
+    grid: GridLimits = Field(default_factory=GridLimits)
+    order: List[RowRole]
+    hero_by_intent: Dict[Intent, Optional[str]] = Field(default_factory=dict)
+    row_role_by_family: Dict[str, RowRole] = Field(default_factory=dict)
+    rules: List[LayoutRule]
+    templates: List[LayoutTemplate] = Field(default_factory=list)
+    height_by_family: Dict[str, Union[str, int]] = Field(default_factory=dict)
+    heatmap_height: HeatmapHeight = Field(default_factory=HeatmapHeight)
+    compact_allowed_kinds: List[str] = Field(default_factory=lambda: ["markdown", "input"])
+    kpi_cluster: KpiCluster = Field(default_factory=KpiCluster)
+    detail_height_by_rows: Dict[int, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _complete(self):
+        roles = [r.row_role for r in self.rules]
+        if len(roles) != len(set(roles)):
+            raise ValueError("a row role may have one rule only")
+        missing = [role for role in self.order if role not in roles]
+        if missing:
+            raise ValueError(f"order names roles without a rule: {missing}")
+        if len(self.order) != len(set(self.order)):
+            raise ValueError("order repeats a role")
+        for family, height in self.height_by_family.items():
+            _check_height(height)
+        for rows, height in self.detail_height_by_rows.items():
+            _check_height(height)
+        return self
+
+    def rule(self, role):
+        return next(r for r in self.rules if r.row_role == role)
 
 
 # --- what the recommender answers -------------------------------------------

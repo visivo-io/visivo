@@ -224,14 +224,83 @@ class TestTraceEntry:
 
 
 class TestLayoutRule:
-    def test_width_shares_sum_to_one(self):
-        assert LayoutRule(row_role="hero", width_shares=[2 / 3, 1 / 3])
-        with pytest.raises(ValidationError, match="sum to 1"):
-            LayoutRule(row_role="hero", width_shares=[0.5, 0.25])
+    def test_widths_are_twelve_unit_columns_per_item_count(self):
+        rule = LayoutRule(row_role="hero", max_per_row=2, widths={2: [8, 4]})
+        assert rule.widths_for(2) == [8, 4]
+        with pytest.raises(ValidationError, match="summing to 12"):
+            LayoutRule(row_role="hero", widths={2: [6, 5]})
+        with pytest.raises(ValidationError, match="summing to 12"):
+            LayoutRule(row_role="hero", widths={2: [12]})
+        with pytest.raises(ValidationError, match="exceed max_per_row"):
+            LayoutRule(row_role="hero", max_per_row=1, widths={2: [6, 6]})
 
-    def test_heights_may_be_names_or_pixels(self):
+    def test_an_even_split_is_the_fallback(self):
+        rule = LayoutRule(row_role="kpi")
+        assert rule.widths_for(3) == [4, 4, 4] and rule.widths_for(1) == [12]
+        with pytest.raises(ValueError, match="no width rule for 5"):
+            rule.widths_for(5)
+
+    def test_heights_are_row_tokens_or_pixels(self):
         assert LayoutRule(row_role="kpi", height="xsmall").height == "xsmall"
         assert LayoutRule(row_role="kpi", height=180).height == 180
+        with pytest.raises(ValidationError, match="not one of"):
+            LayoutRule(row_role="kpi", height="huge")
+        with pytest.raises(ValidationError, match="positive"):
+            LayoutRule(row_role="kpi", height=0)
+        assert schema.height_px("medium") == 396 and schema.height_px(300) == 300
+        assert schema.height_px("compact") is None
+        with pytest.raises(ValueError, match="token or a positive int"):
+            schema._check_height(3.5)
+
+
+class TestLayoutDoc:
+    def _doc(self, **overrides):
+        base = dict(
+            order=["kpi", "hero"],
+            rules=[{"row_role": "kpi"}, {"row_role": "hero", "max_per_row": 1}],
+        )
+        base.update(overrides)
+        return schema.LayoutDoc(**base)
+
+    def test_every_ordered_role_needs_a_rule(self):
+        with pytest.raises(ValidationError, match="without a rule"):
+            self._doc(order=["kpi", "hero", "detail"])
+
+    def test_a_role_has_one_rule_and_one_place_in_the_order(self):
+        with pytest.raises(ValidationError, match="one rule only"):
+            self._doc(rules=[{"row_role": "kpi"}, {"row_role": "kpi"}, {"row_role": "hero"}])
+        with pytest.raises(ValidationError, match="repeats"):
+            self._doc(order=["kpi", "kpi", "hero"])
+
+    def test_family_and_detail_heights_are_checked(self):
+        with pytest.raises(ValidationError, match="not one of"):
+            self._doc(height_by_family={"bar": "tall"})
+        with pytest.raises(ValidationError, match="not one of"):
+            self._doc(detail_height_by_rows={3: "tiny"})
+        assert self._doc().rule("hero").max_per_row == 1
+
+    def test_templates_sum_to_twelve(self):
+        with pytest.raises(ValidationError, match="sum to 12"):
+            schema.LayoutTemplate(name="x", widths=[6, 5])
+
+    def test_the_kpi_cluster_is_two_columns(self):
+        with pytest.raises(ValidationError, match="two ints"):
+            schema.KpiCluster(widths=[4, 4, 4])
+        with pytest.raises(ValidationError, match="not one of"):
+            schema.KpiCluster(sub_row_height="tiny")
+
+    def test_heatmap_height_snaps_up_then_grows(self):
+        h = schema.HeatmapHeight()
+        assert [h.pick(n) for n in (0, 6, 7, 13, 19, 32, 44)] == [
+            "small",
+            "small",
+            "medium",
+            "medium",
+            "large",
+            "xlarge",
+            "xxlarge",
+        ]
+        assert h.pick(50) == 1128 and h.pick(1000) == 2048
 
 
 class TestRecommendResponse:
