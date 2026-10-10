@@ -4,7 +4,7 @@ import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
 import RunsToolIcon from './RunsToolIcon';
 import { PiRobot } from 'react-icons/pi';
-import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight, FiTrash2 } from 'react-icons/fi';
+import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight, FiTrash2, FiLock } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
@@ -205,7 +205,7 @@ function ProjectMenu({ projects, currentProject, onPick, close }) {
 }
 
 /* ----------------------------------------------- VERSION history (cloud) */
-function VersionMenu({ versions, currentVersion, onPick, close }) {
+function VersionMenu({ versions, currentVersion, onPick, close, withheldVersions = 0, onUpgrade }) {
   return (
     <div>
       <div style={{ padding: '11px 13px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '.07em', color: '#9ca3af', borderBottom: '1px solid #f3f4f6' }}>
@@ -223,6 +223,29 @@ function VersionMenu({ versions, currentVersion, onPick, close }) {
           </div>
         </Row>
       ))}
+      {/* Versions this plan does not include. A locked row rather than a
+          silently shorter list: the point of a history menu is to say what
+          history exists, and "3 versions" with one row in it is a worse answer
+          than one row plus what is behind the gate. */}
+      {withheldVersions > 0 && onUpgrade && (
+        <Row
+          onClick={() => {
+            onUpgrade();
+            close();
+          }}
+          style={{ borderTop: '1px solid #f3f4f6' }}
+          data-testid="version-menu-upgrade"
+        >
+          <FiLock size={13} color="#9ca3af" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12.5, color: '#6b7280' }}>
+              {withheldVersions} earlier {withheldVersions === 1 ? 'version' : 'versions'}
+            </div>
+            <div style={{ fontSize: 11.5, color: '#9ca3af' }}>Upgrade to see them</div>
+          </div>
+          <FiArrowRight size={13} color="#9ca3af" />
+        </Row>
+      )}
     </div>
   );
 }
@@ -322,12 +345,23 @@ function ToolSwitch({ tools, activeTool }) {
 }
 
 /* ------------------------------------------------------- version pill */
-function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
+function VersionPill({
+  versions,
+  currentVersion,
+  onVersionChange,
+  compact,
+  withheldVersions = 0,
+  onUpgrade,
+}) {
   const viewing = !currentVersion.live;
   const label = compact ? String(currentVersion.ts).split(',')[0] : currentVersion.ts;
   // A single deploy has nothing to switch to — show it as a plain label, no
   // chevron, no dropdown. More than one → it's a dropdown into the history.
-  const multi = versions.length > 1;
+  //
+  // Withheld versions count too: on a plan that serves only the current one
+  // there is exactly one row, and without this the menu could never open to
+  // say the others exist.
+  const multi = versions.length > 1 || (withheldVersions > 0 && Boolean(onUpgrade));
   const trigger = (
     <button
       style={{
@@ -343,7 +377,16 @@ function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
   if (!multi) return trigger;
   return (
     <Dropdown align="right" width={300} panelStyle={{ marginTop: 2 }} trigger={trigger}>
-      {close => <VersionMenu versions={versions} currentVersion={currentVersion} onPick={onVersionChange} close={close} />}
+      {close => (
+        <VersionMenu
+          versions={versions}
+          currentVersion={currentVersion}
+          onPick={onVersionChange}
+          close={close}
+          withheldVersions={withheldVersions}
+          onUpgrade={onUpgrade}
+        />
+      )}
     </Dropdown>
   );
 }
@@ -584,6 +627,10 @@ const TopNav = ({
   versions,
   currentVersion,
   onVersionChange = () => {},
+  // cloud-only: versions this plan does not include, and where to go about it.
+  // Both or neither — a count with nowhere to send someone is just a number.
+  withheldVersions = 0,
+  onUpgrade,
   // commit / deploy — mutually exclusive by dirty state: Commit shows when there
   // are uncommitted changes; Deploy shows when the project is clean.
   hasUncommittedChanges,
@@ -709,7 +756,7 @@ const TopNav = ({
             {showCapsule && capsule}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
+            {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} withheldVersions={withheldVersions} onUpgrade={onUpgrade} compact />}
             {showProject && branchControls}
             {showProject && action}
             <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} authorization={authorization} />
@@ -734,7 +781,7 @@ const TopNav = ({
         </div>
         {showProject && <ToolSwitch tools={tools} activeTool={resolvedActive} />}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} />}
+          {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} withheldVersions={withheldVersions} onUpgrade={onUpgrade} />}
           {showProject && branchControls}
           {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />

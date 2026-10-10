@@ -239,6 +239,81 @@ describe('TopNav', () => {
     expect(screen.getByText(/PROJECT HISTORY/i)).toBeInTheDocument();
   });
 
+  describe('versions the plan does not include (VIS-1397)', () => {
+    const proj = { currentProject: { id: 'p', name: 'p' } };
+    const one = [{ id: 'v1', ts: 'today', live: true }];
+
+    it('opens the menu even on a single version, to say the others exist', () => {
+      // Without this the pill is a plain label and there is nowhere to put the
+      // upsell — which is exactly how it shipped the first time.
+      const onUpgrade = jest.fn();
+      renderNav({
+        ...proj,
+        versions: one,
+        currentVersion: one[0],
+        withheldVersions: 11,
+        onUpgrade,
+      });
+
+      fireEvent.click(screen.getByText('today'));
+
+      expect(screen.getByTestId('version-menu-upgrade')).toHaveTextContent(
+        '11 earlier versions'
+      );
+    });
+
+    it('says one version in the singular', () => {
+      renderNav({
+        ...proj,
+        versions: one,
+        currentVersion: one[0],
+        withheldVersions: 1,
+        onUpgrade: jest.fn(),
+      });
+
+      fireEvent.click(screen.getByText('today'));
+
+      expect(screen.getByTestId('version-menu-upgrade')).toHaveTextContent(
+        '1 earlier version'
+      );
+    });
+
+    it('calls back and closes when the locked row is picked', () => {
+      const onUpgrade = jest.fn();
+      renderNav({
+        ...proj,
+        versions: one,
+        currentVersion: one[0],
+        withheldVersions: 3,
+        onUpgrade,
+      });
+      fireEvent.click(screen.getByText('today'));
+
+      fireEvent.click(screen.getByTestId('version-menu-upgrade'));
+
+      expect(onUpgrade).toHaveBeenCalled();
+      expect(screen.queryByText(/PROJECT HISTORY/i)).not.toBeInTheDocument();
+    });
+
+    it('a count with nowhere to send anyone is not a row', () => {
+      // Both props or neither: a host that knows versions are withheld but has
+      // no upgrade route would otherwise render a dead row.
+      renderNav({ ...proj, versions: one, currentVersion: one[0], withheldVersions: 4 });
+
+      fireEvent.click(screen.getByText('today'));
+
+      expect(screen.queryByText(/PROJECT HISTORY/i)).not.toBeInTheDocument();
+    });
+
+    it('local, with nothing withheld, is unchanged', () => {
+      renderNav({ ...proj, versions: one, currentVersion: one[0] });
+
+      fireEvent.click(screen.getByText('today'));
+
+      expect(screen.queryByText(/PROJECT HISTORY/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('account variant (no tools, no branches) shows neither tools nor a capsule', () => {
     renderNav({ tools: [], branches: [] });
     expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
