@@ -1,0 +1,52 @@
+type: treemap
+family: hierarchy
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Nested rectangles sized by an additive metric; the default for a 2–3 level hierarchy.
+use_when:
+  - A hierarchy with 2–3 levels (borough → zone, category → product) and one additive metric.
+  - Many leaves (20–200) where a bar would overflow but the parent level still groups them.
+  - "`semantics.hierarchy` or `intent: composition` with a parent dimension."
+avoid_when:
+  - A flat categorical with ≤ 7 values — a bar compares them; a treemap of 5 boxes adds nothing.
+  - A non-additive metric (averages do not sum up the tree; the parent box would lie).
+  - More than ~300 leaves or deeper than 3 levels — labels vanish; use `maxdepth` or an input to pick a branch.
+  - Negative values — there is no negative area; use a waterfall or a bar.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 3}
+  dimension_roles: [categorical, geo_region, boolean]
+  cardinality: {min: 2, max: 300}
+required_props: [labels, parents]
+example: test-projects/docs-examples/dashboards/treemap/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: revenue-by-borough-and-zone
+      props:
+        type: treemap
+        labels: ?{ ${ref(zone_revenue).zone} }
+        parents: ?{ ${ref(zone_revenue).borough} }
+        values: ?{ sum(${ref(zone_revenue).revenue}) }
+        branchvalues: total
+        maxdepth: 2
+encodings_that_scale:
+  - "a second metric (a rate) → `marker.colors: ?{ avg(tip_pct) }` with `marker.colorscale`; size says how much, color says how good"
+  - "deeper trees → `maxdepth: 2` with click-to-zoom instead of showing every level"
+  - "root total → a root row with an empty parent and `branchvalues: total`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [top_n_other, input_filter]
+transforms: [top_n_other, collapse_rare]
+visivo_gotchas:
+  - "Every parent value must also appear as a label row (with its own parent, or '' for the root); a missing parent drops the whole branch silently."
+  - "With `branchvalues: total` the parent's value must equal the sum of its children, or children are clipped; with `remainder` (default) parents add their own value on top."
+  - "`values` is a DuckDB reserved word: the docs example writes `values: ?{\"values\"}` — quote it or alias the column."
+  - "Build the hierarchy rows with a UNION ALL (one SELECT per level), not a join; the trace wants label/parent/value rows."
+  - "`marker.colors` on the insight is the one color prop here that *should* be set, and only to a data column."
+pairings: [detail_table_below, kpi_strip_above]
+layout: {height: large, width_share: 1.0, row_role: breakdown}
+mobile: "Full width, `maxdepth: 1`; labels on small tiles disappear first."

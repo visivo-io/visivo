@@ -1,0 +1,52 @@
+type: choropleth
+family: geo_region
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Color countries or US states by a metric using built-in boundaries; no GeoJSON needed.
+use_when:
+  - "A `geo_region` column whose `geo_kind` is iso3, iso2 (via name), country_name or us_state — Plotly ships these boundaries."
+  - "One metric per region, `intent: geo` or a dimension with 10+ regions where a bar would be long and the geography carries meaning."
+  - A rate or density; absolute totals on a map mostly show which regions are big.
+avoid_when:
+  - "Regions without built-in boundaries (boroughs, zones, counties, postcodes): `boundaries_available` is false — use a bar/heatmap by region, or `scattermap` on lat/lon. GeoJSON collection is VIS-1400."
+  - Fewer than ~5 regions — a bar says it in less space.
+  - Precise comparison between regions — color steps are coarse; pair with a sorted bar or a table.
+  - Time series per region — one map per period is not a trend; use a line with region as split, or an input to pick the period.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [geo_region]
+  cardinality: {min: 3}
+required_props: [locations, z]
+example: test-projects/docs-examples/dashboards/choropleth/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: rides-by-state
+      props:
+        type: choropleth
+        locationmode: USA-states
+        locations: ?{ ${ref(trips).pickup_state} }
+        z: ?{ count(*) }
+        colorscale: Blues
+        colorbar: {title: {text: rides}}
+encodings_that_scale:
+  - "scope → chart `layout.geo.scope` (usa, europe, …) and `projection.type`; otherwise the world is drawn around three states"
+  - "two metrics → size is impossible; color one, put the other in `text`/`hovertemplate`"
+  - "a period input → `filter` on the insight; the map re-colors client-side"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [rate_per_capita, regrain]
+visivo_gotchas:
+  - "`locationmode` must match the column: `ISO-3` (USA, FRA), `USA-states` (NY, NJ), `country names` (United States). Mismatched codes draw an empty map with no error."
+  - "`z` must be aggregated per region (one row per location); duplicate locations are drawn on top of each other and only the last shows."
+  - "Set `layout.geo.scope` (`usa` for states) — the default is the world and US states are a smudge."
+  - "Totals follow population; prefer a rate (`per 1k residents`, `per trip`) or say in the title that it is a count."
+  - "The theme supplies `map_style` for tiled maps but `geo` projections are unstyled; set `showcoastlines`/`landcolor` in the chart layout if the default clashes."
+pairings: [bar_beside, detail_table_below]
+layout: {height: large, width_share: 0.67, row_role: hero}
+mobile: Full width and `large`; a half-width world map is unreadable.

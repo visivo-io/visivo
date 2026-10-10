@@ -1,0 +1,54 @@
+type: pie
+family: part_of_whole
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Share of a whole across at most five slices; a bar is better whenever slices must be compared.
+use_when:
+  - "A genuine part-of-whole (`semantics.part_of_whole`): one additive metric over one categorical whose values are exhaustive."
+  - "2–5 slices, one of them dominant — the message is 'most of it is X'."
+  - "`intent: composition` and the reader wants the share, not the rank."
+avoid_when:
+  - More than 5 slices — collapse to top-4 + Other, or use a bar sorted by share.
+  - Slices of similar size — a pie cannot show that 23 % differs from 26 %; use a bar.
+  - A non-additive metric (average fare per payment type is not a share of anything).
+  - Comparing composition across groups — use stacked bars (one per group) instead of several pies.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [categorical, boolean, geo_region]
+  cardinality: {min: 2, max: 5}
+required_props: [labels, values]
+example: test-projects/docs-examples/dashboards/pie/dashboard.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: rides-by-payment-type
+      props:
+        type: pie
+        labels: ?{ ${ref(trips).payment_type} }
+        values: ?{ count(*) }
+        hole: 0.4
+        textinfo: label+percent
+        sort: false
+      interactions:
+        - sort: ?{ count(*) DESC }
+encodings_that_scale:
+  - "6+ categories → `top_n_other` in SQL, never more than 5 slices"
+  - "a donut (`hole: 0.4`) leaves room for a KPI total via `layout.annotations`"
+  - "several groups → one stacked bar per group instead of several pies"
+limits:
+  series_ideal: 4
+  series_max: 5
+  repair: [top_n_other, bar]
+transforms: [top_n_other, collapse_rare]
+visivo_gotchas:
+  - "`values` must be an aggregate over `labels` (one row per slice); raw rows produce one slice per row."
+  - "Plotly sorts slices by value and starts at 12 o'clock; set `sort: false` and a SQL `sort` to control the order."
+  - "`marker.colors` on the insight overrides the theme colorway; let the theme color the slices."
+  - "A pie ignores `split`; a split pie is a stacked bar."
+  - "Nulls become a slice labelled 'null'; filter or coalesce them in SQL."
+pairings: [kpi_total_in_hole, bar_beside]
+layout: {height: medium, width_share: 0.33, row_role: breakdown}
+mobile: One-third width is fine until the stack; then it takes a full row, so keep the legend inside (`textinfo`).

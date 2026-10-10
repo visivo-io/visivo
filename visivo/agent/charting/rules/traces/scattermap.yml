@@ -1,0 +1,55 @@
+type: scattermap
+family: geo_point
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Points on a tiled street map from lat/lon, sized or colored by a metric.
+use_when:
+  - "Two `geo_point` columns (`geo_kind: latlon`) — pickup locations, stores, sensors — with ≤ 5 000 points after aggregation."
+  - Regions without boundaries (NYC zones, boroughs) where you still have a centroid; the fallback for `geo_region` when `boundaries_available` is false.
+  - "`intent: geo` with a 'where' question: where do trips start, where are the stores."
+avoid_when:
+  - More than ~5 000 points — aggregate to a grid or zone centroids, or use `densitymap`.
+  - The question is 'how much per region' and boundaries exist — a choropleth reads better than sized dots.
+  - No lat/lon and no centroid lookup — a bar by region.
+  - Points that all sit in one spot (an airport) — a count by location, sized, not one dot per row.
+data_shape:
+  metrics: {min: 0, max: 2}
+  dimensions: {min: 2, max: 3}
+  dimension_roles: [geo_point, categorical, boolean]
+  cardinality: {max: 5000}
+required_props: [lat, lon]
+example: test-projects/docs-examples/dashboards/charts/scattermap.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: pickups-by-zone
+      props:
+        type: scattermap
+        lat: ?{ avg(${ref(trips).pickup_lat}) }
+        lon: ?{ avg(${ref(trips).pickup_lon}) }
+        text: ?{ ${ref(trips).pickup_zone} }
+        mode: markers
+        marker: {size: ?{ sqrt(count(*)) }, sizemode: diameter, opacity: 0.8}
+      interactions:
+        - split: ?{ ${ref(trips).company} }
+encodings_that_scale:
+  - "a metric → `marker.size` (use `sqrt` so area, not diameter, is proportional) with `sizemode: diameter`"
+  - "a `few` categorical → `split` (one series per value, theme-colored) rather than `marker.color`"
+  - "many raw points → `cluster.enabled: true`, or aggregate to zone/grid in SQL"
+  - "a second metric → `marker.color` from a data column with `marker.colorscale` (the legitimate color case)"
+limits:
+  series_ideal: 5
+  series_max: 10
+  repair: [top_n_other, input_filter, densitymap]
+transforms: [aggregate_to_centroid, grid_bucket, top_n_other]
+visivo_gotchas:
+  - "Aggregate to a location first (`GROUP BY zone`, `avg(lat)`, `avg(lon)`, `count(*)`); one dot per raw row is slow and shows only density."
+  - "`lat` before `lon` in your head, but swap them once and every point is in the ocean; check `stats.min/max` (lat ∈ [-90, 90])."
+  - "Set `layout.map.center` and `zoom` from the data's bounding box; the default shows the world."
+  - "Use `scattermap`, not `scattermapbox` (deprecated, needs a token); the theme styles `layout.map`."
+  - "`marker.size` is in pixels: scale into roughly 6–40 (`6 + 34 * sqrt(n / max_n)`) or the biggest dot covers the city."
+pairings: [bar_beside, detail_table_below, kpi_strip_above]
+layout: {height: large, width_share: 0.67, row_role: hero}
+mobile: Full width, `large`; hide the legend and rely on `hovertemplate`.
