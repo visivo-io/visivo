@@ -1,0 +1,51 @@
+type: indicator
+family: kpi
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: One number, optionally with a delta against a reference or a gauge against a target.
+use_when:
+  - A single aggregate the dashboard is about (total rides, revenue, average fare) — a KPI strip of 2–4.
+  - "The same aggregate for the current and previous period — `mode: number+delta`."
+  - "Progress against a fixed target or bound — `mode: gauge+number`."
+avoid_when:
+  - More than one row would be interesting — the indicator shows `[0]` only; use a bar or table.
+  - The number has no context (no unit, no comparison, no target) — pair it with a delta or a sparkline.
+  - More than 4 KPIs in a row — split into a 2×2 cluster or drop the weakest.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 0, max: 1}
+  dimension_roles: [time]
+required_props: [value]
+example: test-projects/docs-examples/dashboards/indicator/delta.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: total-rides
+      props:
+        type: indicator
+        mode: number+delta
+        value: ?{ count(*) }[0]
+        delta: {reference: ?{ count(*) }[1], relative: true}
+        number: {suffix: " rides"}
+      interactions:
+        - sort: ?{ date_trunc('month', ${ref(trips).pickup_at}) DESC }
+encodings_that_scale:
+  - "period-over-period → aggregate by period, `sort` DESC, `value: [0]`, `delta.reference: [1]`"
+  - "target → `gauge.axis.range` and `gauge.threshold.value`"
+  - "several KPIs in one chart → `domain.x`/`domain.y` per insight (indicators-and-trends example), or one chart per KPI in a `kpi` row"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: []
+transforms: [regrain]
+visivo_gotchas:
+  - "`value` must be a single cell: `?{ sum(x) }[0]`. Without `[0]` the whole column is passed and nothing renders."
+  - "A delta needs two rows in a known order: group by period and `sort` DESC so `[0]` is current and `[1]` previous."
+  - "Units go in `number.prefix`/`number.suffix`; the number itself should stay a plain aggregate for `valueformat` to work."
+  - "An indicator ignores `split`; a split KPI is a bar chart."
+  - "A `small` row (256 px) is the floor: Plotly's default margins eat 120 px, so an `xsmall` KPI has no plot area unless `layout.margin` top+bottom ≤ 40."
+pairings: [indicator_total_overlay, kpi_strip_above, kpi_cluster_beside]
+layout: {height: small, width_share: 0.25, row_role: kpi}
+mobile: KPIs stack one per line; order them by importance and keep to four.

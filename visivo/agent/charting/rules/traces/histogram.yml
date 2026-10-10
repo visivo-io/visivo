@@ -1,0 +1,52 @@
+type: histogram
+family: distribution
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: The shape of one numeric column, binned; compare a few groups by overlaying or stacking.
+use_when:
+  - One numeric_continuous or numeric_discrete column and the question is "how is it distributed".
+  - ≤3 groups to compare (`few` categorical) as overlaid or stacked histograms.
+  - Spotting skew, outliers, bimodality before choosing an average vs a median for the KPIs.
+avoid_when:
+  - More than 3 groups — a box plot per group compares distributions without the overlap.
+  - More than ~1M rows — pre-bucket in SQL (`width_bucket`, `floor(x/step)*step`) and draw a bar; the browser bins every row otherwise.
+  - A heavy tail (p99 ≪ max) without clipping — one outlier stretches the axis and squashes the body.
+  - A categorical column — that is a bar of counts, not a histogram.
+data_shape:
+  metrics: {min: 0, max: 0}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean]
+required_props: [x]
+example: test-projects/docs-examples/dashboards/histogram/stacked.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: trip-distance-distribution
+      props:
+        type: histogram
+        x: ?{ least(${ref(trips).trip_distance}, 30) }
+        nbinsx: 40
+        histnorm: percent
+      interactions:
+        - filter: ?{ ${ref(trips).trip_distance} > 0 }
+        - split: ?{ ${ref(trips).payment_type} }
+encodings_that_scale:
+  - "second `few` dimension → `split` with `layout.barmode: overlay` and `opacity: 0.6`, or `barmode: stack`"
+  - "comparing groups of different size → `histnorm: percent` so shapes compare, not totals"
+  - "a time axis → that is counts per period, i.e. a bar or line after `date_trunc`, not a histogram"
+limits:
+  series_ideal: 2
+  series_max: 3
+  repair: [top_n_other, input_filter, box]
+transforms: [clip_p99, bucket, log_scale]
+visivo_gotchas:
+  - "A histogram takes the raw column, not an aggregate: `x: ?{ trip_distance }` with no GROUP BY; every row is sent to the browser."
+  - "Clip the tail in SQL (`least(x, p99)`) rather than with `xaxis.range`, which hides bins but still bins them."
+  - "`nbinsx` is a hint; Plotly picks nice edges. Set `xbins.size` when the step matters (e.g. 1 km)."
+  - "Overlaid groups need `opacity` < 1 and `barmode: overlay` on the chart layout or the front one hides the others."
+  - "Zero and null are different: filter nulls in SQL, and ask whether zeros are real before binning them."
+pairings: [box_beside, kpi_strip_above]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: Two groups at most; drop `histnorm` labels to percent only when the axis title says so.
