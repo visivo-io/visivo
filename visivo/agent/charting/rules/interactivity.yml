@@ -1,0 +1,134 @@
+# How a column's shape card becomes an Input, and how that input is wired
+# (VIS-1440). Evidence: specs/chart-selection/05-interactivity.md. Templates
+# use M for the model, C for the column and I for the input name. String
+# operands are always quoted, numeric ones never; multi-select defaults are
+# explicit lists; chart layout props cannot read inputs.
+card_to_input:
+  - match: {role: [categorical, geo_region, boolean, text, numeric_continuous, numeric_discrete, time], bucket: [one]}
+    input: none
+    why: a constant column has nothing to choose
+  - match: {role: [boolean]}
+    input: {type: single-select, display: tabs, options: static, static_options: ["All", "true", "false"]}
+    default: first_option
+    accessor: value
+    wiring: {interaction: filter, expression: "('${ref(I).value}' = 'All' OR CAST(${ref(M).C} AS VARCHAR) = '${ref(I).value}')"}
+    why: a toggle has no "all" state, so a boolean filter is three tabs
+  - match: {role: [categorical, geo_region], bucket: [few], n_max: 5}
+    input: {type: single-select, display: tabs, options: from_top_n}
+    default: top_value
+    accessor: value
+    wiring: {interaction: filter, expression: "${ref(M).C} = '${ref(I).value}'"}
+    why: up to five values read as tabs
+  - match: {role: [categorical, geo_region], bucket: [few], n_min: 6}
+    input: {type: single-select, display: radio, options: from_top_n}
+    default: top_value
+    accessor: value
+    wiring: {interaction: filter, expression: "${ref(M).C} = '${ref(I).value}'"}
+    why: six or seven values fit a radio group
+  - match: {role: [categorical, geo_region], bucket: [some], n_max: 15}
+    input: {type: multi-select, display: chips, options: query_distinct}
+    default: top_values
+    accessor: values
+    wiring: {interaction: filter, expression: "${ref(M).C} IN (${ref(I).values})"}
+    why: a short list to pick several from; the default is the top five, as an explicit list
+  - match: {role: [categorical, geo_region], bucket: [some], n_min: 16}
+    input: {type: multi-select, display: dropdown, options: query_distinct}
+    default: top_values
+    accessor: values
+    wiring: {interaction: filter, expression: "${ref(M).C} IN (${ref(I).values})"}
+    why: chips crowd past fifteen values
+  - match: {role: [categorical, geo_region], bucket: [many, high]}
+    input: {type: single-select, display: autocomplete, options: query_distinct}
+    default: top_value
+    accessor: value
+    wiring: {interaction: filter, expression: "${ref(M).C} = '${ref(I).value}'"}
+    why: a searchable list is the only control that scales past twenty values
+    warnings: ["more than 10,000 options warns at run time and more than 100,000 fails it"]
+  - match: {role: [numeric_continuous]}
+    input: {type: multi-select, display: range-slider, options: numeric_range}
+    default: full_span
+    accessor: [min, max]
+    wiring: {interaction: filter, expression: "${ref(M).C} >= ${ref(I).min} AND ${ref(M).C} <= ${ref(I).max}"}
+    why: a continuous measure is bounded, not listed
+  - match: {role: [numeric_discrete], n_max: 30}
+    input: {type: single-select, display: slider, options: sorted_distinct}
+    default: median
+    accessor: value
+    wiring: {interaction: filter, expression: "${ref(M).C} <= ${ref(I).value}"}
+    why: a small set of whole numbers reads as a threshold slider
+  - match: {role: [numeric_discrete], n_min: 31}
+    input: {type: multi-select, display: range-slider, options: numeric_range}
+    default: full_span
+    accessor: [min, max]
+    wiring: {interaction: filter, expression: "${ref(M).C} >= ${ref(I).min} AND ${ref(M).C} <= ${ref(I).max}"}
+    why: past thirty values a discrete column behaves like a continuous one
+  - match: {role: [time]}
+    input: {type: multi-select, display: date-range, options: date_range}
+    default: recent_window
+    accessor: [min, max]
+    wiring: {interaction: filter, expression: "${ref(M).C} BETWEEN '${ref(I).min}'::date AND '${ref(I).max}'::date"}
+    why: a date window with a default that still leaves a readable trend
+  - match: {role: [identifier, geo_point, text]}
+    input: none
+    why: identifiers are not filter dimensions and no free-text, map-bounds or search input exists
+
+patterns:
+  - name: global_filter
+    trigger: a column read by two or more insights on the same model
+    wiring: the same filter expression on EVERY insight whose model carries the column
+    snippet_ref: test-projects/docs-interactivity/project.visivo.yml:30-52
+    note: a half-wired filter is the canonical failure; nothing propagates by itself
+  - name: split_switcher
+    trigger: two or more `few` categoricals the reader would compare by in turn
+    wiring: "split: CASE WHEN '${ref(I).value}' = '<A>' THEN ${ref(M).A} ELSE ${ref(M).B} END"
+    snippet_ref: test-projects/integration/insights.visivo.yml:89
+    note: every CASE branch must return the same type; cast to VARCHAR when mixing
+  - name: threshold_highlight
+    trigger: a numeric measure with a target, limit or SLA
+    wiring: "marker.color: CASE WHEN ${ref(M).C} >= ${ref(I).value} THEN '<accent>' ELSE '<muted>' END"
+    snippet_ref: test-projects/integration/insights.visivo.yml:234-244
+    note: the one legitimate reason to set insight color; do not also filter on the threshold or the bars above it vanish
+  - name: metric_switcher
+    trigger: two measures on the same grain and dimension
+    wiring: "y: CASE WHEN '${ref(I).value}' = '<A>' THEN <aggA> ELSE <aggB> END"
+    snippet_ref: test-projects/integration/insights.visivo.yml:87
+    note: the axis title stays static because chart layout cannot read inputs; say the unit in the input label
+    verified: false
+  - name: prop_driven
+    trigger: a presentation choice (lines vs markers, orientation, line shape)
+    wiring: "mode: ${ref(I).value}"
+    snippet_ref: test-projects/integration/insights.visivo.yml:156-160
+    note: insight props only; chart `layout` (barmode, yaxis.type) is never substituted, and the input name must be snake_case
+    forbid_paths: ["layout.*", "barmode", "yaxis.type"]
+  - name: top_n
+    trigger: a `many`/`high` categorical ranked by a measure
+    wiring: "filter: ${ref(M).rank_col} <= ${ref(I).value}"
+    snippet_ref: test-projects/integration/insights.visivo.yml:243
+    note: the rank must be a precomputed column in the model (dense_rank() over the measure); a global rank combined with a region filter is "global top-N within region", not "top-N in region"
+  - name: sort_direction
+    trigger: a ranked bar where best and worst both matter
+    wiring: "sort: <measure> ${ref(I).value}"
+    snippet_ref: test-projects/integration/insights.visivo.yml:137
+    note: never on a time axis; the option strings must be the SQL keywords
+  - name: cascading_options
+    trigger: two hierarchical categoricals (country → city, borough → zone)
+    supported: false
+    fallback: one autocomplete over parent || ' / ' || child, or two independent filters with a warning that impossible pairs empty the chart
+    note: an options query may reference one model and runs before anything is selected
+
+design_rules:
+  max_inputs_per_dashboard: 4
+  max_inputs_mobile_row: 3
+  inputs_row: {height: compact, position: top, precede_with_markdown_header: true}
+  chart_local_input: beside its chart as [8, 4]
+  input_over_split_min_bucket: some
+  require_default: true
+  multi_select_default: explicit_static_list
+  numeric_range_default: full_span
+  time_default_min_points: 12
+  string_operand_quoting: "'${ref(I).value}'"
+  input_name_style: snake_case
+  write_order: inputs_before_insights
+  global_filter_must_wire_all: true
+  table_filtering: back the table with an insight that carries the interaction (a table on a model ignores inputs)
+  large_model_warning_rows: 1000000
