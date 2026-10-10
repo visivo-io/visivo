@@ -89,8 +89,8 @@ class TestTheGoldenSkeleton:
 
     def test_section_order(self, result):
         names = [leaf_names(r) for r in rows_of(result)]
-        assert names[0] == ["${ref(borough)}"], "inputs first"
-        assert rows_of(result)[1]["items"][0]["markdown"]["content"] == "# NYC taxi"
+        assert names[1] == ["${ref(borough)}"], "inputs first, after their header"
+        assert rows_of(result)[2]["items"][0]["markdown"]["content"] == "# NYC taxi"
         flat = [n for row in names for n in row if isinstance(n, str)]
         assert (
             flat.index("${ref(total)}")
@@ -251,8 +251,59 @@ class TestInputs:
         result = recommend_layout(
             items=[TREND], inputs=[{"name": "a"}, {"name": "b"}, {"name": "c"}]
         )
-        first = rows_of(result)[0]
+        first = rows_of(result)[1]
+        assert (
+            rows_of(result)[0]["height"] == "compact"
+            and "markdown" in rows_of(result)[0]["items"][0]
+        )
         assert first["height"] == "compact" and [i["width"] for i in first["items"]] == [4, 4, 4]
+
+    def test_the_inputs_row_is_preceded_by_a_header_saying_what_it_controls(self):
+        result = recommend_layout(
+            items=[TREND], inputs=[{"name": "pickup_borough"}, {"name": "period"}]
+        )
+        header = rows_of(result)[0]
+        assert header["height"] == "compact"
+        assert (
+            header["items"][0]["markdown"]["content"]
+            == "**Controls** — pickup borough, period filter every chart on this page."
+        )
+        assert leaf_names(rows_of(result)[1]) == ["${ref(pickup_borough)}", "${ref(period)}"]
+
+    def test_recommend_inputs_output_is_accepted_whole(self):
+        from visivo.agent.charting.inputs import recommend_inputs
+
+        proposed = recommend_inputs(
+            [
+                {
+                    "model": "trips",
+                    "column": "borough",
+                    "role": "categorical",
+                    "cardinality": 3,
+                    "top_n": [{"value": "M", "share": 0.5}, {"value": "B", "share": 0.5}],
+                },
+                {
+                    "model": "trips",
+                    "column": "fare",
+                    "role": "numeric_continuous",
+                    "cardinality": 90,
+                    "stats": {"min": 0, "max": 90},
+                },
+            ],
+            [
+                {"name": "i1", "model": "trips", "columns": ["borough", "fare"], "chart": "trend"},
+                {"name": "i2", "model": "trips", "columns": ["borough"], "chart": "by-borough"},
+            ],
+        )
+        result = recommend_layout(items=[TREND] + BARS, inputs=proposed)
+        names = [leaf_names(r) for r in rows_of(result)]
+        assert names[1] == ["${ref(borough)}"], "the global filter leads"
+        local = next(r for r in rows_of(result) if "${ref(fare)}" in leaf_names(r))
+        assert leaf_names(local) == [
+            "${ref(trend)}",
+            "${ref(fare)}",
+        ], "the single-chart control sits beside its chart"
+        assert result["warnings"] == []
 
     def test_more_than_four_global_inputs_warns_and_wraps(self):
         result = recommend_layout(items=[TREND], inputs=[{"name": f"i{n}"} for n in range(5)])
@@ -263,7 +314,7 @@ class TestInputs:
 
     def test_an_input_naming_an_unknown_chart_falls_back_to_global(self):
         result = recommend_layout(items=[TREND], inputs=[{"name": "p", "hints": {"chart": "nope"}}])
-        assert leaf_names(rows_of(result)[0]) == ["${ref(p)}"]
+        assert leaf_names(rows_of(result)[1]) == ["${ref(p)}"]
         assert any("unknown chart nope" in w for w in result["warnings"])
 
     def test_two_local_inputs_stack_in_a_container_beside_the_chart(self):

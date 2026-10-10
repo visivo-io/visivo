@@ -62,6 +62,10 @@ def _ref(name):
     return f"${{ref({name})}}"
 
 
+def _label(name):
+    return name.replace("_", " ").replace("-", " ")
+
+
 def _heavier(a, b):
     """The taller of two heights; ``compact`` is the lightest."""
     px = lambda h: -1 if h == "compact" else height_px(h)
@@ -101,6 +105,9 @@ def _markdown(width, content):
 class _Planner:
     def __init__(self, items, title, inputs, intent, rules):
         self.rules = rules
+        # recommend_inputs hands back {inputs, layout_inputs, ...}; accept it whole.
+        if isinstance(inputs, dict):
+            inputs = inputs.get("layout_inputs", [])
         self.title = title
         self.intent = intent
         self.warnings = []
@@ -268,6 +275,22 @@ class _Planner:
                         "pushes charts below the fold — drop the least important"
                     )
                 rows = self._plain_rows("inputs", globals_)
+                if rows:
+                    names = ", ".join(
+                        _label(i.name) for i in globals_[: self.rules.grid.max_inputs]
+                    )
+                    rows.insert(
+                        0,
+                        _row(
+                            "compact",
+                            [
+                                _markdown(
+                                    12, f"**Controls** — {names} filter every chart on this page."
+                                )
+                            ],
+                            "what the inputs row controls",
+                        ),
+                    )
             elif role == "header":
                 rows = (
                     [_row("compact", [_markdown(12, f"# {self.title}")], "dashboard title")]
