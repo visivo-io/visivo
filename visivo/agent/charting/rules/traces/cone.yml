@@ -1,0 +1,50 @@
+type: cone
+family: three_d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.55
+one_liner: Cones at x/y/z points pointing along u/v/w vectors; for 3D vector fields (wind, flow), never business data.
+use_when:
+  - "Only on an explicit request (otherwise the recommender scores it ≤ 0.3): a sampled vector field with position (x, y, z) and direction (u, v, w)."
+  - Up to a few hundred sample points, where each arrow can still be seen.
+avoid_when:
+  - Two-dimensional vectors (wind on a map) — draw arrows on a 2D chart or a map; the third axis adds nothing.
+  - "Thousands of points — the cones overlap into a hedgehog; subsample the grid or use `streamtube`."
+  - Any metric that is not a direction — a cone's size and angle are not readable as magnitude.
+data_shape:
+  metrics: {min: 3, max: 3}
+  dimensions: {min: 3, max: 3}
+  dimension_roles: [numeric_continuous, numeric_discrete]
+  cardinality: {min: 2, max: 20}
+required_props: [x, y, z, u, v, w]
+example: test-projects/docs-examples/dashboards/cone/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: wind-field
+      props:
+        type: cone
+        x: ?{ ${ref(wind).x} }
+        y: ?{ ${ref(wind).y} }
+        z: ?{ ${ref(wind).z} }
+        u: ?{ ${ref(wind).u} }
+        v: ?{ ${ref(wind).v} }
+        w: ?{ ${ref(wind).w} }
+        colorscale: Viridis
+        sizemode: absolute
+        sizeref: 0.5
+encodings_that_scale:
+  - "color encodes vector magnitude automatically; `colorbar.title` names the unit (wind-direction example)"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [sample, bucket]
+transforms: [sample, bucket]
+visivo_gotchas:
+  - "`sizeref` depends on the data's scale; without it cones are invisible or swallow the scene — tune it per dataset."
+  - "Hover shows only coordinates unless `text`/`hovertemplate` is set (the wind-direction example passes speed as `text`)."
+  - "Camera position belongs in `layout.scene.camera.eye`, not in the insight props."
+pairings: []
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Rotation fights scroll and cones become specks; show a 2D summary instead below 1024 px.

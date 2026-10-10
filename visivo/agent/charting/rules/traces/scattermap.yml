@@ -31,7 +31,9 @@ minimal_yaml: |
         lon: ?{ avg(${ref(trips).pickup_lon}) }
         text: ?{ ${ref(trips).pickup_zone} }
         mode: markers
-        marker: {size: ?{ sqrt(count(*)) }, sizemode: diameter, opacity: 0.8}
+        marker:
+          size: ?{ sqrt(count(*)) }
+          sizemode: diameter
       interactions:
         - split: ?{ ${ref(trips).company} }
 encodings_that_scale:

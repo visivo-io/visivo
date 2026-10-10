@@ -353,6 +353,12 @@ class TraceEntry(_Strict):
             raise ValueError("minimal_yaml must be 15 lines or fewer")
         if f"type: {self.type}" not in self.minimal_yaml and self.type not in TABLE_TYPES:
             raise ValueError(f"minimal_yaml must set 'type: {self.type}'")
+        try:
+            import yaml
+
+            yaml.safe_load(self.minimal_yaml)
+        except Exception as error:
+            raise ValueError(f"minimal_yaml is not valid YAML: {str(error).splitlines()[0]}")
         return self
 
     def families(self):

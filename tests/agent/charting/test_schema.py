@@ -243,6 +243,10 @@ class TestTraceEntry:
         # A table is not a trace: its snippet has no `type:` line.
         assert _entry(type="table", minimal_yaml="tables:\n  - name: t\n").type == "table"
 
+    def test_minimal_yaml_must_parse(self):
+        with pytest.raises(ValidationError, match="not valid YAML"):
+            _entry(minimal_yaml="props:\n  type: bar\n  marker: {size: ?{ x }}\n")
+
     def test_one_liner_is_capped(self):
         with pytest.raises(ValidationError):
             _entry(one_liner="x" * 121)

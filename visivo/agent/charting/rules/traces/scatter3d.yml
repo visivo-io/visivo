@@ -1,0 +1,54 @@
+type: scatter3d
+family: three_d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.7
+one_liner: Points in a rotatable 3D box; niche — a 2D scatter with color or size almost always reads better.
+use_when:
+  - "Only on an explicit request for 3D (otherwise the recommender scores it ≤ 0.3): three numeric columns per entity."
+  - "Genuinely spatial x/y/z data (sensor positions, depth samples, a flight path with `mode: lines`)."
+  - Exploratory rotation of a small cloud (≤5 000 points) where the user will drag the camera to find a cluster.
+avoid_when:
+  - "Three measures per entity on a dashboard — plot two on x/y and encode the third as `marker.size` or `marker.color` on a 2D `scatter`."
+  - Reading values off the chart — perspective distorts position; nobody can read z from a static view.
+  - More than ~10 000 points or more than ~5 split series — the box turns into an unrotatable blob.
+  - Dashboards with several WebGL charts — every 3D scene costs a WebGL context (browsers cap them at ~8–16).
+data_shape:
+  metrics: {min: 3, max: 4}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [identifier, categorical, time]
+  cardinality: {min: 10, max: 10000}
+required_props: [x, y, z]
+example: test-projects/docs-examples/dashboards/scatter3d/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: fare-distance-tip-3d
+      props:
+        type: scatter3d
+        mode: markers
+        x: ?{ ${ref(trips).trip_distance} }
+        y: ?{ ${ref(trips).fare_amount} }
+        z: ?{ ${ref(trips).tip_amount} }
+        marker: {size: 3, opacity: 0.5}
+      interactions:
+        - split: ?{ ${ref(trips).payment_type} }
+        - filter: ?{ ${ref(trips).trip_distance} between 0 and 50 }
+encodings_that_scale:
+  - "a fourth numeric → `marker.color` with a `colorscale` (a data encoding, so the theme opt-out is legitimate)"
+  - "a few categories → `split` (≤5); more than that and the colors cannot be told apart while rotating"
+  - "a path through space → `mode: lines` with `- sort:` on the ordering column (lines example)"
+limits:
+  series_ideal: 3
+  series_max: 5
+  repair: [sample, input_filter, top_n_other]
+transforms: [sample, clip_p99]
+visivo_gotchas:
+  - "Axis titles and ranges live under `layout.scene.xaxis/yaxis/zaxis`; `layout.xaxis` is silently ignored."
+  - "`mode: lines` connects points in row order — add `- sort:` on the sequence column, exactly as for a 2D line."
+  - "Raw rows ship to the browser; sample or clip in SQL before ~10k points or rotation stutters."
+  - "A constant `marker.color` opts out of the theme colorway; only set it to a column (a CASE or a numeric)."
+pairings: [detail_table_below]
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Drag-to-rotate fights page scroll on touch screens; on phones prefer the 2D scatter it should have been.

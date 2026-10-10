@@ -1,0 +1,56 @@
+type: contourcarpet
+family: carpet
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.55
+one_liner: Contours of a third metric drawn on a carpet's warped a/b grid; needs a carpet insight in the same chart.
+use_when:
+  - "A what-if surface where the two levers do not map to straight axes: z (revenue) over base fare × per-mile, placed at (avg fare, trips)."
+  - "Reading iso-lines of an outcome across a tradeoff space is the point, not exact cell values."
+avoid_when:
+  - The two dimensions plot fine on plain x/y — use contour or heatmap; the warp only adds reading cost.
+  - Any categorical or time dimension, or a sparse grid — contours interpolate across gaps that are not data.
+  - An audience that has not seen a carpet plot — a heatmap plus a table answers the same question.
+data_shape:
+  metrics: {min: 2, max: 3}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [numeric_discrete, numeric_continuous]
+  cardinality: {min: 3, max: 20}
+required_props: [carpet, z]
+example: test-projects/docs-examples/dashboards/contourcarpet/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: fare-grid
+      props:
+        type: carpet
+        carpet: fare-grid
+        a: ?{ ${ref(fare_scenarios).base_fare} }
+        b: ?{ ${ref(fare_scenarios).per_mile} }
+        y: ?{ ${ref(fare_scenarios).trips} }
+    - name: fare-grid-revenue
+      props:
+        type: contourcarpet
+        carpet: fare-grid
+        a: ?{ ${ref(fare_scenarios).base_fare} }
+        b: ?{ ${ref(fare_scenarios).per_mile} }
+        z: ?{ ${ref(fare_scenarios).revenue} }
+encodings_that_scale:
+  - "the grid's own outputs → `x`/`y` on the carpet insight; z is the third metric only"
+  - "filled bands → `contours.coloring: fill`; labelled iso-lines → `contours.showlabels: true`"
+  - "observed points on top → a `scattercarpet` on the same id"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [heatmap, input_filter, regrain]
+transforms: [regrain, bucket]
+visivo_gotchas:
+  - "Both insights go in one chart's `insights`; the contourcarpet has no axes of its own and draws nothing without the carpet."
+  - "Bind `a` and `b` on the contourcarpet too; without them z is matched to the carpet's rows by position, and two queries need not return the same order."
+  - "Use a literal `carpet: <id>` on both; `${ref(carpet-insight)}` reaches Plotly as text and only works via the first-carpet fallback."
+  - "Never `split`; one contourcarpet per carpet. Set a theme-neutral `colorscale` (Viridis) and `zmid` only for a diverging measure."
+  - "z must be one value per (a, b) node from a GROUP BY over both levers; duplicates collapse to the last row."
+pairings: [scattercarpet_overlay, detail_table_below]
+layout: {height: large, width_share: 1.0, row_role: relationship}
+mobile: Hide the colorbar title and keep ≤8 contour levels; the warp plus labels is unreadable at half width.

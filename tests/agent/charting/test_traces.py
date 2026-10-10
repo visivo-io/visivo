@@ -70,7 +70,6 @@ class TestTheShippedEntries:
     def test_no_entry_claims_an_unknown_type(self, entries):
         assert {e.type for e in entries} <= KNOWN_TYPES
 
-    @pytest.mark.xfail(strict=True, reason="VIS-1420..1424 author the 48 entries in this PR")
     def test_every_prop_type_has_an_entry(self, entries):
         """The sync test: PropType is the authority on what Plotly types
         exist; every one of them gets a research entry, and `table` covers

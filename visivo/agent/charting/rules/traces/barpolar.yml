@@ -1,0 +1,58 @@
+type: barpolar
+family: polar
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.75
+one_liner: Bars around a circle; only for a cyclic axis (hour of day, weekday, month, compass) where the wrap-around matters.
+use_when:
+  - "A `time` dimension extracted to a cycle part — `time_grain` hour → 24 wedges, day-of-week → 7, month-of-year → 12 — as `theta`, one additive metric as `r`."
+  - "Compass direction (8 or 16 sectors) with a count or sum: the wind-rose, a heading, a bearing."
+  - "The story is the wrap-around itself: 23:00 sits next to 00:00, December next to January, and a linear bar would split the peak."
+  - "A `few` (≤5) additive categorical stacked on top via `split` (speed bucket, payment type) — polar barmode stacks by default."
+avoid_when:
+  - "The axis is not cyclic — sequential dates (`date_trunc('month', ts)` over 3 years), unordered categories, ranks or stages; the circle implies a wrap that is not there. Use bar or a line."
+  - Exact comparison between wedges matters — wedge area grows with r², exaggerating differences; a linear bar is more honest.
+  - "Two cyclic dimensions (hour × weekday) — 168 cells belong in a heatmap, not 7 split roses."
+  - More than ~36 sectors or a non-additive stacked metric (averages, rates).
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [time, categorical]
+  cardinality: {min: 7, max: 36}
+required_props: [r, theta]
+example: test-projects/docs-examples/dashboards/barpolar/wind-rose.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: rides-by-hour-of-day
+      props:
+        type: barpolar
+        theta: ?{ strftime(${ref(trips).pickup_at}, '%H') }
+        r: ?{ count(*) }
+      interactions:
+        - sort: ?{ strftime(${ref(trips).pickup_at}, '%H') ASC }
+  charts:
+    - name: rides-clock
+      insights:
+        - ${ref(rides-by-hour-of-day)}
+      layout:
+        polar: {angularaxis: {direction: clockwise, rotation: 90}}
+encodings_that_scale:
+  - "second categorical (few, additive) → `split`; stacks into a rose (wind-rose example)"
+  - "a second cyclic dimension → switch to heatmap (hour × weekday); never a split per weekday"
+  - "a non-cyclic second dimension (borough) → input_filter or small_multiples of one rose each"
+limits:
+  series_ideal: 3
+  series_max: 6
+  repair: [regrain, bar, heatmap, input_filter]
+transforms: [regrain, bucket, collapse_rare]
+visivo_gotchas:
+  - "Numeric `theta` is read as degrees: `extract(hour ...)` squeezes 24 bars into 0–23°. Emit a zero-padded label (`strftime(ts, '%H')`) for a category axis, or multiply (`hour * 15`)."
+  - "A category angular axis only has the slots present in the data; a missing hour shifts every later wedge. Build a complete spine (`generate_series` + LEFT JOIN) or set `angularaxis.categoryarray`."
+  - "Weekday/month names sort alphabetically; sort on `isodow`/`month` and label with `dayname`/`monthname` (wind-rose sorts on `cardinal_order`)."
+  - "Default `angularaxis` starts at 3 o'clock counter-clockwise; set `direction: clockwise, rotation: 90` so the cycle reads like a clock."
+  - "`marker.color` as a constant (simple example) or a hex CASE per split value (wind-rose example) opts out of the theme; `split` already colors each series."
+pairings: [bar_beside, kpi_strip_above]
+layout: {height: medium, width_share: 0.5, row_role: breakdown}
+mobile: A rose needs a square; at half width it survives the stack, but keep ≤3 stacked series and drop sector labels to every other one for 24 wedges.

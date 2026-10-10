@@ -27,8 +27,11 @@ minimal_yaml: |
         type: indicator
         mode: number+delta
         value: ?{ count(*) }[0]
-        delta: {reference: ?{ count(*) }[1], relative: true}
-        number: {suffix: " rides"}
+        delta:
+          reference: ?{ count(*) }[1]
+          relative: true
+        number:
+          suffix: " rides"
       interactions:
         - sort: ?{ date_trunc('month', ${ref(trips).pickup_at}) DESC }
 encodings_that_scale:
