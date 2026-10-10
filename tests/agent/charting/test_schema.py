@@ -32,6 +32,7 @@ def _entry(**overrides):
         avoid_when=["more than ~20 categories"],
         data_shape={"metrics": {"min": 1}, "dimensions": {"min": 1, "max": 2}},
         minimal_yaml="insights:\n  - name: x\n    props:\n      type: bar\n",
+        example="test-projects/docs-examples/dashboards/bar/simple.visivo.yml",
     )
     base.update(overrides)
     return TraceEntry(**base)
@@ -215,6 +216,36 @@ class TestTraceEntry:
             str(_entry(review={"state": "approved", "date": "2026-10-08"}).review.date)
             == "2026-10-08"
         )
+
+    def test_the_family_must_be_in_the_taxonomy(self):
+        with pytest.raises(ValidationError, match="not one of the families"):
+            _entry(family="sparkline")
+        with pytest.raises(ValidationError, match="not one of the families"):
+            _entry(secondary_families=["sparkline"])
+
+    def test_secondary_families_may_not_repeat_the_primary(self):
+        with pytest.raises(ValidationError, match="repeats"):
+            _entry(family="line", secondary_families=["line"])
+        assert _entry(family="line", secondary_families=["area", "xy"]).families() == [
+            "line",
+            "area",
+            "xy",
+        ]
+
+    def test_a_core_entry_must_cite_its_example(self):
+        with pytest.raises(ValidationError, match="docs-example"):
+            _entry(example=None)
+        assert _entry(tier="extended", confidence=0.5, example=None).example is None
+
+    def test_minimal_yaml_must_set_the_type(self):
+        with pytest.raises(ValidationError, match="type: bar"):
+            _entry(minimal_yaml="insights:\n  - name: x\n    props:\n      type: scatter\n")
+        # A table is not a trace: its snippet has no `type:` line.
+        assert _entry(type="table", minimal_yaml="tables:\n  - name: t\n").type == "table"
+
+    def test_one_liner_is_capped(self):
+        with pytest.raises(ValidationError):
+            _entry(one_liner="x" * 121)
 
     def test_known_types_track_prop_type(self):
         """When a trace type is added to PropType the rules must learn it;
