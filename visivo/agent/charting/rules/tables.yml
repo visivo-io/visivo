@@ -1,0 +1,41 @@
+# How a table is authored and placed (VIS-1444). Evidence:
+# specs/chart-selection/06-tables.md, verified against visivo/models/table.py
+# and the viewer's PivotableTable / usePivotData / cellFormatting.
+rows_per_page:
+  enum: [3, 5, 15, 25, 50, 100, 500, 1000]     # there is no 10; the enum member `ten` is 15
+  lookup: smallest enum value >= expected rows when rows <= 50, so no pager appears
+  long: 50
+  with_format_cells: smallest enum value >= pivot row count, because the gradient is computed per page
+visible_rows_by_height: {small: 3, medium: 7, large: 10, xlarge: 17}   # 36 px rows, 60 px chrome
+column_budget: {full_width: 12, half_width: 6, min_col_px: 80}
+pivot_rules:
+  rows: the higher-cardinality dimension (scrolls; sticky left)
+  columns: the lower-cardinality dimension; row fields + values x its cardinality must fit the column budget
+  values: {max: 3, form: "agg(${ref(model).field})", aggs: [sum, avg, count, min, max, median]}
+  source: a row-grain model; an aggregated insight only with sum over additive pre-aggregates
+  period_labels: lexicographically sortable (YYYY-MM, YYYY-Qn); pivots have no ORDER BY
+  totals: not rendered by the table; build them as a category in SQL (GROUPING SETS)
+  format_cells:
+    scope:
+      column: compare rows within each column (vendors within a month)
+      row: follow one entity across columns (one vendor across months)
+      table: only when every value column shares one unit and scale
+    colors: {min: "#e8d5df", max: "#713b57"}   # a light tint of the theme accent, and the accent
+    forbid: [signed or diverging metrics, non-hex colours, scope table with mixed units]
+gotchas:
+  - "Alias every `columns` entry (`${ref(x).col} as \"Label\"`); an unaliased header is the raw, or on an insight the hashed, column name."
+  - "`rows_per_page` has no 10: the enum is 3, 5, 15, 25, 50, 100, 500, 1000."
+  - "`data` excludes `columns`/`rows`/`values`; a `data:` table over an insight shows prop paths (X, Y) as headers."
+  - "`rows` needs `values` and `columns`; every `values` entry must be `agg(...)` or the browser query fails after a clean compile."
+  - "Pivoting an already aggregated insight re-aggregates silently (avg, count, median come out wrong); point pivots at a row-grain model."
+  - "On an insight, `${ref(insight).field}` names a prop (x, y, text), not a SQL column."
+  - "Only the first referenced source is queried; never mix sources in one table."
+  - "Gradients are computed over the current page, treat null as 0 and colour numeric id/year columns too; set rows_per_page >= the pivot's rows."
+  - "A `columns` or pivot table ignores inputs; an input-filtered table needs `data: ${ref(insight)}` with the interaction on the insight."
+placement:
+  detail: {position: last, width_share: 1.0, height_by_rows: {3: small, 7: medium}, default_height: large, never: [xlarge]}
+  pivot_beside_chart: {max_columns: 6, two_to_one_up_to: 4}   # [8, 4] up to four columns, else [6, 6]
+  kpi_table: {max_rows: 3, max_cols: 3, height: small}
+  max_tables_per_row: 1
+  section: under the section header, after its charts
+  mobile: stacks full width below 1024 px; the chart before the table

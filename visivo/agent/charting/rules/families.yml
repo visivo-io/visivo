@@ -17,7 +17,7 @@ families:
       - {when: "intent == kpi", delta: 0.5, reason: "a single number is what was asked for"}
       - {when: "dimensions == 0", delta: 0.2, reason: "nothing to break down"}
     encodings: {time_dimension: "delta against the previous period, or a sparkline"}
-    layout: {height: xsmall, width_share: 0.25, row_role: kpi}
+    layout: {height: small, width_share: 0.25, row_role: kpi}
     skill: charts/kpi
 
   - name: line
@@ -55,6 +55,7 @@ families:
       - {when: "intent in (compare, rank)", delta: 0.4, reason: "bars compare categories directly"}
       - {when: "two few dimensions", delta: 0.2, reason: "a stacked or grouped bar carries a second small dimension"}
       - {when: "axis_points > 24", delta: -0.3, reason: "too many periods for columns; a line reads better"}
+      - {when: "lookup dimension", delta: -0.5, reason: "an identifier or a long list is for looking up, not for bars"}
     encodings: {second_dimension: "stacked when part_of_whole, grouped otherwise"}
     layout: {height: medium, width_share: 0.5, row_role: breakdown}
     skill: charts/bar
@@ -78,12 +79,39 @@ families:
     skill: charts/histogram
 
   - name: table
-    trace_types: [table, table_pivot]
+    trace_types: [table]
     hard_gates:
       metrics: {min: 0}
       dimensions: {min: 1}
     score:
       - {when: "identifier or high cardinality", delta: 0.6, reason: "identifier-level detail is for looking up, not charting"}
       - {when: "intent == detail", delta: 0.3, reason: "exact values were asked for"}
-    layout: {height: medium, width_share: 1.0, row_role: detail}
+      - {when: "exact_values", delta: 0.4, reason: "the figures must be read exactly"}
+      - {when: "metrics >= 4 and dimensions small", delta: 0.5, reason: "four or more measures per row read as columns, not grouped bars"}
+      - {when: "mixed units per row", delta: 0.3, reason: "rows mix units no single axis can hold"}
+      - {when: "metrics <= 3 and dimensions small and intent != detail", delta: -0.3, reason: "a chart shows a few measures across few categories faster"}
+      - {when: "cross cells > 400", delta: 0.4, reason: "too many cells for a heatmap; a paged table with an input filter reads them"}
+    limits:
+      repair: [input_filter]
+    layout: {height: large, width_share: 1.0, row_role: detail}
+    skill: charts/table
+
+  - name: table_pivot
+    trace_types: [table_pivot]
+    hard_gates:
+      metrics: {min: 1, max: 3}
+      dimensions: {min: 2, max: 3}
+      dimension_roles: [categorical, boolean, geo_region, time, numeric_discrete]
+    score:
+      - {when: "cross cells in (400, 2000]", delta: 0.5, reason: "too many cells for a heatmap, few enough to scan as a cross-tab"}
+      - {when: "time columns <= 12 and intent in (detail, compare)", delta: 0.4, reason: "exact figures per period read across a row"}
+      - {when: "part_of_whole and totals_required", delta: 0.4, reason: "a composition with totals is a cross-tab (totals built in SQL)"}
+      - {when: "exact_values", delta: 0.3, reason: "the figures must be read exactly"}
+      - {when: "intent == trend", delta: -0.4, reason: "a trend reads best as a line"}
+    encodings:
+      rows: "the higher-cardinality dimension"
+      columns: "the lower-cardinality dimension (periods when time)"
+      format_cells: "column to compare within a period, row across periods, table only with one unit"
+    warnings: ["Pivot rows are unordered and totals are not rendered; name categories to sort and build totals in SQL."]
+    layout: {height: large, width_share: 1.0, row_role: detail}
     skill: charts/table
