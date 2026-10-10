@@ -12,7 +12,7 @@ from typing import Dict, List, Literal, Optional
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-from visivo.agent.charting.rules import load_layout
+from visivo.agent.charting.rules import load_layout, load_tables
 from visivo.agent.charting.schema import HEIGHT_TOKENS, RowRole, height_px
 
 Kind = Literal["chart", "table", "markdown", "input"]
@@ -46,6 +46,7 @@ class Hints(BaseModel):
     related_kpis: List[str] = Field(default_factory=list)
     header: Optional[str] = None
     chart: Optional[str] = None  # an input that drives one chart only
+    beside: Optional[str] = None  # a pivot that sits next to this chart
 
 
 class LayoutItem(BaseModel):
@@ -73,6 +74,8 @@ def _item_height(item, role, rules):
     per heatmap rows or per table rows."""
     base = rules.rule(role).height
     if item.kind == "table":
+        if role == "kpi":
+            return base
         if item.hints.rows is not None:
             for limit, token in sorted(rules.detail_height_by_rows.items()):
                 if item.hints.rows <= limit:
@@ -99,8 +102,9 @@ def _markdown(width, content):
 
 
 class _Planner:
-    def __init__(self, items, title, inputs, intent, rules):
+    def __init__(self, items, title, inputs, intent, rules, tables=None):
         self.rules = rules
+        self.tables = tables or load_tables()
         self.title = title
         self.intent = intent
         self.warnings = []
@@ -127,6 +131,48 @@ class _Planner:
                 item.row_role = self.rules.row_role_by_family.get(
                     item.family or "", DEFAULT_ROLE_BY_KIND[item.kind]
                 )
+        self._place_tables()
+
+    def _place_tables(self):
+        """Tables have three legal homes: the detail rows, beside a chart as a
+        narrow pivot, or a KPI row when they are tiny. Anything else is a
+        detail table."""
+        placement = self.tables.placement
+        for item in self.items:
+            if item.kind != "table":
+                continue
+            hints = item.hints
+            if hints.beside:
+                target = self.by_name.get(hints.beside)
+                if target is None or target.kind != "chart":
+                    self.warnings.append(
+                        f"{item.name} names unknown chart {hints.beside}; placed as a detail table"
+                    )
+                    hints.beside = None
+                elif (
+                    hints.cols is not None and hints.cols > placement.pivot_beside_chart.max_columns
+                ):
+                    self.warnings.append(
+                        f"{item.name} has {hints.cols} columns; a pivot beside a chart holds "
+                        f"{placement.pivot_beside_chart.max_columns} before it scrolls sideways — placed as a detail table"
+                    )
+                    hints.beside = None
+                else:
+                    item.row_role = target.row_role
+                    continue
+            if item.row_role == "kpi":
+                kpi = placement.kpi_table
+                if (
+                    (hints.rows or 0) <= kpi.max_rows
+                    and (hints.cols or 0) <= kpi.max_cols
+                    and hints.rows
+                    and hints.cols
+                ):
+                    continue
+                self.warnings.append(
+                    f"{item.name} is too big for a KPI table (≤{kpi.max_rows} rows × {kpi.max_cols} columns); placed as a detail table"
+                )
+            item.row_role = "detail"
         heroes = sorted(
             (c for c in self.charts if c.row_role == "hero"),
             key=lambda c: -c.hints.importance,
@@ -158,9 +204,31 @@ class _Planner:
     def _local_inputs(self, chart):
         return [i for i in self.items if i.kind == "input" and i.hints.chart == chart.name]
 
+    def _beside_tables(self, chart):
+        return [t for t in self.items if t.kind == "table" and t.hints.beside == chart.name]
+
     def _plain_rows(self, role, items):
         rows = []
         rule = self.rules.rule(role)
+        with_table = [c for c in items if c.kind == "chart" and self._beside_tables(c)]
+        for chart in with_table:
+            table = self._beside_tables(chart)[0]
+            two_to_one = (
+                table.hints.cols or 0
+            ) <= self.tables.placement.pivot_beside_chart.two_to_one_up_to
+            widths = [8, 4] if two_to_one else [6, 6]
+            height = _heavier(
+                _item_height(chart, role, self.rules), _item_height(table, role, self.rules)
+            )
+            rows.append(
+                _row(
+                    height,
+                    [_leaf(chart, widths[0]), _leaf(table, widths[1])],
+                    f"{chart.name} with the pivot {table.name} beside it ({widths}; chart first so it leads the stack)",
+                )
+            )
+        placed_tables = {t.name for c in with_table for t in self._beside_tables(c)}
+        items = [i for i in items if i not in with_table and i.name not in placed_tables]
         with_local = [c for c in items if c.kind == "chart" and self._local_inputs(c)]
         for chart in with_local:
             local = self._local_inputs(chart)
@@ -185,6 +253,17 @@ class _Planner:
                 )
             )
         rest = [i for i in items if i not in with_local]
+        if role != "detail":
+            tables = [i for i in rest if i.kind == "table"]
+            for table in tables:
+                rows.append(
+                    _row(
+                        _item_height(table, role, self.rules),
+                        [_leaf(table, 12)],
+                        f"{role}: {table.name} alone — never two scrolling regions in one row",
+                    )
+                )
+            rest = [i for i in rest if i.kind != "table"]
         for chunk in self._chunk(rest, role):
             widths = rule.widths_for(len(chunk))
             height = "compact" if role in ("inputs", "header") else None

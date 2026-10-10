@@ -159,12 +159,19 @@ class Semantics(_Strict):
     signed_contributions: bool = False
     hierarchy: bool = False
     boundaries_available: bool = False
+    # P2f: the reader needs the figures themselves (reconciliation, audit).
+    exact_values: bool = False
+    # P2f: a composition that must show its totals; pivots render none, so
+    # the skeleton says to build them in SQL.
+    totals_required: bool = False
 
 
 class RequestContext(_Strict):
     row_count: Optional[int] = Field(default=None, ge=0)
     existing_inputs: List[str] = Field(default_factory=list)
     max_results: int = Field(default=5, ge=1)
+    # The model the columns come from, for the ${ref()}s in a skeleton.
+    model: str = "model"
 
 
 class RecommendRequest(_Strict):
@@ -479,6 +486,7 @@ class Recommendation(_Strict):
     transforms: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     yaml_skeleton: Optional[str] = None
+    table_yaml: Optional[str] = None
     pairings: List[str] = Field(default_factory=list)
     layout: LayoutHint = Field(default_factory=LayoutHint)
     skill: Optional[str] = None
@@ -493,3 +501,110 @@ class RecommendResponse(_Strict):
     recommendations: List[Recommendation] = Field(default_factory=list)
     rejected: List[Rejection] = Field(default_factory=list)
     transforms_suggested: List[str] = Field(default_factory=list)
+
+
+# --- what tables.yml says ----------------------------------------------------
+
+
+class RowsPerPageRule(_Strict):
+    enum: List[int] = Field(min_length=1)
+    lookup: str
+    long: int
+    with_format_cells: str
+
+    @model_validator(mode="after")
+    def _long_is_a_member(self):
+        if self.long not in self.enum:
+            raise ValueError("`long` must be one of the enum values")
+        return self
+
+    def pick(self, rows, gradient=False):
+        """The smallest page size that shows ``rows`` without a pager, when
+        that is a small lookup table (or a gradient needs one page); ``long``
+        otherwise."""
+        if rows is not None and (rows <= 50 or gradient):
+            for size in sorted(self.enum):
+                if size >= rows:
+                    return size
+        return self.long
+
+
+class ColumnBudget(_Strict):
+    full_width: int = 12
+    half_width: int = 6
+    min_col_px: int = 80
+
+
+class FormatCellsRule(_Strict):
+    scope: Dict[str, str]
+    colors: Dict[str, str]
+    forbid: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _hex(self):
+        for key in ("min", "max"):
+            value = self.colors.get(key, "")
+            if not (value.startswith("#") and len(value) in (4, 7)):
+                raise ValueError(f"format_cells colour {key!r} must be hex, got {value!r}")
+        return self
+
+
+class PivotValues(_Strict):
+    max: int = Field(default=3, ge=1)
+    form: str
+    aggs: List[str] = Field(min_length=1)
+
+
+class PivotRules(_Strict):
+    rows: str
+    columns: str
+    values: PivotValues
+    source: str
+    period_labels: str
+    totals: str
+    format_cells: FormatCellsRule
+
+
+class DetailPlacement(_Strict):
+    position: str = "last"
+    width_share: float = 1.0
+    height_by_rows: Dict[int, str] = Field(default_factory=dict)
+    default_height: str = "large"
+    never: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _heights(self):
+        for height in [*self.height_by_rows.values(), self.default_height]:
+            _check_height(height)
+        return self
+
+
+class PivotBeside(_Strict):
+    max_columns: int = Field(default=6, ge=1)
+    two_to_one_up_to: int = Field(default=4, ge=1)
+
+
+class KpiTable(_Strict):
+    max_rows: int = Field(default=3, ge=1)
+    max_cols: int = Field(default=3, ge=1)
+    height: str = "small"
+
+
+class TablePlacement(_Strict):
+    detail: DetailPlacement = Field(default_factory=DetailPlacement)
+    pivot_beside_chart: PivotBeside = Field(default_factory=PivotBeside)
+    kpi_table: KpiTable = Field(default_factory=KpiTable)
+    max_tables_per_row: int = Field(default=1, ge=1)
+    section: str = ""
+    mobile: str = ""
+
+
+class TablesDoc(_Strict):
+    """The whole of ``tables.yml``."""
+
+    rows_per_page: RowsPerPageRule
+    visible_rows_by_height: Dict[str, int] = Field(default_factory=dict)
+    column_budget: ColumnBudget = Field(default_factory=ColumnBudget)
+    pivot_rules: PivotRules
+    gotchas: List[str] = Field(min_length=1)
+    placement: TablePlacement = Field(default_factory=TablePlacement)

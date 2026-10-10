@@ -257,10 +257,13 @@ class TestDiscovery:
         assert [s["name"] for s in skills.attached_to("get_source")] == ["charts/line"]
         assert skills.attached_to("write_chart") == []
 
-    def test_shipped_names_are_unchanged(self):
-        """Nothing today lives in a subdirectory, so every name is still a stem."""
+    def test_shipped_names_are_stems_except_the_on_demand_namespaces(self):
+        """Only the chart-family notes live in a subdirectory, and a
+        namespaced skill is on demand by construction."""
         for skill in skills.packaged():
-            assert "/" not in skill["name"]
+            if "/" in skill["name"]:
+                assert skill["name"].startswith("charts/"), skill["name"]
+                assert skill["always"] is False
 
 
 class TestTheTwoTiers:

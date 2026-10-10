@@ -348,3 +348,121 @@ class TestTheTool:
             )
         with pytest.raises(ToolError, match="Could not lay out"):
             call(integration_app, "recommend_layout", {"items": [{"name": "a", "kind": "widget"}]})
+
+
+class TestTablePlacement:
+    """VIS-1445: tables have three legal homes."""
+
+    def test_a_narrow_pivot_sits_beside_its_chart_two_to_one(self):
+        result = recommend_layout(
+            items=[
+                chart("by-borough", "bar"),
+                {
+                    "name": "pivot",
+                    "kind": "table",
+                    "hints": {"beside": "by-borough", "cols": 4, "pivot": True, "rows": 6},
+                },
+            ]
+        )
+        row = next(r for r in rows_of(result) if "${ref(pivot)}" in leaf_names(r))
+        assert leaf_names(row) == [
+            "${ref(by-borough)}",
+            "${ref(pivot)}",
+        ], "chart first, it leads the stack"
+        assert [i["width"] for i in row["items"]] == [8, 4] and row["height"] == "medium"
+        assert result["warnings"] == []
+
+    def test_a_wider_pivot_splits_the_row_evenly(self):
+        result = recommend_layout(
+            items=[
+                chart("by-borough", "bar"),
+                {
+                    "name": "pivot",
+                    "kind": "table",
+                    "hints": {"beside": "by-borough", "cols": 6, "rows": 20},
+                },
+            ]
+        )
+        row = next(r for r in rows_of(result) if "${ref(pivot)}" in leaf_names(r))
+        assert [i["width"] for i in row["items"]] == [6, 6] and row["height"] == "medium"
+
+    def test_a_pivot_too_wide_for_half_a_row_becomes_a_detail_table(self):
+        result = recommend_layout(
+            items=[
+                chart("by-borough", "bar"),
+                {
+                    "name": "pivot",
+                    "kind": "table",
+                    "hints": {"beside": "by-borough", "cols": 9, "rows": 20},
+                },
+            ]
+        )
+        assert leaf_names(rows_of(result)[-1]) == ["${ref(pivot)}"]
+        assert any("holds 6" in w for w in result["warnings"])
+
+    def test_a_pivot_beside_an_unknown_chart_falls_back_to_detail(self):
+        result = recommend_layout(
+            items=[
+                chart("a", "bar"),
+                {"name": "p", "kind": "table", "hints": {"beside": "nope", "cols": 3}},
+            ]
+        )
+        assert leaf_names(rows_of(result)[-1]) == ["${ref(p)}"]
+        assert any("unknown chart nope" in w for w in result["warnings"])
+
+    def test_a_tiny_table_may_replace_the_kpi_strip(self):
+        result = recommend_layout(
+            items=[
+                {
+                    "name": "kpis",
+                    "kind": "table",
+                    "row_role": "kpi",
+                    "hints": {"rows": 3, "cols": 3},
+                },
+                chart("trend", "line"),
+            ]
+        )
+        first = rows_of(result)[0]
+        assert leaf_names(first) == ["${ref(kpis)}"] and first["height"] == "small"
+        assert result["warnings"] == []
+
+    def test_a_table_too_big_for_a_kpi_row_is_demoted_with_a_warning(self):
+        result = recommend_layout(
+            items=[
+                {
+                    "name": "kpis",
+                    "kind": "table",
+                    "row_role": "kpi",
+                    "hints": {"rows": 8, "cols": 3},
+                },
+                chart("trend", "line"),
+            ]
+        )
+        assert leaf_names(rows_of(result)[-1]) == ["${ref(kpis)}"]
+        assert any("too big for a KPI table" in w for w in result["warnings"])
+
+    def test_never_two_tables_in_one_row(self):
+        result = recommend_layout(
+            items=[
+                {"name": "t1", "kind": "table", "row_role": "breakdown", "hints": {"rows": 5}},
+                {"name": "t2", "kind": "table", "row_role": "breakdown", "hints": {"rows": 5}},
+                chart("b", "bar"),
+            ]
+        )
+        table_rows = [r for r in rows_of(result) if any("table" in i for i in r["items"])]
+        assert len(table_rows) == 2 and all(len(r["items"]) == 1 for r in table_rows)
+        for row in rows_of(result):
+            Dashboard(name="x", rows=[row])
+
+    def test_the_default_home_of_a_table_is_the_last_row(self):
+        result = recommend_layout(
+            items=[
+                chart("b", "bar"),
+                {"name": "t", "kind": "table", "hints": {"rows": 100}},
+                chart("l", "line"),
+            ]
+        )
+        assert (
+            leaf_names(rows_of(result)[-1]) == ["${ref(t)}"]
+            and rows_of(result)[-1]["height"] == "large"
+        )

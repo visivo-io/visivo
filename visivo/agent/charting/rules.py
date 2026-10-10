@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from visivo.agent.charting.schema import FamilyRule, LayoutDoc
+from visivo.agent.charting.schema import FamilyRule, LayoutDoc, TablesDoc
 
 RULES_DIR = Path(__file__).parent / "rules"
 
@@ -37,5 +37,17 @@ def load_layout(path=None):
         raise ValueError(f"{path}: expected a mapping")
     try:
         return LayoutDoc(**loaded)
+    except Exception as error:
+        raise ValueError(f"{path}: {error}") from error
+
+
+def load_tables(path=None):
+    """The ``TablesDoc`` from ``tables.yml``."""
+    path = Path(path) if path else RULES_DIR / "tables.yml"
+    loaded = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{path}: expected a mapping")
+    try:
+        return TablesDoc(**loaded)
     except Exception as error:
         raise ValueError(f"{path}: {error}") from error
