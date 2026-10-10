@@ -1,0 +1,45 @@
+type: scattermapbox
+family: geo_point
+status: deprecated
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.85
+one_liner: Deprecated Mapbox GL twin of scattermap; never pick it for a new chart, migrate it to scattermap.
+use_when:
+  - "Never for new charts. Only when editing an existing insight that already uses it; migrate it to `scattermap`."
+avoid_when:
+  - Always — `scattermap` draws the same points on MapLibre with identical props and no deprecation warning.
+  - "Any custom `mapbox://` style — it needs `layout.mapbox.accesstoken`, a secret that would ship to every viewer."
+data_shape:
+  metrics: {min: 0, max: 2}
+  dimensions: {min: 2, max: 3}
+  dimension_roles: [geo_point, categorical, boolean]
+  cardinality: {max: 5000}
+required_props: [lat, lon]
+minimal_yaml: |
+  insights:
+    - name: pickups-by-zone-legacy
+      props:
+        type: scattermapbox
+        lat: ?{ avg(${ref(trips).pickup_lat}) }
+        lon: ?{ avg(${ref(trips).pickup_lon}) }
+        text: ?{ ${ref(trips).pickup_zone} }
+        mode: markers
+        marker:
+          size: ?{ sqrt(count(*)) }
+encodings_that_scale:
+  - "same as scattermap: `marker.size` for a metric, `split` for a `few` categorical, `cluster.enabled` for raw points"
+limits:
+  series_ideal: 5
+  series_max: 10
+  repair: [top_n_other, input_filter, densitymap]
+transforms: [aggregate_to_centroid, grid_bucket]
+visivo_gotchas:
+  - "Migrate: change `type` to `scattermap` and any chart `layout.mapbox` to `layout.map`; every other prop carries over."
+  - "It renders tokenless today only because the theme sets `layout.mapbox.style` to a carto style; a `mapbox://` style needs a token."
+  - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
+  - "All `scattermap` gotchas apply: aggregate to a location, check lat/lon are not swapped, set center and zoom."
+pairings: [bar_beside, detail_table_below]
+layout: {height: large, width_share: 0.67, row_role: hero}
+mobile: As scattermap; full width, legend hidden.

@@ -1,0 +1,57 @@
+type: candlestick
+family: financial
+status: preferred
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.8
+one_liner: Daily price bars (open/high/low/close) over time; the default for a single security's price history.
+use_when:
+  - "Four price columns named like open/high/low/close (`aapl.open … close`) per period over a time axis."
+  - "One security (or one picked by an input) and 20–500 periods: daily for a quarter-to-two-years, weekly beyond."
+  - "`intent: trend` or `change` on prices where intra-period range and direction both matter."
+avoid_when:
+  - "Four metrics that merely share a time axis (fares, tips, tolls, total) — the shape matches but the semantics do not; use scatter lines."
+  - "Only a close price is available, or the reader needs the level, not the range — a line is clearer."
+  - "More than ~500 candles — they collapse to 1 px slivers; regrain to weeks/months (first open, max high, min low, last close)."
+  - Several securities overlaid on one price axis — candles interleave; use an input filter or small multiples.
+data_shape:
+  metrics: {min: 4, max: 4}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [time]
+  cardinality: {min: 10, max: 500}
+required_props: [x, open, high, low, close]
+example: test-projects/docs-examples/dashboards/candlestick/candlestick-plus-volume.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: aapl-daily-candles
+      props:
+        type: candlestick
+        x: ?{ ${ref(aapl).date} }
+        open: ?{ ${ref(aapl).open} }
+        high: ?{ ${ref(aapl).high} }
+        low: ?{ ${ref(aapl).low} }
+        close: ?{ ${ref(aapl).close} }
+  charts:
+    - name: aapl-price
+      insights:
+        - ${ref(aapl-daily-candles)}
+      layout: {xaxis: {rangeslider: {visible: false}, rangebreaks: [{bounds: [sat, mon]}]}}
+encodings_that_scale:
+  - "volume → a second insight `type: bar` with `yaxis: y2`, `yaxis2.domain: [0, 0.2]` and `yaxis.domain: [0.25, 1]` (stacked subplot, not overlaid)"
+  - "a second security → an input filter on the ticker, or one chart per ticker; never `split` on one price axis"
+  - "a moving average → a third insight `type: scatter`, `mode: lines` on the same axes (window function in SQL)"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [regrain, input_filter, small_multiples]
+transforms: [regrain]
+visivo_gotchas:
+  - "Plotly shows a range slider under candlestick/ohlc by default; set `layout.xaxis.rangeslider.visible: false` on dashboards — it eats a third of a medium row."
+  - "Weekends and holidays leave empty gaps on a date axis; add `xaxis.rangebreaks: [{bounds: [sat, mon]}]` (holidays need `values:` lists)."
+  - "`x` must be a real date: string dates like `6/5/24` (homepage aapl CSV) sort and type as categories; `strptime` or cast in the model."
+  - "Regrain with first/last, not sum/avg: `arg_min(open, date)`, `max(high)`, `min(low)`, `arg_max(close, date)` per `date_trunc('week', date)`."
+  - "`increasing/decreasing.line.color` replace the theme's up/down colors; a volume bar colored by `CASE WHEN close >= open` is the one legitimate color binding."
+pairings: [volume_bar_subplot, kpi_strip_above, detail_table_below]
+layout: {height: large, width_share: 1.0, row_role: hero}
+mobile: Full width, last ~60 candles via an input or default range; candles thinner than ~3 px stop reading as candles.

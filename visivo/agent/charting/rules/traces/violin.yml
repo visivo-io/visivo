@@ -1,0 +1,55 @@
+type: violin
+family: distribution
+status: preferred
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.75
+one_liner: A box plot that also draws the density; pick it when the shape beyond quartiles matters and groups are large.
+use_when:
+  - "One numeric column by a `few` categorical where every group has ≥ ~100 rows and the shape matters (bimodal fares, a second hump of airport trips)."
+  - "Two sub-groups per category to contrast side by side: two insights with `side: negative` / `side: positive` (split violin)."
+  - A box would hide the story — two groups with the same median and IQR but different shapes.
+avoid_when:
+  - "Groups under ~100 rows — the kernel density invents smooth shape from a handful of points; use box with `boxpoints: all`."
+  - More than ~8 groups — the bodies get too narrow to read a shape; use box (it scales to 20).
+  - Audiences unfamiliar with density plots, or exact figures wanted — box or a median/p99 table reads faster.
+  - "A bounded or discrete column (counts 0–5, ratings) — the kernel smears past the bounds; use bar of counts or `spanmode: hard`."
+data_shape:
+  metrics: {min: 0, max: 0}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [numeric_continuous, categorical, boolean]
+  cardinality: {min: 1, max: 8}
+required_props: [y]
+example: test-projects/docs-examples/dashboards/violin/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: fare-shape-by-borough
+      props:
+        type: violin
+        x: ?{ ${ref(trips).pickup_borough} }
+        y: ?{ least(${ref(trips).fare_amount}, 100) }
+        box: {visible: true}
+        meanline: {visible: true}
+        points: false
+      interactions:
+        - filter: ?{ ${ref(trips).fare_amount} > 0 }
+        - sort: ?{ ${ref(trips).pickup_borough} ASC }
+encodings_that_scale:
+  - "two-valued sub-group → two insights on one chart, `side: negative`/`positive`, each filtered to one value (split-categories example)"
+  - "a `few` second categorical → `split` with `layout.violinmode: group`"
+  - "groups of very different size → `scalemode: count` so width reflects n; the default `width` makes 50 rows look as solid as 50 000"
+limits:
+  series_ideal: 4
+  series_max: 8
+  repair: [top_n_other, input_filter, box]
+transforms: [clip_p99, sample]
+visivo_gotchas:
+  - "Raw rows, no aggregate on `y` (like box); every row is shipped and the browser runs the KDE — sample in SQL above ~200k rows."
+  - "`points` defaults to `outliers`; `points: all` (overlays example) on a large group draws every row — use `false` and `box.visible: true`."
+  - "Clip the tail in SQL (`least(x, p99)`); the kernel extends the body past the clipped max otherwise, and one outlier flattens every violin."
+  - "`split` on the same column as `x` (overlays example) makes one trace per group — harmless but it doubles the legend; split only on a second dimension."
+  - "The density is smoothed (`bandwidth` auto); say 'estimated density' in the subtitle and never read a value off the outline."
+pairings: [box_beside, histogram_beside, kpi_strip_above]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: "≤4 groups, horizontal orientation (`orientation: h`, swap x/y) when labels are long; the body needs width to show shape."

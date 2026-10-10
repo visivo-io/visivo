@@ -1,0 +1,50 @@
+type: funnelarea
+family: part_of_whole
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.6
+one_liner: A pie drawn as a funnel shape; slice height is share of the total. Presentation-only; use funnel for drop-off.
+use_when:
+  - "A pie-shaped question (≤5 parts of one additive whole) whose parts have a natural order, and someone explicitly asked for a funnel look."
+  - "Disjoint, exhaustive stages (each rider sits in exactly one lifecycle stage) where `percent` of the total is meaningful."
+avoid_when:
+  - "Nested conversion stages (visited ⊃ signed up ⊃ paid) — percent is of the sum of stages, not of the first; use funnel with `percent initial`."
+  - More than 5 stages — the pie gate applies; collapse to top-4 + Other or use a bar.
+  - "Stages must be compared precisely — the outline is a fixed trapezoid, so only slice heights carry data; use funnel or bar."
+  - An unordered categorical — a funnel silhouette implies a sequence; use pie or bar.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [categorical, numeric_discrete]
+  cardinality: {min: 3, max: 5}
+required_props: [labels, values]
+example: test-projects/docs-examples/dashboards/funnelarea/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: riders-by-lifecycle-stage
+      props:
+        type: funnelarea
+        labels: ?{ ${ref(riders).lifecycle_stage} }
+        values: ?{ count(*) }
+        textinfo: label+value+percent
+      interactions:
+        - sort: ?{ min(${ref(riders).stage_order}) ASC }
+encodings_that_scale:
+  - "6+ stages → `top_n_other` or bucket to ≤5, as for pie"
+  - "comparing two segments → two funnelareas with `domain` and a shared `scalegroup`, or a grouped funnel"
+limits:
+  series_ideal: 4
+  series_max: 5
+  repair: [top_n_other, bar]
+transforms: [top_n_other, collapse_rare]
+visivo_gotchas:
+  - "There is no `sort` prop: stages draw in row order, top to bottom, so the insight needs a `sort` interaction on a stage-order column, never on the value."
+  - "`textinfo` accepts only label/text/value/percent; `percent` is share of the summed stages. There is no `percent initial` or `percent previous` (those belong to funnel)."
+  - "`values` must be one aggregate per stage; raw rows give a slice per row (same as pie)."
+  - "`marker.colors` from a hex column (the custom-colors docs example) opts out of the theme colorway."
+  - "Nulls become a 'null' stage; coalesce or filter in SQL."
+pairings: [bar_beside, kpi_strip_above]
+layout: {height: medium, width_share: 0.33, row_role: breakdown}
+mobile: "Like pie: one-third width until the stack, then a full row; keep `textinfo` inside so the legend can go."

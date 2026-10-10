@@ -1,0 +1,55 @@
+type: histogram2dcontour
+family: density2d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.65
+one_liner: Smoothed density contours of two numeric columns; a histogram2d drawn as iso-lines for overlays.
+use_when:
+  - "`intent: distribution` over two numeric columns when the audience wants the shape of the cloud, not cell counts."
+  - "Outlining where the mass sits on top of a scattergl of the same points (`contours.coloring: none`, a second insight)."
+  - Comparing the core of two groups' clouds as two outline sets on one chart (≤2 groups).
+avoid_when:
+  - "A default density view — `histogram2d` shows the same binning without the smoothing and is easier to read; it is the preferred pick."
+  - Under ~1 000 rows — contours of a sparse grid are artifacts of the bin edges.
+  - "A z already gridded by SQL (avg fare by hour × distance) — that is `contour`, not a histogram contour."
+  - Exact counts matter — contour bands hide the per-cell figure.
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete]
+  cardinality: {min: 1000}
+required_props: [x, y]
+example: test-projects/docs-examples/dashboards/histogram2dcontour/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: fare-vs-distance-contours
+      props:
+        type: histogram2dcontour
+        x: ?{ least(${ref(trips).trip_distance}, 20) }
+        y: ?{ least(${ref(trips).fare_amount}, 80) }
+        nbinsx: 40
+        nbinsy: 40
+        ncontours: 10
+        colorscale: Blues
+      interactions:
+        - filter: ?{ ${ref(trips).trip_distance} > 0 and ${ref(trips).fare_amount} > 0 }
+encodings_that_scale:
+  - "the points underneath → a second insight (scattergl, low opacity) on the same chart; contours with `contours.coloring: none` on top"
+  - "two groups → two insights each filtered to one value, `coloring: none` and a distinct `line.dash`; never more than two"
+  - "a third numeric → `z` + `histfunc: avg`, but `contour` over SQL-gridded data is usually clearer"
+limits:
+  series_ideal: 1
+  series_max: 2
+  repair: [histogram2d, clip_p99, sample, input_filter]
+transforms: [clip_p99, sample]
+visivo_gotchas:
+  - "Raw rows with no GROUP BY, binned then contoured in the browser; above ~1M rows sample in SQL."
+  - "Contour levels depend on `nbinsx`/`nbinsy`; too fine a grid gives ragged islands, too coarse a blob. Start at 30–40 bins a side."
+  - "`contours.coloring: heatmap` (filled-contours example) is a histogram2d with extra artefacts; prefer histogram2d for filled views."
+  - "`split` stacks filled contour sets on top of each other and the last hides the rest; use two filtered insights with `coloring: none`."
+  - "Clip tails in SQL first; one outlier compresses every contour into a corner."
+pairings: [scatter_overlay, histogram_beside]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: Full width; contour lines thin out on small screens, so keep ≤10 levels.

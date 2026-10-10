@@ -1,0 +1,44 @@
+type: densitymapbox
+family: geo_density
+status: deprecated
+tier: extended
+author: opus-5.5
+review: {state: pending, by: null, date: null}
+confidence: 0.85
+one_liner: Deprecated Mapbox GL twin of densitymap; never pick it for a new chart, migrate it to densitymap.
+use_when:
+  - "Never for new charts. Only when editing an existing insight that already uses it; migrate it to `densitymap`."
+avoid_when:
+  - Always — `densitymap` draws the same kernel layer on MapLibre with identical props and no deprecation warning.
+  - "Any custom `mapbox://` style — it needs `layout.mapbox.accesstoken`, a secret that would ship to every viewer."
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [geo_point]
+  cardinality: {min: 200}
+required_props: [lat, lon]
+minimal_yaml: |
+  insights:
+    - name: pickup-density-legacy
+      props:
+        type: densitymapbox
+        lat: ?{ round(${ref(trips).pickup_lat}, 3) }
+        lon: ?{ round(${ref(trips).pickup_lon}, 3) }
+        z: ?{ count(*) }
+        radius: 20
+        showscale: false
+encodings_that_scale:
+  - "same as densitymap: round lat/lon and `count(*)` as `z`; an input `filter` for period or group"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [grid_bucket, regrain]
+visivo_gotchas:
+  - "Migrate: change `type` to `densitymap` and any chart `layout.mapbox` to `layout.map`; every other prop carries over."
+  - "It renders tokenless today only because the theme sets `layout.mapbox.style` to a carto style; a `mapbox://` style needs a token."
+  - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
+  - "All `densitymap` gotchas apply: `z` is summed (pass a count), `radius` is in screen pixels, hide the colorbar."
+pairings: [kpi_strip_above]
+layout: {height: large, width_share: 1.0, row_role: hero}
+mobile: As densitymap; full width, lower `radius`.
