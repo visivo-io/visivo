@@ -457,3 +457,50 @@ class TestSchemaAggregatorRunId:
 
         assert main_loaded["metadata"]["total_tables"] == 1
         assert preview_loaded["metadata"]["total_tables"] == 2
+
+
+class TestLoadWithFallback:
+    """VIS-1411: main first, then the source's preview run, for every reader."""
+
+    def _write(self, output_dir, run_id, tables):
+        SchemaAggregator.aggregate_source_schema(
+            source_name="s",
+            source_type="sqlite",
+            schema_data={"tables": tables},
+            output_dir=output_dir,
+            run_id=run_id,
+        )
+
+    def test_main_is_preferred(self, tmp_path):
+        self._write(str(tmp_path), DEFAULT_RUN_ID, {"a": {"columns": {}}})
+        self._write(str(tmp_path), "preview-s", {"a": {"columns": {}}, "b": {"columns": {}}})
+
+        data, run_id = SchemaAggregator.load_source_schema_with_fallback("s", str(tmp_path))
+
+        assert run_id == DEFAULT_RUN_ID and data["metadata"]["total_tables"] == 1
+
+    def test_preview_when_main_is_missing(self, tmp_path):
+        self._write(str(tmp_path), "preview-s", {"a": {"columns": {}}})
+
+        data, run_id = SchemaAggregator.load_source_schema_with_fallback("s", str(tmp_path))
+
+        assert run_id == "preview-s" and data is not None
+
+    def test_an_explicit_run_id_is_the_only_one_tried(self, tmp_path):
+        self._write(str(tmp_path), "preview-s", {"a": {"columns": {}}})
+
+        assert SchemaAggregator.load_source_schema_with_fallback(
+            "s", str(tmp_path), run_id=DEFAULT_RUN_ID
+        ) == (None, None)
+        assert (
+            SchemaAggregator.load_source_schema_with_fallback(
+                "s", str(tmp_path), run_id="preview-s"
+            )[1]
+            == "preview-s"
+        )
+
+    def test_nothing_anywhere(self, tmp_path):
+        assert SchemaAggregator.load_source_schema_with_fallback("s", str(tmp_path)) == (None, None)
+
+    def test_the_preview_run_id_is_derived_one_way(self):
+        assert SchemaAggregator.preview_run_id("wh") == "preview-wh"

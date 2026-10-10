@@ -20,41 +20,6 @@ from visivo.server.jobs.source_schema_job_executor import execute_source_schema_
 from visivo.server.views.schema_path_safety import is_safe_path_segment
 
 
-def _load_schema_with_fallback(source_name: str, output_dir: str, run_id: str = None):
-    """
-    Load schema data, with optional explicit run_id or fallback behavior.
-
-    Args:
-        source_name: Name of the source
-        output_dir: Output directory where schemas are stored
-        run_id: Optional explicit run_id. If provided, only that run_id is tried.
-                If None, tries main first, then preview.
-
-    Returns:
-        Tuple of (schema_data, run_id) or (None, None) if not found
-    """
-    if run_id is not None:
-        schema_data = SchemaAggregator.load_source_schema(source_name, output_dir, run_id=run_id)
-        if schema_data is not None:
-            return schema_data, run_id
-        return None, None
-
-    schema_data = SchemaAggregator.load_source_schema(
-        source_name, output_dir, run_id=DEFAULT_RUN_ID
-    )
-    if schema_data is not None:
-        return schema_data, DEFAULT_RUN_ID
-
-    preview_run_id = f"preview-{source_name}"
-    schema_data = SchemaAggregator.load_source_schema(
-        source_name, output_dir, run_id=preview_run_id
-    )
-    if schema_data is not None:
-        return schema_data, preview_run_id
-
-    return None, None
-
-
 def _is_valid_job_id(job_id: str) -> bool:
     """Check if a string looks like a job ID (UUID format) vs a source name."""
     import re
@@ -232,7 +197,9 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             config = run.config or {}
             source_name = config.get("source_name")
             if source_name:
-                schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+                schema_data, _ = SchemaAggregator.load_source_schema_with_fallback(
+                    source_name, output_dir
+                )
                 if schema_data:
                     response["result"] = {
                         "source_name": source_name,
@@ -252,7 +219,9 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         ):
             return jsonify({"message": "Invalid source_name or run_id"}), 400
 
-        schema_data, _ = _load_schema_with_fallback(source_name, output_dir, run_id=run_id_param)
+        schema_data, _ = SchemaAggregator.load_source_schema_with_fallback(
+            source_name, output_dir, run_id=run_id_param
+        )
 
         if schema_data is None:
             Logger.instance().info(f"Schema not found for source: {source_name}")

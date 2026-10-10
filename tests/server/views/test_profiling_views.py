@@ -5,9 +5,22 @@ import pytest
 import tempfile
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+from visivo.output_paths import model_data_file, run_dir
+
+
+def _write_model(output_dir, name, table):
+    """Write ``table`` where ``run_model_data_job`` would put model ``name``."""
+    path = model_data_file(run_dir(output_dir), name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    pq.write_table(table, path)
+    return path
+
+
 from flask import Flask
 
 from visivo.server.views.profiling_views import register_profiling_views
+from tests.server.conftest import integration_app, integration_client, output_dir  # noqa: F401
 
 
 class TestProfilingViews:
@@ -30,7 +43,8 @@ class TestProfilingViews:
             }
         )
 
-        parquet_path = os.path.join(temp_dir, "test_model.parquet")
+        parquet_path = model_data_file(run_dir(temp_dir), "test_model")
+        os.makedirs(os.path.dirname(parquet_path))
         pq.write_table(table, parquet_path)
 
         return "test_model"
@@ -81,8 +95,8 @@ class TestProfilingViews:
 
         # Tier 2 should have additional stats
         amount_col = next(c for c in data["columns"] if c["name"] == "amount")
-        assert "avg" in amount_col
-        assert "std" in amount_col
+        assert amount_col["avg"] == 27.75
+        assert amount_col["std_dev"] is not None
 
     def test_get_profile_tier2_explicit(self, client, parquet_model):
         """Test GET with explicit tier=2 returns tier 2 profile."""
@@ -248,7 +262,7 @@ class TestProfilingViewsWithSpecialCases:
                 "id": pa.array([], type=pa.int64()),
             }
         )
-        pq.write_table(table, os.path.join(temp_dir, "empty.parquet"))
+        _write_model(temp_dir, "empty", table)
 
         response = client.get("/api/models/empty/profile/?tier=1")
 
@@ -263,7 +277,7 @@ class TestProfilingViewsWithSpecialCases:
                 "column name": pa.array([1, 2, 3], type=pa.int64()),
             }
         )
-        pq.write_table(table, os.path.join(temp_dir, "spaces.parquet"))
+        _write_model(temp_dir, "spaces", table)
 
         response = client.get("/api/models/spaces/histogram/column name/")
 
@@ -278,10 +292,173 @@ class TestProfilingViewsWithSpecialCases:
                 "id": pa.array([1, 2, 3], type=pa.int64()),
             }
         )
-        pq.write_table(table, os.path.join(temp_dir, "my_model_v2.parquet"))
+        _write_model(temp_dir, "my_model_v2", table)
 
         response = client.get("/api/models/my_model_v2/profile/")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["model_name"] == "my_model_v2"
+
+
+class TestProfilesEndpoint:
+    """POST /api/profiles/ (VIS-1413): the one profile the Explorer and the
+    agent share, through the real managers so a draft source resolves."""
+
+    def _source_name(self, integration_app):
+        return integration_app.project.sources[0].name
+
+    def test_a_query_profile_carries_shape_cards(self, integration_client, integration_app):
+        resp = integration_client.post(
+            "/api/profiles/",
+            json={
+                "source_name": self._source_name(integration_app),
+                "sql": "SELECT x, y FROM test_table",
+            },
+        )
+
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["profile"]["row_count"] == 6
+        assert {c["column"]: c["role"] for c in body["shape_cards"]} == {
+            "x": "numeric_discrete",
+            "y": "numeric_discrete",
+        }
+
+    def test_a_model_profile(self, integration_client, integration_app):
+        table = pa.table({"amount": pa.array([1.0, 2.0, None]), "kind": pa.array(["a", "b", "a"])})
+        _write_model(integration_app.output_dir, "built", table)
+
+        body = integration_client.post("/api/profiles/", json={"model_name": "built"}).get_json()
+
+        assert body["profile"]["model_name"] == "built" and body["profile"]["row_count"] == 3
+        assert [c["role"] for c in body["shape_cards"]] == ["numeric_discrete", "categorical"]
+
+    def test_a_column_subset_and_sample_size_are_honoured(
+        self, integration_client, integration_app
+    ):
+        body = integration_client.post(
+            "/api/profiles/",
+            json={
+                "source_name": self._source_name(integration_app),
+                "sql": "SELECT x, y FROM test_table",
+                "columns": ["y"],
+                "sample_rows": 2,
+            },
+        ).get_json()
+
+        assert [c["name"] for c in body["profile"]["columns"]] == ["y"]
+        assert body["profile"]["sampled"] is True and body["profile"]["row_count"] == 6
+
+    def test_missing_arguments_are_a_400(self, integration_client):
+        assert integration_client.post("/api/profiles/", json={}).status_code == 400
+        assert (
+            integration_client.post("/api/profiles/", json={"sql": "select 1"}).status_code == 400
+        )
+
+    def test_a_bad_column_list_is_a_400(self, integration_client, integration_app):
+        resp = integration_client.post(
+            "/api/profiles/",
+            json={
+                "source_name": self._source_name(integration_app),
+                "sql": "select 1",
+                "columns": "x",
+            },
+        )
+
+        assert resp.status_code == 400 and "columns" in resp.get_json()["error"]
+
+    def test_an_unknown_source_is_a_404(self, integration_client):
+        resp = integration_client.post(
+            "/api/profiles/", json={"source_name": "nope", "sql": "select 1"}
+        )
+
+        assert resp.status_code == 404
+
+    def test_an_unbuilt_model_is_a_404(self, integration_client):
+        resp = integration_client.post("/api/profiles/", json={"model_name": "never_built"})
+
+        assert resp.status_code == 404
+
+    def test_a_timeout_is_a_504_with_its_type(
+        self, integration_client, integration_app, monkeypatch
+    ):
+        from visivo.jobs.run_model_data_job import QueryTimeout
+        from visivo.server.services.profiling_service import ProfilingService
+
+        def slow(self, *args, **kwargs):
+            raise QueryTimeout("Query did not return within 30s.")
+
+        monkeypatch.setattr(ProfilingService, "profile_query", slow)
+        resp = integration_client.post(
+            "/api/profiles/",
+            json={"source_name": self._source_name(integration_app), "sql": "select 1"},
+        )
+
+        assert resp.status_code == 504 and resp.get_json()["error_type"] == "timeout"
+
+    def test_a_broken_query_is_a_500_with_the_driver_message(
+        self, integration_client, integration_app
+    ):
+        resp = integration_client.post(
+            "/api/profiles/",
+            json={
+                "source_name": self._source_name(integration_app),
+                "sql": "SELECT nope FROM test_table",
+            },
+        )
+
+        assert resp.status_code == 500 and "nope" in resp.get_json()["error"]
+
+
+class TestProfilesEndpointEdges:
+    def test_too_many_columns_is_a_400(self, integration_client, integration_app):
+        resp = integration_client.post(
+            "/api/profiles/",
+            json={
+                "source_name": integration_app.project.sources[0].name,
+                "sql": "select 1",
+                "columns": [f"c{i}" for i in range(41)],
+            },
+        )
+
+        assert resp.status_code == 400 and "at most 40" in resp.get_json()["error"]
+
+
+class TestHistogramEdges:
+    @pytest.fixture
+    def temp_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def parquet_model(self, temp_dir):
+        table = pa.table({"amount": pa.array([1.0, 2.0, 3.0]), "kind": pa.array(["a", "b", "a"])})
+        _write_model(temp_dir, "edge_model", table)
+        return "edge_model"
+
+    @pytest.fixture
+    def client(self, temp_dir):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        register_profiling_views(app, None, temp_dir)
+        return app.test_client()
+
+    def test_an_unknown_column_is_a_404(self, client, parquet_model):
+        resp = client.get(f"/api/models/{parquet_model}/histogram/nope/")
+
+        assert resp.status_code == 404 and "nope" in resp.get_json()["error"]
+
+    def test_an_unexpected_failure_is_a_500(self, client, parquet_model, monkeypatch):
+        from visivo.server.services.profiling_service import ProfilingService
+
+        def boom(self, *args, **kwargs):
+            raise RuntimeError("duckdb fell over")
+
+        monkeypatch.setattr(ProfilingService, "get_histogram", boom)
+        monkeypatch.setattr(ProfilingService, "get_tier2_profile", boom)
+        monkeypatch.setattr(ProfilingService, "invalidate_cache", boom)
+
+        assert client.get(f"/api/models/{parquet_model}/histogram/amount/").status_code == 500
+        assert client.get(f"/api/models/{parquet_model}/profile/").status_code == 500
+        assert client.post(f"/api/models/{parquet_model}/profile/invalidate/").status_code == 500

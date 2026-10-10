@@ -165,3 +165,14 @@ class TestItIsBounded:
             agent.run_sync("go", usage_limits=usage_limits(max_requests=3))
 
         assert integration_app.markdown_manager.get("partial") is not None
+
+
+class TestTheBudgetFitsAnExploration:
+    def test_the_constants_jared_set(self):
+        """Explore-and-build is ~35 tool calls; 25 model requests cut it off
+        mid-dashboard (VIS-1418)."""
+        from visivo.agent.loop import MAX_MODEL_REQUESTS, MAX_TOOL_CALLS
+
+        assert (MAX_MODEL_REQUESTS, MAX_TOOL_CALLS) == (40, 100)
+        limits = usage_limits()
+        assert (limits.request_limit, limits.tool_calls_limit) == (40, 100)

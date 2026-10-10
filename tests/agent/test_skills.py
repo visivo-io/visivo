@@ -507,3 +507,34 @@ class TestAutoAttach:
             build_agent(integration_app, FunctionModel(respond)).run_sync("go")
 
         assert "skills_attached" in seen["content"]
+
+
+class TestExploreASource:
+    """VIS-1418: the data tools come with the skill that says how to read them."""
+
+    def test_it_rides_along_with_the_first_data_call(self, integration_app):
+        from visivo.agent import tools
+        from visivo.agent.actions import attributed_to
+
+        tools.reset_attachments()
+        source = integration_app.project.sources[0]
+        try:
+            with attributed_to("agent", "explore-1"):
+                wrapped = tools.call(integration_app, "describe_source", {"name": source.name})
+        finally:
+            tools.reset_attachments()
+
+        assert [s["name"] for s in wrapped["skills_attached"]] == ["explore-a-source"]
+        assert "cardinality_bucket" in wrapped["skills_attached"][0]["body"]
+        assert wrapped["result"]["tables"]
+
+    def test_it_is_on_demand_and_lists_every_profiling_tool(self):
+        skill = next(s for s in skills.packaged() if s["name"] == "explore-a-source")
+
+        assert skill["always"] is False
+        assert set(skill["tools"]) == {"describe_source", "profile_columns", "profile_model"}
+
+    def test_build_a_model_points_at_the_new_tools(self):
+        body = skills.body("build-a-model")
+
+        assert "describe_source" in body and "infer_columns" in body
