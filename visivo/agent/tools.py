@@ -351,7 +351,89 @@ def _recommend_layout_handler(app, arguments):
         raise ToolError(f"Could not lay out these items: {error}")
 
 
+def _recommend_inputs_handler(app, arguments):
+    from visivo.agent.charting.inputs import InputsError, recommend_inputs
+
+    cards = arguments.get("cards")
+    if not isinstance(cards, list) or not cards:
+        raise ToolError("'cards' must be a non-empty list of shape cards, each with its 'model'.")
+    try:
+        return recommend_inputs(
+            cards,
+            candidate_insights=arguments.get("insights") or [],
+            intent=arguments.get("intent"),
+            max_inputs=arguments.get("max_inputs"),
+        )
+    except InputsError as error:
+        raise ToolError(str(error))
+    except Exception as error:
+        raise ToolError(f"Could not derive inputs from these cards: {error}")
+
+
+def _check_input_wiring_handler(app, arguments):
+    from visivo.agent.charting.inputs import check_wiring
+
+    inputs, insights = arguments.get("inputs"), arguments.get("insights")
+    if not isinstance(inputs, list) or not isinstance(insights, list):
+        raise ToolError("'inputs' and 'insights' must both be lists.")
+    gaps = check_wiring(inputs, insights)
+    return {"complete": not gaps, "gaps": gaps}
+
+
 _SPECIAL_TOOLS = {
+    "recommend_inputs": Tool(
+        name="recommend_inputs",
+        description=(
+            "Turn profiled columns into Inputs and the interactions that wire "
+            "them. Pass the shape cards from profile_columns (each with its "
+            "model) and the insights you plan, with the columns each reads; get "
+            "back ready input YAML, a default per input, the filter/split/sort "
+            "expression to put on EVERY insight that shares the column, and "
+            "layout_inputs to hand to recommend_layout. Write the inputs before "
+            "the insights that reference them."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "cards": {
+                    "type": "array",
+                    "description": "Shape cards with a 'model' field: {model, column, role, cardinality, top_n?, stats?, time_grain?, null_pct?}.",
+                    "items": {"type": "object"},
+                },
+                "insights": {
+                    "type": "array",
+                    "description": "Planned insights: {name, model, columns: [..], chart?, family?, measure?}.",
+                    "items": {"type": "object"},
+                },
+                "intent": {
+                    "type": "string",
+                    "description": "rank adds a sort-direction switch; trend adds a day/week/month grain switch.",
+                },
+                "max_inputs": {"type": "integer", "minimum": 1},
+            },
+            "required": ["cards"],
+        },
+        handler=_recommend_inputs_handler,
+    ),
+    "check_input_wiring": Tool(
+        name="check_input_wiring",
+        description=(
+            "Find half-wired inputs before writing a dashboard: an input that "
+            "filters some but not all insights sharing its column shows "
+            "filtered and unfiltered numbers side by side. Pass the inputs "
+            "({name, model, column}) and insights ({name, model, columns, "
+            "interactions}) and get the gaps."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "inputs": {"type": "array", "items": {"type": "object"}},
+                "insights": {"type": "array", "items": {"type": "object"}},
+            },
+            "required": ["inputs", "insights"],
+        },
+        handler=_check_input_wiring_handler,
+    ),
     "recommend_layout": Tool(
         name="recommend_layout",
         description=(
