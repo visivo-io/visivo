@@ -3,7 +3,8 @@ family: three_d
 status: niche
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.55
 one_liner: Cones at x/y/z points pointing along u/v/w vectors; for 3D vector fields (wind, flow), never business data.
 use_when:

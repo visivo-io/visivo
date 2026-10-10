@@ -3,7 +3,8 @@ family: financial
 status: niche
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.75
 one_liner: Open/high/low/close as tick bars; a thinner candlestick for finance readers who expect bar charts.
 use_when:

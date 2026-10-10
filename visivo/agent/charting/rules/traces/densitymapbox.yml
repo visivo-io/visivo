@@ -3,7 +3,8 @@ family: geo_density
 status: deprecated
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.85
 one_liner: Deprecated Mapbox GL twin of densitymap; never pick it for a new chart, migrate it to densitymap.
 use_when:

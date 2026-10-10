@@ -3,7 +3,8 @@ family: ternary_smith
 status: niche
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.55
 one_liner: Points in a triangle for three parts that sum to a whole, one point per entity; needs explicit intent.
 use_when:

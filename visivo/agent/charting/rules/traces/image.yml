@@ -3,7 +3,8 @@ family: image
 status: niche
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.45
 one_liner: Draws a raster (a grid of colored pixels or an image URL/data URI) on x/y axes; almost never the answer for SQL data.
 use_when:

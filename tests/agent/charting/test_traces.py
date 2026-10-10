@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from visivo.agent.charting import report, rules
+from visivo.agent.charting import families_export, report, rules
 from visivo.agent.charting.schema import KNOWN_TYPES, TABLE_TYPES, TraceEntry
 from visivo.models.props.types import PropType
 
@@ -134,3 +134,50 @@ class TestTheReport:
 
         assert report.main(out=out) == 0
         assert "0 entries" in out.getvalue()
+
+
+class TestReviewMarkers:
+    """VIS-1425: the review bar from 00-method.md. Extended entries carry
+    Fable's spot-check; core entries wait for Jared, the reviewer of record,
+    so that assertion is strict-xfail until he flips them."""
+
+    def test_every_extended_entry_was_spot_checked(self, entries):
+        unchecked = [
+            e.type
+            for e in entries
+            if e.tier == "extended" and (e.review.state != "approved" or not e.review.by)
+        ]
+        assert unchecked == []
+
+    @pytest.mark.xfail(strict=True, reason="core entries await Jared's approval (VIS-1425)")
+    def test_every_core_entry_is_approved(self, entries):
+        pending = [e.type for e in entries if e.tier == "core" and e.review.state != "approved"]
+        assert pending == []
+
+
+class TestFamiliesJson:
+    def test_committed_file_equals_the_rendered_one(self):
+        assert families_export.FAMILIES_JSON.read_text() == families_export.dumps()
+
+    def test_every_type_appears_once_per_family_it_names(self, entries):
+        rendered = families_export.render(entries)
+        claimed = [t for f in rendered["families"] for t in f["trace_types"]]
+        assert sorted(set(claimed)) == sorted({e.type for e in entries})
+        # scatter serves line, area and xy; everything else has one home.
+        assert claimed.count("scatter") == 3 and claimed.count("scattergl") == 2
+        assert all(claimed.count(t) == 1 for t in set(claimed) - {"scatter", "scattergl"})
+
+    def test_families_with_no_entry_are_omitted(self, entries):
+        only_bar = [e for e in entries if e.type == "bar"]
+
+        assert [f["name"] for f in families_export.render(only_bar)["families"]] == ["bar"]
+
+    def test_main_writes_the_file(self, tmp_path, monkeypatch):
+        import io
+
+        target = tmp_path / "families.json"
+        monkeypatch.setattr(families_export, "FAMILIES_JSON", target)
+        out = io.StringIO()
+
+        assert families_export.main(out=out) == 0
+        assert target.exists() and "wrote" in out.getvalue()

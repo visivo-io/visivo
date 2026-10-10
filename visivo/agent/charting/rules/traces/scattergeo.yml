@@ -3,7 +3,8 @@ family: geo_point
 status: preferred
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.75
 one_liner: Points on an outline map (no tiles) from lat/lon or country/state codes; for world and continent scope.
 use_when:

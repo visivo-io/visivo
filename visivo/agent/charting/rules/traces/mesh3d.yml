@@ -3,7 +3,8 @@ family: three_d
 status: niche
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.5
 one_liner: A triangulated 3D mesh from vertices and i/j/k faces; scientific/CAD data only, never a business metric.
 use_when:

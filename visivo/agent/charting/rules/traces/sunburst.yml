@@ -3,7 +3,8 @@ family: hierarchy
 status: preferred
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.75
 one_liner: Concentric rings, one per level; beats a treemap when the shape of the hierarchy matters more than leaf areas.
 use_when:

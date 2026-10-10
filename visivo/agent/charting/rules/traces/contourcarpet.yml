@@ -3,7 +3,8 @@ family: carpet
 status: niche
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.55
 one_liner: Contours of a third metric drawn on a carpet's warped a/b grid; needs a carpet insight in the same chart.
 use_when:

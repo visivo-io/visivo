@@ -3,7 +3,8 @@ family: distribution
 status: preferred
 tier: extended
 author: opus-5.5
-review: {state: pending, by: null, date: null}
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
 confidence: 0.75
 one_liner: A box plot that also draws the density; pick it when the shape beyond quartiles matters and groups are large.
 use_when:
