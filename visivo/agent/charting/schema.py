@@ -493,3 +493,135 @@ class RecommendResponse(_Strict):
     recommendations: List[Recommendation] = Field(default_factory=list)
     rejected: List[Rejection] = Field(default_factory=list)
     transforms_suggested: List[str] = Field(default_factory=list)
+
+
+# --- what interactivity.yml says ---------------------------------------------
+
+Interaction = Literal["filter", "split", "sort", "prop"]
+
+OptionsSource = Literal[
+    "static",
+    "from_top_n",
+    "query_distinct",
+    "sorted_distinct",
+    "numeric_range",
+    "date_range",
+]
+
+DefaultRule = Literal[
+    "first_option",
+    "top_value",
+    "top_values",
+    "full_span",
+    "median",
+    "recent_window",
+]
+
+
+class InputMatch(_Strict):
+    role: List[Role] = Field(min_length=1)
+    bucket: List[CardinalityBucket] = Field(default_factory=list)
+    n_min: Optional[int] = Field(default=None, ge=0)
+    n_max: Optional[int] = Field(default=None, ge=0)
+
+    def admits(self, card):
+        if card.role not in self.role:
+            return False
+        if self.bucket and card.cardinality_bucket not in self.bucket:
+            return False
+        if self.n_min is not None and card.cardinality < self.n_min:
+            return False
+        if self.n_max is not None and card.cardinality > self.n_max:
+            return False
+        return True
+
+
+class InputShape(_Strict):
+    type: Literal["single-select", "multi-select"]
+    display: str
+    options: OptionsSource
+    static_options: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _static_has_options(self):
+        if self.options == "static" and not self.static_options:
+            raise ValueError("static options need static_options")
+        return self
+
+
+class Wiring(_Strict):
+    interaction: Interaction
+    expression: str
+    path: Optional[str] = None
+
+
+class CardToInput(_Strict):
+    match: InputMatch
+    input: Union[InputShape, Literal["none"]]
+    default: Optional[DefaultRule] = None
+    accessor: Union[str, List[str], None] = None
+    wiring: Optional[Wiring] = None
+    why: str
+    warnings: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _complete(self):
+        if self.input != "none" and (self.wiring is None or self.default is None):
+            raise ValueError("an input rule needs a wiring and a default")
+        return self
+
+
+class Pattern(_Strict):
+    name: str
+    trigger: str
+    wiring: Optional[str] = None
+    snippet_ref: Optional[str] = None
+    note: Optional[str] = None
+    verified: bool = True
+    supported: bool = True
+    forbid_paths: List[str] = Field(default_factory=list)
+    fallback: Optional[str] = None
+
+
+class InputsRow(_Strict):
+    height: str = "compact"
+    position: str = "top"
+    precede_with_markdown_header: bool = True
+
+
+class DesignRules(_Strict):
+    max_inputs_per_dashboard: int = Field(default=4, ge=1)
+    max_inputs_mobile_row: int = Field(default=3, ge=1)
+    inputs_row: InputsRow = Field(default_factory=InputsRow)
+    chart_local_input: str = "beside its chart as [8, 4]"
+    input_over_split_min_bucket: CardinalityBucket = "some"
+    require_default: bool = True
+    multi_select_default: str = "explicit_static_list"
+    numeric_range_default: str = "full_span"
+    time_default_min_points: int = Field(default=12, ge=1)
+    string_operand_quoting: str = "'${ref(I).value}'"
+    input_name_style: str = "snake_case"
+    write_order: str = "inputs_before_insights"
+    global_filter_must_wire_all: bool = True
+    table_filtering: str = ""
+    large_model_warning_rows: int = 1_000_000
+
+
+class InteractivityDoc(_Strict):
+    card_to_input: List[CardToInput] = Field(min_length=1)
+    patterns: List[Pattern] = Field(default_factory=list)
+    design_rules: DesignRules = Field(default_factory=DesignRules)
+
+    @model_validator(mode="after")
+    def _unique_patterns(self):
+        names = [p.name for p in self.patterns]
+        if len(names) != len(set(names)):
+            raise ValueError("pattern names must be unique")
+        return self
+
+    def rule_for(self, card):
+        """The first card_to_input entry that admits ``card``, or ``None``."""
+        return next((r for r in self.card_to_input if r.match.admits(card)), None)
+
+    def pattern(self, name):
+        return next(p for p in self.patterns if p.name == name)
