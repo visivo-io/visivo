@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from visivo.agent.charting.schema import FamilyRule, LayoutDoc, TraceEntry
+from visivo.agent.charting.schema import FamilyRule, InteractivityDoc, LayoutDoc, TraceEntry
 
 RULES_DIR = Path(__file__).parent / "rules"
 TRACES_DIR = RULES_DIR / "traces"
@@ -62,3 +62,15 @@ def load_traces(path=None):
             raise ValueError(f"{file}: file is named '{file.stem}' but the entry is '{entry.type}'")
         entries.append(entry)
     return entries
+
+
+def load_interactivity(path=None):
+    """The ``InteractivityDoc`` from ``interactivity.yml``."""
+    path = Path(path) if path else RULES_DIR / "interactivity.yml"
+    loaded = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{path}: expected a mapping")
+    try:
+        return InteractivityDoc(**loaded)
+    except Exception as error:
+        raise ValueError(f"{path}: {error}") from error
