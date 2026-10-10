@@ -1,0 +1,50 @@
+type: scattersmith
+family: ternary_smith
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.8
+one_liner: Smith chart of normalized complex impedance for RF engineering; essentially never right for BI data.
+use_when:
+  - "RF / network-analyzer data only: normalized complex impedance or reflection (real, imag ÷ Z0) swept over frequency, and the user asked for a Smith chart."
+avoid_when:
+  - "Any business metric — there is no BI shape that maps to impedance; the recommender should never propose it without an explicit request."
+  - "Two arbitrary numbers per row — that is an x/y scatter; the Smith grid would distort them non-linearly."
+  - "Impedance not normalized to the reference impedance (50 Ω) — the points land in the wrong place."
+data_shape:
+  metrics: {min: 2, max: 2}
+  dimensions: {min: 0, max: 1}
+  dimension_roles: [numeric_continuous, categorical]
+  cardinality: null
+required_props: [real, imag]
+example: test-projects/docs-examples/dashboards/scattersmith/lines.visivo.yml
+minimal_yaml: |
+  # vna_sweep: one row per frequency point (frequency_hz, r_ohm, x_ohm, device)
+  insights:
+    - name: antenna-impedance
+      props:
+        type: scattersmith
+        mode: lines+markers
+        real: ?{ ${ref(vna_sweep).r_ohm} / 50 }
+        imag: ?{ ${ref(vna_sweep).x_ohm} / 50 }
+        text: ?{ ${ref(vna_sweep).frequency_hz} }
+      interactions:
+        - split: ?{ ${ref(vna_sweep).device} }
+        - sort: ?{ ${ref(vna_sweep).frequency_hz} ASC }
+encodings_that_scale:
+  - "devices / runs → `split` (≤5)"
+  - "frequency → `text` on hover or `marker.color` with a colorscale (it encodes data)"
+limits:
+  series_ideal: 3
+  series_max: 5
+  repair: [input_filter]
+transforms: []
+visivo_gotchas:
+  - "`real`/`imag` are normalized impedance: divide by Z0 in SQL; raw ohms put every point at the rim."
+  - "Sort by frequency or the sweep zig-zags (same rule as scatter lines)."
+  - "Write every column as `${ref(model).col}`; the docs examples use a bare `?{real}`, and `real` is also a SQL type keyword."
+pairings: []
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Needs a square; at phone width gridline labels collide — hover is the only readable channel.

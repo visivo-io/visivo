@@ -1,0 +1,53 @@
+type: choroplethmap
+family: geo_region
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Color arbitrary regions from a GeoJSON on a tiled street map; the choropleth for custom boundaries.
+use_when:
+  - "A `geo_region` column with `geo_kind: custom` AND `semantics.boundaries_available` — a GeoJSON URL whose feature ids match the column (zones, counties, districts)."
+  - The reader needs street-level context (a tiled basemap) under the regions.
+  - "`intent: geo` with regions smaller than a US state."
+avoid_when:
+  - "No GeoJSON is available (the default until VIS-1400): fall back to a bar/heatmap by region or `scattermap` on centroid lat/lon."
+  - Built-in boundaries suffice (countries, US states) — `choropleth` needs no file and no network fetch.
+  - More than ~2 000 features — the browser fetches and renders every polygon; simplify or aggregate.
+  - Comparing exact values — pair with a sorted bar or a table.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [geo_region]
+  cardinality: {min: 3, max: 2000}
+required_props: [geojson, locations, z]
+example: test-projects/docs-examples/dashboards/charts/choroplethmap.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: rides-by-zone
+      props:
+        type: choroplethmap
+        geojson: https://example.com/taxi_zones.geojson
+        featureidkey: properties.zone_id
+        locations: ?{ ${ref(trips).pickup_zone_id} }
+        z: ?{ count(*) }
+        colorscale: Blues
+        marker: {opacity: 0.75}
+encodings_that_scale:
+  - "center/zoom → chart `layout.map.center` and `layout.map.zoom`; the theme sets `layout.map.style`"
+  - "a second metric → `text` + `hovertemplate`; opacity and color are the only visual channels"
+  - "regions × period → an input that filters the period; never one map per period"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [rate_per_capita]
+visivo_gotchas:
+  - "`featureidkey` must point at the GeoJSON property that holds the same values as `locations` (default `id`); a mismatch renders the basemap with no regions and no error."
+  - "`geojson` is a URL the *browser* fetches: it must be public and CORS-enabled; a local file path does not work in a deployed dashboard."
+  - "Use `choroplethmap`, not `choroplethmapbox` — the mapbox trio is deprecated and needs an access token; `*map` traces use MapLibre with the theme's carto style."
+  - "Set `layout.map.center` and `zoom`; the default view is the whole world at zoom 1."
+  - "One row per location (aggregate in SQL); duplicate locations overdraw."
+pairings: [bar_beside, detail_table_below]
+layout: {height: large, width_share: 0.67, row_role: hero}
+mobile: "Full width, `large`; drop the colorbar (`showscale: false`) below 1024 px."

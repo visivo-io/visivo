@@ -1,0 +1,46 @@
+type: choroplethmapbox
+family: geo_region
+status: deprecated
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.85
+one_liner: Deprecated Mapbox GL twin of choroplethmap; never pick it for a new chart, migrate it to choroplethmap.
+use_when:
+  - "Never for new charts. Only when editing an existing insight that already uses it; migrate it to `choroplethmap`."
+avoid_when:
+  - Always — `choroplethmap` fills the same GeoJSON regions on MapLibre with identical props and no deprecation warning.
+  - "Countries or US states — `choropleth` needs no GeoJSON at all."
+  - "Any custom `mapbox://` style — it needs `layout.mapbox.accesstoken`, a secret that would ship to every viewer."
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [geo_region]
+  cardinality: {min: 3, max: 2000}
+required_props: [geojson, locations, z]
+minimal_yaml: |
+  insights:
+    - name: rides-by-zone-legacy
+      props:
+        type: choroplethmapbox
+        geojson: https://example.com/taxi_zones.geojson
+        featureidkey: properties.zone_id
+        locations: ?{ ${ref(trips).pickup_zone_id} }
+        z: ?{ count(*) }
+        marker: {opacity: 0.75}
+encodings_that_scale:
+  - "same as choroplethmap: a second metric goes to `text`/`hovertemplate`, a period to an input `filter`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [rate_per_capita]
+visivo_gotchas:
+  - "Migrate: change `type` to `choroplethmap` and any chart `layout.mapbox` to `layout.map`; `geojson`, `featureidkey`, `below` carry over."
+  - "It renders tokenless today only because the theme sets `layout.mapbox.style` to a carto style; a `mapbox://` style needs a token."
+  - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
+  - "All `choroplethmap` gotchas apply: `featureidkey` must match `locations`, the GeoJSON URL must be public and CORS-enabled."
+pairings: [bar_beside, detail_table_below]
+layout: {height: large, width_share: 0.67, row_role: hero}
+mobile: As choroplethmap; full width, colorbar hidden below 1024 px.

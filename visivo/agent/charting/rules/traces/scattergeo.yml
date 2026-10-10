@@ -1,0 +1,61 @@
+type: scattergeo
+family: geo_point
+status: preferred
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.75
+one_liner: Points on an outline map (no tiles) from lat/lon or country/state codes; for world and continent scope.
+use_when:
+  - "`geo_point` rows spread across countries or continents (offices, shipments, airports) where street tiles add nothing."
+  - "A `geo_region` column of countries or US states and the metric reads better as a sized bubble than a fill: `locations` + `locationmode`, no lat/lon needed."
+  - "Origin → destination routes between a few dozen places: `mode: lines` with one series per route."
+  - The dashboard must render without a tile server (offline, export, a print-friendly figure).
+avoid_when:
+  - "City-scale points (NYC pickups, one metro area): the outline map has no streets; use `scattermap`."
+  - More than ~3 000 points — scattergeo is SVG and has no clustering; aggregate, or use `densitymap`.
+  - "'How much per region' with built-in boundaries — a `choropleth` fills the region instead of guessing its centroid."
+  - Custom regions (zones, counties) — `locationmode` only knows countries and US states; use `scattermap` on centroids.
+data_shape:
+  metrics: {min: 0, max: 2}
+  dimensions: {min: 1, max: 3}
+  dimension_roles: [geo_point, geo_region, categorical, boolean]
+  cardinality: {max: 3000}
+required_props: [lat, lon]
+example: test-projects/docs-examples/dashboards/scattergeo/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: orders-by-city
+      props:
+        type: scattergeo
+        lat: ?{ avg(${ref(orders).ship_lat}) }
+        lon: ?{ avg(${ref(orders).ship_lon}) }
+        text: ?{ ${ref(orders).ship_city} }
+        mode: markers
+        marker:
+          size: ?{ sqrt(count(*)) }
+  charts:
+    - name: orders-map
+      layout: {geo: {scope: world, projection: {type: natural earth}}}
+      insights:
+        - ${ref(orders-by-city)}
+encodings_that_scale:
+  - "no lat/lon but countries or US states → `locations` + `locationmode` (`ISO-3`, `USA-states`, `country names`); bubbles sit on the region centroid"
+  - "a metric → `marker.size` from `sqrt(count)` with `sizemode: diameter`, scaled into ~6–40 px"
+  - "a `few` categorical → `split` (theme-colored series), not `marker.color`"
+  - "scope → chart `layout.geo.scope` / `projection.type`, or `fitbounds: locations` to zoom to the data"
+limits:
+  series_ideal: 5
+  series_max: 10
+  repair: [top_n_other, input_filter, densitymap]
+transforms: [aggregate_to_centroid, top_n_other]
+visivo_gotchas:
+  - "`layout.geo` lives on the chart, not the insight: without `scope` or `fitbounds: locations` a US-only dataset is drawn as a smudge on a world map."
+  - "`locationmode` must match the column (`ISO-3` is the default); mismatched codes drop the points silently, like choropleth."
+  - "The theme colors `layout.geo` land/ocean/borders; do not override `landcolor` or `bgcolor` per chart or dark mode breaks."
+  - "`marker.color` from a column of hex strings (as the custom-markers docs example does) opts out of the theme; color only from data with a `colorscale`."
+  - "`mode: lines` connects points in row order: add `- sort:` on the sequence column, and one `split` per route, or every point is joined into one zig-zag."
+pairings: [bar_beside, detail_table_below, kpi_strip_above]
+layout: {height: large, width_share: 0.67, row_role: hero}
+mobile: "Full width, `large`; set `fitbounds: locations` so the data, not the whole globe, fills the narrow frame."

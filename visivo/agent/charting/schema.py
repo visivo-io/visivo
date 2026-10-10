@@ -79,6 +79,37 @@ RowRole = Literal["inputs", "header", "kpi", "hero", "breakdown", "relationship"
 TABLE_TYPES = ("table", "table_pivot")
 KNOWN_TYPES = frozenset(p.value for p in PropType) | frozenset(TABLE_TYPES)
 
+# The chart idioms the recommender ranks (P2a research, 00-method.md). A trace
+# entry names its primary family here; `scatter` also serves `area` and `xy`.
+FAMILIES = (
+    "kpi",
+    "line",
+    "area",
+    "xy",
+    "bar",
+    "heatmap",
+    "distribution",
+    "density2d",
+    "part_of_whole",
+    "hierarchy",
+    "flow",
+    "funnel",
+    "waterfall",
+    "geo_region",
+    "geo_point",
+    "geo_density",
+    "financial",
+    "multivariate",
+    "polar",
+    "ternary_smith",
+    "three_d",
+    "carpet",
+    "image",
+    "table",
+)
+
+TRACE_TIERS = ("core", "extended")
+
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -280,17 +311,21 @@ class TraceEntry(_Strict):
 
     type: str
     family: str
+    secondary_families: List[str] = Field(default_factory=list)
     status: Literal["preferred", "niche", "deprecated"] = "preferred"
     tier: Literal["core", "extended"]
     author: str
     review: Review = Field(default_factory=Review)
     confidence: Optional[float] = Field(default=None, ge=0, le=1)
-    one_liner: str
-    use_when: List[str] = Field(max_length=4)
-    avoid_when: List[str] = Field(max_length=4)
+    one_liner: str = Field(max_length=120)
+    use_when: List[str] = Field(min_length=1, max_length=4)
+    avoid_when: List[str] = Field(min_length=1, max_length=4)
     data_shape: DataShape
     required_props: List[str] = Field(default_factory=list)
     minimal_yaml: str
+    # Repo-relative path of the docs-example the snippet was checked against.
+    # Core entries must cite one; extended entries may, when one exists.
+    example: Optional[str] = None
     encodings_that_scale: List[str] = Field(default_factory=list)
     limits: Limits = Field(default_factory=Limits)
     transforms: List[str] = Field(default_factory=list)
@@ -303,11 +338,31 @@ class TraceEntry(_Strict):
     def _review_markers(self):
         if self.type not in KNOWN_TYPES:
             raise ValueError(f"'{self.type}' is not a Plotly trace type or a table type")
+        for family in [self.family, *self.secondary_families]:
+            if family not in FAMILIES:
+                raise ValueError(f"'{family}' is not one of the families {list(FAMILIES)}")
+        if self.family in self.secondary_families:
+            raise ValueError("secondary_families repeats the primary family")
         if self.tier == "extended" and self.confidence is None:
             raise ValueError("an extended-tier entry must state its confidence")
+        if self.tier == "core" and not self.example:
+            raise ValueError(
+                "a core-tier entry must cite the docs-example its snippet was checked against"
+            )
         if len(self.minimal_yaml.strip().splitlines()) > 15:
             raise ValueError("minimal_yaml must be 15 lines or fewer")
+        if f"type: {self.type}" not in self.minimal_yaml and self.type not in TABLE_TYPES:
+            raise ValueError(f"minimal_yaml must set 'type: {self.type}'")
+        try:
+            import yaml
+
+            yaml.safe_load(self.minimal_yaml)
+        except Exception as error:
+            raise ValueError(f"minimal_yaml is not valid YAML: {str(error).splitlines()[0]}")
         return self
+
+    def families(self):
+        return [self.family, *self.secondary_families]
 
 
 class LayoutRule(_Strict):

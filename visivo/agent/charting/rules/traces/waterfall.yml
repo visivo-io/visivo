@@ -1,0 +1,53 @@
+type: waterfall
+family: waterfall
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Signed contributions that bridge a start total to an end total; the chart for 'what changed and why'.
+use_when:
+  - "`semantics.signed_contributions`: positive and negative parts that sum from one total to another (revenue bridge, budget variance, month-over-month change by driver)."
+  - 3–12 contributions with an explicit start and/or end total.
+  - "`intent: change` where the parts explain the delta rather than the level."
+avoid_when:
+  - All contributions have the same sign — a stacked bar or a sorted bar says the same thing more simply.
+  - The parts do not sum to the totals (averages, rates) — the bridge will not close.
+  - A time series of levels — that is a line; a waterfall of monthly totals is not a bridge.
+  - More than ~12 steps — collapse the small ones into Other.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [categorical, time, boolean]
+  cardinality: {min: 3, max: 12}
+required_props: [x, y]
+example: test-projects/docs-examples/dashboards/waterfall/financial.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: revenue-bridge
+      props:
+        type: waterfall
+        x: ?{ ${ref(bridge).step} }
+        y: ?{ ${ref(bridge).amount} }
+        measure: ?{ ${ref(bridge).measure} }
+        connector: {line: {width: 1}}
+      interactions:
+        - sort: ?{ ${ref(bridge).step_order} ASC }
+encodings_that_scale:
+  - "multi-level x (half, quarter) → `x` as a list of two columns (financial example)"
+  - "subtotals → rows with `measure = 'total'` placed where the running sum should be shown"
+  - "amount labels → `texttemplate: '%{delta:$,.0f}'`, `textposition: outside`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [collapse_rare]
+transforms: [collapse_rare, stage_order]
+visivo_gotchas:
+  - "`measure` is a column of `relative` | `total` | `absolute` per row; omit it and every bar is relative, so the end total floats instead of dropping to the axis."
+  - "Order is everything: sort by an explicit step_order column; alphabetical steps scramble the bridge."
+  - "Totals rows carry the *level* in `y`, relative rows the *delta*; mixing them double-counts."
+  - "Colors come from `increasing`/`decreasing`/`totals` `.marker.color`, which Plotly defaults sensibly; set them only to match the theme's accent."
+  - "Negative-only bridges read upside down; start from the larger total."
+pairings: [kpi_strip_above, detail_table_below]
+layout: {height: medium, width_share: 1.0, row_role: breakdown}
+mobile: Full width; ≤ 8 steps or the labels rotate and overlap.

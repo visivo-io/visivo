@@ -1,0 +1,53 @@
+type: scattercarpet
+family: carpet
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.6
+one_liner: Points or lines placed by (a, b) on a carpet's warped grid; needs a carpet insight in the same chart.
+use_when:
+  - "Locating observed entities on a what-if grid: each company's actual base fare × per-mile rate on the scenario carpet."
+  - "A path through the lever space over time (pricing changes by quarter) with `mode: lines+markers`."
+avoid_when:
+  - There is no carpet worth drawing — plain `scatter` of the two levers says the same thing without the warp.
+  - "Points outside the carpet's a/b range — Plotly hides them silently."
+  - More than a few dozen points — the grid already fills the plot; aggregate or switch to scatter.
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 2, max: 3}
+  dimension_roles: [numeric_discrete, numeric_continuous, categorical]
+  cardinality: {min: 1, max: 50}
+required_props: [a, b]
+example: test-projects/docs-examples/dashboards/scattercarpet/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: company-pricing
+      props:
+        type: scattercarpet
+        carpet: fare-grid
+        mode: markers
+        a: ?{ ${ref(company_pricing).base_fare} }
+        b: ?{ ${ref(company_pricing).per_mile} }
+        marker: {size: 10}
+      interactions:
+        - split: ?{ ${ref(company_pricing).company} }
+encodings_that_scale:
+  - "a categorical (few) → `split`, one marker series per company"
+  - "a metric per point → `marker.size` (area); `marker.color` only when it encodes data"
+  - "an ordered path → `mode: lines+markers` with a `sort` on the order column"
+limits:
+  series_ideal: 3
+  series_max: 8
+  repair: [top_n_other, input_filter]
+transforms: [top_n_other]
+visivo_gotchas:
+  - "Put the carpet insight in the same chart with the same literal `carpet: <id>`; alone it renders nothing, and `${ref()}` is not resolved."
+  - "a/b must be in the carpet's units and range; values outside the grid are dropped with no warning."
+  - "`split` is safe here (one series per value) — unlike on the carpet itself."
+  - "For `mode: lines`, add `- sort:` on the path order or the line zig-zags in storage order."
+  - "Per-row hex colors (as in the custom-markers example) opt out of the theme; use `split` instead."
+pairings: [carpet_base, contourcarpet_overlay, detail_table_below]
+layout: {height: large, width_share: 1.0, row_role: relationship}
+mobile: Same as the carpet beneath it; ≤5 split series and a horizontal legend.

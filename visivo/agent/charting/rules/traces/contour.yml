@@ -1,0 +1,56 @@
+type: contour
+family: density2d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.6
+one_liner: Iso-lines of a z surface over a regular numeric x/y grid; a smoothed heatmap for continuous axes.
+use_when:
+  - "A metric already computed on a regular grid of two ordered numerics (avg fare by pickup hour × distance bucket) where the gradient matters."
+  - "Response-surface or what-if grids from SQL (`generate_series` × `generate_series`) where the reader looks for ridges and thresholds."
+  - "`intent: relationship` with two continuous inputs and one output, ≥ ~6 values on each axis."
+avoid_when:
+  - "Raw x/y points with no z — that is `histogram2d` (or `histogram2dcontour`), which bins for you."
+  - "Categorical or unordered axes (borough × company) — interpolating between labels is meaningless; use a heatmap."
+  - "A sparse or irregular grid — Plotly interpolates across gaps and draws contours through empty space; regrain coarser first."
+  - Fewer than ~6 values per axis, or exact cell values matter — a heatmap with `text` reads better.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete, time]
+  cardinality: {min: 6, max: 200}
+required_props: [z]
+example: test-projects/docs-examples/dashboards/contour/filled-contour.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: avg-fare-by-hour-and-distance
+      props:
+        type: contour
+        x: ?{ extract(hour from ${ref(trips).pickup_at}) }
+        y: ?{ floor(${ref(trips).trip_distance}) }
+        z: ?{ avg(${ref(trips).fare_amount}) }
+        colorscale: Viridis
+        contours: {coloring: heatmap, showlabels: true}
+      interactions:
+        - filter: ?{ ${ref(trips).trip_distance} < 20 }
+        - sort: ?{ extract(hour from ${ref(trips).pickup_at}) ASC }
+encodings_that_scale:
+  - "labels on the levels → `contours.showlabels: true` instead of a colorbar read-off"
+  - "fixed thresholds that mean something → `contours: {start, end, size}` (multi-level example)"
+  - "a diverging z (change vs baseline) → a diverging colorscale with `zmid: 0`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [regrain, bucket, heatmap, input_filter]
+transforms: [bucket, regrain]
+visivo_gotchas:
+  - "x, y and z come from one GROUP BY over both bucketed axes (1-D columns, like heatmap); Plotly grids them by distinct x and y."
+  - "Every x × y combination needs a row; missing cells are interpolated (`connectgaps`) and invent a surface. Cross-join the axes and coalesce, or regrain."
+  - "Bucket raw numerics in SQL (`floor(x/step)*step`); one distinct value per raw row produces a grid of thousands of mostly empty cells."
+  - "The simple docs example passes `z` as a list of three columns (z, x, y), which Plotly reads as a 3-row matrix — not the intended grid; use x/y/z columns."
+  - "Never `split` a contour; overlapping filled surfaces hide each other."
+pairings: [heatmap_alternative, kpi_strip_above]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: Full width with `showlabels`; a colorbar beside a half-width contour leaves no plot area.

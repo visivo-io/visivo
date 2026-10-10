@@ -1,0 +1,46 @@
+sources:
+  - name: pickup-points-source
+    type: duckdb
+    database: target/seeds/pickup_points.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            zone,lat,lon,rides
+            Midtown,40.754,-73.984,920
+            JFK Airport,40.641,-73.778,610
+            LaGuardia,40.776,-73.874,540
+            Williamsburg,40.708,-73.957,310
+            Astoria,40.772,-73.930,180
+            Downtown Brooklyn,40.692,-73.990,260
+            Upper West Side,40.787,-73.975,450
+            Harlem,40.811,-73.946,140
+models:
+  - name: pickup-points
+    source: ${ref(pickup-points-source)}
+    sql: select * from model
+charts:
+  - name: scattermap-pickups
+    layout:
+      title:
+        text: "Pickups by Zone<br><sub>scattermap: lat/lon points sized by a metric</sub>"
+      map:
+        center: {lat: 40.73, lon: -73.93}
+        zoom: 9.5
+      margin: {t: 60, r: 0, b: 0, l: 0}
+    insights:
+      - ${ref(scattermap-pickups-trace)}
+insights:
+  - name: scattermap-pickups-trace
+    props:
+      type: scattermap
+      lat: ?{${ref(pickup-points).lat}}
+      lon: ?{${ref(pickup-points).lon}}
+      text: ?{${ref(pickup-points).zone}}
+      mode: markers
+      marker:
+        size: ?{ sqrt(${ref(pickup-points).rides}) }
+        sizemode: diameter
+        opacity: 0.8
+      hovertemplate: "%{text}<br>%{marker.size:.0f}<extra></extra>"

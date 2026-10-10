@@ -1,0 +1,52 @@
+type: box
+family: distribution
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Compare the distribution of a numeric column across groups with medians, quartiles and outliers.
+use_when:
+  - One numeric column by a `few`/`some` categorical (trip minutes by borough, fare by payment type).
+  - More than 3 groups — where overlaid histograms turn to mud, a box per group stays readable.
+  - Outliers matter and should be visible as points rather than clipped away.
+avoid_when:
+  - A single group — a histogram shows the shape; a lone box hides bimodality.
+  - More than ~20 groups — labels collide; use a top-N or an input.
+  - The audience needs exact figures — median and p99 as a table or KPIs.
+  - "Very small groups (< 20 rows) — quartiles of 5 points mislead; show the points (`boxpoints: all`) or a table."
+data_shape:
+  metrics: {min: 0, max: 0}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean, time]
+  cardinality: {min: 1, max: 20}
+required_props: [y]
+example: test-projects/docs-examples/dashboards/box/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: trip-minutes-by-borough
+      props:
+        type: box
+        x: ?{ ${ref(trips).pickup_borough} }
+        y: ?{ least(${ref(trips).trip_minutes}, 120) }
+        boxpoints: outliers
+      interactions:
+        - filter: ?{ ${ref(trips).trip_minutes} > 0 }
+encodings_that_scale:
+  - "second `few` dimension → `split` with `layout.boxmode: group`"
+  - "time as x at a coarse grain (month) → one box per period shows how the distribution drifts"
+  - "many rows → aggregate quartiles in SQL (`quantile_cont`) and pass `q1`, `median`, `q3`, `lowerfence`, `upperfence` instead of raw rows"
+limits:
+  series_ideal: 7
+  series_max: 20
+  repair: [top_n_other, input_filter]
+transforms: [clip_p99, precomputed_quartiles]
+visivo_gotchas:
+  - "A box takes raw rows, not an aggregate: `y: ?{ trip_minutes }` with no GROUP BY; above ~500k rows precompute quartiles in SQL."
+  - "`x` is the group, `y` the value; swapping them with `orientation: h` also swaps the props."
+  - "`boxpoints: all` on a large group draws every row; use `outliers` (the default) or `false`."
+  - "Groups appear in storage order; add `- sort: ?{ <group expr> }` or sort by the median in SQL."
+  - "A heavy tail stretches the axis for every group; clip in SQL (`least(x, p99)`) and say so in the title."
+pairings: [histogram_beside, kpi_strip_above]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: ≤6 groups, horizontal orientation when the labels are long.

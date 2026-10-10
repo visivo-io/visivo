@@ -1,0 +1,51 @@
+type: scatterpolargl
+family: polar
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.6
+one_liner: WebGL scatterpolar; only for >10k raw direction × magnitude points (wind readings, vehicle headings).
+use_when:
+  - "Raw observations with an angle and a magnitude (wind direction × speed, heading × speed) and more than ~10 000 points after filtering."
+  - "A `scatterpolar` case that hits the point budget — the same cyclic-axis gate applies."
+avoid_when:
+  - "Radar charts and anything under ~10k points — plain `scatterpolar` renders crisper and supports `fill: toself` reliably."
+  - "Any non-cyclic angle; and when the question is how much per direction — aggregate to a barpolar rose instead."
+  - "Dashboards already holding several WebGL charts — browsers cap contexts at ~8–16."
+data_shape:
+  metrics: {min: 1, max: 2}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [numeric_continuous, categorical]
+  cardinality: {min: 10000}
+required_props: [r, theta]
+example: test-projects/docs-examples/dashboards/scatterpolargl/simple.visivo.yml
+minimal_yaml: |
+  # readings: one row per sensor reading (direction_deg 0–360, speed_ms, station)
+  insights:
+    - name: wind-cloud
+      props:
+        type: scatterpolargl
+        mode: markers
+        theta: ?{ ${ref(readings).direction_deg} }
+        r: ?{ ${ref(readings).speed_ms} }
+        marker: {size: 3, opacity: 0.3}
+      interactions:
+        - filter: ?{ ${ref(readings).speed_ms} > 0 }
+encodings_that_scale:
+  - "a few stations → `split`; more → input_filter"
+  - "> 200k points → sample in SQL or aggregate to a barpolar rose (direction bucket × speed bucket)"
+limits:
+  series_ideal: 3
+  series_max: 6
+  repair: [sample, input_filter, bar]
+transforms: [sample, bucket, clip_p99]
+visivo_gotchas:
+  - "theta must be degrees (or set `thetaunit: radians`); a categorical theta defeats the point of a dense cloud."
+  - "The browser still receives every row; sample or clip in SQL above ~200k."
+  - "`marker.opacity` 0.2–0.4 or the cloud is a solid disc."
+  - "Same theme rule as scatter: no constant `marker.color`; color only from a CASE that encodes data."
+pairings: [detail_table_below, histogram_beside]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: WebGL is slow on phones; keep ≤50k points and a square half-width slot.

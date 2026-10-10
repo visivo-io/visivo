@@ -1,0 +1,53 @@
+type: densitymap
+family: geo_density
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: A heat layer over a street map from many lat/lon points; where things concentrate, not how many.
+use_when:
+  - "Thousands to hundreds of thousands of `geo_point` rows where individual dots would overplot (pickups, clicks, incidents)."
+  - The question is concentration ('where is it busiest'), not a per-place figure.
+  - Points cluster at many distinct locations with no natural region to aggregate to.
+avoid_when:
+  - Fewer than ~200 points — a `scattermap` with sized markers shows the same thing honestly.
+  - A per-region number is wanted — choropleth or a bar; a heat layer has no legend you can read a value off.
+  - Comparing two groups — two density layers overlap into brown; use an input to switch, or two charts.
+  - Points weighted by a non-additive metric — `z` is summed under the kernel; averages are meaningless here.
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [geo_point]
+  cardinality: {min: 200}
+required_props: [lat, lon]
+example: test-projects/docs-examples/dashboards/charts/densitymap.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: pickup-density
+      props:
+        type: densitymap
+        lat: ?{ round(${ref(trips).pickup_lat}, 3) }
+        lon: ?{ round(${ref(trips).pickup_lon}, 3) }
+        z: ?{ count(*) }
+        radius: 20
+        colorscale: Hot
+        showscale: false
+encodings_that_scale:
+  - "millions of rows → round lat/lon to 3 decimals (~100 m) and `count(*)` as `z`; the kernel does the rest"
+  - "a period or group → an input `filter`, never two layers"
+  - "`radius` in pixels: 10–15 for city zoom, 30+ for a region"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [grid_bucket, regrain]
+visivo_gotchas:
+  - "Without `z` every point weighs 1; with `z` the weight is summed — pass a count, not an average."
+  - "Round and group in SQL above ~50k rows; the trace works on raw rows but the browser payload grows with every row."
+  - "`radius` is in screen pixels, so the look changes with zoom; pick it for the `layout.map.zoom` you set."
+  - "Use `densitymap`, not `densitymapbox` (deprecated, token required)."
+  - "Hide the colorbar (`showscale: false`): its units are kernel density, which nobody can read."
+pairings: [kpi_strip_above, scattermap_toggle]
+layout: {height: large, width_share: 1.0, row_role: hero}
+mobile: Full width; lower `radius` as the map shrinks.

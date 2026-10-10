@@ -1,0 +1,53 @@
+type: heatmap
+family: heatmap
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: A metric over two dimensions as a colored grid; the repair for a line with too many series.
+use_when:
+  - Two dimensions with ≤400 cells in total (e.g. hour × weekday, borough × company, week × product).
+  - A line chart would need 12+ series — company × week as a grid keeps every value visible.
+  - Looking for a pattern (seasonality, a hot corner), not for exact magnitudes.
+avoid_when:
+  - More than ~400 cells or more than ~40 on one axis — labels collide; pivot table or filter with an input.
+  - Fewer than 3 values on either axis — a grouped bar is clearer.
+  - Exact numbers are the point — a pivot table with `format_cells` is a heatmap you can read.
+  - Sparse grids (most cells empty) — the blanks dominate; aggregate coarser first.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [time, categorical, boolean, numeric_discrete, geo_region]
+  cardinality: {min: 3, max: 40}
+required_props: [x, y, z]
+example: test-projects/docs-examples/dashboards/heatmap/categorical.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: rides-by-hour-and-weekday
+      props:
+        type: heatmap
+        x: ?{ extract(hour from ${ref(trips).pickup_at}) }
+        y: ?{ dayname(${ref(trips).pickup_at}) }
+        z: ?{ count(*) }
+        colorscale: Viridis
+      interactions:
+        - sort: ?{ extract(hour from ${ref(trips).pickup_at}) ASC }
+encodings_that_scale:
+  - "numbers on the cells for ≤100 cells → `text: ?{ <metric> }` + `texttemplate: '%{text}'` (text-annotations example)"
+  - "a rate rather than a count → compute the ratio in SQL; a heatmap of raw counts is dominated by the busiest row"
+  - "more than 400 cells → `table_pivot` with `format_cells`, or an input that fixes one dimension"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [regrain, top_n_other, input_filter]
+transforms: [regrain, top_n_other, bucket]
+visivo_gotchas:
+  - "x, y and z come from one GROUP BY over both dimensions; a heatmap over raw rows draws one cell per row."
+  - "Set `layout.xaxis.type: category`/`yaxis.type: category` when the axes are labels, or Plotly spaces them as numbers."
+  - "Weekday or month names sort alphabetically; sort by the number (`isodow`, `month`) and label with the name."
+  - "A `split` interaction makes one heatmap per value, all on the same axes — overlapping; never split a heatmap."
+  - "Pick one theme-neutral `colorscale` (Viridis, Blues); a diverging scale needs `zmid` at the meaningful centre."
+pairings: [detail_table_below, kpi_strip_above]
+layout: {height: medium, width_share: 1.0, row_role: breakdown}
+mobile: Keep the longer axis vertical; a 24-column grid becomes unreadable under 1024 px.

@@ -1,0 +1,57 @@
+type: parcats
+family: flow
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.6
+one_liner: Parallel sets; ribbons show how rows split across 2–5 categorical attributes in turn. Sankey without node indices.
+use_when:
+  - "2–5 categorical attributes of the same rows (borough → payment type → company) and the question is how the population splits across them."
+  - "Each attribute has ≤ ~7 values (`few`) and a count or additive metric weights the ribbons."
+  - "A sankey-like view where the axes are attributes, not stages of a flow, so building node/link indices would be artificial."
+avoid_when:
+  - "A true from→to flow between nodes of one kind (pickup borough → dropoff borough) — sankey models it; parcats repeats the categories per axis."
+  - "Any attribute with more than ~10 values — ribbons fray into slivers; `collapse_rare` to Other first."
+  - "Only two attributes and exact figures wanted — a heatmap or pivot table of the cross-tab reads better."
+  - "Numeric axes — use parcoords; parcats treats every distinct number as its own category."
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 2, max: 5}
+  dimension_roles: [categorical, boolean, geo_region]
+  cardinality: {min: 2, max: 10}
+required_props: [dimensions]
+example: test-projects/docs-examples/dashboards/parcats/multiple-dimensions.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: borough-payment-company
+      props:
+        type: parcats
+        dimensions:
+          - {label: Borough, values: "?{ ${ref(trips).pickup_borough} }"}
+          - {label: Payment, values: "?{ ${ref(trips).payment_type} }"}
+          - {label: Company, values: "?{ ${ref(trips).company} }"}
+        counts: ?{ count(*) }
+        line:
+          color: ?{ avg(${ref(trips).tip_pct}) }
+          colorscale: Viridis
+        arrangement: freeform
+encodings_that_scale:
+  - "the weight → `counts: ?{ count(*) }` (or `sum(fare_amount)`), which also makes Visivo GROUP BY the dimensions"
+  - "a numeric quality on the ribbons → `line.color` with a sequential `colorscale` (tip % per path)"
+  - "highlighting one first-axis value → `line.color` from a CASE on that attribute, the one legitimate categorical color"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [collapse_rare, top_n_other, input_filter, heatmap]
+transforms: [collapse_rare, top_n_other]
+visivo_gotchas:
+  - "Weight goes in `counts`, not `line.color`: all three docs examples bind `value` to `line.color`, so each row counts once and the ribbons ignore the value."
+  - "Without `counts` and an aggregate the trace receives every raw row; bind `counts: ?{ count(*) }` so the query groups by the dimensions."
+  - "Category order on each axis is first-seen; pass `dimensions[].categoryorder: category ascending` or sort in SQL so axes are stable across refreshes."
+  - "`split` overlays one parcats per value on the same domain; put the attribute on an axis instead."
+  - "The line-width example's `line.color` is color-name strings with a `colorscale` (and sets no width); Plotly ignores the scale, so the colors bypass the theme."
+pairings: [sankey_alternative, detail_table_below]
+layout: {height: large, width_share: 1.0, row_role: breakdown}
+mobile: Full width, ≤3 axes and ≤5 values each; axis labels collide first.

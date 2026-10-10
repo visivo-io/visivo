@@ -1,0 +1,53 @@
+type: image
+family: image
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.45
+one_liner: Draws a raster (a grid of colored pixels or an image URL/data URI) on x/y axes; almost never the answer for SQL data.
+use_when:
+  - A real raster already exists as a pixel array (a rendered map tile, a sensor or microscope frame) and must sit on numeric axes.
+  - "A static picture must share axes with other insights (an overlay of markers on a floor plan): set `source` to a URL or data URI."
+  - The user explicitly asks for an image trace; it never wins on its own for metric × dimension data.
+avoid_when:
+  - "A metric over two dimensions — that is a `heatmap` (x, y, z rows with a colorscale), not an image."
+  - "Just showing a logo, screenshot or diagram — use a markdown item with `<img src=\"https://…\">`; no axes, no query."
+  - The pixels would have to be assembled from rows in SQL — the nested-array cell is brittle and unreadable to review.
+  - Any value the reader must compare or read — pixels carry color only; there is no colorscale, legend or per-value hover.
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 0, max: 2}
+  dimension_roles: [numeric_discrete]
+  cardinality: {min: 2, max: 500}
+required_props: [z]
+example: test-projects/docs-examples/dashboards/image/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: floor-plan
+      props:
+        type: image
+        source: https://example.com/depot-floor-plan.png
+        x0: 0
+        dx: 1
+  # z alternative: one cell holding [[[r,g,b], …], …] built in the model,
+  #   z: ?{ ${ref(depot_raster).pixels} }[0]
+encodings_that_scale:
+  - "a metric over a grid → `heatmap` (z with a colorscale), which is what most image requests mean"
+  - "markers on a picture → image (`source`) plus a scatter insight on the same chart, aligned with `x0/dx/y0/dy`"
+  - "a decorative or reference picture → markdown item with `<img>` instead of a chart"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [heatmap]
+transforms: []
+visivo_gotchas:
+  - "`z` is a 2D array of pixel rows, each pixel a list of 3–4 numbers (`colormodel` rgb/rgba/hsl); scalar pixels draw nothing — that is a `heatmap`."
+  - "A query returns a column, so `?{ … }` gives a list of rows; the whole raster must be one cell holding the nested list, selected with `[0]`."
+  - "A VARCHAR that looks like `[[…]]` (CSV seed, JSON text) is passed as a string, not an array; cast to a DuckDB nested LIST in the model."
+  - "`colorscale` does not exist on image; the y axis is reversed by default so row 0 is at the top."
+  - "The docs-example dashboard (`image/dashboard.visivo.yml`) is commented out of `includes.visivo.yml`, so the example is not exercised by the docs run."
+pairings: [scatter_overlay]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: "Set `layout.yaxis.scaleanchor: x` so pixels stay square; a half-width image shrinks to a thumbnail under 1024 px."

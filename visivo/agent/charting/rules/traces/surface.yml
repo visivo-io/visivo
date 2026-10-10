@@ -1,0 +1,56 @@
+type: surface
+family: three_d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.45
+one_liner: A z-height surface over a regular x/y grid; niche — needs a 2D z array, so a heatmap or contour usually wins.
+use_when:
+  - "Only on an explicit request for 3D (otherwise the recommender scores it ≤ 0.3)."
+  - "A smooth response over two ordered numeric axes (fare by hour × distance band, a model's prediction grid) with a fixed, small number of y rows."
+avoid_when:
+  - "Long-format x, y, z rows from SQL — surface needs `z` as a 2D array (rows × columns), not a column; use a heatmap or `contour`."
+  - Either axis categorical — the surface interpolates between neighbours, implying values between boroughs.
+  - Reading magnitudes — perspective and lighting hide them; a heatmap with a colorscale shows the same grid honestly.
+  - Sparse grids — every missing cell is a hole or a spike in the mesh.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete, time]
+  cardinality: {min: 5, max: 100}
+required_props: [z]
+minimal_yaml: |
+  insights:
+    - name: fare-by-hour-and-distance
+      props:
+        type: surface
+        x: ?{ extract(hour from ${ref(trips).pickup_at}) }
+        y: [1, 3, 7, 15]
+        z:
+          - ?{ avg(case when ${ref(trips).trip_distance} < 2 then ${ref(trips).fare_amount} end) }
+          - ?{ avg(case when ${ref(trips).trip_distance} between 2 and 5 then ${ref(trips).fare_amount} end) }
+          - ?{ avg(case when ${ref(trips).trip_distance} between 5 and 10 then ${ref(trips).fare_amount} end) }
+          - ?{ avg(case when ${ref(trips).trip_distance} > 10 then ${ref(trips).fare_amount} end) }
+        colorscale: Viridis
+      interactions:
+        - sort: ?{ extract(hour from ${ref(trips).pickup_at}) ASC }
+encodings_that_scale:
+  - "the row axis is the result rows (x, one per GROUP BY value); the column axis is one `?{ }` per listed z entry, so it must be a fixed, enumerable set"
+  - "z-contours projected on the floor → `contours.z: {show: true, usecolormap: true}`"
+  - "more than ~10 y rows → a heatmap (`x`, `y`, `z` as three long-format columns) or `histogram2dcontour`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [heatmap, bucket, input_filter]
+transforms: [bucket, regrain]
+visivo_gotchas:
+  - "`z: ?{ col }` over long-format rows gives a 1D z and Plotly draws nothing; z must be a list of `?{ }` expressions (one per grid row), as in `test-projects/integration/insights.visivo.yml` (`surface-trace`)."
+  - "`y` must have one value per listed z expression and is usually a literal list; `x` has one value per result row."
+  - "Every z expression shares the insight's GROUP BY, so x must be the only non-aggregated column; sort on x or the surface folds over itself."
+  - "Axis titles live under `layout.scene`; `layout.xaxis` is ignored for 3D."
+  - "No `split` — it would stack several surfaces in one scene; one insight, one surface."
+pairings: [heatmap_beside]
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Rotation conflicts with scroll and the scene shrinks to illegibility; show the heatmap instead below 1024 px.

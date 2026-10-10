@@ -1,0 +1,55 @@
+type: histogram2d
+family: density2d
+status: preferred
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.8
+one_liner: Two numeric columns binned into a colored grid; the repair for a scatter too dense to read.
+use_when:
+  - "Two numeric_continuous columns with ≥ ~10 000 rows where a scatter/scattergl is a solid blob (fare vs distance over 100k trips)."
+  - "Where-is-the-mass questions: which distance × fare band holds most trips."
+  - "A third numeric averaged per cell: `z` + `histfunc: avg` (average tip by distance × duration)."
+avoid_when:
+  - Under ~1 000 rows — the grid is mostly empty cells; a scatter shows every point.
+  - Either axis is categorical or a coarse time grain — that is a GROUP BY over two dimensions, i.e. a heatmap.
+  - "Heavy tails unclipped — one outlier stretches the bin range and the whole body lands in two cells."
+  - "Finding individual points (the one $900 fare) — binning hides them; pair with a filtered table."
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete, time]
+  cardinality: {min: 1000}
+required_props: [x, y]
+example: test-projects/docs-examples/dashboards/histogram2d/custom-bins.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: fare-vs-distance-density
+      props:
+        type: histogram2d
+        x: ?{ least(${ref(trips).trip_distance}, 20) }
+        y: ?{ least(${ref(trips).fare_amount}, 80) }
+        xbins: {size: 0.5}
+        ybins: {size: 2}
+        colorscale: Viridis
+      interactions:
+        - filter: ?{ ${ref(trips).trip_distance} > 0 and ${ref(trips).fare_amount} > 0 }
+encodings_that_scale:
+  - "a third numeric → `z: ?{ tip_amount }` with `histfunc: avg`; the color becomes the average, not the count"
+  - "a skewed count → `zsmooth: best` is cosmetic; a log color (`z` = ln(count) via a pre-binned heatmap) is honest"
+  - "a `few` categorical → small multiples (one chart per value); never `split`, the grids overlap"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [clip_p99, sample, input_filter, small_multiples]
+transforms: [clip_p99, sample, bucket]
+visivo_gotchas:
+  - "Raw rows, binned in the browser: x/y take columns with no GROUP BY. Above ~1M rows pre-bin in SQL (`floor(x/step)*step`, `count(*)`) and draw a `heatmap` instead."
+  - "Clip both axes in SQL (`least(x, p99)`); `xaxis.range` hides bins but still bins the outliers into the range."
+  - "Set `xbins.size`/`ybins.size` when the step means something (0.5 mi, $2); `nbinsx` is only a hint."
+  - "`split` overlays one grid per value on the same axes and only the last is visible; use small multiples."
+  - "Use one sequential theme-neutral colorscale (Viridis, Blues); the density example's `Jet` invents boundaries that are not in the data."
+pairings: [scatter_overlay, histogram_beside, detail_table_below]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: Half-width becomes full width; keep ≤30 bins a side so cells stay tappable.

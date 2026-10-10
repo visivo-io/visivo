@@ -1,0 +1,50 @@
+type: isosurface
+family: three_d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.55
+one_liner: The shell(s) where a gridded 3D scalar crosses chosen thresholds; niche scientific type, never business data.
+use_when:
+  - "Only on an explicit request (otherwise the recommender scores it ≤ 0.3): one value on a regular x/y/z grid and a threshold of interest."
+avoid_when:
+  - Three business dimensions with a metric — use a heatmap plus an input for the third dimension.
+  - Non-gridded points — there is no surface to extract; use `scatter3d` colored by value.
+  - The whole distribution matters, not a threshold — `volume` shows the full field.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 3, max: 3}
+  dimension_roles: [numeric_continuous, numeric_discrete]
+  cardinality: {min: 2, max: 50}
+required_props: [x, y, z, value]
+example: test-projects/docs-examples/dashboards/isosurface/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: density-shell
+      props:
+        type: isosurface
+        x: ?{ ${ref(grid).x} }
+        y: ?{ ${ref(grid).y} }
+        z: ?{ ${ref(grid).z} }
+        value: ?{ ${ref(grid).value} }
+        isomin: 2
+        isomax: 6
+        colorscale: Reds
+      interactions:
+        - sort: ?{ ${ref(grid).idx} ASC }
+encodings_that_scale:
+  - "inner structure → `slices` and `caps: {x: {show: false}}` (complex-with-slice example); `surface.count` for nested shells"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [regrain, heatmap]
+transforms: [regrain]
+visivo_gotchas:
+  - "Set `isomin`/`isomax` from the value's real range; values outside it draw nothing and the chart looks empty."
+  - "x/y/z must be a complete regular grid built in the model SQL; sort on a grid index column for a stable order."
+  - "n³ rows ship to the browser (the fractal example is 25³ = 15 625); regrain before going past ~50 per axis."
+pairings: []
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Touch rotation fights scroll; omit on mobile.

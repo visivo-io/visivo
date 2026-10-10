@@ -1,0 +1,59 @@
+type: icicle
+family: hierarchy
+status: preferred
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.7
+one_liner: Hierarchy as aligned columns, one per level left to right; reads deep trees and long labels better than treemap.
+use_when:
+  - "A hierarchy of 3–5 levels where the reader walks from root to leaf (borough → zone → company → payment): each level is its own column."
+  - "Siblings must be compared by size: bars share a straight baseline per column, which reads better than treemap areas or sunburst angles."
+  - Long node labels (zone names, product titles) that need horizontal text.
+  - "`semantics.hierarchy` with a full-width breakdown row available."
+avoid_when:
+  - "Two levels and under ~30 leaves — a treemap uses the space better and is the family default."
+  - "Leaf count past ~200 at full depth — the leaf column becomes hairlines; set `maxdepth` and let the reader click in."
+  - Non-additive or negative metrics — same rule as treemap.
+  - "Half-width or short slots: icicles need width for levels and height for leaves."
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 2, max: 5}
+  dimension_roles: [categorical, geo_region, boolean]
+  cardinality: {min: 3, max: 200}
+required_props: [labels, parents]
+example: test-projects/docs-examples/dashboards/icicle/depth-limited.visivo.yml
+minimal_yaml: |
+  insights:
+    # trip_nodes: one row per node (id, label, parent, trips), built with
+    # UNION ALL per level as in the sunburst entry
+    - name: trips-borough-zone-company
+      props:
+        type: icicle
+        ids: ?{ ${ref(trip_nodes).id} }
+        labels: ?{ ${ref(trip_nodes).label} }
+        parents: ?{ ${ref(trip_nodes).parent} }
+        values: ?{ sum(${ref(trip_nodes).trips}) }
+        branchvalues: total
+        maxdepth: 3
+        tiling: {orientation: h}
+        textinfo: label+value+percent parent
+encodings_that_scale:
+  - "a second metric (a rate) → numeric `marker.colors` + `marker.colorscale`"
+  - "deep trees → `maxdepth: 3` plus click-to-zoom; `pathbar` keeps the breadcrumb visible"
+  - "top-down reading (org charts, file trees) → `tiling: {orientation: v}`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [top_n_other, input_filter]
+transforms: [top_n_other, collapse_rare]
+visivo_gotchas:
+  - "Same row contract as treemap: UNION ALL per level, parents present as nodes, `branchvalues: total` when values are pre-summed (the docs examples do set it)."
+  - "With `total`, a parent smaller than the sum of its children is not drawn; a parent larger leaves an unlabelled gap. Compute parents from children in SQL."
+  - "Repeated child labels across parents need `ids` and id-valued `parents`, or the nodes collide."
+  - "`marker.colorscale` alone (the simple and depth-limited docs examples) has no effect; it needs numeric `marker.colors`."
+  - "`textinfo: percent parent` is the useful label here; `percent root` on a deep leaf rounds to 0 %."
+pairings: [detail_table_below, kpi_strip_above]
+layout: {height: large, width_share: 1.0, row_role: breakdown}
+mobile: "Switch to `tiling: {orientation: v}` and `maxdepth: 2` so levels stack down the phone instead of across it."

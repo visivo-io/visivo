@@ -1,0 +1,50 @@
+type: volume
+family: three_d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.5
+one_liner: Semi-transparent rendering of a scalar on a regular 3D grid (scan, simulation); niche scientific type.
+use_when:
+  - "Only on an explicit request (otherwise the recommender scores it ≤ 0.3): one value on every cell of a regular x/y/z grid."
+avoid_when:
+  - "A metric over three business dimensions (hour × weekday × borough) — use a heatmap with an input or small multiples for the third."
+  - Scattered or sparse points — volume needs a full grid; use `scatter3d` with `marker.color`.
+  - When a single threshold matters — `isosurface` draws that shell crisply instead of a fog.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 3, max: 3}
+  dimension_roles: [numeric_continuous, numeric_discrete]
+  cardinality: {min: 2, max: 50}
+required_props: [x, y, z, value]
+example: test-projects/docs-examples/dashboards/volume/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: density-volume
+      props:
+        type: volume
+        x: ?{ ${ref(grid).x} }
+        y: ?{ ${ref(grid).y} }
+        z: ?{ ${ref(grid).z} }
+        value: ?{ ${ref(grid).value} }
+        opacity: 0.1
+        surface: {count: 15}
+      interactions:
+        - sort: ?{ ${ref(grid).idx} ASC }
+encodings_that_scale:
+  - "detail inside the cloud → `slices.{x,y,z}` at chosen locations; `opacityscale` to fade low values"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [regrain, heatmap]
+transforms: [regrain]
+visivo_gotchas:
+  - "x/y/z must form a complete regular grid; build it in the model SQL (a cross join of axis buckets, value 0 where empty)."
+  - "Sort on a grid index column (the examples use `idx`) so row order is stable."
+  - "Low `opacity` (0.05–0.2) plus `surface.count` 10–20 is required; the defaults read as a near-solid block."
+  - "n³ rows: 50 per axis is 125 000 values in the browser; regrain coarser first."
+pairings: []
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Heavy WebGL and touch-hostile rotation; omit on mobile.

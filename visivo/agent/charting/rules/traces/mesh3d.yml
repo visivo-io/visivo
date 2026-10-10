@@ -1,0 +1,50 @@
+type: mesh3d
+family: three_d
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.5
+one_liner: A triangulated 3D mesh from vertices and i/j/k faces; scientific/CAD data only, never a business metric.
+use_when:
+  - "Only on an explicit request (otherwise the recommender scores it ≤ 0.3): a table of vertices and triangle indices already exists."
+  - "A point cloud to be wrapped in a hull (`alphahull`) when no face table exists."
+avoid_when:
+  - Any aggregated business metric — there is no reading of a mesh that a bar or heatmap does not do better.
+  - "Vertex and face counts differ and cannot be padded into one result set (see gotchas)."
+  - Meshes over ~50 000 faces — the browser receives every vertex as JSON.
+data_shape:
+  metrics: {min: 3, max: 4}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [identifier]
+required_props: [x, y, z]
+example: test-projects/docs-examples/dashboards/mesh3d/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: terrain-mesh
+      props:
+        type: mesh3d
+        x: ?{ ${ref(mesh).x} }
+        y: ?{ ${ref(mesh).y} }
+        z: ?{ ${ref(mesh).z} }
+        i: ?{ ${ref(mesh).i} }
+        j: ?{ ${ref(mesh).j} }
+        k: ?{ ${ref(mesh).k} }
+        intensity: ?{ ${ref(mesh).z} }
+      interactions:
+        - sort: ?{ ${ref(mesh).idx} ASC }
+encodings_that_scale:
+  - "a scalar per vertex → `intensity` with a `colorscale`; per face → `facecolor` from a column"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: []
+transforms: []
+visivo_gotchas:
+  - "i/j/k index into the vertex rows in result order: always `- sort:` on the vertex index, or faces connect the wrong vertices."
+  - "All props come from one result set, so vertex and face arrays share a row count; pad the shorter with NULLs in the model SQL."
+  - "Any aggregate in a prop triggers a GROUP BY that reorders and dedupes vertices — keep every prop a plain projection."
+pairings: []
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Rotation fights scroll; acceptable only as a full-width detail row.

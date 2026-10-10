@@ -1,0 +1,53 @@
+type: sankey
+family: flow
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Flow of an additive quantity from one set of categories to another, as weighted links between nodes.
+use_when:
+  - "Two categoricals that are a from→to pair (pickup borough → dropoff borough, channel → plan, stage → outcome) and an additive metric for the link weight."
+  - "`intent: flow` or `semantics.ordered_stages` with branching (a funnel that splits)."
+  - ≤ 15 nodes per side and ≤ 60 links after collapsing the small ones.
+avoid_when:
+  - The two categoricals are not a flow (borough × payment type is a heatmap, not a sankey).
+  - More than ~60 links — unreadable; collapse under 2 % into Other or filter with an input.
+  - A non-additive weight (an average cannot be split along links).
+  - Self-loops or cycles (A → A); Plotly draws them badly — filter `source <> target`.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 2, max: 3}
+  dimension_roles: [categorical, geo_region, boolean]
+  cardinality: {min: 2, max: 15}
+required_props: [node, link]
+example: test-projects/docs-examples/dashboards/sankey/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: borough-flows
+      props:
+        type: sankey
+        node:
+          label: ?{ ${ref(flows).node_label} }
+        link:
+          source: ?{ ${ref(flows).source_idx} }
+          target: ?{ ${ref(flows).target_idx} }
+          value: ?{ ${ref(flows).rides} }
+encodings_that_scale:
+  - "three stages → chain them: links for stage1→stage2 and stage2→stage3 in one model, node indices shared"
+  - "a `few` categorical on the links → `link.color` from a CASE (the legitimate color case)"
+  - "many small links → `collapse_rare` in SQL (< 2 % → Other)"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [collapse_rare, input_filter]
+transforms: [collapse_rare, top_n_other]
+visivo_gotchas:
+  - "`link.source`/`link.target` are **integer indices into `node.label`**, not names: build a node table with `row_number() - 1` and join the flows to it."
+  - "`node.label` is a list in the docs example; with real data it must be a column from the same model, ordered exactly as the indices assume."
+  - "Node labels on both sides must be distinct: 'Manhattan' as pickup and as dropoff need two nodes (prefix them) or every flow becomes a self-loop."
+  - "`split` makes no sense on a sankey; ignore the shape card's split advice here."
+  - "Set `node.pad` and `node.thickness` modestly (10–15) once nodes exceed ~10, or the diagram overflows a `medium` row."
+pairings: [detail_table_below, kpi_strip_above]
+layout: {height: large, width_share: 1.0, row_role: hero}
+mobile: Full width, `large`; ≤ 8 nodes a side or labels overlap.

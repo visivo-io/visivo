@@ -1,0 +1,51 @@
+type: table
+family: table
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: "Exact values in rows: the detail view a dashboard ends with, or a pivot grid you can read numbers off."
+use_when:
+  - "Identifier-level detail: any dimension with role `identifier`, or a lookup role at `high` cardinality (zones, drivers, invoices) — never a chart."
+  - "≥ 4 metrics across ≤ 20 categories, or mixed types per row (text + numbers + dates); exact values (money reconciliation, rankings with ties)."
+  - "Pivot: two categoricals with cells between the heatmap ceiling (400) and ~2 000, totals required, or ≤ 12 periods × category when the figures matter."
+  - "`intent: detail`, or as the `detail_table_below` companion of a chart whose dimension is `many`/`high`."
+avoid_when:
+  - ≤ 3 metrics across ≤ 20 categories — a bar compares them faster.
+  - A trend over many periods — a line; a 40-column pivot overflows.
+  - Pattern-finding over two dimensions with ≤ 400 cells — a heatmap.
+  - A pivot with more than 6 columns beside a chart, or 12 alone — columns shrink to an 80 px floor and then overflow.
+data_shape:
+  metrics: {min: 0}
+  dimensions: {min: 1}
+  dimension_roles: [identifier, categorical, text, time, geo_region, numeric_discrete, numeric_continuous, boolean]
+required_props: [columns]
+example: test-projects/integration/project.visivo.yml
+minimal_yaml: |
+  tables:
+    - name: zone-detail
+      rows_per_page: 25
+      columns:
+        - ${ref(zone_revenue).zone} as "Zone"
+        - ${ref(zone_revenue).borough} as "Borough"
+        - ${ref(zone_revenue).revenue} as "Revenue"
+        - ${ref(zone_revenue).rides} as "Rides"
+encodings_that_scale:
+  - "pivot → `rows` (higher-cardinality dim), `columns` (lower, ≤ 12 or ≤ 6 beside a chart), `values` (≤ 3 aggregates), computed in the browser"
+  - "`format_cells {scope: column|row|table, min_color, max_color}` hex gradient — a heatmap you can read numbers off"
+  - "an input-filtered table → `data: ${ref(insight)}` where the insight carries the `filter`; a table on a model ignores inputs"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [top_n_other, precomputed_totals]
+visivo_gotchas:
+  - "Alias every column (`… as \"Label\"`): unaliased headers are the raw expression, and on an insight the hashed column name."
+  - "`rows_per_page` accepts 3, 5, 15, 25, 50, 100, 500, 1000 — not 10 (the enum member `ten` is 15). Use ≥ the row count for small lookup tables so there is no pager, 25–50 for long ones."
+  - "`data` is exclusive with `columns`/`rows`/`values`; `rows` requires `values` and `columns`; pivot `values` must be aggregates or the browser query fails after a clean compile."
+  - "Pivots have no ORDER BY and no totals: period labels must sort as text (`YYYY-MM`) and totals are a UNION ALL row in SQL."
+  - "`format_cells` colors the current page only, treats null as 0 and parses hex only; point `min_color`/`max_color` at the theme accent and a light tint of it."
+pairings: [chart_beside, kpi_strip_above]
+layout: {height: medium, width_share: 1.0, row_role: detail}
+mobile: Full width and the heaviest item on the page; lead the row with the chart, keep ≤ 5 columns.

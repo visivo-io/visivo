@@ -1,0 +1,59 @@
+type: sunburst
+family: hierarchy
+status: preferred
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.75
+one_liner: Concentric rings, one per level; beats a treemap when the shape of the hierarchy matters more than leaf areas.
+use_when:
+  - "A 2–4 level hierarchy with one additive metric where the question is how each parent splits (every level stays visible as its own ring)."
+  - "Under ~100 leaves, and the reader compares a parent's composition, not leaf against leaf across branches (treemap's job)."
+  - "`semantics.hierarchy` and the chart sits in a half-width slot: the circle fits a square tile where a treemap gets squashed."
+avoid_when:
+  - "Leaves must be compared by size across branches: outer-ring arcs have more radius than inner ones, so angles mislead; use a treemap or a bar."
+  - "A single level — that is a donut; use pie (≤5 slices) or bar."
+  - "More than ~100 leaves or 4 levels — outer arcs become slivers with no labels; set `maxdepth` or use an icicle."
+  - Non-additive or negative metrics — same rule as treemap.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 2, max: 4}
+  dimension_roles: [categorical, geo_region, boolean]
+  cardinality: {min: 3, max: 100}
+required_props: [labels, parents]
+example: test-projects/docs-examples/dashboards/sunburst/simple.visivo.yml
+minimal_yaml: |
+  models:
+    - name: trip_nodes
+      sql: >-
+        select pickup_borough as id, pickup_borough as label, '' as parent, count(*) as trips from trips group by all
+        union all select pickup_borough || '/' || payment_type, payment_type, pickup_borough, count(*) from trips group by all
+  insights:
+    - name: trips-by-borough-and-payment
+      props:
+        type: sunburst
+        ids: ?{ ${ref(trip_nodes).id} }
+        labels: ?{ ${ref(trip_nodes).label} }
+        parents: ?{ ${ref(trip_nodes).parent} }
+        values: ?{ sum(${ref(trip_nodes).trips}) }
+        branchvalues: total
+        maxdepth: 3
+encodings_that_scale:
+  - "a second metric (a rate) → numeric `marker.colors` + `marker.colorscale`, exactly as on treemap"
+  - "deeper trees → `maxdepth: 2` with click-to-zoom; the centre becomes the breadcrumb"
+  - "comparing the same hierarchy across a `few` groups → small multiples of sunbursts with `domain`, never a `split`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [top_n_other, input_filter]
+transforms: [top_n_other, collapse_rare]
+visivo_gotchas:
+  - "Treemap's rules apply verbatim: UNION ALL one SELECT per level, every parent present as a node row, `branchvalues: total` for pre-summed rows (the docs examples omit it, so their root ring is inflated)."
+  - "A child label that repeats under several parents (Cash under every borough) needs `ids` (path-style `borough/payment`) and `parents` pointing at those ids; with labels alone the nodes collide."
+  - "`sort` defaults to true and reorders sectors largest-first; set `sort: false` only when the SQL order (an ordered categorical) means something."
+  - "`marker.colorscale` does nothing unless `marker.colors` is numeric; a list of hex codes per row opts out of the theme colorway."
+  - "`split` does not apply; a hierarchy is one insight, one trace."
+pairings: [detail_table_below, kpi_strip_above, treemap_toggle]
+layout: {height: large, width_share: 0.5, row_role: breakdown}
+mobile: "Survives the stack well because it is square; drop to `maxdepth: 2` so the outer ring keeps readable labels."

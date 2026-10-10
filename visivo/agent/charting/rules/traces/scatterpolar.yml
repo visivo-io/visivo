@@ -1,0 +1,56 @@
+type: scatterpolar
+family: polar
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.7
+one_liner: "Radar / spider chart: 3–8 normalized metrics as spokes, one closed shape per entity (≤4 entities)."
+use_when:
+  - "A profile comparison: 3–8 metrics of the same polarity (higher = better) for 1–4 entities — a company scorecard, a borough profile."
+  - "An explicit request for a radar/spider chart, and the metrics have been normalized to one scale (0–1 or % of max) in SQL."
+  - "A metric over a cyclic axis drawn as a closed line (hour of day, month) when a barpolar would be too heavy — 24 points, `fill: toself`."
+avoid_when:
+  - "Metrics in different units left raw — the shared radial axis lets the largest unit flatten the rest; normalize or use grouped bars."
+  - "More than 4 entities or more than 8 spokes — overlapping fills are unreadable; use a heatmap (entity × metric) or small multiples."
+  - Reading magnitudes or ranking — shape area depends on spoke order, which is arbitrary; a grouped bar or a table is honest.
+  - "A non-cyclic theta (dates in sequence, ranks) — the closing segment invents a link from the last value back to the first."
+data_shape:
+  metrics: {min: 3, max: 8}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [categorical, identifier]
+  cardinality: {min: 1, max: 4}
+required_props: [r, theta]
+example: test-projects/docs-examples/dashboards/scatterpolar/lines.visivo.yml
+minimal_yaml: |
+  # company_scorecard: per-company aggregates UNPIVOTed to (company, metric, metric_order, pct_of_max)
+  insights:
+    - name: company-profile
+      props:
+        type: scatterpolar
+        mode: lines+markers
+        fill: toself
+        theta: ?{ ${ref(company_scorecard).metric} }
+        r: ?{ ${ref(company_scorecard).pct_of_max} }
+      interactions:
+        - split: ?{ ${ref(company_scorecard).company} }
+        - sort: ?{ ${ref(company_scorecard).metric_order} ASC }
+encodings_that_scale:
+  - "entities → `split`, one closed shape each; ≤4, else heatmap (entity × metric)"
+  - "a fifth+ entity → input_filter (pick two to compare) rather than more overlapping fills"
+  - "never encode a second measure in `marker.size` here; the radius already is the measure"
+limits:
+  series_ideal: 2
+  series_max: 4
+  repair: [input_filter, heatmap, small_multiples, bar]
+transforms: [normalize_0_1, top_n_other]
+visivo_gotchas:
+  - "Metrics are columns but a radar wants rows: the model must UNPIVOT (`unpivot ... on fare, distance, tip_rate`) to (entity, metric, value) first; one insight per metric is wrong."
+  - "Normalize per metric in SQL (`value / max(value) over (partition by metric)`); raw fare (~$20) next to trips (~10 000) collapses every other spoke."
+  - "A line does not close itself: use `fill: toself`, or repeat the first spoke as the last row (the lines example leaves the shape open)."
+  - "Sort on an explicit spoke order column so every split series walks the spokes in the same order; category order otherwise follows the first series seen."
+  - "Numeric theta is degrees (the docs examples use 0–180); category labels are what a radar wants. Do not set `line.color` constants; the split colors via the theme."
+pairings: [detail_table_below, bar_beside]
+layout: {height: medium, width_share: 0.5, row_role: breakdown}
+mobile: Survives at half width as a square; keep ≤2 entities and short spoke labels or they clip at the edge.

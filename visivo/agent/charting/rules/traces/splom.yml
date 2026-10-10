@@ -1,0 +1,58 @@
+type: splom
+family: multivariate
+status: niche
+tier: extended
+author: opus-5.5
+review: {state: approved, by: fable-5.1, date: 2026-10-10}
+
+confidence: 0.65
+one_liner: Scatter-plot matrix of 3–8 numeric columns; every pairwise relationship at once, for exploration.
+use_when:
+  - "`intent: relationship` over 3–8 numeric columns with no single x/y pair singled out (fare, distance, minutes, tip)."
+  - "≤ ~5 000 rows (sampled if needed) and an analyst audience screening for correlations before choosing one scatter."
+  - "A `few` categorical to compare clusters across every pair: `split` (iris example)."
+avoid_when:
+  - Only two numeric columns — that is one scatter, larger and with real axes.
+  - "More than 8 columns — n² panels of a few pixels each; pick the 4–5 that matter or use parcoords."
+  - "More than ~5 000 rows unsampled — every point is drawn n² times; sample in SQL or move to histogram2d on the one pair that matters."
+  - Executive/summary dashboards — a splom is an exploration tool, not a finding; promote the interesting pair to a scatter.
+data_shape:
+  metrics: {min: 0, max: 0}
+  dimensions: {min: 3, max: 9}
+  dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean]
+  cardinality: {min: 50, max: 5000}
+required_props: [dimensions]
+example: test-projects/docs-examples/dashboards/splom/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: trip-measures-matrix
+      props:
+        type: splom
+        dimensions:
+          - {label: Distance, values: "?{ ${ref(trips_sample).trip_distance} }"}
+          - {label: Fare, values: "?{ ${ref(trips_sample).fare_amount} }"}
+          - {label: Minutes, values: "?{ ${ref(trips_sample).trip_minutes} }"}
+          - {label: Tip, values: "?{ ${ref(trips_sample).tip_amount} }"}
+        diagonal: {visible: false}
+        showupperhalf: false
+        marker: {size: 3, opacity: 0.4}
+      interactions:
+        - split: ?{ ${ref(trips_sample).payment_type} }
+encodings_that_scale:
+  - "a `few` categorical → `split` (one colored series per value, shared panels)"
+  - "redundant halves → `showupperhalf: false` and `diagonal.visible: false` cut the panel count in half"
+  - "more rows → a `trips_sample` model (`using sample 5000`) rather than the full table"
+limits:
+  series_ideal: 3
+  series_max: 5
+  repair: [sample, top_n_other, scattergl]
+transforms: [sample, clip_p99]
+visivo_gotchas:
+  - "Each `dimensions[].values` is a raw column (no GROUP BY) and every dimension must come from the same model so rows line up."
+  - "Sample in a dedicated model (`select * from trips using sample 5000`); an input filter does not cap the rows a split splom ships."
+  - "Clip each column's tail in SQL; one outlier squashes its whole row and column of panels."
+  - "Splom panels are WebGL; counts toward the browser's ~8–16 context cap like scattergl."
+  - "The custom-colors example hard-codes red/green in a CASE; prefer `split` so the theme colorway (and its colorblind-safe order) applies."
+pairings: [scatter_drilldown, detail_table_below]
+layout: {height: large, width_share: 1.0, row_role: relationship}
+mobile: Poor below 1024 px; ≤4 dimensions with the upper half hidden, or replace with the single most interesting scatter.

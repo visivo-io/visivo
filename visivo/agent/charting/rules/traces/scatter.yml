@@ -1,0 +1,56 @@
+type: scatter
+family: line
+secondary_families: [area, xy]
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: One trace type, three idioms — a line over an ordered axis, a filled area, or x/y markers.
+use_when:
+  - "A metric over time or any ordered axis (days since signup, step, rank) with ≥3 points: `mode: lines`."
+  - "Several series share the axis and there are ≤5 (≤12 at a stretch): split on the categorical."
+  - "Two numeric measures per entity, 50–10 000 points, to see a relationship: `mode: markers`."
+  - "Stacked composition over time when the parts are additive: `fill` + `stackgroup`."
+avoid_when:
+  - The axis is an unordered categorical — the line implies a sequence that is not there; use bar.
+  - More than 12 series — repair with top-N + Other, an input filter, or a heatmap.
+  - More than 10 000 points — use scattergl, or aggregate in SQL first.
+  - A stacked area of non-additive measures (rates, averages) — stacking sums them, which is meaningless.
+data_shape:
+  metrics: {min: 1, max: 3}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [time, numeric_continuous, numeric_discrete, categorical, boolean]
+  cardinality: {min: 3}
+required_props: [x, y]
+example: test-projects/docs-examples/dashboards/scatter/lines.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: rides-per-day
+      props:
+        type: scatter
+        mode: lines
+        x: ?{ date_trunc('day', ${ref(trips).pickup_at}) }
+        y: ?{ count(*) }
+      interactions:
+        - split: ?{ ${ref(trips).company} }
+        - sort: ?{ date_trunc('day', ${ref(trips).pickup_at}) ASC }
+encodings_that_scale:
+  - "second categorical (few) → `split` interaction; one line per value, shared axes"
+  - "second metric with a different unit → `yaxis: y2` on a second insight (duel-axis example)"
+  - "a third numeric on markers → `marker.size` (area, not radius); never `marker.color` unless it encodes data"
+  - "many series → heatmap (series × axis) keeps every value readable"
+limits:
+  series_ideal: 5
+  series_max: 12
+  repair: [top_n_other, input_filter, small_multiples, heatmap]
+transforms: [regrain, top_n_other, clip_p99, scattergl]
+visivo_gotchas:
+  - "Always add `- sort: ?{ <x expression> ASC }`; without it the line connects points in storage order and zig-zags."
+  - "`x` and `y` must be aggregated at the same grain: `date_trunc('day', ts)` with `count(*)`, never raw rows for a line."
+  - "Setting `line.color` or `marker.color` opts the insight out of the theme colorway; only do it when the color encodes data (a CASE)."
+  - "A `split` adds a series per distinct value: check the column's cardinality bucket first (`few` is fine, `some` needs top-N)."
+  - "`fill: tonexty` stacks on the previous insight in the chart, so insight order in `charts.insights` is the stacking order; prefer `stackgroup`."
+pairings: [indicator_total_overlay, bar_line_dual_axis, detail_table_below]
+layout: {height: medium, width_share: 1.0, row_role: hero}
+mobile: Keep ≤3 series and the legend horizontal; a full-width line survives the stack, a half-width one gets too short to read.

@@ -1,0 +1,44 @@
+sources:
+  - name: state-rides-source
+    type: duckdb
+    database: target/seeds/state_rides.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            state,rides
+            NY,1250
+            NJ,430
+            CT,210
+            PA,380
+            MA,160
+            CA,90
+            TX,75
+            FL,120
+models:
+  - name: state-rides
+    source: ${ref(state-rides-source)}
+    sql: select * from model
+charts:
+  - name: choroplethmap-rides-by-state
+    layout:
+      title:
+        text: "Rides by State<br><sub>choroplethmap: regions from a GeoJSON, drawn on a tiled map</sub>"
+      map:
+        center: {lat: 39, lon: -96}
+        zoom: 2.6
+      margin: {t: 60, r: 0, b: 0, l: 0}
+    insights:
+      - ${ref(choroplethmap-rides-by-state-trace)}
+insights:
+  - name: choroplethmap-rides-by-state-trace
+    props:
+      type: choroplethmap
+      geojson: https://raw.githubusercontent.com/python-visualization/folium/main/examples/data/us-states.json
+      featureidkey: id
+      locations: ?{${ref(state-rides).state}}
+      z: ?{${ref(state-rides).rides}}
+      colorscale: Blues
+      marker:
+        opacity: 0.75

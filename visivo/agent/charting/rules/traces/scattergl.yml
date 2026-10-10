@@ -1,0 +1,51 @@
+type: scattergl
+family: line
+secondary_families: [xy]
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: WebGL scatter; the repair target when a scatter has more than ~10k points.
+use_when:
+  - "Any `scatter` case (line or markers) whose point count exceeds ~10 000 after aggregation."
+  - Dense x/y clouds (fare vs distance over 100k trips) where seeing the shape matters more than hovering a point.
+avoid_when:
+  - Under 10k points — plain `scatter` renders crisper text and supports every prop.
+  - "Area fills and `stackgroup` — scattergl supports `fill` partially and not `stackgroup`; aggregate instead."
+  - Dashboards with many charts — each WebGL context costs memory; browsers cap them at ~8–16.
+  - Printing or export — WebGL canvases rasterize.
+data_shape:
+  metrics: {min: 1, max: 2}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [time, numeric_continuous, numeric_discrete, categorical]
+  cardinality: {min: 10000}
+required_props: [x, y]
+example: test-projects/docs-examples/dashboards/scattergl/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: fare-vs-distance
+      props:
+        type: scattergl
+        mode: markers
+        x: ?{ ${ref(trips).trip_distance} }
+        y: ?{ ${ref(trips).fare_amount} }
+        marker: {size: 3, opacity: 0.3}
+      interactions:
+        - filter: ?{ ${ref(trips).trip_distance} between 0 and 50 }
+encodings_that_scale:
+  - "same as scatter: `split` for a `few` categorical, `marker.size` for a third numeric"
+  - "> 200k points → sample in SQL (`using sample 100000`) or bin to a `histogram2d`"
+limits:
+  series_ideal: 5
+  series_max: 12
+  repair: [top_n_other, input_filter, histogram2d]
+transforms: [sample, clip_p99]
+visivo_gotchas:
+  - "Still ship a bounded result: the browser receives every row; sample or clip in SQL above ~200k."
+  - "`marker.opacity` well below 1 (0.2–0.4) or a dense cloud is a solid blob."
+  - "Hover is coarser than scatter; put the exact figures in a table beside it when they matter."
+  - "Same sort rule as scatter for `mode: lines`."
+pairings: [detail_table_below, histogram_beside]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: Same as scatter; WebGL on phones is slower, so keep ≤ 50k points.
