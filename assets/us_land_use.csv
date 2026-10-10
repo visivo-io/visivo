@@ -1,0 +1,56 @@
+Category,Subcategory,Acres (millions),Percentage of Total,Description
+Total Land Area,,2260,100.0,Total land area of the United States including all 50 states
+Agricultural Land,Total,1190,52.5,All land used for agricultural purposes
+Agricultural Land,Grassland Pasture and Range,659,29.0,Open land used primarily for pasture and grazing
+Agricultural Land,Cropland Total,390,17.3,All land in crop rotation including cropland pasture
+Agricultural Land,Cropland Used for Crops,338,15.0,Cropland harvested failure and cultivated summer fallow
+Agricultural Land,Cropland Pasture,13,0.6,Cropland used only for pasture
+Agricultural Land,Idle Cropland,39,1.7,Cropland not in use including CRP land
+Agricultural Land,Conservation Reserve Program,23,1.0,Land enrolled in USDA CRP program
+Agricultural Land,Grazed Forest Land,132,5.8,Forest land used for livestock grazing
+Agricultural Land,Total Grazing Land,805,35.6,All land used for livestock grazing
+Non-Agricultural Land,Total,1070,47.5,All non-agricultural land uses
+Forest Land,Total Forest Use,622,27.5,All forest land including grazed and ungrazed
+Forest Land,Ungrazed Forest,490,21.7,Forest land not used for grazing
+Special Uses,Total,318,14.1,Parks wildlife areas and other special uses
+Special Uses,Rural Parks and Wilderness,312,13.8,National and state parks wilderness areas
+Special Uses,National Defense,26,1.2,Military installations and defense areas
+Special Uses,Rural Transportation,26,1.2,Highways roads railroads outside urban areas
+Urban Areas,Total,74,3.3,All urban and built-up land
+Miscellaneous,Total,197,8.7,Wetlands tundra unproductive woodlands
+Miscellaneous,Wetlands,111,4.9,Marshes swamps and other wetlands
+Miscellaneous,Barren Land,45,2.0,Desert rock sand other barren land
+Miscellaneous,Other,41,1.8,Unclassified and miscellaneous uses
+Regional Distribution,Alaska Land Area,365,16.2,Total area of Alaska
+Regional Distribution,Contiguous 48 States,1895,83.8,Total area of lower 48 states
+Cropland by Region,Corn Belt,127,32.6,Percentage of US cropland in Corn Belt
+Cropland by Region,Northern Plains,59,15.1,Percentage of US cropland in Northern Plains
+Cropland by Region,Southern Plains,37,9.5,Percentage of US cropland in Southern Plains
+Cropland by Region,Lake States,34,8.7,Percentage of US cropland in Lake States
+Cropland by Region,Mountain,33,8.5,Percentage of US cropland in Mountain region
+Cropland by Region,Pacific,26,6.7,Percentage of US cropland in Pacific region
+Cropland by Region,Delta States,22,5.6,Percentage of US cropland in Delta States
+Cropland by Region,Southeast,19,4.9,Percentage of US cropland in Southeast
+Cropland by Region,Appalachian,18,4.6,Percentage of US cropland in Appalachian region
+Cropland by Region,Northeast,15,3.8,Percentage of US cropland in Northeast
+Historical Trends,Cropland 1949,478,,Peak historical cropland acreage
+Historical Trends,Cropland 1964,444,,Low point before modern agriculture
+Historical Trends,Cropland 1997,455,,Recent historical high
+Historical Trends,Cropland 2012,392,,Previous survey before 2017
+Historical Trends,Urban Growth 1945-2017,300%,,Percentage increase in urban land
+Major Crops 2024,Total Cropland for Crops,328,,Most recent 2024 estimate
+Major Crops 2024,Corn,94.6,,Corn acreage 2024
+Major Crops 2024,Soybeans,86.3,,Soybean acreage 2024
+Major Crops 2024,Wheat,47.2,,All wheat acreage 2024
+Major Crops 2024,Hay,53.0,,All hay acreage 2024
+Major Crops 2024,Cotton,11.5,,Cotton acreage 2024
+Forest Categories,Timberland,514,,Forest capable of producing timber
+Forest Categories,Reserved Forest,67,,Forest reserved from timber harvest
+Forest Categories,Other Forest,41,,Low productivity forest land
+Ownership,Private Agricultural Land,911,,Privately owned agricultural land
+Ownership,Federal Land,640,,Land owned by federal government
+Ownership,State and Local Government,198,,Land owned by state and local governments
+Land Quality,Prime Farmland,303,,High quality farmland nationwide
+Land Quality,Highly Erodible Land,101,,Cropland subject to erosion
+Water Features,Lakes and Reservoirs,27,,Major water bodies
+Water Features,Rivers and Streams,10,,Major waterways
