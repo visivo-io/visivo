@@ -1,0 +1,52 @@
+type: funnel
+family: funnel
+status: preferred
+tier: core
+author: fable-5.1
+review: {state: pending, by: null, date: null}
+confidence: null
+one_liner: Ordered stages shrinking from first to last; shows drop-off, not a distribution.
+use_when:
+  - "`semantics.ordered_stages`: a categorical whose values are a sequence everyone passes through in order (visited → signed up → paid)."
+  - 3–8 stages and a count or amount per stage that is monotonically non-increasing.
+  - "`intent: change` or `flow` without branching; percent of previous stage is the message."
+avoid_when:
+  - The categories are not sequential stages (payment types, boroughs) — that is a sorted bar, and a funnel implies a drop-off that is not there.
+  - Values are not monotonic (stage 3 > stage 2) — the shape lies; use a bar.
+  - Branching flows — sankey.
+  - More than ~8 stages — collapse or split into two funnels.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [categorical, boolean]
+  cardinality: {min: 3, max: 8}
+required_props: [x, y]
+example: test-projects/docs-examples/dashboards/funnel/simple.visivo.yml
+minimal_yaml: |
+  insights:
+    - name: booking-funnel
+      props:
+        type: funnel
+        y: ?{ ${ref(events).stage} }
+        x: ?{ count(distinct ${ref(events).user_id}) }
+        textinfo: value+percent previous
+      interactions:
+        - sort: ?{ min(${ref(events).stage_order}) ASC }
+encodings_that_scale:
+  - "a `few` categorical (segment) → `split` with `layout.funnelmode: group`; the counts stay comparable per stage"
+  - "percent of first stage → `textinfo: value+percent initial`"
+  - "amounts rather than counts → the same props; say the unit in the axis title"
+limits:
+  series_ideal: 2
+  series_max: 4
+  repair: [top_n_other, input_filter]
+transforms: [stage_order]
+visivo_gotchas:
+  - "Stages must be sorted by their **order**, not their value: sort by a stage_order column (`min(stage_order)` when grouped), never by the count."
+  - "Stage names sort alphabetically by default; a CASE or lookup column for the order is required."
+  - "`x` is the value and `y` the stage (horizontal is the default); `orientation: v` swaps them."
+  - "A constant `marker.color` (the docs example) drops the theme; leave it."
+  - "`count(distinct user)` per stage, not `count(*)`; repeat events inflate later stages and break monotonicity."
+pairings: [kpi_strip_above, detail_table_below]
+layout: {height: medium, width_share: 0.5, row_role: breakdown}
+mobile: Half width survives the stack as a full row; keep labels short.
