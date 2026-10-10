@@ -258,11 +258,11 @@ class TestDiscovery:
         assert skills.attached_to("write_chart") == []
 
     def test_shipped_names_are_stems_except_the_on_demand_namespaces(self):
-        """Only the interaction-pattern notes live in a subdirectory, and a
-        namespaced skill is on demand by construction."""
+        """Only the interaction-pattern and chart-family notes live in a
+        subdirectory, and a namespaced skill is on demand by construction."""
         for skill in skills.packaged():
             if "/" in skill["name"]:
-                assert skill["name"].startswith("interactions/"), skill["name"]
+                assert skill["name"].startswith(("interactions/", "charts/")), skill["name"]
                 assert skill["always"] is False
 
 
