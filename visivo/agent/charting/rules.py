@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from visivo.agent.charting.schema import FamilyRule
+from visivo.agent.charting.schema import FamilyRule, LayoutDoc
 
 RULES_DIR = Path(__file__).parent / "rules"
 
@@ -27,3 +27,15 @@ def load_families(path=None):
     if duplicates:
         raise ValueError(f"{path}: duplicate families {duplicates}")
     return rules
+
+
+def load_layout(path=None):
+    """The ``LayoutDoc`` from ``layout.yml``."""
+    path = Path(path) if path else RULES_DIR / "layout.yml"
+    loaded = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{path}: expected a mapping")
+    try:
+        return LayoutDoc(**loaded)
+    except Exception as error:
+        raise ValueError(f"{path}: {error}") from error

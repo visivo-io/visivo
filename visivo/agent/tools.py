@@ -330,7 +330,87 @@ def _read_skill_handler(app, arguments):
         raise ToolError(str(missing).strip("'\""))
 
 
+def _recommend_layout_handler(app, arguments):
+    from visivo.agent.charting.layout import LayoutError, recommend_layout
+
+    items = arguments.get("items")
+    if not isinstance(items, list) or not items:
+        raise ToolError(
+            "'items' must be a non-empty list of {name, kind, family?, row_role?, hints?}."
+        )
+    try:
+        return recommend_layout(
+            items,
+            title=arguments.get("title"),
+            inputs=arguments.get("inputs") or [],
+            intent=arguments.get("intent"),
+        )
+    except LayoutError as error:
+        raise ToolError(str(error))
+    except Exception as error:  # a bad item shape is the agent's to fix
+        raise ToolError(f"Could not lay out these items: {error}")
+
+
 _SPECIAL_TOOLS = {
+    "recommend_layout": Tool(
+        name="recommend_layout",
+        description=(
+            "Arrange charts, tables and inputs into dashboard rows. Pass every "
+            "chart, table and input you mean to place (name, kind, family); get "
+            "back `dashboards[0].rows` YAML with the ${ref()}s in place, a why "
+            "per row, and warnings. Call it once per dashboard before "
+            "write_dashboard, then fill in the markdown headers."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "description": "Charts and tables to place.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "The object's name."},
+                            "kind": {"type": "string", "enum": ["chart", "table", "markdown"]},
+                            "family": {
+                                "type": "string",
+                                "description": "Chart family from recommend_charts / the trace entries (kpi, line, bar, heatmap, geo_region, table, ...).",
+                            },
+                            "row_role": {
+                                "type": "string",
+                                "enum": [
+                                    "header",
+                                    "kpi",
+                                    "hero",
+                                    "breakdown",
+                                    "relationship",
+                                    "detail",
+                                ],
+                                "description": "Override the family's default row.",
+                            },
+                            "hints": {
+                                "type": "object",
+                                "description": "importance (number, higher first), rows (table row count), n_y_categories (heatmap), related_kpis (KPI names to stack beside a hero chart), header (one sentence on what to look for).",
+                            },
+                        },
+                        "required": ["name", "kind"],
+                    },
+                },
+                "inputs": {
+                    "type": "array",
+                    "description": "Inputs to place: {name, hints: {chart: <name>}} puts one beside that chart; otherwise it goes in the top row.",
+                    "items": {"type": "object"},
+                },
+                "title": {"type": "string"},
+                "intent": {
+                    "type": "string",
+                    "description": "Picks the hero: trend, change, geo, flow, distribution, relationship, compare, rank, composition, kpi, detail.",
+                },
+            },
+            "required": ["items"],
+        },
+        handler=_recommend_layout_handler,
+    ),
     "read_skill": Tool(
         name="read_skill",
         description=(
