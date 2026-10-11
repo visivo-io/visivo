@@ -212,7 +212,8 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
       },
     },
     muiPaginationProps: {
-      rowsPerPageOptions: [3, 5, 15, 25, 50, 100, 500, 1000],
+      // Mirrors RowsPerPageEnum (visivo/models/table.py) — VIS-1463 T5.
+      rowsPerPageOptions: [3, 5, 10, 25, 50, 100, 500, 1000],
     },
     initialState: {
       showGlobalFilter: true,

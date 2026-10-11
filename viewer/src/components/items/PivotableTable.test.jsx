@@ -526,3 +526,180 @@ describe('PivotableTable', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// VIS-1463 T4 / T5: whole-table gradients, nulls, measure columns, pager sizes
+// ---------------------------------------------------------------------------
+// These assertions read the inline `backgroundColor` of sibling cells — there is
+// no Testing Library query for "the cell to the right of this one", so direct
+// node access is the honest way to measure the gradient.
+/* eslint-disable testing-library/no-node-access */
+describe('PivotableTable — gradients and paging (VIS-1463)', () => {
+  beforeEach(() => {
+    DuckDBContext.useDuckDB.mockReturnValue({});
+    mockPivotReturn = {
+      rows: [],
+      columns: [],
+      nestedColumns: null,
+      pivotMeta: null,
+      isLoading: false,
+      error: null,
+    };
+  });
+
+  const cellOf = text => screen.getByText(text).closest('div[style]');
+
+  it('lists every RowsPerPageEnum size in the Rows selector (T5)', async () => {
+    render(
+      <PivotableTable
+        table={{ name: 'sizes', rows_per_page: 10 }}
+        sourceData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
+    // The configured 10 (previously unselectable) is the current value.
+    expect(screen.getByTestId('datatable-page-size')).toHaveTextContent('10');
+    selectEvent.openMenu(screen.getByLabelText('Rows per page'));
+    const options = (await screen.findAllByRole('option')).map(o => o.textContent);
+    expect(options).toEqual(['3', '5', '10', '25', '50', '100', '500', '1,000']);
+  });
+
+  it('colours a value identically on page 1 and page 3 (gradient over ALL rows, T4)', () => {
+    // 60 rows, 25 per page (pages: 0-24 / 25-49 / 50-59): v = i % 20 so row 11
+    // (page 1) and row 51 (page 3) share v=11; w grows so a per-page max would
+    // differ between the pages.
+    const data = Array.from({ length: 60 }, (_, i) => ({
+      key: `k${String(i).padStart(2, '0')}`,
+      v: i % 20,
+      w: i * 2,
+    }));
+    render(
+      <PivotableTable
+        table={{
+          name: 'sixty',
+          rows_per_page: 25,
+          format_cells: { scope: 'table', min_color: '#000000', max_color: '#ffffff' },
+        }}
+        sourceData={{ data, files: [] }}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
+    // Page 1: row 11 → v=11. Range over the whole table is 0..118.
+    const page1Row = cellOf('k11').parentElement;
+    const page1V = page1Row.children[1].style.backgroundColor;
+    expect(page1V).toBe('rgb(24, 24, 24)'); // round(255 * 11/118)
+    // w=48 (row 24, last on the page) is NOT the per-page maximum colour.
+    expect(cellOf('k24').parentElement.children[2].style.backgroundColor).not.toBe(
+      'rgb(255, 255, 255)'
+    );
+
+    fireEvent.click(screen.getByLabelText('Next page'));
+    fireEvent.click(screen.getByLabelText('Next page'));
+    expect(screen.getByText('3 / 3')).toBeInTheDocument();
+
+    const page3Row = cellOf('k51').parentElement;
+    expect(page3Row.children[1].style.backgroundColor).toBe(page1V);
+    // The whole-table max (w=118, row 59) is the pure max colour.
+    expect(cellOf('k59').parentElement.children[2].style.backgroundColor).toBe(
+      'rgb(255, 255, 255)'
+    );
+  });
+
+  it('leaves null cells without a background and keeps them out of the range (T4)', () => {
+    render(
+      <PivotableTable
+        table={{
+          name: 'nullish',
+          rows_per_page: 50,
+          format_cells: { scope: 'column', min_color: '#ff0000', max_color: '#00ff00' },
+        }}
+        sourceData={{
+          data: [
+            { label: 'a', amount: 10 },
+            { label: 'b', amount: null },
+            { label: 'c', amount: 30 },
+          ],
+          files: [],
+        }}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
+    expect(cellOf('a').parentElement.children[1].style.backgroundColor).toBe('rgb(255, 0, 0)');
+    expect(cellOf('b').parentElement.children[1].style.backgroundColor).toBe('');
+    expect(cellOf('c').parentElement.children[1].style.backgroundColor).toBe('rgb(0, 255, 0)');
+  });
+
+  it('does not colour numeric-looking string columns in data mode (T4)', () => {
+    render(
+      <PivotableTable
+        table={{
+          name: 'ids',
+          rows_per_page: 50,
+          format_cells: { scope: 'table', min_color: '#ff0000', max_color: '#00ff00' },
+        }}
+        sourceData={{
+          data: [
+            { id: '1001', amount: 1 },
+            { id: '1002', amount: 2 },
+          ],
+          files: [],
+        }}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
+    expect(cellOf('1001').style.backgroundColor).toBe('');
+    expect(cellOf('1002').style.backgroundColor).toBe('');
+    expect(cellOf('1').style.backgroundColor).toBe('rgb(255, 0, 0)');
+    expect(cellOf('2').style.backgroundColor).toBe('rgb(0, 255, 0)');
+  });
+
+  it('pivot mode colours every value column and never the row columns (T4)', () => {
+    mockPivotReturn = {
+      rows: [
+        { col_name: '7', East: 1, West: null },
+        { col_name: '9', East: 3, West: 5 },
+      ],
+      columns: [
+        { accessorKey: 'col_name', header: 'Name', isPivotRow: true },
+        { accessorKey: 'East', header: 'East' },
+        { accessorKey: 'West', header: 'West' },
+      ],
+      nestedColumns: null,
+      pivotMeta: { aggregationLabel: 'SUM', pivotFieldName: 'Category', rowFieldNames: ['Name'] },
+      isLoading: false,
+      error: null,
+    };
+    render(
+      <PivotableTable
+        table={{
+          name: 'pivot-grad',
+          rows_per_page: 50,
+          columns: ['${ref(i).category}'],
+          rows: ['${ref(i).name}'],
+          values: ['sum(${ref(i).rev})'],
+          format_cells: { scope: 'table', min_color: '#000000', max_color: '#ffffff' },
+        }}
+        sourceData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
+    // Row-key cells look numeric ('7', '9') but are pivot row columns → no gradient.
+    expect(cellOf('7').style.backgroundColor).toBe('');
+    expect(cellOf('9').style.backgroundColor).toBe('');
+    // Range over the value cells is 1..5; the null West cell is untouched.
+    expect(cellOf('1').style.backgroundColor).toBe('rgb(0, 0, 0)');
+    expect(cellOf('5').style.backgroundColor).toBe('rgb(255, 255, 255)');
+    expect(cellOf('7').parentElement.children[2].style.backgroundColor).toBe('');
+  });
+});
+/* eslint-enable testing-library/no-node-access */
