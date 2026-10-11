@@ -16,7 +16,7 @@ includes:
   - path: histogram2d/dashboard.visivo.yml
   - path: histogram2dcontour/dashboard.visivo.yml
   - path: icicle/dashboard.visivo.yml
-  #  - path: image/dashboard.visivo.yml #TODO: Fix image traces and get them working. The way they expect data is not super aggreable to sqlite.
+  - path: image/dashboard.visivo.yml
   - path: indicator/dashboard.visivo.yml
   - path: isosurface/dashboard.visivo.yml
   - path: mesh3d/dashboard.visivo.yml

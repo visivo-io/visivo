@@ -417,11 +417,8 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
     // query results, files — still comes from the artifact.
     const effectiveType = typeOverrides[insightName] ?? type;
 
-    if (!data || data.length === 0) {
-      continue;
-    }
-
-    if (!props_mapping || Object.keys(props_mapping).length === 0) {
+    // data === null means the insight is still waiting on an input value.
+    if (data === null || data === undefined) {
       continue;
     }
 
@@ -429,6 +426,33 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
     const processedStaticProps = static_props
       ? processInputRefsInProps(static_props, inputs)
       : null;
+
+    const hasPropsMapping = props_mapping && Object.keys(props_mapping).length > 0;
+
+    // A STATIC insight binds nothing to a query (no files, no post_query, an
+    // empty props_mapping — see run_insight_job.static_action): its trace is
+    // its static props alone, e.g. an inlined image `z` grid.
+    if (!hasPropsMapping) {
+      if (
+        processedStaticProps &&
+        typeof processedStaticProps === 'object' &&
+        !Array.isArray(processedStaticProps) &&
+        Object.keys(processedStaticProps).length > 0
+      ) {
+        const traceProps = {};
+        deepMergeStaticProps(traceProps, processedStaticProps);
+        if (effectiveType) {
+          traceProps.type = effectiveType;
+        }
+        traceProps.name = insightName;
+        traces.push(traceProps);
+      }
+      continue;
+    }
+
+    if (data.length === 0) {
+      continue;
+    }
 
     // Check if this insight has a split interaction
     if (split_key && data[0] && data[0][split_key] !== undefined) {
