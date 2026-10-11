@@ -1713,9 +1713,11 @@ describe('Dashboard', () => {
             {
               height: 'large',
               items: [
-                { chart: 'c', width: 3 },
+                { chart: 'c', width: 5 },
                 {
-                  width: 1, // 400px slot < 1024 -> nested row stacks
+                  // 1/6 slot of 1600px ≈ 267px → two items at ~133px each, under
+                  // MIN_NESTED_ITEM_WIDTH (160) → the nested row stacks (VIS-1459).
+                  width: 1,
                   rows: [
                     {
                       height: 'small',
