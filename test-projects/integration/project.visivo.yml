@@ -133,6 +133,32 @@ inputs:
       default:
         values: all
 
+  # Multi-select: Query-based DEFAULT (VIS-1460 I2) - the run writes a
+  # `defaults` parquet; the viewer must select exactly what it returns.
+  - name: query_default_x_values
+    label: "X Values (Query Default)"
+    type: multi-select
+    options: ?{select distinct cast(x as varchar) FROM ${ref(local_test_table)} }
+    display:
+      type: checkboxes
+      default:
+        values: ?{select distinct cast(x as varchar) FROM ${ref(local_test_table)} where x <= 3 }
+
+  # Multi-select: Numeric range slider with start/end defaults (VIS-1460 I3) -
+  # defaults must match options numerically ("100" <= "500", not as strings).
+  - name: numeric_price_range
+    label: "Price Range (Numeric Slider)"
+    type: multi-select
+    range:
+      start: 0
+      end: 1000
+      step: 50
+    display:
+      type: range-slider
+      default:
+        start: 100
+        end: 500
+
 
   # ===== DATE-BASED INPUTS (new display types) =====
 
@@ -385,6 +411,14 @@ charts:
       title:
         text: "Checkboxes: Multi-Value Filter"
 
+  # Query-default chart (VIS-1460 I2)
+  - name: query-default-filter-chart
+    insights:
+      - ${ ref(query-default-filter-insight) }
+    layout:
+      title:
+        text: "Query Default: Filter by Queried Selection"
+
   # Chips chart
   - name: chips-split-chart
     insights:
@@ -628,6 +662,18 @@ dashboards:
                 ## Additional Multi-Select Inputs (Showcase)
           - input: ${ref(selected_categories)}
           - input: ${ref(selected_groups)}
+
+      # Input defaults (VIS-1460): query-based default + numeric range slider
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(query_default_x_values)}
+          - width: 6
+            input: ${ref(numeric_price_range)}
+      - height: medium
+        items:
+          - width: 12
+            chart: ${ ref(query-default-filter-chart) }
 
   - name: new-tables-dashboard
     level: 0
