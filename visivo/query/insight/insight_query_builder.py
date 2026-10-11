@@ -377,10 +377,11 @@ class InsightQueryBuilder:
         that are not derived from query results.
 
         Input refs like ${ref(input).accessor} are converted to ${input.accessor} for
-        frontend JS template literal injection.
+        frontend JS template literal injection, and ${ref(<insight>)} in a
+        trace-id link prop (e.g. contourcarpet.carpet) is resolved to that
+        insight's trace id (see Insight.resolve_insight_refs).
         """
-        raw_static_props = self.insight.props.extract_static_props()
-        return self._convert_input_refs_in_props(raw_static_props)
+        return self.insight.resolved_static_props(self.dag)
 
     def _convert_input_refs_in_props(self, obj):
         """
@@ -395,14 +396,7 @@ class InsightQueryBuilder:
         Returns:
             The same structure with input refs converted
         """
-        if isinstance(obj, str):
-            return self.insight._convert_input_refs_to_js_templates(obj, self.dag)
-        elif isinstance(obj, dict):
-            return {k: self._convert_input_refs_in_props(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._convert_input_refs_in_props(item) for item in obj]
-        else:
-            return obj
+        return self.insight._convert_input_refs_in_obj(obj, self.dag)
 
     @property
     def pre_query(self):
