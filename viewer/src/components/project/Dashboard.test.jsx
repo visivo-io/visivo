@@ -70,13 +70,14 @@ jest.mock('../../hooks/useVisibleRows', () => ({
 // Chart (VIS-1459: unmeasured → undefined, stacked nested → split height).
 jest.mock('../items/Chart', () => ({
   __esModule: true,
-  default: ({ chart, shouldLoad, width, height }) => (
+  default: ({ chart, shouldLoad, width, height, itemWidth }) => (
     <div
       data-testid="chart"
       data-insights={JSON.stringify(chart.insights || [])}
       data-should-load={String(shouldLoad)}
       data-width={String(width)}
       data-height={String(height)}
+      data-item-width={itemWidth}
     >
       {chart.name || 'Chart'}
     </div>
@@ -85,7 +86,11 @@ jest.mock('../items/Chart', () => ({
 
 jest.mock('../items/Table', () => ({
   __esModule: true,
-  default: ({ table }) => <div data-testid="table">{table.name || 'Table'}</div>,
+  default: ({ table, height }) => (
+    <div data-testid="table" data-height={height}>
+      {table.name || 'Table'}
+    </div>
+  ),
 }));
 
 jest.mock('../items/Markdown', () => ({
@@ -1551,6 +1556,285 @@ describe('Dashboard', () => {
         .getAllByTestId('dashboard-nested-subrow')
         .map(el => parseFloat(el.style.flex.split(' ')[0]));
       expect(grows).toEqual([1, 1, 3, 6, 8]);
+    });
+  });
+
+  // ---------- VIS-1458: compact charts, stacked heights, nested ints, width guard ----------
+
+  describe('sizing (VIS-1458)', () => {
+    const charts = { c: { config: { name: 'c', insights: [] } } };
+    const chartHeights = () =>
+      screen.getAllByTestId('chart').map(el => Number(el.getAttribute('data-height')));
+    const subRowGrows = () =>
+      screen
+        .getAllByTestId('dashboard-nested-subrow')
+        .map(el => parseFloat(el.style.flex.split(' ')[0]));
+
+    it('L1: a chart in a compact row gets a 256px plot (minus the 8px inset), not 1024px', () => {
+      mountDashboard(
+        { name: 'compact-chart', rows: [{ height: 'compact', items: [{ chart: 'c' }] }] },
+        { charts }
+      );
+      expect(chartHeights()).toEqual([248]);
+      // The row itself still wraps to content.
+      expect(screen.getByTestId('dashboard-row-0').style.height).toBe('');
+    });
+
+    it('L1: a table in a compact row gets the 256px compact plot height', () => {
+      mountDashboard(
+        { name: 'compact-table', rows: [{ height: 'compact', items: [{ table: 't' }] }] },
+        { tables: { t: { config: { name: 't' } } } }
+      );
+      expect(screen.getByTestId('table').getAttribute('data-height')).toBe('256');
+    });
+
+    it('L1: compact-row markdown and inputs keep their content-sized render', () => {
+      mountDashboard(
+        {
+          name: 'compact-md',
+          rows: [{ height: 'compact', items: [{ markdown: 'm' }, { input: 'i' }] }],
+        },
+        { markdowns: { m: { config: { name: 'm' } } }, inputs: { i: { config: { name: 'i' } } } }
+      );
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.height).toBe('');
+      expect(screen.getByTestId('markdown')).toBeInTheDocument();
+      expect(screen.getByTestId('input')).toBeInTheDocument();
+    });
+
+    it('L3: a stacked [3,3,3,3] small KPI row gives each item the 160px floor, not the full 256px', () => {
+      mockDimensionWidth = 900; // below the default 1024 breakpoint -> stacks
+      mountDashboard(
+        {
+          name: 'kpis',
+          rows: [
+            {
+              height: 'small',
+              items: [
+                { chart: 'c', width: 3 },
+                { chart: 'c', width: 3 },
+                { chart: 'c', width: 3 },
+                { chart: 'c', width: 3 },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expect(screen.getByTestId('dashboard-row-0').style.flexDirection).toBe('column');
+      expect(chartHeights()).toEqual([152, 152, 152, 152]);
+    });
+
+    it('L3: a stacked [8,4] large row splits 512px by width share (341 + 171)', () => {
+      mockDimensionWidth = 900;
+      mountDashboard(
+        {
+          name: 'eight-four',
+          rows: [
+            {
+              height: 'large',
+              items: [
+                { chart: 'c', width: 8 },
+                { chart: 'c', width: 4 },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expect(chartHeights()).toEqual([341 - 8, 171 - 8]);
+    });
+
+    it('L3: a stacked row-container keeps 160px per sub-row instead of its width share', () => {
+      mockDimensionWidth = 900;
+      mountDashboard(
+        {
+          name: 'stacked-container',
+          rows: [
+            {
+              height: 'large',
+              items: [
+                { chart: 'c', width: 2 },
+                {
+                  width: 1,
+                  rows: [
+                    { height: 'small', items: [{ chart: 'c' }] },
+                    { height: 'small', items: [{ chart: 'c' }] },
+                    { height: 'small', items: [{ chart: 'c' }] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      // 512 * 1/3 = 171 would give 57px sub-rows; the floor keeps 3 x 160.
+      expect(screen.getByTestId('dashboard-nested-rows').style.minHeight).toBe('480px');
+      expect(chartHeights()).toEqual([341 - 8, 152, 152, 152]);
+    });
+
+    it('L3: a full-width single item keeps the whole row height when stacked', () => {
+      mockDimensionWidth = 900;
+      mountDashboard(
+        { name: 'single', rows: [{ height: 'medium', items: [{ chart: 'c', width: 1 }] }] },
+        { charts }
+      );
+      expect(chartHeights()).toEqual([396 - 8]);
+    });
+
+    it('L3: items side-by-side above the breakpoint still get the full row height', () => {
+      mockDimensionWidth = 1600;
+      mountDashboard(
+        {
+          name: 'wide',
+          rows: [
+            {
+              height: 'small',
+              items: [
+                { chart: 'c', width: 3 },
+                { chart: 'c', width: 3 },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expect(screen.getByTestId('dashboard-row-0').style.height).toBe('256px');
+      expect(chartHeights()).toEqual([248, 248]);
+    });
+
+    it('L3: a nested sub-row that stacks within a narrow slot splits the slot height by share', () => {
+      mockDimensionWidth = 1600;
+      mountDashboard(
+        {
+          name: 'nested-stack',
+          rows: [
+            {
+              height: 'large',
+              items: [
+                { chart: 'c', width: 3 },
+                {
+                  width: 1, // 400px slot < 1024 -> nested row stacks
+                  rows: [
+                    {
+                      height: 'small',
+                      items: [
+                        { chart: 'c', width: 1 },
+                        { chart: 'c', width: 1 },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      // Slot is the full 512px (one sub-row); the 8px gap between the two
+      // stacked items comes off first (VIS-1459), then each half gets 252 - 8.
+      expect(chartHeights()).toEqual([504, 244, 244]);
+    });
+
+    it('L4: an integer sub-row height scales proportionally (128px = one weight unit)', () => {
+      mountDashboard(
+        {
+          name: 'nested-int',
+          rows: [
+            {
+              height: 'medium',
+              items: [
+                {
+                  width: 1,
+                  rows: [
+                    { height: 128, items: [{ chart: 'c' }] },
+                    { height: 'small', items: [{ chart: 'c' }] },
+                    { height: 384, items: [{ chart: 'c' }] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expect(subRowGrows()).toEqual([1, 2, 3]);
+      // 396px slot split 1:2:3 -> 66 / 132 / 198, minus the 8px chart inset.
+      expect(chartHeights()).toEqual([58, 124, 190]);
+    });
+
+    it('L4: an unknown sub-row height falls back to the medium weight, not xxlarge', () => {
+      mountDashboard(
+        {
+          name: 'nested-unknown',
+          rows: [
+            {
+              height: 'medium',
+              items: [
+                {
+                  width: 1,
+                  rows: [
+                    { height: 'nonsense', items: [{ chart: 'c' }] },
+                    { height: 'xxlarge', items: [{ chart: 'c' }] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expect(subRowGrows()).toEqual([3, 8]);
+    });
+
+    it('L5: width 0 or negative renders as a single span and 1 is passed as itemWidth', () => {
+      mountDashboard(
+        {
+          name: 'bad-width',
+          rows: [
+            {
+              height: 'small',
+              items: [
+                { chart: 'c', width: 0 },
+                { chart: 'c', width: -2 },
+                { chart: 'c', width: 2 },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.gridTemplateColumns).toBe('repeat(4, minmax(0, 1fr))');
+      // eslint-disable-next-line testing-library/no-node-access
+      const slots = row.querySelectorAll(':scope > [data-canvas-path]');
+      expect([...slots].map(el => el.style.gridColumn)).toEqual(['span 1', 'span 1', 'span 2']);
+      expect(
+        screen.getAllByTestId('chart').map(el => el.getAttribute('data-item-width'))
+      ).toEqual(['1', '1', '2']);
+    });
+
+    it('L5: width 0 inside a nested sub-row also renders as a single span', () => {
+      mountDashboard(
+        {
+          name: 'bad-width-nested',
+          rows: [
+            {
+              height: 'medium',
+              items: [
+                {
+                  width: 1,
+                  rows: [{ height: 'small', items: [{ chart: 'c', width: 0 }, { chart: 'c', width: 1 }] }],
+                },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      const nestedRow = screen.getByTestId('dashboard-nested-row');
+      expect(nestedRow.style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))');
     });
   });
 
