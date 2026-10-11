@@ -185,3 +185,114 @@ test.describe('Dashboard stacking breakpoint (VIS-829)', () => {
     ).toBe(true);
   });
 });
+
+/**
+ * VIS-1459 / L2: nested containers decide stacking from their OWN slot — a
+ * nested item narrower than MIN_NESTED_ITEM_WIDTH (160px) stacks its sub-row;
+ * otherwise the sub-row stays a grid. Before the fix `shouldStack(slotWidth)`
+ * compared the slot against the dashboard-wide breakpoint (1024 in /project),
+ * so the 2x2 KPI cluster in Section 2 of nested-layouts-dashboard (a 1/3 slot,
+ * ~372px at 1200 / ~505px at 1600) always collapsed into a 1x4 column, with
+ * each stacked cell handed the FULL sub-row height (clipped indicators).
+ *
+ * Reproduced 2026-10-11 at both widths before the fix (see PR screenshots
+ * vis1459-l2-before-1200.png / -1600.png); this story pins the 2x2.
+ */
+test.describe('Nested 2x2 lays out 2x2 from its slot width (VIS-1459 L2)', () => {
+  for (const width of [1200, 1600]) {
+    test(`Project View-mode: Section 2 KPI cluster is 2x2 at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto('/project/nested-layouts-dashboard');
+      await page.waitForLoadState('networkidle');
+
+      const dashboard = page.getByTestId('dashboard_nested-layouts-dashboard');
+      await expect(dashboard).toBeVisible({ timeout: 15000 });
+
+      // Section 2 is row index 3 (0: header md, 1: Section 1, 2: header md).
+      // Its first item is the width-1 container holding two 2-item sub-rows.
+      const subRow0 = page.locator('[data-canvas-path="row.3.item.0.row.0"]');
+      const subRow1 = page.locator('[data-canvas-path="row.3.item.0.row.1"]');
+      await expect(subRow0).toBeVisible({ timeout: 15000 });
+      await expect(subRow1).toBeVisible({ timeout: 15000 });
+      // Wait for the indicators to actually plot so the geometry is settled.
+      await expect(subRow1.locator('.main-svg').first()).toBeVisible({ timeout: 20000 });
+
+      await expect(subRow0).toHaveCSS('display', 'grid');
+      await expect(subRow1).toHaveCSS('display', 'grid');
+
+      const cells = [];
+      for (const subRow of [subRow0, subRow1]) {
+        const items = subRow.locator(':scope > [data-canvas-path]');
+        expect(await items.count()).toBe(2);
+        const a = await items.nth(0).boundingBox();
+        const b = await items.nth(1).boundingBox();
+        expect(a).toBeTruthy();
+        expect(b).toBeTruthy();
+        expect(
+          sideBySide(a, b),
+          `sub-row cells should be side-by-side at ${width}px. a=${JSON.stringify(a)} b=${JSON.stringify(b)}`
+        ).toBe(true);
+        cells.push(a, b);
+      }
+      // Row 0's cells sit above row 1's → a 2x2, not a 1x4 column.
+      expect(stacked(cells[0], cells[2]), '2x2: second sub-row below the first').toBe(true);
+      expect(stacked(cells[1], cells[3]), '2x2: second sub-row below the first').toBe(true);
+      // The two sub-rows share the same two column bands.
+      expect(Math.abs(cells[0].x - cells[2].x)).toBeLessThan(2);
+      expect(Math.abs(cells[1].x - cells[3].x)).toBeLessThan(2);
+      // Every cell clears the slot-relative minimum item width.
+      for (const c of cells) expect(c.width).toBeGreaterThanOrEqual(160);
+
+      await page.screenshot({
+        path: `${SCREENS}/vis1459-nested-2x2-${width}.png`,
+        clip: { x: 0, y: Math.max(0, cells[0].y - 80), width, height: cells[3].y + cells[3].height - cells[0].y + 120 },
+      });
+    });
+  }
+
+  test('Workspace canvas: when a nested sub-row DOES stack, its items split the height', async ({
+    page,
+  }) => {
+    // In /project (1024 breakpoint) Section 2's slot can never starve: below
+    // ~1010px the top level has already stacked and the container owns the
+    // full width. The Workspace canvas (768 breakpoint) loses ~600px to the
+    // rails, so at 1600px its Section 2 slot is ~300px → ~150px cells < 160
+    // → the sub-row stacks, and its two cells must each get about half of the
+    // sub-row height (8px gap) with the plotted svg inside its cell — not the
+    // full sub-row height each, overflowing (the pre-fix behaviour).
+    await page.setViewportSize(WIDE);
+    await page.goto('/workspace/dashboard/nested-layouts-dashboard');
+    await page.waitForLoadState('networkidle');
+    const canvasOption = page.getByTestId('workspace-lens-picker-option-preview');
+    await expect(canvasOption).toBeVisible({ timeout: 15000 });
+    await canvasOption.click();
+    await expect(page.getByTestId('dashboard_nested-layouts-dashboard')).toBeVisible({ timeout: 15000 });
+
+    const subRow0 = page.locator('[data-canvas-path="row.3.item.0.row.0"]');
+    await expect(subRow0).toBeVisible({ timeout: 15000 });
+    await subRow0.scrollIntoViewIfNeeded();
+    const items = subRow0.locator(':scope > [data-canvas-path]');
+    expect(await items.count()).toBe(2);
+    const display = await subRow0.evaluate(el => getComputedStyle(el).display);
+    const subRowBox = await subRow0.boundingBox();
+    const a = await items.nth(0).boundingBox();
+    const b = await items.nth(1).boundingBox();
+    expect(a).toBeTruthy();
+    expect(b).toBeTruthy();
+    await page.screenshot({ path: `${SCREENS}/vis1459-canvas-nested-split.png` });
+    if (display === 'flex') {
+      expect(stacked(a, b), `cells should stack. a=${JSON.stringify(a)} b=${JSON.stringify(b)}`).toBe(true);
+      expect(a.height + b.height).toBeLessThanOrEqual(subRowBox.height + 2);
+      expect(Math.abs(a.height - b.height)).toBeLessThan(2);
+      // Each cell is the whole slot wide (stacked items span the slot)…
+      expect(Math.abs(a.width - subRowBox.width)).toBeLessThan(2);
+      // …and under the slot-relative minimum (that is WHY it stacked).
+      expect(subRowBox.width / 2).toBeLessThan(160);
+    } else {
+      // The canvas was wide enough for two ≥160px cells: a grid, side-by-side.
+      expect(sideBySide(a, b)).toBe(true);
+      expect(a.width).toBeGreaterThanOrEqual(160);
+    }
+  });
+});
+
