@@ -1,3 +1,5 @@
+import { dehashColumnKey } from './pivotRefResolver';
+
 /**
  * Parse DuckDB PIVOT result column keys into a hierarchical tree structure
  * suitable for TanStack React Table nested column definitions.
@@ -66,7 +68,7 @@ export function parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedP
   }
 
   // Build nested tree
-  const pivotTree = buildTree(groupEntries, 0, pivotColCount, aggInfo, singleValue);
+  const pivotTree = buildTree(groupEntries, 0, pivotColCount, aggInfo, singleValue, reverseMapping);
 
   return [...rowColumnDefs, ...pivotTree];
 }
@@ -119,7 +121,7 @@ function splitPrefix(prefix, pivotColCount) {
 /**
  * Recursively build nested column groups.
  */
-function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
+function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue, reverseMapping = {}) {
   if (level === pivotColCount) {
     // At leaf level — return individual agg column defs
     if (singleValue) {
@@ -128,7 +130,9 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
         items.map(item => ({
           id: item.originalKey,
           accessorKey: item.originalKey,
-          displayName: aggInfo[0] ? `${aggInfo[0].aggFunc} of ${aggInfo[0].displayName}` : item.originalKey,
+          displayName: aggInfo[0]
+            ? `${aggInfo[0].aggFunc} of ${aggInfo[0].displayName}`
+            : formatSimpleHeader(dehashColumnKey(item.originalKey, reverseMapping)),
           meta: { isPivotRow: false },
         }))
       );
@@ -142,7 +146,7 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
           accessorKey: item.originalKey,
           displayName: aggInfo[item.aggIndex]
             ? `${aggInfo[item.aggIndex].aggFunc} of ${aggInfo[item.aggIndex].displayName}`
-            : item.originalKey,
+            : formatSimpleHeader(dehashColumnKey(item.originalKey, reverseMapping)),
           meta: { isPivotRow: false },
         }))
     );
@@ -160,7 +164,7 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
     id: `group-${level}-${segValue}`,
     header: formatSimpleHeader(segValue),
     meta: { isGroupHeader: true },
-    columns: buildTree(children, level + 1, pivotColCount, aggInfo, singleValue),
+    columns: buildTree(children, level + 1, pivotColCount, aggInfo, singleValue, reverseMapping),
   }));
 }
 

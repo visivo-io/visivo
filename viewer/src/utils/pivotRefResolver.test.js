@@ -4,6 +4,8 @@ import {
   resolveValueExpression,
   extractAggAndColumn,
   parseColumnAlias,
+  buildReverseMapping,
+  dehashColumnKey,
 } from './pivotRefResolver';
 
 describe('resolveFieldRef', () => {
@@ -120,5 +122,41 @@ describe('parseColumnAlias', () => {
       ref: '${ref(insight).revenue}',
       alias: null,
     });
+  });
+});
+
+describe('buildReverseMapping (VIS-1462 T6)', () => {
+  it('inverts props_mapping into title-cased plain names', () => {
+    expect(
+      buildReverseMapping({ 'props.x': 'mcyedxpzlvpskkv', 'props.marker.size': 'abc' })
+    ).toEqual({ mcyedxpzlvpskkv: 'X', abc: 'Marker Size' });
+  });
+
+  it('tolerates a missing mapping', () => {
+    expect(buildReverseMapping(null)).toEqual({});
+    expect(buildReverseMapping(undefined)).toEqual({});
+  });
+});
+
+describe('dehashColumnKey (VIS-1462 T6)', () => {
+  const reverse = { mizwiwgxodnxypd: 'Y', mizwiwgxodnxypdzz: 'Long' };
+
+  it('replaces a bare hash with its plain name', () => {
+    expect(dehashColumnKey('mizwiwgxodnxypd', reverse)).toBe('Y');
+  });
+
+  it('replaces hashes embedded in DuckDB composite keys', () => {
+    expect(dehashColumnKey('North_sum("mizwiwgxodnxypd")', reverse)).toBe('North_sum("Y")');
+  });
+
+  it('prefers the longest hash so a prefix hash cannot clobber it', () => {
+    expect(dehashColumnKey('mizwiwgxodnxypdzz', reverse)).toBe('Long');
+  });
+
+  it('leaves keys without a hash untouched and handles empties', () => {
+    expect(dehashColumnKey('region', reverse)).toBe('region');
+    expect(dehashColumnKey('', reverse)).toBe('');
+    expect(dehashColumnKey(null, reverse)).toBeNull();
+    expect(dehashColumnKey('abc', null)).toBe('abc');
   });
 });

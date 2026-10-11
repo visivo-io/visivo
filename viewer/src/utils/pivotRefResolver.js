@@ -91,3 +91,42 @@ export function parseColumnAlias(colExpr) {
   return { ref: colExpr, alias: null };
 }
 
+/**
+ * Invert a props_mapping ("props.field" -> hashed column) into a hashed-column
+ * -> display-name map ("Field"), matching the header format the `data:` table
+ * path uses. Prop paths are title-cased with dots as spaces.
+ *
+ * @param {Object} propsMapping
+ * @returns {Object} hashedColumn -> display name
+ */
+export function buildReverseMapping(propsMapping) {
+  const reverseMapping = {};
+  for (const [propPath, hashedName] of Object.entries(propsMapping || {})) {
+    reverseMapping[hashedName] = propPath
+      .replace(/^props\./, '')
+      .replace(/\./g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  }
+  return reverseMapping;
+}
+
+/**
+ * Last-resort header text: replace every hashed column name that appears
+ * anywhere inside a result key with its plain display name. A hashed name must
+ * never reach the UI (VIS-1462 T6); this covers composite keys DuckDB builds
+ * (e.g. `North_sum("mizwiwgxodnxypd")`) when no more specific formatter matched.
+ *
+ * @param {string} key - Raw result column key
+ * @param {Object} reverseMapping - from buildReverseMapping
+ * @returns {string}
+ */
+export function dehashColumnKey(key, reverseMapping) {
+  if (!key) return key;
+  let out = String(key);
+  // Longest hashes first so a hash that is a prefix of another cannot clobber it.
+  const hashes = Object.keys(reverseMapping || {}).sort((a, b) => b.length - a.length);
+  for (const hash of hashes) {
+    if (out.includes(hash)) out = out.split(hash).join(reverseMapping[hash]);
+  }
+  return out;
+}
