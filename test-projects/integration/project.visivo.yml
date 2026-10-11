@@ -899,6 +899,51 @@ dashboards:
                 The wide table on the left is in a width=6 slot. It must still
                 stay inside its slot — its row's grid track must not expand to
                 the table's intrinsic width.
+
+  # Dashboard used by the tables-formatting E2E story (VIS-1463 T4/T5):
+  # a 60-row pivot with a whole-table gradient at 25 rows per page, with
+  # NULL cells that must stay uncoloured.
+  - name: tables-formatting-dashboard
+    level: 1
+    tags:
+      - "tables"
+      - "formatting"
+    rows:
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                # Tables Formatting Test
+                60-row pivot, `rows_per_page: 25`, `format_cells.scope: table`.
+                A value must have the same colour on every page; NULL cells have none.
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: gradient-pivot-table
+              columns:
+                - ${ref(gradient-grid-insight).x}
+              rows:
+                - ${ref(gradient-grid-insight).text}
+              values:
+                - sum(${ref(gradient-grid-insight).y})
+              rows_per_page: 25
+              format_cells:
+                scope: table
+                min_color: "#ffffff"
+                max_color: "#713b57"
+      # The same insight as a plain `data:` table. Mirrors new-tables-dashboard,
+      # where `pivot-source-insight` is ALSO referenced via `data:` — a pivot
+      # whose insight appears on the dashboard only through columns/rows/values
+      # is classified as a model by the viewer's collectDataNames and never
+      # loads (adjacent defect noted in the VIS-1463 PR, not fixed there).
+      - height: medium
+        items:
+          - width: 12
+            table:
+              name: gradient-grid-source-table
+              data: ${ref(gradient-grid-insight)}
+              rows_per_page: 10
 tables:
   - name: new_table
     rows_per_page: 25
