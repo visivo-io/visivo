@@ -674,6 +674,35 @@ dashboards:
               data: ${ref(filter-nonaggregate-input-test-insight)}
               rows_per_page: 25
 
+      # ===== SECTION 2b: INPUT-FILTERED COLUMN-SELECT + PIVOT (VIS-1462) =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Input-Filtered Column-Select and Pivot Tables
+                Both tables read the same input-filtered insight as the table above.
+                **Change "Min X Value" and both row counts change.** Unaliased
+                headers show the plain prop name (never a hashed column).
+
+      - height: large
+        items:
+          - width: 6
+            table:
+              name: filter-input-columns-table
+              rows_per_page: 25
+              columns:
+                - ${ref(filter-nonaggregate-input-test-insight).x}
+                - ${ref(filter-nonaggregate-input-test-insight).y} as "Y Value"
+          - width: 6
+            table:
+              name: filter-input-pivot-table
+              columns:
+                - ${ref(filter-nonaggregate-input-test-insight).x}
+              rows:
+                - ${ref(filter-nonaggregate-input-test-insight).y}
+              values:
+                - sum(${ref(filter-nonaggregate-input-test-insight).y})
+
       # ===== SECTION 3: PIVOT TABLE =====
       - height: compact
         items:
