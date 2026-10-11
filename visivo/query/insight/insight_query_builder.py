@@ -383,21 +383,6 @@ class InsightQueryBuilder:
         """
         return self.insight.resolved_static_props(self.dag)
 
-    def _convert_input_refs_in_props(self, obj):
-        """
-        Recursively convert ${ref(input).accessor} to ${input.accessor} in props.
-
-        This converts YAML-format input references to JS template literal format
-        for frontend runtime injection.
-
-        Args:
-            obj: A dict, list, or primitive value from props
-
-        Returns:
-            The same structure with input refs converted
-        """
-        return self.insight._convert_input_refs_in_obj(obj, self.dag)
-
     @property
     def pre_query(self):
         if not self.is_resolved:

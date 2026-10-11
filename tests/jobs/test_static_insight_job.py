@@ -51,8 +51,9 @@ def test_an_interaction_is_not_static():
     assert insight.is_static() is False
 
 
-def test_no_props_is_static():
-    assert Insight(name="bare").is_static() is True
+def test_no_props_is_not_static():
+    """Nothing to render: a props-less insight still reports missing_model."""
+    assert Insight(name="bare").is_static() is False
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +154,7 @@ def test_static_action_reports_a_broken_insight_ref_as_a_diagnostic():
 
     assert result.success is False
     assert result.diagnostic.code == "broken_reference"
-    assert "no insight named 'missing'" in result.diagnostic.message
+    assert "no insight named 'missing' could be resolved" in result.diagnostic.message
     assert result.diagnostic.object.name == "static-contour"
 
 
@@ -185,3 +186,52 @@ def test_model_bound_insight_action_still_resolves_insight_refs(tmpdir):
 
     assert result.success is True, result.message
     assert _read_artifact(str(tmpdir), "contour")["static_props"] == {"carpet": "carpet-plot"}
+
+
+def _model_backed_carpet_project():
+    source = SourceFactory()
+    model = SqlModel(name="grid", sql="SELECT 1 as a, 1 as b", source=f"ref({source.name})")
+    carpet = Insight(
+        name="carpet-plot",
+        props=InsightProps(type="carpet", a="?{${ref(grid).a}}", b="?{${ref(grid).b}}"),
+    )
+    contour = Insight(
+        name="static-contour",
+        props=InsightProps(type="contourcarpet", carpet="${ref(carpet-plot)}", z=[[1, 2], [3, 4]]),
+    )
+    return (
+        Project(
+            name="p", sources=[source], models=[model], insights=[carpet, contour], dashboards=[]
+        ),
+        contour,
+    )
+
+
+def test_a_static_contour_that_refs_a_model_backed_carpet_is_still_static():
+    """The ref edge reaches the carpet's model, but the contour binds nothing
+    to a query — it must take the static lane, not the query action."""
+    project, contour = _model_backed_carpet_project()
+    created = job(project.dag(), temp_folder(), contour)
+    assert created.action is static_action
+
+
+def test_static_contour_over_model_backed_carpet_runs_clean(tmpdir):
+    project, contour = _model_backed_carpet_project()
+    output_dir = str(tmpdir)
+    tmpdir.mkdir("main").mkdir("schemas").join("grid.json").write(
+        json.dumps({project.models[0].name_hash(): {"a": "INTEGER", "b": "INTEGER"}})
+    )
+    runner = FilteredRunner(project=project, output_dir=output_dir, soft_failure=True)
+    runner.run()
+    assert [d.code for d in runner.diagnostics] == []
+    assert _read_artifact(output_dir, "static-contour")["static_props"]["carpet"] == "carpet-plot"
+
+
+def test_static_action_write_failure_is_not_labelled_a_broken_reference(tmpdir):
+    _, insight = _image_project()
+    dag = Project(name="p", insights=[insight], dashboards=[]).dag()
+    blocker = tmpdir.join("main")
+    blocker.write("not a directory")  # os.makedirs raises underneath it
+    result = static_action(insight, dag, str(tmpdir))
+    assert result.success is False
+    assert result.diagnostic.code == "unexpected_error"

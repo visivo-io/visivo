@@ -35,12 +35,12 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
     insight_query_info = None
 
     try:
-        models = all_descendants_of_type(type=Model, dag=dag, from_node=insight)
+        models = insight.get_all_dependent_models(dag)
         if not models:
             # B9 guard: a model-less insight must fail ITS job with a legible
             # diagnostic, not IndexError into the generic except below.
             return _missing_model_result(insight, start_time)
-        model = models[0]
+        model = next(iter(models))
         source = get_source_for_model(model, dag, run_output_dir)
 
         insight_query_info = insight.get_query_info(dag, run_output_dir)
@@ -262,7 +262,9 @@ def static_action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_
             diagnostic=Diagnostic.from_exception(
                 e,
                 phase=DiagnosticPhase.RUN,
-                code="broken_reference",
+                # A ValueError here is resolve_insight_refs rejecting a ref;
+                # anything else (e.g. an OSError on write) is unclassified.
+                code="broken_reference" if isinstance(e, ValueError) else "unexpected_error",
                 object=diagnostic_object_ref(insight),
             ),
         )
@@ -303,10 +305,10 @@ def missing_model_action(insight: Insight) -> JobResult:
 def _get_source(insight, dag, output_dir):
     """Get the appropriate source for an insight, or None when the insight
     references no model."""
-    models = all_descendants_of_type(type=Model, dag=dag, from_node=insight)
+    models = insight.get_all_dependent_models(dag)
     if not models:
         return None
-    return get_source_for_model(models[0], dag, output_dir)
+    return get_source_for_model(next(iter(models)), dag, output_dir)
 
 
 def job(dag, output_dir: str, insight: Insight, run_id: str = None):
@@ -319,13 +321,15 @@ def job(dag, output_dir: str, insight: Insight, run_id: str = None):
         run_id: Optional run ID for preview runs (passed to action for custom file naming)
     """
     run_output_dir = f"{output_dir}/{run_id}" if run_id is not None else f"{output_dir}/main"
-    if not all_descendants_of_type(type=Model, dag=dag, from_node=insight):
-        if insight.is_static():
-            # Nothing to query: render from static props alone (see static_action).
-            kwargs = {"insight": insight, "dag": dag, "output_dir": output_dir}
-            if run_id is not None:
-                kwargs["run_id"] = run_id
-            return Job(item=insight, source=None, action=static_action, **kwargs)
+    if insight.is_static():
+        # Nothing to query: render from static props alone (see static_action).
+        # Checked before the model walk so a static contour that refs a
+        # model-backed carpet is not sent down the query path.
+        kwargs = {"insight": insight, "dag": dag, "output_dir": output_dir}
+        if run_id is not None:
+            kwargs["run_id"] = run_id
+        return Job(item=insight, source=None, action=static_action, **kwargs)
+    if not insight.get_all_dependent_models(dag):
         # B9: this used to IndexError right here — at job-creation time, inside
         # the DAG runner's scheduling loop — killing the whole run (and, from
         # `visivo run`, the process) instead of failing the one insight. Hand

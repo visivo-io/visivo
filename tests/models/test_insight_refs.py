@@ -138,7 +138,7 @@ def test_unknown_insight_is_rejected_by_project_validation():
 def test_unknown_insight_at_resolve_time_is_a_clear_error():
     project, _, contour, _ = _carpet_project()
     dag = project.dag()
-    with pytest.raises(ValueError, match="no insight named 'nope'"):
+    with pytest.raises(ValueError, match="no insight named 'nope' could be resolved"):
         contour.resolve_insight_refs({"carpet": "${ref(nope)}"}, dag)
 
 
@@ -192,3 +192,91 @@ def test_two_carpets_bind_independently():
     dag = project.dag()
     assert contour.resolved_static_props(dag)["carpet"] == "carpet-plot"
     assert second_contour.resolved_static_props(dag)["carpet"] == "carpet-two"
+
+
+# ---------------------------------------------------------------------------
+# Review findings (two-model fixtures, target typing, query-bound ids)
+# ---------------------------------------------------------------------------
+def _two_model_project():
+    source = SourceFactory()
+    model_a = SqlModel(name="ma", sql="SELECT 1 as z", source=f"ref({source.name})")
+    model_b = SqlModel(name="mb", sql="SELECT 1 as a, 2 as b", source=f"ref({source.name})")
+    carpet = Insight(
+        name="carpet-b",
+        props=InsightProps(type="carpet", a="?{${ref(mb).a}}", b="?{${ref(mb).b}}"),
+    )
+    contour = Insight(
+        name="contour-a",
+        props=InsightProps(type="contourcarpet", carpet="${ref(carpet-b)}", z="?{${ref(ma).z}}"),
+    )
+    project = Project(
+        name="p",
+        sources=[source],
+        models=[model_a, model_b],
+        insights=[carpet, contour],
+        dashboards=[],
+    )
+    return project, carpet, contour, model_a, model_b
+
+
+def test_a_ref_edge_does_not_pull_in_the_siblings_models():
+    project, carpet, contour, model_a, model_b = _two_model_project()
+    dag = project.dag()
+    assert contour.get_all_dependent_models(dag) == {model_a}
+    assert carpet.get_all_dependent_models(dag) == {model_b}
+    # The ordering edge itself is kept.
+    assert carpet in list(dag.successors(contour))
+
+
+def test_contour_on_model_a_runs_against_model_a_only(tmpdir):
+    from visivo.jobs.run_insight_job import action
+
+    project, carpet, contour, model_a, model_b = _two_model_project()
+    dag = project.dag()
+    schema_dir = tmpdir.mkdir("main").mkdir("schemas")
+    schema_dir.join("ma.json").write(json.dumps({model_a.name_hash(): {"z": "INTEGER"}}))
+    schema_dir.join("mb.json").write(
+        json.dumps({model_b.name_hash(): {"a": "INTEGER", "b": "INTEGER"}})
+    )
+
+    result = action(contour, dag, str(tmpdir))
+
+    assert result.success is True, result.message
+    with open(tmpdir.join("main", "insights", "contour-a.json")) as f:
+        artifact = json.load(f)
+    assert artifact["static_props"] == {"carpet": "carpet-b"}
+    assert [file["name_hash"] for file in artifact["files"]] == [contour.name_hash()]
+
+
+def test_ref_to_an_insight_that_does_not_own_the_id_is_rejected():
+    project, carpet, contour, _ = _carpet_project()
+    dag = project.dag()
+    # A contourcarpet does not own a `carpet` id; only a carpet trace does.
+    with pytest.raises(ValueError, match="must reference a 'carpet' insight.*is a contourcarpet"):
+        contour.resolve_insight_refs({"carpet": "${ref(contour)}"}, dag)
+
+
+def test_ref_to_a_props_less_insight_is_rejected():
+    project, carpet, contour, _ = _carpet_project(extra=[Insight(name="bare")])
+    dag = project.dag()
+    with pytest.raises(ValueError, match="'bare' is a props-less insight"):
+        contour.resolve_insight_refs({"carpet": "${ref(bare)}"}, dag)
+
+
+def test_query_bound_carpet_id_gets_no_static_default_and_cannot_be_referenced():
+    project, carpet, contour, _ = _carpet_project(carpet_id="?{${ref(grid).a}}")
+    dag = project.dag()
+    # The id comes from the query: nothing is injected into static props...
+    assert "carpet" not in carpet.resolved_static_props(dag)
+    # ...and a sibling cannot bind to a data-driven id by name.
+    with pytest.raises(ValueError, match="binds 'carpet' to a query"):
+        contour.resolved_static_props(dag)
+
+
+def test_resolution_error_keeps_the_dag_lookup_detail():
+    project, _, contour, _ = _carpet_project()
+    dag = project.dag()
+    with pytest.raises(ValueError) as excinfo:
+        contour.resolve_insight_refs({"carpet": "${ref(nope)}"}, dag)
+    assert "no insight named 'nope' could be resolved: No node found with name 'nope'" in str(excinfo.value)
+    assert isinstance(excinfo.value.__cause__, ValueError)
