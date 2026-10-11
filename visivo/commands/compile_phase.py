@@ -56,6 +56,16 @@ def compile_phase(
     if table_sql_error:
         raise ValueError(table_sql_error)
 
+    # A column-select / pivot table reads from exactly ONE source in the viewer
+    # (the first ref wins), so refs spanning two unrelated models or insights
+    # must fail here with a message naming both — not silently query the first
+    # source for the second's columns (VIS-1462 T7a; the join is VIS-1467).
+    from visivo.query.table_source_validator import validate_project_table_sources
+
+    table_source_error = validate_project_table_sources(project)
+    if table_source_error:
+        raise ValueError(table_source_error)
+
     # Run deprecation checks (non-blocking)
     if not no_deprecation_warnings:
         from visivo.models.deprecations import DeprecationChecker
