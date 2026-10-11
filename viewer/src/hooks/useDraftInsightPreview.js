@@ -10,6 +10,7 @@ import { inferColumnTypes } from '../utils/inferColumnTypes';
 import { expandDotNotationProps } from '../stores/explorerStore';
 import { buildModelsSignature } from '../utils/insightFreshnessSignature';
 import { collectInsightRefNames } from '../utils/refWalk';
+import { inputRefRegex, matchName } from '../utils/inputNames';
 
 /** Draft-namespaced insightJobs key (S2 draft-rendering-decision.md's
  * `__draft__:<insightName>` example) — never collides with a real published
@@ -63,14 +64,15 @@ const STRUCTURAL_DEBOUNCE_MS = 150;
 const HASHED_TABLE_ERROR_PATTERN = /Table with name [0-9a-zA-Z_]{8,} does not exist/i;
 
 /** Extract `${name.accessor}` input dependencies from post_query + static_props
- * — byte-for-byte the same regex `useInsightsData.js`'s `processInsight` uses
+ * — the same shared `inputRefRegex` (utils/inputNames) that `useInsightsData.js`'s
+ * `processInsight` uses
  * for real insights, so a draft's `pendingInputs`/`inputDependencies` behave
  * identically once promoted (duplicated rather than exported to keep that
  * hot, heavily-covered file's surface unchanged). */
 const extractInputNamesFromString = text => {
   if (!text) return new Set();
   const names = new Set();
-  for (const match of text.matchAll(/\$\{(\w+)\.\w+\}/g)) names.add(match[1]);
+  for (const match of text.matchAll(inputRefRegex({ global: true }))) names.add(matchName(match));
   return names;
 };
 const extractInputNamesFromObject = obj => {

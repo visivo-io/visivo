@@ -2,6 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import SliderInput from './SliderInput';
 
+const tickLabels = () =>
+  screen.getAllByText(/./, { selector: 'span.text-xs' }).map(n => n.textContent);
+
 describe('SliderInput', () => {
   const defaultProps = {
     label: 'Test Slider',
@@ -63,7 +66,7 @@ describe('SliderInput', () => {
       options: ['50'],
     };
     render(<SliderInput {...props} />);
-    expect(screen.getByText('Slider requires at least 2 numeric options')).toBeInTheDocument();
+    expect(screen.getByText('Slider requires at least 2 options')).toBeInTheDocument();
   });
 
   it('shows tick labels when 10 or fewer options', () => {
@@ -106,15 +109,56 @@ describe('SliderInput', () => {
     expect(screen.getByText('0', { selector: '.text-lg' })).toBeInTheDocument();
   });
 
-  it('filters out non-numeric options', () => {
-    const props = {
-      ...defaultProps,
-      options: ['0', 'invalid', '50', 'NaN', '100'],
-      selectedValue: '50',
-    };
-    render(<SliderInput {...props} />);
-    // Should still work with valid numeric options - check prominent display
-    expect(screen.getByText('50', { selector: '.text-lg' })).toBeInTheDocument();
+  it('keeps list order and shows text labels for string options', () => {
+    render(<SliderInput {...defaultProps} options={['low', 'mid', 'high']} selectedValue="mid" />);
+    const ticks = tickLabels();
+    expect(ticks).toEqual(['low', 'mid', 'high']);
+    expect(screen.getByText('mid', { selector: '.text-lg' })).toBeInTheDocument();
+  });
+
+  it('sends the option value (not the index) for string options', () => {
+    const setInputJobValue = jest.fn();
+    render(
+      <SliderInput
+        {...defaultProps}
+        options={['low', 'mid', 'high']}
+        selectedValue="low"
+        setInputJobValue={setInputJobValue}
+      />
+    );
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '2' } });
+    expect(setInputJobValue).toHaveBeenCalledWith('test-slider', 'high');
+  });
+
+  it('keeps list order for mixed numeric and text options', () => {
+    render(<SliderInput {...defaultProps} options={['10', 'invalid', '2']} selectedValue="2" />);
+    const ticks = tickLabels();
+    expect(ticks).toEqual(['10', 'invalid', '2']);
+    expect(screen.getByText('2', { selector: '.text-lg' })).toBeInTheDocument();
+  });
+
+  it('sorts numerically only when every option is numeric', () => {
+    render(<SliderInput {...defaultProps} options={['100', '2', '30']} selectedValue="2" />);
+    const ticks = tickLabels();
+    expect(ticks).toEqual(['2', '30', '100']);
+  });
+
+  it('falls back to the first option when a text selection is unknown', () => {
+    render(<SliderInput {...defaultProps} options={['low', 'mid']} selectedValue="zzz" />);
+    expect(screen.getByText('low', { selector: '.text-lg' })).toBeInTheDocument();
+  });
+
+  it('ignores non-scalar and empty options', () => {
+    render(
+      <SliderInput {...defaultProps} options={['a', null, { x: 1 }, 'b']} selectedValue="b" />
+    );
+    const ticks = tickLabels();
+    expect(ticks).toEqual(['a', 'b']);
+  });
+
+  it('renders the error state when options is not an array', () => {
+    render(<SliderInput {...defaultProps} options={undefined} />);
+    expect(screen.getByText('Slider requires at least 2 options')).toBeInTheDocument();
   });
 
   it('does not call setInputJobValue without name', () => {
