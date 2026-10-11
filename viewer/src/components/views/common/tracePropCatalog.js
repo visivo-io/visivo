@@ -3,7 +3,7 @@
  * Two-tier: A = data-binding essentials, B = key visual props.
  * Used by ChartEditForm grouping, Field Finder, and LLM oracle.
  *
- * Tier-A seeds come from insightRequiredFields.js REQUIRED_FIELDS.
+ * Tier-A seeds mirror the generated required-fields artifact (schemas/requiredFields.js).
  * Tier-B covers 2-5 key visual/style props per type.
  *
  * enumValues are curated here for clarity (a hand-picked subset/order that reads

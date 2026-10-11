@@ -67,11 +67,25 @@ const BAR_SCHEMA = {
   },
 };
 
+// scatterternary: a/b/c are NOT JSON-schema `required` — only the generated
+// required-fields artifact knows they are the fields a new insight needs.
+const SCATTERTERNARY_SCHEMA = {
+  type: 'object',
+  properties: {
+    type: { const: 'scatterternary' },
+    a: { type: 'array' },
+    b: { type: 'array' },
+    c: { type: 'array' },
+    mode: { type: 'string', enum: ['lines', 'markers'] },
+  },
+};
+
 jest.mock('../../../schemas/schemas', () => ({
   __esModule: true,
   getSchema: jest.fn(async type => {
     if (type === 'scatter') return SCATTER_SCHEMA;
     if (type === 'bar') return BAR_SCHEMA;
+    if (type === 'scatterternary') return SCATTERTERNARY_SCHEMA;
     return null;
   }),
   // TypeSelector reads CHART_TYPES; provide a tiny registry. `mystery_type`
@@ -84,6 +98,7 @@ jest.mock('../../../schemas/schemas', () => ({
   CHART_TYPES: [
     { value: 'scatter', label: 'Scatter / Line' },
     { value: 'bar', label: 'Bar' },
+    { value: 'scatterternary', label: 'Scatter Ternary' },
     { value: 'layout', label: 'Layout' },
     { value: 'mystery_type', label: 'Mystery Type' },
   ],
@@ -134,6 +149,14 @@ jest.mock('../../../schemas/traceCatalogLoader', () => ({
       return [
         { path: 'x', label: 'X Axis', tier: 'A' },
         { path: 'y', label: 'Y Axis', tier: 'A' },
+      ];
+    }
+    if (type === 'scatterternary') {
+      return [
+        { path: 'a', label: 'A', tier: 'A' },
+        { path: 'b', label: 'B', tier: 'A' },
+        { path: 'c', label: 'C', tier: 'A' },
+        { path: 'mode', label: 'Display Mode', tier: 'B' },
       ];
     }
     return [];
@@ -187,6 +210,7 @@ afterEach(() => {
   getSchema.mockImplementation(async type => {
     if (type === 'scatter') return SCATTER_SCHEMA;
     if (type === 'bar') return BAR_SCHEMA;
+    if (type === 'scatterternary') return SCATTERTERNARY_SCHEMA;
     return null;
   });
   loadCatalog.mockImplementation(async type => {
@@ -201,6 +225,14 @@ afterEach(() => {
       return [
         { path: 'x', label: 'X Axis', tier: 'A' },
         { path: 'y', label: 'Y Axis', tier: 'A' },
+      ];
+    }
+    if (type === 'scatterternary') {
+      return [
+        { path: 'a', label: 'A', tier: 'A' },
+        { path: 'b', label: 'B', tier: 'A' },
+        { path: 'c', label: 'C', tier: 'A' },
+        { path: 'mode', label: 'Display Mode', tier: 'B' },
       ];
     }
     return [];
@@ -255,6 +287,25 @@ describe('TracePropsEditor', () => {
     expect(screen.getByTestId('prop-y')).toBeInTheDocument();
     // Nothing left to reveal in Essentials — x/y were the only two fields.
     expect(screen.queryByTestId('field-group-more-essentials')).not.toBeInTheDocument();
+  });
+
+  // VIS-1464 P2: the hand-written required-fields map had no scatterternary /
+  // scattersmith / scatterpolargl entries, so a brand-new ternary insight hid
+  // a/b/c behind "+N more". The generated artifact covers every trace type.
+  test('semantically-required fields (a/b/c) render up-front on a BRAND NEW scatterternary insight', async () => {
+    render(
+      <TracePropsEditor
+        ownerName="my_insight"
+        props={{ type: 'scatterternary' }}
+        onChange={() => {}}
+      />
+    );
+
+    await screen.findByTestId('prop-a');
+    expect(screen.getByTestId('prop-b')).toBeInTheDocument();
+    expect(screen.getByTestId('prop-c')).toBeInTheDocument();
+    // mode is neither required nor present, so it stays folded.
+    expect(screen.queryByTestId('prop-mode')).not.toBeInTheDocument();
   });
 
   test('field-finder affordance calls onOpenFieldFinder', async () => {
