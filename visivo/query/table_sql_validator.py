@@ -24,6 +24,11 @@ message rather than a raw Pydantic validation crash. The regression matrix in
 aggregate/pivot shapes stay accepted so a SQLGlot bump that regresses them is
 caught, not shipped; if a valid DuckDB expression is nonetheless rejected, the
 compile error tells the user how to work around it.
+
+EXCEPTION (VIS-1463 T3): whether each pivot ``values`` entry is a single
+aggregate call is checked on the ``Table`` model itself (``table.py``,
+``_assert_aggregate_value``), like the other structural rows/values checks —
+so that one fails at LOAD, not here.
 """
 
 import re
