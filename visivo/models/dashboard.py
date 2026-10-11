@@ -48,6 +48,11 @@ class Dashboard(BaseDashboard, ParentModel):
 
     Above you can see how changing the row heights and item widths impacts the layout of the dashboard.
 
+    Row heights map to pixels as `xsmall` 128, `small` 256, `medium` 396, `large` 512, `xlarge` 768,
+    `xxlarge` 1024, or an integer pixel value. `compact` wraps markdown and inputs to their content and
+    gives charts and tables a 256px plot. Item widths must be positive integers (default `1`). See
+    [Row](./Row/) for the full table and how rows stack on narrow screens.
+
     !!! example
 
         `row.height` defaults to `medium` and `item.width` defaults to `1`. Specifying those fields are optional if you want to use the default values

@@ -585,3 +585,15 @@ class TestItemInlineMarkdownString:
     def test_mutual_exclusivity_still_enforced_with_inline_string(self):
         with pytest.raises(ValidationError, match="only one of"):
             Item(markdown="# x", chart="ref(c)")
+
+
+def test_Item_width_must_be_at_least_one():
+    """VIS-1458 L5: an item cannot be zero or negative width."""
+    assert Item(width=1).width == 1
+    for bad in (0, -1):
+        with pytest.raises(ValidationError) as exc_info:
+            Item(width=bad)
+        error = exc_info.value.errors()[0]
+        assert error["loc"] == ("width",)
+        assert error["type"] == "greater_than_equal"
+        assert "greater than or equal to 1" in error["msg"]
