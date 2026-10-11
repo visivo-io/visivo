@@ -17,6 +17,28 @@ import { prepareTemplate } from './template/templateHtml';
 // item renderer with no row height of their own.
 const TEMPLATE_ROW = {};
 
+// Narrowest a NESTED item may get before its sub-row stacks (VIS-1459 / L2).
+// Nested containers decide stacking from their own slot, not the dashboard-wide
+// breakpoint: a 4/12 slot on a 1200px dashboard is ~370px, so comparing it to
+// the 768/1024 breakpoint stacked every nested multi-item row into a column.
+// 160px keeps a 2x2 KPI cluster in a 1/3 slot of a 1200px dashboard (186px
+// cells) laid out 2x2, while a 1/4 slot (150px cells) still stacks.
+export const MIN_NESTED_ITEM_WIDTH = 160;
+
+/**
+ * Slot-relative stacking rule for nested rows. Returns true when the narrowest
+ * item in `items` would be thinner than MIN_NESTED_ITEM_WIDTH at `slotWidth`.
+ * An unmeasured slot (0 / non-number) never commits a stacking decision.
+ */
+export const shouldStackNested = (slotWidth, items) => {
+  if (!(typeof slotWidth === 'number' && slotWidth > 0)) return false;
+  const list = Array.isArray(items) ? items : [];
+  if (list.length < 2) return false;
+  const totalWidth = list.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+  const minWeight = Math.min(...list.map(item => item.width || 1));
+  return (slotWidth * minWeight) / totalWidth < MIN_NESTED_ITEM_WIDTH;
+};
+
 /**
  * Normalize a chart/table `insights` array so Chart/Table always receive
  * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
@@ -295,9 +317,16 @@ const Dashboard = ({
   // vertically. Falls back to the dashboard width when no explicit slot width is
   // provided (top-level rows). A nested slot that is only a fraction of the
   // dashboard width can stack independently of its (wider) parent.
+  // A zero/absent width is the pre-measurement state (`useDimensions` reports
+  // null, then possibly a 0 entry, until its ResizeObserver has measured), not a
+  // narrow container: committing a
+  // stacked layout from it painted a wide dashboard as a column and let Plotly
+  // size itself against that column before the real width arrived (VIS-1459 /
+  // L6). Treat unmeasured as "not stacked" and let the measured width decide.
   const shouldStack = containerWidth => {
     const effective =
       typeof containerWidth === 'number' && containerWidth > 0 ? containerWidth : width;
+    if (!(effective > 0)) return false;
     return effective < widthBreakpoint;
   };
 
@@ -399,12 +428,23 @@ const Dashboard = ({
   // themselves to the dashboard width and overflow their slot, which then
   // collapses sibling grid tracks (CSS grid resolves min-content overflow
   // by stealing track width from siblings).
-  const getWidth = (items, item, containerPixelWidth) => {
+  // `stacked` is the caller's own stacking decision (top-level `isColumn` or a
+  // nested row's slot-relative rule); when omitted, fall back to the breakpoint.
+  // Returns `undefined` while nothing has been measured yet so leaves fall back
+  // to Plotly's own autosize against the live container (and its container
+  // ResizeObserver re-measures once the box settles) instead of being told a
+  // width of 0/null, which Plotly resolves to its PREVIOUS width — the
+  // "chart a third of its card" first paint (VIS-1459 / L6).
+  const getWidth = (items, item, containerPixelWidth, stacked) => {
     const containerWidth =
       typeof containerPixelWidth === 'number' && containerPixelWidth > 0
         ? containerPixelWidth
         : width;
-    if (containerWidth < widthBreakpoint) {
+    if (!(typeof containerWidth === 'number' && containerWidth > 0)) {
+      return undefined;
+    }
+    const isStacked = typeof stacked === 'boolean' ? stacked : containerWidth < widthBreakpoint;
+    if (isStacked) {
       return containerWidth;
     }
     const totalWidth = items.reduce((sum, i) => sum + (i.width || 1), 0) || 1;
@@ -496,13 +536,15 @@ const Dashboard = ({
   // the item is a row-container. `keyPrefix` namespaces children when the item
   // is being rendered inside a nested-rows context (so React keys stay unique
   // across multiple flips of the same dashboard).
-  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '', itemPath = '') => {
+  // `parentStacked` is whether the row this item sits in is laid out as a column;
+  // it drives the slot width (a stacked item spans the whole row).
+  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '', itemPath = '', parentStacked) => {
     const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
 
     // Pixel width this item slot was given by its parent row. Used for chart
     // sizing on leaves AND threaded down into nested rows so nested charts
     // size from the slot, not the dashboard.
-    const effectiveSlotWidth = getWidth(items, item, slotPixelWidth);
+    const effectiveSlotWidth = getWidth(items, item, slotPixelWidth, parentStacked);
 
     // Render the placeholder for a leaf whose reference doesn't resolve. The
     // canvas passes `renderBrokenRef` to mount the interactive <BrokenRefCard>
@@ -683,13 +725,20 @@ const Dashboard = ({
       ? `${parentItemPath}.row.${subRowIndex}`
       : `row.${subRowIndex}`;
     // Slot-relative stacking: a nested row only occupies its parent slot's
-    // width, not the full dashboard. Deciding `isColumn` from the dashboard-wide
-    // breakpoint either (a) kept nested multi-item rows side-by-side inside a
-    // narrow slot (overflow — e.g. a 2x2 KPI cluster crammed into a 1/4 slot) or
-    // (b) stacked everything once the dashboard dipped below the breakpoint.
-    // Compare the slot width instead so each nested container stacks on its own
-    // terms. See VIS-829.
-    const nestedIsColumn = shouldStack(slotPixelWidth);
+    // width, not the full dashboard. VIS-829 compared the slot width against the
+    // dashboard-wide breakpoint, which stacked every nested multi-item row whose
+    // slot was under 768/1024px — i.e. any nested 2x2 on a normal screen
+    // (VIS-1459 / L2). Decide from the narrowest item the slot would produce
+    // instead (see shouldStackNested), so each nested container stacks on its
+    // own terms.
+    const nestedIsColumn = shouldStackNested(slotPixelWidth, visibleItems);
+    // Stacked sub-row items split the sub-row's height (minus the 0.5rem gaps)
+    // rather than each claiming the full sub-row height and overflowing.
+    const NESTED_GAP_PX = 8;
+    const itemPixelHeight =
+      nestedIsColumn && visibleItems.length > 1 && typeof slotPixelHeight === 'number'
+        ? (slotPixelHeight - NESTED_GAP_PX * (visibleItems.length - 1)) / visibleItems.length
+        : slotPixelHeight;
     return (
       <div
         className={`dashboard-nested-row w-full h-full ${nestedIsColumn ? 'flex' : 'grid'}`}
@@ -711,10 +760,13 @@ const Dashboard = ({
             // full path so a click at any depth resolves to the exact leaf the
             // Outline tree would, and an Outline→canvas selection rings it.
             data-canvas-path={`${subRowPath}.item.${itemIdx}`}
+            data-testid="dashboard-nested-item"
             className={nestedIsColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: nestedIsColumn ? undefined : `span ${item.width || 1}`,
               width: nestedIsColumn ? '100%' : 'auto',
+              height: nestedIsColumn && itemPixelHeight > 0 ? itemPixelHeight : undefined,
+              flex: nestedIsColumn ? '1 1 0' : undefined,
               minWidth: 0,
               minHeight: 0,
             }}
@@ -727,10 +779,11 @@ const Dashboard = ({
                 parentRowIndex,
                 shouldLoad,
                 visibleItems,
-                slotPixelHeight,
+                itemPixelHeight,
                 slotPixelWidth,
                 keyPrefix,
                 `${subRowPath}.item.${itemIdx}`,
+                nestedIsColumn,
               )}
             </div>
           </div>
@@ -817,6 +870,7 @@ const Dashboard = ({
                 width, // top-level container width = dashboard width
                 '', // keyPrefix (top level needs none)
                 `row.${rowIndex}.item.${itemIndex}`,
+                isColumn,
               )}
             </div>
           </div>
