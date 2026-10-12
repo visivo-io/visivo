@@ -107,7 +107,11 @@ nav:
   - Get Started:
       - Quick Start: index.md
       - Installation: installation.md
-      - Build with AI: ai-usage.md
+      - Build with AI:
+          - Overview: ai-usage.md
+          - Connect Your Agent (MCP): ai/mcp.md
+          - Use the Agent Tab: ai/agent-tab.md
+          - AI Credit & Costs: cloud/ai-credit.md
       - Change Log: https://github.com/visivo-io/visivo/releases
   - Tutorials:
       - Overview: how_tos.md
@@ -145,6 +149,7 @@ nav:
       - Hosting & Sharing: cloud/hosting-and-sharing.md
       - Teams & Roles: cloud/teams-and-roles.md
       - Authentication: cloud/authentication.md
+      - AI Credit & Costs: cloud/ai-credit.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
