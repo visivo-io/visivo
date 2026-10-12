@@ -1,4 +1,4 @@
-import { dehashColumnKey } from './pivotRefResolver';
+import { formatColumnHeader, plainHeader } from './pivotRefResolver';
 
 /**
  * Parse DuckDB PIVOT result column keys into a hierarchical tree structure
@@ -25,7 +25,7 @@ export function parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedP
   const rowColumnDefs = rowKeys.map(key => ({
     id: key,
     accessorKey: key,
-    displayName: reverseMapping[key] || formatSimpleHeader(key),
+    displayName: plainHeader(key, reverseMapping),
     meta: { isPivotRow: true },
   }));
 
@@ -61,7 +61,7 @@ export function parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedP
       ...groupEntries.map(({ segments, items }) => ({
         id: items[0].originalKey,
         accessorKey: items[0].originalKey,
-        displayName: formatSimpleHeader(segments[0]),
+        displayName: formatColumnHeader(segments[0]),
         meta: { isPivotRow: false },
       })),
     ];
@@ -121,7 +121,7 @@ function splitPrefix(prefix, pivotColCount) {
 /**
  * Recursively build nested column groups.
  */
-function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue, reverseMapping = {}) {
+function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue, reverseMapping) {
   if (level === pivotColCount) {
     // At leaf level — return individual agg column defs
     if (singleValue) {
@@ -130,9 +130,7 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue, rev
         items.map(item => ({
           id: item.originalKey,
           accessorKey: item.originalKey,
-          displayName: aggInfo[0]
-            ? `${aggInfo[0].aggFunc} of ${aggInfo[0].displayName}`
-            : formatSimpleHeader(dehashColumnKey(item.originalKey, reverseMapping)),
+          displayName: `${aggInfo[0].aggFunc} of ${aggInfo[0].displayName}`,
           meta: { isPivotRow: false },
         }))
       );
@@ -146,7 +144,7 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue, rev
           accessorKey: item.originalKey,
           displayName: aggInfo[item.aggIndex]
             ? `${aggInfo[item.aggIndex].aggFunc} of ${aggInfo[item.aggIndex].displayName}`
-            : formatSimpleHeader(dehashColumnKey(item.originalKey, reverseMapping)),
+            : plainHeader(item.originalKey, reverseMapping),
           meta: { isPivotRow: false },
         }))
     );
@@ -162,16 +160,8 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue, rev
 
   return [...grouped.entries()].map(([segValue, children]) => ({
     id: `group-${level}-${segValue}`,
-    header: formatSimpleHeader(segValue),
+    header: formatColumnHeader(segValue),
     meta: { isGroupHeader: true },
     columns: buildTree(children, level + 1, pivotColCount, aggInfo, singleValue, reverseMapping),
   }));
-}
-
-function formatSimpleHeader(key) {
-  if (!key) return '';
-  const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-  return cleanKey
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
 }

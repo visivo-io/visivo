@@ -45,26 +45,21 @@ def compile_phase(
         Logger.instance().debug("    Using provided project, skipping parse phase...")
         parse_duration = 0.0
 
-    # Validate that every table's column-select / pivot config compiles to valid
-    # SQL (smoke-test bug #7). Done here, at COMPILE, rather than in the Table
+    # Compile-time table checks. Done here, at COMPILE, rather than in the Table
     # model validator, so a broken table doesn't block the whole project from
     # LOADING — the server stays up and surfaces this through error.json, and the
     # CLI fails with one actionable message naming every broken table.
+    #   - column-select / pivot config compiles to valid SQL (smoke-test bug #7)
+    #   - refs read from ONE source: the viewer takes the first ref, so two
+    #     unrelated models/insights must fail here, not silently query the wrong
+    #     source (VIS-1462 T7a; the join is VIS-1467)
     from visivo.query.table_sql_validator import validate_project_table_sql
-
-    table_sql_error = validate_project_table_sql(project)
-    if table_sql_error:
-        raise ValueError(table_sql_error)
-
-    # A column-select / pivot table reads from exactly ONE source in the viewer
-    # (the first ref wins), so refs spanning two unrelated models or insights
-    # must fail here with a message naming both — not silently query the first
-    # source for the second's columns (VIS-1462 T7a; the join is VIS-1467).
     from visivo.query.table_source_validator import validate_project_table_sources
 
-    table_source_error = validate_project_table_sources(project)
-    if table_source_error:
-        raise ValueError(table_source_error)
+    for validate in (validate_project_table_sql, validate_project_table_sources):
+        table_error = validate(project)
+        if table_error:
+            raise ValueError(table_error)
 
     # Run deprecation checks (non-blocking)
     if not no_deprecation_warnings:

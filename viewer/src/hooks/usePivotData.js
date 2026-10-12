@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { runDuckDBQuery, loadInsightParquetFiles, prepPostQuery } from '../duckdb/queries';
@@ -10,29 +11,10 @@ import {
   parseColumnAlias,
   buildReverseMapping,
   dehashColumnKey,
+  formatColumnHeader,
+  plainHeader,
 } from '../utils/pivotRefResolver';
 import { parsePivotColumnHierarchy } from '../utils/pivotColumnParser';
-
-/**
- * Resolve the SQL a table should read FROM.
- *
- * An insight source carries its post-query (`query`) with `${input.accessor}`
- * placeholders; substituting the CURRENT input values yields exactly the
- * input-filtered result set the chart path renders, so pivot / column-select
- * tables react to inputs the same way `data:` tables do (VIS-1462 T1). A model
- * source has no post-query and reads its raw parquet table.
- *
- * Returns `null` when the source has no query (read the raw table) and
- * `{ error }` when a referenced input is not available yet.
- */
-export function resolveSourceSql(sourceData, inputJobs) {
-  if (!sourceData?.query) return { sql: null, error: null };
-  try {
-    return { sql: prepPostQuery(sourceData, inputJobs || {}), error: null };
-  } catch (err) {
-    return { sql: null, error: err.message || String(err) };
-  }
-}
 
 /**
  * Hook that executes a DuckDB PIVOT or column-select query over a source's
@@ -44,7 +26,18 @@ export function resolveSourceSql(sourceData, inputJobs) {
  */
 export const usePivotData = (config, sourceData) => {
   const db = useDuckDB();
-  const inputJobs = useStore(state => state.inputJobs);
+  // Only the inputs this source's post-query references (useInsightsData
+  // precomputes `inputDependencies`), selected shallowly so an unrelated input
+  // write neither re-renders nor re-queries — the same selector Chart.jsx uses.
+  const inputs = useStore(
+    useShallow(state => {
+      const picked = {};
+      for (const inputName of sourceData?.inputDependencies || []) {
+        if (state.inputJobs[inputName]) picked[inputName] = state.inputJobs[inputName];
+      }
+      return picked;
+    })
+  );
   const [rows, setRows] = useState([]);
   const [columns, setColumns] = useState([]);
   const [pivotMeta, setPivotMeta] = useState(null);
@@ -54,14 +47,6 @@ export const usePivotData = (config, sourceData) => {
 
   const isPivotMode = !!(config?.columns && config?.rows && config?.values);
   const isColumnSelectMode = !!(config?.columns && !config?.rows && !config?.values);
-
-  // The prepared post-query is a plain string, so it is a STABLE effect key that
-  // changes exactly when a referenced input value changes (inputJobs is a fresh
-  // object on every input write, but unrelated inputs leave this string alone).
-  const { sql: sourceSql, error: sourceSqlError } = useMemo(
-    () => resolveSourceSql(sourceData, inputJobs),
-    [sourceData, inputJobs]
-  );
 
   useEffect(() => {
     if (!db || !config || !sourceData?.files?.length || sourceData?.data === null) {
@@ -76,8 +61,12 @@ export const usePivotData = (config, sourceData) => {
       setError(null);
 
       try {
-        if (sourceSqlError) throw new Error(sourceSqlError);
-
+        // An insight source carries its post-query with `${input.accessor}`
+        // placeholders; substituting the current input values yields exactly the
+        // input-filtered result the chart renders, so the table reacts to inputs
+        // the way `data:` tables do (VIS-1462 T1). A model source has no
+        // post-query and reads its raw parquet table.
+        const sourceSql = sourceData.query ? prepPostQuery(sourceData, inputs) : null;
         const tableName = sourceData.files[0].name_hash;
         const propsMapping = sourceData.props_mapping || {};
 
@@ -133,10 +122,9 @@ export const usePivotData = (config, sourceData) => {
             .map(({ aggFunc, displayName }) => `${aggFunc} of ${displayName}`)
             .join(', ');
           const pivotFieldName = resolvedPivotCols
-            .map(col => reverseMapping[col] || formatSimpleHeader(col))
+            .map(col => plainHeader(col, reverseMapping))
             .join(', ');
-          const rowFieldNames = [...resolvedRowCols]
-            .map(col => reverseMapping[col] || formatSimpleHeader(col));
+          const rowFieldNames = [...resolvedRowCols].map(col => plainHeader(col, reverseMapping));
 
           setPivotMeta({ aggregationLabel, pivotFieldName, rowFieldNames });
 
@@ -160,9 +148,7 @@ export const usePivotData = (config, sourceData) => {
           pivotColumns = resultRows.length > 0
             ? Object.keys(resultRows[0]).map(key => ({
                 id: key,
-                header: aliases.has(key)
-                  ? key
-                  : reverseMapping[key] || formatSimpleHeader(dehashColumnKey(key, reverseMapping)),
+                header: aliases.has(key) ? key : plainHeader(key, reverseMapping),
                 accessorKey: key.replace(/\./g, '___'),
               }))
             : [];
@@ -188,7 +174,7 @@ export const usePivotData = (config, sourceData) => {
     return () => {
       cancelled = true;
     };
-  }, [db, config, sourceData, sourceSql, sourceSqlError, isPivotMode, isColumnSelectMode]);
+  }, [db, config, sourceData, inputs, isPivotMode, isColumnSelectMode]);
 
   return { rows, columns, nestedColumns, pivotMeta, isLoading, error };
 };
@@ -213,7 +199,7 @@ function buildAggInfo(values, propsMapping, reverseMapping) {
     if (!parts) return { aggFunc: '', displayName: value };
 
     const colName = parts.column.replace(/"/g, '');
-    const displayName = reverseMapping[colName] || formatSimpleHeader(colName);
+    const displayName = plainHeader(colName, reverseMapping);
     return { aggFunc: parts.aggFunc.toUpperCase(), displayName };
   });
 }
@@ -224,31 +210,13 @@ function buildAggInfo(values, propsMapping, reverseMapping) {
  * Returns just the pivot value (e.g. "Blue") since aggregation context is shown in the banner.
  */
 function formatPivotColumnName(key, aggInfo, reverseMapping) {
-  if (!aggInfo || aggInfo.length === 0) {
-    return formatSimpleHeader(dehashColumnKey(key, reverseMapping));
-  }
-
-  for (const { aggFunc } of aggInfo) {
+  let pivotValue = key;
+  for (const { aggFunc } of aggInfo || []) {
     const aggLower = aggFunc.toLowerCase();
-    const aggPattern = new RegExp(`_${aggLower}\\b|^${aggLower}\\b`, 'i');
-    if (aggPattern.test(key)) {
-      const parts = key.split(new RegExp(`_${aggLower}`, 'i'));
-      const pivotValue = parts[0] || key;
-      return formatSimpleHeader(dehashColumnKey(pivotValue, reverseMapping));
+    if (new RegExp(`_${aggLower}\\b|^${aggLower}\\b`, 'i').test(key)) {
+      pivotValue = key.split(new RegExp(`_${aggLower}`, 'i'))[0] || key;
+      break;
     }
   }
-
-  if (aggInfo.length === 1) {
-    if (reverseMapping[key]) return reverseMapping[key];
-    return formatSimpleHeader(dehashColumnKey(key, reverseMapping));
-  }
-
-  return formatSimpleHeader(dehashColumnKey(key, reverseMapping));
-}
-
-function formatSimpleHeader(key) {
-  const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-  return cleanKey
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
+  return formatColumnHeader(dehashColumnKey(pivotValue, reverseMapping));
 }

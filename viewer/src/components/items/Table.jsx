@@ -37,6 +37,7 @@ import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
+import { buildReverseMapping, formatColumnHeader } from '../../utils/pivotRefResolver';
 
 const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   const { tokens: themeTokens } = useDashboardTheme();
@@ -77,13 +78,6 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
     useKeysAsHeaders: true,
   });
 
-  const formatColumnHeader = key => {
-    const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-    return cleanKey
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, char => char.toUpperCase());
-  };
-
   // Derive columns/tableData via useMemo (keyed on the actual data + props_mapping)
   // rather than setState-inside-useEffect. The store re-creates job objects with a
   // fresh `data` array reference on every input-driven refresh, so a setState effect
@@ -101,16 +95,7 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
 
     const firstRow = data[0];
 
-    const reverseMapping = {};
-    if (propsMapping) {
-      for (const [propPath, columnKey] of Object.entries(propsMapping)) {
-        const displayName = propPath
-          .replace(/^props\./, '')
-          .replace(/\./g, ' ')
-          .replace(/\b\w/g, char => char.toUpperCase());
-        reverseMapping[columnKey] = displayName;
-      }
-    }
+    const reverseMapping = buildReverseMapping(propsMapping);
 
     const autoColumns = Object.keys(firstRow).map(key => ({
       id: key,

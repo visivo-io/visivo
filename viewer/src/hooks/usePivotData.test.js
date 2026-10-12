@@ -11,7 +11,7 @@
  *     back to its plain prop name, an aliased one keeps the alias verbatim.
  */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { usePivotData, resolveSourceSql } from './usePivotData';
+import { usePivotData } from './usePivotData';
 import useStore from '../stores/store';
 import * as queries from '../duckdb/queries';
 import * as DuckDBContext from '../contexts/DuckDBContext';
@@ -35,6 +35,7 @@ const insightSource = {
     `SELECT "${HASH_TABLE}"."x" AS "${X_HASH}", "${HASH_TABLE}"."y" AS "${Y_HASH}" ` +
     `FROM "${HASH_TABLE}" WHERE "${HASH_TABLE}"."x" > \${min_x_value.value}`,
   props_mapping: { 'props.x': X_HASH, 'props.y': Y_HASH },
+  inputDependencies: ['min_x_value'],
   data: [{ [X_HASH]: 1, [Y_HASH]: 3 }],
 };
 
@@ -71,25 +72,6 @@ describe('usePivotData', () => {
     });
     act(() => {
       useStore.setState({ inputJobs: { min_x_value: { value: '3' }, other: { value: 'z' } } });
-    });
-  });
-
-  describe('resolveSourceSql', () => {
-    it('substitutes current input values into the post-query', () => {
-      const { sql, error } = resolveSourceSql(insightSource, { min_x_value: { value: '7' } });
-      expect(error).toBeNull();
-      expect(sql).toContain('"x" > 7');
-      expect(sql).not.toContain('${');
-    });
-
-    it('returns a null sql for a source without a post-query (model data)', () => {
-      expect(resolveSourceSql(modelSource, {})).toEqual({ sql: null, error: null });
-    });
-
-    it('reports an error when a referenced input is not available', () => {
-      const { sql, error } = resolveSourceSql(insightSource, {});
-      expect(sql).toBeNull();
-      expect(error).toMatch(/Query preparation failed/);
     });
   });
 
@@ -149,7 +131,9 @@ describe('usePivotData', () => {
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       act(() => {
-        useStore.setState({ inputJobs: { min_x_value: { value: '3' }, other: { value: 'q' } } });
+        // The store spreads the existing entries on a write, so an unrelated
+        // input's write leaves `min_x_value` untouched (same object).
+        useStore.setState(s => ({ inputJobs: { ...s.inputJobs, other: { value: 'q' } } }));
       });
 
       // Give any (wrong) re-run a chance to fire.

@@ -17,75 +17,32 @@ models); two models do iff a ``Relation`` path connects them. A related pair is
 left alone so that VIS-1467 can light up the join without a config change.
 """
 
-from typing import Dict, List, Optional, Set
+from typing import Optional, Set
 
-import networkx as nx
-
-from visivo.query.patterns import extract_ref_names
-
-
-def _table_ref_names(table) -> Set[str]:
-    names: Set[str] = set()
-    for field_list in (table.columns, table.rows, table.values):
-        for ref_str in field_list or []:
-            names.update(extract_ref_names(ref_str))
-    return names
-
-
-def _model_relation_graph(dag) -> nx.Graph:
-    """Undirected graph of model names joined by declared ``Relation`` conditions.
-
-    Built from the raw conditions (``relation.get_referenced_models()``) rather
-    than ``RelationGraph`` because the latter resolves every join condition
-    through a ``FieldResolver`` — which needs model schemas and an output dir
-    that do not exist at compile time. Connectivity is all we need here.
-    """
-    from visivo.models.dag import all_descendants_of_type
-    from visivo.models.models.model import Model
-    from visivo.models.relation import Relation
-
-    graph = nx.Graph()
-    for model in all_descendants_of_type(type=Model, dag=dag):
-        graph.add_node(model.name)
-    for relation in all_descendants_of_type(type=Relation, dag=dag):
-        referenced = list(relation.get_referenced_models())
-        if len(referenced) == 2:
-            graph.add_edge(referenced[0], referenced[1])
-    return graph
-
-
-def _sources_are_related(names: List[str], graph: nx.Graph) -> bool:
-    """True iff every name is a model node and all of them sit in one connected
-    component of the relation graph (i.e. a join path exists between each pair)."""
-    if any(name not in graph for name in names):
-        return False
-    components = nx.node_connected_component(graph, names[0])
-    return all(name in components for name in names)
+from visivo.query.relation_graph import RelationGraph
 
 
 def validate_table_sources(
-    name: str,
-    ref_names: Set[str],
-    insight_names: Set[str],
-    relation_graph: nx.Graph,
+    name: str, ref_names: Set[str], relations: RelationGraph
 ) -> Optional[str]:
     """Return an actionable error if ``ref_names`` (the sources a table's
     columns/rows/values reference) span more than one UNRELATED source, else
-    ``None``."""
+    ``None``. Only models are nodes of ``relations``, so a ref to an insight (or
+    an unknown name) never counts as related."""
     if len(ref_names) <= 1:
         return None
 
     ordered = sorted(ref_names)
-    if any(n in insight_names for n in ordered) or not _sources_are_related(
-        ordered, relation_graph
-    ):
-        quoted = ", ".join(f"'{n}'" for n in ordered)
-        return (
-            f"Table '{name}' references {len(ordered)} sources with no relationship "
-            f"between them: {quoted}. A table's columns, rows and values must all "
-            f"read from the same model or insight."
-        )
-    return None
+    reachable = relations.get_connected_models(ordered[0])
+    if all(n in reachable for n in ordered[1:]):
+        return None
+
+    quoted = ", ".join(f"'{n}'" for n in ordered)
+    return (
+        f"Table '{name}' references {len(ordered)} sources with no relationship "
+        f"between them: {quoted}. A table's columns, rows and values must all "
+        f"read from the same model or insight."
+    )
 
 
 def validate_project_table_sources(project) -> Optional[str]:
@@ -98,25 +55,24 @@ def validate_project_table_sources(project) -> Optional[str]:
     from LOADING — the server stays up and surfaces this through ``error.json``.
     """
     from visivo.models.dag import all_descendants_of_type
-    from visivo.models.insight import Insight
     from visivo.models.table import Table
 
     dag = project.dag()
-    tables = all_descendants_of_type(type=Table, dag=dag)
-    if not tables:
+    multi_ref = [
+        (table, names)
+        for table in all_descendants_of_type(type=Table, dag=dag)
+        if len(names := table.ref_names()) > 1
+    ]
+    if not multi_ref:
         return None
 
-    insight_names = {i.name for i in all_descendants_of_type(type=Insight, dag=dag)}
-    relation_graph = _model_relation_graph(dag)
-
-    errors = []
-    for table in tables:
-        error = validate_table_sources(
-            table.name or "(unnamed)", _table_ref_names(table), insight_names, relation_graph
-        )
-        if error:
-            errors.append(error)
-
+    # Connectivity only: no FieldResolver, so no schemas or output dir needed.
+    relations = RelationGraph(dag)
+    errors = [
+        error
+        for table, names in multi_ref
+        if (error := validate_table_sources(table.name or "(unnamed)", names, relations))
+    ]
     if not errors:
         return None
 

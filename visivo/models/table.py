@@ -129,23 +129,19 @@ class Table(NamedModel, ParentModel):
         description="Gradient/heatmap cell formatting configuration.",
     )
 
+    def ref_names(self) -> set:
+        """Names of every object referenced from ``columns`` / ``rows`` / ``values``."""
+        names = set()
+        for field_list in (self.columns, self.rows, self.values):
+            for ref_str in field_list or []:
+                names.update(extract_ref_names(ref_str))
+        return names
+
     def child_items(self):
         items = []
         if self.data:
             items.append(self.data)
-
-        all_ref_strings = []
-        for field_list in [self.columns, self.rows, self.values]:
-            if field_list:
-                all_ref_strings.extend(field_list)
-
-        if all_ref_strings:
-            ref_names = set()
-            for ref_str in all_ref_strings:
-                ref_names.update(extract_ref_names(ref_str))
-            for name in ref_names:
-                items.append(f"ref({name})")
-
+        items.extend(f"ref({name})" for name in self.ref_names())
         return items
 
     @model_validator(mode="before")

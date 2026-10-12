@@ -21,6 +21,7 @@ import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
+import { buildReverseMapping, formatColumnHeader } from '../../utils/pivotRefResolver';
 
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const { tokens: themeTokens } = useDashboardTheme();
@@ -60,16 +61,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     const data = sourceData?.data || [];
     if (data.length === 0) return { allRows: [], dataTableColumns: [] };
 
-    const reverseMapping = {};
-    if (sourceData.props_mapping) {
-      for (const [propPath, columnKey] of Object.entries(sourceData.props_mapping)) {
-        const displayName = propPath
-          .replace(/^props\./, '')
-          .replace(/\./g, ' ')
-          .replace(/\b\w/g, char => char.toUpperCase());
-        reverseMapping[columnKey] = displayName;
-      }
-    }
+    const reverseMapping = buildReverseMapping(sourceData.props_mapping);
 
     const firstRow = data[0];
     const cols = Object.keys(firstRow).map(key => ({
@@ -293,13 +285,6 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     </ItemContainer>
   );
 };
-
-function formatColumnHeader(key) {
-  const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-  return cleanKey
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
-}
 
 function inferType(rows, key) {
   for (const row of rows) {

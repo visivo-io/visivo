@@ -1,6 +1,5 @@
 """Tests for the compile-phase single-source check on tables (VIS-1462 T7a)."""
 
-import networkx as nx
 import pytest
 
 from tests.factories.model_factories import (
@@ -11,72 +10,11 @@ from tests.factories.model_factories import (
     SqlModelFactory,
 )
 from visivo.models.table import Table
+from visivo.query.relation_graph import RelationGraph
 from visivo.query.table_source_validator import (
     validate_project_table_sources,
     validate_table_sources,
 )
-
-
-def _graph(*edges, nodes=()):
-    g = nx.Graph()
-    g.add_nodes_from(nodes)
-    g.add_edges_from(edges)
-    return g
-
-
-# --- validate_table_sources (pure) -------------------------------------------
-
-
-def test_single_source_is_accepted():
-    assert validate_table_sources("t", {"a"}, set(), _graph(nodes=["a"])) is None
-
-
-def test_no_refs_is_accepted():
-    assert validate_table_sources("t", set(), set(), _graph()) is None
-
-
-def test_two_unrelated_models_are_rejected_naming_both():
-    error = validate_table_sources(
-        "t", {"orders", "users"}, set(), _graph(nodes=["orders", "users"])
-    )
-    assert error is not None
-    assert "'orders'" in error and "'users'" in error
-    assert "Table 't'" in error
-    assert "no relationship" in error
-
-
-def test_two_related_models_are_accepted():
-    # A declared relation path exists → leave it to VIS-1467's join.
-    assert (
-        validate_table_sources("t", {"orders", "users"}, set(), _graph(("orders", "users"))) is None
-    )
-
-
-def test_transitively_related_models_are_accepted():
-    g = _graph(("a", "b"), ("b", "c"))
-    assert validate_table_sources("t", {"a", "c"}, set(), g) is None
-
-
-def test_two_insights_are_rejected_even_when_models_are_related():
-    g = _graph(("a", "b"))
-    error = validate_table_sources("t", {"ins-a", "ins-b"}, {"ins-a", "ins-b"}, g)
-    assert error is not None
-    assert "'ins-a'" in error and "'ins-b'" in error
-
-
-def test_insight_mixed_with_model_is_rejected():
-    error = validate_table_sources("t", {"ins", "m"}, {"ins"}, _graph(nodes=["m"]))
-    assert error is not None
-    assert "'ins'" in error and "'m'" in error
-
-
-def test_unknown_name_is_rejected():
-    # A ref to something that is neither a model node nor an insight cannot be related.
-    error = validate_table_sources("t", {"a", "ghost"}, set(), _graph(nodes=["a"]))
-    assert error is not None
-
-
-# --- validate_project_table_sources (over a project DAG) ----------------------
 
 
 def _project(tables, models=None, insights=None, relations=None):
@@ -85,7 +23,7 @@ def _project(tables, models=None, insights=None, relations=None):
         SqlModelFactory(name="a", source="ref(s)"),
         SqlModelFactory(name="b", source="ref(s)"),
     ]
-    project = ProjectFactory(
+    return ProjectFactory(
         sources=[source],
         models=models,
         insights=insights or [],
@@ -93,7 +31,67 @@ def _project(tables, models=None, insights=None, relations=None):
         tables=tables,
         dashboards=[],
     )
-    return project
+
+
+def _relations(*edges, models=("a", "b", "c")):
+    """Connectivity-only RelationGraph over the named models joined by ``edges``."""
+    project = _project(
+        [],
+        models=[SqlModelFactory(name=m, source="ref(s)") for m in models],
+        relations=[
+            RelationFactory(name=f"{x}-{y}", condition=f"${{ref({x}).id}} = ${{ref({y}).id}}")
+            for x, y in edges
+        ],
+    )
+    return RelationGraph(project.dag())
+
+
+# --- validate_table_sources (pure) -------------------------------------------
+
+
+def test_single_source_is_accepted():
+    assert validate_table_sources("t", {"a"}, _relations()) is None
+
+
+def test_no_refs_is_accepted():
+    assert validate_table_sources("t", set(), _relations()) is None
+
+
+def test_two_unrelated_models_are_rejected_naming_both():
+    error = validate_table_sources("t", {"a", "b"}, _relations())
+    assert error is not None
+    assert "Table 't'" in error
+    assert "'a'" in error and "'b'" in error
+    assert "no relationship" in error
+
+
+def test_two_related_models_are_accepted():
+    assert validate_table_sources("t", {"a", "b"}, _relations(("a", "b"))) is None
+
+
+def test_transitively_related_models_are_accepted():
+    assert validate_table_sources("t", {"a", "c"}, _relations(("a", "b"), ("b", "c"))) is None
+
+
+def test_two_insights_are_rejected_even_when_models_are_related():
+    # Insights are not model nodes, so no relation path can connect them.
+    error = validate_table_sources("t", {"ins-a", "ins-b"}, _relations(("a", "b")))
+    assert error is not None
+    assert "'ins-a'" in error and "'ins-b'" in error
+
+
+def test_insight_mixed_with_model_is_rejected():
+    error = validate_table_sources("t", {"ins", "a"}, _relations())
+    assert error is not None
+    assert "'ins'" in error and "'a'" in error
+
+
+def test_unknown_name_is_rejected():
+    error = validate_table_sources("t", {"a", "ghost"}, _relations())
+    assert error is not None
+
+
+# --- validate_project_table_sources (over a project DAG) ----------------------
 
 
 def test_project_with_no_tables_returns_none():
