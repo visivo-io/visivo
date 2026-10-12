@@ -159,6 +159,7 @@ export default function OnboardingFlow() {
       role: role || null,
       completed_at: new Date().toISOString(),
       path: 'skipped',
+      checklist_dismissed: true,
     });
     navigate('/editor', { replace: true });
   }, [fire, role, navigate]);
