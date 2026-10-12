@@ -8,6 +8,7 @@
  */
 import { io } from 'socket.io-client';
 import { subscribe, canDeliver } from './eventSource';
+import { runsFor } from './topics';
 import { setGlobalURLConfig, createURLConfig } from '../contexts/URLContext';
 
 jest.mock('socket.io-client', () => {
@@ -188,4 +189,33 @@ describe('canDeliver', () => {
 
     expect(canDeliver({ ...TOPIC, poll: jest.fn() })).toBe(true);
   });
+
+  it('does not claim a socket can deliver a topic with no producer', () => {
+    expect(canDeliver({ ...TOPIC, push: false })).toBe(false);
+  });
+});
+
+test('runs keep polling locally even though other topics can use sockets', async () => {
+  jest.useFakeTimers();
+  const fetchRuns = jest
+    .fn()
+    .mockResolvedValueOnce([{ id: 'r1', state: 'running' }])
+    .mockResolvedValue([{ id: 'r1', state: 'succeeded' }]);
+  const handler = jest.fn();
+  const unsubscribe = subscribe(runsFor('p1', fetchRuns), handler);
+  try {
+    await Promise.resolve();
+    expect(handler).toHaveBeenLastCalledWith([{ id: 'r1', state: 'running' }]);
+    jest.advanceTimersByTime(4000);
+    await Promise.resolve();
+    expect(handler).toHaveBeenLastCalledWith([{ id: 'r1', state: 'succeeded' }]);
+    expect(fetchRuns).toHaveBeenCalledWith('p1');
+    expect(io).not.toHaveBeenCalled();
+    unsubscribe();
+    jest.advanceTimersByTime(8000);
+    expect(fetchRuns).toHaveBeenCalledTimes(2);
+  } finally {
+    unsubscribe();
+    jest.useRealTimers();
+  }
 });

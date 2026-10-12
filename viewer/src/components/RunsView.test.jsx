@@ -65,6 +65,7 @@ const logQueryOpts = () => useQuery.mock.calls.find(([opts]) => opts.queryKey[0]
 
 beforeEach(() => {
   useQuery.mockReset();
+  mockQueryClient.invalidateQueries.mockClear();
   useStore.setState({ project: { id: 'p1' } });
 });
 
@@ -332,6 +333,7 @@ describe('RunsView staged panel', () => {
     // listed. An explicit '' would mean "rebuild everything" — that's Run all.
     await waitFor(() => expect(triggerRun).toHaveBeenCalled());
     expect(triggerRun).not.toHaveBeenCalledWith({ dagFilter: '' });
+    expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['runs', 'p1'] });
   });
 
   test('Run all stays available with nothing staged; Run changes goes inert', () => {
@@ -353,6 +355,7 @@ describe('RunsView staged panel', () => {
     render(<RunsView />);
     fireEvent.click(screen.getByRole('button', { name: 'Run all' }));
     await waitFor(() => expect(triggerRun).toHaveBeenCalledWith({ dagFilter: '' }));
+    expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['runs', 'p1'] });
   });
 
   test('both run buttons are disabled while a run is in flight', () => {
@@ -371,6 +374,17 @@ describe('RunsView staged panel', () => {
     render(<RunsView />);
     fireEvent.click(screen.getByRole('button', { name: 'Run 2 changes' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('already in progress');
+    expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['runs', 'p1'] });
+  });
+
+  test('a network failure releases the buttons so the run can be retried', async () => {
+    const { triggerRun } = setup();
+    triggerRun.mockRejectedValue(new Error('Network unavailable'));
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run all' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network unavailable');
+    expect(screen.getByRole('button', { name: 'Run all' })).toBeEnabled();
   });
 
   test('the toggle reflects and changes the trigger mode', () => {

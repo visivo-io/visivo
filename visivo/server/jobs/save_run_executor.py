@@ -40,6 +40,16 @@ def request_run(flask_app, names):
         _pending_timer.start()
 
 
+def cancel_pending_run(names):
+    """Remove cancelled creations from a run that is still debouncing."""
+    global _pending_timer
+    with _pending_lock:
+        _pending_names.difference_update(names)
+        if not _pending_names and _pending_timer is not None:
+            _pending_timer.cancel()
+            _pending_timer = None
+
+
 def _fire(flask_app):
     global _pending_timer
     with _pending_lock:
