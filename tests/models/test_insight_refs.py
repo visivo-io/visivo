@@ -278,5 +278,7 @@ def test_resolution_error_keeps_the_dag_lookup_detail():
     dag = project.dag()
     with pytest.raises(ValueError) as excinfo:
         contour.resolve_insight_refs({"carpet": "${ref(nope)}"}, dag)
-    assert "no insight named 'nope' could be resolved: No node found with name 'nope'" in str(excinfo.value)
+    assert "no insight named 'nope' could be resolved: No node found with name 'nope'" in str(
+        excinfo.value
+    )
     assert isinstance(excinfo.value.__cause__, ValueError)
