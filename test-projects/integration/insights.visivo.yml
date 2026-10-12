@@ -150,6 +150,28 @@ insights:
       - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value).value}}
       - sort: ?{${ref(local_test_table).x} ${ref(sort_direction).value}}
 
+  # ===== VIS-1461: hyphenated input in a static prop; string slider in a filter =====
+  - name: hyphen-mode-insight
+    description: "Scatter whose mode comes from a hyphen-named toggle input"
+    props:
+      type: scatter
+      mode: ${ref(mode-toggle).value}
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+    interactions:
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  - name: string-slider-insight
+    description: "Scatter filtered by a string-valued slider (low/mid/high)"
+    props:
+      type: scatter
+      mode: markers
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+    interactions:
+      - filter: ?{${ref(local_test_table).x} <= CASE '${ref(level-slider).value}' WHEN 'low' THEN 2 WHEN 'mid' THEN 4 ELSE 6 END}
+      - sort: ?{${ref(local_test_table).x} ASC}
+
   # ===== INPUT DISPLAY SHOWCASE INSIGHTS =====
 
   # Toggle input test - dynamic mode switching

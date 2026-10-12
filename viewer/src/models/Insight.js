@@ -1,3 +1,5 @@
+import { inputRefRegex, matchName } from '../utils/inputNames';
+
 /**
  * Process input references in props, replacing ${input.accessor} patterns with actual values.
  *
@@ -24,11 +26,11 @@ export function processInputRefsInProps(props, inputs) {
   function processValue(value) {
     if (typeof value === 'string' && value.includes('${')) {
       // Check if this is an input ref pattern
-      const inputRefPattern = /^\$\{(\w+)\.(\w+)\}$/;
-      const match = value.match(inputRefPattern);
+      const match = value.match(inputRefRegex({ anchored: true }));
 
       if (match) {
-        const [, inputName, accessor] = match;
+        const inputName = matchName(match);
+        const accessor = match[3];
         const input = inputs[inputName];
 
         if (input && input[accessor] !== undefined) {
@@ -42,10 +44,11 @@ export function processInputRefsInProps(props, inputs) {
 
       // For more complex templates with embedded refs (e.g., "prefix_${input.value}_suffix")
       // Use regex replacement
-      const embeddedPattern = /\$\{(\w+)\.(\w+)\}/g;
       let hasMatch = false;
-      const replaced = value.replace(embeddedPattern, (fullMatch, inputName, accessor) => {
+      const replaced = value.replace(inputRefRegex({ global: true }), (fullMatch, ...groups) => {
         hasMatch = true;
+        const inputName = matchName(groups);
+        const accessor = groups[2];
         const input = inputs[inputName];
         if (input && input[accessor] !== undefined) {
           return String(input[accessor]);
@@ -98,24 +101,11 @@ export function extractInputDependenciesFromProps(configOrProps) {
 
   const allReferencedNames = new Set();
   // Match both ${inputName.accessor} and ${ref(inputName).accessor}
-  const simplePattern = /\$\{(\w+)\.\w+\}/g;
-  const refPattern = /\$\{ref\((\w+)\)\.\w+\}/g;
 
   function scanValue(value) {
     if (typeof value === 'string') {
-      // Check for ref(inputName) pattern first
-      const refMatches = value.matchAll(refPattern);
-      for (const match of refMatches) {
-        allReferencedNames.add(match[1]);
-      }
-
-      // Then check for simple inputName pattern
-      const simpleMatches = value.matchAll(simplePattern);
-      for (const match of simpleMatches) {
-        // Skip if it was already matched as a ref() pattern
-        if (!value.includes(`ref(${match[1]})`)) {
-          allReferencedNames.add(match[1]);
-        }
+      for (const match of value.matchAll(inputRefRegex({ global: true }))) {
+        allReferencedNames.add(matchName(match));
       }
     } else if (Array.isArray(value)) {
       value.forEach(item => scanValue(item));

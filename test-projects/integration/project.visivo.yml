@@ -61,6 +61,25 @@ inputs:
       default:
         value: "markers+lines"
 
+  # ===== VIS-1461: hyphenated-name substitution + string slider =====
+  - name: mode-toggle
+    label: "Mode (hyphenated Toggle)"
+    type: single-select
+    options: ["lines", "markers"]
+    display:
+      type: toggle
+      default:
+        value: "lines"
+
+  - name: level-slider
+    label: "Level (string Slider)"
+    type: single-select
+    options: ["low", "mid", "high"]
+    display:
+      type: slider
+      default:
+        value: "low"
+
   # ===== MULTI-SELECT INPUTS (all display types) =====
 
   # Multi-select: Dropdown
@@ -288,6 +307,21 @@ charts:
       title:
         text: "Aggregated Bar Chart"
 
+  # VIS-1461 charts
+  - name: hyphen-mode-chart
+    insights:
+      - ${ ref(hyphen-mode-insight) }
+    layout:
+      title:
+        text: "Hyphenated Input: Dynamic Mode"
+
+  - name: string-slider-chart
+    insights:
+      - ${ ref(string-slider-insight) }
+    layout:
+      title:
+        text: "String Slider: Filter"
+
   # Input-driven test charts
   - name: split-input-test-chart
     insights:
@@ -401,6 +435,24 @@ charts:
         text: "Week Selector: Autocomplete Filter"
 
 dashboards:
+  - name: input-substitution-dashboard
+    level: 0
+    tags:
+      - "inputs"
+    rows:
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(mode-toggle)}
+          - width: 6
+            input: ${ref(level-slider)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(hyphen-mode-chart) }
+          - width: 6
+            chart: ${ ref(string-slider-chart) }
+
   - name: insights-dashboard
     level: 0
     tags:

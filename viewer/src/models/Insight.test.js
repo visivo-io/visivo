@@ -418,6 +418,29 @@ describe('processInputRefsInProps', () => {
     expect(processInputRefsInProps(props, inputs)).toEqual({ mode: 'markers' });
   });
 
+  it('substitutes a hyphenated input name (whole value)', () => {
+    const props = { mode: '${show-markers.value}' };
+    const inputs = { 'show-markers': { value: 'lines' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ mode: 'lines' });
+  });
+
+  it('substitutes ${ref(show-markers).value}', () => {
+    const props = { mode: '${ref(show-markers).value}' };
+    const inputs = { 'show-markers': { value: 'lines' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ mode: 'lines' });
+  });
+
+  it('substitutes hyphenated and spaced names in embedded templates', () => {
+    const props = { name: 'a_${my-input.value}_${my input.value}' };
+    const inputs = { 'my-input': { value: 'x' }, 'my input': { value: 'y' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ name: 'a_x_y' });
+  });
+
+  it('leaves a hyphenated ref untouched when the input is unknown', () => {
+    const props = { mode: '${ref(nope-here).value}' };
+    expect(processInputRefsInProps(props, { other: { value: 1 } })).toEqual(props);
+  });
+
   it('replaces numeric input ref with number type', () => {
     const props = { size: '${marker_size.value}' };
     const inputs = { marker_size: { value: 10 } };
@@ -461,6 +484,16 @@ describe('processInputRefsInProps', () => {
 });
 
 describe('extractInputDependenciesFromProps', () => {
+  it('extracts hyphenated names from simple and ref() patterns', () => {
+    expect(
+      extractInputDependenciesFromProps({
+        mode: '${show-markers.value}',
+        other: '${ref(other-input).max}',
+        plain: '${ref(plain).value}',
+      }).sort()
+    ).toEqual(['other-input', 'plain', 'show-markers']);
+  });
+
   it('returns empty array for null props', () => {
     expect(extractInputDependenciesFromProps(null)).toEqual([]);
   });
@@ -649,7 +682,10 @@ describe('chartDataFromInsightData with props_slices', () => {
     const insights = {
       mix: {
         type: 'bar',
-        data: [{ x: 1, y: 10 }, { x: 2, y: 20 }],
+        data: [
+          { x: 1, y: 10 },
+          { x: 2, y: 20 },
+        ],
         props_mapping: { 'props.x': 'x', 'props.y': 'y' },
         props_slices: { 'props.y': '[0]' },
       },
@@ -702,7 +738,10 @@ describe('chartDataFromInsightData with props_slices', () => {
     const insights = {
       a: {
         type: 'bar',
-        data: [{ x: 1, s: 10 }, { x: 2, s: 20 }],
+        data: [
+          { x: 1, s: 10 },
+          { x: 2, s: 20 },
+        ],
         props_mapping: { 'props.x': 'x', 'props.marker.size': 's' },
         props_slices: { 'props.marker.size': '[0]' },
       },
@@ -735,7 +774,10 @@ describe('chartDataFromInsightData — guards and static-prop merge', () => {
     const insights = {
       styled: {
         type: 'bar',
-        data: [{ x: 1, c: 'red' }, { x: 2, c: 'blue' }],
+        data: [
+          { x: 1, c: 'red' },
+          { x: 2, c: 'blue' },
+        ],
         props_mapping: { 'props.x': 'x', 'props.marker.color': 'c' },
         static_props: {
           marker: { color: 'green', line: { width: 2 } },

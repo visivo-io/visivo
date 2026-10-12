@@ -1,6 +1,7 @@
 import { getTempFilename, getConnection } from './duckdb';
 import { getParquetCache } from './parquetCache';
 import { apiFetch } from '../api/utils';
+import { isPlainIdentifier, toSafeInputAlias } from '../utils/inputNames';
 
 /**
  * Retry a function with exponential backoff
@@ -173,13 +174,12 @@ export const prepPostQuery = (insight, inputs) => {
 
     for (const key of referencedKeys) {
       const value = inputs[key];
-      const isValidIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
 
-      if (isValidIdentifier) {
+      if (isPlainIdentifier(key)) {
         safeKeys.push(key);
       } else {
         // Replace ${key.accessor} with ${safeAlias.accessor} in the query
-        const safeAlias = '_input_' + key.replace(/[^a-zA-Z0-9_]/g, '_');
+        const safeAlias = toSafeInputAlias(key);
         processedQuery = processedQuery.replaceAll(`\${${key}`, `\${${safeAlias}`);
         safeKeys.push(safeAlias);
       }
