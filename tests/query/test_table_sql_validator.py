@@ -104,13 +104,15 @@ def test_validate_project_table_sql_names_every_broken_table_with_fix_guidance()
         [
             Table(name="ok", columns=["${ref(i).sex} as Sex"]),
             Table(name="broken_a", columns=['${ref(i).sex} as ""Sex""']),
-            # A pivot whose value expression is not a valid aggregate breaks the
-            # USING clause (the pivot path does real SQLGlot validation).
+            # A pivot whose row field carries a stray quote breaks the GROUP BY
+            # (the pivot path does real SQLGlot validation). NOTE: a non-aggregate
+            # `values` entry is no longer reachable here — the Table model rejects
+            # it at construction (VIS-1463 T3, tests/models/test_table.py).
             Table(
                 name="broken_b",
                 columns=["${ref(i).region}"],
-                rows=["${ref(i).product}"],
-                values=["sum(${ref(i).revenue}) +"],
+                rows=['${ref(i).product} "'],
+                values=["sum(${ref(i).revenue})"],
             ),
         ]
     )

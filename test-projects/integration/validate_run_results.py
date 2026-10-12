@@ -270,6 +270,7 @@ class VisivoRunValidator:
             "surface-trace",
             "toggle-mode-insight",
             "week-selector-insight",
+            "gradient-grid-insight",
         ]
 
         success = True

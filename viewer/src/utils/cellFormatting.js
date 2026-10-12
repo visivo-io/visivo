@@ -24,12 +24,87 @@ function gradientCellStyle(minRgb, maxRgb, ratio) {
 }
 
 /**
+ * Coerce a cell value to a finite number, or `null` when the cell carries no
+ * number. `Number(null) === 0` used to paint every empty pivot cell as the
+ * minimum of the gradient (VIS-1463 T4): null, undefined, blank strings and
+ * booleans are NOT numbers here, so they stay uncoloured and do not take part
+ * in the min/max.
+ *
+ * @param {*} value
+ * @returns {number|null}
+ */
+export function toGradientNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'bigint') return Number(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    if (value.trim() === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Decide which columns a `format_cells` gradient may colour.
+ *
+ * - Pivot mode: every non-row column is a measure (`values` aggregate), so all
+ *   of them are coloured and nothing else is.
+ * - Column-select / data mode: only columns whose source values are genuinely
+ *   numeric (JS numbers / bigints from the query result). Numeric-LOOKING
+ *   strings (ids, codes, years stored as text) are left alone — in these modes
+ *   the config carries no notion of a measure, so the value type is the only
+ *   honest signal (VIS-1463 T4).
+ *
+ * @param {Array<{name: string, isPivotRow?: boolean}>} columns
+ * @param {Array<Object>} rows - ALL rows of the table (not a page)
+ * @param {boolean} isPivotMode
+ * @returns {string[]} column accessor keys
+ */
+export function selectGradientColumns(columns, rows, isPivotMode) {
+  if (!columns?.length || !rows?.length) return [];
+  if (isPivotMode) {
+    return columns.filter(col => !col.isPivotRow).map(col => col.name);
+  }
+  return columns
+    .filter(col => {
+      let sawNumber = false;
+      for (const row of rows) {
+        const val = row[col.name];
+        if (val === null || val === undefined) continue;
+        if (typeof val === 'number' || typeof val === 'bigint') {
+          sawNumber = true;
+        } else {
+          return false;
+        }
+      }
+      return sawNumber;
+    })
+    .map(col => col.name);
+}
+
+function rangeOf(cells) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const val of cells) {
+    if (val === null) continue;
+    if (val < min) min = val;
+    if (val > max) max = val;
+  }
+  return { min, max, range: max - min };
+}
+
+/**
  * Compute gradient background styles for table cells.
  *
+ * Pass EVERY row of the table (not just the visible page): the min/max is
+ * computed over all of them so a given value has the same colour on every
+ * page (VIS-1463 T4). Cells without a number get no style.
+ *
  * @param {Array<Object>} rows - Array of row objects
- * @param {string[]} numericColumnIds - Column accessor keys that are numeric
+ * @param {string[]} numericColumnIds - Column accessor keys that are measures
  * @param {Object} formatCells - { scope, min_color, max_color }
- * @returns {Map<string, { backgroundColor: string }>} Map keyed by "rowIdx-colId"
+ * @returns {Map<string, { backgroundColor: string, color: string }>} Map keyed by "rowIdx-colId"
  */
 export function computeGradientStyles(rows, numericColumnIds, formatCells) {
   const styles = new Map();
@@ -42,67 +117,33 @@ export function computeGradientStyles(rows, numericColumnIds, formatCells) {
   const minRgb = parseHex(min_color);
   const maxRgb = parseHex(max_color);
 
+  // numbers[rowIdx][colId] = finite number | null
+  const numbers = rows.map(row => {
+    const out = {};
+    for (const colId of numericColumnIds) out[colId] = toGradientNumber(row[colId]);
+    return out;
+  });
+
+  const paint = (rowIdx, colId, { min, range }) => {
+    const val = numbers[rowIdx][colId];
+    if (val === null || !(range > 0)) return;
+    styles.set(`${rowIdx}-${colId}`, gradientCellStyle(minRgb, maxRgb, (val - min) / range));
+  };
+
   if (scope === 'table') {
-    let globalMin = Infinity;
-    let globalMax = -Infinity;
-    for (const row of rows) {
-      for (const colId of numericColumnIds) {
-        const val = Number(row[colId]);
-        if (!isNaN(val)) {
-          if (val < globalMin) globalMin = val;
-          if (val > globalMax) globalMax = val;
-        }
-      }
-    }
-    const range = globalMax - globalMin;
-    rows.forEach((row, rowIdx) => {
-      for (const colId of numericColumnIds) {
-        const val = Number(row[colId]);
-        if (!isNaN(val) && range > 0) {
-          const ratio = (val - globalMin) / range;
-          styles.set(`${rowIdx}-${colId}`, gradientCellStyle(minRgb, maxRgb, ratio));
-        }
-      }
+    const stats = rangeOf(numbers.flatMap(r => numericColumnIds.map(c => r[c])));
+    numbers.forEach((_, rowIdx) => {
+      for (const colId of numericColumnIds) paint(rowIdx, colId, stats);
     });
   } else if (scope === 'column') {
     for (const colId of numericColumnIds) {
-      let colMin = Infinity;
-      let colMax = -Infinity;
-      for (const row of rows) {
-        const val = Number(row[colId]);
-        if (!isNaN(val)) {
-          if (val < colMin) colMin = val;
-          if (val > colMax) colMax = val;
-        }
-      }
-      const range = colMax - colMin;
-      rows.forEach((row, rowIdx) => {
-        const val = Number(row[colId]);
-        if (!isNaN(val) && range > 0) {
-          const ratio = (val - colMin) / range;
-          styles.set(`${rowIdx}-${colId}`, gradientCellStyle(minRgb, maxRgb, ratio));
-        }
-      });
+      const stats = rangeOf(numbers.map(r => r[colId]));
+      numbers.forEach((_, rowIdx) => paint(rowIdx, colId, stats));
     }
   } else if (scope === 'row') {
-    rows.forEach((row, rowIdx) => {
-      let rowMin = Infinity;
-      let rowMax = -Infinity;
-      for (const colId of numericColumnIds) {
-        const val = Number(row[colId]);
-        if (!isNaN(val)) {
-          if (val < rowMin) rowMin = val;
-          if (val > rowMax) rowMax = val;
-        }
-      }
-      const range = rowMax - rowMin;
-      for (const colId of numericColumnIds) {
-        const val = Number(row[colId]);
-        if (!isNaN(val) && range > 0) {
-          const ratio = (val - rowMin) / range;
-          styles.set(`${rowIdx}-${colId}`, gradientCellStyle(minRgb, maxRgb, ratio));
-        }
-      }
+    numbers.forEach((r, rowIdx) => {
+      const stats = rangeOf(numericColumnIds.map(c => r[c]));
+      for (const colId of numericColumnIds) paint(rowIdx, colId, stats);
     });
   }
 

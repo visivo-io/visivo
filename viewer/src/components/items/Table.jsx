@@ -36,6 +36,7 @@ import { itemNameToSlug } from './utils';
 import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
+import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
 
 const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   const { tokens: themeTokens } = useDashboardTheme();
@@ -212,7 +213,7 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
       },
     },
     muiPaginationProps: {
-      rowsPerPageOptions: [3, 5, 15, 25, 50, 100, 500, 1000],
+      rowsPerPageOptions: ROWS_PER_PAGE_OPTIONS,
     },
     initialState: {
       showGlobalFilter: true,

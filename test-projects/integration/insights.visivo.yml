@@ -420,3 +420,12 @@ insights:
       type: scatter
       x: ?{${ref(markdown-table-base).vanilla_text}}
       y: ?{${ref(markdown-table-base).markdown}}
+
+  # VIS-1463 fixture: source rows for the gradient pivot (see gradient_grid model).
+  - name: gradient-grid-insight
+    description: "60 keys x 3 categories with NULL cells for the whole-table gradient story"
+    props:
+      type: scatter
+      x: ?{${ref(gradient_grid).category}}
+      y: ?{${ref(gradient_grid).amount}}
+      text: ?{${ref(gradient_grid).row_key}}

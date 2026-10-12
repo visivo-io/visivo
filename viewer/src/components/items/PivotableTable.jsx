@@ -3,7 +3,7 @@ import DataTable from '../common/DataTable';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
 import { usePivotData } from '../../hooks/usePivotData';
-import { computeGradientStyles } from '../../utils/cellFormatting';
+import { computeGradientStyles, selectGradientColumns } from '../../utils/cellFormatting';
 import { COLUMN_TYPES } from '../../duckdb/schemaUtils';
 import Loading from '../common/Loading';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -20,8 +20,7 @@ import {
 import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { mkConfig, generateCsv } from 'export-to-csv';
-
-const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000];
+import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
 
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const { tokens: themeTokens } = useDashboardTheme();
@@ -116,28 +115,32 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, page, pageSize]);
 
-  // Gradient cell styles - detect numeric columns including stringified bigints
-  const numericColumnIds = useMemo(() => {
-    if (!pagedRows.length || !dataTableColumns.length) return [];
-    return dataTableColumns
-      .filter(col => !col.isPivotRow && pagedRows.some(row => {
-        const val = row[col.name];
-        return typeof val === 'number' || (val != null && val !== '' && !isNaN(Number(val)));
-      }))
-      .map(col => col.name);
-  }, [pagedRows, dataTableColumns]);
+  // Gradient cell styles (VIS-1463 T4): the min/max is computed over ALL rows
+  // of the table — not the visible page — so a value keeps its colour across
+  // pages, filters and sorts. Only measure columns are coloured: every non-row
+  // column in pivot mode, genuinely numeric columns otherwise.
+  const gradientColumnIds = useMemo(
+    () => (table.format_cells ? selectGradientColumns(dataTableColumns, allRows, isPivotMode) : []),
+    [table.format_cells, dataTableColumns, allRows, isPivotMode]
+  );
 
   const gradientStyles = useMemo(() => {
     if (!table.format_cells) return null;
-    return computeGradientStyles(pagedRows, numericColumnIds, table.format_cells);
-  }, [pagedRows, numericColumnIds, table.format_cells]);
+    return computeGradientStyles(allRows, gradientColumnIds, table.format_cells);
+  }, [allRows, gradientColumnIds, table.format_cells]);
+
+  // Styles are keyed by the row's index in `allRows`; DataTable asks by its
+  // index in the current page, so map page row -> whole-table index.
+  const allRowIndex = useMemo(() => new Map(allRows.map((row, i) => [row, i])), [allRows]);
 
   const getCellStyle = useCallback(
     (rowIndex, columnId) => {
       if (!gradientStyles) return undefined;
-      return gradientStyles.get(`${rowIndex}-${columnId}`);
+      const row = pagedRows[rowIndex];
+      if (!row) return undefined;
+      return gradientStyles.get(`${allRowIndex.get(row)}-${columnId}`);
     },
-    [gradientStyles]
+    [gradientStyles, pagedRows, allRowIndex]
   );
 
   const handlePageChange = useCallback(newPage => setPage(newPage), []);
@@ -277,7 +280,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
         pageCount={pageCount}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
-        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        pageSizeOptions={ROWS_PER_PAGE_OPTIONS}
         sorting={sorting}
         onSortChange={setSorting}
         isLoading={false}
