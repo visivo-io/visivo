@@ -11,23 +11,18 @@ from visivo.query.insight.insight_query_info import InsightQueryInfo
 from visivo.models.dag import all_descendants_of_type
 from visivo.jobs.utils import get_source_for_model
 from visivo.logger.logger import Logger
-from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
-import re
-
-#: A whole-value ``${ref(<name>)}`` with NO property path — the form a trace-id
-#: link prop uses to point at a sibling insight.
-_INSIGHT_REF_PATTERN = re.compile(rf"^\s*{CONTEXT_STRING_REF_PATTERN}\s*$")
+from visivo.query.patterns import extract_ref_components
 
 
 def _insight_ref_name(value) -> Optional[str]:
-    """The ``<name>`` of a whole-value ``${ref(<name>)}``; ``None`` for anything
-    else (including ``${ref(x).prop}``, which is an input/model accessor)."""
+    """The ``<name>`` of a bare ``${ref(<name>)}`` (no property path, so not an
+    input/model accessor like ``${ref(x).value}``); ``None`` for anything else."""
     if not isinstance(value, str):
         return None
-    match = _INSIGHT_REF_PATTERN.match(value)
-    if not match or match.group("property_path"):
+    components = extract_ref_components(value)
+    if len(components) != 1 or components[0][1] is not None:
         return None
-    return get_model_name_from_match(match)
+    return components[0][0]
 
 
 class Insight(NamedModel, ParentModel):
