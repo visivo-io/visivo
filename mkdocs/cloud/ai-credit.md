@@ -18,11 +18,11 @@ controls. **Usage** shows spend for the current period, split between agent
 inference and build compute and by user.
 
 See [current Visivo plan pricing](https://visivo.io/pricing/) for subscriptions
-and included credit. Prices and plan discounts can change. Metered defaults are
-defined in [Core's pricing settings](https://github.com/visivo-io/core/blob/main/api/config/settings/base.py);
-deployment settings and your account's tier determine applied rates. Ask your
-Visivo administrator to confirm those rates before estimating a budget for a
-self-hosted deployment.
+and included credit. Prices and plan discounts can change. Use your account's
+**Billing** and **Usage** pages to check available credit, spending controls, and
+actual charges. For current metered rates, [contact Visivo](mailto:jared@visivo.io)
+before estimating a budget. For a self-hosted deployment, ask its administrator
+to confirm the rates it applies.
 
 ## What does a turn cost?
 
