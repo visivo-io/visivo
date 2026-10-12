@@ -20,10 +20,7 @@ import {
 import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { mkConfig, generateCsv } from 'export-to-csv';
-
-// Mirrors `RowsPerPageEnum` in visivo/models/table.py — every size the YAML
-// accepts must be selectable here (VIS-1463 T5).
-const PAGE_SIZE_OPTIONS = [3, 5, 10, 25, 50, 100, 500, 1000];
+import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
 
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const { tokens: themeTokens } = useDashboardTheme();
@@ -283,7 +280,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
         pageCount={pageCount}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
-        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        pageSizeOptions={ROWS_PER_PAGE_OPTIONS}
         sorting={sorting}
         onSortChange={setSorting}
         isLoading={false}
