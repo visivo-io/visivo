@@ -45,6 +45,8 @@ const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'a
  * say they're built.
  */
 function StagedPanel({ heading }) {
+  const projectId = useStore(s => s.project?.id);
+  const queryClient = useQueryClient();
   const staged = useStore(s => s.stagedChanges);
   const runTrigger = useStore(s => s.runTrigger);
   const setRunTrigger = useStore(s => s.setRunTrigger);
@@ -60,14 +62,20 @@ function StagedPanel({ heading }) {
   const startRun = async opts => {
     setError(null);
     setStarting(true);
-    const result = await triggerRun(opts);
-    setStarting(false);
-    if (!result.success) {
-      setError(
-        result.action === 'run_in_progress'
-          ? 'A run is already in progress.'
-          : result.error || 'Could not start the run.'
-      );
+    try {
+      const result = await triggerRun(opts);
+      if (!result.success) {
+        setError(
+          result.action === 'run_in_progress'
+            ? 'A run is already in progress.'
+            : result.error || 'Could not start the run.'
+        );
+      }
+    } catch (err) {
+      setError(err.message || 'Could not start the run.');
+    } finally {
+      setStarting(false);
+      queryClient.invalidateQueries({ queryKey: ['runs', projectId] });
     }
   };
 

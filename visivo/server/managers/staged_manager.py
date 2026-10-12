@@ -51,6 +51,16 @@ class StagedManager:
             self._current[key] = fingerprint
             self._status[key] = status
 
+    def discard_unbuilt(self, type_name, name):
+        """Forget a cancelled creation, unless a run already built it."""
+        key = (type_name, name)
+        with self._lock:
+            if key in self._built:
+                return False
+            self._current.pop(key, None)
+            self._status.pop(key, None)
+            return True
+
     def mark_built(self, names=None):
         """Record that a run built these resources (all of them if ``names`` is
         None, which is what a full rebuild does).
