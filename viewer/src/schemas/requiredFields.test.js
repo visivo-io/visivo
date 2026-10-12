@@ -8,7 +8,7 @@ import {
   getRequiredFields,
   isFieldRequired,
   getAllFieldNames,
-} from './insightRequiredFields';
+} from './requiredFields';
 
 describe('getRequiredFields', () => {
   it('returns the x/y field configs for scatter', () => {
@@ -134,5 +134,46 @@ describe('REQUIRED_FIELDS integrity', () => {
       expect(fields).toHaveLength(1);
       expect(fields[0]).toMatchObject({ name: 'dimensions', type: 'array' });
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Generated-artifact coverage (VIS-1464 P2). The file is produced by
+// core/scripts/schema/generate_schema.py; these pin that every trace type the
+// CLI accepts (PropType) and every type the picker offers (CHART_TYPES) has
+// an entry, so a new trace type cannot ship without key fields.
+// ---------------------------------------------------------------------------
+describe('required-fields artifact coverage', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const { CHART_TYPES } = require('./schemas');
+
+  // visivo/models/props/types.py is the CLI's PropType enum (48 members).
+  const typesPy = fs.readFileSync(
+    path.resolve(__dirname, '../../../visivo/models/props/types.py'),
+    'utf8'
+  );
+  const propTypes = [...typesPy.matchAll(/^\s+[A-Z0-9_]+\s*=\s*"([a-z0-9]+)"/gm)].map(m => m[1]);
+
+  it('reads the PropType enum (guards against a silent empty match)', () => {
+    expect(propTypes.length).toBeGreaterThanOrEqual(48);
+    expect(propTypes).toEqual(expect.arrayContaining(['scatter', 'scatterternary', 'image']));
+  });
+
+  it('has a non-empty entry for every PropType member', () => {
+    const missing = propTypes.filter(type => getRequiredFields(type).length === 0);
+    expect(missing).toEqual([]);
+  });
+
+  it('has a non-empty entry for every picker chart type', () => {
+    const pickerTypes = CHART_TYPES.map(t => t.value).filter(t => t !== 'layout');
+    const missing = pickerTypes.filter(type => getRequiredFields(type).length === 0);
+    expect(missing).toEqual([]);
+  });
+
+  it('covers the trace types the hand-written file lacked', () => {
+    expect(getAllFieldNames('scatterternary')).toEqual(['a', 'b', 'c']);
+    expect(getAllFieldNames('scattersmith')).toEqual(['real', 'imag']);
+    expect(getAllFieldNames('scatterpolargl')).toEqual(['r', 'theta']);
   });
 });

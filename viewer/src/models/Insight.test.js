@@ -983,3 +983,70 @@ describe('tableDataFromQueryResults', () => {
     });
   });
 });
+
+describe('chartDataFromInsightData — static insights (VIS-1464)', () => {
+  // run_insight_job.static_action ships an insight with no files, no
+  // post_query and an empty props_mapping: the trace IS its static_props.
+  const IMAGE_Z = [
+    [
+      [255, 0, 0],
+      [0, 255, 0],
+    ],
+    [
+      [0, 0, 255],
+      [0, 0, 0],
+    ],
+  ];
+
+  it('builds a trace from static_props alone when nothing is query-bound', () => {
+    const traces = chartDataFromInsightData({
+      pixels: { type: 'image', data: [], props_mapping: {}, static_props: { z: IMAGE_Z } },
+    });
+    expect(traces).toHaveLength(1);
+    expect(traces[0]).toEqual({ type: 'image', z: IMAGE_Z, name: 'pixels' });
+  });
+
+  it('resolves input refs inside a static-only trace', () => {
+    const traces = chartDataFromInsightData(
+      {
+        line: {
+          type: 'scatter',
+          data: [],
+          props_mapping: {},
+          static_props: { x: [0, 1], y: [1, 1], mode: String.raw`${'$'}{mode_input.value}` },
+        },
+      },
+      { mode_input: { value: 'lines' } }
+    );
+    expect(traces[0].mode).toBe('lines');
+  });
+
+  it('still waits for inputs (data === null) before rendering a static trace', () => {
+    const traces = chartDataFromInsightData({
+      line: { type: 'scatter', data: null, props_mapping: {}, static_props: { x: [1] } },
+    });
+    expect(traces).toEqual([]);
+  });
+
+  it('emits nothing for an unmapped insight with no static props', () => {
+    expect(
+      chartDataFromInsightData({
+        empty: { type: 'scatter', data: [], props_mapping: {}, static_props: {} },
+      })
+    ).toEqual([]);
+    expect(
+      chartDataFromInsightData({
+        weird: { type: 'scatter', data: [], props_mapping: {}, static_props: 'nope' },
+      })
+    ).toEqual([]);
+  });
+
+  it('applies a live type override to a static trace', () => {
+    const traces = chartDataFromInsightData(
+      { s: { type: 'scatter', data: [], props_mapping: {}, static_props: { x: [1], y: [2] } } },
+      {},
+      { s: 'bar' }
+    );
+    expect(traces[0].type).toBe('bar');
+  });
+});

@@ -1,18 +1,3 @@
-sources:
-  - name: image-data-source
-    type: duckdb
-    database: target/seeds/image_data.duckdb
-    seeds:
-      - table_name: model
-        args:
-          - echo
-          - |
-            z
-            [[0,0,1,1],[1,0,0,1],[1,1,0,0]]
-models:
-  - name: image-data
-    source: ${ref(image-data-source)}
-    sql: select * from model
 charts:
   - name: simple-image-chart
     layout:
@@ -21,7 +6,13 @@ charts:
     insights:
       - ${ref(simple-image-plot)}
 insights:
+  # An image is a grid of pixels, each pixel an array of colour channels
+  # (rgb by default). The grid is inlined here: an insight whose props are all
+  # static needs no model — it has no data job and renders from the props alone.
   - name: simple-image-plot
     props:
       type: image
-      z: ?{${ref(image-data).z}}
+      z:
+        - [[0, 0, 0], [255, 255, 255], [0, 0, 0], [255, 255, 255]]
+        - [[255, 255, 255], [0, 0, 0], [255, 255, 255], [0, 0, 0]]
+        - [[0, 0, 0], [255, 255, 255], [0, 0, 0], [255, 255, 255]]

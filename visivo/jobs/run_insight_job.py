@@ -35,12 +35,12 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
     insight_query_info = None
 
     try:
-        models = all_descendants_of_type(type=Model, dag=dag, from_node=insight)
+        models = insight.get_all_dependent_models(dag)
         if not models:
             # B9 guard: a model-less insight must fail ITS job with a legible
             # diagnostic, not IndexError into the generic except below.
             return _missing_model_result(insight, start_time)
-        model = models[0]
+        model = next(iter(models))
         source = get_source_for_model(model, dag, run_output_dir)
 
         insight_query_info = insight.get_query_info(dag, run_output_dir)
@@ -99,24 +99,19 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             ]
 
         # Store insight metadata with file references and post_query
-        insight_data = {
-            "name": insight.name,
-            "files": files,
-            "query": insight_query_info.post_query,
-            "props_mapping": insight_query_info.props_mapping,
-            "static_props": insight_query_info.static_props,  # Non-query props (e.g., marker.color)
+        _write_insight_json(
+            insights_directory,
+            insight,
+            files=files,
+            query=insight_query_info.post_query,
+            props_mapping=insight_query_info.props_mapping,
+            static_props=insight_query_info.static_props,  # Non-query props (e.g., marker.color)
             # Per-prop slice suffix from authored ?{...}[N|a:b] forms; the
             # viewer applies the slice to the bound array after the query
             # column is mapped to the prop. Empty when no prop has a slice.
-            "props_slices": insight_query_info.props_slices,
-            "split_key": insight_query_info.split_key,
-            "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
-        }
-
-        os.makedirs(insights_directory, exist_ok=True)
-        insight_path = os.path.join(insights_directory, f"{insight.name}.json")
-        with open(insight_path, "w") as f:
-            json.dump(insight_data, f, indent=2)
+            props_slices=insight_query_info.props_slices,
+            split_key=insight_query_info.split_key,
+        )
 
         success_message = format_message_success(
             details=f"Updated data for insight \033[4m{insight.name}\033[0m",
@@ -195,6 +190,86 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
         )
 
 
+def _write_insight_json(
+    insights_directory,
+    insight: Insight,
+    *,
+    files,
+    query,
+    props_mapping,
+    static_props,
+    props_slices,
+    split_key,
+):
+    """Write ``insights/<name>.json`` — the contract the viewer reads
+    (``useInsightsData`` / ``chartDataFromInsightData``)."""
+    insight_data = {
+        "name": insight.name,
+        "files": files,
+        "query": query,
+        "props_mapping": props_mapping,
+        "static_props": static_props,
+        "props_slices": props_slices,
+        "split_key": split_key,
+        "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
+    }
+    os.makedirs(insights_directory, exist_ok=True)
+    insight_path = os.path.join(insights_directory, f"{insight.name}.json")
+    with open(insight_path, "w") as f:
+        json.dump(insight_data, f, indent=2)
+
+
+def static_action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID):
+    """Job action for a static insight (``Insight.is_static``): nothing is
+    bound to a query, so there is no data to fetch — the artifact carries no
+    files and no post_query, only the resolved static props the viewer
+    renders the trace from (an inlined image ``z`` grid, a reference line…).
+    Insight refs in trace-id props are still resolved, so a static carpet /
+    contourcarpet pair binds correctly."""
+    start_time = time()
+    try:
+        static_props = insight.resolved_static_props(dag)
+        _write_insight_json(
+            f"{output_dir}/{run_id}/insights",
+            insight,
+            files=[],
+            query=None,
+            props_mapping={},
+            static_props=static_props,
+            props_slices={},
+            split_key=None,
+        )
+        return JobResult(
+            item=insight,
+            success=True,
+            message=format_message_success(
+                details=f"Updated data for static insight \033[4m{insight.name}\033[0m",
+                start_time=start_time,
+                full_path=None,
+            ),
+        )
+    except Exception as e:
+        message = getattr(e, "message", None) or str(e)
+        return JobResult(
+            item=insight,
+            success=False,
+            message=format_message_failure(
+                details=f"Failed job for insight \033[4m{insight.name}\033[0m",
+                start_time=start_time,
+                full_path=None,
+                error_msg=message,
+            ),
+            diagnostic=Diagnostic.from_exception(
+                e,
+                phase=DiagnosticPhase.RUN,
+                # A ValueError here is resolve_insight_refs rejecting a ref;
+                # anything else (e.g. an OSError on write) is unclassified.
+                code="broken_reference" if isinstance(e, ValueError) else "unexpected_error",
+                object=diagnostic_object_ref(insight),
+            ),
+        )
+
+
 def _missing_model_result(insight: Insight, start_time) -> JobResult:
     """The failed JobResult for an insight that references no model (B9)."""
     message = f"Insight '{insight.name}' does not reference a model, so it has no data to run."
@@ -230,10 +305,10 @@ def missing_model_action(insight: Insight) -> JobResult:
 def _get_source(insight, dag, output_dir):
     """Get the appropriate source for an insight, or None when the insight
     references no model."""
-    models = all_descendants_of_type(type=Model, dag=dag, from_node=insight)
+    models = insight.get_all_dependent_models(dag)
     if not models:
         return None
-    return get_source_for_model(models[0], dag, output_dir)
+    return get_source_for_model(next(iter(models)), dag, output_dir)
 
 
 def job(dag, output_dir: str, insight: Insight, run_id: str = None):
@@ -246,7 +321,15 @@ def job(dag, output_dir: str, insight: Insight, run_id: str = None):
         run_id: Optional run ID for preview runs (passed to action for custom file naming)
     """
     run_output_dir = f"{output_dir}/{run_id}" if run_id is not None else f"{output_dir}/main"
-    if not all_descendants_of_type(type=Model, dag=dag, from_node=insight):
+    if insight.is_static():
+        # Nothing to query: render from static props alone (see static_action).
+        # Checked before the model walk so a static contour that refs a
+        # model-backed carpet is not sent down the query path.
+        kwargs = {"insight": insight, "dag": dag, "output_dir": output_dir}
+        if run_id is not None:
+            kwargs["run_id"] = run_id
+        return Job(item=insight, source=None, action=static_action, **kwargs)
+    if not insight.get_all_dependent_models(dag):
         # B9: this used to IndexError right here — at job-creation time, inside
         # the DAG runner's scheduling loop — killing the whole run (and, from
         # `visivo run`, the process) instead of failing the one insight. Hand

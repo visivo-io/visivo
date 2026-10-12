@@ -6,7 +6,7 @@ import { contrastRatio } from './colorUtils';
 
 const SCHEMA_DIR = path.join(__dirname, '../../../visivo/schema');
 
-const NOT_TRACE_SCHEMAS = ['layout', 'trace-properties'];
+const NOT_TRACE_SCHEMAS = ['layout', 'trace-properties', 'required-fields'];
 const REMOVED_IN_PLOTLY_3 = ['area', 'heatmapgl', 'pointcloud'];
 const COLORWAY_ONLY = [
   'box',

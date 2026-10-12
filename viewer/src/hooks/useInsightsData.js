@@ -141,11 +141,15 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
 
     const { loaded, failed } = await loadInsightParquetFiles(db, files, forceReload);
 
-    const preparedQuery = prepPostQuery({ query }, inputs);
-
-    const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
-
-    const processedRows = processArrowResult(result);
+    // A static insight (no query bindings) ships no post_query: there is
+    // nothing to run in DuckDB — chartDataFromInsightData renders its trace
+    // from static_props alone.
+    let processedRows = [];
+    if (query) {
+      const preparedQuery = prepPostQuery({ query }, inputs);
+      const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
+      processedRows = processArrowResult(result);
+    }
 
     return {
       [insightName]: {

@@ -1,0 +1,74 @@
+# Two carpets on one chart. Each contourcarpet names the carpet it lies on
+# with `carpet: ${ref(<carpet insight>)}`; compile resolves the ref to that
+# carpet's trace id, so each contour binds to its own carpet rather than
+# falling back to the first one Plotly finds.
+sources:
+  - name: contourcarpet-two-carpets-source
+    type: duckdb
+    database: target/seeds/contourcarpet_two_carpets.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            a,b,x_left,y_left,x_right,y_right,z_left,z_right
+            0,0,0,0,6,0,1,9
+            1,0,1,0.2,7,0.2,2,8
+            2,0,2,0,8,0,3,7
+            0,1,0.2,1,6.2,1,4,6
+            1,1,1.2,1.2,7.2,1.2,5,5
+            2,1,2.2,1,8.2,1,6,4
+            0,2,0,2,6,2,7,3
+            1,2,1,2.2,7,2.2,8,2
+            2,2,2,2,8,2,9,1
+models:
+  - name: contourcarpet-two-carpets
+    source: ${ref(contourcarpet-two-carpets-source)}
+    sql: select * from model
+charts:
+  - name: two-carpets-contourcarpet-chart
+    layout:
+      title:
+        text: Two Carpets<br><sub>Each contour bound to its own carpet by ${ref(...)}</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis"
+    insights:
+      - ${ref(left-carpet)}
+      - ${ref(left-contour)}
+      - ${ref(right-carpet)}
+      - ${ref(right-contour)}
+insights:
+  - name: left-carpet
+    props:
+      type: carpet
+      a: ?{${ref(contourcarpet-two-carpets).a}}
+      b: ?{${ref(contourcarpet-two-carpets).b}}
+      x: ?{${ref(contourcarpet-two-carpets).x_left}}
+      y: ?{${ref(contourcarpet-two-carpets).y_left}}
+  - name: left-contour
+    props:
+      type: contourcarpet
+      carpet: ${ref(left-carpet)}
+      z: ?{${ref(contourcarpet-two-carpets).z_left}}
+      colorscale: "Blues"
+      showscale: false
+  - name: right-carpet
+    props:
+      type: carpet
+      # An explicit id works too; ${ref(right-carpet)} resolves to it.
+      carpet: right
+      a: ?{${ref(contourcarpet-two-carpets).a}}
+      b: ?{${ref(contourcarpet-two-carpets).b}}
+      x: ?{${ref(contourcarpet-two-carpets).x_right}}
+      y: ?{${ref(contourcarpet-two-carpets).y_right}}
+  - name: right-contour
+    props:
+      type: contourcarpet
+      carpet: ${ref(right-carpet)}
+      z: ?{${ref(contourcarpet-two-carpets).z_right}}
+      colorscale: "Reds"
+      showscale: false
