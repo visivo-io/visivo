@@ -26,6 +26,7 @@ from visivo.models.insight import Insight
 from visivo.server.jobs.project_injection import (
     inject_cached_objects,
     merge_objects_into_list,
+    renest_model_scoped_fields,
 )
 
 # Mirrors the pre-#507 ``preview_job_executor.py``'s ``CONTEXT_OBJECT_TYPES``
@@ -125,6 +126,22 @@ def _inject_model_scoped_fields(project, field_name, configs):
         setattr(project, field_name, merge_objects_into_list(existing, project_level))
 
 
+def _carry_forward_nested_fields(existing, replacement, config):
+    """A draft model dict is a partial override ({name, sql, source}): keep the
+    metrics/dimensions of the model it replaces unless the dict lists its own."""
+    if existing is None:
+        return
+    cfg = config if isinstance(config, dict) else {}
+    for field_attr in _MODEL_SCOPED_FIELDS:
+        if cfg.get(field_attr) is not None:
+            continue
+        inherited = list(getattr(existing, field_attr, None) or [])
+        for field in inherited:
+            field.set_parent_name(replacement.name)
+        if inherited:
+            setattr(replacement, field_attr, inherited)
+
+
 def _inject_draft_objects(project, draft_objects):
     """``draft_objects``: ``{"models": [...], "metrics": [...], "dimensions": [...]}``
     of wire-shaped config dicts -> validated Pydantic instances, merged by
@@ -144,30 +161,18 @@ def _inject_draft_objects(project, draft_objects):
             validated = [adapter.validate_python(c) for c in configs]
         except ValidationError as e:
             raise DraftOverlayError(f"Invalid draft {field_name}: {e}") from e
-        # A DRAFT model exists solely to be compiled + executed for this
-        # insight preview, so it MUST carry executable SQL. Before #533,
-        # ``ModelField`` was a discriminated union whose discriminator returned
-        # no tag for a dict lacking a ``sql`` (/``args``/``models``) key, so a
-        # SQL-less model dict failed validation outright. #533 collapsed the
-        # union to a bare ``SqlModel`` (csv-script / local-merge models became
-        # seeds) whose ``sql`` is Optional — a *published* SqlModel may legally
-        # be a pure metric/dimension container. That dropped the implicit gate:
-        # a ``{"name": ...}`` draft model now validates with ``sql=None`` and
-        # silently slips downstream, where ``get_query_info`` fails with a
-        # "model not run" marker (a 422) instead of the intended clean 400.
-        # Re-assert the gate explicitly for the draft flow only.
+        obj_list = list(getattr(project, field_name, None) or [])
+        # ``SqlModel.sql`` is Optional, but a draft model must be executable: reject it
+        # here as a clean 400 rather than a downstream "model not run" 422.
         if field_name == "models":
-            for obj in validated:
-                # Blank / whitespace-only sql is as unexecutable as sql=None —
-                # gate both here so they produce the same clean 400 rather than
-                # letting an empty string slip through to a confusing downstream
-                # "model not run" 422.
+            shadowed = {getattr(m, "name", None): m for m in obj_list}
+            for config, obj in zip(configs, validated):
                 if not (getattr(obj, "sql", None) or "").strip():
                     raise DraftOverlayError(
                         f"Invalid draft models: model '{obj.name}' defines no `sql` — "
                         "a draft model must carry an executable SQL query."
                     )
-        obj_list = list(getattr(project, field_name, None) or [])
+                _carry_forward_nested_fields(shadowed.get(obj.name), obj, config)
         new_objects = [(obj.name, obj) for obj in validated]
         setattr(project, field_name, merge_objects_into_list(obj_list, new_objects))
 
@@ -205,6 +210,8 @@ def build_draft_overlay(
             "dimensions": draft_dimensions,
         },
     )
+    # A draft model may be the owner of a field already in the manager cache.
+    renest_model_scoped_fields(project)
 
     try:
         insight = Insight.model_validate(insight_config)

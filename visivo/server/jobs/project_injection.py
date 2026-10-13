@@ -86,10 +86,38 @@ def replace_inline_definitions(container, replacements, _seen=None):
     return replaced
 
 
+def renest_model_scoped_fields(project):
+    """Move cached model-scoped metrics/dimensions from the top-level lists back under their model.
+
+    ``_parent_name`` is a PrivateAttr and does not survive ``model_dump()``, and
+    ``${ref(model).field}`` only searches the model's own fields, so nesting is the only
+    durable record of the scope. A field whose model is missing stays top-level so the
+    validators report it.
+    """
+    for field_attr in ("metrics", "dimensions"):
+        remaining = []
+        for field in getattr(project, field_attr, None) or []:
+            parent_name = getattr(field, "_parent_name", None)
+            if not parent_name:
+                remaining.append(field)
+                continue
+            owner = next(
+                (m for m in project.models or [] if getattr(m, "name", None) == parent_name), None
+            )
+            if owner is None:
+                remaining.append(field)
+                continue
+            owned = list(getattr(owner, field_attr, None) or [])
+            owned = [o for o in owned if getattr(o, "name", None) != field.name] + [field]
+            setattr(owner, field_attr, owned)
+        setattr(project, field_attr, remaining)
+
+
 def inject_cached_objects(flask_app, project):
     """Overlay every manager's cached objects onto ``project`` so refs to
     objects that exist only in the cached tier (created/modified in the editor,
-    not yet written to YAML) resolve during the run."""
+    not yet written to YAML) resolve during the run. Re-nesting runs last so a
+    field lands on the cached model, not the published one."""
     for manager_attr, project_field in MANAGER_TO_PROJECT_FIELD:
         manager = getattr(flask_app, manager_attr, None)
         if not manager:
@@ -104,3 +132,4 @@ def inject_cached_objects(flask_app, project):
         nested = replace_inline_definitions(project, inline_drafts) if inline_drafts else set()
         new_objects = [(name, deepcopy(obj)) for name, obj in drafts.items() if name not in nested]
         setattr(project, project_field, merge_objects_into_list(obj_list, new_objects))
+    renest_model_scoped_fields(project)

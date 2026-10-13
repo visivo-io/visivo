@@ -280,6 +280,157 @@ class TestBuildDraftOverlayModelScopedDraftFields:
         assert matching[0].expression == "avg(amount)"
 
 
+# The Explorer sends a draft model like this for every open model on each preview.
+_CLIENT_DRAFT_MODEL = {
+    "name": "orders_q",
+    "sql": "select * from orders",
+    "source": "${ref(warehouse)}",
+}
+_WIRE_SHAPES = pytest.mark.parametrize(
+    "draft_models",
+    [pytest.param(None, id="no_draft_models"), pytest.param([_CLIENT_DRAFT_MODEL], id="client")],
+)
+
+
+def _bar_insight(model="orders_q", y="${ref(orders_q).avg_total}"):
+    return {
+        "name": "draft_insight",
+        "props": {"type": "bar", "x": f"?{{${{ref({model}).region}}}}", "y": f"?{{{y}}}"},
+    }
+
+
+def _app_with_cached_metric(project, parent="orders_q"):
+    from types import SimpleNamespace
+
+    cached = Metric(name="avg_total", expression="avg(amount)")
+    cached.set_parent_name(parent)
+    app = FlaskAppStub(project)
+    app.metric_manager = SimpleNamespace(cached_objects={"avg_total": cached})
+    return app
+
+
+def _compile(dag, insight, tmp_path):
+    model_node = dag.get_descendant_by_name("orders_q")
+    # The client also lists computed columns as raw columns, so a lost metric
+    # silently resolves to the raw column instead of failing.
+    columns = {"region": "VARCHAR", "amount": "DOUBLE", "avg_total": "DOUBLE"}
+    return insight.get_query_info(
+        dag,
+        str(tmp_path),
+        schema_overrides={"orders_q": {model_node.name_hash(): columns}},
+        force_dynamic=True,
+    )
+
+
+class TestBuildDraftOverlayModelScopedCachedFields:
+    """A model-scoped field saved in the editor but not yet committed."""
+
+    @_WIRE_SHAPES
+    def test_a_cached_model_scoped_metric_lands_on_its_model(
+        self, project_with_model, draft_models
+    ):
+        app = _app_with_cached_metric(project_with_model)
+
+        project, dag, _ = build_draft_overlay(app, _bar_insight(), draft_models=draft_models)
+
+        model_node = dag.get_descendant_by_name("orders_q")
+        assert [m.name for m in model_node.metrics or []] == ["avg_total"]
+        assert model_node.metrics[0]._parent_name == "orders_q"
+        assert all(m.name != "avg_total" for m in (project.metrics or []))
+
+    @_WIRE_SHAPES
+    def test_a_cached_model_scoped_metric_compiles_as_an_aggregate(
+        self, project_with_model, tmp_path, draft_models
+    ):
+        app = _app_with_cached_metric(project_with_model)
+
+        _, dag, insight = build_draft_overlay(app, _bar_insight(), draft_models=draft_models)
+        post_query = (_compile(dag, insight, tmp_path).post_query or "").lower()
+
+        assert "avg(" in post_query
+        assert "group by" in post_query
+
+    @_WIRE_SHAPES
+    def test_a_cached_model_scoped_metric_still_answers_a_bare_ref(
+        self, project_with_model, tmp_path, draft_models
+    ):
+        app = _app_with_cached_metric(project_with_model)
+
+        _, dag, insight = build_draft_overlay(
+            app, _bar_insight(y="${ref(avg_total)}"), draft_models=draft_models
+        )
+
+        assert "avg(" in (_compile(dag, insight, tmp_path).post_query or "").lower()
+
+    def test_the_field_is_nested_once_its_model_arrives_on_the_wire(self, project_with_model):
+        app = _app_with_cached_metric(project_with_model, parent="cohort_q")
+
+        project, dag, _ = build_draft_overlay(
+            app,
+            _bar_insight(model="cohort_q", y="${ref(cohort_q).avg_total}"),
+            draft_models=[
+                {"name": "cohort_q", "sql": "select * from cohorts", "source": "${ref(warehouse)}"}
+            ],
+        )
+
+        model_node = dag.get_descendant_by_name("cohort_q")
+        assert [m.name for m in model_node.metrics or []] == ["avg_total"]
+        assert all(m.name != "avg_total" for m in (project.metrics or []))
+
+
+class TestBuildDraftOverlayDraftModelPreservesNestedFields:
+    def test_a_published_nested_metric_survives_the_client_draft_model(
+        self, flask_app, project_with_model, tmp_path
+    ):
+        project_with_model.models[0].metrics = [Metric(name="avg_total", expression="avg(amount)")]
+
+        _, dag, insight = build_draft_overlay(
+            flask_app, _bar_insight(), draft_models=[_CLIENT_DRAFT_MODEL]
+        )
+
+        model_node = dag.get_descendant_by_name("orders_q")
+        assert [m.name for m in model_node.metrics or []] == ["avg_total"]
+        assert model_node.metrics[0]._parent_name == "orders_q"
+        assert "avg(" in (_compile(dag, insight, tmp_path).post_query or "").lower()
+
+    def test_a_draft_model_that_declares_its_own_metrics_overrides_them(
+        self, flask_app, project_with_model
+    ):
+        project_with_model.models[0].metrics = [Metric(name="avg_total", expression="avg(amount)")]
+
+        project, _, _ = build_draft_overlay(
+            flask_app,
+            _bar_insight(y="${ref(orders_q).max_total}"),
+            draft_models=[
+                dict(
+                    _CLIENT_DRAFT_MODEL,
+                    metrics=[{"name": "max_total", "expression": "max(amount)"}],
+                )
+            ],
+        )
+
+        model = next(m for m in project.models if m.name == "orders_q")
+        assert [m.name for m in model.metrics] == ["max_total"]
+
+    def test_a_scratch_model_does_not_inherit_another_models_fields(
+        self, flask_app, project_with_model
+    ):
+        project_with_model.models[0].metrics = [Metric(name="avg_total", expression="avg(amount)")]
+
+        project, _, _ = build_draft_overlay(
+            flask_app,
+            insight_config(model_name="cohort_q"),
+            draft_models=[
+                {"name": "cohort_q", "sql": "select * from cohorts", "source": "${ref(warehouse)}"}
+            ],
+        )
+
+        scratch = next(m for m in project.models if m.name == "cohort_q")
+        assert scratch.metrics == []
+        published = next(m for m in project.models if m.name == "orders_q")
+        assert [m.name for m in published.metrics] == ["avg_total"]
+
+
 class TestBuildDraftOverlayNameShadowing:
     def test_a_draft_model_reusing_a_real_published_name_shadows_it_in_the_ephemeral_copy_only(
         self, flask_app, project_with_model
