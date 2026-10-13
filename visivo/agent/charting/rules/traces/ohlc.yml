@@ -1,11 +1,6 @@
 type: ohlc
 family: financial
 status: niche
-tier: extended
-author: opus-5.5
-review: {state: approved, by: fable-5.1, date: 2026-10-10}
-
-confidence: 0.75
 one_liner: Open/high/low/close as tick bars; a thinner candlestick for finance readers who expect bar charts.
 use_when:
   - "The same OHLC shape as candlestick and the audience explicitly asks for tick bars (traders, print/monochrome)."
@@ -21,8 +16,7 @@ data_shape:
   dimension_roles: [time]
   cardinality: {min: 10, max: 800}
 required_props: [x, open, high, low, close]
-example: test-projects/docs-examples/dashboards/ohlc/simple.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: aapl-daily-ohlc
       props:
@@ -33,15 +27,17 @@ minimal_yaml: |
         low: ?{ ${ref(aapl).low} }
         close: ?{ ${ref(aapl).close} }
         tickwidth: 0.3
-encodings_that_scale:
-  - "volume → a `bar` insight on `yaxis: y2` in its own domain below the price (same as candlestick)"
-  - "a second security → input filter on the ticker (the multi-stock docs example uses two filtered insights)"
+variations:
+  - when: "volume"
+    then: "a `bar` insight on `yaxis: y2` in its own domain below the price (same as candlestick)"
+  - when: "a second security"
+    then: "input filter on the ticker (the multi-stock docs example uses two filtered insights)"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [regrain, input_filter, small_multiples]
 transforms: [regrain]
-visivo_gotchas:
+gotchas:
   - "Same range slider default as candlestick: set `layout.xaxis.rangeslider.visible: false` on dashboards."
   - "Same weekend gaps: `xaxis.rangebreaks: [{bounds: [sat, mon]}]` on a real date axis."
   - "Every docs example sets `increasing/decreasing.line.color` to constants, opting out of the theme; leave them unset unless the brand requires it."

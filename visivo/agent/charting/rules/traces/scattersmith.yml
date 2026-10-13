@@ -1,11 +1,6 @@
 type: scattersmith
 family: ternary_smith
 status: niche
-tier: extended
-author: opus-5.5
-review: {state: approved, by: fable-5.1, date: 2026-10-10}
-
-confidence: 0.8
 one_liner: Smith chart of normalized complex impedance for RF engineering; essentially never right for BI data.
 use_when:
   - "RF / network-analyzer data only: normalized complex impedance or reflection (real, imag ÷ Z0) swept over frequency, and the user asked for a Smith chart."
@@ -19,8 +14,7 @@ data_shape:
   dimension_roles: [numeric_continuous, categorical]
   cardinality: null
 required_props: [real, imag]
-example: test-projects/docs-examples/dashboards/scattersmith/lines.visivo.yml
-minimal_yaml: |
+example: |
   # vna_sweep: one row per frequency point (frequency_hz, r_ohm, x_ohm, device)
   insights:
     - name: antenna-impedance
@@ -33,15 +27,17 @@ minimal_yaml: |
       interactions:
         - split: ?{ ${ref(vna_sweep).device} }
         - sort: ?{ ${ref(vna_sweep).frequency_hz} ASC }
-encodings_that_scale:
-  - "devices / runs → `split` (≤5)"
-  - "frequency → `text` on hover or `marker.color` with a colorscale (it encodes data)"
+variations:
+  - when: "devices / runs"
+    then: "`split` (≤5)"
+  - when: "frequency"
+    then: "`text` on hover or `marker.color` with a colorscale (it encodes data)"
 limits:
   series_ideal: 3
   series_max: 5
   repair: [input_filter]
 transforms: []
-visivo_gotchas:
+gotchas:
   - "`real`/`imag` are normalized impedance: divide by Z0 in SQL; raw ohms put every point at the rim."
   - "Sort by frequency or the sweep zig-zags (same rule as scatter lines)."
   - "Write every column as `${ref(model).col}`; the docs examples use a bare `?{real}`, and `real` is also a SQL type keyword."

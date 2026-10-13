@@ -1,10 +1,6 @@
 type: indicator
 family: kpi
 status: preferred
-tier: core
-author: fable-5.1
-review: {state: pending, by: null, date: null}
-confidence: null
 one_liner: One number, optionally with a delta against a reference or a gauge against a target.
 use_when:
   - A single aggregate the dashboard is about (total rides, revenue, average fare) — a KPI strip of 2–4.
@@ -19,8 +15,7 @@ data_shape:
   dimensions: {min: 0, max: 1}
   dimension_roles: [time]
 required_props: [value]
-example: test-projects/docs-examples/dashboards/indicator/delta.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: total-rides
       props:
@@ -34,16 +29,19 @@ minimal_yaml: |
           suffix: " rides"
       interactions:
         - sort: ?{ date_trunc('month', ${ref(trips).pickup_at}) DESC }
-encodings_that_scale:
-  - "period-over-period → aggregate by period, `sort` DESC, `value: [0]`, `delta.reference: [1]`"
-  - "target → `gauge.axis.range` and `gauge.threshold.value`"
-  - "several KPIs in one chart → `domain.x`/`domain.y` per insight (indicators-and-trends example), or one chart per KPI in a `kpi` row"
+variations:
+  - when: "period-over-period"
+    then: "aggregate by period, `sort` DESC, `value: [0]`, `delta.reference: [1]`"
+  - when: "target"
+    then: "`gauge.axis.range` and `gauge.threshold.value`"
+  - when: "several KPIs in one chart"
+    then: "`domain.x`/`domain.y` per insight (indicators-and-trends example), or one chart per KPI in a `kpi` row"
 limits:
   series_ideal: 1
   series_max: 1
   repair: []
 transforms: [regrain]
-visivo_gotchas:
+gotchas:
   - "`value` must be a single cell: `?{ sum(x) }[0]`. Without `[0]` the whole column is passed and nothing renders."
   - "A delta needs two rows in a known order: group by period and `sort` DESC so `[0]` is current and `[1]` previous."
   - "Units go in `number.prefix`/`number.suffix`; the number itself should stay a plain aggregate for `valueformat` to work."

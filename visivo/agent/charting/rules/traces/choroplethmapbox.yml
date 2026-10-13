@@ -1,11 +1,6 @@
 type: choroplethmapbox
 family: geo_region
 status: deprecated
-tier: extended
-author: opus-5.5
-review: {state: approved, by: fable-5.1, date: 2026-10-10}
-
-confidence: 0.85
 one_liner: Deprecated Mapbox GL twin of choroplethmap; never pick it for a new chart, migrate it to choroplethmap.
 use_when:
   - "Never for new charts. Only when editing an existing insight that already uses it; migrate it to `choroplethmap`."
@@ -19,7 +14,7 @@ data_shape:
   dimension_roles: [geo_region]
   cardinality: {min: 3, max: 2000}
 required_props: [geojson, locations, z]
-minimal_yaml: |
+example: |
   insights:
     - name: rides-by-zone-legacy
       props:
@@ -29,14 +24,15 @@ minimal_yaml: |
         locations: ?{ ${ref(trips).pickup_zone_id} }
         z: ?{ count(*) }
         marker: {opacity: 0.75}
-encodings_that_scale:
-  - "same as choroplethmap: a second metric goes to `text`/`hovertemplate`, a period to an input `filter`"
+variations:
+  - when: "TODO"
+    then: "same as choroplethmap: a second metric goes to `text`/`hovertemplate`, a period to an input `filter`"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [input_filter]
 transforms: [rate_per_capita]
-visivo_gotchas:
+gotchas:
   - "Migrate: change `type` to `choroplethmap` and any chart `layout.mapbox` to `layout.map`; `geojson`, `featureidkey`, `below` carry over."
   - "It renders tokenless today only because the theme sets `layout.mapbox.style` to a carto style; a `mapbox://` style needs a token."
   - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."

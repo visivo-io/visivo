@@ -1,11 +1,6 @@
 type: barpolar
 family: polar
 status: niche
-tier: extended
-author: opus-5.5
-review: {state: approved, by: fable-5.1, date: 2026-10-10}
-
-confidence: 0.75
 one_liner: Bars around a circle; only for a cyclic axis (hour of day, weekday, month, compass) where the wrap-around matters.
 use_when:
   - "A `time` dimension extracted to a cycle part — `time_grain` hour → 24 wedges, day-of-week → 7, month-of-year → 12 — as `theta`, one additive metric as `r`."
@@ -23,8 +18,7 @@ data_shape:
   dimension_roles: [time, categorical]
   cardinality: {min: 7, max: 36}
 required_props: [r, theta]
-example: test-projects/docs-examples/dashboards/barpolar/wind-rose.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: rides-by-hour-of-day
       props:
@@ -39,16 +33,19 @@ minimal_yaml: |
         - ${ref(rides-by-hour-of-day)}
       layout:
         polar: {angularaxis: {direction: clockwise, rotation: 90}}
-encodings_that_scale:
-  - "second categorical (few, additive) → `split`; stacks into a rose (wind-rose example)"
-  - "a second cyclic dimension → switch to heatmap (hour × weekday); never a split per weekday"
-  - "a non-cyclic second dimension (borough) → input_filter or small_multiples of one rose each"
+variations:
+  - when: "second categorical (few, additive)"
+    then: "`split`; stacks into a rose (wind-rose example)"
+  - when: "a second cyclic dimension"
+    then: "switch to heatmap (hour × weekday); never a split per weekday"
+  - when: "a non-cyclic second dimension (borough)"
+    then: "input_filter or small_multiples of one rose each"
 limits:
   series_ideal: 3
   series_max: 6
   repair: [regrain, bar, heatmap, input_filter]
 transforms: [regrain, bucket, collapse_rare]
-visivo_gotchas:
+gotchas:
   - "Numeric `theta` is read as degrees: `extract(hour ...)` squeezes 24 bars into 0–23°. Emit a zero-padded label (`strftime(ts, '%H')`) for a category axis, or multiply (`hour * 15`)."
   - "A category angular axis only has the slots present in the data; a missing hour shifts every later wedge. Build a complete spine (`generate_series` + LEFT JOIN) or set `angularaxis.categoryarray`."
   - "Weekday/month names sort alphabetically; sort on `isodow`/`month` and label with `dayname`/`monthname` (wind-rose sorts on `cardinal_order`)."

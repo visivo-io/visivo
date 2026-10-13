@@ -1,10 +1,6 @@
 type: choropleth
 family: geo_region
 status: preferred
-tier: core
-author: fable-5.1
-review: {state: pending, by: null, date: null}
-confidence: null
 one_liner: Color countries or US states by a metric using built-in boundaries; no GeoJSON needed.
 use_when:
   - "A `geo_region` column whose `geo_kind` is iso3, iso2 (via name), country_name or us_state — Plotly ships these boundaries."
@@ -21,8 +17,7 @@ data_shape:
   dimension_roles: [geo_region]
   cardinality: {min: 3}
 required_props: [locations, z]
-example: test-projects/docs-examples/dashboards/choropleth/simple.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: rides-by-state
       props:
@@ -32,16 +27,19 @@ minimal_yaml: |
         z: ?{ count(*) }
         colorscale: Blues
         colorbar: {title: {text: rides}}
-encodings_that_scale:
-  - "scope → chart `layout.geo.scope` (usa, europe, …) and `projection.type`; otherwise the world is drawn around three states"
-  - "two metrics → size is impossible; color one, put the other in `text`/`hovertemplate`"
-  - "a period input → `filter` on the insight; the map re-colors client-side"
+variations:
+  - when: "scope"
+    then: "chart `layout.geo.scope` (usa, europe, …) and `projection.type`; otherwise the world is drawn around three states"
+  - when: "two metrics"
+    then: "size is impossible; color one, put the other in `text`/`hovertemplate`"
+  - when: "a period input"
+    then: "`filter` on the insight; the map re-colors client-side"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [input_filter]
 transforms: [rate_per_capita, regrain]
-visivo_gotchas:
+gotchas:
   - "`locationmode` must match the column: `ISO-3` (USA, FRA), `USA-states` (NY, NJ), `country names` (United States). Mismatched codes draw an empty map with no error."
   - "`z` must be aggregated per region (one row per location); duplicate locations are drawn on top of each other and only the last shows."
   - "Set `layout.geo.scope` (`usa` for states) — the default is the world and US states are a smudge."

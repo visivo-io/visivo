@@ -1,10 +1,6 @@
 type: waterfall
 family: waterfall
 status: preferred
-tier: core
-author: fable-5.1
-review: {state: pending, by: null, date: null}
-confidence: null
 one_liner: Signed contributions that bridge a start total to an end total; the chart for 'what changed and why'.
 use_when:
   - "`semantics.signed_contributions`: positive and negative parts that sum from one total to another (revenue bridge, budget variance, month-over-month change by driver)."
@@ -21,8 +17,7 @@ data_shape:
   dimension_roles: [categorical, time, boolean]
   cardinality: {min: 3, max: 12}
 required_props: [x, y]
-example: test-projects/docs-examples/dashboards/waterfall/financial.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: revenue-bridge
       props:
@@ -33,16 +28,19 @@ minimal_yaml: |
         connector: {line: {width: 1}}
       interactions:
         - sort: ?{ ${ref(bridge).step_order} ASC }
-encodings_that_scale:
-  - "multi-level x (half, quarter) → `x` as a list of two columns (financial example)"
-  - "subtotals → rows with `measure = 'total'` placed where the running sum should be shown"
-  - "amount labels → `texttemplate: '%{delta:$,.0f}'`, `textposition: outside`"
+variations:
+  - when: "multi-level x (half, quarter)"
+    then: "`x` as a list of two columns (financial example)"
+  - when: "subtotals"
+    then: "rows with `measure = 'total'` placed where the running sum should be shown"
+  - when: "amount labels"
+    then: "`texttemplate: '%{delta:$,.0f}'`, `textposition: outside`"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [collapse_rare]
 transforms: [collapse_rare, stage_order]
-visivo_gotchas:
+gotchas:
   - "`measure` is a column of `relative` | `total` | `absolute` per row; omit it and every bar is relative, so the end total floats instead of dropping to the axis."
   - "Order is everything: sort by an explicit step_order column; alphabetical steps scramble the bridge."
   - "Totals rows carry the *level* in `y`, relative rows the *delta*; mixing them double-counts."

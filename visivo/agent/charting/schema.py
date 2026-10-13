@@ -12,7 +12,6 @@ Nothing here is a project object: these models are not under
 ``visivo/models`` and never reach the project schema or a ``.visivo.yml``.
 """
 
-import datetime as _dt
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -107,8 +106,6 @@ FAMILIES = (
     "image",
     "table",
 )
-
-TRACE_TIERS = ("core", "extended")
 
 
 class _Strict(BaseModel):
@@ -291,51 +288,49 @@ class FamilyRule(_Strict):
         return self
 
 
-class Review(_Strict):
-    state: Literal["pending", "approved", "changes_requested"] = "pending"
-    by: Optional[str] = None
-    date: Optional[_dt.date] = None
-
-
 class DataShape(_Strict):
     metrics: MinMax = Field(default_factory=MinMax)
     dimensions: MinMax = Field(default_factory=MinMax)
     dimension_roles: List[Role] = Field(default_factory=list)
     cardinality: Optional[MinMax] = None
+    axis_points: Optional[MinMax] = None
+
+
+class Variation(_Strict):
+    when: str
+    then: str
+
+
+class OtherUse(_Strict):
+    use: str
+    how: str
 
 
 class TraceEntry(_Strict):
-    """One ``rules/traces/<type>.yml``. Fields that feed ``families.yml`` are
-    ``data_shape``, ``encodings_that_scale``, ``limits``, ``transforms``,
-    ``pairings`` and ``layout``; the rest is for the rendered skill."""
+    """One ``rules/traces/<type>.yml``: what the agent reads to choose a trace
+    and write it."""
 
     type: str
     family: str
     secondary_families: List[str] = Field(default_factory=list)
     status: Literal["preferred", "niche", "deprecated"] = "preferred"
-    tier: Literal["core", "extended"]
-    author: str
-    review: Review = Field(default_factory=Review)
-    confidence: Optional[float] = Field(default=None, ge=0, le=1)
     one_liner: str = Field(max_length=120)
     use_when: List[str] = Field(min_length=1, max_length=4)
+    other_uses: List[OtherUse] = Field(default_factory=list, max_length=4)
     avoid_when: List[str] = Field(min_length=1, max_length=4)
     data_shape: DataShape
     required_props: List[str] = Field(default_factory=list)
-    minimal_yaml: str
-    # Repo-relative path of the docs-example the snippet was checked against.
-    # Core entries must cite one; extended entries may, when one exists.
-    example: Optional[str] = None
-    encodings_that_scale: List[str] = Field(default_factory=list)
+    example: str
+    variations: List[Variation] = Field(default_factory=list)
     limits: Limits = Field(default_factory=Limits)
     transforms: List[str] = Field(default_factory=list)
-    visivo_gotchas: List[str] = Field(default_factory=list, max_length=5)
+    gotchas: List[str] = Field(default_factory=list, max_length=5)
     pairings: List[str] = Field(default_factory=list)
     layout: LayoutHint = Field(default_factory=LayoutHint)
     mobile: Optional[str] = None
 
     @model_validator(mode="after")
-    def _review_markers(self):
+    def _consistent(self):
         if self.type not in KNOWN_TYPES:
             raise ValueError(f"'{self.type}' is not a Plotly trace type or a table type")
         for family in [self.family, *self.secondary_families]:
@@ -343,22 +338,16 @@ class TraceEntry(_Strict):
                 raise ValueError(f"'{family}' is not one of the families {list(FAMILIES)}")
         if self.family in self.secondary_families:
             raise ValueError("secondary_families repeats the primary family")
-        if self.tier == "extended" and self.confidence is None:
-            raise ValueError("an extended-tier entry must state its confidence")
-        if self.tier == "core" and not self.example:
-            raise ValueError(
-                "a core-tier entry must cite the docs-example its snippet was checked against"
-            )
-        if len(self.minimal_yaml.strip().splitlines()) > 15:
-            raise ValueError("minimal_yaml must be 15 lines or fewer")
-        if f"type: {self.type}" not in self.minimal_yaml and self.type not in TABLE_TYPES:
-            raise ValueError(f"minimal_yaml must set 'type: {self.type}'")
+        if len(self.example.strip().splitlines()) > 20:
+            raise ValueError("example must be 20 lines or fewer")
+        if f"type: {self.type}" not in self.example and self.type not in TABLE_TYPES:
+            raise ValueError(f"example must set 'type: {self.type}'")
         try:
             import yaml
 
-            yaml.safe_load(self.minimal_yaml)
+            yaml.safe_load(self.example)
         except Exception as error:
-            raise ValueError(f"minimal_yaml is not valid YAML: {str(error).splitlines()[0]}")
+            raise ValueError(f"example is not valid YAML: {str(error).splitlines()[0]}")
         return self
 
     def families(self):

@@ -1,10 +1,6 @@
 type: scattermap
 family: geo_point
 status: preferred
-tier: core
-author: fable-5.1
-review: {state: pending, by: null, date: null}
-confidence: null
 one_liner: Points on a tiled street map from lat/lon, sized or colored by a metric.
 use_when:
   - "Two `geo_point` columns (`geo_kind: latlon`) — pickup locations, stores, sensors — with ≤ 5 000 points after aggregation."
@@ -21,8 +17,7 @@ data_shape:
   dimension_roles: [geo_point, categorical, boolean]
   cardinality: {max: 5000}
 required_props: [lat, lon]
-example: test-projects/docs-examples/dashboards/charts/scattermap.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: pickups-by-zone
       props:
@@ -36,17 +31,21 @@ minimal_yaml: |
           sizemode: diameter
       interactions:
         - split: ?{ ${ref(trips).company} }
-encodings_that_scale:
-  - "a metric → `marker.size` (use `sqrt` so area, not diameter, is proportional) with `sizemode: diameter`"
-  - "a `few` categorical → `split` (one series per value, theme-colored) rather than `marker.color`"
-  - "many raw points → `cluster.enabled: true`, or aggregate to zone/grid in SQL"
-  - "a second metric → `marker.color` from a data column with `marker.colorscale` (the legitimate color case)"
+variations:
+  - when: "a metric"
+    then: "`marker.size` (use `sqrt` so area, not diameter, is proportional) with `sizemode: diameter`"
+  - when: "a `few` categorical"
+    then: "`split` (one series per value, theme-colored) rather than `marker.color`"
+  - when: "many raw points"
+    then: "`cluster.enabled: true`, or aggregate to zone/grid in SQL"
+  - when: "a second metric"
+    then: "`marker.color` from a data column with `marker.colorscale` (the legitimate color case)"
 limits:
   series_ideal: 5
   series_max: 10
   repair: [top_n_other, input_filter, densitymap]
 transforms: [aggregate_to_centroid, grid_bucket, top_n_other]
-visivo_gotchas:
+gotchas:
   - "Aggregate to a location first (`GROUP BY zone`, `avg(lat)`, `avg(lon)`, `count(*)`); one dot per raw row is slow and shows only density."
   - "`lat` before `lon` in your head, but swap them once and every point is in the ocean; check `stats.min/max` (lat ∈ [-90, 90])."
   - "Set `layout.map.center` and `zoom` from the data's bounding box; the default shows the world."

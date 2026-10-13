@@ -1,11 +1,6 @@
 type: sunburst
 family: hierarchy
 status: preferred
-tier: extended
-author: opus-5.5
-review: {state: approved, by: fable-5.1, date: 2026-10-10}
-
-confidence: 0.75
 one_liner: Concentric rings, one per level; beats a treemap when the shape of the hierarchy matters more than leaf areas.
 use_when:
   - "A 2–4 level hierarchy with one additive metric where the question is how each parent splits (every level stays visible as its own ring)."
@@ -22,8 +17,7 @@ data_shape:
   dimension_roles: [categorical, geo_region, boolean]
   cardinality: {min: 3, max: 100}
 required_props: [labels, parents]
-example: test-projects/docs-examples/dashboards/sunburst/simple.visivo.yml
-minimal_yaml: |
+example: |
   models:
     - name: trip_nodes
       sql: >-
@@ -39,16 +33,19 @@ minimal_yaml: |
         values: ?{ sum(${ref(trip_nodes).trips}) }
         branchvalues: total
         maxdepth: 3
-encodings_that_scale:
-  - "a second metric (a rate) → numeric `marker.colors` + `marker.colorscale`, exactly as on treemap"
-  - "deeper trees → `maxdepth: 2` with click-to-zoom; the centre becomes the breadcrumb"
-  - "comparing the same hierarchy across a `few` groups → small multiples of sunbursts with `domain`, never a `split`"
+variations:
+  - when: "a second metric (a rate)"
+    then: "numeric `marker.colors` + `marker.colorscale`, exactly as on treemap"
+  - when: "deeper trees"
+    then: "`maxdepth: 2` with click-to-zoom; the centre becomes the breadcrumb"
+  - when: "comparing the same hierarchy across a `few` groups"
+    then: "small multiples of sunbursts with `domain`, never a `split`"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [top_n_other, input_filter]
 transforms: [top_n_other, collapse_rare]
-visivo_gotchas:
+gotchas:
   - "Treemap's rules apply verbatim: UNION ALL one SELECT per level, every parent present as a node row, `branchvalues: total` for pre-summed rows (the docs examples omit it, so their root ring is inflated)."
   - "A child label that repeats under several parents (Cash under every borough) needs `ids` (path-style `borough/payment`) and `parents` pointing at those ids; with labels alone the nodes collide."
   - "`sort` defaults to true and reorders sectors largest-first; set `sort: false` only when the SQL order (an ordered categorical) means something."

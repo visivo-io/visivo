@@ -32,7 +32,6 @@ def render(entries=None):
                         "type": e.type,
                         "one_liner": e.one_liner,
                         "status": e.status,
-                        "tier": e.tier,
                     }
                     for e in members
                 ],

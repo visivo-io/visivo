@@ -2,10 +2,6 @@ type: scattergl
 family: line
 secondary_families: [xy]
 status: preferred
-tier: core
-author: fable-5.1
-review: {state: pending, by: null, date: null}
-confidence: null
 one_liner: WebGL scatter; the repair target when a scatter has more than ~10k points.
 use_when:
   - "Any `scatter` case (line or markers) whose point count exceeds ~10 000 after aggregation."
@@ -21,8 +17,7 @@ data_shape:
   dimension_roles: [time, numeric_continuous, numeric_discrete, categorical]
   cardinality: {min: 10000}
 required_props: [x, y]
-example: test-projects/docs-examples/dashboards/scattergl/simple.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: fare-vs-distance
       props:
@@ -33,15 +28,17 @@ minimal_yaml: |
         marker: {size: 3, opacity: 0.3}
       interactions:
         - filter: ?{ ${ref(trips).trip_distance} between 0 and 50 }
-encodings_that_scale:
-  - "same as scatter: `split` for a `few` categorical, `marker.size` for a third numeric"
-  - "> 200k points → sample in SQL (`using sample 100000`) or bin to a `histogram2d`"
+variations:
+  - when: "TODO"
+    then: "same as scatter: `split` for a `few` categorical, `marker.size` for a third numeric"
+  - when: "> 200k points"
+    then: "sample in SQL (`using sample 100000`) or bin to a `histogram2d`"
 limits:
   series_ideal: 5
   series_max: 12
   repair: [top_n_other, input_filter, histogram2d]
 transforms: [sample, clip_p99]
-visivo_gotchas:
+gotchas:
   - "Still ship a bounded result: the browser receives every row; sample or clip in SQL above ~200k."
   - "`marker.opacity` well below 1 (0.2–0.4) or a dense cloud is a solid blob."
   - "Hover is coarser than scatter; put the exact figures in a table beside it when they matter."

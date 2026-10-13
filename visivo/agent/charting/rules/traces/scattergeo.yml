@@ -1,11 +1,6 @@
 type: scattergeo
 family: geo_point
 status: preferred
-tier: extended
-author: opus-5.5
-review: {state: approved, by: fable-5.1, date: 2026-10-10}
-
-confidence: 0.75
 one_liner: Points on an outline map (no tiles) from lat/lon or country/state codes; for world and continent scope.
 use_when:
   - "`geo_point` rows spread across countries or continents (offices, shipments, airports) where street tiles add nothing."
@@ -23,8 +18,7 @@ data_shape:
   dimension_roles: [geo_point, geo_region, categorical, boolean]
   cardinality: {max: 3000}
 required_props: [lat, lon]
-example: test-projects/docs-examples/dashboards/scattergeo/simple.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: orders-by-city
       props:
@@ -40,17 +34,21 @@ minimal_yaml: |
       layout: {geo: {scope: world, projection: {type: natural earth}}}
       insights:
         - ${ref(orders-by-city)}
-encodings_that_scale:
-  - "no lat/lon but countries or US states → `locations` + `locationmode` (`ISO-3`, `USA-states`, `country names`); bubbles sit on the region centroid"
-  - "a metric → `marker.size` from `sqrt(count)` with `sizemode: diameter`, scaled into ~6–40 px"
-  - "a `few` categorical → `split` (theme-colored series), not `marker.color`"
-  - "scope → chart `layout.geo.scope` / `projection.type`, or `fitbounds: locations` to zoom to the data"
+variations:
+  - when: "no lat/lon but countries or US states"
+    then: "`locations` + `locationmode` (`ISO-3`, `USA-states`, `country names`); bubbles sit on the region centroid"
+  - when: "a metric"
+    then: "`marker.size` from `sqrt(count)` with `sizemode: diameter`, scaled into ~6–40 px"
+  - when: "a `few` categorical"
+    then: "`split` (theme-colored series), not `marker.color`"
+  - when: "scope"
+    then: "chart `layout.geo.scope` / `projection.type`, or `fitbounds: locations` to zoom to the data"
 limits:
   series_ideal: 5
   series_max: 10
   repair: [top_n_other, input_filter, densitymap]
 transforms: [aggregate_to_centroid, top_n_other]
-visivo_gotchas:
+gotchas:
   - "`layout.geo` lives on the chart, not the insight: without `scope` or `fitbounds: locations` a US-only dataset is drawn as a smudge on a world map."
   - "`locationmode` must match the column (`ISO-3` is the default); mismatched codes drop the points silently, like choropleth."
   - "The theme colors `layout.geo` land/ocean/borders; do not override `landcolor` or `bgcolor` per chart or dark mode breaks."

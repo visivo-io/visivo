@@ -1,10 +1,6 @@
 type: histogram
 family: distribution
 status: preferred
-tier: core
-author: fable-5.1
-review: {state: pending, by: null, date: null}
-confidence: null
 one_liner: The shape of one numeric column, binned; compare a few groups by overlaying or stacking.
 use_when:
   - One numeric_continuous or numeric_discrete column and the question is "how is it distributed".
@@ -20,8 +16,7 @@ data_shape:
   dimensions: {min: 1, max: 2}
   dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean]
 required_props: [x]
-example: test-projects/docs-examples/dashboards/histogram/stacked.visivo.yml
-minimal_yaml: |
+example: |
   insights:
     - name: trip-distance-distribution
       props:
@@ -32,16 +27,19 @@ minimal_yaml: |
       interactions:
         - filter: ?{ ${ref(trips).trip_distance} > 0 }
         - split: ?{ ${ref(trips).payment_type} }
-encodings_that_scale:
-  - "second `few` dimension → `split` with `layout.barmode: overlay` and `opacity: 0.6`, or `barmode: stack`"
-  - "comparing groups of different size → `histnorm: percent` so shapes compare, not totals"
-  - "a time axis → that is counts per period, i.e. a bar or line after `date_trunc`, not a histogram"
+variations:
+  - when: "second `few` dimension"
+    then: "`split` with `layout.barmode: overlay` and `opacity: 0.6`, or `barmode: stack`"
+  - when: "comparing groups of different size"
+    then: "`histnorm: percent` so shapes compare, not totals"
+  - when: "a time axis"
+    then: "that is counts per period, i.e. a bar or line after `date_trunc`, not a histogram"
 limits:
   series_ideal: 2
   series_max: 3
   repair: [top_n_other, input_filter, box]
 transforms: [clip_p99, bucket, log_scale]
-visivo_gotchas:
+gotchas:
   - "A histogram takes the raw column, not an aggregate: `x: ?{ trip_distance }` with no GROUP BY; every row is sent to the browser."
   - "Clip the tail in SQL (`least(x, p99)`) rather than with `xaxis.range`, which hides bins but still bins them."
   - "`nbinsx` is a hint; Plotly picks nice edges. Set `xbins.size` when the step matters (e.g. 1 km)."

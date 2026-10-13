@@ -25,14 +25,11 @@ def _entry(**overrides):
     base = dict(
         type="bar",
         family="bar",
-        tier="core",
-        author="fable-5.1",
         one_liner="Compare a metric across a few categories.",
         use_when=["one categorical dimension"],
         avoid_when=["more than ~20 categories"],
         data_shape={"metrics": {"min": 1}, "dimensions": {"min": 1, "max": 2}},
-        minimal_yaml="insights:\n  - name: x\n    props:\n      type: bar\n",
-        example="test-projects/docs-examples/dashboards/bar/simple.visivo.yml",
+        example="insights:\n  - name: x\n    props:\n      type: bar\n",
     )
     base.update(overrides)
     return TraceEntry(**base)
@@ -181,14 +178,6 @@ class TestFamilyRule:
 
 
 class TestTraceEntry:
-    def test_a_core_entry_needs_no_confidence(self):
-        assert _entry().confidence is None
-
-    def test_an_extended_entry_must_state_confidence(self):
-        with pytest.raises(ValidationError, match="confidence"):
-            _entry(tier="extended")
-        assert _entry(tier="extended", confidence=0.6).confidence == 0.6
-
     def test_the_type_must_be_a_trace_or_table_type(self):
         with pytest.raises(ValidationError, match="not a Plotly trace type"):
             _entry(type="sparkline")
@@ -200,22 +189,22 @@ class TestTraceEntry:
 
     def test_gotchas_are_capped_at_five(self):
         with pytest.raises(ValidationError):
-            _entry(visivo_gotchas=list("abcdef"))
+            _entry(gotchas=list("abcdef"))
 
-    def test_minimal_yaml_is_capped_at_fifteen_lines(self):
-        with pytest.raises(ValidationError, match="15 lines"):
-            _entry(minimal_yaml="\n".join(f"k{i}: v" for i in range(16)))
+    def test_example_is_capped_at_twenty_lines(self):
+        with pytest.raises(ValidationError, match="20 lines"):
+            _entry(example="type: bar\n" + "\n".join(f"k{i}: v" for i in range(20)))
 
-    def test_review_markers_default_to_pending(self):
-        assert _entry().review.state == "pending" and _entry().review.by is None
-
-    def test_review_dates_are_dates(self):
+    def test_other_uses_say_how(self):
         with pytest.raises(ValidationError):
-            _entry(review={"state": "approved", "date": "yesterday"})
-        assert (
-            str(_entry(review={"state": "approved", "date": "2026-10-08"}).review.date)
-            == "2026-10-08"
-        )
+            _entry(other_uses=[{"use": "gantt"}])
+        use = _entry(other_uses=[{"use": "gantt", "how": "`base` is the start"}]).other_uses[0]
+        assert use.how == "`base` is the start"
+
+    def test_variations_pair_a_condition_with_a_change(self):
+        with pytest.raises(ValidationError):
+            _entry(variations=["long labels → orientation: h"])
+        assert _entry(variations=[{"when": "long labels", "then": "orientation: h"}])
 
     def test_the_family_must_be_in_the_taxonomy(self):
         with pytest.raises(ValidationError, match="not one of the families"):
@@ -232,20 +221,15 @@ class TestTraceEntry:
             "xy",
         ]
 
-    def test_a_core_entry_must_cite_its_example(self):
-        with pytest.raises(ValidationError, match="docs-example"):
-            _entry(example=None)
-        assert _entry(tier="extended", confidence=0.5, example=None).example is None
-
-    def test_minimal_yaml_must_set_the_type(self):
+    def test_the_example_must_set_the_type(self):
         with pytest.raises(ValidationError, match="type: bar"):
-            _entry(minimal_yaml="insights:\n  - name: x\n    props:\n      type: scatter\n")
+            _entry(example="insights:\n  - name: x\n    props:\n      type: scatter\n")
         # A table is not a trace: its snippet has no `type:` line.
-        assert _entry(type="table", minimal_yaml="tables:\n  - name: t\n").type == "table"
+        assert _entry(type="table", example="tables:\n  - name: t\n").type == "table"
 
-    def test_minimal_yaml_must_parse(self):
+    def test_the_example_must_parse(self):
         with pytest.raises(ValidationError, match="not valid YAML"):
-            _entry(minimal_yaml="props:\n  type: bar\n  marker: {size: ?{ x }}\n")
+            _entry(example="props:\n  type: bar\n  marker: {size: ?{ x }}\n")
 
     def test_one_liner_is_capped(self):
         with pytest.raises(ValidationError):
