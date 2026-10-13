@@ -7,6 +7,7 @@
 import useStore from './store';
 import { CREATE_TEMPLATES } from './inlineCreateStore';
 import { fetchModelSchema } from '../api/modelSchema';
+import { restoreDraft, writeDraft } from '../utils/formDrafts';
 
 // The metric/dimension/relation scaffolds ask the server which columns a model
 // actually has, rather than hardcoding `id` (which most models don't have).
@@ -57,6 +58,24 @@ describe('createWorkspaceObject', () => {
     // Born valid, and a live drop target (VIS-989) rather than `items: []`.
     expect(config.rows[0]).toEqual({ height: 'medium', items: [{ width: 1 }] });
   });
+
+  test.each(Object.keys(CREATE_TEMPLATES))(
+    'a new %s does not inherit unsaved edits left under the same name',
+    async type => {
+      const template = CREATE_TEMPLATES[type];
+      useStore.setState({
+        models: [{ name: 'orders' }, { name: 'users' }],
+        [template.collectionKey]: [],
+        [template.saveKey]: jest.fn(async () => ({ success: true })),
+      });
+      const savedValues = { from: 'the template' };
+      writeDraft(`${type}:${template.namePrefix}`, savedValues, { from: 'a deleted object' });
+
+      const { name } = await useStore.getState().createWorkspaceObject(type);
+
+      expect(restoreDraft(`${type}:${name}`, savedValues)).toBe(savedValues);
+    }
+  );
 
   test('deduplicates against the existing collection', async () => {
     const save = jest.fn(async () => ({ success: true }));
