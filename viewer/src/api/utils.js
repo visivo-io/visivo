@@ -94,3 +94,24 @@ export const apiFetch = async (url, init = {}) => {
   return response;
 };
 
+/**
+ * Throw the server's error for a failed `/api/*` response.
+ *
+ * One shaping of the error for every api module: `.message` is the body's
+ * `error` (or `fallbackMessage` when the body is not JSON or names none),
+ * `.errorType` is the body's `error_type` — a 504 with none is `'timeout'` —
+ * `.status` is the HTTP status, and `.modelName` is the body's `model` when
+ * it names one (the draft endpoints' "run the query first" case).
+ *
+ * Always throws; declared async so a caller can `return throwApiError(...)`
+ * at the end of its own async function.
+ */
+export const throwApiError = async (response, fallbackMessage) => {
+  const data = await response.json().catch(() => ({}));
+  const body = data && typeof data === 'object' ? data : {};
+  const err = new Error(body.error || fallbackMessage);
+  err.errorType = body.error_type || (response.status === 504 ? 'timeout' : undefined);
+  err.status = response.status;
+  if (body.model) err.modelName = body.model;
+  throw err;
+};

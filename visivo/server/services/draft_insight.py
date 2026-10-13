@@ -1,0 +1,222 @@
+"""Compile and execute a draft insight against its source.
+
+The agent's ``preview_insight`` tool and ``/api/insight-execute-draft/`` run
+this same code; the view maps a ``DraftInsightError`` to its HTTP status, the
+tool maps it to a refusal. ``substitute_inputs`` fills an insight's input
+references with concrete values so a dynamic insight can be previewed
+server-side; the view does not call it yet and still answers 409
+``requires_client_lane``.
+"""
+
+from visivo.constants import DEFAULT_RUN_ID
+from visivo.jobs.run_model_data_job import execute_and_get_result
+from visivo.jobs.utils import get_source_for_model
+from visivo.logger.logger import Logger
+from visivo.query.accessor_validator import get_accessor_sample_value
+from visivo.query.insight.draft_overlay import DraftOverlayError, build_draft_overlay
+from visivo.query.insight.insight_query_builder import get_sample_value_for_input
+from visivo.query.patterns import extract_input_accessors, replace_input_accessors
+from visivo.server.source_resolution import find_input
+from visivo.server.views.insight_draft_common import (
+    build_schema_overrides,
+    extract_model_not_run_name,
+    is_model_not_run_error,
+)
+
+
+class DraftInsightError(Exception):
+    """The preview cannot run, with the HTTP status and payload the view sends."""
+
+    def __init__(self, status, payload):
+        super().__init__(payload.get("error", "draft insight failed"))
+        self.status = status
+        self.payload = payload
+
+
+def execute_draft_insight(
+    flask_app,
+    output_dir,
+    insight_config,
+    draft_models=(),
+    draft_metrics=(),
+    draft_dimensions=(),
+    model_schemas=None,
+    max_rows=None,
+    timeout_s=None,
+):
+    """``{columns, rows, row_count, truncated, execution_time_ms, props_mapping,
+    static_props, props_slices, split_key, type, models}`` or ``DraftInsightError``."""
+    try:
+        project, dag, insight = build_draft_overlay(
+            flask_app,
+            insight_config,
+            draft_models=list(draft_models or []),
+            draft_metrics=list(draft_metrics or []),
+            draft_dimensions=list(draft_dimensions or []),
+        )
+    except DraftOverlayError as e:
+        raise DraftInsightError(400, {"error": str(e)})
+    except Exception as e:
+        Logger.instance().error(f"execute-draft: overlay build failed: {e}")
+        raise DraftInsightError(400, {"error": str(e)})
+
+    schema_overrides = build_schema_overrides(dag, model_schemas or {})
+    run_output_dir = f"{output_dir}/{DEFAULT_RUN_ID}"
+
+    # A relation-join insight spans more than one model; the built pre_query
+    # embeds every model's CTE, so they must all resolve to ONE source.
+    try:
+        dependent_models = insight.get_all_dependent_models(dag)
+        source_names = {
+            src.name
+            for src in (get_source_for_model(m, dag, run_output_dir) for m in dependent_models)
+            if src
+        }
+    except Exception as e:
+        raise DraftInsightError(400, {"error": str(e)})
+    if len(source_names) > 1:
+        raise DraftInsightError(
+            400,
+            {
+                "error": (
+                    f"Insight '{insight.name}' references models from more than one "
+                    f"source ({', '.join(sorted(source_names))}) and cannot be "
+                    "previewed server-side."
+                ),
+                "error_type": "multi_source",
+            },
+        )
+
+    try:
+        query_info = insight.get_query_info(
+            dag,
+            run_output_dir,
+            schema_overrides=schema_overrides or None,
+            force_dynamic=False,
+        )
+    except Exception as e:
+        message = str(e)
+        if is_model_not_run_error(message):
+            raise DraftInsightError(
+                422,
+                {
+                    "error": message,
+                    "error_type": "model_not_run",
+                    "model": extract_model_not_run_name(message),
+                },
+            )
+        Logger.instance().error(f"execute-draft: query build failed: {e}")
+        raise DraftInsightError(400, {"error": message})
+
+    # A dynamic insight (one that still references an Input) has no
+    # pre_query: its placeholders are filled in the browser.
+    if query_info.pre_query is None:
+        raise DraftInsightError(
+            409,
+            {
+                "error": "Insight query is dynamic (references an input); cannot execute server-side",
+                "error_type": "requires_client_lane",
+            },
+        )
+
+    try:
+        source = insight.get_dependent_source(dag, run_output_dir)
+    except Exception as e:
+        raise DraftInsightError(400, {"error": str(e)})
+
+    try:
+        result = execute_and_get_result(
+            source=source, sql=query_info.pre_query, max_rows=max_rows, timeout_s=timeout_s
+        )
+    except Exception as e:
+        Logger.instance().error(f"execute-draft: source execution failed: {e}")
+        raise DraftInsightError(400, {"error": str(e)})
+
+    insight_type = insight.props.type.value if insight.props and insight.props.type else None
+
+    return {
+        **result,
+        "props_mapping": query_info.props_mapping,
+        "static_props": query_info.static_props,
+        "props_slices": query_info.props_slices,
+        "split_key": query_info.split_key,
+        "type": insight_type,
+        "models": [{"name": m.name, "name_hash": m.name_hash()} for m in dependent_models],
+    }
+
+
+def sql_literal(value):
+    """Numbers bare, text quoted — the rule the query builder's own sample
+    values follow, so "5" from a string-valued option compares to a numeric
+    column the way it does in the viewer."""
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float)):
+        return str(value)
+    text = str(value)
+    try:
+        float(text)
+        return text
+    except ValueError:
+        return "'" + text.replace("'", "''") + "'"
+
+
+def render_input_value(value, accessor):
+    """A selection as it appears in SQL: every value for ``.values``, else
+    the one element the accessor names."""
+    if not isinstance(value, (list, tuple)):
+        return sql_literal(value)
+    if accessor == "values":
+        return ", ".join(sql_literal(v) for v in value)
+    if not value:
+        return "NULL"
+    return sql_literal(get_accessor_sample_value(accessor, list(value), list(value)))
+
+
+def substitute_inputs(flask_app, node, input_values, substituted):
+    """``node`` with every ``${ref(input).accessor}`` replaced by a concrete
+    value: the caller's, else the input's default, else its first option.
+    ``substituted`` collects ``{input: {accessor: rendered}}``; references to
+    anything that is not an input are left alone."""
+    rendered_for = {}
+
+    def rendered(name, accessor):
+        key = (name, accessor)
+        if key not in rendered_for:
+            input_obj = find_input(flask_app, name)
+            if input_obj is None:
+                rendered_for[key] = None
+            elif name in input_values:
+                rendered_for[key] = render_input_value(input_values[name], accessor)
+            else:
+                rendered_for[key] = str(
+                    get_sample_value_for_input(input_obj, flask_app.output_dir, accessor)
+                )
+        return rendered_for[key]
+
+    def walk(node):
+        if isinstance(node, dict):
+            return {k: walk(v) for k, v in node.items()}
+        if isinstance(node, list):
+            return [walk(v) for v in node]
+        if not isinstance(node, str) or not extract_input_accessors(node):
+            return node
+        hits = []
+
+        def replacer(name, accessor):
+            value = rendered(name, accessor)
+            if value is None:
+                return "${ref(" + name + ")." + accessor + "}"
+            hits.append(name)
+            substituted.setdefault(name, {})[accessor] = value
+            return value
+
+        replaced = replace_input_accessors(node, replacer)
+        whole = node.strip()
+        # A prop that IS the placeholder (mode: ${ref(t).value}) wants the bare
+        # value, not a SQL literal.
+        if hits and whole.startswith("${") and whole.endswith("}") and len(hits) == 1:
+            return replaced.strip().strip("'")
+        return replaced
+
+    return walk(node)

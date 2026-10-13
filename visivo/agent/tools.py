@@ -26,36 +26,14 @@ is what makes an autonomous loop safe to ship, because the blast radius of a
 hijacked agent is a draft someone can discard.
 """
 
-from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Dict
 
 from visivo.agent.actions import caller, log as action_log
+from visivo.agent.data_tools import DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
+from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
+from visivo.jobs.run_model_data_job import QueryTimeout
 from visivo.server.rename_service import TYPE_TO_MANAGER
-
-
-@dataclass(frozen=True)
-class Tool:
-    """A callable an agent may invoke.
-
-    ``handler`` takes the Flask app (which owns the managers) and the decoded
-    arguments, so the registry itself is a module-level constant with no
-    lifecycle of its own — a transport builds no state to serve it.
-    """
-
-    name: str
-    description: str
-    input_schema: Dict[str, Any]
-    handler: Callable[[Any, Dict[str, Any]], Any]
-
-
-class ToolError(Exception):
-    """A tool refused, with a reason worth showing the agent.
-
-    Separate from an unexpected exception: this one is part of the contract —
-    a name that does not exist, a config that does not validate — and the
-    transport turns it into a result the model can act on rather than a crash.
-    """
 
 
 def _singular(type_key):
@@ -330,7 +308,7 @@ def _read_skill_handler(app, arguments):
         raise ToolError(str(missing).strip("'\""))
 
 
-_SPECIAL_TOOLS = {
+_HAND_WRITTEN = {
     "read_skill": Tool(
         name="read_skill",
         description=(
@@ -439,6 +417,7 @@ _SPECIAL_TOOLS = {
 # Hand-written, and named so the "generated from the type map" property can be
 # checked against the generated ones alone. Keep this list short: 133 routes is
 # a menu, not a toolset, and a wide surface makes agents worse.
+_SPECIAL_TOOLS = {**_HAND_WRITTEN, **DATA_TOOLS}
 SPECIAL_TOOL_NAMES = frozenset(_SPECIAL_TOOLS)
 
 TOOLS: Dict[str, Tool] = {**_generated_tools(), **_SPECIAL_TOOLS}
@@ -472,11 +451,24 @@ def _object_of(name, arguments):
     return {"type": singular, "name": target} if isinstance(target, str) else None
 
 
+def _as_refusal(name, arguments, error):
+    """Every handler failure reaches the agent as a ``ToolError``: a timeout
+    as its own message, anything unexpected prefixed with the tool and the
+    source it was running against."""
+    if isinstance(error, ToolError):
+        return error
+    if isinstance(error, QueryTimeout):
+        return ToolError(str(error))
+    source = arguments.get("source")
+    where = f" on '{source}'" if isinstance(source, str) else ""
+    return ToolError(f"{name} failed{where}: {error}")
+
+
 def call(app, name, arguments=None):
     """Invoke a tool by name, recording what happened.
 
-    Raises ``ToolError`` for anything the agent could have avoided, so a
-    transport can hand the reason back as a result rather than a stack trace.
+    Raises ``ToolError`` for every failure, so a transport can hand the reason
+    back as a result rather than a stack trace.
 
     The recording lives here rather than in a transport so every producer is
     captured by construction: an external client over MCP and the built-in loop
@@ -494,11 +486,9 @@ def call(app, name, arguments=None):
     try:
         result = tool.handler(app, arguments)
     except Exception as error:
-        # Recorded on the way past, then re-raised unchanged: "what failed" is
-        # half the value of the log, and the transport still decides how to
-        # report it.
-        action_log().record(name, obj=obj, outcome="error", error=str(error))
-        raise
+        refusal = _as_refusal(name, arguments, error)
+        action_log().record(name, obj=obj, outcome="error", error=str(refusal))
+        raise refusal
 
     # A validate tool answers `{"valid": False}` rather than raising — the
     # config was bad, which the log should say, but the call itself worked.

@@ -1,81 +1,76 @@
-"""Profiling service for model parquet files.
+"""One profiler for anything DuckDB can read: a built model's parquet, a
+bounded sample of any SQL on any source, or a single column's histogram.
+The column shape is documented once, in ``shape_card``."""
 
-Provides tiered profiling capabilities:
-- Tier 1: Fast metadata from parquet (row count, column info, min/max from stats)
-- Tier 2: Full statistics using DuckDB SUMMARIZE
-- Tier 3: Histograms for specific columns
-"""
-
+import functools
 import os
 import time
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
+import pyarrow as pa
 import pyarrow.parquet as pq
 import duckdb
+import sqlglot
+from sqlglot import exp
 
+from visivo.constants import DEFAULT_RUN_ID
+from visivo.jobs.run_model_data_job import AGENT_QUERY_TIMEOUT_S, execute_and_get_result
 from visivo.logger.logger import Logger
+from visivo.output_paths import model_data_file, run_dir
+from visivo.server.services.column_types import (
+    NUMERIC_KINDS,
+    TEXT,
+    column_kind,
+    is_numeric,
+    json_value,
+)
+from visivo.server.services.shape_card import shape_cards
 
-# Cache TTL in seconds (5 minutes)
+MAX_PROFILE_COLUMNS = 40
+DEFAULT_SAMPLE_ROWS = 100_000
+DEFAULT_TOP_N = 20
+# Above this many distinct values a top-N is noise.
+TOP_N_MAX_DISTINCT = 1000
 CACHE_TTL_SECONDS = 300
 
 
+@functools.lru_cache(maxsize=None)
+def profiling_service_for(output_dir: str) -> "ProfilingService":
+    """The one service (and profile cache) per output directory."""
+    return ProfilingService(output_dir)
+
+
 class ProfilingService:
-    """Service for profiling parquet files associated with models."""
+    """Profiles for a project's built models and ad-hoc queries."""
 
-    def __init__(self, output_dir: str):
-        """
-        Initialize the profiling service.
-
-        Args:
-            output_dir: Directory where parquet files are stored
-        """
+    def __init__(self, output_dir: str, run_id: str = DEFAULT_RUN_ID):
         self.output_dir = output_dir
+        self.run_id = run_id
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._cache_timestamps: Dict[str, float] = {}
 
     def get_parquet_path(self, model_name: str) -> str:
-        """
-        Get the parquet file path for a model.
-
-        Args:
-            model_name: Name of the model
-
-        Returns:
-            Full path to the parquet file
-        """
-        return os.path.join(self.output_dir, f"{model_name}.parquet")
+        return model_data_file(run_dir(self.output_dir, self.run_id), model_name)
 
     def parquet_exists(self, model_name: str) -> bool:
-        """
-        Check if a parquet file exists for the given model.
-
-        Args:
-            model_name: Name of the model
-
-        Returns:
-            True if the parquet file exists, False otherwise
-        """
         return os.path.exists(self.get_parquet_path(model_name))
 
+    @staticmethod
+    def column_subset(columns):
+        """``columns`` validated and deduplicated, or ``None`` for every column."""
+        if columns is None:
+            return None
+        if not isinstance(columns, list) or not all(
+            isinstance(c, str) and c.strip() for c in columns
+        ):
+            raise ValueError("'columns' must be a list of column names")
+        unique = list(dict.fromkeys(columns))
+        if len(unique) > MAX_PROFILE_COLUMNS:
+            raise ValueError(f"'columns' may name at most {MAX_PROFILE_COLUMNS} columns")
+        return unique
+
     def get_tier1_profile(self, model_name: str) -> Dict[str, Any]:
-        """
-        Get tier 1 profile using PyArrow metadata (fast, < 100ms).
-
-        Extracts metadata without scanning the actual data:
-        - Row count from metadata
-        - Column names and types
-        - Min/max values from row group statistics (if available)
-        - Null counts
-
-        Args:
-            model_name: Name of the model
-
-        Returns:
-            Dictionary with profile data
-
-        Raises:
-            FileNotFoundError: If parquet file doesn't exist
-        """
+        """Row count, types and min/max/null counts from parquet metadata alone."""
         parquet_path = self.get_parquet_path(model_name)
         if not os.path.exists(parquet_path):
             raise FileNotFoundError(f"Parquet file not found for model: {model_name}")
@@ -84,10 +79,6 @@ class ProfilingService:
         metadata = parquet_file.metadata
         schema = parquet_file.schema_arrow
 
-        # Get row count from metadata
-        row_count = metadata.num_rows
-
-        # Build column profiles from schema and row group stats
         columns = []
         for i, field in enumerate(schema):
             col_profile = {
@@ -99,14 +90,12 @@ class ProfilingService:
                 "null_count": 0,
             }
 
-            # Aggregate statistics from all row groups
             for rg_idx in range(metadata.num_row_groups):
                 rg = metadata.row_group(rg_idx)
                 col_meta = rg.column(i)
                 if col_meta.is_stats_set:
                     stats = col_meta.statistics
                     if stats.has_min_max:
-                        # Update min
                         if col_profile["min"] is None:
                             col_profile["min"] = self._convert_stat_value(stats.min)
                         else:
@@ -117,7 +106,6 @@ class ProfilingService:
                             except (TypeError, ValueError):
                                 pass
 
-                        # Update max
                         if col_profile["max"] is None:
                             col_profile["max"] = self._convert_stat_value(stats.max)
                         else:
@@ -136,153 +124,246 @@ class ProfilingService:
         return {
             "model_name": model_name,
             "tier": 1,
-            "row_count": row_count,
+            "row_count": metadata.num_rows,
             "columns": columns,
             "profiled_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def _convert_stat_value(self, value: Any) -> Any:
-        """Convert parquet statistic value to a JSON-serializable type."""
         if value is None:
             return None
-        # Handle bytes (common for string columns in parquet stats)
         if isinstance(value, bytes):
             try:
                 return value.decode("utf-8")
             except UnicodeDecodeError:
                 return None
-        # Handle datetime/date objects
         if hasattr(value, "isoformat"):
             return value.isoformat()
-        # Handle numpy types
         if hasattr(value, "item"):
             return value.item()
         return value
 
-    def get_tier2_profile(self, model_name: str) -> Dict[str, Any]:
-        """
-        Get tier 2 profile using DuckDB SUMMARIZE (100ms - 2s).
-
-        Provides comprehensive statistics including:
-        - All tier 1 stats
-        - avg, std, q25, q50, q75
-        - approx_unique count
-        - null_percentage
-
-        Results are cached with TTL.
-
-        Args:
-            model_name: Name of the model
-
-        Returns:
-            Dictionary with full profile data
-
-        Raises:
-            FileNotFoundError: If parquet file doesn't exist
-        """
+    def profile_model(self, model_name: str, columns=None, top_n: int = DEFAULT_TOP_N):
+        """Profile a built model's parquet. The default request is cached per
+        model until invalidated or ``CACHE_TTL_SECONDS`` passes."""
+        columns = self.column_subset(columns)
+        cacheable = columns is None and top_n == DEFAULT_TOP_N
         cache_key = f"tier2_{model_name}"
-
-        # Check cache
-        if self._is_cache_valid(cache_key):
+        if cacheable and self._is_cache_valid(cache_key):
             return self._cache[cache_key]
 
         parquet_path = self.get_parquet_path(model_name)
         if not os.path.exists(parquet_path):
             raise FileNotFoundError(f"Parquet file not found for model: {model_name}")
 
-        conn = None
+        conn = duckdb.connect(":memory:")
         try:
-            conn = duckdb.connect(":memory:")
-            # Use SUMMARIZE to get comprehensive statistics
-            # Escape the path for SQL
-            escaped_path = parquet_path.replace("'", "''")
-            result = conn.execute(
-                f"SUMMARIZE SELECT * FROM read_parquet('{escaped_path}')"
-            ).fetchall()
-            column_names = [desc[0] for desc in conn.description]
-
-            # Get row count
-            row_count_result = conn.execute(
-                f"SELECT COUNT(*) FROM read_parquet('{escaped_path}')"
-            ).fetchone()
-            row_count = row_count_result[0] if row_count_result else 0
-
-            # Parse SUMMARIZE results into column profiles
-            columns = []
-            for row in result:
-                row_dict = dict(zip(column_names, row))
-                col_profile = {
-                    "name": row_dict.get("column_name"),
-                    "type": row_dict.get("column_type"),
-                    "min": self._convert_duckdb_value(row_dict.get("min")),
-                    "max": self._convert_duckdb_value(row_dict.get("max")),
-                    "avg": self._convert_duckdb_value(row_dict.get("avg")),
-                    "std": self._convert_duckdb_value(row_dict.get("std")),
-                    "q25": self._convert_duckdb_value(row_dict.get("q25")),
-                    "q50": self._convert_duckdb_value(row_dict.get("q50")),
-                    "q75": self._convert_duckdb_value(row_dict.get("q75")),
-                    "null_count": self._convert_duckdb_value(row_dict.get("null_percentage")),
-                    "null_percentage": self._convert_duckdb_value(row_dict.get("null_percentage")),
-                    "approx_unique": self._convert_duckdb_value(row_dict.get("approx_unique")),
-                }
-                columns.append(col_profile)
-
-            profile = {
-                "model_name": model_name,
-                "tier": 2,
-                "row_count": row_count,
-                "columns": columns,
-                "profiled_at": datetime.now(timezone.utc).isoformat(),
-            }
-
-            # Cache the result
+            conn.execute(
+                "CREATE TEMP TABLE visivo_model AS SELECT * FROM read_parquet(?)", [parquet_path]
+            )
+            profile = self._profile_relation(conn, "visivo_model", columns=columns, top_n=top_n)
+        finally:
+            conn.close()
+        profile.update(model_name=model_name, tier=2, sampled=False, sample_rows=None)
+        if cacheable:
             self._cache[cache_key] = profile
             self._cache_timestamps[cache_key] = time.time()
+        return profile
 
-            return profile
+    def profile_query(
+        self,
+        source,
+        sql: str,
+        columns=None,
+        sample_rows: int = DEFAULT_SAMPLE_ROWS,
+        timeout_s: float = AGENT_QUERY_TIMEOUT_S,
+        top_n: int = DEFAULT_TOP_N,
+    ):
+        """Profile ``sql`` on ``source`` from a sample of at most ``sample_rows``
+        rows, pulled in the source's dialect. A sample that fills the limit is
+        followed by one ``COUNT(*)`` for the exact row count."""
+        columns = self.column_subset(columns)
+        dialect = source.get_sqlglot_dialect()
+        parsed = sqlglot.parse_one(sql, read=dialect)
+        inner = parsed.subquery(alias="visivo_profiled")
+        sample_sql = exp.select("*").from_(inner).limit(sample_rows).sql(dialect=dialect)
 
-        finally:
-            if conn:
-                conn.close()
-
-    def _convert_duckdb_value(self, value: Any) -> Any:
-        """Convert DuckDB value to a JSON-serializable type."""
-        if value is None:
-            return None
-        # Handle NaN
-        if isinstance(value, float) and value != value:  # NaN check
-            return None
-        # Handle datetime/date objects
-        if hasattr(value, "isoformat"):
-            return value.isoformat()
-        # Handle Decimal
-        if hasattr(value, "__float__"):
+        rows = execute_and_get_result(source, sample_sql, timeout_s=timeout_s)["rows"]
+        total_rows = None
+        if len(rows) >= sample_rows:
+            count_sql = (
+                exp.select(exp.func("COUNT", exp.Star())).from_(inner.copy()).sql(dialect=dialect)
+            )
             try:
-                return float(value)
-            except (ValueError, OverflowError):
-                return str(value)
-        return value
+                counted = execute_and_get_result(source, count_sql, timeout_s=timeout_s)["rows"]
+                total_rows = int(next(iter(counted[0].values()))) if counted else None
+            except Exception as error:
+                Logger.instance().debug(f"profile_query: COUNT(*) skipped: {error}")
+
+        sampled = total_rows is not None and total_rows > len(rows)
+        if not rows:
+            profile = {
+                "row_count": 0,
+                "columns": [],
+                "columns_truncated": False,
+                "profiled_at": datetime.now(timezone.utc).isoformat(),
+            }
+        else:
+            conn = duckdb.connect(":memory:")
+            try:
+                conn.register("visivo_sample", pa.Table.from_pylist(rows))
+                profile = self._profile_relation(
+                    conn, "visivo_sample", columns=columns, top_n=top_n
+                )
+            finally:
+                conn.close()
+        profile.update(
+            sampled=sampled,
+            sample_rows=len(rows) if sampled else None,
+            row_count=total_rows if total_rows is not None else profile["row_count"],
+        )
+        return profile
+
+    def shape_cards(self, profile):
+        return [card.model_dump(mode="json") for card in shape_cards(profile)]
+
+    def _profile_relation(self, conn, relation: str, columns=None, top_n: int = DEFAULT_TOP_N):
+        """Profile the table ``relation`` on ``conn`` in three scans: SUMMARIZE,
+        one aggregate pass for exact counts and extras, one for top values."""
+        summary = conn.execute(f"SUMMARIZE SELECT * FROM {relation}").fetchall()
+        names = [desc[0] for desc in conn.description]
+        rows = [dict(zip(names, row)) for row in summary]
+        row_count = rows[0]["count"] if rows else 0
+        if columns is not None:
+            wanted = set(columns)
+            rows = [r for r in rows if r["column_name"] in wanted]
+        columns_truncated = len(rows) > MAX_PROFILE_COLUMNS
+        rows = rows[:MAX_PROFILE_COLUMNS]
+
+        kinds = {r["column_name"]: column_kind(r["column_type"]) for r in rows}
+        counts = self._aggregate_scan(conn, relation, kinds)
+        top_values = self._top_values(
+            conn,
+            relation,
+            [n for n, c in counts.items() if 0 < c["distinct"] <= TOP_N_MAX_DISTINCT],
+            top_n,
+        )
+
+        profiled = []
+        for row in rows:
+            name = row["column_name"]
+            numeric = kinds[name] in NUMERIC_KINDS
+            agg = counts[name]
+            profiled.append(
+                {
+                    "name": name,
+                    "type": row["column_type"],
+                    "null_count": row_count - agg["non_null"],
+                    "null_percentage": json_value(row.get("null_percentage")),
+                    "distinct": agg["distinct"],
+                    "min": self._typed_bound(row.get("min"), numeric),
+                    "max": self._typed_bound(row.get("max"), numeric),
+                    "avg": self._number(row.get("avg")) if numeric else None,
+                    "median": self._number(row.get("q50")) if numeric else None,
+                    "std_dev": self._number(row.get("std")) if numeric else None,
+                    "q25": self._number(row.get("q25")) if numeric else None,
+                    "q75": self._number(row.get("q75")) if numeric else None,
+                    "p99": self._number(agg["p99"]),
+                    "zeros_pct": self._number(agg["zeros_pct"]),
+                    "avg_length": self._number(agg["avg_length"]),
+                    "top_values": top_values.get(name, []),
+                }
+            )
+
+        return {
+            "row_count": row_count,
+            "columns": profiled,
+            "columns_truncated": columns_truncated,
+            "profiled_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    @staticmethod
+    def _identifier(name: str) -> str:
+        return exp.to_identifier(name, quoted=True).sql("duckdb")
+
+    def _aggregate_scan(self, conn, relation, kinds):
+        """``{name: {distinct, non_null, p99, zeros_pct, avg_length}}`` in one
+        scan; the extras are ``None`` where the kind has none."""
+        if not kinds:
+            return {}
+        measures = []
+        for i, (name, kind) in enumerate(kinds.items()):
+            col = self._identifier(name)
+            measures += [
+                f"COUNT(DISTINCT {col}) AS c{i}_distinct",
+                f"COUNT({col}) AS c{i}_non_null",
+            ]
+            if kind in NUMERIC_KINDS:
+                measures += [
+                    f"quantile_cont({col}, 0.99) AS c{i}_p99",
+                    f"SUM(CASE WHEN {col} = 0 THEN 1 ELSE 0 END)::DOUBLE"
+                    f" / NULLIF(COUNT({col}), 0) AS c{i}_zeros_pct",
+                ]
+            elif kind == TEXT:
+                measures.append(f"AVG(LENGTH({col})) AS c{i}_avg_length")
+        row = conn.execute(f"SELECT {', '.join(measures)} FROM {relation}").fetchone()
+        found = dict(zip([desc[0] for desc in conn.description], row))
+        return {
+            name: {
+                key: found.get(f"c{i}_{key}")
+                for key in ("distinct", "non_null", "p99", "zeros_pct", "avg_length")
+            }
+            for i, name in enumerate(kinds)
+        }
+
+    def _top_values(self, conn, relation, names, top_n):
+        """``{name: [{value, count}, ...]}`` for every column in ``names``, most
+        frequent first (ties by value), in one scan."""
+        if not names or not top_n:
+            return {}
+        measures = [
+            f"map_entries(histogram({self._identifier(name)})) AS c{i}"
+            for i, name in enumerate(names)
+        ]
+        row = conn.execute(f"SELECT {', '.join(measures)} FROM {relation}").fetchone()
+        result = {}
+        for name, entries in zip(names, row):
+            pairs = [(entry["key"], entry["value"]) for entry in entries or []]
+            try:
+                pairs.sort(key=lambda pair: (-pair[1], pair[0]))
+            except TypeError:
+                pairs.sort(key=lambda pair: (-pair[1], str(pair[0])))
+            result[name] = [
+                {"value": json_value(value), "count": count} for value, count in pairs[: int(top_n)]
+            ]
+        return result
+
+    @staticmethod
+    def _number(value):
+        """SUMMARIZE renders statistics as strings; the profile carries numbers."""
+        if value is None or value == "" or value == "NULL":
+            return None
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        return None if number != number else number
+
+    def _typed_bound(self, value, numeric):
+        if value is None or value == "":
+            return None
+        if numeric:
+            try:
+                return (
+                    float(value) if "." in str(value) or "e" in str(value).lower() else int(value)
+                )
+            except (TypeError, ValueError):
+                return json_value(value)
+        return str(value)
 
     def get_histogram(self, model_name: str, column: str, bins: int = 20) -> Dict[str, Any]:
-        """
-        Get histogram data for a specific column.
-
-        For numeric columns: Returns bucket ranges with counts
-        For categorical columns: Returns top N values by frequency
-
-        Args:
-            model_name: Name of the model
-            column: Column name to generate histogram for
-            bins: Number of bins/buckets (default 20, clamped to 5-100)
-
-        Returns:
-            Dictionary with histogram data
-
-        Raises:
-            FileNotFoundError: If parquet file doesn't exist
-            ValueError: If column doesn't exist
-        """
-        # Clamp bins to valid range
+        """Bucket counts for a numeric column, top values for any other;
+        ``bins`` is clamped to 5-100."""
         bins = max(5, min(100, bins))
 
         parquet_path = self.get_parquet_path(model_name)
@@ -294,14 +375,12 @@ class ProfilingService:
             conn = duckdb.connect(":memory:")
             escaped_path = parquet_path.replace("'", "''")
 
-            # Get column type first
             schema_result = conn.execute(
                 f"DESCRIBE SELECT * FROM read_parquet('{escaped_path}')"
             ).fetchall()
 
             column_type = None
-            # Properly escape column name for SQL using double quotes
-            escaped_column = f'"{column.replace(chr(34), chr(34)+chr(34))}"'
+            escaped_column = self._identifier(column)
 
             for row in schema_result:
                 if row[0] == column:
@@ -311,26 +390,7 @@ class ProfilingService:
             if column_type is None:
                 raise ValueError(f"Column '{column}' not found in model '{model_name}'")
 
-            # Determine if numeric or categorical
-            numeric_types = [
-                "BIGINT",
-                "INTEGER",
-                "SMALLINT",
-                "TINYINT",
-                "UBIGINT",
-                "UINTEGER",
-                "USMALLINT",
-                "UTINYINT",
-                "DOUBLE",
-                "FLOAT",
-                "REAL",
-                "DECIMAL",
-                "NUMERIC",
-                "HUGEINT",
-            ]
-            is_numeric = any(nt in column_type.upper() for nt in numeric_types)
-
-            if is_numeric:
+            if is_numeric(column_type):
                 return self._get_numeric_histogram(
                     conn, escaped_path, column, escaped_column, column_type, bins
                 )
@@ -352,8 +412,6 @@ class ProfilingService:
         column_type: str,
         bins: int,
     ) -> Dict[str, Any]:
-        """Generate histogram for numeric column using WIDTH_BUCKET."""
-        # Get min/max for bucket calculation
         stats_query = f"""
             SELECT MIN({escaped_column}), MAX({escaped_column}), COUNT(*)
             FROM read_parquet('{escaped_path}')
@@ -363,7 +421,6 @@ class ProfilingService:
         min_val, max_val, total_count = stats
 
         if min_val is None or max_val is None or min_val == max_val:
-            # All same value or no data
             if min_val is not None:
                 return {
                     "model_name": escaped_path.split("/")[-1].replace(".parquet", ""),
@@ -380,10 +437,7 @@ class ProfilingService:
                 "total_count": 0,
             }
 
-        # Calculate bucket using FLOOR division (DuckDB compatible)
         bucket_width = (float(max_val) - float(min_val)) / bins
-        # FLOOR((value - min) / bucket_width) gives bucket 0 to bins-1
-        # We clamp to bins-1 for the max value edge case
         histogram_query = f"""
             SELECT
                 LEAST(FLOOR(({escaped_column}::DOUBLE - {float(min_val)}) / {bucket_width}), {bins - 1}) as bucket,
@@ -428,7 +482,6 @@ class ProfilingService:
         column_type: str,
         bins: int,
     ) -> Dict[str, Any]:
-        """Generate histogram for categorical column (top N values)."""
         histogram_query = f"""
             SELECT {escaped_column} as value, COUNT(*) as count
             FROM read_parquet('{escaped_path}')
@@ -439,21 +492,13 @@ class ProfilingService:
         """
         result = conn.execute(histogram_query).fetchall()
 
-        # Get total count
         total_query = f"""
             SELECT COUNT(*) FROM read_parquet('{escaped_path}')
             WHERE {escaped_column} IS NOT NULL
         """
         total_count = conn.execute(total_query).fetchone()[0]
 
-        buckets = []
-        for value, count in result:
-            buckets.append(
-                {
-                    "value": self._convert_duckdb_value(value),
-                    "count": count,
-                }
-            )
+        buckets = [{"value": json_value(value), "count": count} for value, count in result]
 
         return {
             "model_name": model_name,
@@ -464,24 +509,11 @@ class ProfilingService:
         }
 
     def invalidate_cache(self, model_name: str) -> None:
-        """
-        Clear cached profiles for a model.
-
-        Args:
-            model_name: Name of the model to invalidate cache for
-        """
         cache_key = f"tier2_{model_name}"
-        if cache_key in self._cache:
-            del self._cache[cache_key]
-        if cache_key in self._cache_timestamps:
-            del self._cache_timestamps[cache_key]
+        self._cache.pop(cache_key, None)
+        self._cache_timestamps.pop(cache_key, None)
 
     def _is_cache_valid(self, cache_key: str) -> bool:
-        """Check if a cached item is still valid (not expired)."""
-        if cache_key not in self._cache:
+        if cache_key not in self._cache or cache_key not in self._cache_timestamps:
             return False
-        if cache_key not in self._cache_timestamps:
-            return False
-
-        age = time.time() - self._cache_timestamps[cache_key]
-        return age < CACHE_TTL_SECONDS
+        return time.time() - self._cache_timestamps[cache_key] < CACHE_TTL_SECONDS

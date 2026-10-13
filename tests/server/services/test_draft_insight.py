@@ -1,0 +1,148 @@
+"""The failure paths of the shared draft executor (VIS-1417). The happy path
+and the 409/422 branches are exercised through the view and the tool."""
+
+from unittest.mock import Mock
+
+import pytest
+
+from visivo.server.services import draft_insight as module
+from visivo.server.services.draft_insight import (
+    DraftInsightError,
+    execute_draft_insight,
+    render_input_value,
+    substitute_inputs,
+)
+
+
+def _overlay(insight, monkeypatch):
+    monkeypatch.setattr(module, "build_draft_overlay", lambda *a, **k: ("project", "dag", insight))
+
+
+def test_an_unexpected_overlay_failure_is_a_400(monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("overlay exploded")
+
+    monkeypatch.setattr(module, "build_draft_overlay", boom)
+
+    with pytest.raises(DraftInsightError) as refused:
+        execute_draft_insight(Mock(), "/tmp", {"name": "x"})
+    assert refused.value.status == 400 and "overlay exploded" in refused.value.payload["error"]
+
+
+def test_a_dependency_walk_failure_is_a_400(monkeypatch):
+    insight = Mock()
+    insight.get_all_dependent_models.side_effect = ValueError("no such model")
+    _overlay(insight, monkeypatch)
+
+    with pytest.raises(DraftInsightError) as refused:
+        execute_draft_insight(Mock(), "/tmp", {"name": "x"})
+    assert refused.value.status == 400 and "no such model" in str(refused.value)
+
+
+def test_no_resolvable_source_is_a_400(monkeypatch):
+    insight = Mock(name="i")
+    insight.get_all_dependent_models.return_value = []
+    insight.get_query_info.return_value = Mock(pre_query="SELECT 1")
+    insight.get_dependent_source.side_effect = ValueError("no dependent models")
+    _overlay(insight, monkeypatch)
+    monkeypatch.setattr(module, "build_schema_overrides", lambda dag, schemas: {})
+
+    with pytest.raises(DraftInsightError) as refused:
+        execute_draft_insight(Mock(), "/tmp", {"name": "x"})
+    assert refused.value.status == 400 and "no dependent models" in str(refused.value)
+
+
+def test_a_source_execution_failure_is_a_400_with_the_driver_message(monkeypatch):
+    insight = Mock()
+    insight.get_all_dependent_models.return_value = []
+    insight.get_query_info.return_value = Mock(pre_query="SELECT nope")
+    insight.get_dependent_source.return_value = Mock()
+    _overlay(insight, monkeypatch)
+    monkeypatch.setattr(module, "build_schema_overrides", lambda dag, schemas: {})
+
+    def fail(**kwargs):
+        raise RuntimeError("no such column: nope")
+
+    monkeypatch.setattr(module, "execute_and_get_result", fail)
+
+    with pytest.raises(DraftInsightError) as refused:
+        execute_draft_insight(Mock(), "/tmp", {"name": "x"})
+    assert refused.value.status == 400 and "no such column" in refused.value.payload["error"]
+
+
+def test_a_non_model_not_run_build_failure_is_a_400(monkeypatch):
+    insight = Mock()
+    insight.get_all_dependent_models.return_value = []
+    insight.get_query_info.side_effect = ValueError("bad expression")
+    _overlay(insight, monkeypatch)
+    monkeypatch.setattr(module, "build_schema_overrides", lambda dag, schemas: {})
+
+    with pytest.raises(DraftInsightError) as refused:
+        execute_draft_insight(Mock(), "/tmp", {"name": "x"})
+    assert refused.value.status == 400 and refused.value.payload == {"error": "bad expression"}
+
+
+class TestSubstituteInputs:
+    def _app(self, monkeypatch, inputs, loader=None):
+        app = Mock(output_dir="/out")
+        monkeypatch.setattr(module, "find_input", lambda flask_app, name: inputs.get(name))
+        monkeypatch.setattr(
+            module, "get_sample_value_for_input", loader or (lambda obj, out, acc: "4")
+        )
+        return app
+
+    def test_rendering_rules(self):
+        assert render_input_value("West", "value") == "'West'"
+        assert render_input_value("5", "value") == "5"
+        assert render_input_value("O'Hare", "value") == "'O''Hare'"
+        assert render_input_value(True, "value") == "TRUE"
+        assert render_input_value(2.5, "value") == "2.5"
+        assert render_input_value([1, 5], "min") == "1"
+        assert render_input_value([1, 5], "first") == "1"
+        assert render_input_value([1, 5], "max") == "5"
+        assert render_input_value([1, 5], "last") == "5"
+        assert render_input_value(["a", "b"], "value") == "'a'"
+        assert render_input_value([], "first") == "NULL"
+        assert render_input_value(["a", "b"], "values") == "'a', 'b'"
+
+    def test_the_callers_value_wins_else_the_default(self, monkeypatch):
+        app = self._app(monkeypatch, {"min_x": Mock()})
+        substituted = {}
+
+        out = substitute_inputs(
+            app,
+            {"a": "x > ${ref(min_x).value}", "b": ["y > ${ref(min_x).value}"]},
+            {},
+            substituted,
+        )
+
+        assert out == {"a": "x > 4", "b": ["y > 4"]} and substituted == {"min_x": {"value": "4"}}
+        assert substitute_inputs(app, "x > ${ref(min_x).value}", {"min_x": 2}, {}) == "x > 2"
+
+    def test_a_repeated_reference_loads_its_options_once(self, monkeypatch):
+        loads = []
+        app = self._app(monkeypatch, {"min_x": Mock()}, loader=lambda *a: loads.append(a) or "4")
+
+        substitute_inputs(
+            app,
+            {"a": "${ref(min_x).value} + ${ref(min_x).value}", "b": "${ref(min_x).value}"},
+            {},
+            {},
+        )
+
+        assert len(loads) == 1
+
+    def test_anything_that_is_not_an_input_is_left_alone(self, monkeypatch):
+        app = self._app(monkeypatch, {})
+        substituted = {}
+
+        assert (
+            substitute_inputs(app, "?{${ref(orders).x}}", {}, substituted) == "?{${ref(orders).x}}"
+        )
+        assert substituted == {} and substitute_inputs(app, 7, {}, substituted) == 7
+
+    def test_a_prop_that_is_the_placeholder_gets_the_bare_value(self, monkeypatch):
+        app = self._app(monkeypatch, {"mode": Mock()})
+
+        assert substitute_inputs(app, " ${ref(mode).value} ", {"mode": "markers"}, {}) == "markers"
+        assert substitute_inputs(app, "${ref(mode).value}", {"mode": 3}, {}) == "3"

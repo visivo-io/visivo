@@ -1,4 +1,10 @@
-import { apiFetch, authHeaders, setAuthHeaderProvider, setUnauthorizedHandler } from './utils';
+import {
+  apiFetch,
+  authHeaders,
+  setAuthHeaderProvider,
+  setUnauthorizedHandler,
+  throwApiError,
+} from './utils';
 
 global.fetch = jest.fn();
 
@@ -184,6 +190,72 @@ describe('viewer/api/utils', () => {
 
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(res.status).toBe(401);
+    });
+  });
+});
+
+describe('throwApiError', () => {
+  const response = (status, body) => ({
+    status,
+    json:
+      body instanceof Error
+        ? async () => {
+            throw body;
+          }
+        : async () => body,
+  });
+
+  test("throws the body's error with its type and the status", async () => {
+    await expect(
+      throwApiError(
+        response(422, { error: 'no schema', error_type: 'model_not_run', model: 'm1' }),
+        'fallback'
+      )
+    ).rejects.toMatchObject({
+      message: 'no schema',
+      errorType: 'model_not_run',
+      status: 422,
+      modelName: 'm1',
+    });
+  });
+
+  test('falls back to the given message when the body is not JSON', async () => {
+    await expect(throwApiError(response(500, new Error('nope')), 'fallback')).rejects.toMatchObject(
+      {
+        message: 'fallback',
+        status: 500,
+        errorType: undefined,
+      }
+    );
+  });
+
+  test('falls back to the given message when the body names no error', async () => {
+    const err = await throwApiError(response(400, { detail: 'x' }), 'fallback').catch(e => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe('fallback');
+    expect(err).not.toHaveProperty('modelName');
+  });
+
+  test('a 504 without an explicit type is a timeout', async () => {
+    await expect(throwApiError(response(504, { error: 'slow' }), 'fallback')).rejects.toMatchObject(
+      {
+        message: 'slow',
+        errorType: 'timeout',
+        status: 504,
+      }
+    );
+  });
+
+  test("the body's own error_type wins over the 504 default", async () => {
+    await expect(
+      throwApiError(response(504, { error: 'slow', error_type: 'upstream' }), 'fallback')
+    ).rejects.toMatchObject({ errorType: 'upstream' });
+  });
+
+  test('tolerates a non-object JSON body', async () => {
+    await expect(throwApiError(response(502, 'Bad Gateway'), 'fallback')).rejects.toMatchObject({
+      message: 'fallback',
+      status: 502,
     });
   });
 });

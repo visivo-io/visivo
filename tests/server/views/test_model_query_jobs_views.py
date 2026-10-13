@@ -40,6 +40,7 @@ class TestModelQueryJobsViews:
         app.config["TESTING"] = True
 
         flask_app = Mock()
+        flask_app.source_manager.get.return_value = None
         flask_app.project = Mock()
         flask_app.project.models = []
         flask_app.project.path = temp_output_dir

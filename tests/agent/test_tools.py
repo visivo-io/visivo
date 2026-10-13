@@ -242,3 +242,52 @@ class TestAWriteStagesAndRuns:
         assert requested == []
         assert result["change"] == "staged"
         assert "agent-manual" in self._staged_names(integration_app)
+
+
+class TestEveryFailureIsARefusal:
+    def _with_handler(self, monkeypatch, name, handler):
+        from visivo.agent import tools
+
+        broken = tools.Tool(name=name, description="", input_schema={}, handler=handler)
+        monkeypatch.setitem(tools.TOOLS, name, broken)
+
+    def test_an_unexpected_error_names_the_tool(self, integration_app, monkeypatch):
+        def boom(app, arguments):
+            raise RuntimeError("driver exploded")
+
+        self._with_handler(monkeypatch, "get_theme", boom)
+
+        with pytest.raises(ToolError, match="^get_theme failed: driver exploded$"):
+            call(integration_app, "get_theme", {})
+
+    def test_and_the_source_it_ran_against(self, integration_app, monkeypatch):
+        def boom(app, arguments):
+            raise RuntimeError("no such column")
+
+        self._with_handler(monkeypatch, "query_source", boom)
+
+        with pytest.raises(ToolError, match="^query_source failed on 'wh': no such column$"):
+            call(integration_app, "query_source", {"source": "wh", "sql": "select 1"})
+
+    def test_a_timeout_is_passed_through_as_its_own_message(self, integration_app, monkeypatch):
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        def slow(app, arguments):
+            raise QueryTimeout("Query did not return within 20s.")
+
+        self._with_handler(monkeypatch, "query_source", slow)
+
+        with pytest.raises(ToolError, match="^Query did not return within 20s.$"):
+            call(integration_app, "query_source", {"source": "wh", "sql": "select 1"})
+
+    def test_a_refusal_is_raised_unchanged(self, integration_app, monkeypatch):
+        refusal = ToolError("no")
+
+        def refuse(app, arguments):
+            raise refusal
+
+        self._with_handler(monkeypatch, "get_theme", refuse)
+
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "get_theme", {})
+        assert raised.value is refusal

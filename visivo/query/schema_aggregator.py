@@ -26,9 +26,9 @@ class SchemaAggregator:
         schema_data: Dict[str, Any],
         output_dir: str,
         run_id: str = DEFAULT_RUN_ID,
-    ) -> None:
+    ) -> Dict[str, Any]:
         """
-        Store source schema data in standard format.
+        Store source schema data in standard format and return what was written.
 
         Args:
             source_name: Name of the source
@@ -82,6 +82,7 @@ class SchemaAggregator:
                 f"Stored schema for source '{source_name}' with {total_tables} tables "
                 f"and {total_columns} columns"
             )
+            return storage_data
 
         except Exception as e:
             Logger.instance().error(f"Error storing schema for source {source_name}: {e}")
@@ -224,6 +225,29 @@ class SchemaAggregator:
         except Exception as e:
             Logger.instance().debug(f"Error loading schema for source {source_name}: {e}")
             return None
+
+    @staticmethod
+    def preview_run_id(source_name: str) -> str:
+        """Where a source's schema lands when it was introspected on demand
+        (the Explorer's "generate schema") rather than by a full run."""
+        return f"preview-{source_name}"
+
+    @staticmethod
+    def load_source_schema_with_fallback(source_name: str, output_dir: str, run_id: str = None):
+        """``(schema_data, run_id)`` for the first place a schema is found: the
+        given ``run_id`` alone, else ``main`` and then the source's preview run."""
+        candidates = (
+            [run_id]
+            if run_id is not None
+            else [DEFAULT_RUN_ID, SchemaAggregator.preview_run_id(source_name)]
+        )
+        for candidate in candidates:
+            schema_data = SchemaAggregator.load_source_schema(
+                source_name, output_dir, run_id=candidate
+            )
+            if schema_data is not None:
+                return schema_data, candidate
+        return None, None
 
     @staticmethod
     def build_mapping_schema_from_stored(schema_data: Dict[str, Any]) -> MappingSchema:

@@ -207,7 +207,7 @@ class TestWhenCoreWillNotAnswer:
 
         project, _ = _project(core=Rejecting())
 
-        with pytest.raises(RemoteProjectError):
+        with pytest.raises(ToolError, match="write_markdown failed: .*403"):
             call(project, "write_markdown", {"config": {"name": "x", "content": "#"}})
 
 
