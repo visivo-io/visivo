@@ -2,7 +2,7 @@
 // select, SQL escaping, numeric vs ISO-date min/max) exercised via the value
 // setters, plus the initialized-gated query refresh (stubbed at the duckdb
 // boundary; the db-null guard short-circuits without querying).
-import createInputJobsSlice from './inputJobsStore';
+import createInputJobsSlice, { toMultiSelectArray } from './inputJobsStore';
 import { prepPostQuery, runDuckDBQuery } from '../duckdb/queries';
 
 jest.mock('../duckdb/queries', () => ({
@@ -141,5 +141,64 @@ describe('setInputJobValue refresh gating', () => {
     expect(prepPostQuery).not.toHaveBeenCalled();
     expect(runDuckDBQuery).not.toHaveBeenCalled();
     expect(store.get().inputSelectedValues.a).toBe('y');
+  });
+});
+
+describe('multi-select default literals (VIS-1460 I1)', () => {
+  // The documented semantics (MultiSelectDefault): `all` = every option
+  // selected, `none` = nothing selected. The store resolves the literal against
+  // the options already loaded for that input so `.values` is never `'all'`.
+  it("expands 'all' to every loaded option in setDefaultInputJobValue", () => {
+    const store = build();
+    store.get().setInputJobOptions('groups', ['Group 1', 'Group 2', 'Group 3']);
+    store.get().setDefaultInputJobValue('groups', 'all', 'multi-select');
+    expect(store.get().inputSelectedValues.groups).toEqual(['Group 1', 'Group 2', 'Group 3']);
+    expect(store.get().inputJobs.groups).toMatchObject({
+      values: "'Group 1','Group 2','Group 3'",
+      first: 'Group 1',
+      last: 'Group 3',
+    });
+  });
+
+  it("expands 'none' to an empty selection (all-null accessors)", () => {
+    const store = build();
+    store.get().setInputJobOptions('groups', ['Group 1', 'Group 2']);
+    store.get().setDefaultInputJobValue('groups', 'none', 'multi-select');
+    expect(store.get().inputSelectedValues.groups).toEqual([]);
+    expect(store.get().inputJobs.groups).toEqual({
+      values: null,
+      min: null,
+      max: null,
+      first: null,
+      last: null,
+    });
+  });
+
+  it('expands literals per input in the batch setter', () => {
+    const store = build();
+    store.get().setInputJobOptions('a', ['1', '2']);
+    store.get().setInputJobOptions('b', ['x']);
+    store.get().setDefaultInputJobValues([
+      { name: 'a', value: 'all', type: 'multi-select' },
+      { name: 'b', value: 'none', type: 'multi-select' },
+      { name: 'c', value: 'all' }, // single-select: literal is just a value
+    ]);
+    expect(store.get().inputSelectedValues).toEqual({ a: ['1', '2'], b: [], c: 'all' });
+    expect(store.get().inputJobs.a).toMatchObject({ values: "'1','2'", min: 1, max: 2 });
+    expect(store.get().inputJobs.b.values).toBeNull();
+    expect(store.get().inputJobs.c).toEqual({ value: 'all' });
+  });
+
+  it("falls back to an empty selection for 'all' when no options are loaded yet", () => {
+    const store = build();
+    store.get().setDefaultInputJobValue('late', 'all', 'multi-select');
+    expect(store.get().inputSelectedValues.late).toEqual([]);
+    expect(store.get().inputJobs.late.values).toBeNull();
+  });
+
+  it('toMultiSelectArray wraps scalars and passes arrays through', () => {
+    expect(toMultiSelectArray('x', ['x', 'y'])).toEqual(['x']);
+    expect(toMultiSelectArray(['y'], ['x', 'y'])).toEqual(['y']);
+    expect(toMultiSelectArray('all', undefined)).toEqual([]);
   });
 });

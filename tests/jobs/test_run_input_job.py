@@ -538,3 +538,88 @@ class TestSQLGlotQualifySubqueryAlias:
         result = qualified.sql(dialect="mysql")
 
         assert "my_alias" in result.lower()
+
+
+class TestMultiSelectDefaults:
+    """VIS-1460: what the run ships for `display.default.values`.
+
+    The viewer expands the documented literals (`all` = every option, `none` =
+    nothing) and reads query-based defaults from a `defaults` parquet, so the
+    run must (a) pass the literals through untouched and (b) actually write the
+    defaults file with a `value` column.
+    """
+
+    def _run(self, input_obj, **project_kwargs):
+        project = ProjectFactory(inputs=[input_obj], **project_kwargs)
+        output_dir = temp_folder()
+        result = action(input_obj, project.dag(), output_dir)
+        assert result.success, result.message
+        with open(Path(output_dir) / "main" / "inputs" / f"{input_obj.name}.json") as f:
+            return json.load(f)
+
+    def test_literal_all_is_shipped_unchanged(self):
+        input_obj = MultiSelectInputFactory(
+            name="groups",
+            options=["Group 1", "Group 2"],
+            display={"type": "checkboxes", "default": {"values": "all"}},
+        )
+        data = self._run(input_obj)
+        assert data["display"]["default"]["values"] == "all"
+        assert data["files"] == []
+
+    def test_literal_none_is_shipped_unchanged(self):
+        input_obj = MultiSelectInputFactory(
+            name="groups",
+            options=["Group 1", "Group 2"],
+            display={"type": "chips", "default": {"values": "none"}},
+        )
+        data = self._run(input_obj)
+        assert data["display"]["default"]["values"] == "none"
+
+    def test_no_display_defaults_to_all(self):
+        input_obj = MultiSelectInputFactory(name="groups", options=["a", "b"], display=None)
+        data = self._run(input_obj)
+        assert data["display"] == {"type": "dropdown", "default": {"values": "all"}}
+
+    def test_explicit_list_is_stringified(self):
+        input_obj = MultiSelectInputFactory(
+            name="nums",
+            options=["1", "2", "3"],
+            display={"type": "range-slider", "default": {"values": [1, 2]}},
+        )
+        data = self._run(input_obj)
+        assert data["display"]["default"]["values"] == ["1", "2"]
+
+    def test_query_default_writes_defaults_parquet(self):
+        source = SourceFactory(name="source")
+        model = SqlModelFactory(
+            name="xs",
+            sql="SELECT 1 as x UNION SELECT 2 UNION SELECT 3 UNION SELECT 4",
+            source="ref(source)",
+        )
+        input_obj = MultiSelectInputFactory(
+            name="query_default",
+            options="?{ SELECT x FROM ${ref(xs)} }",
+            display={
+                "type": "checkboxes",
+                "default": {"values": "?{ SELECT x FROM ${ref(xs)} WHERE x <= 2 }"},
+            },
+        )
+        data = self._run(input_obj, sources=[source], models=[model])
+
+        # The literal slot is null: the viewer must read the parquet instead.
+        assert data["display"]["default"]["values"] is None
+
+        files_by_key = {f["key"]: f for f in data["files"]}
+        assert set(files_by_key) == {"options", "defaults"}
+        defaults_file = files_by_key["defaults"]
+        assert defaults_file["name_hash"] == f"{input_obj.name_hash()}_defaults"
+        assert defaults_file["signed_data_file_url"].endswith("query_default_defaults.parquet")
+
+        df = pl.read_parquet(defaults_file["signed_data_file_url"])
+        assert df.columns == ["value"]
+        assert sorted(df["value"].to_list()) == [1, 2]
+
+        options_df = pl.read_parquet(files_by_key["options"]["signed_data_file_url"])
+        assert options_df.columns == ["option"]
+        assert options_df.shape[0] == 4

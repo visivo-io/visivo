@@ -20,6 +20,44 @@ const extractOptionsFromDuckDB = async (db, nameHash) => {
 };
 
 /**
+ * Extract query-based default values from DuckDB after loading the `defaults`
+ * parquet file (written by run_input_job for `display.default.values: ?{...}`;
+ * its single column is named `value`).
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db - DuckDB instance
+ * @param {string} nameHash - Table name (parquet file name_hash)
+ * @returns {Promise<string[]>} Array of default values
+ */
+const extractDefaultsFromDuckDB = async (db, nameHash) => {
+  const query = `SELECT "value" FROM "${nameHash}"`;
+  const result = await runDuckDBQuery(db, query, 3, 1000);
+  const rows = result.toArray().map(row => row.toJSON());
+  return rows.map(row => String(row.value));
+};
+
+/**
+ * True when a value is a finite number or a string that parses as one.
+ * @param {*} v
+ * @returns {boolean}
+ */
+const isNumericLike = v =>
+  (typeof v === 'number' && Number.isFinite(v)) ||
+  (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)));
+
+/**
+ * Expand the multi-select default literals documented on MultiSelectDefault:
+ * `all` selects every option, `none` selects nothing. Anything else is returned
+ * unchanged.
+ * @param {*} value - Raw default (literal, list, or scalar)
+ * @param {string[]} options - Loaded options
+ * @returns {*} Expanded default
+ */
+export const expandDefaultLiteral = (value, options) => {
+  if (value === 'all') return [...(options || [])];
+  if (value === 'none') return [];
+  return value;
+};
+
+/**
  * Generate range options (numeric or date-based)
  * @param {Object} range - Range configuration { start, end, step }
  * @param {string} displayType - Display type (e.g., 'date-range')
@@ -63,9 +101,11 @@ const generateRangeOptions = (range, displayType) => {
  * Extract default value from input data
  * @param {Object} data - Input data object
  * @param {string[]} options - Generated/loaded options
+ * @param {string[]|null} queriedDefaults - Values read from the `defaults` parquet
+ *   (query-based multi-select default), or null when there is none
  * @returns {*} Default value
  */
-const extractDefaultValue = (data, options) => {
+const extractDefaultValue = (data, options, queriedDefaults = null) => {
   // Handle range-based defaults (start/end)
   if (data.structure === 'range' && data.display?.default) {
     const rangeDefault = data.display.default;
@@ -78,8 +118,17 @@ const extractDefaultValue = (data, options) => {
         ? resolveDateRangeToOptions(rangeDefault.end, rangeDefault.end, '1 day')[0]
         : rangeDefault.end;
 
-      // Find all options within the default range
+      // Find all options within the default range. Numeric bounds compare as
+      // numbers (so "100" <= "500" and "10" matches "10.0"); dates and other
+      // strings compare lexicographically (ISO dates sort correctly).
+      const numeric = isNumericLike(startVal) && isNumericLike(endVal);
+      const lo = numeric ? Number(startVal) : String(startVal);
+      const hi = numeric ? Number(endVal) : String(endVal);
       const defaultValue = options.filter(opt => {
+        if (numeric && isNumericLike(opt)) {
+          const n = Number(opt);
+          return n >= lo && n <= hi;
+        }
         return opt >= String(startVal) && opt <= String(endVal);
       });
 
@@ -92,20 +141,29 @@ const extractDefaultValue = (data, options) => {
     }
   }
 
+  // Query-based multi-select default: the run resolved it into a `defaults`
+  // parquet and shipped display.default.values as null.
+  if (Array.isArray(queriedDefaults)) {
+    return queriedDefaults;
+  }
+
   // New structure: display.default.value or display.default.values
   if (data.display?.default?.value !== undefined) {
     return data.display.default.value;
   }
-  if (data.display?.default?.values !== undefined) {
-    return data.display.default.values;
+  if (data.display?.default?.values !== undefined && data.display.default.values !== null) {
+    return expandDefaultLiteral(data.display.default.values, options);
   }
 
   // Legacy structure: results.display.default.value or results.display.default.values
   if (data.results?.display?.default?.value !== undefined) {
     return data.results.display.default.value;
   }
-  if (data.results?.display?.default?.values !== undefined) {
-    return data.results.display.default.values;
+  if (
+    data.results?.display?.default?.values !== undefined &&
+    data.results.display.default.values !== null
+  ) {
+    return expandDefaultLiteral(data.results.display.default.values, options);
   }
 
   // Static options fallback
@@ -125,11 +183,18 @@ const extractDefaultValue = (data, options) => {
  */
 const loadExtractComputeInput = async (db, inputData) => {
   let options = [];
+  let queriedDefaults = null;
 
   // Check for parquet-based structure
   if (inputData.files && Array.isArray(inputData.files)) {
-    // Find options file in files array
+    // Find options / defaults files in files array
     const optionsFile = inputData.files.find(f => f.key === 'options');
+    const defaultsFile = inputData.files.find(f => f.key === 'defaults');
+
+    if (defaultsFile && db) {
+      await loadInsightParquetFiles(db, [defaultsFile]);
+      queriedDefaults = await extractDefaultsFromDuckDB(db, defaultsFile.name_hash);
+    }
 
     if (optionsFile && db) {
       // Load parquet file into DuckDB and extract options
@@ -152,7 +217,7 @@ const loadExtractComputeInput = async (db, inputData) => {
   }
 
   // Extract default value
-  const defaultValue = extractDefaultValue(inputData, options);
+  const defaultValue = extractDefaultValue(inputData, options, queriedDefaults);
   const inputType = inputData.type || 'single-select';
 
   return {
@@ -220,17 +285,20 @@ export const useInputsData = (projectId, inputNames, { cacheKey = null } = {}) =
       return { processed: [] };
     }
 
-    // Step 2: Batch load all parquet files first (single DuckDB batch)
+    // Step 2: Batch load all parquet files first (single DuckDB batch) — both
+    // the `options` tables and any query-based `defaults` tables.
     const parquetFiles = inputs
       .filter(i => i.files?.length)
-      .flatMap(i => i.files.filter(f => f.key === 'options'));
+      .flatMap(i => i.files.filter(f => f.key === 'options' || f.key === 'defaults'));
 
     if (parquetFiles.length > 0) {
       await loadInsightParquetFiles(db, parquetFiles, refreshing);
     }
 
     // Step 3: Process each input (options are already in DuckDB tables)
-    const results = await Promise.allSettled(inputs.map(input => loadExtractComputeInput(db, input)));
+    const results = await Promise.allSettled(
+      inputs.map(input => loadExtractComputeInput(db, input))
+    );
 
     // Step 4: Collect successful results
     const processed = [];

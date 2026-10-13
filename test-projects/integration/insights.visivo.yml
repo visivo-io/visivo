@@ -219,6 +219,21 @@ insights:
       - filter: ?{CAST(${ref(local_test_table).x} AS VARCHAR) IN (${ref(selected_x_values).values})}
       #- sort: ?{${ref(local_test_table).x} ASC}
 
+  # Multi-select query-default test (VIS-1460 I2) - on first render the filter
+  # must use the values the default query returned (x <= 3)
+  - name: query-default-filter-insight
+    description: "Scatter plot filtered by a query-based default selection"
+    props:
+      type: scatter
+      mode: markers
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        size: 12
+        color: "#713B57"
+    interactions:
+      - filter: ?{CAST(${ref(local_test_table).x} AS VARCHAR) IN (${ref(query_default_x_values).values})}
+
   # Multi-select chips test - dynamic split based on first/last accessors
   - name: chips-split-insight
     description: "Bar chart with split using chips input first/last values"

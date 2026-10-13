@@ -273,6 +273,7 @@ class VisivoRunValidator:
             "gradient-grid-insight",
             "string-slider-insight",
             "hyphen-mode-insight",
+            "query-default-filter-insight",
         ]
 
         success = True
