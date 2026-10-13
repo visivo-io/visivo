@@ -67,6 +67,10 @@ async function drag(page, srcSel, dstSel) {
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 4 });
   await page.waitForTimeout(150);
   await page.mouse.up();
+  // Let the drop land and the preview catch up before the next gesture, as a
+  // user does: a drag started in the instant after a drop is dropped itself.
+  await expect(dst.getByTestId('pill-menu-trigger')).toBeVisible({ timeout: 15000 });
+  await expectLiveChart(page, `after dropping on ${dstSel}`);
 }
 
 /** The preview must be a rendered chart — never the failure panel, and never

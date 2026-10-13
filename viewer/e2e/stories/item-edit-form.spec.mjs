@@ -86,7 +86,7 @@ const mountItemEditForm = async (page, { item, leafDropZoneId }) => {
 };
 
 // vis787 sandbox runs on :3006; the shared config defaults to :3001.
-test.use({ baseURL: 'http://localhost:3006' });
+test.use({ baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3006' });
 
 test.describe('ItemEditForm visual gate (VIS-787)', () => {
   test.describe.configure({ mode: 'serial' });

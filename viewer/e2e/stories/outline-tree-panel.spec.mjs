@@ -25,7 +25,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:3004';
+const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3004';
 // VIS-825 nested-layout coverage runs against the vis825 sandbox (:3009).
 // Override with OUTLINE_NESTED_BASE if a different port is in use.
 const NESTED_BASE = process.env.OUTLINE_NESTED_BASE || 'http://localhost:3009';

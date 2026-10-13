@@ -227,6 +227,10 @@ test.describe('Keyboard shortcut suppression + write serialization mid-promote (
       { segment: 'models', name: queryName },
       { segment: 'insights', name: insightName }
     );
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
 
     // Backend-asserted: BOTH rows actually promoted (no row silently lost to
     // the race), and the exploration's own draft is intact (never clobbered
@@ -261,6 +265,10 @@ test.describe('Keyboard shortcut suppression + write serialization mid-promote (
       { segment: 'models', name: queryName },
       { segment: 'insights', name: insightName }
     );
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
     await page.getByTestId('exploration-promote-cancel').click();
     await expect(page.getByTestId('exploration-promote-modal')).not.toBeVisible({ timeout: 5000 });
 

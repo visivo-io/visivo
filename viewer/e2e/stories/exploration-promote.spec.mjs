@@ -434,6 +434,10 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     await clickPromote(page);
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
     createdObjects.push({ segment: 'models', name: queryName }, { segment: 'insights', name: insightName });
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
 
     // The valid insight promoted; the dangling-ref one never got a save call.
     await waitForObjectPublished(page, 'insights', insightName);
@@ -456,6 +460,10 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     await clickPromote(page);
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
     createdObjects.push({ segment: 'models', name: queryName }, { segment: 'insights', name: insightName });
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
     await waitForObjectPublished(page, 'insights', insightName);
     await closePromoteModal(page);
 

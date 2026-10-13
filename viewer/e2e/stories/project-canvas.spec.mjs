@@ -23,7 +23,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:3007';
+const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3007';
 const DASHBOARD = 'simple-dashboard';
 
 // Structural fingerprint of a rendered DashboardNew, independent of whether
