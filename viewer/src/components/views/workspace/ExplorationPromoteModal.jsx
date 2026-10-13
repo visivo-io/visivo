@@ -18,19 +18,21 @@ const rowKey = row => `${row.type}:${row.name}`;
 // D11 (specs/plan/explorer-workspace-unification/08-ux-overhaul.md) — the ONE
 // user-facing verb for this whole chain is "Save to project"; "promote"
 // stays as internal-only vocabulary (store/API names, test ids). A row can
-// only be RENAMED here when it's a brand-new object this run would create —
-// mirrors the `renameModelTab`/`renameInsight` store actions' own
-// `if (!x.isNew) return` guard, and keeps an update-by-name ("modified") row
-// from ever silently becoming a rename-to-a-different-object.
+// only be RENAMED here when it's a brand-new object this run would create,
+// and keeps an update-by-name ("modified") row from ever silently becoming a
+// rename-to-a-different-object. `isNew` is checked as well as the backend
+// diff's status because `renameModelTab`/`renameInsight` silently no-op for a
+// draft with `isNew === false`, even when its object has left the project.
 const RENAMABLE_TIERS = new Set(['model', 'insight', 'chart']);
-const isRenamableRow = row => row.status === 'new' && RENAMABLE_TIERS.has(row.tier);
+const isRenamableRow = row =>
+  row.status === 'new' && row.isNew !== false && RENAMABLE_TIERS.has(row.tier);
 
 /**
  * Merges a rebuilt checklist into the name-draft map rather than replacing it:
  * these name inputs are controlled on this map and the rebuild is an async
  * round-trip, so a replace reverts text the user is typing into another row.
  * `committedKey` alone always re-seeds from `built` — its edit is already
- * blurred, and a rename the store silently refused leaves its key unmoved.
+ * blurred, and a rename that did not take leaves its key unmoved.
  */
 const mergeNameDrafts = (prev, built, committedKey = null) => {
   const next = new Map();
@@ -262,22 +264,9 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         });
         return next;
       });
-      // `renameModelTab`/`renameInsight` bail out silently (a bare `return`,
-      // never a throw) for a draft with `isNew === false`, while renamability
-      // here comes from the backend diff's `status === 'new'` — so a clean
-      // `renameRow` call is no proof the rename happened.
-      const renameTook = built.some(r => r.type === row.type && r.name === nextName);
-      const stillUnderOldName = built.some(r => r.type === row.type && r.name === row.name);
       setNameErrors(prev => {
         const nextErrors = new Map(prev);
-        if (!renameTook && stillUnderOldName) {
-          nextErrors.set(
-            key,
-            `Could not rename — "${row.name}" was loaded from an existing object, so it will be saved under that name.`
-          );
-        } else {
-          nextErrors.delete(key);
-        }
+        nextErrors.delete(key);
         return nextErrors;
       });
       setRenamingKey(null);

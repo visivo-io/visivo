@@ -1235,8 +1235,6 @@ describe('ExplorationPromoteModal', () => {
     });
 
     test("a rename the store silently REFUSES snaps the field back — it never keeps displaying a name the save won't use", async () => {
-      // A rename the store refuses: the action is a no-op (mirroring its own
-      // `if (!isNew) return`) and the rebuild reads back the unchanged row.
       const renameModelTab = jest.fn();
       useStore.setState({ renameModelTab });
       buildPromoteChecklist.mockResolvedValueOnce([row()]).mockResolvedValueOnce([row()]);
@@ -1256,18 +1254,21 @@ describe('ExplorationPromoteModal', () => {
       expect(screen.getByTestId('promote-row-model-orders_q-checkbox')).toBeInTheDocument();
     });
 
-    test('a silently-refused rename explains itself inline instead of reverting with no reason', async () => {
-      useStore.setState({ renameModelTab: jest.fn() });
-      buildPromoteChecklist.mockResolvedValueOnce([row()]).mockResolvedValueOnce([row()]);
-      render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
-      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
-      fireEvent.change(input, { target: { value: 'daily_orders' } });
-      fireEvent.blur(input);
-
-      expect(
-        await screen.findByTestId('promote-row-model-orders_q-name-error')
-      ).toHaveTextContent('it will be saved under that name');
-    });
+    test.each([
+      ['model', 'model', 'orders_q'],
+      ['insight', 'insight', 'my_insight'],
+    ])(
+      '%s row loaded from an existing object is not renamable even when the diff reads it as new',
+      async (tier, type, name) => {
+        buildPromoteChecklist.mockResolvedValueOnce([row({ tier, type, name, isNew: false })]);
+        render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+        expect(
+          await screen.findByTestId(`promote-row-${type}-${name}-checkbox`)
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId(`promote-row-${type}-${name}-name-input`)).toBeNull();
+        expect(screen.getByText(name)).toBeInTheDocument();
+      }
+    );
 
     test('renaming a row back to a name it previously had does not resurrect that name\'s stale draft', async () => {
       const renameInsight = jest.fn();
