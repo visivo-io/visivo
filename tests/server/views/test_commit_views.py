@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 from flask import Flask
 
+from visivo.server.flask_app import FlaskApp
 from visivo.server.views.commit_views import register_commit_views
 from visivo.server.managers.object_manager import ObjectStatus
 
@@ -61,6 +62,12 @@ class TestCommitViews:
         flask_app.input_manager.cached_objects = {}
         flask_app._cached_defaults = None
         flask_app._cached_theme = None
+        # The REAL comparison, not a Mock that is always truthy.
+        flask_app.project.defaults = None
+        flask_app.project.theme = None
+        flask_app.changed_project_settings.side_effect = lambda: FlaskApp.changed_project_settings(
+            flask_app
+        )
 
         register_commit_views(app, flask_app, "/tmp/output")
 
