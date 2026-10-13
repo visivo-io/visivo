@@ -1,5 +1,5 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
-import { apiFetch } from './utils';
+import { apiFetch, throwApiError } from './utils';
 
 /**
  * Explore 2.0 Phase 4 — the stateless draft-compile endpoint (S2's resolved
@@ -61,9 +61,5 @@ export const compileDraftInsight = async ({
     return await response.json();
   }
 
-  const data = await response.json().catch(() => ({}));
-  const err = new Error(data.error || 'Failed to compile draft insight');
-  if (data.error_type) err.errorType = data.error_type;
-  if (data.model) err.modelName = data.model;
-  throw err;
+  return throwApiError(response, 'Failed to compile draft insight');
 };

@@ -6,7 +6,10 @@
 import { executeDraftInsight } from './insightExecuteDraft';
 import { apiFetch } from './utils';
 
-jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
+jest.mock('./utils', () => ({
+  apiFetch: jest.fn(),
+  throwApiError: jest.requireActual('./utils').throwApiError,
+}));
 
 let mockAvailableKeys = new Set(['insightExecuteDraft']);
 jest.mock('../contexts/URLContext', () => ({
