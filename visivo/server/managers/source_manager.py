@@ -74,12 +74,8 @@ class SourceManager(ObjectManager[Source]):
                 self._published_objects[source.name] = source
 
     def save(self, name: str, obj: Source) -> None:
-        """Cache a draft source with its secrets protected (see ``_protect_secrets``).
-
-        Every draft write goes through here — the sources API, rename, and the
-        agent's ``write_source`` tool — so none of them can stage a secret that
-        a commit would serialize as plaintext or as the mask.
-        """
+        """Every draft write (API, rename, agent) lands here, so none can stage a
+        plaintext or masked secret."""
         super().save(name, self._protect_secrets(obj))
 
     def save_from_config(self, config: dict) -> Source:
