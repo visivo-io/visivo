@@ -381,12 +381,12 @@ class TestSourceResolutionBranches:
         assert resp.status_code in (400, 404, 500)
 
     def test_inference_blowing_up_is_a_500_on_both_routes(self, client, model, monkeypatch):
-        from visivo.server.views import model_schema_views
+        from visivo.server.services import model_schema
 
         def boom(**kwargs):
             raise RuntimeError("sqlglot had a bad day")
 
-        monkeypatch.setattr(model_schema_views, "infer_model_columns", boom)
+        monkeypatch.setattr(model_schema, "infer_model_columns", boom)
 
         saved = client.post(f"/api/model-schemas/{model.name}/")
         draft = client.post("/api/model-schemas/", json={"sql": "select 1", "source_name": "wh"})

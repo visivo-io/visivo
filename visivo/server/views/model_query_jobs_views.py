@@ -3,7 +3,7 @@
 import threading
 from flask import jsonify, request
 
-from visivo.server.views.temporal_json import isoformat_temporal_values
+from visivo.server.temporal_json import isoformat_temporal_values
 
 from visivo.logger.logger import Logger
 from visivo.server.managers.model_query_job_manager import ModelQueryJobManager

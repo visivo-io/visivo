@@ -7,26 +7,20 @@ the agent classify a column the same way because they call the same code.
 """
 
 from visivo.agent.charting.schema import ShapeCard
+from visivo.server.services.column_types import (
+    BOOLEAN,
+    FLOAT,
+    INTEGER,
+    TIME,
+    column_kind,
+    json_value,
+)
 from visivo.server.services.geo_lists import geo_kind_for
 
-TIME_TYPES = ("DATE", "TIMESTAMP", "TIME", "DATETIME")
-INTEGER_TYPES = (
-    "INT",
-    "BIGINT",
-    "SMALLINT",
-    "TINYINT",
-    "HUGEINT",
-    "UBIGINT",
-    "UINTEGER",
-    "USMALLINT",
-    "UTINYINT",
-)
-FLOAT_TYPES = ("DOUBLE", "FLOAT", "REAL", "DECIMAL", "NUMERIC")
-BOOLEAN_TYPES = ("BOOL",)
-
-# Below this many distinct integer values a count is a category to compare
-# across, not a quantity to bin: hour of day, passenger count, star rating.
+# Below this many distinct values a number is a category to compare across,
+# not a quantity to bin: hour of day, passenger count, star rating.
 DISCRETE_MAX_DISTINCT = 30
+DISCRETE_MAX_DISTINCT_FLOAT = 10
 # A text column with more distinct values than this is prose or an identifier.
 CATEGORICAL_MAX_DISTINCT = 1000
 # Average length above which a text column is free text rather than a label.
@@ -93,28 +87,6 @@ GRAINS = (
 )
 
 
-def _upper(value):
-    return str(value or "").upper()
-
-
-def _is_time(col_type):
-    return any(t in _upper(col_type) for t in TIME_TYPES)
-
-
-def _is_integer(col_type):
-    upper = _upper(col_type)
-    return any(upper.startswith(t) or upper == t for t in INTEGER_TYPES)
-
-
-def _is_float(col_type):
-    upper = _upper(col_type)
-    return any(upper.startswith(t) for t in FLOAT_TYPES)
-
-
-def _is_boolean(col_type):
-    return _upper(col_type).startswith(BOOLEAN_TYPES)
-
-
 def _name_tokens(name):
     return [t for t in str(name).lower().replace("-", "_").split("_") if t]
 
@@ -128,12 +100,12 @@ def _ratio(numerator, denominator):
     return (numerator / denominator) if denominator else 0.0
 
 
-def _looks_like_identifier(name, col_type, distinct, non_null):
+def _looks_like_identifier(name, kind, distinct, non_null):
     if non_null < IDENTIFIER_MIN_ROWS:
         return False
     if _ratio(distinct, non_null) < IDENTIFIER_MIN_RATIO:
         return False
-    if _is_float(col_type):
+    if kind == FLOAT:
         # A measured quantity is unique per row too; only a name says id.
         return _has_hint(name, ID_NAME_HINTS)
     return True
@@ -181,26 +153,25 @@ def _additive(name, role):
 
 
 def _role(name, column, distinct, non_null, top_values):
-    col_type = column.get("type")
-    if _is_boolean(col_type):
+    kind = column_kind(column.get("type"))
+    if kind == BOOLEAN:
         return "boolean", None
-    if _is_time(col_type):
+    if kind == TIME:
         return "time", None
-    if _is_integer(col_type) or _is_float(col_type):
+    if kind in (INTEGER, FLOAT):
         tokens = _name_tokens(name)
         if any(t in LAT_HINTS or t in LON_HINTS for t in tokens):
             return "geo_point", "latlon"
-        if _looks_like_identifier(name, col_type, distinct, non_null):
+        if _looks_like_identifier(name, kind, distinct, non_null):
             return "identifier", None
-        if _is_integer(col_type) and distinct <= DISCRETE_MAX_DISTINCT:
+        if kind == INTEGER and distinct <= DISCRETE_MAX_DISTINCT:
             return "numeric_discrete", None
-        if _is_float(col_type) and distinct <= 10:
+        if kind == FLOAT and distinct <= DISCRETE_MAX_DISTINCT_FLOAT:
             return "numeric_discrete", None
         return "numeric_continuous", None
-    # Text and everything else.
     avg_length = column.get("avg_length")
     prose = avg_length is not None and avg_length > LABEL_MAX_AVG_LENGTH
-    if not prose and _looks_like_identifier(name, col_type, distinct, non_null):
+    if not prose and _looks_like_identifier(name, kind, distinct, non_null):
         return "identifier", None
     geo = geo_kind_for([tv["value"] for tv in top_values]) if top_values else None
     if geo:
@@ -216,7 +187,7 @@ def _skew(mean, median, stddev):
     return 3 * (mean - median) / stddev
 
 
-def shape_card(column, row_count, sampled=False):
+def shape_card(column, row_count):
     """One column of a unified profile as a ``ShapeCard``.
 
     ``column`` is one entry of ``profile["columns"]``: ``name, type,
@@ -234,21 +205,17 @@ def shape_card(column, row_count, sampled=False):
     numeric = role in ("numeric_continuous", "numeric_discrete", "identifier", "geo_point")
     stats = None
     if column.get("min") is not None or column.get("max") is not None:
-        stats = {
-            "min": column.get("min"),
-            "max": column.get("max"),
-            "mean": column.get("avg") if numeric else None,
-            "median": column.get("median") if numeric else None,
-            "stddev": column.get("std_dev") if numeric else None,
-            "skew": (
-                _skew(column.get("avg"), column.get("median"), column.get("std_dev"))
-                if numeric
-                else None
-            ),
-            "p99": column.get("p99") if numeric else None,
-            "zeros_pct": column.get("zeros_pct") if numeric else None,
-        }
-        stats = {k: _jsonable(v) for k, v in stats.items()}
+        stats = {"min": column.get("min"), "max": column.get("max")}
+        if numeric:
+            stats.update(
+                mean=column.get("avg"),
+                median=column.get("median"),
+                stddev=column.get("std_dev"),
+                skew=_skew(column.get("avg"), column.get("median"), column.get("std_dev")),
+                p99=column.get("p99"),
+                zeros_pct=column.get("zeros_pct"),
+            )
+        stats = {k: json_value(v) for k, v in stats.items()}
 
     # Top values describe a column you split or filter by; for a measure, an
     # identifier or prose they are twenty arbitrary rows.
@@ -282,15 +249,4 @@ def shape_card(column, row_count, sampled=False):
 def shape_cards(profile):
     """Every column of a unified profile as cards, in profile order."""
     row_count = profile.get("row_count") or 0
-    return [shape_card(c, row_count, profile.get("sampled", False)) for c in profile["columns"]]
-
-
-def _jsonable(value):
-    if value is None or isinstance(value, (int, float, str)):
-        return value
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return str(value)
+    return [shape_card(c, row_count) for c in profile["columns"]]

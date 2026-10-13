@@ -412,6 +412,37 @@ class TestProfilesEndpoint:
 
 
 class TestProfilesEndpointEdges:
+    def test_an_empty_column_name_is_a_400(self, integration_client, integration_app):
+        resp = integration_client.post(
+            "/api/profiles/",
+            json={
+                "source_name": integration_app.project.sources[0].name,
+                "sql": "select 1",
+                "columns": [""],
+            },
+        )
+
+        assert resp.status_code == 400 and "columns" in resp.get_json()["error"]
+
+    def test_a_bad_column_list_for_a_model_is_a_400_before_the_lookup(self, integration_client):
+        resp = integration_client.post(
+            "/api/profiles/", json={"model_name": "never_built", "columns": "x"}
+        )
+
+        assert resp.status_code == 400
+
+    def test_the_view_shares_the_memoised_service(self, integration_client, integration_app):
+        from visivo.server.services.profiling_service import profiling_service_for
+
+        table = pa.table({"n": pa.array([1, 2, 3])})
+        _write_model(integration_app.output_dir, "shared", table)
+        service = profiling_service_for(integration_app.output_dir)
+        service.invalidate_cache("shared")
+
+        body = integration_client.post("/api/profiles/", json={"model_name": "shared"}).get_json()
+
+        assert service._cache["tier2_shared"]["row_count"] == body["profile"]["row_count"] == 3
+
     def test_too_many_columns_is_a_400(self, integration_client, integration_app):
         resp = integration_client.post(
             "/api/profiles/",
@@ -456,7 +487,7 @@ class TestHistogramEdges:
             raise RuntimeError("duckdb fell over")
 
         monkeypatch.setattr(ProfilingService, "get_histogram", boom)
-        monkeypatch.setattr(ProfilingService, "get_tier2_profile", boom)
+        monkeypatch.setattr(ProfilingService, "profile_model", boom)
         monkeypatch.setattr(ProfilingService, "invalidate_cache", boom)
 
         assert client.get(f"/api/models/{parquet_model}/histogram/amount/").status_code == 500

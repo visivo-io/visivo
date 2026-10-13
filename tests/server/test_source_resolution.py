@@ -1,5 +1,5 @@
-"""One draft-first lookup for every surface that takes a source or model
-name (VIS-1411). Three views had their own copies; this is the shared one."""
+"""One draft-first lookup for every surface that takes a source, model or
+input name."""
 
 from unittest.mock import Mock
 
@@ -8,7 +8,14 @@ from visivo.server import source_resolution as res
 from tests.factories.model_factories import DuckdbSourceFactory, SqlModelFactory
 
 
-def _app(draft_sources=(), committed_sources=(), draft_models=(), committed_models=()):
+def _app(
+    draft_sources=(),
+    committed_sources=(),
+    draft_models=(),
+    committed_models=(),
+    draft_inputs=(),
+    committed_inputs=(),
+):
     app = Mock()
     app.source_manager.get.side_effect = lambda n: next(
         (s for s in draft_sources if s.name == n), None
@@ -16,8 +23,12 @@ def _app(draft_sources=(), committed_sources=(), draft_models=(), committed_mode
     app.model_manager.get.side_effect = lambda n: next(
         (m for m in draft_models if m.name == n), None
     )
+    app.input_manager.get.side_effect = lambda n: next(
+        (i for i in draft_inputs if i.name == n), None
+    )
     app.project.sources = list(committed_sources)
     app.project.models = list(committed_models)
+    app.project.inputs = list(committed_inputs)
     return app
 
 
@@ -62,6 +73,29 @@ class TestFindModel:
         )
         assert res.find_model(_app(committed_models=[committed]), "m") is committed
         assert res.find_model(_app(), "m") is None
+
+
+class TestFindInput:
+    def test_draft_then_committed(self):
+        draft, committed = Mock(), Mock()
+        draft.name = committed.name = "region"
+
+        assert (
+            res.find_input(_app(draft_inputs=[draft], committed_inputs=[committed]), "region")
+            is draft
+        )
+        assert res.find_input(_app(committed_inputs=[committed]), "region") is committed
+        assert res.find_input(_app(), "region") is None
+
+
+class TestFindObject:
+    def test_the_three_wrappers_share_one_walk(self):
+        source = DuckdbSourceFactory(name="wh")
+        app = _app(committed_sources=[source])
+
+        assert res.find_object(app, "source_manager", "sources", "wh") is source
+        assert res.find_object(app, "source_manager", "sources", "") is None
+        assert res.find_object(app, "model_manager", "sources", "wh") is source
 
 
 class TestReferencedSourceName:

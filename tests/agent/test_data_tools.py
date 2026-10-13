@@ -8,6 +8,7 @@ import pytest
 from visivo.agent import data_tools
 from visivo.agent.tools import TOOLS, ToolError, call
 from visivo.query.schema_aggregator import SchemaAggregator
+from visivo.server.services import draft_insight
 
 
 def _source(integration_app):
@@ -182,6 +183,14 @@ class TestPreviewTable:
             integration_app,
             "preview_table",
             {"source": _source(integration_app).name, "table": "public.test_table"},
+        )
+
+        assert seen == {"table": "test_table", "schema_name": "public"}
+
+        call(
+            integration_app,
+            "preview_table",
+            {"source": _source(integration_app).name, "table": "db.public.test_table"},
         )
 
         assert seen == {"table": "test_table", "schema_name": "public"}
@@ -459,7 +468,7 @@ class TestProfileColumns:
             )
 
     def test_a_bad_table_is_a_refusal_with_the_driver_message(self, integration_app):
-        with pytest.raises(ToolError, match="Could not profile"):
+        with pytest.raises(ToolError, match="profile_columns failed on .*no_such_table"):
             call(
                 integration_app,
                 "profile_columns",
@@ -744,6 +753,74 @@ class TestPreviewInsight:
         with pytest.raises(ToolError):
             call(integration_app, "preview_insight", {"config": config})
 
+    def test_a_repeated_input_reference_is_resolved_once(self, integration_app, model):
+        call(
+            integration_app,
+            "write_input",
+            {"config": {"name": "min_x", "type": "single-select", "options": ["2", "4"]}},
+        )
+        loads = []
+        original = draft_insight.get_sample_value_for_input
+
+        def counting(*args, **kwargs):
+            loads.append(args)
+            return original(*args, **kwargs)
+
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(draft_insight, "get_sample_value_for_input", counting)
+        try:
+            config = self._config(
+                interactions=[
+                    {"filter": "?{${ref(orders_q).x} > ${ref(min_x).value}}"},
+                    {"filter": "?{${ref(orders_q).y} > ${ref(min_x).value}}"},
+                ]
+            )
+            result = call(integration_app, "preview_insight", {"config": config})
+        finally:
+            monkeypatch.undo()
+
+        assert len(loads) == 1 and result["inputs_substituted"] == {"min_x": {"value": "2"}}
+
+    def test_every_unbuilt_model_is_inferred_before_the_one_attempt(
+        self, integration_app, model, monkeypatch
+    ):
+        attempts = []
+        original = data_tools.execute_draft_insight
+
+        def spy(app, output_dir, config, **kwargs):
+            attempts.append(kwargs["model_schemas"])
+            return original(app, output_dir, config, **kwargs)
+
+        monkeypatch.setattr(data_tools, "execute_draft_insight", spy)
+        call(integration_app, "preview_insight", {"config": self._config()})
+
+        assert len(attempts) == 1
+        assert set(attempts[0]) == {"orders_q"} and set(attempts[0]["orders_q"]) == {"x", "y"}
+
+    def test_a_built_model_is_not_inferred(self, integration_app, model):
+        import os
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        from visivo.output_paths import model_data_file, run_dir
+        from visivo.server.services.profiling_service import profiling_service_for
+
+        path = model_data_file(run_dir(integration_app.output_dir), "orders_q")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        pq.write_table(pa.table({"x": pa.array([1])}), path)
+        assert profiling_service_for(integration_app.output_dir).parquet_exists("orders_q")
+
+        assert data_tools._unbuilt_model_schemas(integration_app, self._config()) == {}
+        assert data_tools._unbuilt_model_schemas(integration_app, {"props": {"x": "nothing"}}) == {}
+
+    def test_a_model_with_nothing_to_infer_from_is_skipped(self, integration_app, monkeypatch):
+        monkeypatch.setattr(
+            data_tools, "find_model", lambda app, name: type("M", (), {"sql": None})()
+        )
+
+        assert data_tools._unbuilt_model_schemas(integration_app, self._config()) == {}
+
     def test_a_broken_query_is_a_refusal_with_the_reason(self, integration_app, model):
         config = self._config(y="?{sum(${ref(orders_q).nope})}")
 
@@ -762,12 +839,43 @@ class TestPreviewInsight:
                 {"config": {"name": "x"}, "input_values": "West"},
             )
 
-    def test_rendering_rules(self):
-        assert data_tools._render_input_value("West", "value") == "'West'"
-        assert data_tools._render_input_value("5", "value") == "5"
-        assert data_tools._render_input_value("O'Hare", "value") == "'O''Hare'"
-        assert data_tools._render_input_value(True, "value") == "TRUE"
-        assert data_tools._render_input_value([1, 5], "min") == "1"
-        assert data_tools._render_input_value([1, 5], "max") == "5"
-        assert data_tools._render_input_value([], "first") == "NULL"
-        assert data_tools._render_input_value(["a", "b"], "values") == "'a', 'b'"
+
+class TestBounds:
+    def test_clamp_defaults_to_the_maximum(self):
+        assert data_tools._clamp({}, "limit", 50) == 50
+        assert data_tools._clamp({"limit": 500}, "limit", 50) == 50
+        assert data_tools._clamp({"limit": 0}, "limit", 50) == 1
+        assert data_tools._clamp({"limit": "7"}, "limit", 50) == 7
+        with pytest.raises(ToolError, match="integer"):
+            data_tools._clamp({"limit": "lots"}, "limit", 50)
+
+    def test_within_bytes_keeps_the_rows_that_fit(self, monkeypatch):
+        monkeypatch.setattr(data_tools, "MAX_RESULT_BYTES", 600)
+        rows = [{"i": i, "pad": "x" * 20} for i in range(20)]
+        payload = data_tools._rows_payload(["i", "pad"], rows)
+
+        cut = data_tools._within_bytes(payload)
+
+        assert cut["truncated"] is True and 0 < cut["row_count"] < 20
+        assert cut["rows"] == rows[: cut["row_count"]]
+        assert len(json.dumps(cut)) <= 600
+
+    def test_within_bytes_leaves_a_fitting_payload_alone(self):
+        payload = data_tools._rows_payload(["i"], [{"i": 1}])
+
+        assert data_tools._within_bytes(payload)["truncated"] is False
+
+    def test_a_single_row_too_large_leaves_no_rows(self, monkeypatch):
+        monkeypatch.setattr(data_tools, "MAX_RESULT_BYTES", 400)
+        payload = data_tools._rows_payload(["blob"], [{"blob": "x" * 500}])
+
+        cut = data_tools._within_bytes(payload)
+
+        assert cut["rows"] == [] and cut["row_count"] == 0 and cut["truncated"] is True
+
+    def test_descriptions_carry_the_real_caps(self):
+        assert str(data_tools.MAX_QUERY_ROWS) in TOOLS["query_source"].description
+        assert str(data_tools.MAX_PREVIEW_ROWS) in TOOLS["preview_table"].description
+        assert str(data_tools.MAX_PREVIEW_INSIGHT_ROWS) in TOOLS["preview_insight"].description
+        columns = TOOLS["profile_columns"].input_schema["properties"]["columns"]["description"]
+        assert str(data_tools.MAX_PROFILE_COLUMNS) in columns

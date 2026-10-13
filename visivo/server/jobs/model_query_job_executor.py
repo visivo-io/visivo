@@ -6,19 +6,8 @@ from visivo.jobs.run_model_data_job import (
     execute_and_get_result,
 )
 from visivo.server.managers.preview_run_manager import RunStatus
+from visivo.server.source_resolution import find_source
 from visivo.logger.logger import Logger
-
-
-def find_source_by_name(project, source_name: str):
-    """Find a source by name in the project.
-
-    Project.sources always contains resolved source objects (not refs),
-    so a simple name match is sufficient.
-    """
-    for source in project.sources or []:
-        if source.name == source_name:
-            return source
-    return None
 
 
 def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
@@ -26,7 +15,7 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
     Execute a model query job using the unified model data job infrastructure.
 
     Flow:
-    1. Find the source by name in the project
+    1. Find the source by name (draft tier first, then the committed project)
     2. Execute the SQL query using execute_and_get_result from run_model_data_job
     3. Return results in API format {columns, rows, row_count, ...}
 
@@ -65,7 +54,7 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
             progress_message="Finding source",
         )
 
-        source = find_source_by_name(flask_app.project, source_name)
+        source = find_source(flask_app, source_name)
         if not source:
             raise ValueError(f"Source '{source_name}' not found in project")
 

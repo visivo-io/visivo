@@ -38,7 +38,7 @@ from visivo.logger.logger import Logger
 from visivo.server.services.draft_insight import DraftInsightError, execute_draft_insight
 from visivo.server.views.insight_draft_common import parse_draft_request
 
-from visivo.server.views.temporal_json import isoformat_temporal_values
+from visivo.server.temporal_json import isoformat_temporal_values
 
 
 def register_insight_execute_views(app, flask_app, output_dir):

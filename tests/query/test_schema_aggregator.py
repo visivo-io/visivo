@@ -504,3 +504,14 @@ class TestLoadWithFallback:
 
     def test_the_preview_run_id_is_derived_one_way(self):
         assert SchemaAggregator.preview_run_id("wh") == "preview-wh"
+
+    def test_aggregate_returns_what_it_stored(self, tmp_path):
+        stored = SchemaAggregator.aggregate_source_schema(
+            source_name="s",
+            source_type="sqlite",
+            schema_data={"tables": {"a": {"columns": {"x": {"type": "INT"}}}}},
+            output_dir=str(tmp_path),
+        )
+
+        assert stored == SchemaAggregator.load_source_schema("s", str(tmp_path))
+        assert stored["metadata"]["total_columns"] == 1

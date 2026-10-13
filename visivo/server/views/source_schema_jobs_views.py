@@ -12,7 +12,6 @@ API Design follows the pattern from insight_views.py:
 import threading
 from flask import jsonify, request
 
-from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus
@@ -48,34 +47,20 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         try:
             sources = []
 
-            project_sources = flask_app.project.sources or []
-
-            main_schemas = SchemaAggregator.list_stored_schemas(output_dir, run_id=DEFAULT_RUN_ID)
-            main_schema_map = {s["source_name"]: s for s in main_schemas}
-
-            for source in project_sources:
-                cached = main_schema_map.get(source.name)
-                if cached is None:
-                    preview_run_id = f"preview-{source.name}"
-                    preview_schemas = SchemaAggregator.list_stored_schemas(
-                        output_dir, run_id=preview_run_id
-                    )
-                    for s in preview_schemas:
-                        if s["source_name"] == source.name:
-                            cached = s
-                            break
-
+            for source in flask_app.project.sources or []:
+                cached, _ = SchemaAggregator.load_source_schema_with_fallback(
+                    source.name, output_dir
+                )
                 source_info = {
                     "source_name": source.name,
                     "source_type": source.type,
                     "has_cached_schema": cached is not None,
                 }
-
                 if cached is not None:
+                    metadata = cached.get("metadata") or {}
                     source_info["generated_at"] = cached.get("generated_at")
-                    source_info["total_tables"] = cached.get("total_tables", 0)
-                    source_info["total_columns"] = cached.get("total_columns", 0)
-
+                    source_info["total_tables"] = metadata.get("total_tables", 0)
+                    source_info["total_columns"] = metadata.get("total_columns", 0)
                 sources.append(source_info)
 
             return jsonify(sources)

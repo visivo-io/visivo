@@ -8,8 +8,8 @@ Used by:
 """
 
 import os
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
-from time import time
+import threading
+from time import monotonic, time
 
 from visivo.models.sources.source import Source
 from visivo.constants import DEFAULT_RUN_ID
@@ -28,20 +28,45 @@ class QueryTimeout(TimeoutError):
     what a caller waits for, not what the database does."""
 
 
+# Bounded queries run on daemon threads so an abandoned driver call never
+# blocks interpreter exit; the semaphore caps how many can be in flight,
+# orphans included.
+MAX_BOUNDED_QUERIES = 8
+_query_slots = threading.BoundedSemaphore(MAX_BOUNDED_QUERIES)
+BOUNDED_QUERY_THREAD_NAME = "visivo-bounded-query"
+
+
+def _timed_out(timeout_s):
+    return QueryTimeout(
+        f"Query did not return within {timeout_s}s. Add a LIMIT, filter the "
+        "rows, or aggregate in SQL before previewing."
+    )
+
+
 def _read_sql_within(source, sql, timeout_s):
     if timeout_s is None:
         return source.read_sql(sql)
-    executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(source.read_sql, sql)
-    try:
-        return future.result(timeout=timeout_s)
-    except FutureTimeout:
-        raise QueryTimeout(
-            f"Query did not return within {timeout_s}s. Add a LIMIT, filter the "
-            "rows, or aggregate in SQL before previewing."
-        )
-    finally:
-        executor.shutdown(wait=False)
+    deadline = monotonic() + timeout_s
+    slots = _query_slots
+    if not slots.acquire(timeout=timeout_s):
+        raise _timed_out(timeout_s)
+    outcome, done = {}, threading.Event()
+
+    def run():
+        try:
+            outcome["rows"] = source.read_sql(sql)
+        except BaseException as error:
+            outcome["error"] = error
+        finally:
+            slots.release()
+            done.set()
+
+    threading.Thread(target=run, name=BOUNDED_QUERY_THREAD_NAME, daemon=True).start()
+    if not done.wait(max(0.0, deadline - monotonic())):
+        raise _timed_out(timeout_s)
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["rows"]
 
 
 def write_parquet_from_data(

@@ -6,8 +6,13 @@ import time
 import pyarrow.parquet as pq
 import pytest
 
+import threading
+
+from visivo.jobs import run_model_data_job as module
 from visivo.jobs.run_model_data_job import (
     AGENT_QUERY_TIMEOUT_S,
+    BOUNDED_QUERY_THREAD_NAME,
+    MAX_BOUNDED_QUERIES,
     UI_MAX_ROWS,
     UI_QUERY_TIMEOUT_S,
     QueryTimeout,
@@ -76,6 +81,39 @@ class TestTheDeadline:
         result = execute_and_get_result(_Source(), "select 1", timeout_s=5)
 
         assert result["row_count"] == 10
+
+    def test_an_abandoned_query_runs_on_a_daemon_thread(self):
+        with pytest.raises(QueryTimeout):
+            execute_and_get_result(_Source(delay=0.5), "select 1", timeout_s=0.01)
+
+        orphans = [t for t in threading.enumerate() if t.name == BOUNDED_QUERY_THREAD_NAME]
+        assert orphans and all(t.daemon for t in orphans)
+
+    def test_a_driver_error_comes_back_unchanged(self):
+        class _Broken:
+            def read_sql(self, sql):
+                raise ValueError("no such column")
+
+        with pytest.raises(ValueError, match="no such column"):
+            execute_and_get_result(_Broken(), "select 1", timeout_s=5)
+
+    def test_orphans_are_capped(self, monkeypatch):
+        monkeypatch.setattr(module, "_query_slots", threading.BoundedSemaphore(1))
+        with pytest.raises(QueryTimeout):
+            execute_and_get_result(_Source(delay=0.5), "select 1", timeout_s=0.01)
+        before = threading.active_count()
+
+        with pytest.raises(QueryTimeout, match="did not return within 0.01s"):
+            execute_and_get_result(_Source(), "select 1", timeout_s=0.01)
+
+        assert threading.active_count() == before
+
+    def test_a_finished_query_frees_its_slot(self, monkeypatch):
+        monkeypatch.setattr(module, "_query_slots", threading.BoundedSemaphore(MAX_BOUNDED_QUERIES))
+        for _ in range(MAX_BOUNDED_QUERIES + 1):
+            execute_and_get_result(_Source(), "select 1", timeout_s=5)
+
+        assert module._query_slots._value == MAX_BOUNDED_QUERIES
 
     def test_the_budgets_jared_set(self):
         assert UI_QUERY_TIMEOUT_S == 30 and AGENT_QUERY_TIMEOUT_S == 20

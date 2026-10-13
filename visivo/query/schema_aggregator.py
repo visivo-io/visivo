@@ -26,9 +26,9 @@ class SchemaAggregator:
         schema_data: Dict[str, Any],
         output_dir: str,
         run_id: str = DEFAULT_RUN_ID,
-    ) -> None:
+    ) -> Dict[str, Any]:
         """
-        Store source schema data in standard format.
+        Store source schema data in standard format and return what was written.
 
         Args:
             source_name: Name of the source
@@ -82,6 +82,7 @@ class SchemaAggregator:
                 f"Stored schema for source '{source_name}' with {total_tables} tables "
                 f"and {total_columns} columns"
             )
+            return storage_data
 
         except Exception as e:
             Logger.instance().error(f"Error storing schema for source {source_name}: {e}")
@@ -233,13 +234,8 @@ class SchemaAggregator:
 
     @staticmethod
     def load_source_schema_with_fallback(source_name: str, output_dir: str, run_id: str = None):
-        """``(schema_data, run_id)`` for the first place a schema is found.
-
-        With an explicit ``run_id`` only that run is tried. Otherwise ``main``
-        first, then the source's preview run — so a source that has only ever
-        been introspected on demand still resolves for every reader, not just
-        the one view that used to carry this logic.
-        """
+        """``(schema_data, run_id)`` for the first place a schema is found: the
+        given ``run_id`` alone, else ``main`` and then the source's preview run."""
         candidates = (
             [run_id]
             if run_id is not None

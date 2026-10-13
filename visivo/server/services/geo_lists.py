@@ -274,9 +274,7 @@ GEO_VALUE_SETS = {
     "custom": {b.casefold() for b in NYC_BOROUGHS},
 }
 
-# Two-letter US state codes collide with ISO alpha-2 (CA, DE, GA, IN, ...),
-# so a tie is broken in this order: a full name is unambiguous, a 3-letter code
-# is a country, and a 2-letter code is read as a state before a country.
+# Two-letter US state codes collide with ISO alpha-2 (CA, DE, GA, IN); a tie reads as a state.
 GEO_KIND_PRIORITY = ("us_state", "country_name", "iso3", "iso2", "custom")
 
 

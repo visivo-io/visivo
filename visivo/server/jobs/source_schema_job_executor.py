@@ -7,6 +7,7 @@ Follows the pattern from preview_job_executor.py:
 """
 
 from visivo.logger.logger import Logger
+from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.jobs.run_source_schema_job import action as run_source_schema_action
 
@@ -26,7 +27,7 @@ def execute_source_schema_job(job_id, config, flask_app, output_dir, run_manager
         None (updates run status via run_manager)
     """
     source_name = config.get("source_name")
-    run_id = f"preview-{source_name}"
+    run_id = SchemaAggregator.preview_run_id(source_name)
 
     try:
         run_manager.update_status(

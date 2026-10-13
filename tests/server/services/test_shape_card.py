@@ -208,8 +208,22 @@ class TestShapeCards:
     def test_an_empty_profile(self):
         assert sc.shape_cards({"row_count": 0, "columns": []}) == []
 
-    def test_jsonable_handles_odd_values(self):
-        from decimal import Decimal
 
-        assert sc._jsonable(Decimal("1.5")) == 1.5
-        assert sc._jsonable(object()).startswith("<object")
+class TestDuckDBTypeSpellings:
+    def test_every_integer_and_decimal_spelling_is_numeric(self):
+        for type_ in ("HUGEINT", "UBIGINT", "UINTEGER", "INT", "DECIMAL(18,3)", "NUMERIC", "REAL"):
+            assert card(col("rows", type_, 400)).role == "numeric_continuous", type_
+
+    def test_float_discreteness_has_its_own_threshold(self):
+        at = sc.DISCRETE_MAX_DISTINCT_FLOAT
+
+        assert card(col("rating", "DOUBLE", at)).role == "numeric_discrete"
+        assert card(col("rating", "DOUBLE", at + 1)).role == "numeric_continuous"
+        assert card(col("hour", "INTEGER", sc.DISCRETE_MAX_DISTINCT)).role == "numeric_discrete"
+
+    def test_temporal_boolean_and_nested_spellings(self):
+        assert card(col("at", "TIMESTAMP WITH TIME ZONE", 900)).role == "time"
+        assert card(col("t", "TIME", 900)).role == "time"
+        assert card(col("ok", "BOOL", 2)).role == "boolean"
+        assert card(col("tags", "VARCHAR[]", 3, avg_length=None)).role == "categorical"
+        assert card(col("tags", "STRUCT(a INTEGER)", 3)).role == "categorical"

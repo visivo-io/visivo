@@ -18,7 +18,12 @@ def _write_model(output_dir, name, table):
     return path
 
 
-from visivo.server.services.profiling_service import ProfilingService, CACHE_TTL_SECONDS
+from visivo.server.services.profiling_service import (
+    MAX_PROFILE_COLUMNS,
+    TOP_N_MAX_DISTINCT,
+    ProfilingService,
+    profiling_service_for,
+)
 
 
 class TestProfilingService:
@@ -99,7 +104,7 @@ class TestProfilingService:
 
     def test_tier2_profile(self, profiling_service, sample_parquet):
         """Test tier 2 profiling returns SUMMARIZE stats."""
-        profile = profiling_service.get_tier2_profile(sample_parquet)
+        profile = profiling_service.profile_model(sample_parquet)
 
         assert profile["model_name"] == sample_parquet
         assert profile["tier"] == 2
@@ -118,15 +123,15 @@ class TestProfilingService:
     def test_tier2_profile_nonexistent(self, profiling_service):
         """Test tier 2 profiling raises FileNotFoundError for non-existent file."""
         with pytest.raises(FileNotFoundError):
-            profiling_service.get_tier2_profile("nonexistent_model")
+            profiling_service.profile_model("nonexistent_model")
 
     def test_tier2_caching(self, profiling_service, sample_parquet):
         """Test that tier 2 profiling caches results."""
         # First call should populate cache
-        profile1 = profiling_service.get_tier2_profile(sample_parquet)
+        profile1 = profiling_service.profile_model(sample_parquet)
 
         # Second call should return cached result
-        profile2 = profiling_service.get_tier2_profile(sample_parquet)
+        profile2 = profiling_service.profile_model(sample_parquet)
 
         # Both should have same profiled_at since second is from cache
         assert profile1["profiled_at"] == profile2["profiled_at"]
@@ -195,7 +200,7 @@ class TestProfilingService:
     def test_invalidate_cache(self, profiling_service, sample_parquet):
         """Test that cache invalidation works correctly."""
         # Populate cache
-        profiling_service.get_tier2_profile(sample_parquet)
+        profiling_service.profile_model(sample_parquet)
         cache_key = f"tier2_{sample_parquet}"
         assert cache_key in profiling_service._cache
 
@@ -272,7 +277,7 @@ class TestProfilingServiceWithLargeData:
 
     def test_tier2_profile_large(self, profiling_service, large_parquet):
         """Test tier 2 profiling works with larger dataset."""
-        profile = profiling_service.get_tier2_profile(large_parquet)
+        profile = profiling_service.profile_model(large_parquet)
 
         assert profile["row_count"] == 10000
         assert len(profile["columns"]) == 3
@@ -401,7 +406,7 @@ class TestItReadsWhatTheRunWrote:
         os.makedirs(os.path.dirname(path))
         pq.write_table(table, path)
 
-        column = ProfilingService(str(tmp_path)).get_tier2_profile("m")["columns"][0]
+        column = ProfilingService(str(tmp_path)).profile_model("m")["columns"][0]
 
         assert column["null_count"] == 2
         assert column["null_percentage"] == 50.0
@@ -446,18 +451,15 @@ class TestValueConversion:
         assert service._convert_stat_value(np.int64(3)) == 3
         assert service._convert_stat_value("plain") == "plain"
 
-    def test_duckdb_values_become_json_values(self, tmp_path):
-        import datetime
-        from decimal import Decimal
-
+    def test_typed_bounds(self, tmp_path):
         service = ProfilingService(str(tmp_path))
 
-        assert service._convert_duckdb_value(None) is None
-        assert service._convert_duckdb_value(float("nan")) is None
-        assert service._convert_duckdb_value(datetime.date(2024, 1, 2)) == "2024-01-02"
-        assert service._convert_duckdb_value(Decimal("1.5")) == 1.5
-        assert service._convert_duckdb_value("text") == "text"
-        assert service._null_count(None, 10) is None
+        assert service._typed_bound("", True) is None
+        assert service._typed_bound("12", True) == 12
+        assert service._typed_bound("1.5e3", True) == 1500.0
+        assert service._typed_bound("not a number", True) == "not a number"
+        assert service._typed_bound("abc", False) == "abc"
+        assert service._number("NULL") is None and service._number("x") is None
 
 
 class TestTheUnifiedShape:
@@ -524,6 +526,12 @@ class TestTheUnifiedShape:
         profile = ProfilingService(str(tmp_path)).profile_model("shape", columns=["amount"])
 
         assert [c["name"] for c in profile["columns"]] == ["amount"]
+
+    def test_a_subset_naming_no_column_still_counts_rows(self, tmp_path):
+        self._profile(tmp_path)
+        profile = ProfilingService(str(tmp_path)).profile_model("shape", columns=["nope"])
+
+        assert profile["columns"] == [] and profile["row_count"] == 60
 
     def test_wide_tables_are_capped_and_flagged(self, tmp_path):
         from visivo.server.services.profiling_service import MAX_PROFILE_COLUMNS
@@ -607,13 +615,33 @@ class TestProfileQuery:
             }
 
         monkeypatch.setattr(module, "execute_and_get_result", fake)
-        ProfilingService(str(tmp_path)).profile_query(
+        profile = ProfilingService(str(tmp_path)).profile_query(
             self._source(integration_app), "SELECT x FROM test_table", sample_rows=5, timeout_s=3
         )
 
         sample_sql, kwargs = seen[0]
-        assert "LIMIT 5" in sample_sql and kwargs == {"max_rows": 5, "timeout_s": 3}
-        assert "COUNT(*)" in seen[1][0]
+        assert "LIMIT 5" in sample_sql and kwargs == {"timeout_s": 3}
+        assert len(seen) == 1 and profile["row_count"] == 1
+
+    def test_a_full_sample_is_followed_by_a_count(self, integration_app, tmp_path, monkeypatch):
+        from visivo.server.services import profiling_service as module
+
+        seen = []
+
+        def fake(source, sql, **kwargs):
+            seen.append(sql)
+            if "COUNT(*)" in sql:
+                return {"columns": ["n"], "rows": [{"n": 9}]}
+            return {"columns": ["x"], "rows": [{"x": 1}, {"x": 2}]}
+
+        monkeypatch.setattr(module, "execute_and_get_result", fake)
+        profile = ProfilingService(str(tmp_path)).profile_query(
+            self._source(integration_app), "SELECT x FROM test_table", sample_rows=2
+        )
+
+        assert len(seen) == 2 and "COUNT(*)" in seen[1]
+        assert profile["row_count"] == 9 and profile["sampled"] is True
+        assert profile["sample_rows"] == 2
 
     def test_a_failed_count_falls_back_to_the_sample_size(
         self, integration_app, tmp_path, monkeypatch
@@ -623,17 +651,11 @@ class TestProfileQuery:
         def flaky(source, sql, **kwargs):
             if "COUNT(*)" in sql:
                 raise RuntimeError("count timed out")
-            return {
-                "columns": ["x"],
-                "rows": [{"x": 1}, {"x": 2}],
-                "row_count": 2,
-                "truncated": False,
-                "execution_time_ms": 1,
-            }
+            return {"columns": ["x"], "rows": [{"x": 1}, {"x": 2}]}
 
         monkeypatch.setattr(module, "execute_and_get_result", flaky)
         profile = ProfilingService(str(tmp_path)).profile_query(
-            self._source(integration_app), "SELECT x FROM test_table"
+            self._source(integration_app), "SELECT x FROM test_table", sample_rows=2
         )
 
         assert profile["row_count"] == 2 and profile["sampled"] is False
@@ -646,3 +668,188 @@ class TestProfileQuery:
         assert profile["row_count"] == 0
         assert profile["columns"] == []
         assert profile["sampled"] is False
+
+
+class TestColumnSubset:
+    def test_none_means_every_column(self):
+        assert ProfilingService.column_subset(None) is None
+
+    def test_duplicates_are_dropped_in_order(self):
+        assert ProfilingService.column_subset(["b", "a", "b"]) == ["b", "a"]
+
+    def test_bad_shapes_are_value_errors(self):
+        for bad in ("x", ["a", 1], [""], ["  "], [None]):
+            with pytest.raises(ValueError, match="list of column names"):
+                ProfilingService.column_subset(bad)
+
+    def test_the_cap_applies_after_deduplication(self):
+        names = [f"c{i}" for i in range(MAX_PROFILE_COLUMNS)]
+
+        assert len(ProfilingService.column_subset(names + names)) == MAX_PROFILE_COLUMNS
+        with pytest.raises(ValueError, match=f"at most {MAX_PROFILE_COLUMNS}"):
+            ProfilingService.column_subset(names + ["one_more"])
+
+    def test_profiling_validates_its_columns_argument(self, tmp_path):
+        service = ProfilingService(str(tmp_path))
+
+        with pytest.raises(ValueError, match="columns"):
+            service.profile_model("m", columns="amount")
+        with pytest.raises(ValueError, match="columns"):
+            service.profile_query(None, "select 1", columns=[1])
+
+
+class TestSharedService:
+    def test_one_instance_per_output_dir(self, tmp_path):
+        a = profiling_service_for(str(tmp_path))
+
+        assert a is profiling_service_for(str(tmp_path))
+        assert isinstance(a, ProfilingService) and a.output_dir == str(tmp_path)
+        assert a is not profiling_service_for(str(tmp_path / "other"))
+
+
+class RecordingConnection:
+    def __init__(self, conn):
+        self._conn = conn
+        self.statements = []
+
+    def execute(self, sql, *args):
+        self.statements.append(sql)
+        return self._conn.execute(sql, *args)
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+@pytest.fixture
+def recorded_connections(monkeypatch):
+    import types
+
+    import duckdb
+
+    from visivo.server.services import profiling_service as module
+
+    connections = []
+
+    def connect(*args, **kwargs):
+        connections.append(RecordingConnection(duckdb.connect(*args, **kwargs)))
+        return connections[-1]
+
+    monkeypatch.setattr(
+        module,
+        "duckdb",
+        types.SimpleNamespace(connect=connect, DuckDBPyConnection=duckdb.DuckDBPyConnection),
+    )
+    return connections
+
+
+class TestScanCount:
+    """A profile is three scans over a relation materialised once, not a
+    query per column."""
+
+    def test_a_model_profile_is_a_load_and_three_scans(self, tmp_path, recorded_connections):
+        table = pa.table(
+            {
+                "n": pa.array([1, 2, 2, None], type=pa.int64()),
+                "s": pa.array(["a", "b", "a", "c"], type=pa.string()),
+                "d": pa.array([1.5, 0.0, 0.0, None], type=pa.float64()),
+            }
+        )
+        _write_model(str(tmp_path), "scans", table)
+
+        profile = ProfilingService(str(tmp_path)).profile_model("scans")
+
+        statements = recorded_connections[0].statements
+        assert len(statements) == 4
+        assert statements[0].startswith("CREATE TEMP TABLE visivo_model")
+        assert statements[1].startswith("SUMMARIZE")
+        assert statements[2].count("COUNT(DISTINCT") == 3 and "quantile_cont" in statements[2]
+        assert statements[3].count("histogram(") == 3
+        assert "read_parquet" not in " ".join(statements[1:])
+        columns = {c["name"]: c for c in profile["columns"]}
+        assert profile["row_count"] == 4
+        assert (columns["n"]["distinct"], columns["n"]["null_count"]) == (2, 1)
+        assert columns["n"]["null_percentage"] == 25.0
+        assert columns["d"]["zeros_pct"] == pytest.approx(2 / 3)
+        assert columns["s"]["avg_length"] == 1.0 and columns["s"]["p99"] is None
+        assert columns["n"]["avg_length"] is None
+
+    def test_no_top_value_scan_when_nothing_qualifies(self, tmp_path, recorded_connections):
+        _write_model(str(tmp_path), "nothing", pa.table({"n": pa.array([None, None])}))
+
+        profile = ProfilingService(str(tmp_path)).profile_model("nothing")
+
+        assert len(recorded_connections[0].statements) == 3
+        assert profile["columns"][0]["distinct"] == 0 and profile["columns"][0]["top_values"] == []
+
+    def test_an_exact_count_survives_rounding_of_the_summary(self, tmp_path):
+        n = 20_003
+        table = pa.table({"i": pa.array([None] + list(range(n - 1)), type=pa.int64())})
+        _write_model(str(tmp_path), "rounding", table)
+
+        column = ProfilingService(str(tmp_path)).profile_model("rounding")["columns"][0]
+
+        assert column["null_count"] == 1 and column["distinct"] == n - 1
+
+
+class TestTopValues:
+    def _profile(self, tmp_path, name, table, **kwargs):
+        _write_model(str(tmp_path), name, table)
+        profile = ProfilingService(str(tmp_path)).profile_model(name, **kwargs)
+        return {c["name"]: c for c in profile["columns"]}
+
+    def test_most_frequent_first_then_by_value(self, tmp_path):
+        columns = self._profile(
+            tmp_path,
+            "ties",
+            pa.table(
+                {"s": pa.array(["b", "a", "b", "c", "a", None]), "n": pa.array([3, 1, 3, 2, 2, 1])}
+            ),
+        )
+
+        assert columns["s"]["top_values"] == [
+            {"value": "a", "count": 2},
+            {"value": "b", "count": 2},
+            {"value": "c", "count": 1},
+        ]
+        assert [t["value"] for t in columns["n"]["top_values"]] == [1, 2, 3]
+
+    def test_top_n_bounds_the_list(self, tmp_path):
+        table = pa.table({"s": pa.array(list("abcde"))})
+
+        assert len(self._profile(tmp_path, "bounded", table, top_n=2)["s"]["top_values"]) == 2
+        assert self._profile(tmp_path, "bounded", table, top_n=0)["s"]["top_values"] == []
+
+    def test_high_cardinality_columns_get_none(self, tmp_path):
+        table = pa.table(
+            {
+                "wide": pa.array(range(TOP_N_MAX_DISTINCT + 1)),
+                "narrow": pa.array([i % 2 for i in range(TOP_N_MAX_DISTINCT + 1)]),
+            }
+        )
+        columns = self._profile(tmp_path, "cardinality", table)
+
+        assert columns["wide"]["top_values"] == []
+        assert [t["count"] for t in columns["narrow"]["top_values"]] == [501, 500]
+
+    def test_values_are_json_and_nested_values_still_rank(self, tmp_path):
+        import datetime
+
+        table = pa.table(
+            {
+                "day": pa.array([datetime.date(2024, 1, 2), datetime.date(2024, 1, 2)]),
+                "tags": pa.array([["x", "y"], ["z"]]),
+                "rec": pa.array([{"a": 2}, {"a": 1}]),
+            }
+        )
+        columns = self._profile(tmp_path, "nested", table)
+
+        assert columns["day"]["top_values"] == [{"value": "2024-01-02", "count": 2}]
+        assert [t["value"] for t in columns["tags"]["top_values"]] == [["x", "y"], ["z"]]
+        assert [t["value"] for t in columns["rec"]["top_values"]] == [{"a": 1}, {"a": 2}]
+
+    def test_quoted_column_names(self, tmp_path):
+        columns = self._profile(
+            tmp_path, "quoted", pa.table({'we "ird" name': pa.array([1, 1, 2])})
+        )
+
+        assert columns['we "ird" name']["top_values"][0] == {"value": 1, "count": 2}

@@ -1,10 +1,5 @@
-"""Resolve a source by name the way the editor sees it: draft first.
-
-Every server surface that takes a source name — schema inference, draft
-insight previews, the agent's data tools — needs the same answer: the
-uncommitted draft if there is one, else the committed object. Three views
-had grown their own copies of this walk; this is the one they share.
-"""
+"""Resolve a source, model or input by name the way the editor sees it:
+the uncommitted draft if there is one, else the committed object."""
 
 import re
 
@@ -29,30 +24,30 @@ def from_manager(flask_app, manager_name, name):
         return None
 
 
-def find_source(flask_app, source_name):
-    """A source by name: the draft tier, then the committed project."""
-    if not source_name:
+def find_object(flask_app, manager_name, project_attr, name):
+    """The object called ``name``: the draft tier, then the committed project."""
+    if not name:
         return None
-    source = from_manager(flask_app, "source_manager", source_name)
-    if source is not None:
-        return source
+    found = from_manager(flask_app, manager_name, name)
+    if found is not None:
+        return found
     project = getattr(flask_app, "project", None)
-    for candidate in getattr(project, "sources", None) or []:
-        if getattr(candidate, "name", None) == source_name:
+    for candidate in getattr(project, project_attr, None) or []:
+        if getattr(candidate, "name", None) == name:
             return candidate
     return None
+
+
+def find_source(flask_app, source_name):
+    return find_object(flask_app, "source_manager", "sources", source_name)
 
 
 def find_model(flask_app, model_name):
-    """A model by name: the draft tier, then the committed project."""
-    model = from_manager(flask_app, "model_manager", model_name)
-    if model is not None:
-        return model
-    project = getattr(flask_app, "project", None)
-    for candidate in getattr(project, "models", None) or []:
-        if getattr(candidate, "name", None) == model_name:
-            return candidate
-    return None
+    return find_object(flask_app, "model_manager", "models", model_name)
+
+
+def find_input(flask_app, input_name):
+    return find_object(flask_app, "input_manager", "inputs", input_name)
 
 
 def referenced_source_name(model):

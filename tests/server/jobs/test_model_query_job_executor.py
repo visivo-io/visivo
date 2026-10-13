@@ -95,8 +95,31 @@ def test_an_unknown_source_names_itself(integration_app):
     assert "Source 'nope' not found" in jobs.statuses[-1][1]["error"]
 
 
-def test_find_source_by_name_tolerates_no_sources():
-    class _P:
-        sources = None
+def test_a_draft_source_resolves_like_every_other_path(integration_app, monkeypatch):
+    from visivo.agent.tools import call
 
-    assert executor.find_source_by_name(_P(), "x") is None
+    committed = integration_app.project.sources[0]
+    call(
+        integration_app,
+        "write_source",
+        {"config": {"name": "drafted", "type": "sqlite", "database": committed.database}},
+    )
+    seen = {}
+
+    def fake(source, sql, **kwargs):
+        seen["source"] = source.name
+        return {
+            "columns": [],
+            "rows": [],
+            "row_count": 0,
+            "truncated": False,
+            "execution_time_ms": 1,
+        }
+
+    monkeypatch.setattr(executor, "execute_and_get_result", fake)
+    jobs = _Jobs()
+    executor.execute_model_query_job(
+        "j", {"source_name": "drafted", "sql": "select 1"}, integration_app, "/tmp", jobs
+    )
+
+    assert seen["source"] == "drafted" and jobs.statuses[-1][0] == RunStatus.COMPLETED

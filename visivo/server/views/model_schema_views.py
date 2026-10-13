@@ -32,60 +32,28 @@ POST rather than GET because the draft form carries SQL in the body.
 from flask import jsonify, request
 
 from visivo.logger.logger import Logger
-from visivo.models.models.sql_model import SqlModel
-from visivo.query.model_schema_inference import infer_model_columns
-from visivo.query.schema_aggregator import SchemaAggregator
+from visivo.server.services.model_schema import infer_columns
 from visivo.server.source_resolution import find_model, find_source, source_for_model
 
 
-def _columns_payload(column_map: dict) -> list:
-    """Shape ``{col: DataType}`` as the ``{name, type, nullable}`` rows the client renders.
-
-    Same item shape the source columns feed uses, so one column-row renderer
-    serves both. Sorted by name for a stable list.
-
-    ``nullable`` is ``None`` rather than ``True``: SQLGlot annotates types, not
-    nullability, and claiming everything is nullable would be inventing an
-    answer. The source feed knows because introspection told it.
-    """
-    return sorted(
-        (
-            {"name": name, "type": str(dtype) if dtype is not None else "UNKNOWN", "nullable": None}
-            for name, dtype in column_map.items()
-        ),
-        key=lambda c: c["name"],
-    )
+def _columns_payload(columns: dict) -> list:
+    """The ``{name, type, nullable}`` rows the source columns feed also uses.
+    ``nullable`` is ``None``: SQLGlot annotates types, not nullability."""
+    return [
+        {"name": name, "type": dtype, "nullable": None} for name, dtype in sorted(columns.items())
+    ]
 
 
 def register_model_schema_views(app, flask_app, output_dir):
     """Register on-demand model schema inference endpoints."""
 
-    def _infer(sql: str, source, model_hash: str):
-        """Infer columns for ``sql`` against ``source``'s cached schema."""
-        # main first, then the preview run: a source introspected from the
-        # Explorer but never run still has a schema to infer against.
-        stored_source_schema, _ = SchemaAggregator.load_source_schema_with_fallback(
-            source.name, output_dir
-        )
-        column_map = infer_model_columns(
-            sql=sql,
-            sqlglot_dialect=source.get_sqlglot_dialect(),
-            model_hash=model_hash,
-            stored_source_schema=stored_source_schema,
-            # The editor asks on every keystroke; half-written SQL is normal.
-            # A parse failure is "nothing resolved yet", not a 500.
-            strict=False,
-        )
+    def _infer(sql, source, model_hash=None):
+        columns, cached = infer_columns(output_dir, sql=sql, source=source, model_hash=model_hash)
         return jsonify(
             {
-                "columns": _columns_payload(column_map),
+                "columns": _columns_payload(columns),
                 "source_name": source.name,
-                # False when the source has never been introspected. The columns
-                # are still the best available answer (a query naming its own
-                # columns annotates fine), but a caller showing an empty list
-                # can tell "nothing resolved" from "no schema to resolve
-                # against" and prompt to generate one.
-                "source_schema_cached": stored_source_schema is not None,
+                "source_schema_cached": cached,
             }
         )
 
@@ -152,9 +120,7 @@ def register_model_schema_views(app, flask_app, output_dir):
             if source is None:
                 return jsonify({"error": f"Source '{source_name}' not found"}), 404
 
-            # No saved model, so no name_hash to key by. The hash is only
-            # schema_from_sql's output key and never leaves this function.
-            return _infer(sql, source, SqlModel(name="__draft__", sql=sql).name_hash())
+            return _infer(sql, source)
 
         except Exception as e:
             Logger.instance().error(f"Error inferring draft model schema: {str(e)}")
