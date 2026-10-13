@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import InsightPreview from './InsightPreview';
+import useStore from '../../../stores/store';
 import { usePreviewInsightData } from '../../../hooks/usePreviewData';
 import { usePreviewInputDependencies } from '../workspace/usePreviewInputDependencies';
 
@@ -79,6 +80,7 @@ describe('InsightPreview', () => {
     jest.clearAllMocks();
     setResolver();
     setInputs([]);
+    useStore.setState({ runs: [] });
   });
 
   describe('Unsaved insights', () => {
@@ -170,6 +172,60 @@ describe('InsightPreview', () => {
       expect(screen.getByTestId('preview-error')).toBeInTheDocument();
       expect(screen.queryByTestId('missing-relation-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('ambiguous-relation-card')).not.toBeInTheDocument();
+    });
+  });
+
+  describe("The insight's last run failed", () => {
+    const missingFileError =
+      'Failed to fetch insight jobs data: 404 NOT FOUND. {"error":"No insight files found for: [\'test_insight\']"}';
+    const failedRun = errorJson => ({
+      id: 'run-1',
+      state: 'failed',
+      dag_filter: '+test_insight+,+orders+',
+      error_json: errorJson,
+      is_superseded: false,
+      created_at: '2026-10-13T10:00:00Z',
+    });
+
+    it("shows the run's error and hint instead of the missing-file fetch error", () => {
+      useStore.setState({
+        runs: [
+          failedRun({
+            phase: 'run',
+            diagnostics: [
+              {
+                severity: 'error',
+                phase: 'run',
+                code: 'query_execution_failed',
+                message: 'Catalog Error: Table with name no_such_table does not exist!',
+                object: { type: 'insight', name: 'test_insight' },
+                hint: 'Check the model SQL, then run again.',
+                related: [],
+              },
+            ],
+          }),
+        ],
+      });
+      setResolver({ error: missingFileError });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      const failure = screen.getByTestId('preview-run-failed');
+      expect(failure).toHaveTextContent('Last run failed');
+      expect(failure).toHaveTextContent(
+        'Catalog Error: Table with name no_such_table does not exist!'
+      );
+      expect(failure).toHaveTextContent('Check the model SQL, then run again.');
+      expect(screen.queryByText(/No insight files found/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('preview-error')).not.toBeInTheDocument();
+    });
+
+    it('shows the run error from a payload without diagnostics', () => {
+      useStore.setState({ runs: [failedRun({ phase: 'run', error: 'source unreachable' })] });
+      setResolver({ error: missingFileError });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      expect(screen.getByTestId('preview-run-failed')).toHaveTextContent('source unreachable');
+      expect(screen.queryByText(/No insight files found/)).not.toBeInTheDocument();
     });
   });
 
