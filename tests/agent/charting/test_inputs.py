@@ -506,7 +506,7 @@ class TestTheTools:
             call(integration_app, "recommend_inputs", {"cards": []})
         with pytest.raises(ToolError, match="model"):
             call(integration_app, "recommend_inputs", {"cards": [{"column": "x"}]})
-        with pytest.raises(ToolError, match="Could not derive"):
+        with pytest.raises(ToolError, match="recommend_inputs failed"):
             call(
                 integration_app,
                 "recommend_inputs",
