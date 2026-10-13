@@ -210,9 +210,12 @@ class ObjectManager(ABC, Generic[T]):
         if obj1 is None or obj2 is None:
             return False
 
-        # For Pydantic models, compare serialized dictionaries
+        # `path`/`file_path` are parser-assigned locators a round-tripped config never carries.
         if hasattr(obj1, "model_dump") and hasattr(obj2, "model_dump"):
-            return obj1.model_dump(exclude_none=True) == obj2.model_dump(exclude_none=True)
+            locators = {"path", "file_path"}
+            return obj1.model_dump(exclude_none=True, exclude=locators) == obj2.model_dump(
+                exclude_none=True, exclude=locators
+            )
 
         # Fallback to direct comparison
         return obj1 == obj2

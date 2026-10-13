@@ -2,14 +2,29 @@ import click
 import os
 import re
 
+from dotenv import load_dotenv
+
 from visivo.models.base.named_model import NAME_REGEX
+
+
+def load_working_dir_env(resolved_working_dir):
+    """Load ``<working_dir>/.env``, where the server writes externalized credentials.
+
+    The group-level ``--env-file`` is read relative to cwd, which misses it under
+    ``-w``. Values already set (cwd ``.env``, ``--env-file``) win.
+    """
+    env_path = os.path.join(resolved_working_dir, ".env")
+    if os.path.isfile(env_path):
+        load_dotenv(env_path)
 
 
 def working_dir(function):
     def callback(ctx, param, value):
         ctx.ensure_object(dict)
         ctx.obj["is_default_working_dir"] = value is None
-        return value if value is not None else os.getcwd()
+        resolved = value if value is not None else os.getcwd()
+        load_working_dir_env(resolved)
+        return resolved
 
     function = click.option(
         "-w", "--working-dir", help="Directory to run the command", default=None, callback=callback

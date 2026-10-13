@@ -1,4 +1,8 @@
+from typing import Optional
+
 import pytest
+from pydantic import BaseModel
+
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -419,3 +423,53 @@ class TestSerializeObjectShape:
         assert "file_path" not in result["config"]
         assert "path" not in result["config"]
         assert result["config"]["description"] == "kept"
+
+
+class TestObjectsEqualIgnoresParserLocators:
+    """`path` and `file_path` are parser-assigned locators, not user data.
+
+    `_serialize_object` strips them from the API config, so an object rebuilt
+    from what the frontend round-trips can never carry them back — while every
+    published object loaded through the DAG carries `path`
+    (Project.set_path_on_named_models) and, in any project with includes,
+    `file_path`. Comparing them made `get_status` answer MODIFIED for a
+    byte-identical save in every real project.
+    """
+
+    class _Model(BaseModel):
+        name: str = "demo"
+        host: str = "db.internal"
+        path: Optional[str] = None
+        file_path: Optional[str] = None
+
+    def test_objects_differing_only_by_path_are_equal(self):
+        manager = ConcreteObjectManager()
+
+        published = self._Model(path="project.sources[0]")
+        incoming = self._Model()
+
+        assert manager.objects_equal(incoming, published)
+
+    def test_objects_differing_only_by_file_path_are_equal(self):
+        manager = ConcreteObjectManager()
+
+        published = self._Model(path="project.sources[0]", file_path="project.visivo.yml")
+        incoming = self._Model()
+
+        assert manager.objects_equal(incoming, published)
+
+    def test_a_real_field_difference_is_still_unequal(self):
+        manager = ConcreteObjectManager()
+
+        published = self._Model(path="project.sources[0]")
+        incoming = self._Model(host="moved.example.com")
+
+        assert not manager.objects_equal(incoming, published)
+
+    def test_status_of_a_dag_loaded_object_resaved_unchanged_is_published(self):
+        manager = ConcreteObjectManager()
+        manager._published_objects["demo"] = self._Model(path="project.sources[0]")
+
+        manager.save("demo", self._Model())
+
+        assert manager.get_status("demo") == ObjectStatus.PUBLISHED

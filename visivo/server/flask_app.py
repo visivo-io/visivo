@@ -74,7 +74,7 @@ class FlaskApp:
         # Initialize object managers with DAG for efficient loading
         dag = project.dag()
 
-        self.source_manager = SourceManager()
+        self.source_manager = SourceManager(project_dir=working_dir)
         self.source_manager.load(dag)
 
         self.model_manager = ModelManager()
