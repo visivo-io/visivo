@@ -93,6 +93,10 @@ describe('OnboardingFlow', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/editor', { replace: true });
     const events = getEventBuffer().map(e => e.event);
     expect(events).toContain('onboarding_opt_out_clicked');
+    expect(readOnboardingState()).toMatchObject({
+      path: 'skipped',
+      checklist_dismissed: true,
+    });
   });
 
   test('role tile selection unlocks continue and stores role', () => {
