@@ -284,7 +284,15 @@ export function mapQueryResultsToProps(results, propsMapping) {
 
     // Parse the prop path and set the value
     const pathParts = parsePropPath(cleanPath);
-    setNestedValue(props, pathParts, dataArray);
+    // MapLibre requires numbers in GeoJSON coordinates/weights, not numeric strings.
+    const boundValues = ['lat', 'lon', 'z'].includes(cleanPath)
+      ? dataArray.map(value =>
+          typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))
+            ? Number(value)
+            : value
+        )
+      : dataArray;
+    setNestedValue(props, pathParts, boundValues);
   }
 
   return props;
