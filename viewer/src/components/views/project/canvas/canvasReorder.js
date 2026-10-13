@@ -728,13 +728,13 @@ const clampInt = (value, min, max) => {
  * are relative within their row (the row's grid total is the sum of item
  * widths), so changing one item's span rebalances its siblings automatically —
  * a 6/6 row where item 0 grows to 8 becomes an 8/6 row (8/14 vs 6/14). Width is
- * clamped to [1, 12]. Works at any nesting depth. Returns the config unchanged
+ * at least 1, with no upper bound. Works at any nesting depth. Returns the config unchanged
  * when the width is already `nextWidth` or the path is invalid.
  */
 export const setItemWidth = (config, itemPath, nextWidth) => {
   const segments = parseCanvasPath(itemPath);
   if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
-  const width = clampInt(nextWidth, 1, 12);
+  const width = clampInt(nextWidth, 1, Infinity);
   const itemSeg = segments[segments.length - 1];
   const rowSegments = segments.slice(0, -1);
   if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
