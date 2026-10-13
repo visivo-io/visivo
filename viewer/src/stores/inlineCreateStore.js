@@ -1,6 +1,7 @@
 import { fetchModelSchema } from '../api/modelSchema';
 import { generateUniqueName } from '../utils/uniqueName';
 import { createRow } from '../components/views/workspace/itemMutations';
+import { clearDraft } from '../utils/formDrafts';
 
 /**
  * Inline-create Store Slice
@@ -258,6 +259,8 @@ const createInlineCreateSlice = (set, get) => ({
     } catch (error) {
       return { success: false, error: error?.message || `Could not draft a new ${type}` };
     }
+    // A deleted namesake's draft would pass the staleness check: templates are deterministic.
+    clearDraft(`${type}:${name}`);
     const result = await save(name, config);
     return result?.success ? { ...result, name, type } : result;
   },

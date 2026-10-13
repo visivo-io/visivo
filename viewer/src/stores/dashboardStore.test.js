@@ -8,6 +8,7 @@
 import { act } from '@testing-library/react';
 import useStore from './store';
 import { slotToInsertTarget } from './dashboardStore';
+import * as dashboardsApi from '../api/dashboards';
 
 const seed = (dashboards, saveDashboard) => {
   act(() => {
@@ -53,6 +54,68 @@ describe('dashboardStore createDashboard (Project Editor "+ New Dashboard")', ()
 
     expect(result.success).toBe(false);
     expect(result.name).toBeUndefined();
+  });
+});
+
+describe('dashboardStore unsaved edits vs. a reused "new-dashboard" name', () => {
+  const { saveDashboard, deleteDashboard } = useStore.getState();
+  let server;
+
+  beforeEach(() => {
+    server = new Map();
+    jest
+      .spyOn(dashboardsApi, 'fetchAllDashboards')
+      .mockImplementation(async () => ({
+        dashboards: [...server].map(([name, config]) => ({ name, config })),
+      }));
+    jest.spyOn(dashboardsApi, 'saveDashboard').mockImplementation(async (name, config) => {
+      server.set(name, config);
+      return {};
+    });
+    jest.spyOn(dashboardsApi, 'deleteDashboard').mockImplementation(async name => {
+      server.delete(name);
+      return {};
+    });
+    act(() =>
+      useStore.setState({ dashboards: [], dashboardBaselines: {}, saveDashboard, deleteDashboard })
+    );
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  const createAndEditWithoutSaving = async () => {
+    const { name } = await useStore.getState().createDashboard();
+    const { rows } = useStore.getState().dashboards.find(d => d.name === name).config;
+    act(() => {
+      useStore.getState().captureDashboardBaseline(name);
+      useStore.getState().updateDashboardConfigOptimistic(name, {
+        rows: [...rows, { height: 'large', items: [] }],
+      });
+    });
+    return name;
+  };
+
+  const rowsOf = name => useStore.getState().dashboards.find(d => d.name === name).config.rows;
+
+  test('a new dashboard does not inherit the edits of a deleted one with the same name', async () => {
+    const first = await createAndEditWithoutSaving();
+    await useStore.getState().deleteDashboard(first);
+
+    const { name } = await useStore.getState().createDashboard();
+
+    expect(name).toBe(first);
+    expect(rowsOf(name)).toHaveLength(1);
+    expect(useStore.getState().isDashboardDirty(name)).toBe(false);
+  });
+
+  test('a reload still restores unsaved edits to an existing dashboard', async () => {
+    const name = await createAndEditWithoutSaving();
+
+    act(() => useStore.setState({ dashboards: [], dashboardBaselines: {} }));
+    await useStore.getState().fetchDashboards();
+
+    expect(rowsOf(name)).toHaveLength(2);
+    expect(useStore.getState().isDashboardDirty(name)).toBe(true);
   });
 });
 
