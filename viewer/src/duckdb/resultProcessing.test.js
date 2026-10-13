@@ -1,3 +1,4 @@
+/* global BigInt */
 import {
   DateDay,
   DateMillisecond,
