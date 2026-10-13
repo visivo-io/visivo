@@ -18,12 +18,32 @@ const rowKey = row => `${row.type}:${row.name}`;
 // D11 (specs/plan/explorer-workspace-unification/08-ux-overhaul.md) — the ONE
 // user-facing verb for this whole chain is "Save to project"; "promote"
 // stays as internal-only vocabulary (store/API names, test ids). A row can
-// only be RENAMED here when it's a brand-new object this run would create —
-// mirrors the `renameModelTab`/`renameInsight` store actions' own
-// `if (!x.isNew) return` guard, and keeps an update-by-name ("modified") row
-// from ever silently becoming a rename-to-a-different-object.
+// only be RENAMED here when it's a brand-new object this run would create,
+// and keeps an update-by-name ("modified") row from ever silently becoming a
+// rename-to-a-different-object. `isNew` is checked as well as the backend
+// diff's status because `renameModelTab`/`renameInsight` silently no-op for a
+// draft with `isNew === false`, even when its object has left the project.
 const RENAMABLE_TIERS = new Set(['model', 'insight', 'chart']);
-const isRenamableRow = row => row.status === 'new' && RENAMABLE_TIERS.has(row.tier);
+const isRenamableRow = row =>
+  row.status === 'new' && row.isNew !== false && RENAMABLE_TIERS.has(row.tier);
+
+/**
+ * Merges a rebuilt checklist into the name-draft map rather than replacing it:
+ * these name inputs are controlled on this map and the rebuild is an async
+ * round-trip, so a replace reverts text the user is typing into another row.
+ * `committedKey` alone always re-seeds from `built` — its edit is already
+ * blurred, and a rename that did not take leaves its key unmoved.
+ */
+const mergeNameDrafts = (prev, built, committedKey = null) => {
+  const next = new Map();
+  for (const r of built) {
+    if (!isRenamableRow(r)) continue;
+    const key = rowKey(r);
+    const keepInFlightDraft = prev.has(key) && key !== committedKey;
+    next.set(key, keepInFlightDraft ? prev.get(key) : r.name);
+  }
+  return next;
+};
 
 /**
  * Calls the ONE store action that can rename this row's kind of draft
@@ -191,7 +211,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
 
       if (cancelled) return;
       setRows(built);
-      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
+      setNameDrafts(prev => mergeNameDrafts(prev, built));
       setSelected(new Set(built.filter(r => r.valid).map(rowKey)));
       setLoading(false);
     })();
@@ -229,15 +249,12 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
         return;
       }
       // Rebuild so downstream rows (a chart referencing the just-renamed
-      // insight, etc.) reflect the rewritten refs — `renameModelTab`/
-      // `renameInsight` already rewrote every sibling ref synchronously, so
-      // this rebuild only needs to re-read the now-current draft state.
+      // insight) pick up the refs the store rename already rewrote.
       const built = await buildPromoteChecklist(useStore.getState);
       setRows(built);
-      setNameDrafts(new Map(built.filter(isRenamableRow).map(r => [rowKey(r), r.name])));
-      // Remap the selection: every OTHER row's key is unchanged, so a direct
-      // `has` lookup carries its checked state forward; the renamed row's
-      // prior checked state is looked up under its OLD key instead.
+      setNameDrafts(prev => mergeNameDrafts(prev, built, key));
+      // The renamed row's prior checked state lives under its OLD key; every
+      // other row's key is unchanged.
       setSelected(prevSelected => {
         const next = new Set();
         built.forEach(r => {
