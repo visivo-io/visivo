@@ -660,3 +660,31 @@ class TestNoopSaveOfADagLoadedSource:
         assert manager.get_status("warehouse") == ObjectStatus.MODIFIED
         assert str(source.password) == "${env.WAREHOUSE_PASSWORD}"
         assert read_env(tmp_path)["WAREHOUSE_PASSWORD"] == "hunter2"
+
+
+class TestEveryDraftWriteIsProtected:
+    """The agent's write_source tool caches via ``save`` and rename re-saves a
+    dumped config; neither may stage a secret a commit would mask."""
+
+    def test_a_direct_save_externalizes_a_plaintext_secret(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+
+        manager.save("warehouse", manager.validate_object(redshift_config()))
+
+        cached = manager.cached_objects["warehouse"]
+        assert str(cached.password) == "${env.WAREHOUSE_PASSWORD}"
+        assert read_env(tmp_path)["WAREHOUSE_PASSWORD"] == "hunter2"
+
+    def test_a_direct_save_of_the_masked_echo_keeps_the_stored_secret(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+        manager._published_objects["warehouse"] = RedshiftSourceFactory(
+            name="warehouse", password="hunter2"
+        )
+        echoed = commit_serialization(manager.get("warehouse"))
+        echoed["host"] = "new-host.example.com"
+
+        manager.save("warehouse", manager.validate_object(echoed))
+
+        dumped = commit_serialization(manager.cached_objects["warehouse"])
+        assert dumped["password"] == "${env.WAREHOUSE_PASSWORD}"
+        assert read_env(tmp_path)["WAREHOUSE_PASSWORD"] == "hunter2"

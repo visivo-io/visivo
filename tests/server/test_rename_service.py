@@ -1,7 +1,10 @@
 import pytest
 
-from tests.factories.model_factories import TemplateDashboardFactory
+from dotenv import dotenv_values
+
+from tests.factories.model_factories import RedshiftSourceFactory, TemplateDashboardFactory
 from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.managers.source_manager import SourceManager
 from visivo.server.rename_service import RenameError, rename_impact, rename_object
 
 
@@ -258,3 +261,24 @@ class TestApply:
         applied = rename_object(app, type_key="models", old_name="orders", new_name="purchases")
 
         assert [r["name"] for r in applied["references"]] == ["i1", "joined"]
+
+    def test_a_renamed_source_keeps_its_credential(self, tmp_path, monkeypatch):
+        """The JSON dump masks the password; re-saving that under the new name
+        found nothing to preserve and dropped the credential."""
+        monkeypatch.setenv("LAKE_PASSWORD", "unset")
+        monkeypatch.delenv("LAKE_PASSWORD")
+        manager = SourceManager(project_dir=str(tmp_path))
+        manager._published_objects["warehouse"] = RedshiftSourceFactory(
+            name="warehouse", password="hunter2"
+        )
+
+        rename_object(
+            FakeApp(source_manager=manager),
+            type_key="sources",
+            old_name="warehouse",
+            new_name="lake",
+        )
+
+        renamed = manager.cached_objects["lake"].model_dump(mode="json")
+        assert renamed["password"] == "${env.LAKE_PASSWORD}"
+        assert dotenv_values(tmp_path / ".env")["LAKE_PASSWORD"] == "hunter2"

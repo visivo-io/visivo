@@ -8,16 +8,10 @@ from visivo.models.base.named_model import NAME_REGEX
 
 
 def load_working_dir_env(resolved_working_dir):
-    """Load the project's own ``.env``, not just the one next to the shell.
+    """Load ``<working_dir>/.env``, where the server writes externalized credentials.
 
-    The ``visivo`` group loads ``--env-file`` (default ``.env``) relative to the
-    process cwd, before any subcommand option is parsed. With ``-w ./analytics``
-    that is the wrong directory: the project's credentials live in
-    ``analytics/.env`` — that is where the Workspace writes externalized source
-    secrets and where the commit view reads the available names from — so
-    without this the ``${env.*}`` references in the committed YAML resolve to
-    nothing on the next run. ``override=False`` keeps the cwd/``--env-file``
-    values winning, so this only ever fills in names that are otherwise unset.
+    The group-level ``--env-file`` is read relative to cwd, which misses it under
+    ``-w``. Values already set (cwd ``.env``, ``--env-file``) win.
     """
     env_path = os.path.join(resolved_working_dir, ".env")
     if os.path.isfile(env_path):

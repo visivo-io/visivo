@@ -50,6 +50,35 @@ class TestItIsARegistryNotAList:
         assert {"list_widgets", "get_widget", "write_widget", "validate_widget"} <= set(rebuilt)
 
 
+class TestSourceCredentials:
+    def test_writing_back_a_read_source_does_not_stage_the_mask(
+        self, integration_app, output_dir, monkeypatch
+    ):
+        """`get_source` serves the masked password; writing that config back
+        must keep the real credential, not commit `**********`."""
+        monkeypatch.setenv("AGENT_DB_PASSWORD", "unset")
+        monkeypatch.delenv("AGENT_DB_PASSWORD")
+        config = {
+            "name": "agent-db",
+            "type": "postgresql",
+            "host": "localhost",
+            "database": "analytics",
+            "username": "svc",
+            "password": "hunter2",
+        }
+        call(integration_app, "write_source", {"config": config})
+
+        echoed = call(integration_app, "get_source", {"name": "agent-db"})
+        echoed["host"] = "db.internal"
+        call(integration_app, "write_source", {"config": echoed})
+
+        cached = integration_app.source_manager.cached_objects["agent-db"]
+        assert cached.model_dump(mode="json")["password"] == "${env.AGENT_DB_PASSWORD}"
+        assert os.environ["AGENT_DB_PASSWORD"] == "hunter2"
+        with open(os.path.join(output_dir, ".env")) as env_file:
+            assert "AGENT_DB_PASSWORD" in env_file.read()
+
+
 class TestNothingReachesTheFilesystem:
     """Every write lands in the draft tier. `commit` is deliberately absent —
     promotion stays a human action, and turning drafts into files is

@@ -7,11 +7,7 @@ from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
 from visivo.models.row import Row
 
-# Credential-externalisation helpers moved to visivo.server.source_credentials
-# so the SourceManager save path can share them without importing a views
-# module. Re-exported here to keep the onboarding path's import site (and any
-# external callers) working unchanged. `_env_var_name` keeps its old private
-# name as an alias for the same reason.
+# Re-exported for the onboarding path's existing imports.
 from visivo.server.source_credentials import (  # noqa: F401
     CREDENTIAL_FIELDS,
     env_var_name,
