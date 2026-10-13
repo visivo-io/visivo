@@ -221,7 +221,7 @@ describe('CanvasResizeLayer (VIS-777)', () => {
     // A ghost + readout appear during the drag.
     expect(screen.getByTestId('canvas-resize-ghost')).toBeInTheDocument();
     firePointer("pointermove", { clientX: 397 + 135, clientY: 100 });
-    expect(screen.getByTestId('canvas-resize-readout').textContent).toContain('8 / 12');
+    expect(screen.getByTestId('canvas-resize-readout').textContent).toContain('8 / 14');
     firePointer("pointerup", { clientX: 397 + 135, clientY: 100 });
 
     expect(mockCommit).toHaveBeenCalledTimes(1);
@@ -353,5 +353,88 @@ describe('CanvasResizeLayer (VIS-777)', () => {
     firePointer("pointermove", { clientX: 400, clientY: 100 }); // <1 col
     firePointer("pointerup", { clientX: 400, clientY: 100 });
     expect(mockCommit).not.toHaveBeenCalled();
+  });
+
+  describe('the width ghost matches the grid the drop lays out', () => {
+    const ROW_PX = 1000;
+    const GAP_PX = 10;
+
+    // Same arithmetic CSS grid does for `repeat(total, minmax(0, 1fr))` with a column gap.
+    const slotBoxes = widths => {
+      const total = widths.reduce((s, w) => s + w, 0);
+      const track = (ROW_PX - (total - 1) * GAP_PX) / total;
+      let left = 0;
+      return widths.map(w => {
+        const width = w * track + (w - 1) * GAP_PX;
+        const b = { top: 0, left, width, height: 200, bottom: 200, right: left + width };
+        left += width + GAP_PX;
+        return b;
+      });
+    };
+
+    const mountRow = (widths, selectedIndex) => {
+      useStore.setState({
+        dashboards: [
+          {
+            name: 'dash',
+            config: { rows: [{ height: 'medium', items: widths.map(width => ({ width })) }] },
+          },
+        ],
+        workspaceOutlineSelectedKey: `row.0.item.${selectedIndex}`,
+      });
+      const boxes = slotBoxes(widths);
+      const byTestId = {
+        r0: { top: 0, left: 0, width: ROW_PX, height: 200, bottom: 200, right: ROW_PX },
+        ...Object.fromEntries(boxes.map((b, i) => [`r0i${i}`, b])),
+      };
+      Element.prototype.getBoundingClientRect = function () {
+        return byTestId[this.getAttribute('data-testid')] || BOXES.root;
+      };
+      const RowHost = () => {
+        const rootRef = useRef(null);
+        return (
+          <div ref={rootRef}>
+            <div data-canvas-path="row.0" data-testid="r0" style={{ columnGap: `${GAP_PX}px` }}>
+              {widths.map((_, i) => (
+                <div key={i} data-canvas-path={`row.0.item.${i}`} data-testid={`r0i${i}`} />
+              ))}
+            </div>
+            <CanvasResizeLayer rootRef={rootRef} dashboardName="dash" />
+          </div>
+        );
+      };
+      render(<RowHost />);
+      return boxes[selectedIndex];
+    };
+
+    const dragRightEdge = (key, box, dx) => {
+      const handle = screen.getByTestId(`canvas-resize-width-${key}`);
+      firePointerDown(handle, { clientX: box.right, clientY: 100 });
+      firePointer('pointermove', { clientX: box.right + dx, clientY: 100 });
+      const ghost = screen.getByTestId('canvas-resize-ghost');
+      return {
+        left: parseFloat(ghost.style.left),
+        width: parseFloat(ghost.style.width),
+        label: screen.getByTestId('canvas-resize-readout').textContent,
+      };
+    };
+
+    test('[1,1]: growing the second item to 2 previews 2/3 of the row, shifted left', () => {
+      const box = mountRow([1, 1], 1);
+      const preview = dragRightEdge('row.0.item.1', box, 500);
+      const landed = slotBoxes([1, 2])[1];
+      expect(preview.label).toBe('2 / 3');
+      expect(preview.width).toBeCloseTo(landed.width, 1);
+      expect(preview.left).toBeCloseTo(landed.left, 1);
+    });
+
+    test('[6,6]: growing the first item to 8 previews 8/14 of the row', () => {
+      const box = mountRow([6, 6], 0);
+      const preview = dragRightEdge('row.0.item.0', box, 170);
+      const landed = slotBoxes([8, 6])[0];
+      expect(preview.label).toBe('8 / 14');
+      expect(preview.width).toBeCloseTo(landed.width, 1);
+      expect(preview.left).toBeCloseTo(landed.left, 1);
+    });
   });
 });
