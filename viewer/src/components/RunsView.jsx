@@ -293,9 +293,6 @@ function RunDetail({ run }) {
         <div className={`font-medium mb-1 ${err ? 'text-highlight-700' : 'text-gray-500'}`}>
           {err ? `Error${err.phase ? ` — ${err.phase}` : ''}` : 'Logs'}
         </div>
-        {/* W4: the structured failures, when the payload carries them — one
-            entry per failed/skipped job: what failed, and what to do. The raw
-            log below stays the full-detail channel. */}
         {diagnostics.length > 0 && (
           <ul data-testid="run-detail-diagnostics" className="mb-2 space-y-1.5">
             {diagnostics.map((diagnostic, index) => (

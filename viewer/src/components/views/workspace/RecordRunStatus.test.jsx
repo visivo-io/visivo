@@ -91,7 +91,7 @@ describe('RecordRunStatus', () => {
   });
 });
 
-describe('RecordRunStatus with diagnostics payloads (W4)', () => {
+describe('RecordRunStatus with diagnostics payloads', () => {
   const diagnosticsRun = diagnostics => ({
     id: 'run-11',
     state: 'failed',

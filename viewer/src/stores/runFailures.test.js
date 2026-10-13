@@ -55,7 +55,7 @@ describe('extractRunError', () => {
     expect(extractRunError({ code: 500 })).toBe('{"code":500}');
   });
 
-  it('never renders the bare {"phase":"run"} envelope (M16)', () => {
+  it('never renders the bare {"phase":"run"} envelope', () => {
     expect(extractRunError({ phase: 'run' })).toBe('Run failed');
     expect(extractRunError('{"phase":"run"}')).toBe('Run failed');
     expect(extractRunError({ phase: 'run', diagnostics: [] })).toBe('Run failed');
@@ -200,7 +200,7 @@ describe('findLatestRunFailureFor', () => {
   });
 });
 
-describe('diagnostics payloads (W4)', () => {
+describe('diagnostics payloads', () => {
   const insightDiagnostic = {
     severity: 'error',
     phase: 'run',

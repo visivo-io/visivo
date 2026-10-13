@@ -211,10 +211,6 @@ class TestRunOnSave:
 
 
 class TestRunFailureDiagnostics:
-    """W4: a failed run's error_json carries the failed jobs' Diagnostics —
-    killing the bare ``{"phase": "run"}`` payload the viewer used to render
-    verbatim."""
-
     def _wait_terminal(self, integration_app):
         deadline = time.time() + 5
         while time.time() < deadline:
@@ -283,7 +279,6 @@ class TestRunFailureDiagnostics:
         assert diagnostics[0]["code"] == "unexpected_error"
         assert "orders" in diagnostics[0]["message"]
         assert diagnostics[0]["object"] == {"type": "model", "name": "orders"}
-        # Never the dot-padded ANSI terminal message.
         assert "\033" not in json.dumps(run["error_json"])
 
     def test_diagnostics_are_capped_at_fifty(self, integration_app):
@@ -317,7 +312,6 @@ class TestRunFailureDiagnostics:
             run = self._wait_terminal(integration_app)
 
         assert run["state"] == "failed"
-        # `error` stays for older consumers; diagnostics carries the same failure.
         assert run["error_json"]["phase"] == "run"
         assert run["error_json"]["error"] == "compile exploded"
         assert run["error_json"]["diagnostics"][0]["code"] == "unexpected_error"

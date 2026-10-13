@@ -136,7 +136,7 @@ describe('RunsView is self-contained (6c-T2 dark-on-dark hardening)', () => {
   });
 });
 
-describe('RunsView — RunDetail diagnostics (W4)', () => {
+describe('RunsView — RunDetail diagnostics', () => {
   const diagnosticsErrorJson = {
     phase: 'run',
     diagnostics: [

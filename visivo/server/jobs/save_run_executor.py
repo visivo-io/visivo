@@ -22,8 +22,7 @@ from visivo.server.managers.run_manager import RunState
 # Coalesce rapid saves (e.g. one editor action touching several rows) into one run.
 _DEBOUNCE_SECONDS = 0.5
 
-# error_json is a polled status payload, not the log channel — cap it. The
-# full text stays on GET /api/runs/<run_id>/logs/.
+# error_json is polled; the full text stays on GET /api/runs/<run_id>/logs/.
 _MAX_DIAGNOSTICS = 50
 
 _pending_names = set()
@@ -150,8 +149,7 @@ def _execute(flask_app, run_id, dag_filter):
             run_id,
             RunState.FAILED,
             logs=str(exc),
-            # `error` stays for older viewers (extractRunError renders it);
-            # `diagnostics` is the same failure in the shared contract shape.
+            # `error` stays for viewers that predate `diagnostics`.
             error_json={
                 "phase": "run",
                 "error": str(exc),
@@ -165,36 +163,24 @@ def _execute(flask_app, run_id, dag_filter):
 
 
 def _error_json_from(runner):
-    """The structured payload for a failed run (W4, Error Legibility).
+    diagnostics = [
+        result.diagnostic or _fallback_diagnostic(result)
+        for result in runner.failed_job_results[:_MAX_DIAGNOSTICS]
+    ]
+    return {
+        "phase": "run",
+        "diagnostics": [d.model_dump(mode="json", exclude_none=True) for d in diagnostics],
+    }
 
-    ``{'phase': 'run'}`` used to be the ENTIRE payload — the runner's
-    failed_job_results were discarded one line after being formatted into the
-    logs, so the viewer's per-record failure banner rendered the literal JSON
-    envelope. ``diagnostics`` now carries each failed job's Diagnostic
-    (additive: ``phase`` stays for consumers that predate the contract).
-    """
-    diagnostics = []
-    for result in runner.failed_job_results:
-        if len(diagnostics) >= _MAX_DIAGNOSTICS:
-            break
-        if result.diagnostic is not None:
-            diagnostics.append(result.diagnostic.model_dump(mode="json", exclude_none=True))
-        else:
-            # Every W3 failure site populates a diagnostic; this belt covers
-            # any producer that predates the contract. Never the dot-padded,
-            # ANSI-coloured terminal message — point at the logs instead.
-            diagnostics.append(
-                Diagnostic(
-                    phase=DiagnosticPhase.RUN,
-                    code="unexpected_error",
-                    message=(
-                        f"Job for '{getattr(result.item, 'name', 'unknown')}' failed — "
-                        f"see the run logs for details."
-                    ),
-                    object=diagnostic_object_ref(result.item),
-                ).model_dump(mode="json", exclude_none=True)
-            )
-    return {"phase": "run", "diagnostics": diagnostics}
+
+def _fallback_diagnostic(result):
+    # result.message is the ANSI, dot-padded terminal line, so point at the logs instead.
+    return Diagnostic(
+        phase=DiagnosticPhase.RUN,
+        code="unexpected_error",
+        message=f"Job for '{getattr(result.item, 'name', 'unknown')}' failed — see the run logs.",
+        object=diagnostic_object_ref(result.item),
+    )
 
 
 def mark_staged_built(flask_app, dag_filter):
