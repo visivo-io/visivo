@@ -3,8 +3,8 @@
  * 01-ux-spec.md §5, 02-architecture.md §5).
  *
  *   1. `/explorer` is a permanent redirect to `/workspace/exploration`.
- *   2. TopNav's "Explorer" pill links straight to `/workspace/exploration`
- *      (no redirect hop).
+ *   2. The Workspace's "Explorer" switcher goes straight to
+ *      `/workspace/exploration` (no redirect hop).
  *   3. `/workspace/dashboard/:dashboardName/explorer` (the old
  *      ExplorerOverlay round-trip route) mints a fresh exploration
  *      carrying a `return_to` placement intent and redirects into it.
@@ -44,14 +44,14 @@ test.describe('Explore 2.0 Phase 3b cutover redirects', () => {
     await expect(page.getByTestId('explorer-page')).not.toBeVisible();
   });
 
-  test('TopNav\'s Explorer pill links straight to /workspace/exploration (no redirect hop)', async ({
+  test('the Workspace Explorer switcher goes straight to /workspace/exploration (no redirect hop)', async ({
     page,
   }) => {
     await page.goto(`${BASE_URL}/workspace`);
     await page.waitForLoadState('networkidle');
-    const explorerLink = page.locator('a[href="/workspace/exploration"]').first();
-    await expect(explorerLink).toBeVisible({ timeout: 15000 });
-    await explorerLink.click();
+    const explorerSwitch = page.getByTestId('workspace-view-switcher-explorer');
+    await expect(explorerSwitch).toBeVisible({ timeout: 15000 });
+    await explorerSwitch.click();
     await expect(page).toHaveURL(`${BASE_URL}/workspace/exploration`);
     await expect(page.getByTestId('workspace-middle-explorer')).toBeVisible({ timeout: 30000 });
   });

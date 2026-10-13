@@ -162,8 +162,7 @@ test.describe('Project Editor (M-1)', () => {
     await page.screenshot({ path: 'e2e/stories/__screens__/vis805-07-tile-selected.png', fullPage: true });
 
     // Return to the unscoped project pane for the remaining steps.
-    await page.goto(WORKSPACE_URL);
-    await page.waitForLoadState('networkidle');
+    await page.getByTestId('workspace-view-switcher-project').click();
     await page.getByTestId('project-editor').waitFor({ timeout: WAIT_FOR_PAGE });
     await page.locator('[data-testid^="project-tile-"]').first().waitFor({ timeout: WAIT_FOR_PAGE });
   });

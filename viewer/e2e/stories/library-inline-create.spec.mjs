@@ -1,11 +1,11 @@
 /**
- * Story: Library inline create — "+ New" header menu + per-type "+ New X"
+ * Story: Library inline create — the "+ New" header menu
  * (user-reported: "no way to create a new object in the editor").
  *
- * The Library header's "+ New" menu and every creatable subsection's
- * "+ New X" button draft a minimal valid config into the backend cache via
- * the shared inline-create flow, then open the new object as a workspace tab
- * so the right-rail Edit form is the editing surface. No modals.
+ * The Library header's "+ New" menu drafts a minimal valid config into the
+ * backend cache via the shared inline-create flow, then opens the new object
+ * as a workspace tab so the right-rail Edit form is the editing surface. No
+ * modals.
  *
  * Mutates the backend draft cache (in-memory only, no YAML) — registered in
  * the 'state-mutating' playwright project so it runs after the read-only
@@ -81,14 +81,10 @@ test.describe('Library inline create', () => {
     await page.screenshot({ path: `${SCREENS}/inline-create-02-model-tab.png` });
   });
 
-  test('a data-layer subsection "+ New Insight" drafts and opens an insight', async () => {
-    const header = page.getByTestId('library-subsection-insight-header');
-    await header.scrollIntoViewIfNeeded();
-    await header.click();
-    const create = page.getByTestId('library-subsection-insight-create');
-    await create.scrollIntoViewIfNeeded();
-    await create.hover();
-    await create.click();
+  test('the header "+ New" menu drafts and opens an insight', async () => {
+    await page.getByTestId('library-new-object-button').click();
+    await expect(page.getByTestId('library-new-object-menu')).toBeVisible();
+    await page.getByTestId('library-new-object-insight').click();
 
     await expect
       .poll(() => readStore(page, "s.workspaceActiveObject && s.workspaceActiveObject.type"), {
