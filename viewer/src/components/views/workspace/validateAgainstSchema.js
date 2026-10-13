@@ -21,7 +21,11 @@
 
 import Ajv2020 from 'ajv/dist/2020';
 import addFormats from 'ajv-formats';
-import { getDefNameForType, preloadProjectSchema, getObjectSchema } from '../../../schemas/projectSchema';
+import {
+  getDefNameForType,
+  preloadProjectSchema,
+  getObjectSchema,
+} from '../../../schemas/projectSchema';
 import { validateProps } from '../../../schemas/plotlyValidator';
 
 let ajv = null;
@@ -142,7 +146,12 @@ const SKIP = { valid: true, errors: [], skipped: true };
 // endpoint reads to place it under that model. It is not a field of the object.
 const SCOPED_TYPES = ['metric', 'dimension'];
 const schemaShape = (type, config) => {
-  if (!SCOPED_TYPES.includes(type) || typeof config !== 'object' || !('parentModel' in config)) {
+  if (
+    !SCOPED_TYPES.includes(type) ||
+    !config ||
+    typeof config !== 'object' ||
+    !('parentModel' in config)
+  ) {
     return config;
   }
   const { parentModel: _scope, ...shape } = config;
@@ -204,9 +213,7 @@ export async function validateRecordConfig(type, config) {
       return SKIP;
     }
   }
-  const structural = failOpen('validate', () =>
-    runValidator(validate, schemaShape(type, config))
-  );
+  const structural = failOpen('validate', () => runValidator(validate, schemaShape(type, config)));
 
   // Insight props precision: the registered graph relaxes props to a plain
   // object (see registerRoot), so run the per-type Plotly validator here and
