@@ -346,5 +346,5 @@ class TestTheTool:
                 "recommend_layout",
                 {"items": [chart("a", "bar"), chart("a", "bar")]},
             )
-        with pytest.raises(ToolError, match="Could not lay out"):
+        with pytest.raises(ToolError, match="recommend_layout failed"):
             call(integration_app, "recommend_layout", {"items": [{"name": "a", "kind": "widget"}]})
