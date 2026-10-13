@@ -90,14 +90,8 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
     [openCreateChartModal, openCreateTableModal, openCreateMarkdownModal, openCreateInputModal]
   );
 
-  // ── Click-to-pick (W5 / Track L) ──────────────────────────────────────────
-  // Clicking an EMPTY canvas slot opens the ReferencePicker for that slot
-  // (charts + insights). Picking a chart places `chart: ref(name)`; picking an
-  // insight AUTO-WRAPS it (#637 pattern): the placement is validated FIRST,
-  // and only when the slot actually re-points does the minted wrapper chart get
-  // saved — a rejected placement must never leave an orphan draft chart. The
-  // placement commits into the dashboard's #617 working copy (explicit Save
-  // persists it), exactly like every other canvas mutation.
+  // Empty-slot click-to-pick. An insight pick is wrapped in a minted chart, saved
+  // only after the placement succeeds so a rejected placement leaves no orphan.
   const [pickerItemPath, setPickerItemPath] = useState(null);
 
   const handleEmptySlotClick = useCallback(({ itemPath }) => {
@@ -112,14 +106,11 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
       if (typeof commitCanvasConfig !== 'function') return;
 
       if (pickedType === 'insight') {
-        // Auto-wrap: same naming + save path as Library "Wrap in Chart…"
-        // (#632) and the canvas insight drop (#637). Minting the NAME is pure;
-        // the chart is only SAVED after the placement transform succeeds.
         const state = useStore.getState();
         const existingCharts = (state.charts || []).map(chart => chart.name);
         const chartName = mintWrapperChartName(pickedName, existingCharts);
         const next = setItemRef(dashboardConfig, itemPath, 'chart', chartName);
-        if (next === dashboardConfig) return; // rejected placement → mint nothing
+        if (next === dashboardConfig) return;
         if (typeof state.saveChart === 'function') {
           state.saveChart(chartName, buildWrapperChartConfig(pickedName));
         }
@@ -225,8 +216,6 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
         renderBrokenRef={renderBrokenRef}
         onEmptySlotClick={handleEmptySlotClick}
       />
-      {/* W5 click-to-pick: the ReferencePicker for the clicked empty slot.
-          Charts place directly; insights auto-wrap (#637). */}
       {pickerItemPath && (
         <ReferencePicker
           types={['chart', 'insight']}

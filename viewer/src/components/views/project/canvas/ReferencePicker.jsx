@@ -5,18 +5,11 @@ import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors, getTypeByValue } from '../../common/objectTypeConfigs';
 
 /**
- * ReferencePicker — VIS-792 / Track L L-2, promoted by W5 (click-to-pick).
+ * ReferencePicker — VIS-792 / Track L L-2.
  *
- * Modal that lets a user pick an object reference for a canvas slot. Two
- * consumers:
- *
- *   - <BrokenRefCard>'s "Fix…" (the original L-2 flow) — single `type` mode:
- *     the picker is scoped to the broken leaf's type (chart/table/markdown/
- *     input) and picking re-points the leaf.
- *   - Click-to-pick (W5): an EMPTY canvas slot click, or the right rail's
- *     "Choose…" on an empty item — multi-`types` mode (charts + insights in
- *     typed sections). Picking a chart places it; picking an insight
- *     auto-wraps it in a minted chart (#637 pattern) at the call site.
+ * Modal for picking an object reference for a canvas slot. Single `type` mode
+ * serves <BrokenRefCard>'s "Fix…"; multi `types` mode (typed sections) serves
+ * empty-slot click-to-pick. `onSelect(name, type)`.
  *
  * Per the L-2 brief (`specs/.../06-phase-5-polish.md`):
  *   - Centered modal (~480×640, responsive).
@@ -29,17 +22,12 @@ import { getTypeIcon, getTypeColors, getTypeByValue } from '../../common/objectT
  *
  * Click-to-select is the single selection affordance (no separate "Use this"
  * button), per the acceptance checklist's "pick one and stick with it".
- * `onSelect(name, type)` — the second argument tells multi-type consumers
- * WHICH section the pick came from; single-type consumers may ignore it.
  *
  * The store object lists are the single source for available objects; type
  * icons + colours come from the shared objectTypeConfigs palette.
  */
 
-// Map a pickable type to the store list that supplies that type's available
-// objects. `insight` joins the leaf types for the click-to-pick multi mode
-// (an insight pick is auto-wrapped in a chart by the consumer — items never
-// take a bare insight).
+// Store list per pickable type. Consumers wrap an `insight` pick in a chart.
 const TYPE_SLICES = {
   chart: { listKey: 'charts', singular: 'chart' },
   table: { listKey: 'tables', singular: 'table' },
@@ -48,9 +36,7 @@ const TYPE_SLICES = {
   insight: { listKey: 'insights', singular: 'insight' },
 };
 
-// Tab-order members of the dialog, for the focus trap. Deliberately does NOT
-// filter on visibility (jsdom reports every element as unrendered), so the
-// trap behaves identically in tests and the browser.
+// No visibility filter: jsdom reports every element as unrendered.
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -107,8 +93,6 @@ const ObjectRow = ({ type, obj, onSelect }) => {
   );
 };
 
-// Typed section header for the multi-type mode — objectTypeConfigs colours +
-// icon, so a "Charts" band and an "Insights" band read in each type's palette.
 const SectionHeader = ({ type }) => {
   const Icon = getTypeIcon(type);
   const colors = getTypeColors(type);
@@ -141,8 +125,6 @@ const ListSkeleton = () => (
 );
 
 const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading = false }) => {
-  // Normalise to an ordered list of pickable types: `types` (multi mode) wins,
-  // else the single `type` (BrokenRefCard's original contract), else chart.
   const typeList = useMemo(() => {
     const requested = Array.isArray(types) && types.length > 0 ? types : [type || 'chart'];
     const valid = requested.filter(t => TYPE_SLICES[t]);
@@ -150,8 +132,6 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
   }, [type, types]);
   const isMulti = typeList.length > 1;
 
-  // Hook-order-stable store reads: every slice is subscribed unconditionally,
-  // then `typeList` picks the ones this mount actually lists.
   const charts = useStore(s => s.charts);
   const tables = useStore(s => s.tables);
   const markdowns = useStore(s => s.markdowns);
@@ -174,8 +154,7 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
   const listKeys = typeList.map(t => TYPE_SLICES[t].listKey);
   const titleLabel = singularLabels.join(' or ');
   const listLabel = listKeys.join(isMulti ? ' and ' : '');
-  // Create-new targets the primary (first) type — for click-to-pick that is
-  // the chart, whose create flow exists everywhere the picker mounts.
+  // Create-new targets the first type.
   const createType = typeList[0];
   const createLabel =
     getTypeByValue(createType)?.singularLabel?.toLowerCase() || TYPE_SLICES[createType].singular;
@@ -186,15 +165,7 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
   const returnFocusRef = useRef(null);
 
   useEffect(() => {
-    // Remember what opened us, focus the search box so keyboard users can
-    // filter immediately, and hand focus BACK on close. Without the restore,
-    // closing (Escape / X / backdrop) drops `document.activeElement` to
-    // <body>, and the next Tab restarts at the top of the document — the
-    // click-to-pick path is sold as keyboard-completable, so stranding the
-    // user away from the slot they were filling is not acceptable. When the
-    // opener is gone (a successful pick unmounts the slot button it filled)
-    // there is nothing to return to, so we leave focus alone rather than
-    // throwing at a detached node.
+    // Restore focus to the opener on close, unless a pick unmounted it.
     returnFocusRef.current = typeof document !== 'undefined' ? document.activeElement : null;
     if (searchRef.current) searchRef.current.focus();
     return () => {
@@ -211,11 +182,7 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
         onClose && onClose();
         return;
       }
-      // Focus TRAP. `aria-modal="true"` promises assistive tech that nothing
-      // outside this dialog is reachable; without a trap that promise is a
-      // lie — Shift+Tab from the search box walks straight out into the page
-      // behind the backdrop. Cycle within the dialog instead, and pull focus
-      // back in if it ever escapes.
+      // Focus trap, as `aria-modal` promises.
       if (e.key !== 'Tab') return;
       const dialog = dialogRef.current;
       if (!dialog) return;
@@ -242,7 +209,6 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Per-type sections: total (unfiltered) + the query-filtered rows.
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
     return typeList.map(t => {

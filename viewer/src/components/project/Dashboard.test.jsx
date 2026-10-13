@@ -324,7 +324,6 @@ describe('Dashboard', () => {
       const onEmptySlotClick = jest.fn();
       renderEmptySlot({ canvasMode: true, onEmptySlotClick });
       const slot = screen.getByTestId('canvas-empty-slot');
-      // A BUTTON — focusable, so the picker path is keyboard-completable.
       expect(slot.tagName).toBe('BUTTON');
       fireEvent.click(slot);
       expect(onEmptySlotClick).toHaveBeenCalledTimes(1);
@@ -336,11 +335,7 @@ describe('Dashboard', () => {
       expect(screen.getByTestId('canvas-empty-slot').tagName).toBe('DIV');
     });
 
-    // WCAG 2.5.3 (Label in Name): speaking the visible label must activate the
-    // control, so the accessible name has to CONTAIN the visible string — an
-    // aria-label that replaces it ("Empty slot — choose content") breaks voice
-    // control. The location suffix is what keeps several identical slots
-    // distinguishable.
+    // WCAG 2.5.3: the accessible name must contain the visible label.
     it('gives the slot an accessible name containing its visible label', () => {
       renderEmptySlot({ canvasMode: true, onEmptySlotClick: jest.fn() });
       const slot = screen.getByTestId('canvas-empty-slot');

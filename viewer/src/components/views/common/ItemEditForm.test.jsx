@@ -393,8 +393,7 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
       insights: [{ name: 'rev-insight' }],
       saveChart: jest.fn().mockResolvedValue({ success: true }),
       openCreateChartModal: jest.fn(),
-      // VIS-1025: null = local serve (always editable). Set explicitly so a
-      // read-only case can't leak into the neighbouring tests.
+      // Reset so a read-only case can't leak into neighbouring tests.
       capabilities: null,
     });
   });
@@ -494,15 +493,9 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
   });
 
   // ── #637: a REJECTED placement must mint NOTHING ──────────────────────────
-  // `setItemLeaf` normalises the picked name (it trims it, and drops a name
-  // that trims to nothing), so the slot does not always end up referencing the
-  // name the handler holds. Wherever it doesn't, saving a wrapper chart under
-  // that name would leave an orphan draft chart pointed at by nothing — the
-  // exact failure the #637 ordering exists to prevent.
   test('an insight whose wrapper name the transform rewrites mints NOTHING', () => {
-    // `' rev'` → wrapper name `' rev-chart'`, which `setItemLeaf` TRIMS to
-    // `rev-chart`: the slot would reference a DIFFERENT chart than the one
-    // saveChart creates — an orphan draft plus a broken ref.
+    // `setItemLeaf` trims `' rev-chart'` to `rev-chart`, so the slot would not
+    // point at the chart saveChart creates.
     useStore.setState({ insights: [{ name: ' rev' }] });
     const onChange = jest.fn();
     renderItem({ item: emptyItem, onChange });
@@ -526,10 +519,6 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
   });
 
   // ── VIS-1025: read-only holds the ONE write that bypasses persistConfig ────
-  // `saveChart` is fired straight at the store, so the rail's persistConfig
-  // read-only hold cannot cover it: without this gate a read-only stage POSTs
-  // a wrapper chart and THEN discards the placement — an orphan draft chart on
-  // a project the user is not allowed to edit.
   describe('read-only stage (capabilities.can_edit === false)', () => {
     beforeEach(() => {
       useStore.setState({ capabilities: { can_edit: false, edit_action: 'Create a draft to edit' } });
@@ -550,8 +539,7 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
       renderItem({ item: emptyItem, onChange });
       openPicker();
 
-      // Capabilities flip mid-flow (e.g. the draft was published from another
-      // tab). The mounted picker's rows are still live.
+      // Read-only flips while the picker is open.
       act(() => {
         useStore.setState({ capabilities: { can_edit: false } });
       });
@@ -564,9 +552,6 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
   });
 
   // ── The rail and the canvas mount the SAME picker ─────────────────────────
-  // ProjectCanvas passes `onCreateNew`; without it the picker's own empty
-  // state renders "Create a chart to fill this slot" with nothing to click,
-  // so an empty project's Choose… is a dead-end modal.
   test('an EMPTY project offers create-new from the picker (parity with the canvas)', () => {
     useStore.setState({ charts: [], insights: [] });
     renderItem({ item: emptyItem });

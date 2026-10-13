@@ -186,10 +186,7 @@ const RightRailEditPanel = () => {
   const dashboardBaselines = useStore(s => s.dashboardBaselines);
   const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
-  // VIS-1025: null = local serve (always editable); a cloud capability object
-  // with can_edit:false makes every rail write a no-op. The predicate lives in
-  // branchingStore so every write path (this panel, useRecordSave, and the
-  // item form's click-to-pick) reads read-only the same way.
+  // VIS-1025: read-only makes every rail write a no-op.
   const capabilities = useStore(s => s.capabilities);
   const readOnly = useStore(isReadOnly);
   const { dashboardName } = useWorkspaceScope();

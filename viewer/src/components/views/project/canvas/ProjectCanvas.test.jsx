@@ -28,9 +28,7 @@ const renderWithRouter = ui =>
 // prop with these args — exactly what the real renderer does for a leaf whose
 // ref doesn't resolve (VIS-792 / L-1).
 let mockBrokenRefArgs = null;
-// When set, the Dashboard mock renders a stand-in empty slot whose click calls
-// the canvas's `onEmptySlotClick` with this itemPath — exactly what the real
-// renderer's empty-slot button does (W5 click-to-pick).
+// When set, the Dashboard mock renders an empty slot calling `onEmptySlotClick`.
 let mockEmptySlotPath = null;
 
 jest.mock('../../../project/Dashboard', () => {

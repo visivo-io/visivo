@@ -1,18 +1,8 @@
-/**
- * insightWrap — the shared auto-wrap naming/config recipe (#632/#637 pattern,
- * consumed by the canvas insight drop AND the click-to-pick picker paths).
- */
 import { mintWrapperChartName, buildWrapperChartConfig } from './insightWrap';
 import { generateUniqueName } from './uniqueName';
 
-// The forced `separator: '-'` cannot be falsified through mintWrapperChartName's
-// RESULT: the base is always `<insight>-chart`, which already contains a hyphen,
-// so `suffixSeparatorFor` infers '-' for every reachable input and the option
-// can never change the output. Spying on the call is the only way to prove the
-// option is actually passed — without this, deleting it leaves the suite green
-// while a future change to `suffixSeparatorFor`'s inference (e.g. preferring the
-// FIRST separator in the base, which picks '_' for `rev_insight-chart`) would
-// silently start minting `rev_insight-chart_2`.
+// Today's separator inference already yields '-' for every `<insight>-chart`
+// base, so only a spy proves the forced option is passed.
 jest.mock('./uniqueName', () => {
   const actual = jest.requireActual('./uniqueName');
   return { ...actual, generateUniqueName: jest.fn(actual.generateUniqueName) };

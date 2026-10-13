@@ -189,11 +189,6 @@ describe('ReferencePicker — multi-type mode (W5 click-to-pick)', () => {
 });
 
 // ── Modal focus management (W5) ─────────────────────────────────────────────
-// Click-to-pick promotes this dialog from a failure-state repair tool to the
-// PRIMARY affordance for filling an empty slot, and the flow is sold as
-// keyboard-completable. `aria-modal="true"` promises assistive tech that focus
-// is contained here and that closing returns it where it came from; both have
-// to actually be true.
 describe('ReferencePicker — focus management', () => {
   const renderWithTrigger = (props = {}) => {
     const utils = render(
@@ -261,9 +256,7 @@ describe('ReferencePicker — focus management', () => {
     expect(screen.queryByTestId('opener')).not.toBeInTheDocument();
   });
 
-  // DOM order inside the dialog: close (X) → search → object rows → footer
-  // create link (absent here — no onCreateNew). So the trap's endpoints are
-  // the close button and the LAST object row.
+  // Trap endpoints: the close button and the last object row (no footer here).
   const firstFocusable = () => screen.getByTestId('reference-picker-close');
   const lastFocusable = () => screen.getByTestId('reference-picker-row-orders_chart');
 
