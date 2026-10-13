@@ -15,6 +15,7 @@ from tests.factories.model_factories import (
     ChartFactory,
     DashboardFactory,
     DefaultsFactory,
+    ThemeFactory,
     DimensionFactory,
     InsightFactory,
     MetricFactory,
@@ -54,6 +55,7 @@ def env():
     flask_app.project.project_file_path = "/tmp/project.yaml"
     flask_app.hot_reload_server = None
     flask_app._cached_defaults = None
+    flask_app._cached_theme = None
     # A real path, not a Mock: /capabilities/ joins it to find the project's
     # .env when listing the names the source form can reference.
     flask_app._working_dir = "/tmp"
@@ -67,6 +69,10 @@ def env():
         manager.cached_objects = {}
         manager.published_objects = {}
         manager.has_unpublished_changes.return_value = False
+        # A real None, not a Mock: commit asks every child whether it was
+        # renamed, and a Mock's truthy return would send the published lookup
+        # after a name that doesn't exist.
+        manager.renamed_from.return_value = None
         manager.get_status.return_value = ObjectStatus.PUBLISHED
         setattr(flask_app, attr, manager)
 
@@ -160,18 +166,22 @@ class TestCommitAllTypes:
             manager.published_objects = {}
             manager.get_status.return_value = ObjectStatus.NEW
         flask_app._cached_defaults = DefaultsFactory()
+        flask_app._cached_theme = ThemeFactory()
 
         writer_cls.return_value = Mock()
         data = client.post("/api/commit/").get_json()
 
-        assert data["published_count"] == len(MANAGER_SPECS) + 1
+        assert data["published_count"] == len(MANAGER_SPECS) + 2
         for attr, _, _ in MANAGER_SPECS:
             getattr(flask_app, attr).clear_cache.assert_called_once()
         assert flask_app._cached_defaults is None
+        assert flask_app._cached_theme is None
 
-        # The defaults child_info is threaded to ProjectWriter with type_key.
+        # Project settings reach ProjectWriter as top-level YAML keys, not named objects.
         named_children = writer_cls.call_args[0][0]
-        assert named_children["defaults"]["type_key"] == "defaults"
+        assert named_children["project.defaults"]["top_level_key"] == "defaults"
+        assert named_children["project.theme"]["top_level_key"] == "theme"
+        assert named_children["project.theme"]["config"]["mode"] == "dark"
 
 
 class TestBuildChildInfoScoping:

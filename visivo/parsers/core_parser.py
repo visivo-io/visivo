@@ -1,3 +1,4 @@
+import click
 from deepmerge import always_merger
 from typing import Dict, List
 from pathlib import Path
@@ -39,7 +40,6 @@ class CoreParser:
 
     def __merged_project_data(self):
         project_data = self.project_file_data()
-
         data_files = {}
         for file in self.files:
             if file == self.project_file:

@@ -1,5 +1,7 @@
 import json
 import os
+
+from visivo.output_paths import schema_file as schema_file_path
 from typing import Optional, Dict
 from visivo.models.base.project_dag import ProjectDag
 
@@ -72,7 +74,7 @@ class FieldResolver:
             return self._schema_cache[model_name]
 
         # Build path to schema file
-        schema_file = os.path.join(self.output_dir, "schemas", f"{model_name}.json")
+        schema_file = schema_file_path(self.output_dir, model_name)
 
         # Try to read schema file
         try:

@@ -22,6 +22,12 @@ def _env_file_keys(flask_app):
         return []
 
 
+def _cached_project_settings(flask_app):
+    """Draft project-level settings (top-level YAML keys like ``defaults``), keyed by YAML key."""
+    cached = {"defaults": flask_app._cached_defaults, "theme": flask_app._cached_theme}
+    return {key: value for key, value in cached.items() if value is not None}
+
+
 def register_commit_views(app, flask_app, output_dir):
     """Register commit-related API endpoints."""
 
@@ -42,6 +48,7 @@ def register_commit_views(app, flask_app, output_dir):
                 or flask_app.dashboard_manager.has_unpublished_changes()
                 or flask_app.input_manager.has_unpublished_changes()
                 or flask_app._cached_defaults is not None
+                or flask_app._cached_theme is not None
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -178,15 +185,8 @@ def register_commit_views(app, flask_app, output_dir):
                     }
                     pending.append(input_info)
 
-            # Get defaults changes
-            if flask_app._cached_defaults is not None:
-                pending.append(
-                    {
-                        "name": "defaults",
-                        "type": "defaults",
-                        "status": "modified",
-                    }
-                )
+            for setting in _cached_project_settings(flask_app):
+                pending.append({"name": setting, "type": setting, "status": "modified"})
 
             return jsonify({"pending": pending, "count": len(pending)})
         except Exception as e:
@@ -261,8 +261,8 @@ def register_commit_views(app, flask_app, output_dir):
                             to_remove.append(entry)
                         else:
                             to_publish.append(entry)
-            if flask_app._cached_defaults is not None:
-                to_publish.append({"name": "defaults", "type": "defaults", "status": "modified"})
+            for setting in _cached_project_settings(flask_app):
+                to_publish.append({"name": setting, "type": setting, "status": "modified"})
             # `staged` is a different question from `to_publish`: what a RUN
             # would build, not what a COMMIT would publish. A chart colour edit
             # is in the second and not the first. They share this endpoint
@@ -307,7 +307,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=source,
                         status=status,
-                        published_obj=flask_app.source_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.source_manager, name),
                         type_key="sources",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -322,7 +322,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=model,
                         status=status,
-                        published_obj=flask_app.model_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.model_manager, name),
                         type_key="models",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -337,7 +337,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=dimension,
                         status=status,
-                        published_obj=flask_app.dimension_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.dimension_manager, name),
                         type_key="dimensions",
                         project_file_path=flask_app.project.project_file_path,
                         flask_app=flask_app,
@@ -353,7 +353,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=metric,
                         status=status,
-                        published_obj=flask_app.metric_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.metric_manager, name),
                         type_key="metrics",
                         project_file_path=flask_app.project.project_file_path,
                         flask_app=flask_app,
@@ -369,7 +369,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=relation,
                         status=status,
-                        published_obj=flask_app.relation_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.relation_manager, name),
                         type_key="relations",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -384,7 +384,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=insight,
                         status=status,
-                        published_obj=flask_app.insight_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.insight_manager, name),
                         type_key="insights",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -399,7 +399,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=markdown,
                         status=status,
-                        published_obj=flask_app.markdown_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.markdown_manager, name),
                         type_key="markdowns",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -414,7 +414,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=chart,
                         status=status,
-                        published_obj=flask_app.chart_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.chart_manager, name),
                         type_key="charts",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -429,7 +429,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=table,
                         status=status,
-                        published_obj=flask_app.table_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.table_manager, name),
                         type_key="tables",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -444,7 +444,7 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=dashboard,
                         status=status,
-                        published_obj=flask_app.dashboard_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.dashboard_manager, name),
                         type_key="dashboards",
                         project_file_path=flask_app.project.project_file_path,
                     )
@@ -459,23 +459,22 @@ def register_commit_views(app, flask_app, output_dir):
                         name=name,
                         obj=input_obj,
                         status=status,
-                        published_obj=flask_app.input_manager.published_objects.get(name),
+                        **_renamed_child_args(flask_app.input_manager, name),
                         type_key="inputs",
                         project_file_path=flask_app.project.project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
 
-            # Process defaults
-            if flask_app._cached_defaults is not None:
-                exclude_fields = {"path", "file_path"}
-                named_children["defaults"] = {
+            for setting, cached in _cached_project_settings(flask_app).items():
+                named_children[f"project.{setting}"] = {
                     "status": "Modified",
                     "file_path": flask_app.project.project_file_path,
                     "new_file_path": flask_app.project.project_file_path,
-                    "type_key": "defaults",
-                    "config": flask_app._cached_defaults.model_dump(
-                        exclude_none=True, exclude=exclude_fields
+                    "type_key": setting,
+                    "top_level_key": setting,
+                    "config": cached.model_dump(
+                        mode="json", exclude_none=True, exclude={"path", "file_path"}
                     ),
                 }
                 published_count += 1
@@ -510,13 +509,17 @@ def register_commit_views(app, flask_app, output_dir):
 
             # Serialize with the file watcher for the whole write→refresh
             # window. Without this, the YAML writes below fire a debounced
-            # watcher recompile that races the synchronous one — both clone
-            # git includes into the same cache, one dies on the git lock,
-            # `on_project_change` swallows the error, and this endpoint then
+            # watcher recompile that races the synchronous one; if either
+            # fails, `on_project_change` swallows the error and this endpoint
             # returns success while the served project is still stale (the
             # canvas silently "loses" the just-published edit). Pausing
             # blocks until any in-flight watcher compile finishes and drops
             # the watcher events our own writes would otherwise queue.
+            #
+            # The original failure here was two compiles cloning git includes
+            # into one cache and deadlocking on the git lock (VIS-1456 removed
+            # git includes). The race between the two compiles is not specific
+            # to that, so the pause stays.
             hot_reload_server = flask_app.hot_reload_server
             if hot_reload_server:
                 hot_reload_server.pause_file_watcher()
@@ -556,6 +559,7 @@ def register_commit_views(app, flask_app, output_dir):
                 flask_app.dashboard_manager.clear_cache()
                 flask_app.input_manager.clear_cache()
                 flask_app._cached_defaults = None
+                flask_app._cached_theme = None
 
                 # Trigger project reload via hot reload server if available
                 if hot_reload_server:
@@ -608,9 +612,9 @@ def register_commit_views(app, flask_app, output_dir):
                     if status and status != ObjectStatus.PUBLISHED:
                         discarded_count += 1
                 manager.clear_cache()
-            if flask_app._cached_defaults is not None:
-                discarded_count += 1
-                flask_app._cached_defaults = None
+            discarded_count += len(_cached_project_settings(flask_app))
+            flask_app._cached_defaults = None
+            flask_app._cached_theme = None
 
             return jsonify(
                 {
@@ -696,6 +700,20 @@ def _validate_pending_project(flask_app):
     return None
 
 
+def _renamed_child_args(manager, name):
+    """`published_obj` and `old_name` for a child, honouring a draft rename.
+
+    A renamed object is cached under its NEW name, so looking `published_obj`
+    up by that name finds nothing and the writer would treat it as new. The
+    published record — and the file it lives in — are under the OLD name.
+    """
+    old_name = manager.renamed_from(name)
+    return {
+        "published_obj": manager.published_objects.get(old_name or name),
+        "old_name": old_name,
+    }
+
+
 def _build_child_info(
     name,
     obj,
@@ -704,6 +722,7 @@ def _build_child_info(
     type_key,
     project_file_path,
     flask_app=None,
+    old_name=None,
 ):
     """Build the child info dict for ProjectWriter.
 
@@ -722,6 +741,7 @@ def _build_child_info(
         ObjectStatus.NEW: "New",
         ObjectStatus.MODIFIED: "Modified",
         ObjectStatus.DELETED: "Deleted",
+        ObjectStatus.RENAMED: "Renamed",
     }
     writer_status = status_map.get(status, "Unchanged")
 
@@ -759,7 +779,8 @@ def _build_child_info(
         new_file_path = file_path
         config = {}  # No config needed for deletion
     else:
-        # Modified objects use path from published version
+        # Modified and renamed objects use the path from the published version,
+        # which for a rename was resolved under the OLD name.
         file_path = _get_file_path(published_obj, project_file_path)
         new_file_path = file_path
         config = (
@@ -773,6 +794,10 @@ def _build_child_info(
         "type_key": type_key,
         "config": config,
     }
+    if status == ObjectStatus.RENAMED and old_name:
+        # The writer finds the object in YAML under this, and writes `config`
+        # (which carries the new name) over it.
+        info["old_name"] = old_name
     if parent_model_name:
         info["parent_model"] = parent_model_name
     return info

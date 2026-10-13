@@ -1,4 +1,5 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
+import { withDeploymentRoot } from '../config/urls';
 
 // MVP bundle (fallback for older browsers)
 import duckdb_wasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
@@ -11,16 +12,29 @@ import duckdb_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?
 // Note: COI multi-threaded bundle disabled due to parquet extension compatibility issues
 // The pthread workers have SharedArrayBuffer memory state mismatches when loading extensions
 
-const DUCKDB_BUNDLES = {
+/**
+ * The bundles, mounted where this dist actually is.
+ *
+ * Vite bakes these in as `/assets/...`, which is the server root — not the
+ * deployment root a dist is mounted at. `visivo dist -dr` rewrites index.html
+ * and nothing else, so under a subpath the worker 404'd, `db` stayed null, and
+ * every chart sat on its spinner having never asked for data (the insight query
+ * is gated on `!!db`). No error either: a failed Worker is not a rejected
+ * promise.
+ *
+ * Resolved per call rather than once at import, so it does not depend on the
+ * bundle being evaluated after index.html's inline script.
+ */
+const duckdbBundles = () => ({
   mvp: {
-    mainModule: duckdb_wasm,
-    mainWorker: mvp_worker,
+    mainModule: withDeploymentRoot(duckdb_wasm),
+    mainWorker: withDeploymentRoot(mvp_worker),
   },
   eh: {
-    mainModule: duckdb_wasm_next,
-    mainWorker: duckdb_worker,
+    mainModule: withDeploymentRoot(duckdb_wasm_next),
+    mainWorker: withDeploymentRoot(duckdb_worker),
   },
-};
+});
 
 /**
  * Initialize DuckDB with the best available bundle.
@@ -30,7 +44,7 @@ const DUCKDB_BUNDLES = {
  * @returns {duckdb.AsyncDuckDB}
  */
 export const initDuckDB = async () => {
-  const bundle = await duckdb.selectBundle(DUCKDB_BUNDLES);
+  const bundle = await duckdb.selectBundle(duckdbBundles());
   const worker = new Worker(bundle.mainWorker);
   // Use VoidLogger to reduce console noise (use ConsoleLogger for debugging)
   const logger = new duckdb.VoidLogger();

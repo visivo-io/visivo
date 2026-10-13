@@ -135,12 +135,17 @@ def test_existing_dashboards_unchanged(compiled_project):
     assert len(names) >= 5
 
 
+# Fixtures that use Item.rows on purpose: the nested-layouts fixture and the
+# VIS-1458 sizing fixture (integer heights on nested sub-rows).
+NESTED_FIXTURE_DASHBOARDS = {"nested-layouts-dashboard", "sizing-dashboard"}
+
+
 def test_no_existing_item_uses_rows_field(compiled_project):
-    """Every existing top-level dashboard's items are leaves — confirms that
-    the nested fixture is the only consumer of Item.rows in the integration
-    project (and therefore the only thing exercising the new code path)."""
+    """Every other top-level dashboard's items are leaves — confirms that the
+    nested fixtures are the only consumers of Item.rows in the integration
+    project (and therefore the only things exercising the nested code path)."""
     for dashboard in compiled_project.dashboards:
-        if dashboard.name == "nested-layouts-dashboard":
+        if dashboard.name in NESTED_FIXTURE_DASHBOARDS:
             continue
         if not hasattr(dashboard, "rows"):
             # External dashboards have no rows.

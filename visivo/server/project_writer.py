@@ -81,6 +81,9 @@ class ProjectWriter:
 
     def update_file_contents(self):
         for child_name, child_info in self.named_children.items():
+            if child_info.get("top_level_key"):
+                self._update_top_level(child_name)
+                continue
             match child_info["status"]:
                 case "Unchanged":
                     continue
@@ -93,7 +96,7 @@ class ProjectWriter:
                 case "Modified":
                     self._update(child_name)
                 case "Renamed":
-                    self._rename(child_name, child_name)
+                    self._rename(child_info["old_name"], child_name)
 
     def write(self):
         """
@@ -103,6 +106,26 @@ class ProjectWriter:
         for file, contents in self.files_to_write.items():
             with open(file, "w") as file:
                 self.yaml.dump(contents, file)
+
+    def _update_top_level(self, child_name: str):
+        """Write a project-level mapping such as ``defaults:`` or ``theme:``, which has no name."""
+        child_info = self.named_children[child_name]
+        key = child_info["top_level_key"]
+        config = self._get_named_child_config(child_name)
+        contents = self.files_to_write[child_info["file_path"]]
+
+        if not config:
+            contents.pop(key, None)
+            return
+        existing = contents.get(key)
+        if isinstance(existing, dict):
+            apply_diff(existing, diff(existing, config))
+            return
+
+        keys = list(contents.keys())
+        anchor = next((k for k in ("defaults", "name") if k in keys and k != key), None)
+        position = keys.index(anchor) + 1 if anchor else len(keys)
+        contents.insert(position, key, config)
 
     def _update(self, child_name: str):
         new_object = self._get_named_child_config(child_name)
@@ -203,8 +226,37 @@ class ProjectWriter:
         self._new(child_name)
 
     def _rename(self, old_child_name: str, new_child_name: str):
-        """Find and replace the old child name with the new child name in all file refs & in the named_child"""
-        raise NotImplementedError("Rename is not implemented yet.")
+        """Write the renamed object over the entry the YAML still holds under
+        its old name.
+
+        `_update` cannot do this: it locates an object by matching `name:`
+        against the name it is given, and the file still says the old one, so
+        the search would miss and the change would be silently dropped.
+
+        Only the object's own entry is handled here. Every `${ref(old)}`
+        elsewhere belongs to a DIFFERENT object whose config genuinely changed,
+        so those arrive as ordinary `Modified` children and take `_update`.
+        """
+        new_object = self._get_named_child_config(new_child_name)
+
+        def recurse(current):
+            if isinstance(current, dict):
+                items = current.values()
+            elif isinstance(current, list):
+                items = current
+            else:
+                return False
+            for value in items:
+                if isinstance(value, dict) and value.get("name") == old_child_name:
+                    diff_result = diff(value, new_object)
+                    apply_diff(value, diff_result)
+                    return True
+                if isinstance(value, (dict, list)) and recurse(value):
+                    return True
+            return False
+
+        file_path = self.named_children[new_child_name]["file_path"]
+        recurse(self.files_to_write[file_path])
 
     def _get_named_child_config(self, named_child_name: str) -> dict:
         """

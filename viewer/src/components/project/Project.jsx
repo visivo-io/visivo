@@ -9,6 +9,8 @@ import { HiTemplate } from 'react-icons/hi';
 import DashboardSection from '../project/DashboardSection';
 import FilterBar from '../project/FilterBar';
 import useProjectChangeListener from '../views/workspace/useProjectChangeListener';
+import { DashboardThemeRoot } from '../../theme/DashboardThemeContext';
+import ThemeModeToggle from '../../theme/ThemeModeToggle';
 
 /**
  * Project - Container component for the new project view
@@ -159,13 +161,18 @@ function Project() {
   // kebab (⋮) owns Copy link, so the items no longer render a built-in share
   // button — no context provider is needed.
   return (
-    <div ref={viewRootRef} data-testid="project-view-root" className="relative flex grow flex-col">
-      <Dashboard
-        projectId={project.id}
-        dashboardName={dashboardName}
-      />
-      <ProjectViewFlipLayer rootRef={viewRootRef} dashboardConfig={activeDashboardConfig} />
-    </div>
+    <DashboardThemeRoot className="flex grow flex-col min-h-screen">
+      <div className="flex justify-end px-6 pt-3 pb-1">
+        <ThemeModeToggle />
+      </div>
+      <div ref={viewRootRef} data-testid="project-view-root" className="relative flex grow flex-col">
+        <Dashboard
+          projectId={project.id}
+          dashboardName={dashboardName}
+        />
+        <ProjectViewFlipLayer rootRef={viewRootRef} dashboardConfig={activeDashboardConfig} />
+      </div>
+    </DashboardThemeRoot>
   );
 }
 

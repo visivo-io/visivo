@@ -76,6 +76,14 @@ export const CHECKLIST_ITEMS = [
     // navigates straight to `/workspace/exploration/:id` — the one place
     // `query-chip-add` is guaranteed to be mounted.
     mintsExploration: true,
+    // Credits a model that already exists, the way connect_source credits an
+    // existing source. Without it the row could only be cleared by performing
+    // all three steps below, so anyone who already had a model — a sample
+    // project, or work done before onboarding — was asked forever.
+    predicate: ({ project, models, persisted }) =>
+      (models?.length ?? 0) > 0 ||
+      (project?.model_count ?? 0) > 0 ||
+      !!persisted?.actions?.query_run,
     // Multi-step flow: the Coach walks the user through creating a tab,
     // typing SQL, and running the query before the row checks off.
     // Each step's `done` reads a per-action flag tapped by the host
@@ -212,7 +220,7 @@ export const CHECKLIST_ITEMS = [
     route: '/editor',
     target: 'top-nav-deploy',
     weight: 60,
-    // StageSelection.jsx writes persisted.deployed_at on a successful
+    // BranchSelection.jsx writes persisted.deployed_at on a successful
     // /api/cloud/deploy/ poll response.
     predicate: ({ persisted }) => !!persisted.deployed_at,
   },

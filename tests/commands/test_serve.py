@@ -63,6 +63,7 @@ def test_serve(output_dir):
     assert "project_json" not in response_json
     assert response_json["name"] == project.name
     assert "defaults" in response_json["config"]
+    assert response_json["config"]["theme"] == {}
     assert "dashboard_count" in response_json
     assert "source_count" in response_json
 

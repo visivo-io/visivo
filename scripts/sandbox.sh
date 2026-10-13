@@ -76,7 +76,9 @@ start_backend() {
     (
         source "$VENV_ACTIVATE"
         cd "$INTEGRATION_DIR"
-        STACKTRACE=true visivo serve --port "$BACKEND_PORT" > "$PID_DIR/backend.log" 2>&1
+        # The sandbox is a test harness (Playwright, endpoint checks, agent
+        # dev loops): never let it report as product usage.
+        VISIVO_TELEMETRY_DISABLED=true STACKTRACE=true visivo serve --port "$BACKEND_PORT" > "$PID_DIR/backend.log" 2>&1
     ) &
     echo $! > "$backend_pid_file"
 

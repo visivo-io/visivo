@@ -6,6 +6,7 @@ from unittest import mock
 
 import click
 import pytest
+import requests
 
 from tests.factories.model_factories import (
     ProjectFactory,
@@ -14,6 +15,7 @@ from tests.factories.model_factories import (
 )
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
 from visivo.commands.deploy_phase import (
+    upload_project_settings,
     PURPOSE_BY_DESCRIPTION,
     collect_models_for_insights,
     collect_static_insight_parquet,
@@ -156,7 +158,7 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     )
 
     url = deploy_phase(
-        stage="stage",
+        branch="stage",
         working_dir=working_dir,
         user_dir=working_dir,
         output_dir=output_dir,
@@ -181,6 +183,33 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     # Resources were decomposed into per-type endpoint POSTs.
     posted_paths = {r.path for r in requests_mock.request_history if r.method == "POST"}
     assert "/api/charts/" in posted_paths
+
+
+def test_deploy_requires_a_project_name():
+    """`Project.name` is Optional (like every NamedModel) and `exclude_none=True`
+    drops it from project_json entirely when unset, so a project file with no
+    top-level `name:` parses and runs fine but crashed deploy with a bare
+    KeyError on project_json["name"] — hit in practice on a hand-authored
+    project file that never went through `visivo init` (whose template does
+    set `name:`). Fail loudly with an actionable message instead."""
+    project = ProjectFactory()
+    project_dict = json.loads(project.model_dump_json())
+    project_dict.pop("name", None)
+
+    tmp = temp_yml_file(dict=project_dict, name=PROJECT_FILE_NAME)
+    working_dir = os.path.dirname(tmp)
+    temp_file(PROFILE_FILE_NAME, "token: value", working_dir + "/.visivo")
+
+    with pytest.raises(click.ClickException) as exc:
+        deploy_phase(
+            branch="stage",
+            working_dir=working_dir,
+            user_dir=working_dir,
+            output_dir=temp_folder(),
+            host="http://host",
+        )
+
+    assert "name" in str(exc.value)
 
 
 def test_start_files_declares_purpose_and_identity(httpx_mock):
@@ -473,3 +502,31 @@ def test_verify_run_output_lists_them_under_stacktrace(tmp_path, monkeypatch):
             verify_run_output(project, str(tmp_path))
 
     assert "line-trace.parquet" in str(exc.value)
+
+
+def test_upload_project_settings_posts_defaults_and_theme(requests_mock):
+    requests_mock.post("http://host/api/defaults/?project_id=p1", json={}, status_code=200)
+    requests_mock.post("http://host/api/theme/?project_id=p1", json={}, status_code=200)
+
+    upload_project_settings(
+        {"defaults": {"source_name": "db"}, "theme": {"mode": "dark"}}, "p1", {}, "http://host"
+    )
+
+    posted = {r.path: r.json() for r in requests_mock.request_history}
+    assert posted == {"/api/defaults/": {"source_name": "db"}, "/api/theme/": {"mode": "dark"}}
+
+
+def test_upload_project_settings_skips_unset_settings(requests_mock):
+    upload_project_settings({"name": "p"}, "p1", {}, "http://host")
+    assert requests_mock.request_history == []
+
+
+def test_upload_project_settings_tolerates_a_cloud_without_themes(requests_mock):
+    requests_mock.post("http://host/api/theme/?project_id=p1", status_code=404)
+    upload_project_settings({"theme": {"mode": "dark"}}, "p1", {}, "http://host")
+
+
+def test_upload_project_settings_raises_on_other_theme_errors(requests_mock):
+    requests_mock.post("http://host/api/theme/?project_id=p1", status_code=400)
+    with pytest.raises(requests.HTTPError):
+        upload_project_settings({"theme": {"mode": "dark"}}, "p1", {}, "http://host")

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import factory
 from visivo.models.alert import Alert
 from visivo.models.defaults import Defaults
+from visivo.models.theme import Theme
 from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.seed import Seed
@@ -18,6 +19,7 @@ from visivo.models.insight import Insight
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.external_dashboard import ExternalDashboard
+from visivo.models.dashboards.template_dashboard import TemplateDashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
 from visivo.models.table import Table
@@ -340,6 +342,14 @@ class ExternalDashboardFactory(factory.Factory):
     href = "https://example.com"
 
 
+class TemplateDashboardFactory(factory.Factory):
+    class Meta:
+        model = TemplateDashboard
+
+    name = "template_dashboard"
+    template = '<div style="height: 200px" data-visivo-item="chart_name"></div>'
+
+
 class DashboardFactory(factory.Factory):
     name = "dashboard"
 
@@ -371,6 +381,15 @@ class DefaultsFactory(factory.Factory):
 
     class Meta:
         model = Defaults
+
+
+class ThemeFactory(factory.Factory):
+    mode = "dark"
+    accent = "#2d6a6f"
+    dark = factory.Dict({"surface": "#1b1f36"})
+
+    class Meta:
+        model = Theme
 
 
 class ProjectFactory(factory.Factory):

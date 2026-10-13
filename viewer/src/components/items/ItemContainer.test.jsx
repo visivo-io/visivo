@@ -18,7 +18,9 @@ describe('ItemContainer (B15 sizing)', () => {
     expect(root.className).toMatch(/\bh-full\b/);
   });
 
-  it('still has the visual-style classes from before', () => {
+  it('carries its card edge on the border, with no resting shadow', () => {
+    // shadow-lg put a 10px-offset smear under every item, which on a light
+    // page reads as a dark band along the bottom rather than as depth.
     const { container } = render(
       <ItemContainer>
         <div>child</div>
@@ -26,9 +28,23 @@ describe('ItemContainer (B15 sizing)', () => {
     );
     // eslint-disable-next-line testing-library/no-node-access
     const root = container.firstChild;
-    expect(root.className).toMatch(/\brounded-2xl\b/);
-    expect(root.className).toMatch(/\bshadow-lg\b/);
+    expect(root.className).toMatch(/\brounded-lg\b/);
+    expect(root.className).toMatch(/\bborder\b/);
     expect(root.className).toMatch(/\boverflow-hidden\b/);
+    expect(root.className).not.toMatch(/(?<!hover:)\bshadow-/);
+  });
+
+  it('raises a shadow on hover, which the old styling only claimed to', () => {
+    // Its hover class was the same shadow-lg as the resting state, so hovering
+    // changed nothing.
+    const { container } = render(
+      <ItemContainer>
+        <div>child</div>
+      </ItemContainer>
+    );
+    // eslint-disable-next-line testing-library/no-node-access
+    const root = container.firstChild;
+    expect(root.className).toMatch(/\bhover:shadow-md\b/);
   });
 
   it('renders children', () => {

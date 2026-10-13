@@ -17,7 +17,7 @@
  *
  * `base` is the mount prefix. Studio serves the viewer at the root, so it
  * defaults to `/workspace`; a host that mounts the viewer under a path prefix
- * (the cloud app, at `/:account/:stage/:project/workspace`) passes its own
+ * (the cloud app, at `/:account/:branch/:project/workspace`) passes its own
  * base so tab navigation stays inside the mount instead of escaping to the
  * root. The Workspace derives that base from the URL and registers it on the
  * store (see `registerWorkspaceUrlBase`).

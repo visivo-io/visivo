@@ -1,14 +1,14 @@
 import click
-from visivo.commands.options import user_dir, stage, host
+from visivo.commands.options import user_dir, branch, host
 
 
 @click.command()
-@stage
+@branch
 @host
 @user_dir
-def archive(stage, host, user_dir):
+def archive(branch, host, user_dir):
     """
-    Archives a stage.  You must specify a stage when deploying a project.
+    Archives a branch.  You must specify a branch when deploying a project.
     """
     from visivo.logger.logger import Logger
 
@@ -18,7 +18,7 @@ def archive(stage, host, user_dir):
 
     archive_phase(
         user_dir=user_dir,
-        stage=stage,
+        branch=branch,
         host=host,
     )
     Logger.instance().success("Done")

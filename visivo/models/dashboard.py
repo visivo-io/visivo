@@ -27,26 +27,31 @@ class Dashboard(BaseDashboard, ParentModel):
             rows:
               - height: medium
                 items: #item.width default is 1
-                  - chart: ...
-                  - chart: ...
-                  - chart: ...
+                  - chart: ${ref(a-chart-name)}
+                  - chart: ${ref(another-chart)}
+                  - chart: ${ref(a-third-chart)}
               - height: large
                 items:
                   - width: 2
-                    table: ...
+                    table: ${ref(a-table-name)}
                   - width: 1
-                    markdown: ...
+                    markdown: "# Some inline **markdown**"
               - height: small
                 items:
-                  - chart: ...
-                  - chart: ...
+                  - chart: ${ref(a-chart-name)}
+                  - chart: ${ref(another-chart)}
                   - width: 2
-                    chart: ...
+                    chart: ${ref(a-third-chart)}
         ```
 
     </div>
 
     Above you can see how changing the row heights and item widths impacts the layout of the dashboard.
+
+    Row heights map to pixels as `xsmall` 128, `small` 256, `medium` 396, `large` 512, `xlarge` 768,
+    `xxlarge` 1024, or an integer pixel value. `compact` wraps markdown and inputs to their content and
+    gives charts and tables a 256px plot. Item widths must be positive integers (default `1`). See
+    [Row](./Row/) for the full table and how rows stack on narrow screens.
 
     !!! example
 
@@ -59,7 +64,7 @@ class Dashboard(BaseDashboard, ParentModel):
                 items:
                   - width: 2  #widths are evaluated relative to other items in the row
                     table: ref(a-table-name)
-                  - width 1  #this chart will be 1/3 of the row
+                  - width: 1  #this chart will be 1/3 of the row
                     chart: ref(a-chart-name)
               - height: small
                 items:

@@ -1,5 +1,6 @@
 import os
 import json
+import click
 from time import time
 from typing import Optional
 from sqlglot import exp
@@ -7,9 +8,11 @@ from sqlglot import exp
 from visivo.jobs.job import (
     Job,
     JobResult,
+    diagnostic_object_ref,
     format_message_failure,
     format_message_success,
 )
+from visivo.models.diagnostic import Diagnostic, DiagnosticLocation, DiagnosticPhase
 from visivo.jobs.run_model_data_job import write_query_to_parquet
 from visivo.jobs.utils import get_source_for_model
 from visivo.models.base.project_dag import ProjectDag
@@ -24,9 +27,14 @@ from visivo.query.sql_table_extractor import (
     extract_table_references,
     extract_schema_references,
 )
-from visivo.query.sqlglot_utils import schema_from_sql
+from visivo.query.sqlglot_utils import (
+    schema_from_sql,
+    unaliased_projection_message,
+    unaliased_projections,
+)
 from visivo.query.model_schema_inference import infer_model_columns
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.output_paths import schema_file as schema_file_path
 
 
 def _build_and_write_schema(
@@ -55,6 +63,13 @@ def _build_and_write_schema(
     sql = sql_model.sql
 
     Logger.instance().debug(f"Building schema for model {sql_model.name}")
+
+    # Refuse to write a schema naming columns the database will not return. The
+    # run is where the author can still act; three steps later this surfaces as
+    # "Column 'x' not found" inside an insight, listing `_col_0` as the choice.
+    unaliased = unaliased_projections(sql, sqlglot_dialect)
+    if unaliased:
+        raise click.ClickException(unaliased_projection_message(sql_model.name, unaliased))
 
     # Use cached provider if available (performance optimization)
     if schema_cache is not None:
@@ -157,6 +172,10 @@ def _get_error_message(e: Exception) -> str:
     return repr(e)
 
 
+def _model_location(sql_model: SqlModel):
+    return DiagnosticLocation(file=sql_model.file_path) if sql_model.file_path else None
+
+
 def model_query_and_schema_action(
     sql_model: SqlModel,
     dag: ProjectDag,
@@ -205,7 +224,18 @@ def model_query_and_schema_action(
             full_path=sql_model.file_path,
             error_msg=_get_error_message(e),
         )
-        return JobResult(item=sql_model, success=False, message=failure_message)
+        return JobResult(
+            item=sql_model,
+            success=False,
+            message=failure_message,
+            diagnostic=Diagnostic.from_exception(
+                e,
+                phase=DiagnosticPhase.RUN,
+                code="query_execution_failed",
+                object=diagnostic_object_ref(sql_model),
+                location=_model_location(sql_model),
+            ),
+        )
 
 
 def schema_only_action(
@@ -237,7 +267,7 @@ def schema_only_action(
 
         # Organize by run_id
         run_output_dir = f"{output_dir}/{run_id}"
-        schema_file = f"{run_output_dir}/schemas/{sql_model.name}.json"
+        schema_file = schema_file_path(run_output_dir, sql_model.name)
         success_message = format_message_success(
             details=f"Wrote schema for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,
@@ -252,7 +282,18 @@ def schema_only_action(
             full_path=sql_model.file_path,
             error_msg=_get_error_message(e),
         )
-        return JobResult(item=sql_model, success=False, message=failure_message)
+        return JobResult(
+            item=sql_model,
+            success=False,
+            message=failure_message,
+            diagnostic=Diagnostic.from_exception(
+                e,
+                phase=DiagnosticPhase.RUN,
+                code="schema_build_failed",
+                object=diagnostic_object_ref(sql_model),
+                location=_model_location(sql_model),
+            ),
+        )
 
 
 def job(

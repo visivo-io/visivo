@@ -148,7 +148,9 @@ describe('SourceEditForm — edit mode', () => {
     const onSave = jest.fn(async () => ({ success: true }));
     renderForm({ source: publishedSqlite, isCreate: false, onSave });
     expect(screen.getByLabelText(/Source Name/)).toHaveValue('s1');
-    expect(screen.getByLabelText(/Source Name/)).toBeDisabled();
+    // Editable in edit mode now that a rename carries the `${ref()}` rewrite
+    // with it (VIS-1209); a server without the endpoint keeps it locked.
+    expect(screen.getByLabelText(/Source Name/)).toBeEnabled();
     expect(screen.getByTestId('source-type-value')).toHaveTextContent('sqlite');
     expect(screen.getByLabelText(/Database Path/)).toHaveValue('prod.db');
 
@@ -166,7 +168,9 @@ describe('SourceEditForm — edit mode', () => {
   test('lets you switch the source type when editing, keeping the name locked (VIS-1208)', () => {
     renderForm({ source: publishedSqlite, isCreate: false });
     // Name stays locked (it's the record key)...
-    expect(screen.getByLabelText(/Source Name/)).toBeDisabled();
+    // Editable in edit mode now that a rename carries the `${ref()}` rewrite
+    // with it (VIS-1209); a server without the endpoint keeps it locked.
+    expect(screen.getByLabelText(/Source Name/)).toBeEnabled();
     expect(screen.getByLabelText(/Database Path/)).toHaveValue('prod.db');
 
     // ...but the type is switchable now (previously disabled in edit mode).
@@ -289,10 +293,10 @@ describe('SourceEditForm — test connection', () => {
 });
 
 // VIS-1133: Save is disabled on an untouched edit-mode form, so save-path
-// tests must make a real edit first. The source NAME is orthogonal to the
-// seeds/type assertions below, so touching it leaves them intact.
+// tests must make a real edit first. It cannot be the name — a changed name in
+// edit mode is a rename, which intercepts the save instead of performing it.
 const makeDirty = () =>
-  fireEvent.change(screen.getByLabelText(/Source Name/), { target: { value: 'edited_name' } });
+  fireEvent.change(screen.getByLabelText(/Database Path/), { target: { value: 'edited.db' } });
 
 describe('SourceEditForm — embedded sources', () => {
   const embedded = {

@@ -18,12 +18,24 @@ TELEMETRY_TIMEOUT = 1.0  # Maximum time to wait for telemetry requests
 POSTHOG_API_KEY = os.getenv(
     "VISIVO_POSTHOG_API_KEY", "phc_DaLOz39kD2u4ZFNi6aXQuA7ncmnbAGoE8dLZc2z7Agj"
 )
-POSTHOG_HOST = os.getenv("VISIVO_POSTHOG_HOST", "https://app.posthog.com")
+POSTHOG_HOST = os.getenv("VISIVO_POSTHOG_HOST", "https://us.i.posthog.com")
+
+
+def _truthy(name: str) -> bool:
+    return os.getenv(name, "").lower() in ("true", "1", "yes")
 
 
 def _check_env_disabled() -> bool:
     """Check if telemetry is disabled via environment variable."""
-    return os.getenv("VISIVO_TELEMETRY_DISABLED", "").lower() in ("true", "1", "yes")
+    return _truthy("VISIVO_TELEMETRY_DISABLED")
+
+
+def _check_env_forced() -> bool:
+    """``VISIVO_TELEMETRY_FORCE=true`` turns telemetry on for this process no
+    matter what the machine config or project says — the escape hatch for a
+    developer who has opted their machine out (``visivo telemetry off``) but
+    wants to push real events through the pipeline to verify a change."""
+    return _truthy("VISIVO_TELEMETRY_FORCE")
 
 
 def _check_global_config_disabled() -> bool:
@@ -47,21 +59,32 @@ def is_telemetry_enabled(project_defaults: Optional[object] = None) -> bool:
     Returns:
         bool: True if telemetry is enabled, False otherwise
     """
+    return telemetry_decision(project_defaults)[0]
+
+
+def telemetry_decision(project_defaults: Optional[object] = None):
+    """``(enabled, reason)`` — the same answer as ``is_telemetry_enabled`` plus
+    which source decided it, for ``visivo telemetry status``."""
+    # Explicit force wins over every opt-out: it is set per invocation and
+    # only ever by someone who wants to test the pipeline.
+    if _check_env_forced():
+        return True, "VISIVO_TELEMETRY_FORCE is set"
+
     # Check environment variable first (highest priority)
     if _check_env_disabled():
-        return False
+        return False, "VISIVO_TELEMETRY_DISABLED is set"
 
     # Check project defaults if provided
     if project_defaults and hasattr(project_defaults, "telemetry_enabled"):
         if project_defaults.telemetry_enabled is False:
-            return False
+            return False, "the project's defaults set telemetry_enabled: false"
 
     # Check global config file
     if _check_global_config_disabled():
-        return False
+        return False, "this machine opted out (visivo telemetry off)"
 
     # Telemetry is enabled by default
-    return True
+    return True, "enabled by default"
 
 
 # Environment variables that indicate a CI/CD run. Kept as a module-level

@@ -16,6 +16,7 @@ from visivo.commands.options import (
     skip_compile,
     new,
     no_deprecation_warnings,
+    host,
 )
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
@@ -37,6 +38,7 @@ from visivo.logger.logger import Logger
 @dbt_target
 @new
 @no_deprecation_warnings
+@host
 @click.pass_context
 def serve(
     ctx,
@@ -53,6 +55,7 @@ def serve(
     project_dir,
     pd,
     no_deprecation_warnings,
+    host,
 ):
     """Serves the local web app for building and viewing dashboards.
 
@@ -112,6 +115,8 @@ def serve(
         server_url=server_url,
         new=new,
         no_deprecation_warnings=no_deprecation_warnings,
+        host=host,
+        port=port,
     )
 
     # The initial data build runs via the on_server_ready callback after the

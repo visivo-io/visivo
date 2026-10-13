@@ -7,9 +7,14 @@
  * store has none yet.
  */
 import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
 import DefaultsEditForm from './DefaultsEditForm';
 import useStore from '../../../stores/store';
+
+jest.mock('./ThemeEditForm', () => ({
+  __esModule: true,
+  default: () => <div data-testid="theme-form-stub" />,
+}));
 
 jest.mock('./ProjectDefaultsEditForm', () => ({
   __esModule: true,
@@ -49,5 +54,16 @@ describe('DefaultsEditForm', () => {
     render(<DefaultsEditForm name="analytics" />);
     await waitFor(() => expect(fetchDefaults).toHaveBeenCalledTimes(1));
     expect(screen.getByTestId('project-defaults-form-stub')).toHaveTextContent('defaults:none');
+  });
+
+  test('switches between the defaults and theme tabs', () => {
+    seed();
+    render(<DefaultsEditForm name="analytics" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Theme' }));
+
+    expect(screen.getByTestId('theme-form-stub')).toBeInTheDocument();
+    expect(screen.queryByTestId('project-defaults-form-stub')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Theme' })).toHaveAttribute('aria-selected', 'true');
   });
 });

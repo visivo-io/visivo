@@ -22,10 +22,17 @@ class Alert(NamedModel):
     ``` yaml
     alerts:
         - name: Example Alert
-          if: >{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }
+          if: '>{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }'
           destinations:
-            - ${ ref(Production Slack) }
-            - ${ ref(Production Email) }
+            - name: Production Slack
+              type: slack
+              webhook_url: ${env.SLACK_WEBHOOK}
+            - name: Production Email
+              type: email
+              to: data-team@your_company.com
+              host: your_company_email_server.com
+              username: alerts
+              password: ${env.EMAIL_PASSWORD}
     ```
     """
 
@@ -37,7 +44,7 @@ class Alert(NamedModel):
     )
     destinations: List[DestinationField] = Field(
         [],
-        description="Destination objects defined inline or `${ ref() }`s to destinations that the alert notifies when it fires.",
+        description="Destination objects, defined inline on the alert, that it notifies when it fires. Only concrete destinations are accepted here: a reference to a top-level `destinations:` entry is not resolved on this field.",
     )
 
     _parent_test: str = PrivateAttr(default=None)

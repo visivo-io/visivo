@@ -52,7 +52,7 @@ const storage = () => {
 
 /**
  * Project scope for the key. The viewer is mounted per project in cloud
- * (`/:account/:stage/:project/workspace`) on ONE origin, so an unscoped
+ * (`/:account/:branch/:project/workspace`) on ONE origin, so an unscoped
  * `chart:revenue` would be shared by every project the user opens.
  *
  * Read lazily through `getState()` rather than a reactive selector: this is

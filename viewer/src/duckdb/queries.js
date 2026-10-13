@@ -1,6 +1,7 @@
 import { getTempFilename, getConnection } from './duckdb';
 import { getParquetCache } from './parquetCache';
 import { apiFetch } from '../api/utils';
+import { isPlainIdentifier, toSafeInputAlias } from '../utils/inputNames';
 
 /**
  * Retry a function with exponential backoff
@@ -65,6 +66,26 @@ export const insertDuckDBFile = async (db, file, tableName) => {
     default:
     // Unsupported file extension
   }
+};
+
+// Every parquet begins and ends with the four bytes `PAR1`. A 200 carrying
+// anything else means the URL served something that is not this file — an SPA
+// answering index.html for a path it does not know is the usual one — and
+// DuckDB's own complaint ("No magic bytes found at end of file") describes a
+// temp file the reader never chose, naming neither the URL nor what arrived.
+const PARQUET_MAGIC = [0x50, 0x41, 0x52, 0x31]; // PAR1
+
+const assertParquet = (buffer, file, response) => {
+  const startsRight =
+    buffer.length >= 8 && PARQUET_MAGIC.every((byte, i) => buffer[i] === byte);
+  if (startsRight) return;
+
+  const contentType = response?.headers?.get?.('content-type') || 'unknown';
+  const summary = buffer.length === 0 ? 'it was empty' : `it was ${contentType}`;
+  throw new Error(
+    `Expected a parquet file for "${file.name_hash}" but ${summary}. ` +
+      `Fetched from ${file.signed_data_file_url}`
+  );
 };
 
 const _insertJSON = async (db, file, tableName) => {
@@ -153,13 +174,12 @@ export const prepPostQuery = (insight, inputs) => {
 
     for (const key of referencedKeys) {
       const value = inputs[key];
-      const isValidIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
 
-      if (isValidIdentifier) {
+      if (isPlainIdentifier(key)) {
         safeKeys.push(key);
       } else {
         // Replace ${key.accessor} with ${safeAlias.accessor} in the query
-        const safeAlias = '_input_' + key.replace(/[^a-zA-Z0-9_]/g, '_');
+        const safeAlias = toSafeInputAlias(key);
         processedQuery = processedQuery.replaceAll(`\${${key}`, `\${${safeAlias}`);
         safeKeys.push(safeAlias);
       }
@@ -342,7 +362,9 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
           );
         }
         const arrayBuffer = await response.arrayBuffer();
-        return { file, buffer: new Uint8Array(arrayBuffer) };
+        const buffer = new Uint8Array(arrayBuffer);
+        assertParquet(buffer, file, response);
+        return { file, buffer };
       });
     })
   );

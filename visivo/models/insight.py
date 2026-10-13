@@ -11,6 +11,18 @@ from visivo.query.insight.insight_query_info import InsightQueryInfo
 from visivo.models.dag import all_descendants_of_type
 from visivo.jobs.utils import get_source_for_model
 from visivo.logger.logger import Logger
+from visivo.query.patterns import extract_ref_components
+
+
+def _insight_ref_name(value) -> Optional[str]:
+    """The ``<name>`` of a bare ``${ref(<name>)}`` (no property path, so not an
+    input/model accessor like ``${ref(x).value}``); ``None`` for anything else."""
+    if not isinstance(value, str):
+        return None
+    components = extract_ref_components(value)
+    if len(components) != 1 or components[0][1] is not None:
+        return None
+    return components[0][0]
 
 
 class Insight(NamedModel, ParentModel):
@@ -122,6 +134,10 @@ class Insight(NamedModel, ParentModel):
         their model dependencies independently (for options/defaults). The insight
         query only needs the input's runtime value, not its source models.
 
+        Likewise excludes models only reachable through a sibling Insight (a
+        trace-id link such as ``carpet: ${ref(carpet-plot)}``): that edge orders
+        the jobs, but the sibling's data is the sibling's own query.
+
         Models are treated as leaves — we do not recurse into their own
         dependencies. A model encapsulates its joins inside its own SQL, so an
         insight that references ``${ref(joined)}`` only needs ``joined`` itself,
@@ -141,7 +157,7 @@ class Insight(NamedModel, ParentModel):
                 continue
             visited.add(node)
 
-            if isinstance(node, Input):
+            if isinstance(node, (Input, Insight)):
                 continue
 
             if isinstance(node, Model):
@@ -225,6 +241,104 @@ class Insight(NamedModel, ParentModel):
             return m.group(0)  # Keep non-input refs unchanged
 
         return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
+
+    def _convert_input_refs_in_obj(self, obj, dag: ProjectDag):
+        """Apply :py:meth:`_convert_input_refs_to_js_templates` to every string
+        inside a nested props structure (dicts / lists / primitives)."""
+        if isinstance(obj, str):
+            return self._convert_input_refs_to_js_templates(obj, dag)
+        if isinstance(obj, dict):
+            return {k: self._convert_input_refs_in_obj(v, dag) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [self._convert_input_refs_in_obj(item, dag) for item in obj]
+        return obj
+
+    def trace_id(self, prop: str) -> str:
+        """The identifier another insight binds to through ``prop`` (e.g. the
+        ``carpet`` id a contourcarpet lies on): this insight's own literal
+        value for ``prop`` when set, otherwise its name."""
+        if not self.props:
+            return self.name
+        if self._is_query_bound(prop):
+            raise ValueError(
+                f"Insight '{self.name}' binds '{prop}' to a query (?{{...}}), so a sibling "
+                f"cannot reference it by ${{ref({self.name})}}; set '{prop}' to a literal id."
+            )
+        value = self.props.extract_static_props().get(prop)
+        if isinstance(value, str) and _insight_ref_name(value) is None:
+            return value
+        return self.name
+
+    def _is_query_bound(self, prop: str) -> bool:
+        return any(path == f"props.{prop}" for path, _ in self.props.extract_query_strings())
+
+    def resolve_insight_refs(self, static_props: dict, dag: ProjectDag) -> dict:
+        """Resolve insight-to-insight bindings in this insight's static props.
+
+        Two schema-driven rules (see ``InsightProps.insight_ref_props`` /
+        ``trace_id_props``, both read from the generated trace schema):
+
+        * a *link* prop holding ``${ref(<insight>)}`` is replaced with that
+          insight's :py:meth:`trace_id`, so Plotly binds the traces by the id
+          it understands (``carpet: ${ref(carpet-plot)}`` -> ``carpet:
+          carpet-plot``);
+        * this insight's own *identifier* prop defaults to its name when the
+          author left it unset, so the id a sibling resolves to actually
+          exists on the rendered trace.
+
+        Raises ``ValueError`` when the ref names something that is not an
+        insight in the project.
+        """
+        if not self.props:
+            return static_props
+        type_value = self.props.type.value
+        resolved = dict(static_props)
+
+        for prop in InsightProps.trace_id_props(type_value):
+            if prop not in resolved and not self._is_query_bound(prop):
+                resolved[prop] = self.name
+
+        for prop in InsightProps.insight_ref_props(type_value):
+            name = _insight_ref_name(resolved.get(prop))
+            if name is None:
+                continue
+            context = f"Insight '{self.name}' sets '{prop}' to ${{ref({name})}}, but"
+            try:
+                node = dag.get_descendant_by_name(name)
+            except ValueError as e:
+                raise ValueError(
+                    f"{context} no insight named '{name}' could be resolved: {e}"
+                ) from e
+            if not isinstance(node, Insight):
+                raise ValueError(
+                    f"{context} '{name}' is a {type(node).__name__}; "
+                    f"'{prop}' must reference an insight."
+                )
+            target_type = node.props.type.value if node.props else None
+            if target_type is None or prop not in InsightProps.trace_id_props(target_type):
+                raise ValueError(
+                    f"{context} '{prop}' must reference a '{prop}' insight "
+                    f"(one whose trace owns that id); '{name}' is a {target_type or 'props-less'} insight."
+                )
+            resolved[prop] = node.trace_id(prop)
+
+        return resolved
+
+    def resolved_static_props(self, dag: ProjectDag) -> dict:
+        """Static (non-``?{}``) props as the viewer receives them: input refs
+        rewritten to ``${input.accessor}`` and insight refs resolved to trace
+        ids (:py:meth:`resolve_insight_refs`)."""
+        raw = self.props.extract_static_props() if self.props else {}
+        return self.resolve_insight_refs(self._convert_input_refs_in_obj(raw, dag), dag)
+
+    def is_static(self) -> bool:
+        """True when nothing on this insight is bound to a query: no ``?{...}``
+        prop and no interactions. Such an insight has no data job to run — its
+        trace is rendered from its static props alone (e.g. an inlined image
+        ``z`` grid or a reference line)."""
+        if self.interactions or not self.props:
+            return False
+        return not self.props.extract_query_strings()
 
     def get_all_query_statements(self, dag):
         query_statements = []

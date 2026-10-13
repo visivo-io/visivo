@@ -16,9 +16,9 @@ import { apiFetch } from './utils';
  */
 
 /**
- * What the requesting user may do with this project's stage.
+ * What the requesting user may do with this project's branch.
  * GET /api/projects/<id>/capabilities/ ->
- *   {can_view, can_edit, can_branch, is_default_stage, edit_action}
+ *   {can_view, can_edit, can_branch, is_default_branch, edit_action}
  * Returns null on 404 (local serve has no such endpoint).
  */
 export const fetchCapabilities = async projectId => {
@@ -33,7 +33,7 @@ export const fetchCapabilities = async projectId => {
 };
 
 /**
- * Edit: resolve-or-create the requesting user's draft on the same stage.
+ * Edit: resolve-or-create the requesting user's draft on the same branch.
  * POST /api/projects/<id>/draft/ -> the draft project envelope (a NEW id).
  */
 export const createDraft = async projectId => {
@@ -49,15 +49,15 @@ export const createDraft = async projectId => {
 };
 
 /**
- * Branch: branch this project onto a brand-new stage.
- * POST /api/projects/<id>/branch/ {new_stage_name}
- *   -> the branch project envelope (a NEW id on the new stage).
+ * Branch: branch this project onto a brand-new branch.
+ * POST /api/projects/<id>/branch/ {new_branch_name}
+ *   -> the branch project envelope (a NEW id on the new branch).
  */
-export const createBranch = async ({ projectId, newStageName }) => {
+export const createBranch = async ({ projectId, newBranchName }) => {
   const response = await apiFetch(getUrl('projectBranch', { projectId }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ new_stage_name: newStageName }),
+    body: JSON.stringify({ new_branch_name: newBranchName }),
   });
   if (response.status === 201) {
     return await response.json();

@@ -29,7 +29,7 @@ from flask import g, jsonify, request
 
 from visivo.logger.logger import Logger
 from visivo.server.hash.data_fingerprint import data_fingerprint
-from visivo.server.jobs.save_run_executor import request_run, run_now
+from visivo.server.jobs.save_run_executor import cancel_pending_run, request_run, run_now
 from visivo.server.user_config import AUTOMATIC, get_run_trigger
 
 # URL segment -> (manager attr, fingerprint mode, data_producing). Public so the
@@ -69,6 +69,50 @@ _RESOURCE_ROUTE_RE = re.compile(
     + "|".join(re.escape(s) for s in sorted(RESOURCE_META, key=len, reverse=True))
     + r")/([^/]+)/$"
 )
+
+
+def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
+    """Stage a write and, when the trigger is AUTOMATIC, run it.
+
+    Shared by the ``after_request`` hook below and the agent's write tools,
+    which save in-process and so never pass through a request.
+
+    Returns ``"ran"``, ``"staged"``, or ``None`` when the write did not move the
+    data fingerprint. Staging happens whether or not a run fires: the staged set
+    is what the Run view lists and what makes the top bar offer Commit instead
+    of Deploy.
+    """
+    if type_key not in RESOURCE_META:
+        return None
+    manager = getattr(flask_app, RESOURCE_META[type_key][0], None)
+    if (
+        deleted
+        and manager is not None
+        and manager.get_status(name) is None
+        and flask_app.staged_manager.discard_unbuilt(RESOURCE_TYPE_NAMES[type_key], name)
+    ):
+        cancel_pending_run([name])
+        return None
+    after = _resource_fingerprint(flask_app, type_key, name, deleted=deleted)
+    if after == before:
+        return None
+    flask_app.staged_manager.record(
+        RESOURCE_TYPE_NAMES[type_key],
+        name,
+        after,
+        status="deleted" if deleted else "modified",
+    )
+    if get_run_trigger() == AUTOMATIC:
+        request_run(flask_app, [name])
+        return "ran"
+    return "staged"
+
+
+def resource_fingerprint(flask_app, type_key, name, *, deleted=False):
+    """The current data fingerprint, for a caller to snapshot before writing."""
+    if type_key not in RESOURCE_META:
+        return None
+    return _resource_fingerprint(flask_app, type_key, name, deleted=deleted)
 
 
 def _resource_from_path(path):
@@ -118,19 +162,13 @@ def register_run_views(app, flask_app, output_dir):
                 if resource:
                     segment, name = resource
                     deleted = request.method == "DELETE"
-                    after = _resource_fingerprint(flask_app, segment, name, deleted=deleted)
-                    if after != getattr(g, "_presave_data_fingerprint", None):
-                        # Stage the change either way: the staged set is what the
-                        # Run view lists and what the Run button builds, so it has
-                        # to be recorded whether or not a run fires now.
-                        flask_app.staged_manager.record(
-                            RESOURCE_TYPE_NAMES[segment],
-                            name,
-                            after,
-                            status="deleted" if deleted else "modified",
-                        )
-                        if get_run_trigger() == AUTOMATIC:
-                            request_run(flask_app, [name])
+                    stage_and_maybe_run(
+                        flask_app,
+                        segment,
+                        name,
+                        getattr(g, "_presave_data_fingerprint", None),
+                        deleted=deleted,
+                    )
         except Exception as e:  # never let the hook break a save response
             Logger.instance().error(f"run-on-save hook error: {str(e)}")
         return response

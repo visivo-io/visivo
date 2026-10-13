@@ -40,9 +40,9 @@ def authorize(host):
 
     existing_token = get_existing_token(host=host)
     if existing_token:
-        Logger.instance().info(
-            f"A token already exists in your profile for {host}: {existing_token}"
-        )
+        # Said, not shown. Confirming a token exists is the useful part; the
+        # value is a cloud credential and the terminal keeps what it prints.
+        Logger.instance().info(f"A token already exists in your profile for {host}.")
         if not click.confirm("Do you want to replace it with a new token?"):
             Logger.instance().info("Authorization cancelled. Using the existing token.")
             return

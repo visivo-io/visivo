@@ -10,7 +10,7 @@ const mockStore = (overrides = {}) => {
     capabilities: { can_edit: true, can_branch: true, edit_action: 'edit', is_draft: false },
     startEdit: jest.fn().mockResolvedValue({ success: true }),
     startBranch: jest.fn().mockResolvedValue({ success: true }),
-    project: { id: 'proj-1', name: 'p', stage: 'prod' },
+    project: { id: 'proj-1', name: 'p', branch: 'prod' },
     ...overrides,
   };
   useStore.mockImplementation(selector => selector(state));
@@ -41,7 +41,7 @@ describe('BranchingControls', () => {
     expect(screen.queryByText('Branch')).not.toBeInTheDocument();
   });
 
-  it('shows Branch only for an editor on the default stage', () => {
+  it('shows Branch only for an editor on the default branch', () => {
     mockStore({
       capabilities: { can_edit: false, can_branch: true, edit_action: 'branch_required' },
     });

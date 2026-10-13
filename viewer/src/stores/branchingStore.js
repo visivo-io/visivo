@@ -14,7 +14,7 @@ import * as branchingApi from '../api/branching';
  * the flip retargets all saves at the draft.
  */
 const createBranchingSlice = (set, get) => ({
-  // {can_view, can_edit, can_branch, is_default_stage, edit_action} | null
+  // {can_view, can_edit, can_branch, is_default_branch, edit_action} | null
   capabilities: null,
   branchError: null,
 
@@ -47,13 +47,13 @@ const createBranchingSlice = (set, get) => ({
     }
   },
 
-  // Branch: branch this project onto a new stage, then edit it.
-  startBranch: async ({ newStageName }) => {
+  // Branch: branch this project onto a new branch, then edit it.
+  startBranch: async ({ newBranchName }) => {
     const projectId = get().project?.id;
     if (!projectId) return { success: false, error: 'No active project' };
     set({ branchError: null });
     try {
-      const branch = await branchingApi.createBranch({ projectId, newStageName });
+      const branch = await branchingApi.createBranch({ projectId, newBranchName });
       get().setProject?.({ ...get().project, ...branch });
       await get().fetchCapabilities?.();
       return { success: true, project: branch };

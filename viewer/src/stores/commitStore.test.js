@@ -52,6 +52,7 @@ const FETCHER_KEYS = [
   'fetchDashboards',
   'fetchInputs',
   'fetchDefaults',
+  'fetchTheme',
 ];
 
 describe('commitStore (VIS-806)', () => {

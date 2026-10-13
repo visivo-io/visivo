@@ -123,6 +123,22 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
     [dashboardConfig, commitCanvasConfig, dashboardName, handleCreateNew]
   );
 
+  if (typeof dashboardConfig?.template === 'string') {
+    const source = 'its YAML file';
+    return (
+      <div data-testid="project-canvas" className="flex flex-1 min-h-0 w-full max-w-full flex-col">
+        <div
+          data-testid="template-dashboard-notice"
+          className="mx-6 mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600"
+        >
+          This is a template dashboard. Its layout is HTML — edit <code>{source}</code> in your
+          editor; changes appear here on save.
+        </div>
+        <Dashboard projectId={projectId} dashboardName={dashboardName} />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={rootRef}

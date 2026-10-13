@@ -19,6 +19,7 @@ import createCommitSlice from './commitStore';
 import createBranchingSlice from './branchingStore';
 import createRunSlice from './runStore';
 import createDefaultsSlice from './defaultsStore';
+import createThemeSlice from './themeStore';
 import createDashboardSlice from './dashboardStore';
 import createInlineCreateSlice from './inlineCreateStore';
 import createExplorerSlice from './explorerStore';
@@ -50,6 +51,7 @@ const useStore = create(
     ...createBranchingSlice(...a),
     ...createRunSlice(...a),
     ...createDefaultsSlice(...a),
+    ...createThemeSlice(...a),
     ...createDashboardSlice(...a),
     ...createInlineCreateSlice(...a),
     ...createExplorerSlice(...a),

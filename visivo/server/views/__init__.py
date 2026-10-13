@@ -2,12 +2,15 @@ from visivo.server.views.auth_views import register_auth_views
 from visivo.server.views.cloud_views import register_cloud_views
 from visivo.server.views.dashboard_views import register_dashboard_views
 from visivo.server.views.defaults_views import register_defaults_views
+from visivo.server.views.theme_views import register_theme_views
 from visivo.server.views.data_views import register_data_views
 from visivo.server.views.dimension_views import register_dimension_views
 from visivo.server.views.file_views import register_file_views
 from visivo.server.views.input_jobs_views import register_input_jobs_views
 from visivo.server.views.inputs_views import register_inputs_views
 from visivo.server.views.insight_jobs_views import register_insight_jobs_views
+from visivo.server.views.agent_views import register_agent_views
+from visivo.server.views.mcp_views import register_mcp_views
 from visivo.server.views.model_jobs_views import register_model_jobs_views
 from visivo.server.views.insights_views import register_insights_views
 from visivo.server.views.markdowns_views import register_markdowns_views
@@ -32,11 +35,14 @@ from visivo.server.views.insight_execute_views import register_insight_execute_v
 from visivo.server.views.run_views import register_run_views
 from visivo.server.views.preferences_views import register_preferences_views
 from visivo.server.views.model_schema_views import register_model_schema_views
+from visivo.server.views.rename_views import register_rename_views
 from visivo.server.views.restore_views import register_restore_views
 
 
 def register_views(app, flask_app, output_dir):
     register_data_views(app, flask_app, output_dir)
+    register_mcp_views(app, flask_app)
+    register_agent_views(app, flask_app)
     register_file_views(app, output_dir)
     register_project_views(app, flask_app, output_dir)
     register_projects_views(app, flask_app, output_dir)
@@ -58,6 +64,7 @@ def register_views(app, flask_app, output_dir):
     register_profiling_views(app, flask_app, output_dir)
     register_commit_views(app, flask_app, output_dir)
     register_defaults_views(app, flask_app, output_dir)
+    register_theme_views(app, flask_app)
     register_source_schema_jobs_views(app, flask_app, output_dir)
     register_auth_views(app, flask_app, output_dir)
     register_cloud_views(app, flask_app, output_dir)
@@ -73,4 +80,5 @@ def register_views(app, flask_app, output_dir):
     register_model_schema_views(app, flask_app, output_dir)
     # Registered LAST: its route is a catch-all over `/api/<segment>/<name>/`,
     # so the concrete per-resource routes must claim their paths first.
+    register_rename_views(app, flask_app)
     register_restore_views(app, flask_app)

@@ -356,4 +356,31 @@ describe('OutlineTreePanel', () => {
       expect(useStore.getState().workspaceOutlineSelectedKey).toBe(before);
     });
   });
+
+  test('a template dashboard shows where its layout lives instead of rows', () => {
+    act(() => {
+      useStore.setState({
+        dashboards: [
+          {
+            name: DASH,
+            config: {
+              name: DASH,
+              type: 'template',
+              template: '<div data-visivo-item="revenue_chart"></div>',
+            },
+          },
+        ],
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        workspaceActiveObject: null,
+      });
+    });
+    renderPanel();
+
+    const note = screen.getByTestId('outline-tree-template');
+    expect(note).toHaveTextContent('its YAML file');
+    expect(note).toHaveTextContent('revenue_chart');
+    expect(screen.queryByTestId('outline-tree-add-row-empty')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('outline-tree-add-row')).not.toBeInTheDocument();
+  });
 });

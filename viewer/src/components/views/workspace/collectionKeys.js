@@ -62,4 +62,24 @@ export const DELETE_ACTION = {
   input: 'deleteInput',
 };
 
+/**
+ * FETCH_ACTION — the store action that reloads a collection from the server.
+ * A rename rewrites `${ref()}` across other objects server-side, so the client
+ * has to refetch rather than patch: it cannot know which configs changed
+ * without redoing the server's traversal.
+ */
+export const FETCH_ACTION = {
+  source: 'fetchSources',
+  model: 'fetchModels',
+  dimension: 'fetchDimensions',
+  metric: 'fetchMetrics',
+  relation: 'fetchRelations',
+  insight: 'fetchInsights',
+  markdown: 'fetchMarkdowns',
+  chart: 'fetchCharts',
+  table: 'fetchTables',
+  dashboard: 'fetchDashboards',
+  input: 'fetchInputs',
+};
+
 export default COLLECTION_KEY;

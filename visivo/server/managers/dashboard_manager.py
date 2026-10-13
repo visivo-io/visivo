@@ -7,7 +7,12 @@ from visivo.models.dag import all_descendants_of_type
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.base_dashboard import BaseDashboard
 from visivo.models.dashboards.fields import DashboardField
+from visivo.models.dashboards.template_dashboard import TemplateDashboard
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+
+
+class TemplateDashboardReadOnly(ValueError):
+    pass
 
 
 class DashboardManager(ObjectManager[BaseDashboard]):
@@ -47,6 +52,10 @@ class DashboardManager(ObjectManager[BaseDashboard]):
 
     def save_from_config(self, config: dict) -> BaseDashboard:
         dashboard = self.validate_object(config)
+        if isinstance(dashboard, TemplateDashboard):
+            raise TemplateDashboardReadOnly(
+                f"'{dashboard.name}' is a template dashboard; edit its YAML file instead."
+            )
         self.save(dashboard.name, dashboard)
         return dashboard
 

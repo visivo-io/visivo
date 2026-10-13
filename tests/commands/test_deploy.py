@@ -71,7 +71,7 @@ def test_deploy_with_whitespace_stage():
         ],
     )
 
-    assert "Only whitespace is not permitted for stage name." in response.output
+    assert "Only whitespace is not permitted for branch name." in response.output
     assert response.exit_code == 2
 
 
@@ -102,7 +102,7 @@ def test_deploy_with_symbol_stage():
     )
 
     assert (
-        "Only alphanumeric, whitespace, and '\"-_ characters permitted for stage name."
+        "Only alphanumeric, whitespace, and '\"-_ characters permitted for branch name."
         in response.output
     )
     assert response.exit_code == 2

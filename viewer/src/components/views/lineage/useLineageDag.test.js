@@ -49,60 +49,31 @@ function mockStoreState(state) {
 const edgeTargetsFor = (edges, dashboardId) =>
   edges.filter(e => e.target === dashboardId).map(e => e.source);
 
-describe('useLineageDag — dashboard recurses into nested Item.rows (VIS-826)', () => {
+describe('useLineageDag — dashboard edges come from child_item_names', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('builds dashboard edges for charts/tables nested inside container item.rows', () => {
+  // The hook used to re-derive a dashboard's members by walking `config.rows`.
+  // That could not see a TEMPLATE dashboard, whose members live in
+  // `data-visivo-item` slots in HTML, so one drew as an isolated node. Every
+  // other type here already reads `child_item_names`; dashboards now do too,
+  // and the backend owns the walk (including the VIS-826 nesting, pinned in
+  // tests/server/test_object_manager_child_items.py).
+
+  it('builds an edge per child, whatever the layout nested them in', () => {
     mockStoreState({
-      charts: [
-        { name: 'top-chart' },
-        { name: 'nested-chart' },
-        { name: 'deep-chart' },
-      ],
+      charts: [{ name: 'top-chart' }, { name: 'nested-chart' }, { name: 'deep-chart' }],
       tables: [{ name: 'nested-table' }],
       dashboards: [
         {
           name: 'dash',
-          config: {
-            rows: [
-              {
-                items: [
-                  // Top-level leaf
-                  { chart: '${ref(top-chart)}' },
-                  // Container item with nested rows
-                  {
-                    rows: [
-                      {
-                        items: [
-                          { chart: '${ref(nested-chart)}' },
-                          { table: '${ref(nested-table)}' },
-                          // A deeper container nested one more level
-                          {
-                            rows: [
-                              {
-                                items: [{ chart: '${ref(deep-chart)}' }],
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
+          child_item_names: ['top-chart', 'nested-chart', 'nested-table', 'deep-chart'],
+          config: { rows: [] },
         },
       ],
     });
 
-    const { result } = renderHook(() => useLineageDag());
-    const { edges } = result.current;
+    const sources = edgeTargetsFor(renderHook(() => useLineageDag()).result.current.edges, 'dashboard-dash');
 
-    const dashboardId = 'dashboard-dash';
-    const sources = edgeTargetsFor(edges, dashboardId);
-
-    // Every nested member must feed the dashboard — not just the top-level one.
     expect(sources).toEqual(
       expect.arrayContaining([
         'chart-top-chart',
@@ -111,38 +82,57 @@ describe('useLineageDag — dashboard recurses into nested Item.rows (VIS-826)',
         'chart-deep-chart',
       ])
     );
-    // Fan-out is real: more than the single top-level chart.
-    expect(sources.length).toBeGreaterThan(1);
   });
 
-  it('handles inline-object item refs (.name) at nested depth', () => {
+  it('wires a template dashboard, which has no rows at all', () => {
+    // The bug this change fixes: the dashboard drew with no edges.
     mockStoreState({
-      charts: [{ name: 'inline-nested-chart' }],
+      charts: [{ name: 'revenue' }],
+      tables: [{ name: 'orders' }],
       dashboards: [
         {
-          name: 'dash2',
+          name: 'tpl',
+          child_item_names: ['revenue', 'orders'],
           config: {
-            rows: [
-              {
-                items: [
-                  {
-                    rows: [
-                      {
-                        items: [{ chart: { name: 'inline-nested-chart' } }],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
+            template: '<div data-visivo-item="revenue"></div><div data-visivo-item="orders"></div>',
           },
         },
       ],
     });
 
-    const { result } = renderHook(() => useLineageDag());
-    const sources = edgeTargetsFor(result.current.edges, 'dashboard-dash2');
-    expect(sources).toContain('chart-inline-nested-chart');
+    const sources = edgeTargetsFor(renderHook(() => useLineageDag()).result.current.edges, 'dashboard-tpl');
+
+    expect(sources).toEqual(expect.arrayContaining(['chart-revenue', 'table-orders']));
+  });
+
+  it('dedupes a child placed more than once', () => {
+    mockStoreState({
+      charts: [{ name: 'c' }],
+      dashboards: [{ name: 'd', child_item_names: ['c', 'c'], config: {} }],
+    });
+
+    const sources = edgeTargetsFor(renderHook(() => useLineageDag()).result.current.edges, 'dashboard-d');
+
+    expect(sources).toEqual(['chart-c']);
+  });
+
+  it('skips a child that is not an object in the project', () => {
+    // A slot naming something that does not exist is valid config that fails
+    // at compile — the graph draws what it can rather than inventing a node.
+    mockStoreState({
+      charts: [{ name: 'real' }],
+      dashboards: [{ name: 'd', child_item_names: ['real', 'ghost'], config: {} }],
+    });
+
+    const sources = edgeTargetsFor(renderHook(() => useLineageDag()).result.current.edges, 'dashboard-d');
+
+    expect(sources).toEqual(['chart-real']);
+  });
+
+  it('a dashboard with no children has no edges', () => {
+    mockStoreState({ dashboards: [{ name: 'empty', config: {} }] });
+
+    expect(edgeTargetsFor(renderHook(() => useLineageDag()).result.current.edges, 'dashboard-empty')).toEqual([]);
   });
 });
 

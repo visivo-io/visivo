@@ -41,8 +41,6 @@ class TestSingleSelectInput:
         assert "options" in dumped
         assert "${ref(products_model)}" in dumped["options"]
         assert "select distinct(category)" in dumped["options"]
-        assert "name_hash" in dumped
-        assert dumped["name_hash"] == input_obj.name_hash()
 
     def test_query_multiple_references_fails(self):
         with pytest.raises(ValueError) as exc_info:
@@ -88,7 +86,11 @@ class TestSingleSelectInput:
 
         assert len(children) == 0
 
-    def test_static_options_include_name_hash(self):
+    def test_dump_does_not_leak_name_hash(self):
+        """name_hash used to be injected into every dump ("for the viewer to
+        construct JSON URL") — nothing read it, and reconstructing a Project
+        from that dump tripped extra_forbidden on every commit touching a
+        single-select input (VIS-1327)."""
         data = {
             "name": "category_filter",
             "options": ["Option A", "Option B", "Option C"],
@@ -97,8 +99,7 @@ class TestSingleSelectInput:
         dumped = input_obj.model_dump()
 
         assert dumped["options"] == ["Option A", "Option B", "Option C"]
-        assert "name_hash" in dumped
-        assert dumped["name_hash"] == input_obj.name_hash()
+        assert "name_hash" not in dumped
 
 
 class TestMultiSelectInput:
@@ -201,7 +202,8 @@ class TestMultiSelectInput:
 
         assert len(children) == 0
 
-    def test_serialize_with_name_hash(self):
+    def test_dump_does_not_leak_name_hash(self):
+        """See SingleSelectInput's version of this test — same bug (VIS-1327)."""
         data = {
             "name": "multi_input",
             "options": ["A", "B", "C"],
@@ -209,5 +211,4 @@ class TestMultiSelectInput:
         input_obj = MultiSelectInput(**data)
         dumped = input_obj.model_dump()
 
-        assert "name_hash" in dumped
-        assert dumped["name_hash"] == input_obj.name_hash()
+        assert "name_hash" not in dumped

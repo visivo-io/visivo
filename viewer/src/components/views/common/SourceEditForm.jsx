@@ -19,6 +19,8 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import SeedsEditor, { sourceTypeSupportsSeeds } from './SeedsEditor';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
@@ -48,6 +50,10 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
   const [deleting, setDeleting] = useState(false);
 
   const isEditMode = !!source && !isCreate;
+
+  const recordName = source?.name || '';
+
+  const rename = useRenameFlow({ type: 'source', recordName, name });
   const isNewObject = source?.status === ObjectStatus.NEW;
   const isEmbedded = isEmbeddedObject(source);
   const parentName = source?._embedded?.parentName;
@@ -176,6 +182,12 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
 
   const handleSave = async () => {
     if (!validateForm()) return;
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (isEditMode && rename.nameChanged) {
+      rename.start();
+      return;
+    }
 
     setSaving(true);
     setSaveError(null);
@@ -241,7 +253,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
             label="Source Name"
             value={name}
             onChange={e => setName(e.target.value)}
-            disabled={isEditMode}
+            disabled={isEditMode && !rename.supported}
             required
             error={errors.name}
           />
@@ -344,6 +356,9 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
 
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
       </FormLayout>
+
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
+
 
       <FormFooter
         onCancel={isEditMode ? discard : onClose}

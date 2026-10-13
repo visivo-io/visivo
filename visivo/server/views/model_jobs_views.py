@@ -3,6 +3,7 @@ import os
 from flask import jsonify, request
 
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.models.base.named_model import alpha_hash
 from visivo.logger.logger import Logger
 
 
@@ -50,6 +51,13 @@ def register_model_jobs_views(app, flask_app, output_dir):
                     {
                         "id": name,
                         "name": name,
+                        # The DuckDB table the client registers the parquet as
+                        # and then selects from. Without it every model
+                        # registered as "undefined": the first one loaded, the
+                        # second found that table already present and skipped
+                        # its own file, so two model-backed tables showed the
+                        # same rows.
+                        "name_hash": alpha_hash(name),
                         # Same indirection the insight/input views use: the
                         # response names a file, the client fetches it.
                         "signed_data_file_url": f"/api/files/{name}/{run_id}/",

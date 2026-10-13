@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { PiMagnifyingGlass, PiPlus } from 'react-icons/pi';
+import { PiMagnifyingGlass, PiPalette, PiPlus } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
@@ -10,6 +10,7 @@ import {
   UNASSIGNED_KEY,
 } from './useProjectEditorData';
 import LevelGroup from './LevelGroup';
+import ThemeEditorDialog from '../../common/ThemeEditorDialog';
 
 const levelIndexFromKey = levelKey => {
   if (typeof levelKey !== 'string') return -1;
@@ -157,6 +158,7 @@ const ProjectEditor = () => {
 
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
+  const [themeEditorOpen, setThemeEditorOpen] = useState(false);
 
   // The live shell-level drag (VIS-802 / G-1). When a ProjectEditor tile is in
   // flight this is `{ kind: 'dashboard', name, level }`; the source-group dimming
@@ -358,6 +360,7 @@ const ProjectEditor = () => {
       className="@container/editor flex-1 overflow-y-auto"
       onClick={dispatchChromeSelection}
     >
+      <ThemeEditorDialog open={themeEditorOpen} onClose={() => setThemeEditorOpen(false)} />
       <div className="mx-auto max-w-[1100px] px-5 py-8 @[700px]/editor:px-10">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
@@ -380,6 +383,17 @@ const ProjectEditor = () => {
                 />
               </div>
             )}
+            <button
+              type="button"
+              data-testid="project-editor-theme"
+              onClick={e => {
+                e.stopPropagation();
+                setThemeEditorOpen(true);
+              }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 text-[12.5px] font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            >
+              <PiPalette className="h-3.5 w-3.5" /> Theme
+            </button>
             <button
               type="button"
               data-testid="project-editor-new-dashboard"

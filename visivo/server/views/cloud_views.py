@@ -5,37 +5,64 @@ from uuid import uuid4
 from flask import copy_current_request_context, jsonify, request
 import requests
 from visivo.logger.logger import Logger
-from visivo.server.constants import VISIVO_HOST
 from visivo.tokens.token_functions import get_existing_token
 from visivo.server.store import background_jobs, background_jobs_lock
 
 
 def register_cloud_views(app, flask_app, output_dir):
+    # The host THIS serve is bound to, not the import-time default (VIS-1376).
+    # Deploys have to follow `--host` along with the token lookup and the
+    # agent, or `--host` moves two of the three and the odd one out silently
+    # talks to production.
+    def _host():
+        return flask_app.host
+
+    # Both nouns for one release (VIS-1352). The viewer asks for `branches` now;
+    # a viewer build that predates the rename still asks for `stages`, and the
+    # two are served by the same handler rather than by two that can drift.
+    @app.route("/api/cloud/branches/", methods=["GET"])
     @app.route("/api/cloud/stages/", methods=["GET"])
-    def cloud_stages():
-        token = get_existing_token(host=VISIVO_HOST)
+    def cloud_branches():
+        token = get_existing_token(host=_host())
 
         json_headers = {
             "content-type": "application/json",
             "Authorization": f"Api-Key {token}",
         }
 
-        response = requests.get(f"{VISIVO_HOST}/api/stages/", headers=json_headers)
+        # Active branches only. An archived branch is one someone has put
+        # away; offering it as a deploy target is offering a mistake, and the
+        # filter belongs here rather than in the page so every caller of this
+        # endpoint gets the same list.
+        response = requests.get(
+            f"{_host()}/api/stages/",
+            headers=json_headers,
+            params={"archived": "false"},
+        )
 
         if response.status_code == 200:
-            return jsonify({"message": "Stages fetched successfully", "stages": response.json()})
+            payload = response.json()
+            return jsonify(
+                {
+                    "message": "Branches fetched successfully",
+                    "branches": payload,
+                    # The old key too, for a viewer build that predates the rename.
+                    "stages": payload,
+                }
+            )
 
         if response.status_code == 401:
             return jsonify({"message": "UnAuthorized access", "stage": response.json()}), 401
 
         return jsonify({"message": "Something went wrong!", "stage": response.json()}), 500
 
+    @app.route("/api/cloud/branches/", methods=["POST"])
     @app.route("/api/cloud/stages/", methods=["POST"])
-    def create_cloud_stages():
+    def create_cloud_branch():
         data = request.get_json()
         name = data.get("name", "")
 
-        token = get_existing_token(host=VISIVO_HOST)
+        token = get_existing_token(host=_host())
 
         if name == "":
             return jsonify({"message": "Name is required"}), 400
@@ -50,11 +77,19 @@ def register_cloud_views(app, flask_app, output_dir):
         }
 
         response = requests.post(
-            f"{VISIVO_HOST}/api/stages/", data=json.dumps(body), headers=json_headers
+            f"{_host()}/api/stages/", data=json.dumps(body), headers=json_headers
         )
 
         if response.status_code == 201:
-            return jsonify({"message": "Stages fetched successfully", "stage": response.json()})
+            payload = response.json()
+            return jsonify(
+                {
+                    "message": "Branch created successfully",
+                    "branch": payload,
+                    # The old key too, for a viewer build predating the rename.
+                    "stage": payload,
+                }
+            )
 
         if response.status_code == 401:
             return jsonify({"message": "UnAuthorized access", "stage": response.json()}), 401
@@ -69,7 +104,7 @@ def register_cloud_views(app, flask_app, output_dir):
             working_dir=flask_app._working_dir,
             output_dir=output_dir,
             stage=stage,
-            host=VISIVO_HOST,
+            host=_host(),
             deploy_id=deploy_id,
         )
 

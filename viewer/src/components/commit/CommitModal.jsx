@@ -1,44 +1,7 @@
 import React, { useState } from 'react';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
-import useStore, { ObjectStatus } from '../../stores/store';
-import { getTypeByValue } from '../views/common/objectTypeConfigs';
-
-const StatusBadge = ({ status }) => {
-  const colorMap = {
-    [ObjectStatus.NEW]: 'bg-green-100 text-green-800',
-    [ObjectStatus.MODIFIED]: 'bg-amber-100 text-amber-800',
-    [ObjectStatus.DELETED]: 'bg-red-100 text-red-800',
-  };
-
-  const labelMap = {
-    [ObjectStatus.NEW]: 'NEW',
-    [ObjectStatus.MODIFIED]: 'MODIFIED',
-    [ObjectStatus.DELETED]: 'DELETED',
-  };
-
-  return (
-    <span
-      className={`px-2 py-1 text-xs font-medium rounded-full ${colorMap[status] || 'bg-gray-100 text-gray-800'}`}
-    >
-      {labelMap[status] || status}
-    </span>
-  );
-};
-
-const TypeBadge = ({ type }) => {
-  const typeConfig = getTypeByValue(type);
-  const Icon = typeConfig?.icon;
-  const colors = typeConfig?.colors || { bg: 'bg-gray-100', text: 'text-gray-800' };
-
-  return (
-    <span
-      className={`px-2 py-1 text-xs font-medium rounded flex items-center gap-1 ${colors.bg} ${colors.text}`}
-    >
-      {Icon && <Icon style={{ fontSize: 14 }} />}
-      {typeConfig?.singularLabel || type}
-    </span>
-  );
-};
+import useStore from '../../stores/store';
+import PendingChangesList from './PendingChangesList';
 
 const CommitModal = () => {
   const commitModalOpen = useStore(state => state.commitModalOpen);
@@ -48,25 +11,18 @@ const CommitModal = () => {
   const commitError = useStore(state => state.commitError);
   const commitAction = useStore(state => state.commitAction);
   const commitChanges = useStore(state => state.commitChanges);
+  // The list owns the per-row "Restoring…" state; this is just the action.
   const restoreDeleted = useStore(state => state.restoreDeleted);
-  // Keyed by `type:name` rather than a boolean so only the row being restored
-  // shows its pending state — the list can hold several deletions at once.
-  const [restoringKey, setRestoringKey] = useState(null);
-  const handleRestore = async (type, name) => {
-    if (!restoreDeleted) return;
-    setRestoringKey(`${type}:${name}`);
-    await restoreDeleted(type, name);
-    setRestoringKey(null);
-  };
   // Discard (Q14 rollback) — drops the draft cache without writing YAML. It's
-  // destructive, so it confirms inline before firing. Local serve only:
-  // /api/commit/discard/ has no cloud equivalent yet (Django implements no
-  // discard endpoint), so the button is hidden when capabilities exist (cloud)
-  // rather than offered and guaranteed to fail.
+  // destructive, so it confirms inline before firing.
+  //
+  // This used to hide itself whenever capabilities were non-null, reading that
+  // as "cloud". Local serve answers the capabilities endpoint too now, so the
+  // button had quietly disappeared from the one place it works — and cloud
+  // never saw it either, because core renders its own CommitModal, not this
+  // one. The same action also hangs off the Commit button's menu.
   const discardChanges = useStore(state => state.discardChanges);
   const discardLoading = useStore(state => state.discardLoading);
-  const capabilities = useStore(state => state.capabilities);
-  const discardAvailable = capabilities === null;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
   if (!commitModalOpen) return null;
@@ -120,47 +76,7 @@ const CommitModal = () => {
         )}
 
         <div className="max-h-64 overflow-y-auto mb-6" data-testid="commit-modal-pending-list">
-          {pendingChanges.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No pending changes to commit.</p>
-          ) : (
-            <ul className="space-y-2">
-              {pendingChanges.map((change, index) => (
-                <li
-                  key={`${change.type}-${change.name}-${index}`}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <TypeBadge type={change.type} />
-                    <span className="font-medium text-gray-900">{change.name}</span>
-                    {change.source_type && (
-                      <span className="text-gray-500 text-sm">({change.source_type})</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Undo is offered only on deletions. A new or modified
-                        object is recovered by editing it back; a deleted one
-                        cannot be reached at all once it leaves the Library, so
-                        without this the only way back was discarding every
-                        other pending change too (VIS-1234). */}
-                    {change.status === ObjectStatus.DELETED && (
-                      <button
-                        type="button"
-                        onClick={() => handleRestore(change.type, change.name)}
-                        disabled={restoringKey === `${change.type}:${change.name}`}
-                        data-testid={`commit-modal-restore-${change.type}-${change.name}`}
-                        className="rounded-md px-2 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-300 transition-colors hover:bg-gray-100 disabled:opacity-50"
-                      >
-                        {restoringKey === `${change.type}:${change.name}`
-                          ? 'Restoring…'
-                          : 'Undo'}
-                      </button>
-                    )}
-                    <StatusBadge status={change.status} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <PendingChangesList changes={pendingChanges} onRestore={restoreDeleted} />
         </div>
 
         {confirmingDiscard ? (
@@ -191,18 +107,14 @@ const CommitModal = () => {
           </div>
         ) : (
           <div className="flex items-center justify-between gap-3">
-            {discardAvailable ? (
-              <button
-                onClick={() => setConfirmingDiscard(true)}
-                disabled={commitLoading || count === 0}
-                data-testid="commit-modal-discard"
-                className="px-4 py-2 text-highlight-700 rounded-md hover:bg-highlight-50 focus:outline-none disabled:text-gray-300 disabled:hover:bg-transparent"
-              >
-                Discard
-              </button>
-            ) : (
-              <span />
-            )}
+            <button
+              onClick={() => setConfirmingDiscard(true)}
+              disabled={commitLoading || count === 0}
+              data-testid="commit-modal-discard"
+              className="px-4 py-2 text-highlight-700 rounded-md hover:bg-highlight-50 focus:outline-none disabled:text-gray-300 disabled:hover:bg-transparent"
+            >
+              Discard
+            </button>
             <div className="flex gap-3">
               <button
                 onClick={closeCommitModal}

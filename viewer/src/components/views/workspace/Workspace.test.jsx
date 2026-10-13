@@ -26,7 +26,7 @@ import { setWorkspaceTelemetryListener } from './telemetry';
 // The route container mounts the H-2 project-change socket listener — stub
 // the socket client so jsdom never attempts a real polling connection.
 jest.mock('socket.io-client', () => ({
-  io: jest.fn(() => ({ on: jest.fn(), close: jest.fn() })),
+  io: jest.fn(() => ({ on: jest.fn(), off: jest.fn(), close: jest.fn() })),
 }));
 
 jest.mock('../../project/Dashboard', () => ({

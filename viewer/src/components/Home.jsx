@@ -10,12 +10,14 @@ import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import CommitModal from './commit/CommitModal';
 import BranchingControls from './common/BranchingControls';
+import { useConfirm } from './common/ConfirmDialog';
 import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import OnboardingCoach from './onboarding/OnboardingCoach';
 import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
 import { hasCompletedOnboarding } from './onboarding/onboardingState';
 import { useRunPolling } from '../hooks/useRunPolling';
 import { useState, useEffect } from 'react';
+import useAuthorization from '../hooks/useAuthorization';
 
 const Home = () => {
   const error = useLoaderData();
@@ -23,6 +25,13 @@ const Home = () => {
   const isRoot = location.pathname === '/';
   const isProject = location.pathname.startsWith('/project');
   const [isDeployOpen, setIsDeployOpen] = useState(false);
+  // One idea of "authorized", shared with the Agent tab and the deploy modal.
+  const {
+    authorized,
+    host: authorizationHost,
+    working: authorizing,
+    authorize,
+  } = useAuthorization();
 
   const isNewProject = useStore(state => state.isNewProject);
   const isOnboardingRequested = useStore(state => state.isOnboardingRequested);
@@ -30,6 +39,8 @@ const Home = () => {
   const pendingCount = useStore(state => state.pendingCount);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const openCommitModal = useStore(state => state.openCommitModal);
+  const discardChanges = useStore(state => state.discardChanges);
+  const { confirm, ConfirmDialog } = useConfirm();
   // The capabilities endpoint drives the Edit/Branch entry and the viewer's
   // tool gating. Both servers answer it (Flask local + Django cloud), so the
   // viewer needs no local-vs-cloud branching.
@@ -130,18 +141,41 @@ const Home = () => {
     openCommitModal();
   };
 
+  const onDiscardAll = async () => {
+    const ok = await confirm({
+      title: 'Discard all changes?',
+      body:
+        'Every uncommitted change is dropped and the project goes back to what is ' +
+        'in your YAML files. This cannot be undone.',
+      confirmLabel: 'Discard changes',
+      danger: true,
+    });
+    if (ok) await discardChanges();
+  };
+
   return (
     <div className="visivo-home min-h-screen bg-gray-50">
       <TopNav
         onDeployClick={onDeployClick}
         onCommitClick={onCommitClick}
+        onDiscardAll={onDiscardAll}
         hasUncommittedChanges={hasUncommittedChanges}
         commitCount={pendingCount}
         tools={tools}
         branchControls={<BranchingControls />}
+        // The menu's first item is either "Open Cloud Account" or "Authorize",
+        // and the second runs the device flow from here rather than sending
+        // someone to a web page that cannot authorize this machine.
+        authorization={{
+          authorized,
+          host: authorizationHost,
+          authorizing,
+          onAuthorize: authorize,
+        }}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />
+      {ConfirmDialog}
       <div>
         {isProject && (
           <div className="flex flex-row justify-end items-center whitespace-nowrap py-1">

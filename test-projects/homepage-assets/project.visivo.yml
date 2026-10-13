@@ -2,7 +2,6 @@ name: homepage-assets
 defaults:
   source_name: Example Target
 includes:
-  # - path: visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml
   - path: ./aapl-stock.visivo.yml
 alerts: []
 sources:

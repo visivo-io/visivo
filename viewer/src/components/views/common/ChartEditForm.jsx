@@ -15,6 +15,8 @@ import { parseRefValue, formatRef } from '../../../utils/refString';
 import EmbeddedPill from '../lineage/EmbeddedPill';
 import Dropdown from '../../common/Dropdown';
 import AddInsightMenu from '../workspace/AddInsightMenu';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -33,10 +35,11 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   // Form state
   const [name, setName] = useState('');
+  const rename = useRenameFlow({ type: 'chart', recordName: chart?.name || '', name });
   const [insights, setInsights] = useState([]);
   const [layoutValues, setLayoutValues] = useState({});
 
-  // VIS-1224: "New blank insight" (the Add Insight menu) stages a blank
+  // VIS-1224: "New blank insight" (the Add Insight menu) branches a blank
   // EMBEDDED insight on the chart; staged entries merge into the save and count
   // toward dirty. (The chart no longer edits insight props inline — that's the
   // insight's own edit panel.)
@@ -164,6 +167,18 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   };
 
   const handleSave = async () => {
+
+    // A changed name in edit mode is a RENAME — its own server operation,
+
+    // confirmed first, because every `${ref()}` to this object moves with it.
+
+    if (isEditMode && rename.nameChanged) {
+
+      rename.start();
+
+      return;
+
+    }
     if (!validateForm()) return;
 
     setSaving(true);
@@ -233,7 +248,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   };
 
   // Insight management (VIS-1224: add via the AddInsightMenu dropdown — pick an
-  // existing project insight, or stage a New blank embedded insight).
+  // existing project insight, or branch a New blank embedded insight).
   const addExistingInsight = insightName => {
     if (!insightName || insights.includes(insightName)) return;
     setInsights([...insights, insightName]);
@@ -253,6 +268,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   return (
     <>
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
@@ -265,7 +281,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
             nameLabel="Chart Name"
             nameValue={name}
             onNameChange={e => setName(e.target.value)}
-            nameDisabled={isEditMode}
+            nameDisabled={isEditMode && !rename.supported}
             nameError={errors.name}
             layoutTitle="Layout Configuration (Optional)"
             layoutSchema={layoutSchema}

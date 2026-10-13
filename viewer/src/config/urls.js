@@ -78,6 +78,7 @@ const URL_PATTERNS = {
     // OUTLIER: a singleton — no list, no name. Correct, since a project has
     // exactly one defaults document.
     defaults: '/api/defaults/',
+    theme: '/api/theme/',
 
     // Explorations are per-user scratch state, keyed by id rather than name
     // (two users' explorations can share a name), and carry two sub-actions
@@ -132,6 +133,8 @@ const URL_PATTERNS = {
     commitPending: '/api/commit/pending/',
     commit: '/api/commit/',
     commitDiscard: '/api/commit/discard/',
+    rename: '/api/rename/',
+    renameImpact: '/api/rename/impact/',
 
     // ---- Stateless compute ----------------------------------------------
     // No stored resource behind any of these: request in, answer out. That is
@@ -167,6 +170,28 @@ const URL_PATTERNS = {
     // The local Flask server relays workspace events through the CLI's PostHog
     // client so the CLI telemetry opt-out + anonymization apply (VIS-822).
     workspaceTelemetry: '/api/telemetry/workspace-event/',
+
+    // What agents have done this session. Absent from `dist` below, which is
+    // correct: a static build has no server for an agent to work through.
+    // Project-scoped, like capabilities/commit/discard/run above, and for the
+    // same reason: these are the paths core can serve, so ONE tab drives a
+    // local loop and a cloud one. `visivo serve` hosts a single project and
+    // ignores the id.
+    agentActions: '/api/projects/{projectId}/agent/actions/',
+    // The built-in loop: start one, poll it, stop it.
+    agentSessions: '/api/projects/{projectId}/agent/',
+    // Templates, not functions: getUrl substitutes {param} into a STRING. A
+    // function pattern reaches `url.replace` and throws "url.replace is not a
+    // function" — which the session poll then swallowed, so the transcript
+    // silently never updated and only Stop surfaced it.
+    agentSession: '/api/projects/{projectId}/agent/{sessionId}/',
+    agentSessionCancel: '/api/projects/{projectId}/agent/{sessionId}/cancel/',
+
+    // ---- Realtime ---------------------------------------------------------
+    // Not a REST call — useProjectChangeListener gates its socket.io connect
+    // on this key (VIS-1326). A dist build is static files with nothing to
+    // hot-reload, so the connection can never succeed there.
+    socketIo: '/socket.io/',
   },
 
   // A dist build is static files — there is no server, so almost nothing
@@ -184,9 +209,18 @@ const URL_PATTERNS = {
     dashboardsList: '/data/dashboards.json',
     dashboardQuery: '/data/dashboards/{name}.json',
     dashboardThumbnail: '/data/dashboards/{name}.png',
+    // A table whose `data` is a model reads this. It used to be absent, so
+    // fetchModelJobs returned [] and every model-backed table said "No data
+    // available" while the charts beside it rendered.
+    modelJobsQuery: '/data/models.json',
+    // A template dashboard names its items rather than inlining them, so it
+    // resolves each one through these lists.
+    chartsList: '/data/lists/charts.json',
+    tablesList: '/data/lists/tables.json',
+    markdownsList: '/data/lists/markdowns.json',
+    inputsList: '/data/lists/inputs.json',
 
     // Deliberately absent, though the artifacts exist:
-    //   modelJobsQuery   — a dist build writes no model-jobs manifest.
     //   model-schemas    — inference needs a server; a dist build has none.
   },
 };
@@ -280,6 +314,31 @@ class URLConfig {
     const patterns = URL_PATTERNS[this.environment];
     return patterns && patterns[key] !== null && patterns[key] !== undefined;
   }
+}
+
+/**
+ * Put the deployment root in front of an absolute, same-origin URL.
+ *
+ * For URLs the bundle carries rather than builds: Vite bakes `/assets/...` into
+ * the JS at build time, and a dist is mounted wherever `-dr` says at package
+ * time, so those two can only meet at runtime. `dist_phase` rewrites index.html
+ * and nothing else, which is why anything the JS fetches for itself — the
+ * DuckDB worker and wasm — asked the server root and 404'd.
+ *
+ * Absolute rather than relative on purpose: a dist is an SPA, so index.html is
+ * also served at /root/some-dashboard, and a relative asset URL would resolve
+ * against that path instead of the mount point.
+ *
+ * @param {string} url - An absolute path such as '/assets/x.wasm'
+ * @returns {string}
+ */
+export function withDeploymentRoot(url) {
+  const root = getWindowDeploymentRoot();
+  if (!root || typeof url !== 'string' || !url.startsWith('/')) {
+    return url;
+  }
+  const normalized = root.startsWith('/') ? root : `/${root}`;
+  return (normalized.endsWith('/') ? normalized.slice(0, -1) : normalized) + url;
 }
 
 /**

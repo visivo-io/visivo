@@ -305,20 +305,9 @@ class MultiSelectInput(Input):
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, _info):
-        """
-        Custom serializer for multi-select inputs.
-
-        Adds name_hash and structure type for client-side handling.
-        """
+        """Custom serializer for multi-select inputs: static list options as strings."""
         model = serializer(self)
 
-        # Add name_hash for viewer to construct JSON URL
-        model["name_hash"] = self.name_hash()
-
-        # Add structure type for frontend to know how to handle this input
-        model["structure"] = "range" if self.is_range_based() else "options"
-
-        # Convert static list options to strings
         if isinstance(self.options, list):
             model["options"] = [str(option) for option in self.options]
 

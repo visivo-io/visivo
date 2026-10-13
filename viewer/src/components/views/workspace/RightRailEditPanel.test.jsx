@@ -885,7 +885,7 @@ describe('RightRailEditPanel breadcrumb keyboard nav (VIS-804)', () => {
     expect(screen.getByLabelText('Row 1 height')).toHaveFocus();
   });
 
-  test('⌘↓ under a read-only stage neither moves the selection nor persists', async () => {
+  test('⌘↓ under a read-only branch neither moves the selection nor persists', async () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     resetStore({
       workspaceOutlineSelectedKey: 'row.0',
@@ -1315,7 +1315,7 @@ describe('RightRailEditPanel run-failure loop-back + invalid errors (VIS-993 §2
 
 // ── VIS-1025: the rail respects cloud read-only ─────────────────────────────
 // capabilities (branchingStore): null = local serve (always editable); a cloud
-// capability object with can_edit:false makes the stage read-only — the rail
+// capability object with can_edit:false makes the branch read-only — the rail
 // renders forms disabled behind a "Read-only — <edit_action>" notice and holds
 // EVERY write (leaf saves via useRecordSave, structure writes via persistConfig).
 describe('RightRailEditPanel cloud read-only (VIS-1025)', () => {
@@ -1323,7 +1323,7 @@ describe('RightRailEditPanel cloud read-only (VIS-1025)', () => {
     can_view: true,
     can_edit: false,
     can_branch: true,
-    is_default_stage: true,
+    is_default_branch: true,
     edit_action: 'Create a draft to edit',
   };
 
@@ -1563,5 +1563,30 @@ describe('a deleted record shows Restore, not an edit form (VIS-1234)', () => {
 
     expect(screen.queryByTestId('right-rail-edit-leaf-deleted')).not.toBeInTheDocument();
     expect(screen.getByTestId('chart-edit-form-stub')).toBeInTheDocument();
+  });
+});
+
+describe('RightRailEditPanel template dashboards', () => {
+  test('shows where the layout lives instead of the rows editor and its Save', () => {
+    resetStore({
+      workspaceActiveObject: { type: 'dashboard', name: 'review' },
+      dashboards: [
+        {
+          name: 'review',
+          config: {
+            name: 'review',
+            type: 'template',
+            template: '<div data-visivo-item="rev_chart"></div><div data-visivo-item="notes"></div>',
+          },
+        },
+      ],
+    });
+    renderPanel('/workspace/dashboard/review');
+
+    const panel = screen.getByTestId('right-rail-template-dashboard');
+    expect(panel).toHaveTextContent('its YAML file');
+    expect(panel).toHaveTextContent('Places: rev_chart, notes.');
+    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
   });
 });

@@ -6,7 +6,7 @@ import FieldGroupList from '../workspace/FieldGroupList';
 import { getSchema } from '../../../schemas/schemas';
 import { loadCatalog, loadTraceGroups } from '../../../schemas/traceCatalogLoader';
 import { buildTraceGroupSpec, humanizePath } from './buildTraceGroupSpec';
-import { getRequiredFields } from './insightRequiredFields';
+import { getRequiredFields } from '../../../schemas/requiredFields';
 import { preserveTraceProps } from './preserveTraceProps';
 import { validateProps } from '../../../schemas/plotlyValidator';
 import FieldFinderPalette from './fieldFinder/FieldFinderPalette';
@@ -217,7 +217,7 @@ const TracePropsEditor = ({
   // `InsightCRUDSection` avoided this by passing `initiallyExpanded={
   // getRequiredFields(type).map(f => f.name)}` straight to `SchemaEditor`.
   // `TracePropsEditor` has no equivalent knob, so force those same
-  // semantically-required paths (`insightRequiredFields.js` — the single
+  // semantically-required paths (`schemas/requiredFields.js`, generated — the single
   // source of truth both this and the old code read) open here, regardless
   // of the schema-required/present computation. This is a general fix (every
   // TracePropsEditor consumer benefits, not just the exploration Build rail).

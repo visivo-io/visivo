@@ -34,7 +34,10 @@ def authorize_device_callback():
         return jsonify({"error": "Token not provided"}), 400
 
     base_url = callback_server.config.get("BASE_URL")
-    Logger.instance().success("Received token via callback: " + token)
+    # The token itself is never logged. A terminal scrolls back, a log file
+    # is read by whoever can read files, and this is a cloud credential
+    # that outlives the session that printed it.
+    Logger.instance().success("Received an authorization token.")
     validate_and_store_token(token, host=base_url)
     token_received_event.set()
 

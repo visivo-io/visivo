@@ -270,6 +270,9 @@ class VisivoRunValidator:
             "surface-trace",
             "toggle-mode-insight",
             "week-selector-insight",
+            "gradient-grid-insight",
+            "string-slider-insight",
+            "hyphen-mode-insight",
         ]
 
         success = True

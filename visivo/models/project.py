@@ -24,6 +24,7 @@ from visivo.models.insight import Insight
 from visivo.models.markdown import Markdown
 from visivo.models.table import Table
 from visivo.models.defaults import Defaults
+from visivo.models.theme import Theme
 from visivo.models.dbt import Dbt
 from typing import List
 from visivo.models.base.named_model import NamedModel
@@ -54,6 +55,7 @@ class Project(NamedModel, ParentModel):
 
     models:
       - name: orders
+        source: ${ref(local-duckdb)}
         sql: SELECT * FROM orders
 
     insights:
@@ -86,6 +88,10 @@ class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults] = Field(
         None,
         description="Project-wide defaults, such as the source and alert to use when none is specified.",
+    )
+    theme: Optional[Theme] = Field(
+        None,
+        description="How dashboards look: colors, fonts and light / dark mode.",
     )
     dbt: Optional[Dbt] = Field(
         None,
@@ -429,6 +435,7 @@ class Project(NamedModel, ParentModel):
                     if key not in [
                         "props",
                         "defaults",
+                        "theme",
                         "layout",
                         "columns",
                         "display",

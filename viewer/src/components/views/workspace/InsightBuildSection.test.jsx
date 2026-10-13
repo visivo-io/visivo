@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import InsightBuildSection from './InsightBuildSection';
 import useStore from '../../../stores/store';
 import { saveAsMetric } from './saveAsMetricFlow';
+import { INTERACTION_TYPE_OPTIONS } from '../../../schemas/interactionHelp';
 
 async function renderSettled(ui) {
   // eslint-disable-next-line testing-library/no-unnecessary-act
@@ -691,6 +692,45 @@ describe('InsightBuildSection', () => {
       expect(updateInsightInteraction).toHaveBeenCalledWith('test_insight', 0, {
         value: '?{${ref(orders_q).region}}',
       });
+    });
+
+    // M6/M24 — the row used to strip with a greedy `/^\?\{([\s\S]*)\}$/` and
+    // wrap with a bare template literal, so a value carrying a SLICE never
+    // matched, the braces leaked into the field, and the next keystroke stored
+    // the whole thing wrapped again.
+    it('keeps the slice out of the edited body and re-attaches it on write', async () => {
+      const updateInsightInteraction = jest.fn();
+      useStore.setState({ updateInsightInteraction });
+      renderWithInteraction({ type: 'sort', value: '?{${ref(orders_q).month}}[0]' });
+      const textarea = await screen.findByTestId('mock-ref-textarea');
+      expect(textarea).toHaveValue('${ref(orders_q).month}');
+
+      fireEvent.change(textarea, { target: { value: '${ref(orders_q).month} DESC' } });
+      expect(updateInsightInteraction).toHaveBeenCalledWith('test_insight', 0, {
+        value: '?{${ref(orders_q).month} DESC}[0]',
+      });
+    });
+
+    it('repairs an already double-wrapped value instead of nesting further (M24)', async () => {
+      const updateInsightInteraction = jest.fn();
+      useStore.setState({ updateInsightInteraction });
+      renderWithInteraction({ type: 'filter', value: '?{?{${ref(orders_q).region}}}' });
+      const textarea = await screen.findByTestId('mock-ref-textarea');
+      expect(textarea).toHaveValue('${ref(orders_q).region}');
+
+      fireEvent.change(textarea, { target: { value: '${ref(orders_q).region} = 1' } });
+      expect(updateInsightInteraction).toHaveBeenCalledWith('test_insight', 0, {
+        value: '?{${ref(orders_q).region} = 1}',
+      });
+    });
+
+    it('offers the same three interaction types the right-rail editor offers', async () => {
+      renderWithInteraction({ type: 'sort', value: '' });
+      const select = await screen.findByTestId('interaction-type-select-0');
+      expect(select).toHaveTextContent('Sort');
+      // Both surfaces read their options out of the model-derived help module,
+      // so the labels cannot diverge between the two editors.
+      expect(INTERACTION_TYPE_OPTIONS.map(o => o.label)).toEqual(['Filter', 'Split', 'Sort']);
     });
 
     it('changing the interaction type select calls updateInsightInteraction with the new type', async () => {

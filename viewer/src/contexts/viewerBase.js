@@ -4,7 +4,7 @@
  * Visivo Studio serves the viewer at the router root — `/workspace`,
  * `/explorer`, `/runs` — so its internal navigations are written root-absolute
  * and the base is `''`. A host that mounts the viewer deeper (the cloud app, at
- * `/:account/:stage/:project/…`) sets the base once and every navigation lands
+ * `/:account/:branch/:project/…`) sets the base once and every navigation lands
  * inside it.
  *
  * Before this existed, the cloud app let those root-absolute navigations escape

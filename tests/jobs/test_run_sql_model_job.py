@@ -3,6 +3,8 @@
 import json
 import os
 
+import click
+
 import pytest
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.inputs.types.single_select import SingleSelectInput
@@ -152,3 +154,49 @@ class TestSqlModelSchemaArtifact:
         legacy = data[model_hash]
         assert set(legacy.keys()) == {"id", "name"}
         assert all(isinstance(v, str) for v in legacy.values())
+
+
+class TestUnaliasedColumnsFailTheRun:
+    """VIS-1329: a model whose SELECT has unaliased expression columns used to
+    preview fine and then fail deep inside an insight with "Column 'x' not
+    found", offering `_col_0` as the alternative. The run refuses instead."""
+
+    def _model(self, sql):
+        source = SourceFactory()
+        return SqlModel(name="m", sql=sql, source=f"ref({source.name})"), source
+
+    def test_an_unaliased_projection_stops_the_run(self):
+        from visivo.jobs.run_sql_model_job import _build_and_write_schema
+
+        model, source = self._model(
+            "SELECT date_trunc('day', created_at), count(*) FROM release_notes GROUP BY 1"
+        )
+
+        with pytest.raises(click.ClickException) as excinfo:
+            _build_and_write_schema(model, source, temp_folder())
+
+        message = str(excinfo.value)
+        # Names the model, both offending positions, and what to do about it.
+        assert "'m'" in message
+        assert "column 1" in message and "column 2" in message
+        assert "no alias" in message
+        assert "${ref(m)" in message
+
+    def test_the_aliased_form_writes_its_schema(self):
+        from visivo.jobs.run_sql_model_job import _build_and_write_schema
+
+        model, source = self._model("SELECT 1 as x")
+
+        schema = _build_and_write_schema(model, source, temp_folder())
+
+        assert list(schema[model.name_hash()]) == ["x"]
+
+    def test_the_placeholder_name_never_reaches_a_written_schema(self):
+        """The specific failure: `_col_0` in a schema file is unusable, because
+        the database returns `count_star()` and the author wrote neither."""
+        from visivo.jobs.run_sql_model_job import _build_and_write_schema
+
+        model, source = self._model("SELECT count(*) FROM t")
+
+        with pytest.raises(click.ClickException):
+            _build_and_write_schema(model, source, temp_folder())

@@ -12,7 +12,8 @@ import queue
 import sys
 from visivo.models.sources.source import Source
 from visivo.models.inputs.input import Input
-from visivo.jobs.job import JobResult
+from visivo.jobs.job import JobResult, diagnostic_object_ref, format_message_skipped
+from visivo.models.diagnostic import Diagnostic, DiagnosticPhase, DiagnosticRelated
 
 from visivo.jobs.run_insight_job import job as insight_job
 from visivo.jobs.run_source_schema_job import job as source_schema_job
@@ -23,6 +24,12 @@ from visivo.query.source_schema_cache import SourceSchemaCache
 from threading import Lock
 
 warnings.filterwarnings("ignore")
+
+# The node types create_jobs_from_item turns into jobs. Only these get a
+# synthesized "skipped" JobResult — presentation nodes (charts, dashboards,
+# rows...) sit above failed dependencies too, but they are not jobs and
+# recording them would bury the real failure in derived noise.
+_RUNNABLE_TYPES = (Insight, Input, SqlModel, Source)
 
 
 class DagRunner:
@@ -42,16 +49,69 @@ class DagRunner:
         self.threads = threads
         self.soft_failure = soft_failure
         self.server_url = server_url
-        self.job_dag = job_dag
         self.working_dir = working_dir
         self.run_id = run_id
-        self.job_tracking_dag = job_dag.copy()
         self.project_dag = project.dag()
+        self.job_dag = self._with_unbuilt_dependencies(job_dag)
+        self.job_tracking_dag = self.job_dag.copy()
         self.failed_job_results = []
         self.successful_job_results = []
         self.lock = Lock()
         # Schema cache for SQL model jobs - builds DataTypes once per source
         self.schema_cache = SourceSchemaCache()
+
+    def _with_unbuilt_dependencies(self, job_dag):
+        """``job_dag`` plus any dependency of it that nothing has built yet.
+
+        A filter says what to look at, not what a run needs: an insight can be
+        in scope while a model it reads is not. That model is usually still on
+        disk from an earlier run and the insight reads it there, but in a fresh
+        directory there is nothing to read and the insight fails on a
+        dependency it was never going to build.
+
+        Only unbuilt ones are added, so a filter over a warm directory still
+        runs exactly what it named.
+        """
+        from networkx import descendants
+
+        wanted = set(job_dag.nodes)
+        for node in list(job_dag.nodes):
+            # The project consumes everything, so its dependencies are the
+            # whole graph.
+            if node is self.project:
+                continue
+            for dependency in descendants(self.project_dag, node):
+                if dependency not in wanted and not self._is_built(dependency):
+                    wanted.add(dependency)
+
+        if wanted == set(job_dag.nodes):
+            return job_dag
+        return self.project_dag.subgraph(wanted).copy()
+
+    def _is_built(self, item):
+        """Whether this run's output directory already holds ``item``'s output.
+
+        The paths come from ``output_paths``, the same builders the jobs write
+        through: asking whether a file exists somewhere the writer no longer
+        puts it is a check that quietly answers the wrong question.
+
+        Only the types another job reads are answered, so an unknown type is
+        never dragged into the run.
+        """
+        import os
+
+        from visivo.output_paths import input_metadata_file, run_dir, schema_file
+
+        name = getattr(item, "name", None)
+        if not name:
+            return True
+
+        directory = run_dir(self.output_dir, self.run_id)
+        if isinstance(item, (SqlModel, Source)):
+            return os.path.exists(schema_file(directory, name))
+        if isinstance(item, Input):
+            return os.path.exists(input_metadata_file(directory, name))
+        return True
 
     def run(self):
         complete = False
@@ -75,10 +135,17 @@ class DagRunner:
                     job.future.add_done_callback(self.job_callback)
 
         if len(self.failed_job_results) > 0:
+            skipped_count = sum(
+                1
+                for result in self.failed_job_results
+                if result.diagnostic is not None and result.diagnostic.code == "dependency_failed"
+            )
+            error_count = len(self.failed_job_results) - skipped_count
+            skipped_suffix = f" ({skipped_count} dependent job(s) skipped)" if skipped_count else ""
             Logger.instance().info("")
             Logger.instance().info("")
             Logger.instance().error(
-                f"\n\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
+                f"\n\nRun failed in {round(time()-start_time, 2)}s with {error_count} query error(s){skipped_suffix}."
             )
             for result in self.failed_job_results:
                 Logger.instance().error(str(result.message))
@@ -121,6 +188,12 @@ class DagRunner:
                     Logger.instance().info(
                         f"Skipping job for '{terminal_node.name}' because it has a failed dependency"
                     )
+                    failed_upstreams = [
+                        descendant
+                        for descendant in descendants
+                        if job_tracker.is_job_name_failed(descendant.name)
+                    ]
+                    self.record_skipped_job(terminal_node, failed_upstreams)
                     self.job_tracking_dag.remove_node(terminal_node)
                     continue
 
@@ -132,6 +205,55 @@ class DagRunner:
                     job_tracker.track_job(job)
 
             return len(self.job_tracking_dag.nodes()) == 1
+
+    def record_skipped_job(self, item, failed_upstreams):
+        """Synthesize a failed JobResult for a runnable node skipped because an
+        upstream failed (M16). Before this, the skip was only a log line: no
+        JobResult, no failed_job_results entry — so the viewer saw an insight
+        silently produce nothing while only the upstream's failure surfaced.
+        """
+        if not isinstance(item, _RUNNABLE_TYPES):
+            return
+        object_ref = diagnostic_object_ref(item)
+        upstream_refs = [diagnostic_object_ref(upstream) for upstream in failed_upstreams]
+        upstream_names = ", ".join(f"'{ref.name}'" for ref in upstream_refs) or "a dependency"
+        message = (
+            f"Skipped {object_ref.type} '{object_ref.name}' because "
+            f"{'its dependency' if len(upstream_refs) == 1 else 'its dependencies'} "
+            f"{upstream_names} failed."
+        )
+        diagnostic = Diagnostic(
+            phase=DiagnosticPhase.RUN,
+            code="dependency_failed",
+            message=message,
+            object=object_ref,
+            hint="Fix the failed dependency and run again — this job never ran.",
+            related=[
+                DiagnosticRelated(
+                    message=f"{ref.type} '{ref.name}' failed",
+                    object=ref,
+                )
+                for ref in upstream_refs
+            ],
+        )
+        self.failed_job_results.append(
+            JobResult(
+                item=item,
+                success=False,
+                message=format_message_skipped(
+                    details=f"Skipped job for {object_ref.type} \033[4m{object_ref.name}\033[0m",
+                    error_msg=f"upstream {upstream_names} failed",
+                ),
+                diagnostic=diagnostic,
+            )
+        )
+
+    @property
+    def diagnostics(self):
+        """The structured failures of this run, in job-completion order."""
+        return [
+            result.diagnostic for result in self.failed_job_results if result.diagnostic is not None
+        ]
 
     def create_jobs_from_item(self, item: ParentModel):
         if isinstance(item, Insight):

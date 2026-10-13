@@ -80,27 +80,27 @@ describe('createDraft', () => {
 });
 
 describe('createBranch', () => {
-  it('returns the branch envelope on 201 and sends new_stage_name', async () => {
+  it('returns the branch envelope on 201 and sends new_branch_name', async () => {
     apiFetch.mockResolvedValueOnce(res(201, { id: 'b1' }));
-    await expect(createBranch({ projectId: 'p1', newStageName: 'feature-x' })).resolves.toEqual({
+    await expect(createBranch({ projectId: 'p1', newBranchName: 'feature-x' })).resolves.toEqual({
       id: 'b1',
     });
     expect(apiFetch).toHaveBeenCalledWith('/api/projectBranch/p1', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ new_stage_name: 'feature-x' }),
+      body: JSON.stringify({ new_branch_name: 'feature-x' }),
     });
   });
 
   it('throws errors, then detail, then a default', async () => {
     apiFetch.mockResolvedValueOnce(res(422, { errors: 'name taken' }));
-    await expect(createBranch({ projectId: 'p1', newStageName: 'x' })).rejects.toThrow(
+    await expect(createBranch({ projectId: 'p1', newBranchName: 'x' })).rejects.toThrow(
       'name taken',
     );
     apiFetch.mockResolvedValueOnce(res(403, { detail: 'denied' }));
-    await expect(createBranch({ projectId: 'p1', newStageName: 'x' })).rejects.toThrow('denied');
+    await expect(createBranch({ projectId: 'p1', newBranchName: 'x' })).rejects.toThrow('denied');
     apiFetch.mockResolvedValueOnce(res(500, REJECT));
-    await expect(createBranch({ projectId: 'p1', newStageName: 'x' })).rejects.toThrow(
+    await expect(createBranch({ projectId: 'p1', newBranchName: 'x' })).rejects.toThrow(
       'Failed to create branch',
     );
   });

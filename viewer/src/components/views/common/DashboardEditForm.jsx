@@ -12,6 +12,9 @@ import {
   createRow,
 } from '../workspace/itemMutations';
 import RowEditForm from './RowEditForm';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
+import { templateItemNames } from '../../project/template/templateHtml';
 
 /**
  * DashboardEditForm - Form for creating/editing Dashboard
@@ -25,6 +28,8 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const openWorkspaceTab = useStore(state => state.openWorkspaceTab);
 
   const [name, setName] = useState('');
+
+  const rename = useRenameFlow({ type: 'dashboard', recordName: dashboard?.name || '', name });
   const [rows, setRows] = useState([]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -62,6 +67,13 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   }, [dashboard]);
 
   const handleSubmit = async e => {
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (!isCreate && rename.nameChanged) {
+      e.preventDefault();
+      rename.start();
+      return;
+    }
     e.preventDefault();
     setError(null);
     setSaving(true);
@@ -189,8 +201,38 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const isValid = name.trim();
   const isNewObject = dashboard?.status === 'new';
 
+  // Saving goes out as a rows/items config, which would replace the template.
+  if (typeof dashboard?.config?.template === 'string') {
+    const placed = templateItemNames(dashboard.config.template);
+    return (
+      <div className="flex-1 overflow-y-auto p-4 space-y-3" data-testid="template-dashboard-readonly">
+        <p className="text-sm font-medium text-gray-900">{dashboard.name}</p>
+        <p className="text-xs text-gray-600">
+          This is a template dashboard. Its layout is HTML — edit{' '}
+          <code>its YAML file</code> in your editor.
+        </p>
+        {placed.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-700">Places</p>
+            <ul className="mt-1 text-xs text-gray-600 list-disc pl-4">
+              {placed.map(itemName => (
+                <li key={itemName}>{itemName}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="flex justify-end pt-4 border-t border-gray-200">
+          <ButtonOutline type="button" onClick={onClose} className="text-sm">
+            Close
+          </ButtonOutline>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-4">
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <FormAlert variant="error">{error}</FormAlert>}
 
@@ -199,7 +241,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
           label="Name"
           value={name}
           onChange={e => setName(e.target.value)}
-          disabled={!isCreate}
+          disabled={!isCreate && !rename.supported}
           helperText={!isCreate ? 'Dashboard names cannot be changed after creation.' : undefined}
         />
 

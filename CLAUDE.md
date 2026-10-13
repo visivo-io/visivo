@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Comments
+
+Default to no comment. Prefer a clearer name, an extracted function, or a test case that pins the behavior — those stay true as the code changes; a comment restating logic in prose does not.
+
+Add a comment only when:
+- the reasoning can't be inferred from the code or tests (a non-obvious external constraint, a workaround for a specific upstream bug), or
+- the logic is genuinely complex enough that a reader needs a map before diving in.
+
+When one is justified, keep it to a line or two — state the constraint, not the history of how it was found. This applies to Python and JS alike, and to comments already in a PR as much as new ones: when touching a file, trim existing comments down to this bar rather than leaving them.
+
 ## Development Commands
 
 ### Environment Setup
@@ -18,8 +28,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run CLI**: `visivo [command]`
 - **Ensure python file formatting**: ensure that all python files are formatted in accordance with our black settings
 - When editing the python in @visivo/ remember to run - `poetry run black .`
-- **Code comments**: Use comments sparingly. Avoid redundant comments that simply restate what the code does (e.g., `# Use preview-{insight_name} as run_id` followed by `run_id = f"preview-{insight.name}"`). Comments should provide context, explain "why" rather than "what", or document complex logic. Prefer clear variable names and function signatures with docstrings over inline comments.
-
 ### JavaScript Viewer Development
 - **Install dependencies**: `yarn install` (in `viewer/` directory)
 - **Run tests**: `yarn test`
@@ -315,5 +323,7 @@ Test Strategy:
 
 PostHog is the single source of conversion/activation truth across `www`, `visivo` (CLI + viewer), and `core`. The canonical, cross-repo contract for event names, the required `surface`/context properties, and identity stitching is **`../specs/marketing-relaunch/event-taxonomy.md`** — read it before adding or changing any tracking.
 
-- **CLI** emits `cli_command` / `api_request` / `new_installation` (anonymous `machine_id`, opt-out via `VISIVO_TELEMETRY_DISABLED`); the **viewer** onboarding emits events through `viewer/src/components/onboarding/telemetry.js` (`fireEvent` → `posthog.capture`, `surface: viewer`). The CLI never sends or stores email.
+- **CLI** emits `cli_command` / `api_request` / `new_installation` (anonymous `machine_id`); the **viewer** onboarding emits events through `viewer/src/components/onboarding/telemetry.js` (`fireEvent` → `posthog.capture`, `surface: viewer`). The CLI never sends or stores email.
+- **Developer machines are opted out on purpose.** Visivo's own developers run `visivo telemetry off` once (writes `telemetry_enabled: false` to `~/.visivo/config.yml`), because their daily `visivo serve` sessions are not product usage and were the bulk of PostHog volume in 2026. `visivo telemetry status` shows the effective state and why. Assume telemetry is off on this machine; do not "fix" that.
+- **Running water through the pipes (testing a tracking change):** prefix the one command with `VISIVO_TELEMETRY_FORCE=true` (e.g. `VISIVO_TELEMETRY_FORCE=true visivo serve`) — it overrides every opt-out for that process, including the viewer it serves. Then confirm the events arrived with the PostHog MCP (`execute-sql` over `events` in project 193619, filtering on `distinct_id` = the contents of `~/.visivo/machine_id`, or on the event/props you added, `timestamp >= now() - INTERVAL 1 HOUR`). Never leave force set in a shell profile, `sandbox.sh`, or CI. `api_request` is coalesced to one event per endpoint per minute with `request_count`, so a burst you generate shows up as one row with a count, not many rows.
 - When you add/extend an onboarding step, command, or activation moment, add/update its event **in the taxonomy doc first**, then implement it (snake_case, `surface` + required props, additive — never rename a live event). After shipping, verify it lands in PostHog (project 193619).

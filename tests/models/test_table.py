@@ -221,3 +221,216 @@ def test_Table_pivot_with_empty_columns_is_rejected():
     empty-`ON` pivot; an empty list now counts as unspecified columns."""
     with pytest.raises(ValidationError, match="columns"):
         Table(name="p", columns=[], rows=["${ref(i).p}"], values=["sum(${ref(i).v})"])
+
+
+# ---------------------------------------------------------------------------
+# VIS-1463 T3: pivot `values` must be a single aggregate (checked with SQLGlot)
+# ---------------------------------------------------------------------------
+
+
+def _pivot(values):
+    return Table(
+        name="p",
+        columns=["${ref(sales-insight).region}"],
+        rows=["${ref(sales-insight).product}"],
+        values=values,
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "sum(${ref(sales-insight).revenue})",
+        "SUM(${ref(sales-insight).revenue})",
+        "count(*)",
+        "count(${ref(sales-insight).revenue})",
+        "count(distinct ${ref(sales-insight).revenue})",
+        "avg(${ref(sales-insight).revenue})",
+        "min(${ref(sales-insight).revenue})",
+        "max(${ref(sales-insight).revenue})",
+        "sum(case when ${ref(sales-insight).revenue} > 0 then 1 else 0 end)",
+        "median(${ref(sales-insight).revenue})",
+        "arg_max(${ref(sales-insight).revenue}, ${ref(sales-insight).region})",
+        "quantile_cont(${ref(sales-insight).revenue}, 0.5)",
+        # SQLGlot wraps these in IgnoreNulls — the aggregate underneath still counts.
+        "any_value(${ref(sales-insight).revenue})",
+        "first(${ref(sales-insight).revenue} ignore nulls)",
+        # DuckDB aggregates SQLGlot does not model (parsed as Anonymous): a single
+        # unknown call is left for DuckDB to type-check, not rejected here.
+        "mode(${ref(sales-insight).revenue})",
+        "product(${ref(sales-insight).revenue})",
+    ],
+)
+def test_Table_pivot_values_accepts_aggregates(value):
+    table = _pivot([value])
+    assert table.values == [value]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "${ref(sales-insight).revenue}",  # bare column
+        "sum(${ref(sales-insight).revenue}) + 1",  # arithmetic around the aggregate
+        "sum(${ref(sales-insight).revenue}) over (partition by ${ref(sales-insight).region})",
+        "coalesce(sum(${ref(sales-insight).revenue}), 0)",  # scalar wrapping the aggregate
+        "upper(${ref(sales-insight).region})",  # scalar function
+        "cast(sum(${ref(sales-insight).revenue}) as int)",  # cast around the aggregate
+        "1",  # literal
+    ],
+)
+def test_Table_pivot_values_rejects_non_aggregates(value):
+    with pytest.raises(ValidationError) as exc_info:
+        _pivot([value])
+    message = str(exc_info.value)
+    assert "is not an aggregate" in message
+    # The error names the offending value so the user can find it.
+    assert value in message
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        # Part of the aggregate call's own syntax — accepted.
+        "sum(${ref(sales-insight).revenue}) filter (where ${ref(sales-insight).revenue} > 0)",
+        "count(*) filter (where ${ref(sales-insight).revenue} > 0)",
+        "percentile_cont(0.5) within group (order by ${ref(sales-insight).revenue})",
+    ],
+)
+def test_Table_pivot_values_accepts_filter_and_within_group(value):
+    assert _pivot([value]).values == [value]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        # SQLGlot types these as AggFunc, DuckDB only has them as window functions.
+        "lag(${ref(sales-insight).revenue})",
+        "lead(${ref(sales-insight).revenue})",
+        "first_value(${ref(sales-insight).revenue})",
+        "nth_value(${ref(sales-insight).revenue}, 1)",
+    ],
+)
+def test_Table_pivot_values_rejects_window_only_functions(value):
+    with pytest.raises(ValidationError, match="is a window function"):
+        _pivot([value])
+
+
+def test_Table_pivot_values_rejects_multiple_statements():
+    with pytest.raises(ValidationError, match="must be a single expression"):
+        _pivot(["sum(${ref(sales-insight).revenue}); select 1"])
+
+
+def test_Table_pivot_values_parse_error_shows_the_users_ref_not_a_placeholder():
+    with pytest.raises(ValidationError) as exc_info:
+        _pivot(["sum(${ref(sales-insight).revenue}) +"])
+    message = str(exc_info.value)
+    assert "could not be parsed as SQL" in message
+    assert "__visivo_ref_" not in message
+
+
+def test_Table_pivot_values_non_list_is_left_to_field_validation():
+    with pytest.raises(ValidationError) as exc_info:
+        Table(
+            name="p",
+            columns=["${ref(sales-insight).region}"],
+            rows=["${ref(sales-insight).product}"],
+            values="sum(${ref(sales-insight).revenue})",
+        )
+    message = str(exc_info.value)
+    assert "Input should be a valid list" in message
+    assert "is not an aggregate" not in message
+
+
+def test_Table_pivot_values_rejects_unparseable_sql():
+    with pytest.raises(ValidationError, match="could not be parsed as SQL"):
+        _pivot(["sum(${ref(sales-insight).revenue}"])
+
+
+def test_Table_pivot_values_rejects_blank_entry():
+    with pytest.raises(ValidationError, match="not a valid expression"):
+        _pivot(["sum(${ref(sales-insight).revenue})", "   "])
+
+
+def test_Table_pivot_values_error_names_only_the_bad_value():
+    """A good value followed by a bad one: the bad one is named, the good one is not."""
+    with pytest.raises(ValidationError) as exc_info:
+        _pivot(["sum(${ref(sales-insight).revenue})", "${ref(sales-insight).cost}"])
+    message = str(exc_info.value)
+    assert "'${ref(sales-insight).cost}' is not an aggregate" in message
+    assert "'sum(${ref(sales-insight).revenue})' is not" not in message
+
+
+# ---------------------------------------------------------------------------
+# VIS-1463 T4: format_cells colours must be hex (the viewer parses hex only)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("color", ["#713b57", "#FFAA00", "#abc", "#ABC"])
+def test_Table_format_cells_accepts_hex_colors(color):
+    table = Table(
+        name="f",
+        data="ref(my-insight)",
+        format_cells={"scope": "table", "min_color": color, "max_color": "#000000"},
+    )
+    assert table.format_cells.min_color == color
+
+
+@pytest.mark.parametrize("color", ["red", "rgb(255, 0, 0)", "713b57", "#gggggg", "#12345", ""])
+def test_Table_format_cells_rejects_non_hex_colors(color):
+    with pytest.raises(ValidationError) as exc_info:
+        Table(
+            name="f",
+            data="ref(my-insight)",
+            format_cells={"scope": "table", "min_color": "#000000", "max_color": color},
+        )
+    assert "max_color" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# VIS-1463 T5: rows_per_page enum — `ten` is 10 and every documented size loads
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("size", [3, 5, 10, 25, 50, 100, 500, 1000])
+def test_Table_rows_per_page_accepts_every_enum_size(size):
+    table = Table(name="t", rows_per_page=size)
+    assert int(table.rows_per_page) == size
+
+
+def test_Table_rows_per_page_ten_is_ten():
+    from visivo.models.table import RowsPerPageEnum
+
+    assert RowsPerPageEnum.ten == 10
+    assert sorted(int(m) for m in RowsPerPageEnum) == [3, 5, 10, 25, 50, 100, 500, 1000]
+
+
+def test_Table_rows_per_page_rejects_unlisted_size():
+    with pytest.raises(ValidationError, match="rows_per_page"):
+        Table(name="t", rows_per_page=15)
+
+
+# ---------------------------------------------------------------------------
+# `data` discriminator — object inputs (Insight / SqlModel instances) and the
+# unrecognised fallthrough
+# ---------------------------------------------------------------------------
+
+
+def test_get_data_discriminator_value_handles_model_instances_and_unknowns():
+    from visivo.models.table import get_data_discriminator_value
+    from tests.factories.model_factories import InsightFactory, SqlModelFactory
+
+    assert get_data_discriminator_value(InsightFactory()) == "Insight"
+    assert get_data_discriminator_value(SqlModelFactory()) == "Sql"
+    assert get_data_discriminator_value({"interactions": []}) == "Insight"
+    assert get_data_discriminator_value({"sql": "select 1"}) == "Sql"
+    assert get_data_discriminator_value({"unrelated": 1}) is None
+    assert get_data_discriminator_value(42) is None
+
+
+def test_Table_with_data_insight_instance():
+    from tests.factories.model_factories import InsightFactory
+
+    insight = InsightFactory(name="inline-insight")
+    table = Table(name="t", data=insight)
+    assert table.data.name == "inline-insight"
+    assert table.child_items() == [insight]

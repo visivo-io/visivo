@@ -291,3 +291,29 @@ def test_collect_deploy_resources_still_emits_project_level_fields():
     assert "nested_dim" not in {d["name"] for d in layer["dimensions"]}
     (deployed_model,) = layer["models"]
     assert {d["name"] for d in deployed_model["dimensions"]} == {"nested_dim"}
+
+
+def test_collect_item_lists_shapes_entries_like_the_list_endpoints():
+    from tests.factories.model_factories import TemplateDashboardFactory
+
+    project = ProjectFactory(chart_ref=True, dashboards=[TemplateDashboardFactory()])
+
+    lists = Serializer(project=project).collect_item_lists()
+
+    assert set(lists) == {"charts", "tables", "markdowns", "inputs"}
+    [chart] = lists["charts"]
+    assert chart["name"] == "chart_name"
+    assert chart["status"] == "published"
+    assert chart["config"]["name"] == "chart_name"
+    assert "file_path" not in chart["config"]
+
+
+def test_collect_item_lists_inlines_a_tables_model_data():
+    model = SqlModelFactory(name="orders_model")
+    table = Table(name="orders_table", data="${ref(orders_model)}")
+    project = ProjectFactory(models=[model], tables=[table], dashboards=[])
+
+    [listed] = Serializer(project=project).collect_item_lists()["tables"]
+
+    assert listed["config"]["data"]["name"] == "orders_model"
+    assert listed["config"]["data"]["sql"] == model.sql

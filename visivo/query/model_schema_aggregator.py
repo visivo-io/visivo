@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.output_paths import run_dir, schema_file as schema_file_path
 from visivo.logger.logger import Logger
 
 
@@ -100,7 +101,7 @@ class ModelSchemaAggregator:
             Schema data dictionary or None if not found.
         """
         try:
-            schema_file = f"{output_dir}/{run_id}/schemas/{model_name}.json"
+            schema_file = schema_file_path(run_dir(output_dir, run_id), model_name)
             if not os.path.exists(schema_file):
                 return None
 
@@ -131,7 +132,7 @@ class ModelSchemaAggregator:
             List of model schema metadata dictionaries.
         """
         schemas: List[Dict[str, Any]] = []
-        schemas_dir = f"{output_dir}/{run_id}/schemas"
+        schemas_dir = f"{run_dir(output_dir, run_id)}/schemas"
 
         if not os.path.exists(schemas_dir):
             return schemas

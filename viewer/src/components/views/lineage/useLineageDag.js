@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import dagre from 'dagre';
 import useStore from '../../../stores/store';
-import { parseRefValue } from '../../../utils/refString';
 import { withoutDeleted } from '../common/softDelete';
 
 /**
@@ -86,42 +85,6 @@ function getNodeId(type, name) {
  */
 function getEdgeId(sourceType, sourceName, targetType, targetName) {
   return `edge-${sourceType}-${sourceName}-to-${targetType}-${targetName}`;
-}
-
-/**
- * Extract referenced object names from a dashboard's config rows/items.
- * Items can reference charts, tables, markdowns, selectors, or inputs via ref() strings or inline objects.
- *
- * Container items nest further layout via `item.rows[].items[]` (the Item.rows
- * nesting from VIS-747/748), so we recurse into nested rows to arbitrary depth
- * and collect every leaf ref at all nesting levels.
- */
-function extractDashboardItemRefs(config) {
-  const refs = [];
-
-  const collectFromRows = rows => {
-    (rows || []).forEach(row => {
-      (row.items || []).forEach(item => {
-        ['chart', 'table', 'markdown', 'input'].forEach(field => {
-          const val = item[field];
-          if (val) {
-            if (typeof val === 'string') {
-              refs.push(parseRefValue(val));
-            } else if (typeof val === 'object' && val.name) {
-              refs.push(val.name);
-            }
-          }
-        });
-        // Container items nest further rows — recurse to capture nested members.
-        if (Array.isArray(item.rows)) {
-          collectFromRows(item.rows);
-        }
-      });
-    });
-  };
-
-  collectFromRows(config?.rows);
-  return refs;
 }
 
 /**
@@ -410,10 +373,11 @@ export function useLineageDag() {
         dashboard: dashboard,
       });
 
-      // Parse dashboard config to extract referenced items
-      const itemRefs = extractDashboardItemRefs(dashboard.config);
-      // Deduplicate refs (same item may be referenced multiple times in different rows)
-      const uniqueRefs = [...new Set(itemRefs)];
+      // The backend's child_item_names, the same source every other type here
+      // uses. Re-deriving them from `config.rows` meant a TEMPLATE dashboard —
+      // whose items live in `data-visivo-item` slots in HTML, not in rows —
+      // contributed no edges at all and drew as an isolated node.
+      const uniqueRefs = [...new Set(dashboard.child_item_names || [])];
       uniqueRefs.forEach(refName => {
         const childType = objectTypeByName[refName];
         if (childType) {

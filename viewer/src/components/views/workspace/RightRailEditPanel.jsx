@@ -29,6 +29,7 @@ import { COLLECTION_KEY } from './collectionKeys';
 import useRecordSave from '../../../hooks/useRecordSave';
 import RecordRunStatus from './RecordRunStatus';
 import { appendEmptyItem, createRow, runDashboardConfigGate } from './itemMutations';
+import { templateItemNames } from '../../project/template/templateHtml';
 
 /**
  * RightRailEditPanel — VIS-802 / Track G G-1.
@@ -64,7 +65,7 @@ import { appendEmptyItem, createRow, runDashboardConfigGate } from './itemMutati
  * bespoke JSX). csv/local-merge script models edit INLINE via their existing
  * forms (VIS-980). The remaining heavy forms (chart/table/insight/input/model/
  * markdown/source) keep their bespoke UI + save affordances pending their own
- * migration stages.
+ * migration branches.
  *
  * SELECTION SOURCE: Outline-tree, Library, AND canvas — a canvas click routes
  * through `setWorkspaceSelection` (VIS-994), which writes the outline key and
@@ -114,7 +115,7 @@ const parseOutlineKey = key => {
 };
 
 /**
- * ReadOnlyNotice — VIS-1025. Compact muted band shown when the cloud stage is
+ * ReadOnlyNotice — VIS-1025. Compact muted band shown when the cloud branch is
  * read-only (capabilities.can_edit === false): names the state and surfaces the
  * server's `edit_action` hint (e.g. "Create a draft to edit"). Local serve
  * (capabilities null) never renders this.
@@ -224,7 +225,7 @@ const RightRailEditPanel = () => {
    */
   const persistConfig = useCallback(
     (nextConfig) => {
-      // VIS-1025 read-only hold — a read-only stage neither writes nor persists.
+      // VIS-1025 read-only hold — a read-only branch neither writes nor persists.
       if (readOnly) return;
       captureDashboardBaseline?.(dashboardName);
       if (updateDashboardConfigOptimistic) {
@@ -409,10 +410,13 @@ const RightRailEditPanel = () => {
   }
 
   // ── Project-chrome / defaults → DefaultsEditForm (VIS-809 / M-3) ───────────
-  if (type === 'project' || type === 'defaults') {
+  if (type === 'project' || type === 'defaults' || type === 'theme') {
     return (
       <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-        <DefaultsEditForm name={activeObject.name} />
+        <DefaultsEditForm
+          name={type === 'theme' ? undefined : activeObject.name}
+          initialTab={type === 'theme' ? 'theme' : 'defaults'}
+        />
       </div>
     );
   }
@@ -431,6 +435,23 @@ const RightRailEditPanel = () => {
   }
 
   // ── Scoped dashboard → route by the Outline selection ──────────────────────
+  // A template dashboard's layout is an HTML file; the rows/items editor and its
+  // Save would replace it with a grid.
+  if (isDashboardScoped && typeof dashboardConfig?.template === 'string') {
+    const placed = templateItemNames(dashboardConfig.template);
+    return (
+      <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
+        <Placeholder
+          testId="right-rail-template-dashboard"
+          title="Template dashboard"
+          body={`Its layout is HTML — edit its YAML file in your editor.${
+            placed.length ? ` Places: ${placed.join(', ')}.` : ''
+          }`}
+        />
+      </div>
+    );
+  }
+
   if (isDashboardScoped && dashboardConfig) {
     const sel = parseOutlineKey(outlineKey);
 

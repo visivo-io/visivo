@@ -11,12 +11,18 @@ import { io } from 'socket.io-client';
 import useStore from '../../../stores/store';
 import useProjectChangeListener from './useProjectChangeListener';
 import { setWorkspaceTelemetryListener } from './telemetry';
+import { setGlobalURLConfig, createURLConfig } from '../../../contexts/URLContext';
 
 jest.mock('socket.io-client', () => {
   const handlers = {};
   const socket = {
     on: jest.fn((event, fn) => {
       handlers[event] = fn;
+    }),
+    // The seam removes its own listener on unsubscribe rather than closing a
+    // connection other screens may still be using.
+    off: jest.fn(event => {
+      delete handlers[event];
     }),
     close: jest.fn(),
     _handlers: handlers,
@@ -84,5 +90,23 @@ describe('useProjectChangeListener (VIS-808)', () => {
     } finally {
       unsubscribe();
     }
+  });
+
+  // VIS-1326: a dist build is static files with no Socket.IO server, so the
+  // connection 404-polled forever. Gated on the same server-vs-dist signal
+  // the router uses (urls.js's `socketIo` key).
+  describe('on a dist build', () => {
+    afterEach(() => {
+      setGlobalURLConfig(createURLConfig({ environment: 'server' }));
+    });
+
+    test('never opens the socket, and sets no soft-reload flag', () => {
+      setGlobalURLConfig(createURLConfig({ environment: 'dist' }));
+
+      renderHook(() => useProjectChangeListener());
+
+      expect(io).not.toHaveBeenCalled();
+      expect(window.__VISIVO_SOFT_RELOAD__).toBeUndefined();
+    });
   });
 });

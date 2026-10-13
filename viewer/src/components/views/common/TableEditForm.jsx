@@ -10,10 +10,11 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
-import RefTextArea from './RefTextArea';
+import ExpressionField from './ExpressionField';
 import Select from '../../common/Select';
-import { refKindsFor } from './fieldTypes';
 import { REF_INSERT_HINT } from './RefTextArea';
+import useRenameFlow from '../../../hooks/useRenameFlow';
+import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -55,6 +56,10 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
   const [deleting, setDeleting] = useState(false);
 
   const isEditMode = !!table && !isCreate;
+
+  const recordName = table?.name || '';
+
+  const rename = useRenameFlow({ type: 'table', recordName, name });
   const isNewObject = table?.status === ObjectStatus.NEW;
 
   // Combine insights and models for the data source dropdown
@@ -173,6 +178,12 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   const handleSave = async () => {
     if (!validateForm()) return;
+    // A changed name in edit mode is a RENAME — its own server operation,
+    // confirmed first, because every `${ref()}` to this object moves with it.
+    if (isEditMode && rename.nameChanged) {
+      rename.start();
+      return;
+    }
 
     setSaving(true);
     setSaveError(null);
@@ -219,6 +230,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   return (
     <>
+      {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
@@ -235,7 +247,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
                 id="tableName"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                disabled={isEditMode}
+                disabled={isEditMode && !rename.supported}
                 placeholder=" "
                 className={`
                   block w-full px-3 py-2.5 text-sm text-gray-900
@@ -516,10 +528,11 @@ const RefListField = ({ label, items, onChange, helperText, error }) => {
       {items.map((item, index) => (
         <div key={index} className="flex items-start gap-1.5">
           <div className="flex-1">
-            <RefTextArea
+            <ExpressionField
+              objectType="table"
+              field="columns"
               value={item}
               onChange={value => handleChange(index, value)}
-              allowedTypes={refKindsFor('table', 'columns')}
               rows={1}
             />
           </div>

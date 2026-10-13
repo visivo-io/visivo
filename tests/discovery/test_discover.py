@@ -116,7 +116,14 @@ def test_Core_Parser_includes_dbt():
     assert discover.files == [project_file, dbt_file, profile_file]
 
 
-def test_Core_Parser_includes_git():
+def test_Core_Parser_git_include_says_the_feature_is_gone():
+    """A `.git@` path used to be cloned from GitHub (VIS-1456).
+
+    It now fails — but as a missing FILE, which is true and useless. The two
+    tests this replaces cloned over the network to assert the old behaviour;
+    what matters now is that someone upgrading is told what happened rather
+    than left looking for a file they never had.
+    """
     output_dir = temp_folder()
     project_file = temp_file(
         contents=yaml.dump(
@@ -134,35 +141,19 @@ def test_Core_Parser_includes_git():
         output_dir=output_dir,
         home_dir=os.path.dirname(profile_file).replace(".visivo", ""),
     )
-    git_models_file = Path(f"{output_dir}/.visivo_cache/visivo-io/example-include@main/models.yml")
-    if os.path.exists(
-        f"{output_dir}/.visivo_cache/visivo-io/example-include@main/{PROJECT_FILE_NAME}"
-    ):
-        git_project_file = Path(
-            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/{PROJECT_FILE_NAME}"
-        )
-    else:
-        git_project_file = Path(
-            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/project.visivo.yml"
-        )
 
-    assert discover.files == [
-        project_file,
-        git_project_file,
-        git_models_file,
-        profile_file,
-    ]
+    with pytest.raises(click.ClickException) as error:
+        discover.files
+
+    assert "no longer supported" in str(error.value)
+    assert "visivo-io/example-include.git@main" in str(error.value)
 
 
-def test_Core_Parser_includes_git_single_file():
+def test_Core_Parser_an_ordinary_missing_include_still_reads_as_missing():
+    """The git message is scoped to `.git@`, so a plain typo is unaffected."""
     output_dir = temp_folder()
     project_file = temp_file(
-        contents=yaml.dump(
-            {
-                "name": "project",
-                "includes": [{"path": "visivo-io/example-include.git@main -- models.yml"}],
-            }
-        ),
+        contents=yaml.dump({"name": "project", "includes": [{"path": "nope.yml"}]}),
         output_dir=output_dir,
         name=PROJECT_FILE_NAME,
     )
@@ -172,13 +163,12 @@ def test_Core_Parser_includes_git_single_file():
         output_dir=output_dir,
         home_dir=os.path.dirname(profile_file).replace(".visivo", ""),
     )
-    git_models_file = Path(f"{output_dir}/.visivo_cache/visivo-io/example-include@main/models.yml")
 
-    assert discover.files == [
-        project_file,
-        git_models_file,
-        profile_file,
-    ]
+    with pytest.raises(click.ClickException) as error:
+        discover.files
+
+    assert "does not exist" in str(error.value)
+    assert "no longer supported" not in str(error.value)
 
 
 def test_Discover_directory_inclusion_recursive():

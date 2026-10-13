@@ -4,6 +4,7 @@ from flask import Response, jsonify, request, send_from_directory
 from pydantic import ValidationError
 
 from visivo.logger.logger import Logger
+from visivo.server.managers.dashboard_manager import TemplateDashboardReadOnly
 from visivo.server.managers.object_manager import ObjectStatus
 
 
@@ -124,6 +125,8 @@ def register_dashboard_views(app, flask_app, output_dir):
                 ),
                 201 if status == ObjectStatus.NEW else 200,
             )
+        except TemplateDashboardReadOnly as e:
+            return jsonify({"error": str(e)}), 400
         except ValidationError as e:
             Logger.instance().debug(f"Dashboard validation failed: {e}")
             first_error = e.errors()[0]

@@ -10,7 +10,7 @@ import {
 } from '../../../stores/explorerStore';
 import InsightEditFormFields from '../common/InsightEditFormFields';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
-import RefTextArea from '../common/RefTextArea';
+import ExpressionField from '../common/ExpressionField';
 import Select from '../../common/Select';
 import { checkRefTargets } from './refPreflight';
 import { formatRefExpression } from '../../../utils/refString';
@@ -18,16 +18,15 @@ import { isNumericColumnType } from '../../../utils/columnType';
 import SaveAsMetricPrompt from './SaveAsMetricPrompt';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import { saveAsMetric, suggestMetricName } from './saveAsMetricFlow';
-import { refKindsFor } from '../common/fieldTypes';
+import { encodeQueryString } from '../../../utils/expressionCodec';
+import {
+  INTERACTION_HELP,
+  INTERACTION_TYPE_OPTIONS,
+  interactionExampleHint,
+} from '../../../schemas/interactionHelp';
 
 const INSIGHT_COLORS = getTypeColors('insight');
 const InsightTypeIcon = getTypeIcon('insight');
-
-const INTERACTION_TYPES = [
-  { value: 'filter', label: 'Filter' },
-  { value: 'split', label: 'Split' },
-  { value: 'sort', label: 'Sort' },
-];
 
 const InteractionRow = ({ interaction, index, insightName, updateInsightInteraction, handleRemoveInteraction }) => {
   const { isOver, setNodeRef } = useDroppable({
@@ -35,11 +34,7 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
     data: { type: 'interaction-zone', insightName, index },
   });
 
-  const innerValue = (() => {
-    const v = interaction.value || '';
-    const m = v.match(/^\?\{([\s\S]*)\}$/);
-    return m ? m[1] : v;
-  })();
+  const interactionType = INTERACTION_HELP[interaction.type] ? interaction.type : 'filter';
 
   return (
     <div data-testid={`insight-interaction-${index}`} className="flex items-center gap-2">
@@ -48,7 +43,7 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         size="sm"
         className="min-w-[110px]"
         value={interaction.type || 'filter'}
-        options={INTERACTION_TYPES}
+        options={INTERACTION_TYPE_OPTIONS}
         onChange={type => {
           updateInsightInteraction(insightName, index, { type });
         }}
@@ -58,16 +53,16 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
         className={`flex-1 ${isOver ? 'ring-2 ring-primary-400 rounded' : ''}`}
         data-testid={`interaction-value-field-${index}`}
       >
-        <RefTextArea
-          value={innerValue}
+        <ExpressionField
+          objectType="interaction"
+          field={interactionType}
+          value={interaction.value || ''}
           onChange={newVal => {
-            updateInsightInteraction(insightName, index, {
-              value: newVal ? `?{${newVal}}` : '',
-            });
+            updateInsightInteraction(insightName, index, { value: newVal });
           }}
           label=""
           rows={1}
-          allowedTypes={refKindsFor('interaction', 'filter')}
+          helperText={interactionExampleHint(interactionType)}
         />
       </div>
       <button
@@ -209,7 +204,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
       if (dragData.source === 'pill') {
         if (!dragData.sourcePath || !dragData.raw) return;
         if (dragData.sourcePath === path) return; // dropped back on itself — no-op, nothing to warn about
-        setInsightProp(insightName, path, `?{${dragData.raw}}`);
+        setInsightProp(insightName, path, encodeQueryString({ body: dragData.raw }));
         removeInsightProp(insightName, dragData.sourcePath);
         return;
       }
@@ -251,7 +246,7 @@ const InsightBuildSection = ({ insightName, isExpanded, onToggleExpand }) => {
         showWorkspaceToast?.("Can't drop that here.");
         return;
       }
-      setInsightProp(insightName, path, `?{${body}}`);
+      setInsightProp(insightName, path, encodeQueryString({ body }));
     },
     [activeModelName, insightName, setInsightProp, removeInsightProp, showWorkspaceToast]
   );

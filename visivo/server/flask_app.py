@@ -23,10 +23,22 @@ from visivo.server.managers.run_manager import RunManager
 from visivo.server.managers.staged_manager import StagedManager
 
 
+from visivo.server.constants import resolve_host
+
+
 class FlaskApp:
 
-    def __init__(self, output_dir, project: Project, working_dir=None):
+    def __init__(self, output_dir, project: Project, working_dir=None, host=None, port=None):
         self.app = Flask(__name__, static_folder=output_dir, static_url_path="/data")
+
+        # Which Visivo deployment this serve is bound to (VIS-1376). Everything
+        # that reaches cloud reads it from here rather than from the import-time
+        # constant, which a --host flag cannot change.
+        self.host = resolve_host(host)
+        # The port this serve is actually on. The device-authorize callback URL
+        # is built from it — hardcoding 8000 sent the token nowhere whenever
+        # someone served on a different port.
+        self.port = port
 
         self._project_json = (
             Serializer(project=project).dereference().model_dump_json(exclude_none=True)
@@ -37,6 +49,7 @@ class FlaskApp:
         self.output_dir = output_dir
         self.hot_reload_server = None  # Will be set by serve_phase
         self._cached_defaults = None
+        self._cached_theme = None
         # In-memory run registry for the run-on-save loop (mirrors the cloud Run
         # model so the viewer's run-poller / Runs view work locally).
         self.run_manager = RunManager()
@@ -118,10 +131,11 @@ class FlaskApp:
         ]
 
     def has_draft_changes(self) -> bool:
-        """True when any manager holds an unpublished draft (or defaults are cached)."""
+        """True when any manager holds an unpublished draft (or project settings are cached)."""
         return (
             any(m.has_unpublished_changes() for m in self._all_object_managers())
             or self._cached_defaults is not None
+            or self._cached_theme is not None
         )
 
     def clear_draft_caches(self) -> None:
@@ -129,6 +143,7 @@ class FlaskApp:
         for manager in self._all_object_managers():
             manager.clear_cache()
         self._cached_defaults = None
+        self._cached_theme = None
 
     def matches_served_project(self, project: Project) -> bool:
         """True when ``project`` serializes identically to the currently served project.

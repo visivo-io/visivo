@@ -31,7 +31,7 @@ export const fetchProjectBlob = async (projectId = null) => {
  *
  * Locally (visivo serve) this returns a list with one element — the
  * current project. In cloud (core) this returns the projects the
- * authenticated user can see in the active stage.
+ * authenticated user can see in the active branch.
  *
  * Note: the list endpoint does NOT take a project_id — the concept of
  * "list, but only this one project" is incoherent. To fetch a single

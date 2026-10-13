@@ -141,7 +141,7 @@ def write_project_file(project, project_dir):
 
     if project_dir:
         gitignore_path = os.path.join(project_dir, ".gitignore")
-        lines_to_add = {".env", "target", ".visivo_cache"}
+        lines_to_add = {".env", "target"}
 
         existing_lines = set()
         if os.path.exists(gitignore_path):

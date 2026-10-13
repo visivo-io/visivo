@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
 import RunsToolIcon from './RunsToolIcon';
-import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
+import { PiRobot } from 'react-icons/pi';
+import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight, FiTrash2, FiLock } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
@@ -19,7 +20,7 @@ const HAIR = 'rgba(255,255,255,.14)';
 const SUCCESS = '#16a34a';
 const PRIMARY = '#713B57';
 
-// visivo serve has no real stages — it is always the single "Local" stage.
+// visivo serve has no real branches — it is always the single "Local" branch.
 const LOCAL_STAGE = {
   id: 'local',
   name: 'Local',
@@ -43,15 +44,20 @@ const LOCAL_STAGE = {
 // `view_project` item); the others have their own anchors elsewhere.
 const DEFAULT_TOOLS = [
   { id: 'workspace', label: 'Workspace', to: '/workspace', icon: PiPencil },
+  // Second, beside Workspace: asking the agent for a change is another way of
+  // doing what Workspace does by hand, and both produce the same drafts. Runs
+  // and Dashboards are what you look at afterwards.
+  { id: 'agent', label: 'Agent', to: '/agent', icon: PiRobot },
   { id: 'runs', label: 'Runs', to: '/runs', icon: RunsToolIcon },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate, onbTarget: 'top-nav-project' },
 ];
 
 /* ---------------------------------------------------------------- menu row */
-function Row({ children, active, onClick, style }) {
+function Row({ children, active, onClick, style, ...rest }) {
   const [hover, setHover] = React.useState(false);
   return (
     <div
+      {...rest}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -73,7 +79,7 @@ function Row({ children, active, onClick, style }) {
   );
 }
 
-const StageDot = ({ color, size = 9 }) => (
+const BranchDot = ({ color, size = 9 }) => (
   <span style={{ width: size, height: size, borderRadius: 99, background: color, flexShrink: 0, display: 'inline-block' }} />
 );
 
@@ -84,10 +90,10 @@ const MenuLabel = ({ children }) => (
 );
 
 /* -------------------------------------------------- STAGE dropdown (cloud) */
-function StageRow({ s, active, onPick }) {
+function BranchRow({ s, active, onPick }) {
   return (
     <Row active={active} onClick={onPick} style={{ borderRadius: 6 }}>
-      <StageDot color={s.color} />
+      <BranchDot color={s.color} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontWeight: 600 }}>{s.name}</span>
@@ -105,12 +111,20 @@ function StageRow({ s, active, onPick }) {
   );
 }
 
-function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
+function BranchMenu({ branches, currentBranch, onPick, onAllBranches, close }) {
   const [q, setQ] = React.useState('');
-  const starred = stages.filter(s => s.starred);
-  const def = stages.filter(s => s.isDefault);
+  const def = branches.filter(s => s.isDefault);
+  // The default has its own section, and starring it is the ordinary thing to
+  // do — without this it is listed twice.
+  const starred = branches.filter(s => s.starred && !s.isDefault);
+  // Branches the project you are looking at also lives on. Without a section of
+  // their own they were reachable only by typing into the search box, so the
+  // one switch someone actually wants — "show me this project over there" —
+  // was the one the menu did not offer. The host sets `hasProject`; absent it,
+  // nothing extra renders.
+  const withProject = branches.filter(s => s.hasProject && !s.isDefault && !s.starred);
   const results = q
-    ? stages.filter(s => `${s.name} ${s.kind || ''} ${s.desc || ''}`.toLowerCase().includes(q.toLowerCase()))
+    ? branches.filter(s => `${s.name} ${s.kind || ''} ${s.desc || ''}`.toLowerCase().includes(q.toLowerCase()))
     : null;
   const pick = s => () => {
     onPick(s);
@@ -119,15 +133,17 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
   return (
     <div>
       <div style={{ padding: '11px 13px 9px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6' }}>
-        <span style={{ fontSize: 13.5, fontWeight: 600, color: '#111827' }}>Switch stage</span>
-        <span style={{ fontSize: 11.5, color: '#9ca3af' }}>{stages.length} stage{stages.length === 1 ? '' : 's'}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: '#111827' }}>Switch branch</span>
+        <span style={{ fontSize: 11.5, color: '#9ca3af' }}>{branches.length} branch{branches.length === 1 ? '' : 'es'}</span>
       </div>
       {!q && (
         <div style={{ padding: '4px 6px 2px' }}>
           {def.length > 0 && <MenuLabel>DEFAULT</MenuLabel>}
-          {def.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
+          {def.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)}
           {starred.length > 0 && <MenuLabel>STARRED</MenuLabel>}
-          {starred.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)}
+          {starred.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)}
+          {withProject.length > 0 && <MenuLabel>THIS PROJECT</MenuLabel>}
+          {withProject.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)}
         </div>
       )}
       <div style={{ padding: q ? '10px 12px 6px' : '8px 12px 10px', borderTop: q ? 'none' : '1px solid #f3f4f6' }}>
@@ -137,7 +153,7 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
             autoFocus
             value={q}
             onChange={e => setQ(e.target.value)}
-            placeholder="Find a stage…"
+            placeholder="Find a branch…"
             style={{ border: 'none', outline: 'none', fontSize: 13, width: '100%', color: '#111827', background: 'transparent' }}
           />
           {q && <FiX size={14} color="#9ca3af" style={{ cursor: 'pointer' }} onClick={() => setQ('')} />}
@@ -146,19 +162,19 @@ function StageMenu({ stages, currentStage, onPick, onAllStages, close }) {
       {q && (
         <div style={{ maxHeight: 232, overflowY: 'auto', padding: '0 6px 6px' }}>
           {results.length
-            ? results.map(s => <StageRow key={s.id} s={s} active={s.id === currentStage.id} onPick={pick(s)} />)
-            : <div style={{ padding: 12, fontSize: 12.5, color: '#9ca3af' }}>No stage matches “{q}”.</div>}
+            ? results.map(s => <BranchRow key={s.id} s={s} active={s.id === currentBranch.id} onPick={pick(s)} />)
+            : <div style={{ padding: 12, fontSize: 12.5, color: '#9ca3af' }}>No branch matches “{q}”.</div>}
         </div>
       )}
-      {onAllStages && (
+      {onAllBranches && (
         <div
           onClick={() => {
-            onAllStages();
+            onAllBranches();
             close();
           }}
           style={{ borderTop: '1px solid #f3f4f6', padding: '10px 13px', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', fontSize: 12.5, color: '#5a2f45', fontWeight: 500 }}
         >
-          <FiLayers size={15} /> View all stages
+          <FiLayers size={15} /> View all branches
           <FiArrowRight size={13} style={{ marginLeft: 'auto' }} />
         </div>
       )}
@@ -189,7 +205,7 @@ function ProjectMenu({ projects, currentProject, onPick, close }) {
 }
 
 /* ----------------------------------------------- VERSION history (cloud) */
-function VersionMenu({ versions, currentVersion, onPick, close }) {
+function VersionMenu({ versions, currentVersion, onPick, close, withheldVersions = 0, onUpgrade }) {
   return (
     <div>
       <div style={{ padding: '11px 13px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '.07em', color: '#9ca3af', borderBottom: '1px solid #f3f4f6' }}>
@@ -207,37 +223,60 @@ function VersionMenu({ versions, currentVersion, onPick, close }) {
           </div>
         </Row>
       ))}
+      {/* Versions this plan does not include. A locked row rather than a
+          silently shorter list: the point of a history menu is to say what
+          history exists, and "3 versions" with one row in it is a worse answer
+          than one row plus what is behind the gate. */}
+      {withheldVersions > 0 && onUpgrade && (
+        <Row
+          onClick={() => {
+            onUpgrade();
+            close();
+          }}
+          style={{ borderTop: '1px solid #f3f4f6' }}
+          data-testid="version-menu-upgrade"
+        >
+          <FiLock size={13} color="#9ca3af" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12.5, color: '#6b7280' }}>
+              {withheldVersions} earlier {withheldVersions === 1 ? 'version' : 'versions'}
+            </div>
+            <div style={{ fontSize: 11.5, color: '#9ca3af' }}>Upgrade to see them</div>
+          </div>
+          <FiArrowRight size={13} color="#9ca3af" />
+        </Row>
+      )}
     </div>
   );
 }
 
-/* --------------------------------- the capsule: stage + project segments */
-function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, currentProject, onProjectChange, narrow, showProject }) {
-  // Defensive: the bar only mounts the capsule when a stage exists, but never
+/* --------------------------------- the capsule: branch + project segments */
+function Capsule({ branches, currentBranch, onBranchChange, onAllBranches, projects, currentProject, onProjectChange, narrow, showProject }) {
+  // Defensive: the bar only mounts the capsule when a branch exists, but never
   // crash if rendered without one (account bar / a stale vendored copy).
-  if (!currentStage) return null;
-  // The stage segment opens a menu to switch stages or jump to "All stages";
-  // with a single stage and no onAllStages (local) it's a plain label.
-  const stageOpens = stages.length > 1 || Boolean(onAllStages);
+  if (!currentBranch) return null;
+  // The branch segment opens a menu to switch branches or jump to "All branches";
+  // with a single branch and no onAllBranches (local) it's a plain label.
+  const branchOpens = branches.length > 1 || Boolean(onAllBranches);
   const multiProject = projects.length > 1;
-  const stageBtn = (
+  const branchBtn = (
     <button
       // ux-audit.md "Top-left 'Project' pill appears to do nothing" (the
-      // same finding covers this Stage segment — clicking either non-
+      // same finding covers this Branch segment — clicking either non-
       // interactive pill gave no feedback at all): a plain-label pill (no
       // dropdown to open) now explains itself on hover instead of looking
       // like a dead button.
-      title={stageOpens ? undefined : `${currentStage.name} — the only environment available here`}
+      title={branchOpens ? undefined : `${currentBranch.name} — the only environment available here`}
       style={{
-        display: 'flex', alignItems: 'center', gap: 7, background: currentStage.color, color: '#fff',
-        border: 'none', cursor: stageOpens ? 'pointer' : 'default', padding: '7px 12px', fontSize: 12.5,
+        display: 'flex', alignItems: 'center', gap: 7, background: currentBranch.color, color: '#fff',
+        border: 'none', cursor: branchOpens ? 'pointer' : 'default', padding: '7px 12px', fontSize: 12.5,
         fontWeight: 700, whiteSpace: 'nowrap', borderTopLeftRadius: 99, borderBottomLeftRadius: 99,
         ...(showProject ? {} : { borderTopRightRadius: 99, borderBottomRightRadius: 99 }),
       }}
     >
       <span style={{ width: 7, height: 7, borderRadius: 99, background: 'rgba(255,255,255,.92)' }} />
-      {currentStage.name}
-      {stageOpens && <FiChevronDown size={13} />}
+      {currentBranch.name}
+      {branchOpens && <FiChevronDown size={13} />}
     </button>
   );
   const projectBtn = (
@@ -261,11 +300,11 @@ function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, c
   );
   return (
     <div style={{ display: 'inline-flex', alignItems: 'stretch', borderRadius: 99, border: `1px solid ${HAIR}`, maxWidth: narrow ? 210 : 'none' }}>
-      {stageOpens ? (
-        <Dropdown align="left" width={314} panelStyle={{ marginTop: 2 }} trigger={stageBtn}>
-          {close => <StageMenu stages={stages} currentStage={currentStage} onPick={onStageChange} onAllStages={onAllStages} close={close} />}
+      {branchOpens ? (
+        <Dropdown align="left" width={314} panelStyle={{ marginTop: 2 }} trigger={branchBtn}>
+          {close => <BranchMenu branches={branches} currentBranch={currentBranch} onPick={onBranchChange} onAllBranches={onAllBranches} close={close} />}
         </Dropdown>
-      ) : stageBtn}
+      ) : branchBtn}
       {showProject &&
         (multiProject ? (
           <Dropdown align="left" width={272} panelStyle={{ marginTop: 2 }} trigger={projectBtn}>
@@ -306,12 +345,23 @@ function ToolSwitch({ tools, activeTool }) {
 }
 
 /* ------------------------------------------------------- version pill */
-function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
+function VersionPill({
+  versions,
+  currentVersion,
+  onVersionChange,
+  compact,
+  withheldVersions = 0,
+  onUpgrade,
+}) {
   const viewing = !currentVersion.live;
   const label = compact ? String(currentVersion.ts).split(',')[0] : currentVersion.ts;
   // A single deploy has nothing to switch to — show it as a plain label, no
   // chevron, no dropdown. More than one → it's a dropdown into the history.
-  const multi = versions.length > 1;
+  //
+  // Withheld versions count too: on a plan that serves only the current one
+  // there is exactly one row, and without this the menu could never open to
+  // say the others exist.
+  const multi = versions.length > 1 || (withheldVersions > 0 && Boolean(onUpgrade));
   const trigger = (
     <button
       style={{
@@ -327,13 +377,22 @@ function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
   if (!multi) return trigger;
   return (
     <Dropdown align="right" width={300} panelStyle={{ marginTop: 2 }} trigger={trigger}>
-      {close => <VersionMenu versions={versions} currentVersion={currentVersion} onPick={onVersionChange} close={close} />}
+      {close => (
+        <VersionMenu
+          versions={versions}
+          currentVersion={currentVersion}
+          onPick={onVersionChange}
+          close={close}
+          withheldVersions={withheldVersions}
+          onUpgrade={onUpgrade}
+        />
+      )}
     </Dropdown>
   );
 }
 
 /* ------------------------------------------------------- commit / deploy */
-function CommitButton({ onClick, compact, count = 0 }) {
+function CommitButton({ onClick, compact, count = 0, split = false }) {
   const [h, setH] = React.useState(false);
   return (
     <button
@@ -350,7 +409,7 @@ function CommitButton({ onClick, compact, count = 0 }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 7, background: h ? '#15803d' : SUCCESS, color: '#fff',
         border: 'none', fontSize: 13, fontWeight: 600, padding: compact ? '7px 9px' : '7px 13px',
-        borderRadius: 99, cursor: 'pointer',
+        borderRadius: split ? '99px 0 0 99px' : 99, cursor: 'pointer',
       }}
     >
       <VscGitCommit size={16} /> {!compact && 'Commit'}
@@ -364,6 +423,78 @@ function CommitButton({ onClick, compact, count = 0 }) {
           {count}
         </span>
       )}
+    </button>
+  );
+}
+
+/**
+ * Commit, with the things you might do *instead* of committing hanging off it.
+ *
+ * Discard is the other end of the same decision — keep this work or drop it —
+ * so it belongs on the same control rather than in a second button competing
+ * for the bar's width, or buried in the commit modal where you only arrive
+ * once you have already decided to keep the changes. Cloud reaches the same
+ * shape through `renderAction`; this is the built-in equivalent.
+ *
+ * No `onDiscardAll` ⇒ the plain button, unchanged.
+ */
+function CommitControl({ onClick, compact, count, onDiscardAll }) {
+  if (!onDiscardAll) return <CommitButton onClick={onClick} compact={compact} count={count} />;
+
+  const caret = open => (
+    <button
+      aria-label="Commit options"
+      title="Commit options"
+      style={{
+        display: 'flex', alignItems: 'center', background: open ? '#15803d' : SUCCESS, color: '#fff',
+        border: 'none', borderLeft: '1px solid rgba(255,255,255,.28)', padding: '7px 8px',
+        borderRadius: '0 99px 99px 0', cursor: 'pointer', alignSelf: 'stretch',
+      }}
+    >
+      <FiChevronDown size={14} />
+    </button>
+  );
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch' }}>
+      <CommitButton onClick={onClick} compact={compact} count={count} split />
+      <Dropdown align="right" width={264} panelStyle={{ marginTop: 2 }} trigger={caret}>
+        {close => (
+          <DiscardMenuItem
+            count={count}
+            onClick={() => {
+              close();
+              onDiscardAll();
+            }}
+          />
+        )}
+      </Dropdown>
+    </div>
+  );
+}
+
+function DiscardMenuItem({ count, onClick }) {
+  const [h, setH] = React.useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', textAlign: 'left',
+        padding: '10px 12px', background: h ? '#fef2f2' : 'transparent', border: 'none',
+        cursor: 'pointer', color: '#b91c1c', fontSize: 13, fontFamily: 'inherit',
+      }}
+    >
+      <FiTrash2 size={15} style={{ marginTop: 2, flexShrink: 0 }} />
+      <span>
+        <span style={{ fontWeight: 600 }}>Discard all changes</span>
+        <span style={{ display: 'block', color: '#6b7280', fontSize: 11.5, marginTop: 2 }}>
+          {count > 0
+            ? `Drop all ${count} uncommitted change${count === 1 ? '' : 's'} and go back to your YAML.`
+            : 'Go back to what is in your YAML files.'}
+        </span>
+      </span>
     </button>
   );
 }
@@ -389,13 +520,41 @@ function DeployButton({ onClick, compact }) {
 }
 
 /* ------------------------------------------------------------ user menu */
-function localMenu(close) {
+/**
+ * The first item says what this serve's relationship to cloud actually is
+ * (VIS-1377).
+ *
+ * It used to read "Log in / Sign up" and link to the register page — which is
+ * wrong twice over. To someone already authorized it offers an account they
+ * have; to someone who is not, it sends them to a web page that cannot
+ * authorize THIS machine, leaving them to discover `visivo authorize` on their
+ * own. So: authorized, open the account; not, run the device flow from here.
+ */
+function localMenu(close, { authorized, host, authorizing, onAuthorize }) {
   const linkStyle = { display: 'block', padding: '8px 10px', borderRadius: 6, color: '#374151', textDecoration: 'none' };
+  const cloud = host || 'https://app.visivo.io';
   return (
     <div style={{ padding: 6 }}>
-      <a href="https://app.visivo.io/register" target="_blank" rel="noopener noreferrer" onClick={close} style={linkStyle}>
-        Log in / Sign up
-      </a>
+      {authorized ? (
+        <a
+          href={cloud}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={close}
+          data-testid="top-nav-open-cloud"
+          style={linkStyle}
+        >
+          Open Cloud Account
+        </a>
+      ) : (
+        <Row
+          onClick={() => { onAuthorize && onAuthorize(); close(); }}
+          style={{ borderRadius: 6 }}
+          data-testid="top-nav-authorize"
+        >
+          {authorizing ? 'Authorizing…' : 'Authorize'}
+        </Row>
+      )}
       <a href="https://docs.visivo.io" target="_blank" rel="noopener noreferrer" onClick={close} style={{ ...linkStyle, display: 'flex', alignItems: 'center', gap: 8 }}>
         <MdMenuBook size={16} color="#6b7280" /> Documentation
       </a>
@@ -415,7 +574,7 @@ function localMenu(close) {
   );
 }
 
-function UserMenu({ user, onSignOut, items = [] }) {
+function UserMenu({ user, onSignOut, items = [], authorization = {} }) {
   const initial = user?.name ? user.name[0].toUpperCase() : 'U';
   const trigger = (
     <span style={{ display: 'inline-flex', cursor: 'pointer' }}>
@@ -445,7 +604,7 @@ function UserMenu({ user, onSignOut, items = [] }) {
             <Row onClick={() => { onSignOut && onSignOut(); close(); }} style={{ borderRadius: 6 }}><FiLogOut size={15} color="#6b7280" /> Sign out</Row>
           </div>
         ) : (
-          localMenu(close)
+          localMenu(close, authorization)
         )
       }
     </Dropdown>
@@ -457,10 +616,10 @@ const TopNav = ({
   // intra-project tools (default = local viewer's four)
   tools = DEFAULT_TOOLS,
   activeTool,
-  // location switchers (cloud passes real lists; local gets a single Local stage)
-  stages = [LOCAL_STAGE],
-  currentStage,
-  onStageChange = () => {},
+  // location switchers (cloud passes real lists; local gets a single Local branch)
+  branches = [LOCAL_STAGE],
+  currentBranch,
+  onBranchChange = () => {},
   projects,
   currentProject,
   onProjectChange = () => {},
@@ -468,16 +627,28 @@ const TopNav = ({
   versions,
   currentVersion,
   onVersionChange = () => {},
+  // cloud-only: versions this plan does not include, and where to go about it.
+  // Both or neither — a count with nowhere to send someone is just a number.
+  withheldVersions = 0,
+  onUpgrade,
   // commit / deploy — mutually exclusive by dirty state: Commit shows when there
   // are uncommitted changes; Deploy shows when the project is clean.
   hasUncommittedChanges,
   // count of pending (uncommitted) changes — shown as a badge on Commit.
   commitCount = 0,
   onCommitClick,
+  // Hangs "Discard all changes" off the Commit button. Absent ⇒ a plain
+  // Commit button, which is what a host without a discard endpoint wants.
+  onDiscardAll,
   onDeployClick,
   // cloud-only: Edit/Branch entry node, rendered in the action cluster at
   // project depth. Absent locally ⇒ nothing extra renders.
   branchControls = null,
+  // cloud-only: replaces the built-in Commit/Deploy button outright. Core folds
+  // Commit together with Discard into one split control, which it can only do
+  // if it owns the whole node — the dirty-state choice below cannot express
+  // "one button with a menu hanging off it".
+  renderAction,
   // Deploy is only meaningful where deploy exists (local CLI). Cloud has no
   // deploy yet, so it passes showDeploy=false to hide the button entirely.
   showDeploy = true,
@@ -487,16 +658,21 @@ const TopNav = ({
   // cloud: items shown above "Sign out" in the user menu ({label, icon, onClick}).
   // The host app (core) supplies these so the shared viewer carries no app routes.
   userMenuItems,
-  // cloud unifiers: a custom logo node (the account menu) and an "All stages"
-  // link in the stage dropdown. Absent locally → plain logo, no all-stages.
+  // cloud unifiers: a custom logo node (the account menu) and an "All branches"
+  // link in the branch dropdown. Absent locally → plain logo, no all-branches.
   renderLogo,
-  onAllStages,
+  onAllBranches,
+  // Local only: whether this serve holds a token for its host, and how to get
+  // one ({authorized, host, authorizing, onAuthorize}). Passed IN rather than
+  // read here, because this component is vendored into cloud, where there is
+  // no local server to ask and `user` is supplied instead.
+  authorization = {},
 }) => {
   const location = useLocation();
   const theme = useTheme();
   const narrow = useMediaQuery(theme.breakpoints.down('md'));
 
-  const resolvedStage = currentStage || stages[0];
+  const resolvedBranch = currentBranch || branches[0];
   const resolvedProjects = projects && projects.length ? projects : currentProject ? [currentProject] : [{ id: 'project', name: 'Project' }];
   const resolvedProject = currentProject || resolvedProjects[0];
   // Active tool: explicit prop wins; otherwise match the current route's tail
@@ -514,13 +690,13 @@ const TopNav = ({
     ) || {}).id;
 
   // Bar variant by depth — one component, three shapes. Project depth is
-  // signalled by having tools (account/stage bars pass tools=[]; local + cloud
-  // project bars have the four). A stage is present at stage + project depth.
-  //   account (no stage, no tools) → logo + user
-  //   stage   (stage, no tools)    → + stage pill
-  //   project (stage + tools)      → + project segment, tools, version, commit/deploy
+  // signalled by having tools (account/branch bars pass tools=[]; local + cloud
+  // project bars have the four). A branch is present at branch + project depth.
+  //   account (no branch, no tools) → logo + user
+  //   branch   (branch, no tools)    → + branch pill
+  //   project (branch + tools)      → + project segment, tools, version, commit/deploy
   const showProject = tools.length > 0;
-  const showCapsule = Boolean(resolvedStage);
+  const showCapsule = Boolean(resolvedBranch);
 
   const showVersions = showProject && Array.isArray(versions) && versions.length > 0 && currentVersion;
   const inHistory = showVersions && !currentVersion.live;
@@ -528,11 +704,21 @@ const TopNav = ({
   // Commit and Deploy are mutually exclusive by dirty state: a dirty project
   // shows Commit (changes must be committed before they can ship), and a clean
   // project shows Deploy where deploy exists (nothing to commit, ready to ship).
-  const action = hasUncommittedChanges ? (
-    <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
-  ) : showDeploy ? (
-    <DeployButton onClick={onDeployClick} compact={narrow} />
-  ) : null;
+  // `renderAction` overrides the pair; `null` is a deliberate "no action at
+  // all", which is why the check is against undefined rather than falsiness.
+  const action =
+    renderAction !== undefined ? (
+      renderAction
+    ) : hasUncommittedChanges ? (
+      <CommitControl
+        onClick={onCommitClick}
+        compact={narrow}
+        count={commitCount}
+        onDiscardAll={onDiscardAll}
+      />
+    ) : showDeploy ? (
+      <DeployButton onClick={onDeployClick} compact={narrow} />
+    ) : null;
 
   const banner = inHistory && (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f6ddda', borderBottom: '1px solid #edbcb5', color: '#7e352a', padding: '0 16px', height: 38, flexShrink: 0, fontSize: 13 }}>
@@ -549,10 +735,10 @@ const TopNav = ({
 
   const capsule = (
     <Capsule
-      stages={stages}
-      currentStage={resolvedStage}
-      onStageChange={onStageChange}
-      onAllStages={onAllStages}
+      branches={branches}
+      currentBranch={resolvedBranch}
+      onBranchChange={onBranchChange}
+      onAllBranches={onAllBranches}
       projects={resolvedProjects}
       currentProject={resolvedProject}
       onProjectChange={onProjectChange}
@@ -570,10 +756,10 @@ const TopNav = ({
             {showCapsule && capsule}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
+            {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} withheldVersions={withheldVersions} onUpgrade={onUpgrade} compact />}
             {showProject && branchControls}
             {showProject && action}
-            <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
+            <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} authorization={authorization} />
           </div>
         </div>
         {banner}
@@ -595,11 +781,11 @@ const TopNav = ({
         </div>
         {showProject && <ToolSwitch tools={tools} activeTool={resolvedActive} />}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} />}
+          {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} withheldVersions={withheldVersions} onUpgrade={onUpgrade} />}
           {showProject && branchControls}
           {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />
-          <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
+          <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} authorization={authorization} />
         </div>
       </div>
       {banner}

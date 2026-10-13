@@ -154,6 +154,44 @@ class Serializer:
         project.inputs = []
         return project
 
+    def collect_item_lists(self) -> dict:
+        """Every chart, table, markdown and input, shaped like the `/api/<type>/` list
+        responses, for a `dist` bundle to serve as static files.
+
+        Grid dashboards carry their items inline, but a template dashboard names them,
+        and the viewer resolves a name through these lists. A table's model `data` is
+        inlined because dist has no models list to tell a model ref from an insight ref.
+        """
+        dag = self._get_dag()
+
+        def entry(node, config):
+            return {"id": node.name, "name": node.name, "status": "published", "config": config}
+
+        def listed(node_type, bake=None):
+            entries = []
+            for node in all_descendants_of_type(type=node_type, dag=dag):
+                if not getattr(node, "name", None):
+                    continue
+                config = node.model_dump(
+                    exclude_none=True, mode="json", exclude={"file_path", "path"}
+                )
+                entries.append(entry(node, bake(node, config) if bake else config))
+            return entries
+
+        def bake_table(table, config):
+            if table.data:
+                models = all_descendants_of_type(type=Model, dag=dag, from_node=table, depth=1)
+                if models:
+                    config["data"] = models[0].model_dump(exclude_none=True, mode="json")
+            return config
+
+        return {
+            "charts": listed(Chart),
+            "tables": listed(Table, bake_table),
+            "markdowns": listed(Markdown),
+            "inputs": listed(Input),
+        }
+
     def collect_deploy_resources(self) -> dict:
         """Collect every named object the decomposed deploy posts, keyed by the
         cloud endpoint segment (``/api/<segment>/``).

@@ -48,9 +48,10 @@ class SqliteSource(ServerSource, SqlalchemySource):
                 type: sqlite
                 attach:
                   - schema_name: static
-                    name: static_source
-                    database: local/static/file/local.db
-                    type: sqlite
+                    source:
+                      name: static_source
+                      database: local/static/file/local.db
+                      type: sqlite
             ```
 
             The above source can be then used in a model and the sql for that model might look similar to: `SELECT * FROM local AS l JOIN static.data AS sd ON l.static_id=sd.id`

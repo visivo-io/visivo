@@ -100,7 +100,11 @@ class Item(NamedModel, ParentModel):
 
     width: int = Field(
         1,
-        description="The width of the item, evaluated relative to the widths of the other items in the row.",
+        ge=1,
+        description=(
+            "The width of the item, evaluated relative to the widths of the other items in the row. "
+            "Must be a positive integer."
+        ),
     )
     markdown: Optional[generate_ref_field(Markdown)] = Field(
         None,
@@ -122,7 +126,9 @@ class Item(NamedModel, ParentModel):
             "row-container inside the slot the parent row reserved for it. "
             "Mutually exclusive with markdown/chart/table/input. Each sub-row "
             "carries its own `height`, which is interpreted as a relative weight "
-            "inside the parent slot."
+            "inside the parent slot: enum tokens weigh xsmall 1, small 2, medium 3, "
+            "large 4, xlarge 6, xxlarge 8 (compact 1), and an integer pixel height "
+            "weighs `pixels / 128` so it scales in proportion to its siblings."
         ),
     )
 
@@ -185,7 +191,11 @@ class Item(NamedModel, ParentModel):
             return self.chart
         if self.input is not None:
             return self.input
-        if self.markdown is not None and isinstance(self.markdown, Markdown):
+        # Returned whether it is an inline Markdown or a `${ref()}` to one, the
+        # same as the three above. Guarding on `isinstance(..., Markdown)` meant
+        # a referenced markdown was not a child at all, so it was missing from
+        # the DAG and from `child_item_names`.
+        if self.markdown is not None:
             return self.markdown
 
 

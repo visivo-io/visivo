@@ -12,6 +12,7 @@ A single insight prop usually combines them — a query string wrapping one or m
 
 ```yaml
 props:
+  type: bar
   y: ?{ sum(${ref(widget_sales).quantity}) }
 ```
 
@@ -23,7 +24,7 @@ Read that inside-out: `${ref(widget_sales).quantity}` points at a column of the
 A context string references another object. The `ref(name)` part names the object; everything after
 it is a **property path** into that object's value.
 
-```yaml
+```text
 ${ref(widget_sales).quantity}      # a column of a model
 ${ref(region).value}               # a single-select input's selected value
 ${ref(regions).values}             # a multi-select input's selected values
@@ -31,7 +32,7 @@ ${ref(regions).values}             # a multi-select input's selected values
 
 Property paths may include **indexes** and nested segments:
 
-```yaml
+```text
 ${ref(my_insight).column[0]}       # first element of a property
 ${ref(my_insight).list[0].prop}    # nested path
 ${ref(my_insight)[0]}              # index the referenced value directly
@@ -44,6 +45,7 @@ Aggregations, functions, `case` expressions and arithmetic all belong **inside**
 
 ```yaml
 props:
+  type: scatter
   x: ?{ date_trunc('week', ${ref(widget_sales).completed_at}) }
   y: ?{ sum(${ref(widget_sales).quantity}) }
   marker:
@@ -53,7 +55,9 @@ props:
 To divide a value by 100, the division is SQL, so it goes inside:
 
 ```yaml
-y: ?{ sum(${ref(widget_sales).quantity}) / 100 }
+props:
+  type: bar
+  y: ?{ sum(${ref(widget_sales).quantity}) / 100 }
 ```
 
 ## Slices — `?{ ... }[0]`
@@ -86,7 +90,7 @@ Only integers are valid inside the brackets — `[a]` and `[1.5]` are rejected.
 
 This is the easiest thing to get wrong, because both are written `[0]`:
 
-```yaml
+```text
 ${ref(my_insight).column[0]}   # INSIDE  → index the referenced object's property
 ?{ sum(${ref(m).quantity}) }[0]  # OUTSIDE → index this query's result
 ```
@@ -99,16 +103,22 @@ second one.
 
 Nothing may follow the slice — the value ends there:
 
+<!-- visivo-example: invalid - this is the counter-example: the slice must be the last thing in the value -->
+
 ```yaml
 # Invalid: the slice must be last
-value: ?{ sum(${ref(m).quantity}) }[0] / 100
+props:
+  type: indicator
+  value: ?{ sum(${ref(m).quantity}) }[0] / 100
 ```
 
 Put the arithmetic inside the braces instead, where the SQL is evaluated:
 
 ```yaml
 # Valid
-value: ?{ sum(${ref(m).quantity}) / 100 }[0]
+props:
+  type: indicator
+  value: ?{ sum(${ref(m).quantity}) / 100 }[0]
 ```
 
 The order to remember is **aggregate → modify → slice**: aggregate and modify inside `?{ }`, then

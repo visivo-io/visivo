@@ -38,6 +38,7 @@ from visivo.commands.archive import archive
 from visivo.commands.authorize import authorize
 from visivo.commands.list import list
 from visivo.commands.migrate import migrate
+from visivo.commands.telemetry import telemetry
 from visivo.version import VISIVO_VERSION
 
 
@@ -90,6 +91,7 @@ visivo.add_command(authorize)
 visivo.add_command(create)
 visivo.add_command(list)
 visivo.add_command(migrate)
+visivo.add_command(telemetry)
 
 
 def load_env(env_file):

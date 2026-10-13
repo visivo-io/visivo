@@ -11,6 +11,7 @@ from sqlglot import exp
 from sqlglot.schema import MappingSchema
 
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.output_paths import run_dir, schema_file as schema_file_path
 from visivo.logger.logger import Logger
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 
@@ -37,7 +38,7 @@ class SchemaAggregator:
             run_id: Run identifier for schema storage location
         """
         try:
-            schema_dir = f"{output_dir}/{run_id}/schemas"
+            schema_dir = f"{run_dir(output_dir, run_id)}/schemas"
             os.makedirs(schema_dir, exist_ok=True)
 
             # Prepare schema data for storage
@@ -213,7 +214,7 @@ class SchemaAggregator:
             Schema data dictionary or None if not found
         """
         try:
-            schema_file = f"{output_dir}/{run_id}/schemas/{source_name}.json"
+            schema_file = schema_file_path(run_dir(output_dir, run_id), source_name)
             if not os.path.exists(schema_file):
                 return None
 
@@ -323,7 +324,7 @@ class SchemaAggregator:
             List of schema metadata dictionaries
         """
         schemas = []
-        schemas_dir = f"{output_dir}/{run_id}/schemas"
+        schemas_dir = f"{run_dir(output_dir, run_id)}/schemas"
 
         if not os.path.exists(schemas_dir):
             return schemas

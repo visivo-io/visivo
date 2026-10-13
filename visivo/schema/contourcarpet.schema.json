@@ -104,6 +104,11 @@
           "description": "String in the format ${ x } for input references like ${ref(input).value} or ${input.value}"
         }
       ]
+    },
+    "insight-ref": {
+      "type": "string",
+      "pattern": "^\\$\\{\\s*ref\\(\\s*['\"]?[a-zA-Z0-9_ -]+['\"]?\\s*\\)\\s*\\}$",
+      "description": "A reference to another insight in the form ${ref(insight-name)}. Resolved at compile time to that insight's trace identifier, e.g. the `carpet` id a contourcarpet or scattercarpet trace lies on."
     }
   },
   "type": "object",
@@ -129,6 +134,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -199,6 +207,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -229,7 +240,14 @@
     },
     "carpet": {
       "description": "The `carpet` of the carpet axes on which this contour trace lies",
-      "type": "string"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/insight-ref"
+        },
+        {
+          "type": "string"
+        }
+      ]
     },
     "coloraxis": {
       "description": "Sets a reference to a shared color axis. References to these shared color axes are *coloraxis*, *coloraxis2*, *coloraxis3*, etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis.",
@@ -559,7 +577,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -834,6 +851,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -862,6 +882,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -915,7 +938,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -1217,7 +1239,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -1435,6 +1456,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -1498,6 +1522,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -1526,6 +1553,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -1584,7 +1614,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -1876,6 +1905,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -1965,6 +1997,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }

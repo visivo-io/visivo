@@ -193,3 +193,88 @@ describe('createURLConfig factory', () => {
     expect(config.getRoute()).toBe('/');
   });
 });
+
+describe('withDeploymentRoot', () => {
+  // For URLs the bundle CARRIES rather than builds. Vite bakes `/assets/...`
+  // into the JS at build time; a dist is mounted wherever `-dr` says at package
+  // time. dist_phase rewrites index.html and nothing else, so the DuckDB worker
+  // and wasm asked the server root, 404'd, and left `db` null — which gates the
+  // insight query, so every chart sat spinning having never asked for data.
+  const { withDeploymentRoot } = require('./urls');
+
+  afterEach(() => {
+    delete window.deploymentRoot;
+  });
+
+  it('puts the deployment root in front of a baked-in asset URL', () => {
+    window.deploymentRoot = '/path/sub';
+
+    expect(withDeploymentRoot('/assets/duckdb-eh.wasm')).toBe(
+      '/path/sub/assets/duckdb-eh.wasm'
+    );
+  });
+
+  it('leaves the URL alone at the site root', () => {
+    window.deploymentRoot = '';
+
+    expect(withDeploymentRoot('/assets/duckdb-eh.wasm')).toBe('/assets/duckdb-eh.wasm');
+  });
+
+  it('leaves the URL alone when nothing set a root at all', () => {
+    expect(withDeploymentRoot('/assets/duckdb-eh.wasm')).toBe('/assets/duckdb-eh.wasm');
+  });
+
+  it('normalizes a root written without its leading slash', () => {
+    window.deploymentRoot = 'path/sub';
+
+    expect(withDeploymentRoot('/assets/x.wasm')).toBe('/path/sub/assets/x.wasm');
+  });
+
+  it('does not double the slash on a trailing one', () => {
+    window.deploymentRoot = '/path/sub/';
+
+    expect(withDeploymentRoot('/assets/x.wasm')).toBe('/path/sub/assets/x.wasm');
+  });
+
+  it('leaves an absolute URL to another origin alone', () => {
+    window.deploymentRoot = '/path/sub';
+
+    expect(withDeploymentRoot('https://cdn.example.com/x.wasm')).toBe(
+      'https://cdn.example.com/x.wasm'
+    );
+  });
+
+  it('leaves a relative URL alone', () => {
+    // Already resolves against the page, so prefixing would break it.
+    window.deploymentRoot = '/path/sub';
+
+    expect(withDeploymentRoot('assets/x.wasm')).toBe('assets/x.wasm');
+  });
+});
+
+describe('model jobs in a dist build', () => {
+  // A table whose `data` is a model reads `modelJobs`, which `fetchModelJobs`
+  // feeds — and it returns [] when this key is unavailable. A dist had no
+  // models manifest, so every model-backed table rendered "No data available"
+  // while the insight-backed charts beside it worked.
+  const { createURLConfig } = require('./urls');
+
+  it('is available and reads the packaged manifest', () => {
+    const config = createURLConfig({ environment: 'dist' });
+
+    expect(config.isAvailable('modelJobsQuery')).toBe(true);
+    expect(config.getUrl('modelJobsQuery')).toBe('/data/models.json');
+  });
+
+  it('follows the deployment root like every other data URL', () => {
+    const config = createURLConfig({ environment: 'dist', deploymentRoot: '/path/sub' });
+
+    expect(config.getUrl('modelJobsQuery')).toBe('/path/sub/data/models.json');
+  });
+
+  it('still points at the API when served', () => {
+    const config = createURLConfig({ environment: 'server' });
+
+    expect(config.getUrl('modelJobsQuery')).toBe('/api/model-jobs/');
+  });
+});
