@@ -208,8 +208,8 @@ test.describe('Semantic Layer ERD overhaul (reactflow machine)', () => {
       .toBeGreaterThan(0);
 
     // Tidy → confirm dialog (there are edits) → accept → positions cleared.
-    page.once('dialog', d => d.accept());
     await page.getByTestId('semantic-layer-erd-reset-layout').click();
+    await page.getByTestId('confirm-dialog-confirm').click();
 
     await expect
       .poll(

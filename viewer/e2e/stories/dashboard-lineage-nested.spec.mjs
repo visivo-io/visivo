@@ -55,7 +55,9 @@ test.describe('Dashboard Lineage — Nested Item.rows fan-out (VIS-826)', () => 
       timeout: WAIT_FOR_PAGE,
     });
     await expect(page.getByTestId('lineage-canvas')).toBeVisible();
-    await expect(page.getByTestId('lineage-canvas-scope-pill')).toContainText(DASHBOARD);
+    await expect(page.getByTestId('lineage-selector-input')).toHaveValue(
+      new RegExp(`\\b${DASHBOARD}\\b`)
+    );
     // DAG renders nodes.
     await page.locator('.react-flow__node').first().waitFor({ timeout: WAIT_FOR_PAGE });
     await screenshot(page, '01-lineage-lens-mounted');

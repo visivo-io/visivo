@@ -87,7 +87,7 @@ test.describe('Canvas selection + hover overlays (VIS-768)', () => {
     // The persistent mulberry selection ring renders over the item.
     const ring = page.getByTestId('canvas-overlay-selected-item');
     await expect(ring).toBeVisible({ timeout: WAIT });
-    await expect(ring).toHaveClass(/ring-\[#713b57\]/);
+    await expect(ring).toHaveCSS('box-shadow', /rgb\(113, 59, 87\)/);
 
     await page.screenshot({ path: `${SCREENS}/vis768-01-item-selected.png` });
   });

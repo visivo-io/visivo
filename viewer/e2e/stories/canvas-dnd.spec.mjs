@@ -162,11 +162,9 @@ const revealItemHandle = async (page, itemPath) => {
   return handle;
 };
 const revealRowHandle = async (page, rowIndex) => {
-  // VIS-975: the row frame is painted only when the ROW itself is selected (an
-  // item selection no longer reveals its parent row's affordance). The row's
-  // chrome is mostly covered by its items, so select the row through the same
-  // outline-selection store the canvas writes — the single selection source of
-  // truth — then grab its frame.
+  // The row's chrome is mostly covered by its items, so select the row through
+  // the same outline-selection store the canvas writes — the single selection
+  // source of truth — then grab its gutter.
   await page.evaluate(rp => {
     window.useStore.getState().setWorkspaceOutlineSelectedKey(rp);
   }, `row.${rowIndex}`);
@@ -225,8 +223,12 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     // Selecting an item reveals only THAT item's frame (selection-gated, exactly
     // one frame). revealItemHandle asserts the item frame is visible.
     await revealItemHandle(page, `row.${multiItemRow}.item.0`);
-    // The parent row's frame is NOT also painted (exactly one frame on screen).
-    await expect(page.getByTestId(`canvas-drag-frame-row.${multiItemRow}`)).toHaveCount(0);
+    await expect(page.locator('[data-canvas-frame]')).toHaveCount(1);
+    // VIS-990: the parent row shows its own left-gutter grip alongside, never a frame.
+    await expect(page.getByTestId(`canvas-drag-frame-row.${multiItemRow}`)).toHaveAttribute(
+      'data-canvas-handle-kind',
+      'row'
+    );
 
     // Drop zones are always mounted (dnd-kit measures them by rect even though
     // they're pointer-events-none so they never swallow selection clicks).
@@ -307,7 +309,8 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     // grab a chart row as the drag source.
     const chartHeader = page.getByTestId('library-subsection-chart-header');
     await chartHeader.waitFor({ timeout: WAIT });
-    const anyChartRow = page.locator('[data-testid^="library-row-chart-"]').first();
+    // [role="button"] skips the row's `-anchor` wrapper, which shares the prefix.
+    const anyChartRow = page.locator('[data-testid^="library-row-chart-"][role="button"]').first();
     if (!(await anyChartRow.count())) {
       await chartHeader.click();
     }
