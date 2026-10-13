@@ -34,7 +34,7 @@ limits:
 transforms: [rate_per_capita]
 gotchas:
   - "Migrate: change `type` to `choroplethmap` and any chart `layout.mapbox` to `layout.map`; `geojson`, `featureidkey`, `below` carry over."
-  - "It renders tokenless today only because the theme sets `layout.mapbox.style` to a carto style; a `mapbox://` style needs a token."
+  - "On Plotly 3 the basemap tiles read \"API KEY REQUIRED\" even with the theme's carto style; the data draws, but migrate to the `*map` trace."
   - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
   - "All `choroplethmap` gotchas apply: `featureidkey` must match `locations`, the GeoJSON URL must be public and CORS-enabled."
 pairings: [bar_beside, detail_table_below]

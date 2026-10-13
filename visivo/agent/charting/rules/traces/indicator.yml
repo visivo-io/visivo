@@ -34,7 +34,7 @@ example: |
         - sort: ?{ date_trunc('month', ${ref(trips).pickup_at}) DESC }
 variations:
   - when: "the KPI is compared with the previous period"
-    then: "aggregate by period, `sort` DESC, `value: ?{ <metric> }[0]` and `delta.reference: ?{ <metric> }[1]`"
+    then: "aggregate by period, `sort` DESC, `value: ?{ <metric> }[0]` and `delta.reference: ?{ <metric> }[1]`; with `delta.relative: true`, set `delta.valueformat: '.1%'` or the ratio prints unrounded"
   - when: "there is a target or bound to measure progress against"
     then: "`mode: gauge+number` with `gauge.axis.range` and `gauge.threshold.value`"
   - when: "several KPIs share one chart"

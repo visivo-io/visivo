@@ -102,7 +102,7 @@ class TestGoldenB_RidesPerDayByCompany:
         best = response.recommendations[0]
         assert best.family == "line" and best.transforms == ["top_n_other"]
         assert response.transforms_suggested == ["top_n_other"]
-        assert any("exceeds 12" in w for w in best.warnings)
+        assert any("exceeds 8" in w for w in best.warnings)
 
     def test_a_year_of_days_ranks_the_line_above_the_bar(self):
         """Bars are admitted on a time axis but penalised at this many
@@ -136,9 +136,15 @@ class TestGoldenC_TripDistance:
         assert top(RecommendRequest(dimensions=[DISTANCE])).family == "histogram"
 
     def test_a_small_split_overlays_the_histogram(self):
-        best = top(RecommendRequest(dimensions=[DISTANCE, BOROUGH], intent="distribution"))
+        best = top(RecommendRequest(dimensions=[DISTANCE, COMPANY_3], intent="distribution"))
 
         assert best.family == "histogram" and best.transforms == []
+
+    def test_five_overlaid_groups_are_repaired(self):
+        """Measured: a fourth overlaid colour already muddies the bins."""
+        best = top(RecommendRequest(dimensions=[DISTANCE, BOROUGH], intent="distribution"))
+
+        assert best.family == "histogram" and best.transforms == ["top_n_other"]
 
     def test_a_large_split_is_repaired_first(self):
         best = top(RecommendRequest(dimensions=[DISTANCE, COMPANY_20], intent="distribution"))

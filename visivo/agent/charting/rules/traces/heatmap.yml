@@ -23,7 +23,6 @@ data_shape:
   dimensions: {min: 2, max: 2}
   dimension_roles: [time, categorical, boolean, numeric_discrete, geo_region]
   cardinality: {min: 3, max: 40}
-  cells: {max: 400}
 required_props: [x, y, z]
 example: |
   insights:
@@ -35,6 +34,7 @@ example: |
         z: ?{ count(*) }
         colorscale: Viridis
       interactions:
+        - sort: ?{ isodow(${ref(trips).pickup_at}) ASC }
         - sort: ?{ extract(hour from ${ref(trips).pickup_at}) ASC }
 variations:
   - when: "the grid is small and the exact values matter"
@@ -50,10 +50,10 @@ limits:
 transforms: [regrain, top_n_other, bucket]
 gotchas:
   - "x, y and z come from one GROUP BY over both dimensions; over raw rows, rows that share an x/y pair overwrite each other and the cell shows only the last one."
-  - "Set `layout.xaxis.type: category`/`yaxis.type: category` when the axes are labels, or Plotly spaces them as numbers."
+  - "Set `layout.xaxis.type: category`/`yaxis.type: category` when the axes are labels, or Plotly spaces them as numbers. Rows are bound by height: Plotly hides every other row label once rows are tighter than about 15 px."
   - "Weekday or month names sort alphabetically; sort by the number (`isodow`, `month`) and label with the name."
   - "A `split` interaction makes one heatmap per value, all on the same axes and overlapping; never split a heatmap."
-  - "Pick one theme-neutral `colorscale` (Viridis, Blues); a diverging scale needs `zmid` at the meaningful centre."
+  - "Pick one theme-neutral `colorscale` (Viridis, or Blues with `reversescale: true`, since Plotly's Blues runs dark to light); a diverging scale needs `zmid` at the meaningful centre."
 pairings: [detail_table_below, kpi_strip_above]
 layout: {height: medium, width_share: 1.0, row_role: breakdown}
 mobile: Keep the longer axis vertical; a grid with many columns becomes unreadable on narrow screens.

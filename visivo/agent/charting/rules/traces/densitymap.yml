@@ -22,15 +22,19 @@ example: |
     - name: pickup-density
       props:
         type: densitymap
-        lat: ?{ round(${ref(trips).pickup_lat}, 3) }
-        lon: ?{ round(${ref(trips).pickup_lon}, 3) }
-        z: ?{ count(*) }
+        lat: ?{ round(${ref(trips).pickup_lat}, 2) }
+        lon: ?{ round(${ref(trips).pickup_lon}, 2) }
+        z: ?{ count(*)::double }
         radius: 20
         colorscale: Hot
         showscale: false
+  charts:
+    - name: pickup-density-map
+      insights: ["${ref(pickup-density)}"]
+      layout: {map: {center: {lat: 40.73, lon: -73.94}, zoom: 9.5}}
 variations:
   - when: "the table has far more rows than the browser should receive"
-    then: "round lat/lon to 3 decimals (~100 m) and use `count(*)` as `z`; the kernel does the rest"
+    then: "round lat/lon to 2 decimals (~1 km) and use `count(*)::double` as `z`; finer cells saturate to blobs and the kernel does the rest"
   - when: "the reader compares periods or groups"
     then: "an input `filter`, never two layers"
   - when: "the chart's zoom level is set"
@@ -41,7 +45,7 @@ limits:
   repair: [input_filter]
 transforms: [grid_bucket, regrain]
 gotchas:
-  - "Without `z` every point weighs 1; with `z` the weight is summed, so pass a count, not an average."
+  - "Without `z` every point weighs 1; with `z` the weight is summed, so pass a count, not an average, cast to a number (`count(*)::double`): a BIGINT reaches the map as a string and is ignored."
   - "Round and group in SQL on large tables; the trace works on raw rows but the browser payload grows with every row."
   - "`radius` is in screen pixels, so the look changes with zoom; pick it for the `layout.map.zoom` you set."
   - "Use `densitymap`, not `densitymapbox` (deprecated, token required)."

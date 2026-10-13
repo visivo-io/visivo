@@ -33,7 +33,7 @@ limits:
 transforms: [grid_bucket, regrain]
 gotchas:
   - "Migrate: change `type` to `densitymap` and any chart `layout.mapbox` to `layout.map`; every other prop carries over."
-  - "It renders tokenless today only because the theme sets `layout.mapbox.style` to a carto style; a `mapbox://` style needs a token."
+  - "On Plotly 3 the basemap tiles read \"API KEY REQUIRED\" even with the theme's carto style; the data draws, but migrate to the `*map` trace."
   - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
   - "All `densitymap` gotchas apply: `z` is summed (pass a count), `radius` is in screen pixels, hide the colorbar."
 pairings: [kpi_strip_above]

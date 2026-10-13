@@ -15,7 +15,7 @@ data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 1, max: 2}
   dimension_roles: [categorical, boolean]
-  cardinality: {min: 3, max: 8}
+  cardinality: {min: 3, max: 10}
 required_props: [x, y]
 example: |
   insights:

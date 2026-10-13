@@ -16,14 +16,13 @@ data_shape:
   dimensions: {min: 0, max: 2}
   dimension_roles: [numeric_discrete]
   cardinality: {min: 2, max: 500}
-required_props: [z]
+required_props: [source]
 example: |
   insights:
     - name: depot-raster
       props:
         type: image
-        z: ?{ ${ref(depot_raster).pixels} }[0]
-        colormodel: rgb
+        source: ?{ ${ref(depot_raster).png_data_uri} }[0]
         x0: 0
         dx: 1
         y0: 0
@@ -45,8 +44,7 @@ transforms: []
 gotchas:
   - "`source` accepts only a base64 data URI (`data:image/png;base64,…`, also jpeg, gif, webp); an https URL or an SVG data URI is silently dropped and nothing draws. When both are set, `z` wins."
   - "`z` is a 2D array of pixel rows, each pixel a list of 3–4 numbers in the `colormodel` (rgb, rgba, rgba256, hsl, hsla); scalar pixels draw nothing, which is a `heatmap`."
-  - "A query returns a column, so `?{ … }` gives a list of rows; the whole raster must be one cell holding the nested list, selected with `[0]`."
-  - "A VARCHAR that looks like `[[…]]` (CSV seed, JSON text) is passed as a string, not an array; cast to a DuckDB nested LIST in the model."
+  - "A nested LIST cell from `?{ … }[0]` reaches Plotly as an Arrow vector, not an array, and draws nothing (a `[[…]]` VARCHAR is a string, also nothing); bind `source: ?{ <data_uri_column> }[0]` instead."
   - "`colorscale` does not exist on image; the y axis is reversed by default so row 0 is at the top."
 pairings: [scatter_overlay]
 layout: {height: medium, width_share: 0.5, row_role: relationship}

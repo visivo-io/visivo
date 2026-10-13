@@ -42,8 +42,8 @@ variations:
   - when: "the table is too large to ship raw rows"
     then: "aggregate quartiles in SQL (`quantile_cont`) and pass `q1`, `median`, `q3`, `lowerfence`, `upperfence` instead of raw rows"
 limits:
-  series_ideal: 7
-  series_max: 20
+  series_ideal: 5
+  series_max: 8
   repair: [top_n_other, input_filter]
 transforms: [clip_p99, precomputed_quartiles]
 gotchas:

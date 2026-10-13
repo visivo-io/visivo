@@ -30,7 +30,12 @@ example: |
         locations: ?{ ${ref(trips).pickup_zone_id} }
         z: ?{ count(*) }
         colorscale: Blues
+        reversescale: true
         marker: {opacity: 0.75}
+  charts:
+    - name: rides-by-zone-map
+      insights: ["${ref(rides-by-zone)}"]
+      layout: {map: {center: {lat: 40.73, lon: -73.94}, zoom: 9.5}}
 variations:
   - when: "the regions cover one city or area"
     then: "chart `layout.map.center` and `layout.map.zoom`; the theme sets `layout.map.style`"

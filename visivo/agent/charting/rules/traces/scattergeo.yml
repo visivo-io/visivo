@@ -47,7 +47,7 @@ variations:
     then: "chart `layout.geo.scope` and `layout.geo.projection.type`, or `layout.geo.fitbounds: locations` to zoom to the data"
 limits:
   series_ideal: 5
-  series_max: 10
+  series_max: 8
   repair: [top_n_other, input_filter, densitymap]
 transforms: [aggregate_to_centroid, top_n_other]
 gotchas:

@@ -19,7 +19,7 @@ data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 2, max: 5}
   dimension_roles: [categorical, geo_region, boolean]
-  cardinality: {min: 3, max: 200}
+  cardinality: {min: 3, max: 10}
 required_props: [labels, parents]
 example: |
   models:
@@ -27,7 +27,7 @@ example: |
       sql: >-
         select pickup_borough as id, pickup_borough as label, '' as parent, count(*) as trips from trips group by all
         union all select pickup_borough || '/' || pickup_zone, pickup_zone, pickup_borough, count(*) from trips group by all
-        union all select pickup_borough || '/' || pickup_zone || '/' || company, company, pickup_borough || '/' || pickup_zone, count(*) from trips group by all
+        union all select pickup_borough || '/' || pickup_zone || '/' || company as id, company as label, pickup_borough || '/' || pickup_zone as parent, count(*) as trips from trips group by all
   insights:
     - name: trips-borough-zone-company
       props:

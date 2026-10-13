@@ -49,7 +49,7 @@ gotchas:
   - "A histogram takes the raw column, not an aggregate: `x: ?{ trip_distance }` with no GROUP BY; every row is sent to the browser."
   - "Clip the tail in SQL (`least(x, p99)`) rather than with `xaxis.range`, which hides bins but still bins them."
   - "`nbinsx` is a hint; Plotly picks nice edges. Set `xbins.size` when the step matters (e.g. 1 km)."
-  - "Overlaid groups need `opacity` < 1 and `barmode: overlay` on the chart layout or the front one hides the others."
+  - "Overlaid groups need `opacity` < 1, `barmode: overlay` on the chart layout, and one `bingroup`; otherwise the front group hides the rest and each group gets its own bin width."
   - "Zero and null are different: filter nulls in SQL, and ask whether zeros are real before binning them."
 pairings: [box_beside, kpi_strip_above]
 layout: {height: medium, width_share: 0.5, row_role: relationship}

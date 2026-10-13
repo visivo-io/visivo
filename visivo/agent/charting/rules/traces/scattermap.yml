@@ -36,6 +36,10 @@ example: |
           sizemode: diameter
       interactions:
         - split: ?{ ${ref(trips).company} }
+  charts:
+    - name: pickups-map
+      insights: ["${ref(pickups-by-zone)}"]
+      layout: {map: {center: {lat: 40.73, lon: -73.94}, zoom: 9.5}}
 variations:
   - when: "a metric per place"
     then: "`marker.size` (use `sqrt` so area, not diameter, is proportional) with `marker.sizemode: diameter`"
@@ -47,7 +51,7 @@ variations:
     then: "`marker.color` from a data column with `marker.colorscale` (the legitimate color case)"
 limits:
   series_ideal: 5
-  series_max: 10
+  series_max: 8
   repair: [top_n_other, input_filter, densitymap]
 transforms: [aggregate_to_centroid, grid_bucket, top_n_other]
 gotchas:

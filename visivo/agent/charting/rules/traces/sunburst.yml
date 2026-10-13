@@ -15,7 +15,7 @@ data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 2, max: 4}
   dimension_roles: [categorical, geo_region, boolean]
-  cardinality: {min: 3, max: 100}
+  cardinality: {min: 3, max: 30}
 required_props: [labels, parents]
 example: |
   models:

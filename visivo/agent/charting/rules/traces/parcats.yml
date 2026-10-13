@@ -26,7 +26,7 @@ example: |
           - {label: Borough, values: "?{ ${ref(trips).pickup_borough} }"}
           - {label: Payment, values: "?{ ${ref(trips).payment_type} }"}
           - {label: Company, values: "?{ ${ref(trips).company} }"}
-        counts: ?{ count(*) }
+        counts: ?{ count(*)::double }
         line:
           color: ?{ avg(${ref(trips).tip_pct}) }
           colorscale: Viridis

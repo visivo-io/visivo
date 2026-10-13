@@ -31,7 +31,12 @@ example: |
         locations: ?{ ${ref(trips).pickup_state} }
         z: ?{ count(*) }
         colorscale: Blues
+        reversescale: true
         colorbar: {title: {text: rides}}
+  charts:
+    - name: rides-by-state-map
+      insights: ["${ref(rides-by-state)}"]
+      layout: {geo: {scope: usa}}
 variations:
   - when: "the data covers one country or continent"
     then: "chart `layout.geo.scope` (usa, europe, …) and `layout.geo.projection.type`; otherwise the world is drawn around a few states"

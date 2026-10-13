@@ -16,13 +16,14 @@ avoid_when:
   - Too many categories to label; use a table or a top-N + Other. Labels overlap first, then the bars vanish.
   - A long run of time periods; a line reads the trend, columns become a comb.
   - An identifier-level dimension (zone_id, customer_id); that is a lookup, use a table.
-  - Too many metrics side by side; grouped bars stop being comparable, use a table.
+  - Too many bars in total (metrics × categories); grouped bars thin into a comb, so drop metrics or categories, or use a table.
 data_shape:
-  metrics: {min: 1, max: 3}
+  metrics: {min: 1, max: 6}
   dimensions: {min: 1, max: 2}
   dimension_roles: [categorical, boolean, geo_region, numeric_discrete, time]
   cardinality: {min: 2, max: 20}
   axis_points: {max: 24}
+  cells: {max: 40}
 required_props: [x, y]
 example: |
   insights:
@@ -43,10 +44,12 @@ variations:
   - when: "a second metric with another unit"
     then: "a scatter insight in the same chart with `yaxis: y2`, and `layout.yaxis2.overlaying: y`"
   - when: "exact values wanted"
-    then: "`text: ?{ <metric> }` + `textposition: outside`"
+    then: "`text: ?{ <metric> }` + `textposition: outside`, on a short axis only; on a crowded one the labels turn vertical"
+  - when: "more categories than fit at half width"
+    then: "give the chart a full-width row, which labels about twice as many"
 limits:
-  series_ideal: 7
-  series_max: 20
+  series_ideal: 5
+  series_max: 8
   repair: [top_n_other, input_filter]
 transforms: [top_n_other, collapse_rare]
 gotchas:
@@ -54,7 +57,7 @@ gotchas:
   - "`barmode` lives on the chart `layout`, not the insight; a split bar without it defaults to grouped."
   - "A split on a `some`/`many` column multiplies the bars silently; read the cardinality bucket first."
   - "Setting `marker.color` to a constant drops the theme colorway; use a CASE only when color encodes a threshold."
-  - "Time on `x` is plotted as a continuous axis; set `layout.xaxis.type: category` for discrete periods or the gaps misalign."
+  - "The theme colorway has eight colours; a ninth series repeats the first, so split series past eight cannot be told apart without hovering."
 pairings: [bar_line_dual_axis, detail_table_below, kpi_strip_above]
 layout: {height: medium, width_share: 0.5, row_role: breakdown}
 mobile: Horizontal bars survive the stack better than vertical ones; show a top-N rather than every category.

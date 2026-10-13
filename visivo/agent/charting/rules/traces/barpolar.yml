@@ -19,7 +19,7 @@ data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 1, max: 2}
   dimension_roles: [time, categorical]
-  cardinality: {min: 7, max: 36}
+  cardinality: {min: 7, max: 24}
 required_props: [r, theta]
 example: |
   insights:
@@ -35,7 +35,7 @@ example: |
       insights:
         - ${ref(rides-by-hour-of-day)}
       layout:
-        polar: {angularaxis: {direction: clockwise, rotation: 90}}
+        polar: {angularaxis: {type: category, direction: clockwise, rotation: 90}}
 variations:
   - when: "a second categorical with a few additive values"
     then: "`split`; the series stack into a rose"
@@ -49,7 +49,7 @@ limits:
   repair: [regrain, bar, heatmap, input_filter]
 transforms: [regrain, bucket, collapse_rare]
 gotchas:
-  - "Numeric `theta` is read as degrees: `extract(hour ...)` squeezes 24 bars into 0–23°. Emit a zero-padded label (`strftime(ts, '%H')`) for a category axis, or multiply (`hour * 15`)."
+  - "Numeric `theta` is read as degrees: `extract(hour ...)` squeezes 24 bars into 0–23°. A zero-padded label (`strftime(ts, '%H')`) is still read as a number, so also set `layout.polar.angularaxis.type: category`, or multiply (`hour * 15`)."
   - "A category angular axis only has the slots present in the data; a missing hour shifts every later wedge. Build a complete spine (`generate_series` + LEFT JOIN) or set `layout.polar.angularaxis.categoryarray`."
   - "Weekday and month names sort alphabetically; sort on `isodow` or `month` and label with `dayname` or `monthname`."
   - "The default angular axis starts at 3 o'clock and runs counter-clockwise; set `direction: clockwise, rotation: 90` so the cycle reads like a clock."

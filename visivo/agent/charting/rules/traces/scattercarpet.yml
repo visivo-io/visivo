@@ -17,6 +17,13 @@ data_shape:
 required_props: [carpet, a, b]
 example: |
   insights:
+    - name: fare-grid
+      props:
+        type: carpet
+        carpet: fare-grid
+        a: ?{ ${ref(fare_scenarios).base_fare} }
+        b: ?{ ${ref(fare_scenarios).per_mile} }
+        y: ?{ ${ref(fare_scenarios).trips} }
     - name: company-pricing
       props:
         type: scattercarpet
@@ -24,9 +31,11 @@ example: |
         mode: markers
         a: ?{ ${ref(company_pricing).base_fare} }
         b: ?{ ${ref(company_pricing).per_mile} }
-        marker: {size: 10}
       interactions:
         - split: ?{ ${ref(company_pricing).company} }
+  charts:
+    - name: company-pricing-on-grid
+      insights: ["${ref(fare-grid)}", "${ref(company-pricing)}"]
 variations:
   - when: "a categorical with a few values, such as company"
     then: "`split`, one marker series per company"

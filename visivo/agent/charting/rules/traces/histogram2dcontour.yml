@@ -28,6 +28,7 @@ example: |
         nbinsy: 40
         ncontours: 10
         colorscale: Blues
+        reversescale: true
       interactions:
         - filter: ?{ ${ref(trips).trip_distance} > 0 and ${ref(trips).fare_amount} > 0 }
 variations:

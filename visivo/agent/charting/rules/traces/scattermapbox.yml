@@ -29,12 +29,12 @@ variations:
     then: "change `type` to `scattermap` first, then apply its variations: `marker.size` for a metric, `split` for a `few` categorical, `cluster.enabled` for raw points"
 limits:
   series_ideal: 5
-  series_max: 10
+  series_max: 8
   repair: [top_n_other, input_filter, densitymap]
 transforms: [aggregate_to_centroid, grid_bucket]
 gotchas:
   - "Migrate: change `type` to `scattermap` and any chart `layout.mapbox` to `layout.map`; every other prop carries over."
-  - "It renders tokenless today only because the theme sets `layout.mapbox.style` to a carto style; a `mapbox://` style needs a token."
+  - "On Plotly 3 the basemap tiles read \"API KEY REQUIRED\" even with the theme's carto style; the data draws, but migrate to the `*map` trace."
   - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
   - "All `scattermap` gotchas apply: aggregate to a location, check lat/lon are not swapped, set center and zoom."
 pairings: [bar_beside, detail_table_below]

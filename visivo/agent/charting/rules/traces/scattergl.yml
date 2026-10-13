@@ -35,7 +35,7 @@ variations:
     then: "sample in SQL (`using sample 10%`) or bin to a `histogram2d`"
 limits:
   series_ideal: 5
-  series_max: 12
+  series_max: 8
   repair: [top_n_other, input_filter, histogram2d]
 transforms: [sample, clip_p99]
 gotchas:
