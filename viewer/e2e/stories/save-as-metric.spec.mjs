@@ -228,9 +228,12 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     const collisionName = `e2e_saveasmetric_collision_${Date.now()}`;
     // Pre-create a metric under that name directly via the API so the
     // collision is deterministic, independent of the suggested-name logic.
-    await page.request.post(`${apiBase}/api/metrics/${encodeURIComponent(collisionName)}/`, {
-      data: { expression: 'COUNT(*)' },
-    });
+    const created = await page.request.post(
+      `${apiBase}/api/metrics/${encodeURIComponent(collisionName)}/`,
+      // A project-level metric must reference a model to be saved at all.
+      { data: { expression: 'COUNT(${ref(local_test_table).x})' } }
+    );
+    expect(created.ok()).toBe(true);
     createdMetrics.push(collisionName);
     // The collision check (`saveAsMetricFlow.js`) reads the frontend's OWN
     // cached `state.metrics`, which a raw `page.request.post` never

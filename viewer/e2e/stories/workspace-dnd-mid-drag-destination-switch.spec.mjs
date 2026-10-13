@@ -102,18 +102,19 @@ test.describe('Switching destination mid-drag (Explore 2.0 cross-feature #518 x 
     // about.
     const pageErrors = [];
     page.on('pageerror', err => pageErrors.push(err.message));
+    await gotoExplorerHome(page);
+    const id = await newExploration(page);
+    const existingChips = await chips(page).count();
+
+    const tableRow = await expandSourceTable(page);
+    // Recorded from here: opening an unrun exploration already 404s its
+    // model-data probe, which is not what this test is about.
     const apiFailures = [];
     page.on('response', res => {
       if (res.status() >= 400 && res.url().includes('/api/')) {
         apiFailures.push(`${res.status()} ${res.url()}`);
       }
     });
-
-    await gotoExplorerHome(page);
-    const id = await newExploration(page);
-    const existingChips = await chips(page).count();
-
-    const tableRow = await expandSourceTable(page);
     const dropZone = page.getByTestId('sql-editor-drop-zone');
     const sourceBox = await tableRow.boundingBox();
     const targetBox = await dropZone.boundingBox();

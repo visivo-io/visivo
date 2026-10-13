@@ -34,7 +34,9 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { BASE_URL, API } from '../helpers/sandbox.mjs';
+import { BASE_URL, API, apiPathPattern } from '../helpers/sandbox.mjs';
+
+const EXPLORATIONS = apiPathPattern('/api/explorations/');
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);
@@ -56,7 +58,7 @@ async function gateCreatePost(page) {
   const gate = new Promise(resolve => {
     release = resolve;
   });
-  await page.route('**/api/explorations/', async route => {
+  await page.route(EXPLORATIONS, async route => {
     if (route.request().method() !== 'POST') {
       await route.continue();
       return;
@@ -75,7 +77,7 @@ test.describe('Explorer Home: switching destinations mid-create never yanks navi
   });
 
   test.afterEach(async ({ page }) => {
-    await page.unroute('**/api/explorations/').catch(() => {});
+    await page.unroute(EXPLORATIONS).catch(() => {});
     const idsAfterTest = await listExplorationIds(page);
     const createdIds = idsAfterTest.filter(id => !idsBeforeTest.includes(id));
     for (const id of createdIds) {
@@ -108,11 +110,11 @@ test.describe('Explorer Home: switching destinations mid-create never yanks navi
     // handler is mid-resolution races Playwright's own unroute cleanup
     // against it ("Route is already handled").
     const responsePromise = page.waitForResponse(
-      res => res.url().endsWith('/api/explorations/') && res.request().method() === 'POST'
+      res => EXPLORATIONS.test(res.url()) && res.request().method() === 'POST'
     );
     release();
     await responsePromise;
-    await page.unroute('**/api/explorations/');
+    await page.unroute(EXPLORATIONS);
 
     // The stale completion must NOT force-navigate back to the new
     // exploration tab — Semantic Layer stays active, no exploration tab
@@ -150,11 +152,11 @@ test.describe('Explorer Home: switching destinations mid-create never yanks navi
     );
 
     const responsePromise = page.waitForResponse(
-      res => res.url().endsWith('/api/explorations/') && res.request().method() === 'POST'
+      res => EXPLORATIONS.test(res.url()) && res.request().method() === 'POST'
     );
     release();
     await responsePromise;
-    await page.unroute('**/api/explorations/');
+    await page.unroute(EXPLORATIONS);
 
     await page.waitForTimeout(500);
     await expect(page.getByTestId('workspace-view-switcher-project')).toHaveAttribute(

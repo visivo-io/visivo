@@ -8,8 +8,8 @@
  *     input) with a TYPE-CORRECT heading and the missing ref in monospace;
  *   - the ReferencePicker title matches the broken field type;
  *   - search FILTERS the object list (and shows the no-matches state);
- *   - EMPTY state — a type with no objects (markdown is empty in the integration
- *     project) shows the prominent create CTA, not an empty list;
+ *   - EMPTY state — a type with no objects shows the prominent create CTA, not
+ *     an empty list;
  *   - "Delete this slot" shows an inline confirm that can be CANCELLED, then
  *     confirmed to remove the item;
  *   - the card ADAPTS across slot sizes (a narrow ~220px slot vs a full-width
@@ -197,7 +197,15 @@ test.describe('Broken-ref detailed (VIS-792 / L-1+L-2)', () => {
     const card = page.locator(`[data-testid="broken-ref-card"][data-broken-name="${broken.name}"]`);
     await card.getByTestId('broken-ref-fix').click();
     await expect(page.getByTestId('reference-picker')).toBeVisible({ timeout: WAIT });
-    // The integration project has zero markdown objects → prominent empty state.
+    // The integration project has one markdown (`welcome-note`): the picker lists it…
+    await expect(page.locator('[data-testid^="reference-picker-row-"]')).toHaveCount(1);
+    await expect(page.getByTestId('reference-picker-empty')).toHaveCount(0);
+    // …and with none in the project, the picker shows the prominent empty state.
+    const markdowns = await page.evaluate(() => {
+      const { markdowns: current } = window.useStore.getState();
+      window.useStore.setState({ markdowns: [] });
+      return current;
+    });
     await expect(page.getByTestId('reference-picker-empty')).toBeVisible({ timeout: WAIT });
     await expect(page.getByTestId('reference-picker-empty-create')).toBeVisible();
     // No object rows are rendered.
@@ -209,6 +217,7 @@ test.describe('Broken-ref detailed (VIS-792 / L-1+L-2)', () => {
     // Close the picker (Escape) to leave the page clean.
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('reference-picker')).toHaveCount(0);
+    await page.evaluate(current => window.useStore.setState({ markdowns: current }), markdowns);
   });
 
   test('Delete this slot: confirm can be CANCELLED, then confirmed to remove', async () => {

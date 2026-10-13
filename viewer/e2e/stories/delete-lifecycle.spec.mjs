@@ -245,14 +245,12 @@ test.describe('delete lifecycle', () => {
     expect(res.status()).toBe(404);
   });
 
-  test('5c. restoring something that is not deleted is refused', async ({ page }) => {
-    // A silent 200 would be indistinguishable from a real restore.
-    const name = `e2e_not_deleted_${Date.now()}`;
-    await createDraftModel(page, name);
+  test('5c. restoring something with nothing pending is refused', async ({ page }) => {
+    // A silent 200 would be indistinguishable from a real restore. (Restore
+    // reverts ANY pending change, so a merely-not-deleted draft is not refused.)
+    const res = await restoreObject(page, 'models', 'sales_data');
 
-    const res = await restoreObject(page, 'models', name);
-
-    expect(res.status()).toBe(409);
+    expect(res.status()).toBe(404);
   });
 
   test('6. deleting an unbuilt creation does not start an automatic run', async ({ page }) => {

@@ -37,7 +37,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { BASE_URL, API } from '../helpers/sandbox.mjs';
+import { BASE_URL, API, apiPathPattern } from '../helpers/sandbox.mjs';
 
 // Explorations are S3'd to a single file-backed repository shared by every
 // test in this suite (`.visivo/explorations/` — see ExplorationRepository).
@@ -109,7 +109,7 @@ test.describe('Explorer Home gallery (Explore 2.0 Phase 2)', () => {
 
     let createPostFired = false;
     page.on('request', req => {
-      if (req.url().endsWith('/api/explorations/') && req.method() === 'POST') {
+      if (apiPathPattern('/api/explorations/').test(req.url()) && req.method() === 'POST') {
         createPostFired = true;
       }
     });

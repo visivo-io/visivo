@@ -90,8 +90,8 @@ test.describe('Empty-repo onboarding flow', () => {
     const res = await request.get(`http://localhost:${BACKEND_PORT}/api/project/`);
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
-    expect(body?.project_json?.name).toBe('Quickstart Visivo');
-    expect(body?.project_json?.dashboards || []).toEqual([]);
+    expect(body?.name).toBe('Quickstart Visivo');
+    expect(body?.dashboard_count).toBe(0);
   });
 
   test('user lands on /onboarding from / when project is empty', async ({ page }) => {

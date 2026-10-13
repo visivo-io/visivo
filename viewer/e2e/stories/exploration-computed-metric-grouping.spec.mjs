@@ -97,14 +97,15 @@ test.describe('Exploration computed-metric grouping (smoke-test bug #1 regressio
     // Set via the store (the reliable non-DnD path — dragging a computed pill
     // into a well is a separate, flaky gesture); the ASSERTIONS below are on the
     // real rendered draft data + the real pill DOM, which is what the fix changes.
-    const insightName = await page.evaluate(() => {
+    const query = await page.evaluate(() => window.useStore.getState().explorerActiveModelName);
+    const insightName = await page.evaluate(query => {
       const s = window.useStore.getState();
       const name = s.explorerChartInsightNames[0];
       s.setInsightType(name, 'bar');
-      s.setInsightProp(name, 'x', '?{${ref(powerlifting_query).band}}');
-      s.setInsightProp(name, 'y', '?{${ref(powerlifting_query).avg_total}}');
+      s.setInsightProp(name, 'x', `?{\${ref(${query}).band}}`);
+      s.setInsightProp(name, 'y', `?{\${ref(${query}).avg_total}}`);
       return name;
-    });
+    }, query);
 
     // The draft preview must resolve the metric server-side and GROUP BY the
     // dimension → per-group values, NOT the global average for every group.
@@ -139,7 +140,7 @@ test.describe('Exploration computed-metric grouping (smoke-test bug #1 regressio
     const yPill = page.getByTestId('property-pill-y');
     await expect(yPill).toBeVisible();
     await expect(yPill).toHaveText('avg_total');
-    await expect(page.getByTestId('property-pill-x')).toHaveText(/powerlifting_query.*band/);
+    await expect(page.getByTestId('property-pill-x')).toHaveText(`${query} ▸ band`);
 
     // Its menu header names the classification "Metric".
     await yPill.locator('..').getByTestId('pill-menu-trigger').click();
