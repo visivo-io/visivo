@@ -162,6 +162,14 @@ def _execute(flask_app, run_id, dag_filter):
         )
 
 
+def record_failed_run(flask_app, runner):
+    """List a build that ran outside the run loop (serve's start-up build) as a failed run."""
+    run = flask_app.run_manager.create(runner.dag_filter)
+    flask_app.run_manager.set_state(
+        run.id, RunState.FAILED, logs=_format_logs(runner), error_json=_error_json_from(runner)
+    )
+
+
 def _error_json_from(runner):
     diagnostics = [
         result.diagnostic or _fallback_diagnostic(result)

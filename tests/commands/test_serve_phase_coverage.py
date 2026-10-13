@@ -10,11 +10,20 @@ import os
 
 import pytest
 
-from tests.factories.model_factories import ProjectFactory
+from tests.factories.model_factories import (
+    ChartFactory,
+    DashboardFactory,
+    InsightFactory,
+    ItemFactory,
+    ProjectFactory,
+    RowFactory,
+    SqlModelFactory,
+)
 from tests.support.utils import temp_folder
 from visivo.commands.serve_phase import serve_phase
 from visivo.commands.utils import create_file_database
 from visivo.server.hot_reload_server import HotReloadServer
+from visivo.server.managers.run_manager import RunManager
 
 
 @pytest.fixture
@@ -36,6 +45,31 @@ def project_with_data(output_dir):
     return project
 
 
+@pytest.fixture
+def project_with_one_broken_query(output_dir):
+    good_model = SqlModelFactory(name="good_model", source="ref(source)")
+    broken_model = SqlModelFactory(
+        name="broken_model", source="ref(source)", sql="select * from missing_table"
+    )
+    good = InsightFactory(name="good_insight", model=good_model)
+    broken = InsightFactory(name="broken_insight", model=broken_model)
+    items = [
+        ItemFactory(name="good_item", chart=ChartFactory(name="good_chart", insights=[good])),
+        ItemFactory(name="broken_item", chart=ChartFactory(name="broken_chart", insights=[broken])),
+    ]
+    dashboard = DashboardFactory(name="dashboard", rows=[RowFactory(name="row", items=items)])
+    project = ProjectFactory(models=[good_model, broken_model], dashboards=[dashboard])
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
+    return project
+
+
+@pytest.fixture
+def fresh_run_manager():
+    RunManager._instance = None
+    yield
+    RunManager._instance = None
+
+
 def _serve(project, output_dir, server_url, **overrides):
     kwargs = dict(
         output_dir=output_dir,
@@ -54,7 +88,9 @@ def _serve(project, output_dir, server_url, **overrides):
 class TestOnServerReady:
     def test_one_shot_runs_initial_build(self, project_with_data, output_dir, server_url, mocker):
         # run_phase is a separate heavy phase; isolate serve_phase's orchestration.
-        run_spy = mocker.patch("visivo.commands.serve_phase.run_phase")
+        run_spy = mocker.patch(
+            "visivo.commands.serve_phase.run_phase", return_value=mocker.Mock(failed_job_results=[])
+        )
         _, _, on_server_ready = _serve(project_with_data, output_dir, server_url)
 
         on_server_ready(one_shot=True)
@@ -64,7 +100,9 @@ class TestOnServerReady:
     def test_new_project_opens_browser_with_onboarding(
         self, project_with_data, output_dir, server_url, mocker
     ):
-        mocker.patch("visivo.commands.serve_phase.run_phase")
+        mocker.patch(
+            "visivo.commands.serve_phase.run_phase", return_value=mocker.Mock(failed_job_results=[])
+        )
         open_mock = mocker.patch("visivo.commands.serve_phase.webbrowser.open")
         _, _, on_server_ready = _serve(
             project_with_data, output_dir, server_url, new=True, onboarding=True
@@ -79,7 +117,9 @@ class TestOnServerReady:
     def test_new_project_without_onboarding_opens_bare_url(
         self, project_with_data, output_dir, server_url, mocker
     ):
-        mocker.patch("visivo.commands.serve_phase.run_phase")
+        mocker.patch(
+            "visivo.commands.serve_phase.run_phase", return_value=mocker.Mock(failed_job_results=[])
+        )
         open_mock = mocker.patch("visivo.commands.serve_phase.webbrowser.open")
         _, _, on_server_ready = _serve(project_with_data, output_dir, server_url, new=True)
 
@@ -96,6 +136,23 @@ class TestOnServerReady:
         )
         with pytest.raises(RuntimeError, match="build blew up"):
             on_server_ready(one_shot=False)
+
+    def test_a_failed_query_is_reported_and_the_rest_is_served(
+        self, project_with_one_broken_query, output_dir, server_url, fresh_run_manager
+    ):
+        server, _, on_server_ready = _serve(project_with_one_broken_query, output_dir, server_url)
+
+        on_server_ready(one_shot=False)
+
+        client = server.app.test_client()
+        insights = "/api/insight-jobs/?insight_names={}&project_id=p"
+        assert client.get(insights.format("good_insight")).status_code == 200
+        assert client.get(insights.format("broken_insight")).status_code == 404
+        runs = client.get("/api/projects/p/run/").get_json()
+        assert [run["state"] for run in runs] == ["failed"]
+        failed_objects = [d["object"]["name"] for d in runs[0]["error_json"]["diagnostics"]]
+        assert "broken_insight" in failed_objects
+        assert "good_insight" not in failed_objects
 
 
 class TestOnProjectChangeErrorHandling:
