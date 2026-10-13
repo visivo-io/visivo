@@ -172,4 +172,51 @@ describe('parsePivotColumnHierarchy', () => {
     expect(result[1].displayName).toBe('East');
     expect(result[2].displayName).toBe('West');
   });
+
+  // VIS-1462 T6: when the agg suffix matches none of the known aggregations
+  // (aggIndex -1) the leaf used to fall back to the RAW key — a hashed column
+  // name on screen. It must de-hash through reverseMapping instead.
+  it('never shows a hashed key in a fallback leaf header', () => {
+    const resultKeys = ['prod_hash', 'east_sum("rev_hash")', 'east_median("rev_hash")'];
+    const resolvedRowCols = new Set(['prod_hash']);
+    const resolvedPivotCols = ['region'];
+    const aggInfo = [
+      { aggFunc: 'SUM', displayName: 'Revenue' },
+      { aggFunc: 'AVG', displayName: 'Revenue' },
+    ];
+    const reverseMapping = { prod_hash: 'Product', rev_hash: 'Revenue' };
+
+    const result = parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedPivotCols, aggInfo, reverseMapping);
+
+    const leaves = [];
+    const walk = cols => cols.forEach(c => (c.columns ? walk(c.columns) : leaves.push(c.displayName)));
+    walk(result);
+    expect(leaves).toContain('Product');
+    expect(leaves).toContain('SUM of Revenue');
+    expect(leaves.some(l => l.includes('rev_hash') || l.includes('prod_hash'))).toBe(false);
+    expect(leaves).toContain('East Median("Revenue")');
+  });
+
+  it('pads a short prefix and rejoins a long one across two ON columns', () => {
+    // Two ON columns (region, quarter) but DuckDB prefixes that have fewer /
+    // more underscore-separated parts than that: `east` (1 part → padded) and
+    // `new_york_Q1` (3 parts → the excess is rejoined into the LAST segment).
+    const resultKeys = ['product', 'east_sum("rev")', 'east_avg("rev")', 'new_york_Q1_sum("rev")', 'new_york_Q1_avg("rev")'];
+    const resolvedRowCols = new Set(['product']);
+    const resolvedPivotCols = ['region', 'quarter'];
+    const aggInfo = [
+      { aggFunc: 'SUM', displayName: 'Revenue' },
+      { aggFunc: 'AVG', displayName: 'Revenue' },
+    ];
+
+    const result = parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedPivotCols, aggInfo, {});
+
+    const topHeaders = result.filter(c => c.columns).map(c => c.header);
+    expect(topHeaders).toEqual(['East', 'New']);
+    const east = result.find(c => c.header === 'East');
+    expect(east.columns[0].header).toBe('');
+    const nyc = result.find(c => c.header === 'New');
+    expect(nyc.columns[0].header).toBe('York Q1');
+    expect(nyc.columns[0].columns.map(c => c.displayName)).toEqual(['SUM of Revenue', 'AVG of Revenue']);
+  });
 });

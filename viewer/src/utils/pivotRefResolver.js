@@ -91,3 +91,66 @@ export function parseColumnAlias(colExpr) {
   return { ref: colExpr, alias: null };
 }
 
+/**
+ * Invert a props_mapping ("props.field" -> hashed column) into a hashed-column
+ * -> display-name map ("Field"), matching the header format the `data:` table
+ * path uses. Prop paths are title-cased with dots as spaces.
+ *
+ * @param {Object} propsMapping
+ * @returns {Object} hashedColumn -> display name
+ */
+export function buildReverseMapping(propsMapping) {
+  const reverseMapping = {};
+  for (const [propPath, hashedName] of Object.entries(propsMapping || {})) {
+    reverseMapping[hashedName] = propPath
+      .replace(/^props\./, '')
+      .replace(/\./g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  }
+  return reverseMapping;
+}
+
+/**
+ * Plain header text for a raw column key: strip a trailing `_hash_…` suffix,
+ * underscores to spaces, title-case. The one formatter every table path uses.
+ *
+ * @param {string} key
+ * @returns {string}
+ */
+export function formatColumnHeader(key) {
+  if (!key) return '';
+  return key
+    .replace(/_hash_[a-f0-9]+$/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+/**
+ * Replace every hashed column name that appears anywhere inside a result key
+ * with its plain display name. Covers composite keys DuckDB builds for a pivot
+ * (e.g. `North_sum("mizwiwgxodnxypd")`). Longest hashes first so a hash that is
+ * a prefix of another cannot clobber it.
+ *
+ * @param {string} key - Raw result column key
+ * @param {Object} reverseMapping - from buildReverseMapping
+ * @returns {string}
+ */
+export function dehashColumnKey(key, reverseMapping) {
+  if (!key) return key;
+  return Object.keys(reverseMapping || {})
+    .sort((a, b) => b.length - a.length)
+    .reduce((out, hash) => out.split(hash).join(reverseMapping[hash]), key);
+}
+
+/**
+ * Header for a result key: the mapped prop name when the key IS a hashed
+ * column, otherwise the de-hashed, title-cased key. A hashed name must never
+ * reach the UI (VIS-1462 T6).
+ *
+ * @param {string} key
+ * @param {Object} reverseMapping - from buildReverseMapping
+ * @returns {string}
+ */
+export function plainHeader(key, reverseMapping) {
+  return reverseMapping?.[key] || formatColumnHeader(dehashColumnKey(key, reverseMapping));
+}
