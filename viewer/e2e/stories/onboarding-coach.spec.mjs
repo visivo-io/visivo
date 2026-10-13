@@ -117,10 +117,9 @@ test.describe('OnboardingCoach', () => {
       ],
     });
     await expect(page.getByTestId('onboarding-coach')).toBeVisible();
-    // /explorer is currentItem.route only when define_metric is current
-    // for analytics engineer; with all items satisfied except deploy
-    // the route is /editor, so navigating to /lineage hides the coach.
-    await page.goto(`${BASE}/lineage`);
+    // With every item satisfied except deploy the route is /workspace, so
+    // navigating to /runs hides the coach.
+    await page.goto(`${BASE}/runs`);
     await page.waitForLoadState('networkidle');
     await expect(page.getByTestId('onboarding-coach')).toHaveCount(0);
   });

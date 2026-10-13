@@ -12,8 +12,8 @@ const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 
 async function gotoCoachOnDeployFromOffRoute(page) {
   // Pre-set state so deploy is the only incomplete row, then land on
-  // a route (Lineage) that's not /editor — the chip should appear.
-  await page.goto(`${BASE}/lineage`);
+  // a route (Runs) that's not the Workspace — the chip should appear.
+  await page.goto(`${BASE}/runs`);
   await page.evaluate(() => {
     window.localStorage.setItem(
       'visivo.onboarding.v1',
@@ -38,7 +38,7 @@ async function gotoCoachOnDeployFromOffRoute(page) {
       })
     );
   });
-  await page.goto(`${BASE}/lineage`);
+  await page.goto(`${BASE}/runs`);
   await page.waitForSelector('[data-testid="onboarding-coach-chip"]', { timeout: 10000 });
 }
 
@@ -54,7 +54,10 @@ test.describe('OnboardingCoach — off-route chip', () => {
     await expect(chip).toHaveAttribute('data-onb-chip-item', 'deploy');
     await expect(chip).toContainText('Next: Deploy to share');
     await chip.click();
-    await page.waitForURL(/\/editor$/, { timeout: 10000 });
+    await page.waitForURL(/\/workspace$/, { timeout: 10000 });
+    // Landing on the item's route swaps the chip for the coach on the Deploy button.
+    await expect(page.getByTestId('onboarding-coach-deploy')).toBeVisible();
+    await expect(chip).toHaveCount(0);
   });
 
   test('chip is hidden once the user dismisses the item', async ({ page }) => {
